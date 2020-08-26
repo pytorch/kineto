@@ -1,0 +1,130 @@
+/** CSS for a topology graph view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  padding-top: 20px;
+}
+
+.topology-header {
+  display: flex;
+  flex-direction: row;
+  margin-top: -32px;
+}
+
+.control-row-left {
+  display: flex;
+  margin-right: 32px;
+  flex-flow: row nowrap;
+  align-items: center;
+  line-height: 50px;
+  text-align: bottom;
+  justify-content: flex-start;
+}
+
+.container {
+  position: relative;
+}
+
+.label {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.label .title {
+  position: absolute;
+  top: -7px;
+  left: -15px;
+  font-size: 14px;
+  line-height: 14px;
+  width: 30px;
+  text-align: center;
+}
+
+.host {
+  position: absolute;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background-color: #eee;
+}
+
+.node {
+  position: absolute;
+  border-radius: 4px;
+  border: 1px solid #333;
+  width: 15px;
+  height: 30px;
+  background-color: #1d91c0;
+  transition: background-color 1s;
+}
+
+.color-table {
+  display: flex;
+  flex-wrap: nowrap;
+  padding: 20px 20px 0;
+}
+
+.color-cell {
+  margin: 0 22px;
+  border: 1px solid #333;
+  width: 15px;
+  height: 30px;
+  border-radius: 4px;
+}
+
+.color-label {
+  width: 60px;
+  margin: 8px 0;
+  text-align: center;
+}
+
+.selected-metric-label {
+  text-transform: uppercase;
+  padding-right: 8px;
+}
+
+.selected-metric-item {
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.02)
+}
+
+.channel-input {
+  width: 70px;
+}
+
+.arrow-container {
+  position: absolute;
+  pointer-events: none;
+}
+
+.arrow-container svg {
+  overflow: visible;
+}
+
+.arrow {
+  fill: #f00;
+  transform-origin: 0px 0px;
+}
+
+.node-tooltip {
+  position: absolute;
+  background-color: white;
+  padding: 10px;
+  border-radius: 8px;
+  width: 200px;
+  font-size: 12px;
+  line-height: 20px;
+  font-family: sans-serif;
+  pointer-events: none;
+}
+
+.node-tooltip > pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.control {
+  color: $content-secondary-color;
+}

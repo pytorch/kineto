@@ -1,0 +1,75 @@
+<mat-card>
+  <mat-card-title>{{ title }}</mat-card-title>
+  <mat-card-content>
+    <ng-content></ng-content>
+    <div class="item-container">
+      <table>
+        <tr>
+          <td>
+            <b>#Allocation</b>
+          </td>
+          <td class="item-value">
+            <div>{{ numAllocations }}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="item-container">
+      <table>
+        <tr>
+          <td>
+            <b>#Deallocation</b>
+          </td>
+          <td class="item-value">
+            <div>{{ numDeallocations }}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="item-container">
+      <table>
+        <tr>
+          <td>
+            <b>Memory Capacity</b>
+          </td>
+          <td class="item-value">
+            <div>{{ memoryCapacityGB }} GiBs</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="item-container">
+      <table>
+        <tr>
+          <td>
+            <b>Peak Heap Usage</b>
+            <div class="description">high water mark in lifetime</div>
+          </td>
+          <td class="item-value">
+            <div>{{ peakHeapUsageLifetimeGB }} GiBs</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="item-container">
+      <table>
+        <tr>
+          <td>
+            <b>Peak Memory Usage</b>
+            <div class="description">stack + heap, within profiling window</div>
+          </td>
+          <td class="item-value">
+            <div>{{ peakMemUsageProfileGB }} GiBs</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <ul>
+      <li class="primary-content">Timestamp: {{ timestampAtPeakMs }} ms</li>
+      <li class="primary-content">Stack Reservation: {{ stackAtPeakGB }} GiBs</li>
+      <li class="primary-content">Heap Allocation: {{ heapAtPeakGB }} GiBs</li>
+      <li class="primary-content">Free Memory: {{ freeAtPeakGB }} GiBs</li>
+      <li class="primary-content">Fragmentation: {{ fragmentationAtPeakPct }}</li>
+    </ul>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,46 @@
+/** CSS for a tensorflow stats component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+}
+
+.section-container {
+  padding: 20px;
+}
+
+.header-content {
+  font-style: italic;
+  margin-top: -16px;
+}
+
+.row {
+  display: flex;
+}
+
+.flex-space {
+  flex: 1;
+}
+
+.mat-raised-button {
+  @include box-shadow-none;
+  @include border-black;
+  border-radius: 0;
+  color: $button-focus-color;
+}
+
+.idle-button-container {
+  margin-top: -16px;
+}
+
+.save-button {
+  padding-top: 8px;
+  text-align: center;
+  width: 130px;
+}
+
+.save-button:hover {
+  color: $button-focus-color;
+  cursor: pointer;
+}

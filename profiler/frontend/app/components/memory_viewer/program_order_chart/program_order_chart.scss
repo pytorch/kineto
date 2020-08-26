@@ -1,0 +1,20 @@
+/** CSS for a program order chart view component. */
+
+:host {
+  display: block;
+  margin: 20px;
+}
+
+.chart-container {
+  position: relative;
+  width: 1200px;
+  height: 380px;
+}
+
+.chart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1200px;
+  height: 380px;
+}

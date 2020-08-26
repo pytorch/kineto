@@ -1,0 +1,19 @@
+<div class="header">
+  <span class="time">Time</span>
+  <span class="wasted">Wasted</span>
+  <span class="name">Name</span>
+  <span class="provenance">TensorFlow Op</span>
+  <span class="utilization">FLOPS</span>
+  <span class="flame-color-circle"></span>
+</div>
+
+<op-table-entry
+  [level]="0"
+  [node]="rootNode"
+  [selectedNode]="selectedNode"
+  [byWasted]="byWasted"
+  [showP90]="showP90"
+  [childrenCount]="childrenCount"
+  (hover)="updateActive($event)"
+  (selected)="updateSelected($event)">
+</op-table-entry>

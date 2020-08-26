@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet">
+  <meta charset="utf-8">
+  <title>ProfilePlugin</title>
+  <base href="/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="styles.css">
+  <script src="zone.js"></script>
+</head>
+<body>
+  <app></app>
+  <script>
+    function loadBundle() {
+      const script = document.createElement('script');
+      script.src = 'bundle.js';
+      document.body.appendChild(script);
+      return script;
+    }
+
+    function loadChart(domain) {
+      const script = document.createElement('script');
+      script.src = `https://${domain}/charts/loader.js`;
+      document.body.appendChild(script);
+      script.onload = () => {
+        loadBundle();
+      }
+      return script;
+    }
+
+    const script = loadChart('www.gstatic.com');
+    script.onerror = () => {
+      script.onerror = null;
+      document.body.removeChild(script);
+
+      loadChart('www.gstatic.cn');
+    }
+  </script>
+</body>
+</html>

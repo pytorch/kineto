@@ -1,0 +1,12 @@
+/** CSS for a flop rate chart view component. */
+
+:host {
+  display: block;
+  width: 550px;
+  height: fit-content;
+  margin: 8px 8px 8px 0;
+}
+
+.chart {
+  margin-top: -16px;
+}

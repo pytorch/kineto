@@ -1,0 +1,47 @@
+/** CSS for an op talbe view component. */
+
+.header {
+  display: flex;
+  align-items: center;
+  font-size: smaller;
+  font-weight: bold;
+  color: #666;
+  padding-bottom: .25em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.header > * {
+  padding: .5em .5em 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.time {
+  padding-left: 20px !important;
+  width: 80px;
+}
+
+.wasted, .utilization {
+  width: 60px;
+}
+
+.name {
+  display: inline-block;
+  min-width: 40%;
+  padding-left: 2em !important;
+}
+
+.provenance {
+  flex: 1 1 0 !important;
+}
+
+.utilization {
+  text-align: right;
+}
+
+.flame-color-circle {
+  margin: 0 20px 0 10px;
+  width: 16px;
+}

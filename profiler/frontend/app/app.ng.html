@@ -1,0 +1,16 @@
+<div *ngIf="!loading; else progress_bar">
+  <div *ngIf="dataFound; else emptypage">
+    <main-page [datasets]="datasets"></main-page>
+  </div>
+
+  <ng-template #emptypage>
+    <empty-page></empty-page>
+  </ng-template>
+</div>
+
+<ng-template #progress_bar>
+  <div class="progress-container" [hidden]="!loading">
+    <div class="loading-message">Loading data</div>
+    <mat-progress-bar color="primary" mode="indeterminate"></mat-progress-bar>
+  </div>
+</ng-template>

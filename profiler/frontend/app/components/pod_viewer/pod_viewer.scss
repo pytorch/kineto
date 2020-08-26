@@ -1,0 +1,24 @@
+/** CSS for a pod viewer component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+}
+
+.section-container {
+  padding: 20px;
+}
+
+mat-slider {
+  width: 200px;
+}
+
+.chart-title {
+  font-size: 24px;
+  padding-bottom: 8px;
+}
+
+.control {
+  color: $content-secondary-color;
+}

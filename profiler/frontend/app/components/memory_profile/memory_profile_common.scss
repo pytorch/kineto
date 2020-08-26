@@ -1,0 +1,67 @@
+/** CSS for a memory profile component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+}
+
+mat-form-field {
+  width: 80px;
+  margin-left: -10px;
+}
+
+.error-message {
+  color: red;
+  font-size: 0.5cm;
+  font-weight: bolder;
+  margin-top: 0.5cm;
+  margin-bottom: 0.5cm;
+  text-align: center;
+}
+
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  width: 33.333%;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  width: 66.667%;
+}
+
+.full-column {
+  @include border-right-gray;
+  width: 100%;
+}
+
+@media screen and (max-width: 860px) {
+  :host {
+    width: fit-content;
+  }
+}
+
+@media screen and (max-width: 1140px) {
+  .left-column,
+  .right-column {
+    width: 100%;
+  }
+}
+
+.mat-subheading-2 {
+  padding-left: 10px;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.mat-form-field {
+  padding-left: 10px;
+}

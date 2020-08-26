@@ -1,0 +1,17 @@
+<div class="range-slider-wrapper">
+  <mat-slider (input)="updateFirstSliderValue($event.value)"
+              [min]="min"
+              [max]="max"
+              [step]="step"
+              [value]="firstSliderValue">
+  </mat-slider>
+  <mat-slider (input)="updateSecondSliderValue($event.value)"
+              [min]="min"
+              [max]="max"
+              [step]="step"
+              [value]="secondSliderValue">
+  </mat-slider>
+  <div #range class="range">
+    <div #rangeBar class="range-bar"></div>
+  </div>
+</div>

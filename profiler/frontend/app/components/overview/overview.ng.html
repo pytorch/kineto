@@ -1,0 +1,38 @@
+<!--
+  The Overview Page is a view within the tf-profile-dashboard.
+  It is the first page that users would look at in order to understand
+  the overall performance of their TPU workloads. The page has five
+  sections of results:
+    (1) Performance summary
+    (2) Step-time graph
+    (3) Top 10 TensorFlow Operations executed on TPU
+    (4) Run environment
+    (5) Recommendation for next steps
+-->
+
+<div>
+  <diagnostics-view [diagnostics]="diagnostics"></diagnostics-view>
+  <div class="container">
+    <div class="left-column">
+      <performance-summary
+          [generalAnalysis]="generalAnalysis"
+          [inputPipelineAnalysis]="inputPipelineAnalysis"
+          [propertyValues]="averageStepTimePropertyValues">
+      </performance-summary>
+      <run-environment-view [runEnvironment]="runEnvironment"></run-environment-view>
+    </div>
+
+    <div class="right-column">
+      <step-time-graph [inputPipelineAnalysis]="inputPipelineAnalysis"></step-time-graph>
+      <recommendation-result-view [recommendationResult]="recommendationResult">
+      </recommendation-result-view>
+    </div>
+
+    <div class="full-column">
+      <top-ops-table
+          [generalAnalysis]="generalAnalysis"
+          [inputPipelineAnalysis]="inputPipelineAnalysis">
+      </top-ops-table>
+    </div>
+  </div>
+</div>

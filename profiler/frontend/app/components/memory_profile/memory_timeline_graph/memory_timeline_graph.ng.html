@@ -1,0 +1,9 @@
+<mat-card>
+  <mat-card-title>{{ title }}</mat-card-title>
+  <mat-card-content>
+    <div [style.display]="true">
+      Tips: Zoom in: left click and drag; Zoom out: right click; Metadata: click on heap data point.
+    </div>
+    <div #chart class="chart" [style.height]="height + 'px'"></div>
+  </mat-card-content>
+</mat-card>

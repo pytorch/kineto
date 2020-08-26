@@ -1,0 +1,23 @@
+<mat-card>
+  <mat-card-title>{{title}}</mat-card-title>
+  <mat-card-content class="primary-content">
+    <ul>
+      <li *ngFor="let statement of statements"
+          class="bottleneck-statement"
+          [style.color]="statement.color"
+          [innerHtml]="statement.value">
+      </li>
+    </ul>
+    <div class="bottleneck-tips" *ngFor="let tipInfo of tipInfoArray" [ngStyle]="tipInfo.style">
+      <p>
+        <b>{{tipInfo.title}}</b>
+      </p>
+      <ul *ngIf="tipInfo.useClickCallback">
+        <li *ngFor="let tip of tipInfo.tips" (click)="onTipsClick($event)" [innerHtml]="tip"></li>
+      </ul>
+      <ul *ngIf="!tipInfo.useClickCallback">
+        <li *ngFor="let tip of tipInfo.tips" [innerHtml]="tip"> </li>
+      </ul>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,27 @@
+/** CSS for a main page component. */
+
+@import 'frontend/app/styles/common';
+
+mat-sidenav-container {
+  background-color: #fff;
+}
+
+mat-sidenav {
+  background: transparent;
+  width: 340px;
+  @include border-right-gray
+}
+
+mat-progress-bar {
+  width: 300px;
+  margin: 0 auto;
+}
+
+.progress-container {
+  padding: 50px;
+}
+
+.loading-message {
+  width: fit-content;
+  margin: 0 auto;
+}

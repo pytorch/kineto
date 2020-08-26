@@ -1,0 +1,17 @@
+/** CSS for a summary of input pipeline analysis component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  padding: 20px;
+}
+
+.summary-conclusion {
+  font-style: italic;
+  margin-top: -16px;
+}
+
+.summary-nextstep {
+  margin-top: -16px;
+}

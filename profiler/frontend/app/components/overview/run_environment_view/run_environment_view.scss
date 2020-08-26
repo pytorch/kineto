@@ -1,0 +1,46 @@
+/** CSS for a run environment view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  @include border-bottom-gray;
+  @include border-right-gray;
+  flex-grow: 1;
+}
+
+:host:not(.dark-theme) {
+  mat-card {
+    @include overview-card;
+  }
+}
+
+mat-card {
+  @include overview-card-height;
+}
+
+mat-card-title {
+  @include overview-card-title;
+}
+
+b {
+  font-weight: 500;
+}
+
+:host.dark-theme {
+  border: none;
+
+  mat-card {
+    @include overview-card-dark-theme;
+  }
+
+  mat-card-title {
+    background-color: $dark-theme-card-title-background-color;
+    color: $dark-theme-card-title-color;
+    padding: 16px;
+    margin: -16px -16px 16px;
+  }
+
+  .key-label {
+    font-weight: 500;
+  }
+}

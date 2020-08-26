@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "downlevelIteration": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "inlineSourceMap": true,
+    "lib": ["dom", "es2018"],
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "strict": false,
+    "baseUrl": "./"
+  },
+  "exclude": [
+    "bazel-*"
+  ]
+}

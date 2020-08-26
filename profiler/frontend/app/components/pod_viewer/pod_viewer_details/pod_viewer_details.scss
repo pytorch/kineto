@@ -1,0 +1,40 @@
+/** CSS for a pod viewer detail view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  margin-top: 20px;
+}
+
+mat-card {
+  @include detail-card;
+}
+
+.info-header {
+  padding: 16px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.info-content {
+  color: $content-primary-color;
+  padding: 16px;
+}
+
+.info {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.scroll-x-auto {
+  overflow-x: auto;
+}
+
+code {
+  font-weight: normal;
+}

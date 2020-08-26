@@ -1,0 +1,51 @@
+<div *ngIf="inColab; else no_profile_data" class="container">
+  <h3>Profiling isn't supported in Colab yet.</h3>
+  <p>
+    Please see
+    <a href="https://github.com/tensorflow/tensorboard/issues/1913" rel="noopener" target="_blank"
+      >GitHub issue #1913</a
+    >
+    for more information.
+  </p>
+</div>
+
+<ng-template #no_profile_data>
+  <div class="container">
+    <h3>No profile data was found.</h3>
+    <div class="horizontal-center">
+      <capture-profile></capture-profile>
+    </div>
+
+    <p>
+      If you have a model running on CPU, GPU, or Google Cloud TPU, you may be able to use the
+      above button to capture a profile.
+    </p>
+
+    <p>
+      If you're a CPU or GPU user, please use the IP address option. You may want to check out the
+      <a
+        href="https://colab.research.google.com/github/tensorflow/tensorboard/blob/master/docs/tensorboard_profiling_keras.ipynb"
+        rel="noopener"
+        target="_blank"
+        >tutorial</a
+      >
+      on how to start a TensorFlow profiler server and profile a Keras model on a GPU.
+    </p>
+
+    <p>
+      If you're a TPU user, please use the TPU name option and you may want to check out the
+      <a href="https://cloud.google.com/tpu/docs/cloud-tpu-tools" rel="noopener" target="_blank"
+        >tutorial</a
+      >
+      on how to interpreting the profiling results.
+    </p>
+
+    <p>
+      If you think profiling is done properly, please see the page of
+      <a href="https://cloud.google.com/tpu/docs/troubleshooting" rel="noopener" target="_blank"
+        >Google Cloud TPU Troubleshooting and FAQ</a
+      >
+      and consider filing an issue on GitHub.
+    </p>
+  </div>
+</ng-template>

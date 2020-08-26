@@ -1,0 +1,107 @@
+<mat-dialog-content>
+  <div>
+    <mat-form-field>
+      <mat-label>Profile Service URL or TPU name</mat-label>
+      <input
+             matInput
+             placeholder="localhost:6009"
+             required
+             [(ngModel)]="serviceAddr"
+             (ngModelChange)="serviceAddrChanged($event)" />
+    </mat-form-field>
+  </div>
+
+  <div>
+    <mat-radio-group
+                     aria-label="address type"
+                     i18n-aria-label="Radio buttons to select address type"
+                     [(ngModel)]="addressType"
+                     (ngModelChange)="addressTypeChanged($event)">
+      Address Type:
+      <mat-radio-button value="ip">IP Address</mat-radio-button>
+      <mat-radio-button value="tpu">TPU Name</mat-radio-button>
+    </mat-radio-group>
+  </div>
+
+  <br/>
+
+  <div>
+    <mat-form-field>
+      <input
+             matInput
+             type="number"
+             placeholder="Profiling Duration (milliseconds)"
+             [(ngModel)]="duration" />
+    </mat-form-field>
+  </div>
+
+  <div>
+    <mat-form-field>
+      <input
+             matInput
+             type="number"
+             placeholder="Automatically retry N times when no trace event is collected"
+             [(ngModel)]="numRetry" />
+    </mat-form-field>
+  </div>
+
+  <div>
+    <mat-form-field>
+      <mat-label>Host Trace (TraceMe) Level</mat-label>
+      <mat-select matTooltip="{{hostTracerTooltip}}"
+                  matTooltipPosition="above"
+                  [(ngModel)]="hostTracerLevel">
+        <mat-option value="0">disable</mat-option>
+        <mat-option value="1">critical</mat-option>
+        <mat-option value="2">info</mat-option>
+        <mat-option value="3">verbose</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div>
+    <mat-form-field>
+      <mat-label>Device Trace Level</mat-label>
+      <mat-select [(ngModel)]="deviceTracerLevel">
+        <mat-option value="0">disable</mat-option>
+        <mat-option value="1">enable</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div>
+    <mat-form-field>
+      <mat-label>Python Trace Level</mat-label>
+      <mat-select [(ngModel)]="pythonTracerLevel">
+        <mat-option value="0">disable</mat-option>
+        <mat-option value="1">enable</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div [hidden]="!isTpuName">
+    <div>
+      <mat-form-field>
+        <mat-label>Subset of worker TPUs to profile (optional)</mat-label>
+        <input
+               matInput
+               placeholder="List of IPs, e.g. 10.4.1.2k10.4.1.3"
+               [(ngModel)]="workerList" />
+      </mat-form-field>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button
+          mat-raised-button
+          [disabled]="!serviceAddr"
+          (click)="captureProfile()">
+    {{captureButtonLabel | uppercase}}
+  </button>
+  <button
+          mat-raised-button
+          (click)="close()">
+    {{closeButtonLabel | uppercase}}
+  </button>
+</mat-dialog-actions>

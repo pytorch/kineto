@@ -1,0 +1,41 @@
+/** CSS for a host-side analysis detail view component. */
+
+@import 'frontend/app/styles/common';
+
+mat-expansion-panel {
+  @include overview-card;
+  margin: 0;
+}
+
+mat-expansion-panel-header {
+  margin: 8px 8px 0 8px;
+}
+
+mat-panel-title {
+  @include overview-card-title;
+  background-color: transparent;
+}
+
+mat-expansion-panel-header.cdk-keyboard-focused,
+mat-expansion-panel:not(.mat-expanded) mat-expansion-panel-header:hover {
+  background-color: $card-title-focus-background-color !important;
+}
+
+.mat-expanded mat-expansion-panel-header {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.section-container {
+  @include border-bottom-gray;
+  padding: 20px;
+}
+
+.content-container {
+  margin-left: 32px;
+}
+
+.column-chart, .recommendations {
+  color: $content-primary-color;
+  margin-top: -16px;
+}

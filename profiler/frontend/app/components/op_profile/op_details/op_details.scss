@@ -1,0 +1,125 @@
+/** CSS for an op detail view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  margin-top: 20px;
+}
+
+mat-card {
+  @include detail-card;
+}
+
+.info-header {
+  padding: 16px;
+  display: flex;
+}
+
+.info-header-circle {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  margin: 5px 10px 5px 0;
+}
+
+.info-header-content-container {
+  display: inline-block;
+  width: 260px;
+  height: 50px;
+  position: relative;
+}
+
+.info-header-content {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.info-header-title {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.info-header-subheader {
+  color: $content-primary-color;
+  font-style: italic;
+}
+
+.info-content {
+  color: $content-primary-color;
+  font-size: 16px;
+  padding: 16px;
+}
+
+.info {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.bar-container {
+  background-color: #cccccc;
+  height: 24px;
+}
+
+.bar {
+  height: 24px;
+  line-height: 24px;
+}
+
+.expression {
+  display: block;
+  word-wrap: break-word;
+}
+
+.unavailable {
+  font-style: italic;
+  color: #666;
+}
+
+.layout {
+  display: table;
+  width: 100%;
+  border-spacing: 16px 5px;
+  margin-left: -10px;
+}
+
+.layout > * {
+  display: table-row;
+}
+
+.layout > * > * {
+  display: table-cell;
+}
+
+.size, .size-x {
+  text-align: center;
+  width: 20%;
+}
+
+.size-x {
+  font-weight: bold;
+  color: #888888;
+}
+
+.semantics {
+  font-size: smaller;
+  font-weight: bold;
+  color: #4488cc;
+  text-transform: uppercase;
+  vertical-align: middle;
+  width: 30%;
+}
+
+.alignment {
+  position: absolute;
+  padding: 8px;
+  margin-top: -8px;
+  width: 45%;
+  box-sizing: border-box;
+}

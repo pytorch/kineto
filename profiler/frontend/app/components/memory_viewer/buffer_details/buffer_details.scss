@@ -1,0 +1,64 @@
+/** CSS for a buffer details view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  margin-top: 20px;
+}
+
+mat-card {
+  @include detail-card;
+}
+
+.info-header {
+  padding: 16px;
+  display: flex;
+}
+
+.info-header-circle {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  margin: 5px 10px 5px 0;
+}
+
+.info-header-content-container {
+  display: inline-block;
+  width: 260px;
+  height: 50px;
+  position: relative;
+}
+
+.info-header-content {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.info-header-title {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.info-header-subheader {
+  color: $content-primary-color;
+  font-style: italic;
+}
+
+.info-content {
+  color: $content-primary-color;
+  font-size: 16px;
+  padding: 16px;
+  word-break: break-word;
+}
+
+.info {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}

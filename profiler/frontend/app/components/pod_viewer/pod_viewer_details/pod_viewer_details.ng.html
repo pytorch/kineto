@@ -1,0 +1,25 @@
+<div [hidden]="!info">
+  <mat-card>
+    <mat-card-content>
+      <div class="info-header">{{name}}</div>
+      <div class="info-content">
+        <div class="info" *ngFor="let detail of details">
+          <div class="title">{{detail.title}}: </div>
+          <div>{{detail.value}}</div>
+        </div>
+        <div class="info scroll-x-auto" [hidden]="!hloNames">
+          <div class="title">Hlo Names</div>
+          <code>{{hloNames}}</code>
+        </div>
+        <div class="info scroll-x-auto" [hidden]="!replicaGroups">
+          <div class="title">Replica Groups</div>
+          <code>{{replicaGroups}}</code>
+        </div>
+        <div class="info scroll-x-auto" [hidden]="!description">
+          <div class="title">Description</div>
+          <code>{{description}}</code>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

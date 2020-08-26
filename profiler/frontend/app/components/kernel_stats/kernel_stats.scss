@@ -1,0 +1,30 @@
+/** CSS for a kernel stats component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+}
+
+.section-container {
+  padding: 20px;
+}
+
+.row {
+  display: flex;
+}
+
+.flex-space {
+  flex: 1;
+}
+
+.save-button {
+  padding-top: 8px;
+  text-align: center;
+  width: 130px;
+}
+
+.save-button:hover {
+  color: $button-focus-color;
+  cursor: pointer;
+}

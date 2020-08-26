@@ -1,0 +1,20 @@
+<div>
+  <div class="mat-headline">Memory Breakdown Table</div>
+  <mat-form-field>
+    <input
+      matInput
+      placeholder="Operation"
+      [value]="filterOperation"
+      (input)="filterOperation = $event.target.value; drawTable()"
+    />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+</div>
+<div [style.display]="true">
+  Note: Showing active memory allocations at peak usage within the profiling window. To avoid
+  sluggishness, only the allocations with size over 1MiB are shown in the table below.
+</div>
+<br />
+<div>
+  <div #table class="table"></div>
+</div>

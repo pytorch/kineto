@@ -1,0 +1,89 @@
+ <mat-card>
+  <mat-card-title>{{title}}</mat-card-title>
+  <mat-card-content>
+    <ng-template *ngTemplateOutlet="summaryInfo; context: {$implicit: summaryInfoBefore}">
+    </ng-template>
+
+    <div [hidden]="!isTpu">
+      <div class="item-container">
+        <table>
+          <tr>
+            <td>
+              <b>FLOPS Utilization</b>
+              <div class="description">
+                (higher is better,
+                <span
+                  class="flops-utilization-tooltip-target"
+                  [matTooltip]="flopsUtilizationTooltipMessage"
+                  matTooltipPosition="above">
+                  why two numbers?
+                </span>
+                )
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <ul>
+        <li class="primary-content">Utilization of TPU Matrix Units: {{mxuUtilizationPercent}}</li>
+        <li class="primary-content">
+          Compared to Program's Optimal FLOPS: {{flopRateUtilizationRelativeToRoofline}}
+          <ng-content></ng-content>
+        </li>
+      </ul>
+    </div>
+
+    <ng-template *ngTemplateOutlet="summaryInfo; context: {$implicit: summaryInfoAfter}">
+    </ng-template>
+
+    <div class="item-container">
+      <b [style.color]="remarkColor">{{remarkText}}</b>
+    </div>
+    <p><!-- empty paragraph for bottom margin --></p>
+  </mat-card-content>
+</mat-card>
+
+<ng-template #summaryInfo let-infoArray>
+  <div *ngFor="let info of infoArray">
+    <div class="item-container">
+      <table>
+        <tr>
+          <td>
+            <div *ngIf="info.type !== 'list'">
+              <ng-template *ngTemplateOutlet="titleAndTooltip; context: {$implicit: info}">
+              </ng-template>
+            </div>
+            <ul *ngIf="info.type === 'list'">
+              <li>
+                <ng-template *ngTemplateOutlet="titleAndTooltip; context: {$implicit: info}">
+                </ng-template>
+              </li>
+            </ul>
+            <div *ngFor="let description of info.descriptions"
+                 [ngClass]="{'item-description': info.type == 'list', 'description': true}">
+              {{description}}
+            </div>
+          </td>
+          <td *ngIf="info.value" class="item-value">
+            <div [style.color]="info.valueColor">{{info.value}}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <ul *ngIf="info.propertyValues?.length">
+      <li class="primary-content" *ngFor="let value of info.propertyValues">{{value}}</li>
+    </ul>
+  </div>
+</ng-template>
+
+<ng-template #titleAndTooltip let-info>
+    <b>{{info.title}}</b>
+    <span *ngIf="info.tooltip" class="tooltip-icon-container">
+      <mat-icon
+        class="tooltip-icon"
+        [matTooltip]="info.tooltip"
+        matTooltipPosition="above">
+        info
+      </mat-icon>
+    </span>
+</ng-template>

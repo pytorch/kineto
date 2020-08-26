@@ -1,0 +1,23 @@
+<div>
+  <div class="mat-headline">GPU Kernels</div>
+  <mat-form-field>
+    <input
+           matInput
+           placeholder="Kernel Name"
+           [value]="filterKernelName"
+           (input)="filterKernelName = $event.target.value; drawTable();">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+  <mat-form-field>
+    <input
+           matInput
+           placeholder="Op Name"
+           [value]="filterOpName"
+           (input)="filterOpName = $event.target.value; drawTable();">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+</div>
+<br>
+<div>
+  <div #table class="table"></div>
+</div>

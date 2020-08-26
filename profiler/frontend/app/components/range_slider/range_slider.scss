@@ -1,0 +1,43 @@
+/** CSS for a range slider component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: inline-block;
+  height: 48px;
+  min-width: 128px;
+}
+
+.range-slider-wrapper {
+  position: relative;
+  height: 48px;
+}
+
+.range {
+  display: inline-block;
+  position: absolute;
+  width: calc(100% - 16px);
+  min-width: 112px;
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.range-bar {
+  position: absolute;
+  height: 2px;
+  top: 23px;
+  left: 28px;
+  right: 48px;
+  background-color: #e8710a;
+}
+
+mat-slider {
+  position: absolute;
+  width: 100%;
+}
+
+::ng-deep mat-slider .mat-slider-track-fill,
+::ng-deep mat-slider .mat-slider-track-background {
+  /* stylelint-disable-next-line declaration-no-important */
+  background-color: #dbdbdb !important;
+}

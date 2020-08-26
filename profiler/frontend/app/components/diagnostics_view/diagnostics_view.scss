@@ -1,0 +1,56 @@
+/** CSS for a diagnostics view component. */
+
+@import 'frontend/app/styles/common';
+
+.callout {
+  padding: 0;
+  border-left: none !important;
+  border-radius: 4px;
+}
+
+.callout header {
+  color: #fff;
+  line-height: 24px;
+  font-weight: 500;
+  padding: 8px 16px;
+  margin: 0;
+  text-transform: uppercase;
+  border-radius: 4px 4px 0 0;
+}
+
+.callout p {
+  padding: 16px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.callout > :not(:first-child) {
+  padding: 12px 24px;
+}
+
+.callout.is-critical {
+  border-color: #dd0031;
+  background: rgba(221, 0, 49, 0.05);
+}
+
+.callout.is-critical header {
+  background: #dd0031;
+}
+
+.callout.is-important {
+  border-color: #ff9800;
+  background: rgba(255, 152, 0, 0.05);
+}
+
+.callout.is-important header {
+  background: #ffa000;
+}
+
+.callout.is-helpful {
+  border-color: #1976d2;
+  background: rgba(25, 118, 210, 0.05);
+}
+
+.callout.is-helpful header {
+  background: #1976d2;
+}

@@ -1,0 +1,30 @@
+/** CSS for a device-side analysis detail view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  padding: 20px;
+}
+
+.content-container {
+  margin-left: 32px;
+  margin-top: -16px;
+}
+
+.content-container .mat-title {
+  margin-bottom: 0;
+}
+
+.sub-section-title {
+  font-size: 22px;
+  margin-left: 8px;
+}
+
+.description {
+  margin-bottom: 4px;
+}
+
+.chart {
+  margin-left: -52px;
+}

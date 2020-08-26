@@ -1,0 +1,47 @@
+<diagnostics-view [diagnostics]="diagnostics"></diagnostics-view>
+<div class="section-container">
+  <div class="mat-headline">Module name: {{moduleName}}</div>
+  <div>
+    <div class="sub-title">Peak memory allocation is {{peakHeapSizeMiB}} MiB</div>
+    <div class="description" [hidden]="!unpaddedPeakHeapSizeMiB">
+      ({{unpaddedPeakHeapSizeMiB}} MiB without padding)
+    </div>
+    <div class="description">
+      Modifying your model's architecture, batch size and data dimensions may
+      help reduce the memory footprint.
+    </div>
+  </div>
+</div>
+
+<mat-divider></mat-divider>
+
+<div [className]="hasHeapSimulatorTrace ? 'full-height' : 'hidden-content'">
+  <program-order-chart
+    [heapSizes]="heapSizes"
+    [unpaddedHeapSizes]="unpaddedHeapSizes"
+    [peakInfo]="peakInfo"
+    [activeInfo]="activeInfo">
+  </program-order-chart>
+
+  <mat-divider></mat-divider>
+
+  <max-heap-chart
+    [maxHeap]="maxHeap"
+    [title]="'By Program Order'"
+    [selectedIndex]="selectedIndex"
+    (selected)="setSelectedHepObject($event)">
+  </max-heap-chart>
+
+  <mat-divider></mat-divider>
+
+  <max-heap-chart
+    [maxHeap]="maxHeapBySize"
+    [title]="'By Size'"
+    [selectedIndex]="selectedIndexBySize"
+    (selected)="setSelectedHepObjectBySize($event)">
+  </max-heap-chart>
+</div>
+
+<div class="section-container" [hidden]="hasHeapSimulatorTrace">
+  There is no data to display.
+</div>

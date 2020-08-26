@@ -1,0 +1,165 @@
+@import 'external/npm/node_modules/@angular/material/theming';
+
+$typography-config: mat-typography-config();
+
+@include mat-core($typography-config);
+@include mat-base-typography($typography-config);
+
+$primary: mat-palette($mat-orange, 600);
+$accent: mat-palette($mat-orange, 600, 100, 700);
+$warn: mat-palette($mat-red, 600);
+$theme: mat-light-theme($primary, $accent, $warn);
+
+@include angular-material-theme($theme);
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+.goog-tooltip {
+  z-index: 10;
+}
+
+.mat-tooltip {
+  font-size: 12px;
+}
+
+.google-chart-table-header-cell {
+  word-wrap: break-word;
+  background-color: #fff;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+.google-chart-table-table-cell {
+  word-break: break-all;
+  color: black;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+.google-visualization-table-type-number {
+  text-align: center;
+}
+
+.hidden-content trace-viewer {
+  display: none;
+}
+
+overview recommendation-result-view .bottleneck-tips li a,
+overview recommendation-result-view .documentation-tips li a,
+input-pipeline host-side-analysis-detail .recommendations a {
+  color: mat-color($primary, default);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+overview top-ops-table .mat-expansion-panel-body,
+input-pipeline host-side-analysis-detail .mat-expansion-panel-body {
+  padding: 0;
+}
+
+sidenav mat-form-field.mat-primary .mat-form-field-infix {
+  border: 1px solid #000;
+  padding: 8px;
+  margin-top: 8px;
+}
+
+sidenav mat-form-field.mat-focused .mat-form-field-infix {
+  border: 2px solid mat-color($primary, default);
+  border-bottom: none;
+}
+
+sidenav mat-form-field.mat-form-field-disabled .mat-form-field-infix {
+  border-style: dotted;
+}
+
+sidenav mat-form-field .mat-select-value {
+  color: #777;
+}
+
+op-profile .ops-control .mat-form-field {
+  text-align: center !important;
+}
+
+op-profile .ops-control .mat-slider-horizontal {
+   width: 200px;
+}
+
+op-profile .control .mat-slide-toggle-bar {
+  width: 45px;
+  height: 18px;
+}
+
+op-profile .control .mat-slide-toggle-thumb {
+  height: 25px;
+  width: 25px;
+}
+
+// Angular material styles
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url(materialicons.woff2) format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 300;
+  src: local('Roboto Light'), local('Roboto-Light');
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Roboto'), local('Roboto-Regular');
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 500;
+  src: local('Roboto Medium'), local('Roboto-Medium');
+}
+
+// Styles for overlay components needs to be global.
+//
+// Reference: https://material.angular.io/guide/customizing-component-styles#styling-overlay-components
+// Some OS hides scrollbars while not in use. Always show scrollbar if the
+// overlay has a scroll feature.
+.panel-override::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 7px;
+}
+
+.panel-override::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+}

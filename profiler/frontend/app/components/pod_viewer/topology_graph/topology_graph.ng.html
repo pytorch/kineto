@@ -1,0 +1,103 @@
+<div>
+  <div class="mat-title">
+    {{tpuType}} {{xDimension}}x{{yDimension}}
+  </div>
+  <div class="topology-header">
+    <div class="control-row-left">
+      <span class="selected-metric-label control">{{selectedMetricLabel}}</span>
+      <button mat-icon-button [matMenuTriggerFor]="mecticMenu" aria-label="Metric menu">
+        <mat-icon>arrow_drop_down</mat-icon>
+      </button>
+      <mat-menu #mecticMenu="matMenu">
+        <button
+          *ngFor="let metric of metricMap"
+          mat-menu-item
+          [ngClass]="{'selected-metric-item': selectedMetric === metric.key}"
+          (click)="selectMetric(metric.key, metric.label)">
+          {{metric.label}}
+        </button>
+      </mat-menu>
+    </div>
+    <div
+      class="control-row-left "
+      [style.visibility]="channelDb && channelDb.length ? 'visible' : 'hidden'">
+      <span class="control">PLEASE SELECT A CHANNEL ID&nbsp;</span>
+      <mat-slider
+        [min]="0"
+        [max]="channelCount"
+        [step]="1"
+        [value]="selectedChannelIndex"
+        (change)="updateChannelIndex($event.value)">
+      </mat-slider>
+      <mat-form-field class="channel-input">
+        <input
+          matInput
+          type="number"
+          [min]="firstChannel"
+          [max]="lastChannel"
+          [step]="1"
+          [value]="selectedChannelId"
+          (change)="updateChannelId($event.target.value)" />
+      </mat-form-field>
+    </div>
+  </div>
+  <div
+    class="container"
+    [style.width]="containerWidth + 'px'"
+    [style.height]="containerHeight + 'px'">
+    <div
+      *ngFor="let label of labels"
+      class="label"
+      [style.top]="label.y + 'px'"
+      [style.left]="label.x + 'px'">
+      <div class="title">{{label.id}}</div>
+    </div>
+    <div
+      *ngFor="let host of hosts"
+      class="host"
+      [style.width]="hostWidth + 'px'"
+      [style.height]="hostHeight + 'px'"
+      [style.top]="host.y + 'px'"
+      [style.left]="host.x + 'px'">
+    </div>
+    <div
+      *ngFor="let node of nodes"
+      class="node"
+      [id]="node.id"
+      [attr.rid]="node.rid"
+      [style.top]="node.y + 'px'"
+      [style.left]="node.x + 'px'"
+      (mouseenter)="showTooltip(node.id)"
+      (mouseleave)="hideTooltip()">
+    </div>
+    <div
+      *ngFor="let arrow of arrows"
+      class="arrow-container"
+      [style.top]="arrow.y + 'px'"
+      [style.left]="arrow.x + 'px'">
+      <svg>
+        <g class="arrow" [style.transform]="'rotate(' + arrow.rotate + 'rad)'">
+          <polygon points="3,0 -6,-5 -6,5" />
+          <polygon
+            points="0,-1.5 -100,-1.5, -100,1.5 0,1.5"
+            [style.transform]="'scaleX(' + arrow.scale + ')'"/>
+        </g>
+      </svg>
+    </div>
+    <div
+      class="node-tooltip mat-elevation-z2"
+      [style.left]="tooltipX + 'px'"
+      [style.top]="tooltipY + 'px'"
+      [hidden]="!tooltipText">
+      <pre>{{tooltipText}}</pre>
+    </div>
+  </div>
+
+  <div class="color-table">
+    <div
+      *ngFor="let colorInfo of colorInfos">
+      <div class="color-cell" [style.backgroundColor]="colorInfo.color"></div>
+      <div class="color-label">≥ {{colorInfo.label}}</div>
+    </div>
+  </div>
+</div>

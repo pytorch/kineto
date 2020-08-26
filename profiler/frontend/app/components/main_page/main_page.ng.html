@@ -1,0 +1,14 @@
+<mat-sidenav-container fullscreen>
+  <mat-sidenav mode="side" opened>
+    <sidenav [datasets]="datasets" (update)="updateTool($event)"></sidenav>
+  </mat-sidenav>
+  <mat-sidenav-content>
+    <div class="progress-container" [hidden]="!loading">
+      <div class="loading-message">{{loadingMessage}}</div>
+      <mat-progress-bar color="primary" mode="indeterminate"></mat-progress-bar>
+    </div>
+    <div [className]="loading ? 'hidden-content' : 'full-height'">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

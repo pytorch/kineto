@@ -1,0 +1,24 @@
+/** CSS for a kernel stats chart view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  width: 800px;
+  height: fit-content;
+  margin: 8px 8px 8px 0;
+}
+
+.control {
+  width: fit-content;
+  text-align: center;
+}
+
+.control-title {
+  color: $content-secondary-color;
+  margin: -20px 0 -24px;
+}
+
+.count-input {
+  width: 50px;
+}

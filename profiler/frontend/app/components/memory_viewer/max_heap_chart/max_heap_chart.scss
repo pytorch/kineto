@@ -1,0 +1,18 @@
+/** CSS for a max heap chart view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  margin: 20px;
+}
+
+.description {
+  margin-top: -16px;
+}
+
+.chart {
+  margin-top: 24px;
+  width: 1200px;
+  height: 100px;
+}

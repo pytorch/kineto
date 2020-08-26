@@ -1,0 +1,55 @@
+<diagnostics-view [diagnostics]="diagnostics"></diagnostics-view>
+<div class="section-container">
+  <div class="mat-headline">Pod Viewer</div>
+  <div class="control">Selected step: {{selectedStep}}</div>
+  <div [className]="minStep == maxStep ? 'hidden-content' : 'auto-height'">
+    <mat-slider
+                [min]="minStep"
+                [max]="maxStep"
+                [step]="1"
+                (change)="updateSelectedStep($event.value)">
+    </mat-slider>
+  </div>
+  <topology-graph
+    [channelDb]="channelDb"
+    [coreIdToReplicaIdMap]="coreIdToReplicaIdMap"
+    [metricMap]="podStatsRecordPropertyMap"
+    [podStatsPerCore]="podStatsPerCore"
+    [runEnvironment]="runEnvironment"
+    (selected)="selectedChannelDb($event)">
+  </topology-graph>
+</div>
+
+<div [className]="channelDb && channelDb.length ? 'auto-height' : 'hidden-content'">
+  <mat-divider></mat-divider>
+
+  <div class="section-container">
+    <div class="chart-title">Latency of Send and Recv channels</div>
+    <div class="description">(x-axis: channel id, y-axis: time(us))</div>
+    <stack-bar-chart [data]="channelChartData" (selected)="selectedChannelChart($event)">
+    </stack-bar-chart>
+  </div>
+</div>
+
+<div [className]="allReduceOpDb && allReduceOpDb.length ? 'auto-height' : 'hidden-content'">
+  <mat-divider></mat-divider>
+
+  <div class="section-container">
+    <div class="chart-title">Duration of all-reduce or all-to-all ops</div>
+    <div class="description">
+      (x-axis: short names for all-reduces ops (a#) or fusion (f#) or all-to-all (l#),
+      y-axis: time(us))
+    </div>
+    <stack-bar-chart [data]="allReduceOpChartData" (selected)="selectedAllReduceOpChart($event)">
+    </stack-bar-chart>
+  </div>
+</div>
+
+<mat-divider></mat-divider>
+
+<div class="section-container">
+  <div class="chart-title">Step breakdown</div>
+  <div class="description">(x-axis: global chip id, node id, y-axis: time(us))</div>
+  <stack-bar-chart [data]="podStatsChartData" (selected)="selectedPodStatsChart($event)">
+  </stack-bar-chart>
+</div>

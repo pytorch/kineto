@@ -1,0 +1,53 @@
+/** Common CSS for an op profile component. */
+
+@import 'frontend/app/styles/common';
+
+.container {
+  padding: 20px;
+}
+
+.description {
+  margin-top: -16px;
+  font-size: 16px;
+  font-weight: lighter;
+  line-height: 1.6;
+}
+
+.control-container {
+  display: flex;
+  padding-top: 32px;
+}
+
+.control {
+  margin-right: 80px;
+}
+
+.ops-control {
+  margin-right: 80px;
+  text-align: left;
+}
+
+.control-title {
+  color: $content-secondary-color;
+  margin-bottom: 5px;
+}
+
+.ops-control-title {
+  color: $content-secondary-color;
+  margin: -20px 0 -24px;
+}
+
+.children-count-input {
+  width: 60px;
+}
+
+.tooltip-icon-container {
+  position: relative;
+}
+
+.tooltip-icon {
+  color: #e8710a;
+  font-size: 25px;
+  vertical-align: bottom;
+  cursor: pointer;
+}

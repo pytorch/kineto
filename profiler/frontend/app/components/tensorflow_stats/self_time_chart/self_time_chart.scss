@@ -1,0 +1,14 @@
+/** CSS for a self-time chart view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  width: 450px;
+  height: fit-content;
+  margin: 8px 8px 8px 0;
+}
+
+.description {
+  margin-top: -16px;
+}

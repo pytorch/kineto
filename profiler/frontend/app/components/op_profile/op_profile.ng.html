@@ -1,0 +1,77 @@
+<div class="container">
+  <div class="mat-headline">
+    <div>
+      Overall {{deviceType}} FLOPS utilization is
+      <span [style.color]="data.flopsColor">{{data.utilizationPercent}}</span>
+    </div>
+    <div>
+      Memory bandwidth utilization is
+      <span [style.color]="data.bwColor">{{data.memoryUtilizationPercent}}</span>
+    </div>
+  </div>
+  <div class="description">
+    <div>
+      Modifying your model's architecture, data dimensions, and improving
+      the efficiency of CPU operations may help reach the {{deviceType}}'s FLOPS
+      potential.
+    </div>
+    <div>
+      "Idle" represents the portion of the total execution time on device
+      that is idle.
+    </div>
+  </div>
+  <div class="control-container">
+    <div class="control" [hidden]="!hasTwoProfiles">
+      <div class="control-title">By category</div>
+      <mat-slide-toggle [checked]="isByCategory" (toggleChange)="updateToggle()"></mat-slide-toggle>
+    </div>
+    <div class="ops-control">
+      <div class="ops-control-title">
+        Show top&nbsp;
+        <mat-form-field class="children-count-input">
+          <input
+                 matInput
+                 type="number"
+                 [min]="10"
+                 [max]="100"
+                 [step]="10"
+                 [value]="childrenCount"
+                 (input)="updateChildrenCount($event.target.value)" />
+        </mat-form-field>
+        &nbsp;ops
+      </div>
+      <div>
+        <mat-slider
+                    [min]="10"
+                    [max]="100"
+                    [step]="10"
+                    [value]="childrenCount"
+                    (change)="updateChildrenCount($event.value)">
+        </mat-slider>
+      </div>
+    </div>
+    <div class="control">
+      <div class="control-title">Sort by wasted time
+        <mat-icon
+                  class="tooltip-icon"
+                  matTooltip="Wasted time is defined by RuntimeFraction *
+                              (1 - max(FlopsUtilization, MemoryUtilization))."
+                  matTooltipPosition="above">
+              info
+        </mat-icon>
+      </div>
+      <mat-slide-toggle [checked]="byWasted" (toggleChange)="updateByWasted()"></mat-slide-toggle>
+    </div>
+    <div class="control">
+      <div class="control-title">Top 90%</div>
+      <mat-slide-toggle [checked]="showP90" (toggleChange)="updateShowP90()"></mat-slide-toggle>
+    </div>
+  </div>
+</div>
+
+<op-table
+  [rootNode]="rootNode"
+  [byWasted]="byWasted"
+  [showP90]="showP90"
+  [childrenCount]="childrenCount">
+</op-table>

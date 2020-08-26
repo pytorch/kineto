@@ -1,0 +1,76 @@
+<div [hidden]="!node">
+  <mat-card>
+    <mat-card-content>
+      <div class="info-header">
+        <div class="info-header-circle" [style.background]="color"></div>
+        <div class="info-header-content-container">
+          <div class="info-header-content">
+            <div class="info-header-title">{{name}}</div>
+            <div class="info-header-subheader">{{subheader}}</div>
+          </div>
+        </div>
+      </div>
+      <div class="info-content">
+        <div class="info" [hidden]="!utilization">
+          <div class="title">FLOPS utilization:</div>
+          <div class="bar-container">
+            <div
+              class="bar"
+              [style.width]="utilization"
+              [style.background-color]="flopsColor">
+              &nbsp;{{utilization}}
+            </div>
+          </div>
+        </div>
+        <div class="info" [hidden]="!memoryUtilization">
+          <div class="title">Memory bandwidth utilization:</div>
+          <div class="bar-container">
+            <div
+              class="bar"
+              [style.width]="memoryUtilization"
+              [style.background-color]="bwColor">
+              &nbsp;{{memoryUtilization}}
+            </div>
+          </div>
+        </div>
+        <div class="info" [hidden]="!expression">
+          <div class="title">XLA Expression:</div>
+          <code class="expression">{{expression}}</code>
+        </div>
+        <div class="info" [hidden]="!provenance">
+          <div class="title">TensorFlow Name:</div>
+          <code class="expression">{{provenance}}</code>
+        </div>
+        <div class="info" [hidden]="!fused">
+          <div class="unavailable">
+            Performance information for individual fused operations is not available.
+          </div>
+        </div>
+        <div class="info" [hidden]="!hasCategory">
+          <div class="unavailable">
+            Select items within this category for performace details.
+          </div>
+        </div>
+        <div class="info" [hidden]="!hasLayout">
+          <div class="title">Layout:</div>
+          <div class="layout" *ngFor="let dimension of dimensions; let i = index">
+            <div>
+              <div class="size-x">
+                <div [hidden]="!i">x</div>
+              </div>
+            </div>
+            <div>
+              <span class="size">{{dimension.size}}</span>
+              <span class="semantics">{{dimension.semantics}}</span>
+              <span
+                    class="alignment"
+                    [style.background-color]="dimensionColor(dimension)">
+                {{dimensionHint(dimension)}}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

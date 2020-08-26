@@ -1,0 +1,12 @@
+<div>
+  <diagnostics-view [diagnostics]="diagnostics"></diagnostics-view>
+  <analysis-summary [deviceAnalysis]="deviceAnalysis"></analysis-summary>
+  <mat-divider></mat-divider>
+  <div [className]="hasDiviceAanlysisRows ? 'full-height' : 'hidden-content'">
+    <device-side-analysis-detail [deviceAnalysis]="deviceAnalysis"></device-side-analysis-detail>
+    <mat-divider></mat-divider>
+  </div>
+  <host-side-analysis-detail [hostAnalysis]="hostAnalysis"
+                             [recommendation]="recommendation">
+  </host-side-analysis-detail>
+</div>

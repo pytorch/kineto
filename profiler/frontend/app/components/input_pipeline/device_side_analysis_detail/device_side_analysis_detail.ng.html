@@ -1,0 +1,42 @@
+<div>
+  <div class="mat-headline">Device-side analysis details</div>
+
+  <div class="mat-headline sub-section-title">Device step time</div>
+  <div class="content-container">
+    <div class="mat-title">Device step-time statistics</div>
+    <div class="primary-content">
+      Average: {{steptimeMsMetrics.average}} ms (σ = {{steptimeMsMetrics.stddev}} ms)
+    </div>
+    <div class="primary-content">
+      Range: {{steptimeMsMetrics.min}} - {{steptimeMsMetrics.max}} ms
+    </div>
+    <br>
+    <div class="mat-title">Step Time (in milliseconds)</div>
+    <div #areaChart class="chart"></div>
+  </div>
+
+  <br>
+
+  <div [className]="isTpu ? 'full-height' : 'hidden-content'">
+    <div class="mat-headline sub-section-title">
+      Range of device time waiting for input data across cores at each step
+    </div>
+    <div class="content-container">
+      <div class="mat-title">% of device step time waiting for input data</div>
+      <div class="description">
+        (average over the <i>maximum</i> waiting time across cores at each step)
+      </div>
+      <div class="primary-content">
+        Average: {{infeedPercentMetrics.average}} % (σ = {{infeedPercentMetrics.stddev}} ms)
+      </div>
+      <div class="primary-content">
+        Range: {{infeedPercentMetrics.min}} - {{infeedPercentMetrics.max}} %
+      </div>
+      <br>
+      <div class="mat-title">
+        Range of device time waiting for input data across cores at each step (in % of step time)
+      </div>
+      <div #lineChart class="chart"></div>
+    </div>
+  </div>
+</div>

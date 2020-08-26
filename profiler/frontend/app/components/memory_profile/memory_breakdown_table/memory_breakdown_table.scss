@@ -1,0 +1,21 @@
+/** CSS for a memory breakdown table component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  padding: 20px;
+}
+
+mat-form-field {
+  margin: 0 8px;
+}
+
+mat-icon {
+  color: $button-focus-color;
+  vertical-align: bottom;
+}
+
+.table {
+  margin: 0 -20px;
+}

@@ -1,0 +1,86 @@
+<div class="section-container">
+  <div class="row">
+    <div>
+      <div class="mat-headline">TensorFlow Stats</div>
+      <div class="header-content">
+        <div class="description">
+          (1) In the charts and table below, "IDLE" represents the portion of the total execution time
+          on device (or host) that is idle.
+        </div>
+        <div class="description">
+          (2) In the pie charts, the "Other" sector represents the sum of sectors that are too small to
+          be shown individually.
+        </div>
+      </div>
+    </div>
+    <div class="flex-space"></div>
+    <div class="save-button" (click)="exportDataAsCSV()">
+      <mat-icon>save_alt</mat-icon>
+      <div class="mat-title">Export as CSV</div>
+    </div>
+  </div>
+
+  <br>
+
+  <div class="mat-title">Include IDLE time in statistics</div>
+
+  <mat-menu #idleOptions="matMenu">
+    <button mat-menu-item
+            *ngFor="let option of idleOptionItems"
+            (click)="setIdleOption(option)"
+            [disabled]="idleMenuButtonLabel == option">
+      {{option}}
+    </button>
+  </mat-menu>
+
+  <div class="idle-button-container">
+    <button mat-raised-button [matMenuTriggerFor]="idleOptions">
+      {{idleMenuButtonLabel}}
+      <mat-icon>arrow_drop_down</mat-icon>
+    </button>
+  </div>
+
+  <br>
+
+  <div [className]="hasDeviceData ? 'row full-height' : 'row hidden-content'">
+    <self-time-chart [tensorflowStatsData]="selectedData"
+                     [opExecutor]="opExecutorDevice"
+                     [opKind]="opKindType">
+    </self-time-chart>
+    <self-time-chart [tensorflowStatsData]="selectedData"
+                     [opExecutor]="opExecutorDevice"
+                     [opKind]="opKindName">
+    </self-time-chart>
+  </div>
+
+  <div class="row">
+    <self-time-chart [tensorflowStatsData]="selectedData"
+                     [opExecutor]="opExecutorHost"
+                     [opKind]="opKindType">
+    </self-time-chart>
+    <self-time-chart [tensorflowStatsData]="selectedData"
+                     [opExecutor]="opExecutorHost"
+                     [opKind]="opKindName">
+    </self-time-chart>
+  </div>
+
+</div>
+
+<mat-divider></mat-divider>
+
+<stats-table [tensorflowStatsData]="selectedData"
+             [hasDeviceData]="hasDeviceData">
+</stats-table>
+
+<mat-divider></mat-divider>
+
+<operations-table [tensorflowStatsData]="selectedData"
+                  [opExecutor]="opExecutorDevice"
+                  [hidden]="!hasDeviceData">
+</operations-table>
+
+<mat-divider></mat-divider>
+
+<operations-table [tensorflowStatsData]="selectedData"
+                  [opExecutor]="opExecutorHost">
+</operations-table>

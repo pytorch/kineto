@@ -1,0 +1,29 @@
+<div>
+  <div class="mat-title">Top {{count}} Kernels with highest Total Duration</div>
+  <div class="control">
+      <div class="control-title">
+        Show top&nbsp;
+        <mat-form-field class="count-input">
+          <input
+                 matInput
+                 type="number"
+                 [min]="1"
+                 [max]="total"
+                 [step]="1"
+                 [value]="count"
+                 (input)="updateCount($event.target.value)" />
+        </mat-form-field>
+        &nbsp;Kernels
+      </div>
+      <div>
+        <mat-slider
+                    [min]="1"
+                    [max]="total"
+                    [step]="1"
+                    [value]="count"
+                    (change)="updateCount($event.value)">
+        </mat-slider>
+      </div>
+    </div>
+  <div class="chart" #chart></div>
+</div>

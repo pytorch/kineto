@@ -1,0 +1,53 @@
+/** CSS for a memory profile summary view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  @include border-bottom-gray;
+  @include border-right-gray;
+  flex-grow: 1;
+}
+
+mat-card {
+  @include overview-card;
+  @include overview-card-height;
+}
+
+mat-card-title {
+  @include overview-card-title;
+  margin-bottom: 25px;
+}
+
+:host ::ng-deep b {
+  font-weight: 500;
+}
+
+ul {
+  @include ul-flat;
+}
+
+:host ::ng-deep .item-container {
+  margin-bottom: 16px;
+}
+
+:host ::ng-deep .item-container > table {
+  border-spacing: 0;
+  width: 100%;
+}
+
+:host ::ng-deep .item-container > td {
+  padding: 0;
+}
+
+:host ::ng-deep .item-value {
+  padding-left: 0px;
+  min-width: 100px;
+  width: 20%;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.flops-utilization-tooltip-target {
+  color: #e8710a;
+  border-bottom: 1px dotted #e8710a;
+}

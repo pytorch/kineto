@@ -1,0 +1,26 @@
+<div [className]="hasHostOps ? 'full-height' : 'hidden-content'">
+  <div class="section-container">
+    <div class="mat-headline">Host-side analysis details</div>
+    <div class="content-container">
+      <div class="mat-title">Breakdown of input processing time on the host</div>
+      <div #columnChart class="column-chart"></div>
+      <div class="mat-title">What can be done to reduce above components of the host input time:</div>
+      <div class="recommendations">
+        <div *ngFor="let recommendation of recommendations" [innerHtml]="recommendation"></div>
+      </div>
+    </div>
+  </div>
+
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>Input Op statistics</mat-panel-title>
+    </mat-expansion-panel-header>
+    <div #table></div>
+  </mat-expansion-panel>
+  <br/>
+</div>
+
+<div *ngIf="!hasHostOps" class="section-container">
+  <div class="mat-headline">Host-side analysis details</div>
+  <p>Host side analysis can not be done without instrumentation.</p>
+</div>

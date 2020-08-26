@@ -1,0 +1,20 @@
+/** CSS for a model properties view component. */
+
+:host {
+  display: block;
+  width: 350px;
+  height: fit-content;
+  margin: 8px 8px 8px 0;
+}
+
+p {
+  font-size: 14px;
+}
+
+b {
+  font-weight: 500;
+}
+
+.note {
+  font-style: italic;
+}

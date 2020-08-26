@@ -1,0 +1,48 @@
+<div [hidden]="!heapObject">
+  <mat-card>
+    <mat-card-content>
+      <div class="info-header">
+        <div class="info-header-circle" [style.background]="color"></div>
+        <div class="info-header-content-container">
+          <div class="info-header-content">
+            <div class="info-header-title">{{instructionName}}</div>
+            <div class="info-header-subheader">{{opcode}}</div>
+          </div>
+        </div>
+      </div>
+      <div class="info-content">
+        <div class="info" [hidden]="!size">
+          <div class="title">Size: </div>
+          <div>{{size}} MiB</div>
+        </div>
+        <div class="info" [hidden]=!unpaddedSize>
+          <div class="title">Unpadded Size: </div>
+          <div>{{unpaddedSize}} MiB</div>
+        </div>
+        <div class="info" [hidden]="!padding">
+          <div class="title">Extra memory due to padding: </div>
+          <div>{{padding}} MiB</div>
+        </div>
+        <div class="info" [hidden]="!expansion">
+          <div class="title">Expansion: </div>
+          <div>
+            <span>{{expansion}}</span>
+            <span class="title">X</span>
+          </div>
+        </div>
+        <div class="info" [hidden]="!shape">
+          <div class="title">Shape (and minor-to-major order): </div>
+          <div>{{shape}}</div>
+        </div>
+        <div class="info" [hidden]="!tfOpName">
+          <div class="title">Tf Op Name:: </div>
+          <div>{{tfOpName}}</div>
+        </div>
+        <div class="info" [hidden]="!groupName">
+          <div class="title">Allocation Type: </div>
+          <div>{{groupName}}</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,96 @@
+/** CSS for an op talbe entry view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  color: $content-primary-color;
+}
+
+.row {
+  display: flex;
+  align-self: center;
+  position: relative;
+  border-top: 1px solid #eee;
+  z-index: 0;
+}
+
+.row.expanded {
+  background-color: rgba(0, 0, 0, 0.04);
+  font-weight: bold;
+}
+
+.row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.row > * {
+  padding: 0.5em;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: -2;
+  background-color: #cde;
+  padding: 0 !important;
+}
+
+.row-focus {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: -1;
+  width: 8px;
+  background-color: #e8710a;
+  padding: 0 !important;
+}
+
+.time,
+.wasted,
+.utilization {
+  line-height: 20px;
+  font-size: smaller;
+  width: 60px;
+}
+
+.time {
+  padding-left: 20px !important;
+  width: 80px;
+}
+
+.name {
+  display: inline-block;
+  min-width: 40%;
+}
+
+.disclosure {
+  display: inline-block;
+  width: 1em;
+}
+
+.provenance {
+  flex: 1 1 0 !important;
+}
+
+.utilization {
+  align-self: stretch;
+  text-align: right;
+}
+
+.flame-color-circle {
+  margin: 10px 20px 10px 10px;
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+}
+
+.leftout {
+  padding-left: 175px;
+  font-style: italic;
+}

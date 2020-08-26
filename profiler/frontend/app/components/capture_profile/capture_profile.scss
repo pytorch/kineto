@@ -1,0 +1,14 @@
+/** CSS for a capture profile view component. */
+
+@import 'frontend/app/styles/common';
+
+mat-spinner {
+  position: absolute;
+  top: calc(50% - 10px);
+  left: calc(50% - 10px);
+}
+
+.mat-raised-button {
+  @include box-shadow-none;
+  @include border-black;
+}

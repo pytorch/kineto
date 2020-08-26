@@ -1,0 +1,12 @@
+/** CSS for an operations table component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+  padding: 20px;
+}
+
+.table {
+  border: 1px solid $border-color;
+}

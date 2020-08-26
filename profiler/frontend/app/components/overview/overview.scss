@@ -1,0 +1,43 @@
+/** CSS for an overview page component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+}
+
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  width: 33.333%;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  width: 66.667%;
+}
+
+.full-column {
+  @include border-right-gray;
+  width: 100%;
+}
+
+@media screen and (max-width: 860px) {
+  :host {
+    width: fit-content;
+  }
+}
+
+@media screen and (max-width: 1140px) {
+  .left-column,
+  .right-column {
+    width: 100%;
+  }
+}

@@ -1,0 +1,18 @@
+<mat-card>
+  <mat-card-title>{{title}}</mat-card-title>
+  <mat-card-content class="primary-content">
+    <ng-content select="[profileDetail]"></ng-content>
+    <p>
+      <span class="key-label">Number of Hosts used</span>: <span>{{hostCount}}</span>
+    </p>
+    <ng-content select="[taskCount]"></ng-content>
+    <p>
+      <span class="key-label">Device type</span>: <span>{{deviceType}}</span>
+    </p>
+    <p>
+      <span class="key-label">Number of device cores</span>: <span>{{deviceCoreCount}}</span>
+    </p>
+    <ng-content select="[jobInformation]"></ng-content>
+    <p><!-- empty paragraph for bottom margin --></p>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,106 @@
+$card-title-background-color: #fff;
+$card-title-focus-background-color: #eee;
+$card-title-color: #000;
+$button-focus-color: #777;
+$border-color: #eee;
+$content-primary-color: #4a4a4a;
+$content-secondary-color: #5f6368;
+$dark-theme-card-title-background-color: #3f51b5;
+$dark-theme-card-title-focus-background-color: #7885cb;
+$dark-theme-card-title-color: #fff;
+
+.horizontal-center {
+  text-align: center;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.full-height {
+  height: 100%;
+}
+
+.auto-height {
+  height: auto;
+}
+
+.disabled {
+  color: rgba(0, 0, 0, 0.26);
+}
+
+.hidden-content {
+  height: 0;
+  overflow: hidden;
+}
+
+.primary-content {
+  color: $content-primary-color;
+}
+
+.description {
+  color: $content-secondary-color;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.item-container {
+  padding: 20px 20px 0;
+}
+
+@mixin overview-card {
+  box-shadow: none !important;
+  margin: 8px;
+  @media screen and (max-width: 1140px) {
+    min-width: 500px;
+  }
+}
+
+@mixin overview-card-dark-theme {
+  margin: 8px;
+  @media screen and (max-width: 1140px) {
+    min-width: 500px;
+  }
+}
+
+@mixin overview-card-height {
+  height: calc(100% - 48px);
+}
+
+@mixin overview-card-title {
+  background-color: $card-title-background-color;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  color: $card-title-color;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+@mixin box-shadow-none {
+  box-shadow: none;
+}
+
+@mixin border-black {
+  border: 1px solid #000;
+}
+
+@mixin border-bottom-gray {
+  border-bottom: 1px solid #eee;
+}
+
+@mixin border-right-gray {
+  border-right: 1px solid #eee;
+}
+
+@mixin ul-flat {
+  list-style-position: outside;
+  margin-top: -16px;
+  padding-inline-start: 20px;
+}
+
+@mixin detail-card {
+  box-shadow: none !important;
+  border-top: 1px solid #eee;
+  border-radius: 0;
+  padding: 0;
+}

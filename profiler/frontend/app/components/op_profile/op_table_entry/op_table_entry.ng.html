@@ -1,0 +1,49 @@
+<div [hidden]="!level">
+  <div
+    class="row"
+    (click)="toggleExpanded()"
+    (mouseenter)="hover.emit(node)"
+    (mouseleave)="hover.emit(null)">
+    <div class="bar" [style.width]="barWidth"></div>
+    <div class="row-focus" [hidden]="node !== selectedNode"></div>
+    <span class="time">{{percent}}</span>
+    <span class="wasted">{{timeWasted}}</span>
+    <span class="name" [style.padding-left]="offset">
+      <span class="disclosure">
+        <span [hidden]="!children.length">
+          <span [hidden]="expanded">&#x25b6;</span>
+          <span [hidden]="!expanded">&#x25bc;</span>
+        </span>
+      </span>
+      {{name}}
+    </span>
+    <span class="provenance">{{provenance}}&nbsp;</span>
+    <span
+      class="utilization"
+      [hidden]="hideFlopsUtilization">
+      {{utilization}}
+    </span>
+    <span
+      class="flame-color-circle"
+      [hidden]="hideFlopsUtilization"
+      [style.background-color]="flameColor">
+    </span>
+  </div>
+</div>
+
+<div [hidden]="!expanded">
+  <op-table-entry
+    *ngFor="let childNode of children"
+    [level]="level + 1"
+    [node]="childNode"
+    [selectedNode]="selectedNode"
+    [byWasted]="byWasted"
+    [showP90]="showP90"
+    [childrenCount]="childrenCount"
+    (hover)="hover.emit($event);"
+    (selected)="selected.emit($event);">
+  </op-table-entry>
+  <div class="leftout" *ngIf="numLeftOut > 0">
+    <span [style.padding-left]="offset">{{numLeftOut}} categories or ops have been left out.</span>
+  </div>
+</div>

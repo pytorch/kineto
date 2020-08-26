@@ -1,0 +1,20 @@
+/** CSS for a capture profile dialog component. */
+
+@import 'frontend/app/styles/common';
+
+mat-form-field {
+  width: 400px;
+}
+
+mat-radio-button {
+  margin-left: 20px;
+}
+
+mat-dialog-actions {
+  justify-content: flex-end;
+}
+
+.mat-raised-button {
+  @include box-shadow-none;
+  @include border-black;
+}

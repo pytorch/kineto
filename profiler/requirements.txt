@@ -1,0 +1,2 @@
+absl-py >= 0.4
+gviz_api >= 1.9.0

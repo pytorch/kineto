@@ -1,0 +1,16 @@
+/** CSS for a stack bar chart view component. */
+
+:host {
+  display: block;
+  margin: 20px 0;
+}
+
+.container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart {
+  height: 300px;
+}

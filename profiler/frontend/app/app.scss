@@ -1,0 +1,15 @@
+/** CSS for the root component. */
+
+mat-progress-bar {
+  width: 300px;
+  margin: 0 auto;
+}
+
+.progress-container {
+  padding: 50px;
+}
+
+.loading-message {
+  width: fit-content;
+  margin: 0 auto;
+}

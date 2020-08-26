@@ -1,0 +1,12 @@
+/** CSS for an empty page component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  display: block;
+}
+
+.container {
+  max-width: 540px;
+  margin: 80px auto 0 auto;
+}

@@ -1,0 +1,56 @@
+/** CSS for a top ops table view component. */
+
+@import 'frontend/app/styles/common';
+
+:host:not(.dark-theme) {
+  mat-expansion-panel {
+    @include overview-card;
+    margin: 0;
+  }
+}
+
+mat-expansion-panel-header {
+  margin: 8px 8px 0;
+}
+
+mat-panel-title {
+  @include overview-card-title;
+  background-color: transparent;
+}
+
+mat-expansion-panel-header.cdk-keyboard-focused,
+mat-expansion-panel:not(.mat-expanded) mat-expansion-panel-header:hover {
+  background-color: $card-title-focus-background-color !important;
+}
+
+.mat-expanded mat-expansion-panel-header {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+:host.dark-theme {
+  border: none;
+
+  mat-expansion-panel {
+    @include overview-card-dark-theme;
+  }
+
+  mat-panel-title {
+    background-color: transparent;
+    color: $dark-theme-card-title-color;
+  }
+
+  mat-expansion-panel-header {
+    background-color: $dark-theme-card-title-background-color;
+    margin: 0;
+  }
+
+  mat-expansion-panel-header.cdk-keyboard-focused,
+  mat-expansion-panel:not(.mat-expanded) mat-expansion-panel-header:hover {
+    background-color: $dark-theme-card-title-focus-background-color !important;
+  }
+
+  .table {
+    margin-top: 18px;
+  }
+}

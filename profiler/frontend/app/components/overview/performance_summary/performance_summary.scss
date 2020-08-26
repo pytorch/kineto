@@ -1,0 +1,99 @@
+/** CSS for a performance summary view component. */
+
+@import 'frontend/app/styles/common';
+
+:host {
+  @include border-bottom-gray;
+  @include border-right-gray;
+}
+
+:host:not(.dark-theme) {
+  mat-card {
+    @include overview-card;
+  }
+}
+
+mat-card {
+  @include overview-card-height;
+}
+
+mat-card-title {
+  @include overview-card-title;
+}
+
+b {
+  font-weight: 500;
+}
+
+ul {
+  @include ul-flat;
+}
+
+table {
+  width: 100%;
+}
+
+table ul {
+  margin: 0;
+}
+
+.item-container {
+  margin-bottom: 16px;
+}
+
+.item-container > table {
+  border-spacing: 0;
+}
+
+.item-container > td {
+  padding: 0;
+}
+
+.item-value {
+  padding-left: 8px;
+  min-width: 80px;
+  width: 20%;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.item-description {
+  margin-left: 20px;
+}
+
+.flops-utilization-tooltip-target {
+  color: #e8710a;
+  border-bottom: 1px dotted #e8710a;
+  cursor: pointer;
+}
+
+.tooltip-icon-container {
+  position: relative;
+}
+
+.tooltip-icon {
+  color: #e8710a;
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+:host.dark-theme {
+  flex-grow: 1;
+  border: none;
+
+  mat-card {
+    @include overview-card-dark-theme;
+  }
+
+  mat-card-title {
+    background-color: $dark-theme-card-title-background-color;
+    color: $dark-theme-card-title-color;
+    padding: 16px;
+    margin: -16px -16px 16px;
+  }
+}

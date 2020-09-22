@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <iostream>
 #include <list>
 #include <map>
 #include <set>
@@ -177,7 +176,7 @@ class EventGroupSet {
   EventGroupSet(const EventGroupSet&) = delete;
   EventGroupSet& operator=(const EventGroupSet&) = delete;
   EventGroupSet(EventGroupSet&&) = default;
-  EventGroupSet& operator=(EventGroupSet&&) = default;
+  EventGroupSet& operator=(EventGroupSet&&) = delete;
 
   // Number of groups = number of domains profiled
   int groupCount() const {

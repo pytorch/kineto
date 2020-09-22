@@ -35,8 +35,6 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
-constexpr int kSleepOnInitFailSecs = 10;
-
 static std::mutex& logMutex() {
   static std::mutex instance;
   return instance;

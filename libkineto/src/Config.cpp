@@ -156,8 +156,9 @@ const seconds Config::maxRequestAge() const {
 
 static char* printTime(time_point<system_clock> t, char* buf, int size) {
   std::time_t t_c = system_clock::to_time_t(t);
-  std::tm* lt = std::localtime(&t_c);
-  std::strftime(buf, size, "%H:%M:%S", lt);
+  std::tm lt;
+  localtime_r(&t_c, &lt);
+  std::strftime(buf, size, "%H:%M:%S", &lt);
   return buf;
 }
 

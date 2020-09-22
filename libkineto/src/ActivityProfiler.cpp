@@ -118,7 +118,7 @@ ActivityProfiler::ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
       currentRunloopState_{RunloopState::WaitForRequest},
       stopCollection_{false} {}
 
-void ActivityProfiler::processTraces(const Config& config) {
+void ActivityProfiler::processTraces() {
   // A CPU trace needs to be processed before the corresponding GPU trace.
   // When entering this function it is assumed that if GPU buffers exist,
   // then the corresponding CPU buffers also exist. It's OK if additional
@@ -300,13 +300,13 @@ inline void ActivityProfiler::updateGpuNetSpan(
 static const string gpuOpName(const CUpti_ActivityKernel4& kernel) {
   return string("Kernel: ") + kernel.name;
 }
-static const string gpuOpName(const CUpti_ActivityMemcpy& memcpy) {
+static const string gpuOpName(const CUpti_ActivityMemcpy& /* unused */) {
   return "Memcpy";
 }
-static const string gpuOpName(const CUpti_ActivityMemcpy2& memcpy) {
+static const string gpuOpName(const CUpti_ActivityMemcpy2& /* unused */) {
   return "Memcpy2";
 }
-static const string gpuOpName(const CUpti_ActivityMemset& memset) {
+static const string gpuOpName(const CUpti_ActivityMemset& /* unused */) {
   return "Memset";
 }
 template <class T>
@@ -372,7 +372,6 @@ inline void ActivityProfiler::handleGpuActivity(
 
 void ActivityProfiler::handleCuptiActivity(size_t valid_size, uint8_t* buffer) {
   int count = 0;
-  CUptiResult status;
   if (valid_size > 0) {
     // TODO: Move this switch statement into CuptiActivityInterface
     const CUpti_Activity* record;
@@ -590,7 +589,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       }
       if (!cupti_.gpuTraceQueue.empty() && !cpuOnly_) {
         VLOG(0) << "Processing traces";
-        processTraces(*config_);
+        processTraces();
       } else {
         currentRunloopState_ = RunloopState::FinalizeTrace;
         VLOG(0) << "ProcessTrace -> FinalizeTrace";
@@ -599,7 +598,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
 
     case RunloopState::FinalizeTrace:
       if (!cpuTraceQueue_.empty()) {
-        processTraces(*config_);
+        processTraces();
       }
       finalizeTrace(*config_);
       externalEvents_.clear();

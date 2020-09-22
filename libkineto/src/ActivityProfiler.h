@@ -136,7 +136,7 @@ class ActivityProfiler {
   void finalizeTrace(const Config& config);
 
   // Process the CPU and GPU traces in the queue, start merging them if we can
-  void processTraces(const Config& config);
+  void processTraces();
 
   // Process a single CPU trace
   void processCpuTrace(

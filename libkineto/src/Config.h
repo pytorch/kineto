@@ -23,7 +23,7 @@ class Config : public AbstractConfig {
   Config();
   Config& operator=(const Config&) = delete;
   Config(Config&&) = delete;
-  Config& operator=(Config&&) = default;
+  Config& operator=(Config&&) = delete;
 
   // Return a full copy including feature config object
   std::unique_ptr<Config> clone() {

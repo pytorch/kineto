@@ -19,10 +19,10 @@ using namespace libkineto;
 namespace KINETO_NAMESPACE {
 
 // TODO: do we want this to be configurable?
-// Set to 1MB to avoid constantly creating buffers (espeically for networks
+// Set to 2MB to avoid constantly creating buffers (espeically for networks
 // that has many small memcpy such as sparseNN)
-constexpr size_t kBufSize(1 * 1024 * 1024);
-constexpr size_t kAlignSize(64);
+// Consider putting this on huge pages?
+constexpr size_t kBufSize(2 * 1024 * 1024);
 
 CuptiActivityInterface& CuptiActivityInterface::singleton() {
   static CuptiActivityInterface instance;
@@ -72,27 +72,25 @@ int CuptiActivityInterface::smCount() {
   return sm_count;
 }
 
-void CuptiActivityInterface::flushActivities() {
-  CUPTI_CALL(cuptiActivityFlushAll(0));
-}
-
-const CUpti_Activity* CuptiActivityInterface::nextActivityRecord(
+static bool nextActivityRecord(
     uint8_t* buffer,
-    size_t valid_size) {
+    size_t valid_size,
+    CUpti_Activity*& record) {
   CUptiResult status =
-      cuptiActivityGetNextRecord(buffer, valid_size, &currentRecord_);
+      cuptiActivityGetNextRecord(buffer, valid_size, &record);
   if (status != CUPTI_SUCCESS) {
     if (status != CUPTI_ERROR_MAX_LIMIT_REACHED) {
       CUPTI_CALL(status);
     }
-    currentRecord_ = nullptr;
+    record = nullptr;
   }
-  return currentRecord_;
+  return record != nullptr;
 }
 
-void CuptiActivityInterface::setMaxGpuBufferSize(int size) {
+void CuptiActivityInterface::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
+
 
 void CUPTIAPI CuptiActivityInterface::bufferRequested(
     uint8_t** buffer,
@@ -113,11 +111,63 @@ void CUPTIAPI CuptiActivityInterface::bufferRequested(
   // TODO(xdwang): create a list of buffers in advance so that we can reuse.
   // This saves time to dynamically allocate new buffers (which could be costly
   // if we allocated new space from the heap)
-  void* bfr = malloc(kBufSize + kAlignSize);
-  size_t sz = kBufSize + kAlignSize;
-  *buffer = (uint8_t*)std::align(kAlignSize, kBufSize, bfr, sz);
+  *buffer = (uint8_t*) malloc(kBufSize);
 
   singleton().allocatedGpuBufferCount++;
+}
+
+int CuptiActivityInterface::processActivitiesForBuffer(
+    uint8_t* buf,
+    size_t validSize,
+    std::function<void(const CUpti_Activity*)> handler) {
+  int count = 0;
+  if (buf && validSize) {
+    CUpti_Activity* record{nullptr};
+    while ((nextActivityRecord(buf, validSize, record))) {
+      handler(record);
+      ++count;
+    }
+  }
+  return count;
+}
+
+const std::pair<int, int> CuptiActivityInterface::processActivities(
+    std::function<void(const CUpti_Activity*)> handler) {
+  VLOG(0) << "Flushing GPU activity buffers";
+  time_point<high_resolution_clock> t1;
+  if (VLOG_IS_ON(1)) {
+    t1 = high_resolution_clock::now();
+  }
+  CUPTI_CALL(cuptiActivityFlushAll(0));
+  if (VLOG_IS_ON(1)) {
+    flushOverhead =
+        duration_cast<microseconds>(high_resolution_clock::now() - t1).count();
+  }
+
+  int count = 0;
+  int bytes = 0;
+  while (!gpuTraceQueue.empty()) {
+    VLOG(1) << "Processing GPU buffer";
+    // No lock needed - only accessed from this thread
+    auto gpu_trace = gpuTraceQueue.front();
+    gpuTraceQueue.pop();
+    bytes += gpu_trace.first;
+    count += processActivitiesForBuffer(
+        gpu_trace.second, gpu_trace.first, handler);
+    free(gpu_trace.second);
+  }
+
+  return {count, bytes};
+}
+
+void CuptiActivityInterface::clearActivities() {
+  CUPTI_CALL(cuptiActivityFlushAll(0));
+  while (!gpuTraceQueue.empty()) {
+    // FIXME: We might want to make sure we reuse
+    // the same memory during warmup and tracing.
+    free(gpuTraceQueue.front().second);
+    gpuTraceQueue.pop();
+  }
 }
 
 void CUPTIAPI CuptiActivityInterface::bufferCompleted(

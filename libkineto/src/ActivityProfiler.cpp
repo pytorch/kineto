@@ -150,13 +150,10 @@ void ActivityProfiler::processTraces() {
   mutex_.unlock();
 
   if (!cpuOnly_) {
-    LOG(INFO) << "Processing " << cupti_.gpuTraceQueue.size() << " GPU buffers";
-    while (!cupti_.gpuTraceQueue.empty()) {
-      VLOG(1) << "Processing GPU buffer";
-      // No lock needed - only accessed from this thread
-      auto gpu_trace = cupti_.gpuTraceQueue.front();
-      cupti_.gpuTraceQueue.pop();
-      handleCuptiActivity(gpu_trace.first, gpu_trace.second);
+    const auto count_and_size = cupti_.processActivities(std::bind(&ActivityProfiler::handleCuptiActivity, this, std::placeholders::_1));
+    LOG(INFO) << "Processed " << count_and_size.first << " GPU records (" << count_and_size.second << " bytes)";
+    if (VLOG_IS_ON(1)) {
+      addOverheadSample(flushOverhead_, cupti_.flushOverhead);
     }
   }
 }
@@ -324,6 +321,7 @@ static bool timestampsInCorrectOrder(
   return true;
 }
 
+// FIXME: Unify with below
 inline void ActivityProfiler::handleGpuActivity(
     const CUpti_ActivityKernel4* kernel) {
   const external_api::OpDetails& ext = externalEvents_[kernel->correlationId];
@@ -360,6 +358,7 @@ inline void ActivityProfiler::handleGpuActivity(
     return;
   }
 
+  // FIXME: use typeid
   VLOG(2) << ext.correlationId << "," << act->correlationId << ": " << name;
   if (!loggingDisabled(ext)) {
     logger_->handleGpuActivity(act, ext);
@@ -370,50 +369,38 @@ inline void ActivityProfiler::handleGpuActivity(
   }
 }
 
-void ActivityProfiler::handleCuptiActivity(size_t valid_size, uint8_t* buffer) {
-  int count = 0;
-  if (valid_size > 0) {
-    // TODO: Move this switch statement into CuptiActivityInterface
-    const CUpti_Activity* record;
-    while ((record = cupti_.nextActivityRecord(buffer, valid_size))) {
-      switch (record->kind) {
-        case CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION:
-          handleCorrelationActivity(
-              reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(
-                  record));
-          break;
-        case CUPTI_ACTIVITY_KIND_RUNTIME:
-          handleRuntimeActivity(
-              reinterpret_cast<const CUpti_ActivityAPI*>(record));
-          break;
-        case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
-          handleGpuActivity(
-              reinterpret_cast<const CUpti_ActivityKernel4*>(record));
-          break;
-        case CUPTI_ACTIVITY_KIND_MEMCPY:
-          handleGpuActivity(
-              reinterpret_cast<const CUpti_ActivityMemcpy*>(record), "MEMCPY");
-          break;
-        case CUPTI_ACTIVITY_KIND_MEMCPY2:
-          handleGpuActivity(
-              reinterpret_cast<const CUpti_ActivityMemcpy2*>(record),
-              "MEMCPY2");
-          break;
-        case CUPTI_ACTIVITY_KIND_MEMSET:
-          handleGpuActivity(
-              reinterpret_cast<const CUpti_ActivityMemset*>(record), "MEMSET");
-          break;
-        default:
-          LOG(WARNING) << "Unexpected activity type: " << record->kind;
-          break;
-      }
-      ++count;
-    }
+void ActivityProfiler::handleCuptiActivity(const CUpti_Activity* record) {
+  switch (record->kind) {
+    case CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION:
+      handleCorrelationActivity(
+          reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(
+              record));
+      break;
+    case CUPTI_ACTIVITY_KIND_RUNTIME:
+      handleRuntimeActivity(
+          reinterpret_cast<const CUpti_ActivityAPI*>(record));
+      break;
+    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
+      handleGpuActivity(
+          reinterpret_cast<const CUpti_ActivityKernel4*>(record));
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMCPY:
+      handleGpuActivity(
+          reinterpret_cast<const CUpti_ActivityMemcpy*>(record), "MEMCPY");
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMCPY2:
+      handleGpuActivity(
+          reinterpret_cast<const CUpti_ActivityMemcpy2*>(record),
+          "MEMCPY2");
+      break;
+    case CUPTI_ACTIVITY_KIND_MEMSET:
+      handleGpuActivity(
+          reinterpret_cast<const CUpti_ActivityMemset*>(record), "MEMSET");
+      break;
+    default:
+      LOG(WARNING) << "Unexpected activity type: " << record->kind;
+      break;
   }
-
-  VLOG(1) << "Processed " << count << " GPU records";
-
-  free(buffer);
 }
 
 void ActivityProfiler::configure(
@@ -456,7 +443,7 @@ void ActivityProfiler::configure(
     // are activated etc. After a while the overhead decreases and stabilizes.
     // It's therefore useful to perform some warmup before starting recording.
     LOG(INFO) << "Enabling GPU tracing";
-    cupti_.setMaxGpuBufferSize(config_->activitiesMaxGpuBufferSize());
+    cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
 
     time_point<high_resolution_clock> timestamp;
     if (VLOG_IS_ON(1)) {
@@ -484,6 +471,7 @@ void ActivityProfiler::configure(
 }
 
 void ActivityProfiler::endTrace() {
+  external_api::setProfileRequestActive(false);
   if (!cpuOnly_) {
     time_point<high_resolution_clock> timestamp;
     if (VLOG_IS_ON(1)) {
@@ -496,7 +484,6 @@ void ActivityProfiler::endTrace() {
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
-  external_api::setProfileRequestActive(false);
 }
 
 const time_point<system_clock> ActivityProfiler::performRunLoopStep(
@@ -511,12 +498,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
     case RunloopState::Warmup:
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && nextWakeupTime < profileStartTime_) {
-        cupti_.flushActivities();
-      }
-
-      // Just throw away the trace collected so far
-      while (!cupti_.gpuTraceQueue.empty()) {
-        cupti_.gpuTraceQueue.pop();
+        cupti_.clearActivities();
       }
 
       if (cupti_.stopCollection) {
@@ -559,10 +541,10 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
         // Update runloop state first to prevent further updates to shared state
         currentRunloopState_ = RunloopState::ProcessTrace;
         LOG(INFO) << "Tracing complete";
-        endTrace();
         if (captureWindowEndTime_ == 0) {
           captureWindowEndTime_ = external_api::timeSinceEpoch(now);
         }
+        endTrace();
         VLOG_IF(0, now >= profileEndTime_) << "Reached profile end time";
         VLOG(0) << "CollectTrace -> ProcessTrace";
       } else if (now < profileEndTime_ && profileEndTime_ < nextWakeupTime) {
@@ -572,40 +554,11 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       break;
 
     case RunloopState::ProcessTrace:
-      if (!cpuOnly_) {
-        VLOG(0) << "Flushing GPU activity buffers";
-        time_point<high_resolution_clock> t1;
-        if (VLOG_IS_ON(1)) {
-          t1 = high_resolution_clock::now();
-        }
-
-        cupti_.flushActivities();
-
-        if (VLOG_IS_ON(1)) {
-          auto t2 = high_resolution_clock::now();
-          addOverheadSample(
-              flushOverhead_, duration_cast<microseconds>(t2 - t1).count());
-        }
-      }
-      if (!cupti_.gpuTraceQueue.empty() && !cpuOnly_) {
-        VLOG(0) << "Processing traces";
-        processTraces();
-      } else {
-        currentRunloopState_ = RunloopState::FinalizeTrace;
-        VLOG(0) << "ProcessTrace -> FinalizeTrace";
-      }
-      break;
-
-    case RunloopState::FinalizeTrace:
-      if (!cpuTraceQueue_.empty()) {
-        processTraces();
-      }
+      processTraces();
       finalizeTrace(*config_);
-      externalEvents_.clear();
-      externalDisabledNets_.clear();
-      gpuNetSpanMap_.clear();
+      resetTraceData();
       currentRunloopState_ = RunloopState::WaitForRequest;
-      VLOG(0) << "FinalizeTrace -> WaitForRequest";
+      VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;
   }
 

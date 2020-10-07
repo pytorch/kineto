@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <atomic>
 #include <cupti.h>
+#include <functional>
 #include <queue>
 
 namespace KINETO_NAMESPACE {
@@ -25,21 +27,29 @@ class CuptiActivityInterface {
 
   void enableCuptiActivities();
   void disableCuptiActivities();
-  void flushActivities();
+  void clearActivities();
 
-  // TODO: Replace with handler-based approach
-  const CUpti_Activity* nextActivityRecord(uint8_t* buffer, size_t valid_size);
+  const std::pair<int, int> processActivities(
+      std::function<void(const CUpti_Activity*)> handler);
 
-  void setMaxGpuBufferSize(int size);
+  bool hasActivityBuffer() {
+    return allocatedGpuBufferCount > 0;
+  }
 
-  int allocatedGpuBufferCount = 0;
-  bool stopCollection = false;
+  void setMaxBufferSize(int size);
+
+  std::atomic_bool stopCollection;
+  int64_t flushOverhead{0};
   std::queue<std::pair<size_t, uint8_t*>> gpuTraceQueue;
 
  protected:
   CuptiActivityInterface() {}
 
  private:
+  int processActivitiesForBuffer(
+      uint8_t* buf,
+      size_t validSize,
+      std::function<void(const CUpti_Activity*)> handler);
   static void CUPTIAPI
   bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
   static void CUPTIAPI bufferCompleted(
@@ -49,8 +59,8 @@ class CuptiActivityInterface {
       size_t /* unused */,
       size_t validSize);
 
-  int maxGpuBufferCount_ = 0;
-  CUpti_Activity* currentRecord_ = nullptr;
+  int maxGpuBufferCount_{0};
+  int allocatedGpuBufferCount{0};
 };
 
 } // namespace KINETO_NAMESPACE

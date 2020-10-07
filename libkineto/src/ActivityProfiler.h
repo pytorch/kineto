@@ -159,7 +159,7 @@ class ActivityProfiler {
   int netId(const std::string& netName);
 
   // Process generic CUPTI activity
-  void handleCuptiActivity(size_t valid_size, uint8_t* buffer);
+  void handleCuptiActivity(const CUpti_Activity* record);
 
   // Process specific GPU activity types
   void updateGpuNetSpan(
@@ -189,6 +189,12 @@ class ActivityProfiler {
     }
   }
 
+  void resetTraceData() {
+    externalEvents_.clear();
+    externalDisabledNets_.clear();
+    gpuNetSpanMap_.clear();
+  }
+
   void addOverheadSample(profilerOverhead& counter, int64_t overhead) {
     counter.overhead += overhead;
     counter.cntr++;
@@ -213,8 +219,7 @@ class ActivityProfiler {
     WaitForRequest,
     Warmup,
     CollectTrace,
-    ProcessTrace,
-    FinalizeTrace
+    ProcessTrace
   };
 
   // Start and end time used for triggering and stopping profiling

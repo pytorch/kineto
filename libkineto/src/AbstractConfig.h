@@ -58,6 +58,11 @@ class AbstractConfig {
   // Throw std::invalid_argument if val is invalid.
   virtual bool handleOption(const std::string& name, std::string& val);
 
+  // Perform post-validation checks, typically conditons involving
+  // multiple options.
+  // Throw std::invalid_argument if automatic correction can not be made.
+  virtual void validate() = 0;
+
   // TODO: Separate out each profiler type into features?
   virtual void printActivityProfilerConfig(std::ostream& s) const;
 

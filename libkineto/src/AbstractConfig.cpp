@@ -168,6 +168,8 @@ bool AbstractConfig::parse(const string& conf) {
     }
   }
 
+  validate();
+
   // Store original text, used to detect updates
   source_ = conf;
   timestamp_ = system_clock::now();

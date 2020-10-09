@@ -244,7 +244,7 @@ class Config : public AbstractConfig {
 
   void printActivityProfilerConfig(std::ostream& s) const override;
 
-  void validate();
+  void validate() override;
 
   static void addConfigFactory(
       std::string name,

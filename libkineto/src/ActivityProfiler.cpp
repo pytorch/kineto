@@ -449,7 +449,7 @@ void ActivityProfiler::configure(
     if (VLOG_IS_ON(1)) {
       timestamp = high_resolution_clock::now();
     }
-    cupti_.enableCuptiActivities();
+    cupti_.enableCuptiActivities(config_->selectedActivityTypes());
     if (VLOG_IS_ON(1)) {
       auto t2 = high_resolution_clock::now();
       addOverheadSample(
@@ -477,7 +477,7 @@ void ActivityProfiler::endTrace() {
     if (VLOG_IS_ON(1)) {
       timestamp = high_resolution_clock::now();
     }
-    cupti_.disableCuptiActivities();
+    cupti_.disableCuptiActivities(config_->selectedActivityTypes());
     if (VLOG_IS_ON(1)) {
       auto t2 = high_resolution_clock::now();
       addOverheadSample(

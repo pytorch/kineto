@@ -54,6 +54,7 @@ const string kMaxEventProfilersPerGpuKey = "MAX_EVENT_PROFILERS_PER_GPU";
 
 // Activity Profiler
 const string kActivitiesEnabledKey = "ACTIVITIES_ENABLED";
+const string kActivityTypesKey = "ACTIVITY_TYPES";
 const string kActivitiesLogFileKey = "ACTIVITIES_LOG_FILE";
 const string kActivitiesDurationKey = "ACTIVITIES_DURATION_SECS";
 const string kActivitiesDurationMsecsKey = "ACTIVITIES_DURATION_MSECS";
@@ -65,6 +66,13 @@ const string kActivitiesMinGpuOpCountKey = "ACTIVITIES_MIN_GPU_OP_COUNT";
 const string kActivitiesWarmupDurationSecsKey = "ACTIVITIES_WARMUP_PERIOD_SECS";
 const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
+
+// Valid configuration file entries for activity types
+const string kActivityMemcpy = "gpu_memcpy";
+const string kActivityMemset = "gpu_memset";
+const string kActivityConcurrentKernel = "concurrent_kernel";
+const string kActivityExternalCorrelation = "external_correlation";
+const string kActivityRuntime = "cuda_runtime";
 
 const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
 
@@ -181,6 +189,32 @@ static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   return t;
 }
 
+void Config::addActivityTypes(
+  const std::vector<std::string>& selected_activities) {
+  if (selected_activities.size() > 0) {
+    for (const auto& activity : selected_activities) {
+      if (activity == "") {
+        continue;
+      } else if (activity == kActivityMemcpy) {
+        selectedActivityTypes_.insert(ActivityType::MEMCPY);
+      } else if (activity == kActivityMemset) {
+        selectedActivityTypes_.insert(ActivityType::MEMSET);
+      } else if (activity == kActivityConcurrentKernel) {
+        selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
+      } else if (activity == kActivityExternalCorrelation) {
+        selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
+      } else if (activity == kActivityRuntime) {
+        selectedActivityTypes_.insert(ActivityType::RUNTIME);
+      } else {
+        throw std::invalid_argument(fmt::format(
+          "Invalid activity type selected: {}",
+          activity
+        ));
+      }
+    }
+  }
+}
+
 bool Config::handleOption(const std::string& name, std::string& val) {
   // Event Profiler
   if (name == kEventsKey) {
@@ -189,6 +223,9 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (name == kMetricsKey) {
     vector<string> metric_names = splitAndTrim(val, ',');
     metricNames_.insert(metric_names.begin(), metric_names.end());
+  } else if (name == kActivityTypesKey) {
+    vector<string> activity_types = splitAndTrim(toLower(val), ',');
+    addActivityTypes(activity_types);
   } else if (name == kSamplePeriodKey) {
     samplePeriod_ = milliseconds(toInt32(val));
   } else if (name == kMultiplexPeriodKey) {
@@ -308,6 +345,10 @@ void Config::validate() {
     LOG(WARNING) << "Setting samples per report to " << max_samples_per_report;
     samplesPerReport_ = max_samples_per_report;
   }
+
+  if (selectedActivityTypes_.size() == 0) {
+    selectDefaultActivityTypes();
+  }
 }
 
 void Config::setReportPeriod(milliseconds msecs) {
@@ -340,6 +381,32 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << activitiesOnDemandExternalGpuOpCountThreshold() << std::endl;
   s << "Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
     << "MB" << std::endl;
+
+  s << "Enabled activities: ";
+  for (const auto& activity : selectedActivityTypes_) {
+    switch(activity){
+      case ActivityType::MEMCPY:
+        s << kActivityMemcpy << " ";
+        break;
+      case ActivityType::MEMSET:
+        s << kActivityMemset << " ";
+        break;
+      case ActivityType::CONCURRENT_KERNEL:
+        s << kActivityConcurrentKernel << " ";
+        break;
+      case ActivityType::EXTERNAL_CORRELATION:
+        s << kActivityExternalCorrelation << " ";
+        break;
+      case ActivityType::RUNTIME:
+        s << kActivityRuntime << " ";
+        break;
+      default:
+        s << "UNKNOWN_ACTIVITY_NAME" << " ";
+        break;
+    }
+  }
+  s << std::endl;
+
   AbstractConfig::printActivityProfilerConfig(s);
 }
 

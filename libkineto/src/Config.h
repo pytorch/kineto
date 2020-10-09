@@ -8,6 +8,7 @@
 #pragma once
 
 #include "AbstractConfig.h"
+#include "CuptiActivityType.h"
 
 #include <assert.h>
 #include <chrono>
@@ -139,6 +140,11 @@ class Config : public AbstractConfig {
     return eventProfilerMaxInstancesPerGpu_;
   }
 
+  // The types of activities selected in the configuration file
+  const std::set<ActivityType>& selectedActivityTypes() const {
+    return selectedActivityTypes_;
+  }
+
   // Trace for this long
   std::chrono::milliseconds activitiesOnDemandDuration() const {
     return activitiesOnDemandDuration_;
@@ -257,6 +263,20 @@ class Config : public AbstractConfig {
 
   uint8_t createDeviceMask(const std::string& val);
 
+  // Adds valid activity types from the user defined string list in the
+  // configuration file
+  void addActivityTypes(const std::vector<std::string>& selected_activities);
+
+  // Sets the default activity types to be traced
+  void selectDefaultActivityTypes() {
+    // If the user has not specified an activity list, add all types
+    selectedActivityTypes_.insert(ActivityType::MEMCPY);
+    selectedActivityTypes_.insert(ActivityType::MEMSET);
+    selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
+    selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
+    selectedActivityTypes_.insert(ActivityType::RUNTIME);
+  }
+
   int verboseLogLevel_;
   std::vector<std::string> verboseLogModules_;
 
@@ -284,6 +304,7 @@ class Config : public AbstractConfig {
 
   // Activity profiler
   bool activityProfilerEnabled_;
+  std::set<ActivityType> selectedActivityTypes_;
 
   // The activity profiler settings are all on-demand
   std::string activitiesLogFile_;

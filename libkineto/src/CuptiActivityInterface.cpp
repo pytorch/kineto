@@ -195,27 +195,55 @@ void CUPTIAPI CuptiActivityInterface::bufferCompleted(
   }
 }
 
-void CuptiActivityInterface::enableCuptiActivities() {
+void CuptiActivityInterface::enableCuptiActivities(
+    const std::set<ActivityType>& selected_activities) {
   static bool registered = false;
   if (!registered) {
     CUPTI_CALL(
         cuptiActivityRegisterCallbacks(bufferRequested, bufferCompleted));
   }
-  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
-  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
-  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
-  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+
+  for (const auto& activity : selected_activities) {
+    if (activity == ActivityType::MEMCPY) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
+    }
+    if (activity == ActivityType::MEMSET) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
+    }
+    if (activity == ActivityType::CONCURRENT_KERNEL) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+    }
+    if (activity == ActivityType::EXTERNAL_CORRELATION) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
+    }
+    if (activity == ActivityType::RUNTIME) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+    }
+  }
+
   // Explicitly enabled, so reset this flag if set
   stopCollection = false;
 }
 
-void CuptiActivityInterface::disableCuptiActivities() {
-  CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
-  CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
-  CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-  CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
-  CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
+void CuptiActivityInterface::disableCuptiActivities(
+    const std::set<ActivityType>& selected_activities) {
+  for (const auto& activity : selected_activities) {
+    if (activity == ActivityType::MEMCPY) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
+    }
+    if (activity == ActivityType::MEMSET) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
+    }
+    if (activity == ActivityType::CONCURRENT_KERNEL) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+    }
+    if (activity == ActivityType::EXTERNAL_CORRELATION) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
+    }
+    if (activity == ActivityType::RUNTIME) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
+    }
+  }
 }
 
 } // namespace KINETO_NAMESPACE

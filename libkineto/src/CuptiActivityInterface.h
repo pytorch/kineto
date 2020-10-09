@@ -7,10 +7,13 @@
 
 #pragma once
 
+#include "CuptiActivityType.h"
+
 #include <atomic>
 #include <cupti.h>
 #include <functional>
 #include <queue>
+#include <set>
 
 namespace KINETO_NAMESPACE {
 
@@ -25,8 +28,10 @@ class CuptiActivityInterface {
   static void pushCorrelationID(int id);
   static void popCorrelationID();
 
-  void enableCuptiActivities();
-  void disableCuptiActivities();
+  void enableCuptiActivities(
+    const std::set<ActivityType>& selected_activities);
+  void disableCuptiActivities(
+    const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
   const std::pair<int, int> processActivities(

@@ -69,6 +69,48 @@ TEST(ParseTest, Format) {
   EXPECT_EQ(cfg.metricNames(), std::set<std::string>({"4", "5", "s i x"}));
 }
 
+TEST(ParseTest, DefaultActivityTypes) {
+  Config cfg;
+  cfg.validate();
+  EXPECT_EQ(cfg.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::MEMCPY,
+                            ActivityType::MEMSET,
+                            ActivityType::CONCURRENT_KERNEL,
+                            ActivityType::EXTERNAL_CORRELATION,
+                            ActivityType::RUNTIME}));
+}
+
+TEST(ParseTest, ActivityTypes) {
+  Config cfg;
+  EXPECT_FALSE(cfg.parse("ACTIVITY_TYPES"));
+  EXPECT_TRUE(cfg.parse("ACTIVITY_TYPES="));
+  EXPECT_FALSE(cfg.parse("=ACTIVITY_TYPES="));
+
+  EXPECT_TRUE(cfg.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,concurrent_kernel"));
+  EXPECT_EQ(cfg.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::MEMCPY,
+                            ActivityType::MEMSET,
+                            ActivityType::CONCURRENT_KERNEL}));
+
+  EXPECT_TRUE(cfg.parse("ACTIVITY_TYPES = cuda_Runtime,"));
+  EXPECT_EQ(cfg.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::MEMCPY,
+                            ActivityType::MEMSET,
+                            ActivityType::RUNTIME,
+                            ActivityType::CONCURRENT_KERNEL}));
+
+  // Should throw an exception because incorrect activity name
+  EXPECT_FALSE(cfg.parse("ACTIVITY_TYPES = memcopy,cuda_runtime"));
+
+  EXPECT_TRUE(cfg.parse("ACTIVITY_TYPES = external_correlation"));
+  EXPECT_EQ(cfg.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::MEMCPY,
+                            ActivityType::MEMSET,
+                            ActivityType::CONCURRENT_KERNEL,
+                            ActivityType::EXTERNAL_CORRELATION,
+                            ActivityType::RUNTIME}));
+}
+
 TEST(ParseTest, SamplePeriod) {
   Config cfg;
   EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=10"));

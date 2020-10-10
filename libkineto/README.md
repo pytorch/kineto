@@ -18,7 +18,7 @@ Libkineto uses the standard CMAKE-based build flow.
 ### Dependencies
 Libkineto requires gcc 5+.
 
-+ ###### CUPTI
++ ###### CUDA
 Libkineto uses CUPTI to collect traces and metrics from NVIDIA GPUs.
 
 + ###### fmt
@@ -29,19 +29,19 @@ googletest is required to build and run Kineto's tests. **googletest is not
 required** if you don't want to run Kineto tests. By default, building of tests
 is **on**. Turn it off by setting KINETO\_BUILD\_TESTS to off.
 
-You can download [CUPTI][1], [fmt][2], [googletest][3] and set
-CUPTI\_SOURCE\_DIR, FMT\_SOURCE\_DIR, GOOGLETEST\_SOURCE\_DIR respectively for
+You can download [CUDA][1], [fmt][2], [googletest][3] and set
+CUDA\_SOURCE\_DIR, FMT\_SOURCE\_DIR, GOOGLETEST\_SOURCE\_DIR respectively for
 cmake to find these libraries. If the fmt and googletest variables are not set, cmake will
 build the git submodules found in the third\_party directory.
+If CUDA\_SOURCE\_DIR is not set, libkineto will fail to build.
 
 General build instructions are as follows:
 
 ```
+# Check out repo and sub modules
 git clone --recursive https://github.com/pytorch/kineto.git
+# Build libkineto with cmake
 cd kineto/libkineto
-# if you are updating an existing checkout
-git submodule sync
-git submodule update --init --recursive
 mkdir build && cd build
 cmake ..
 make

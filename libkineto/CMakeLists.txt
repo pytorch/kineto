@@ -5,12 +5,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 #install libraries into correct locations on all platforms
 include(GNUInstallDirs)
 
-# function to extract filelists from defs.bzl file
+# function to extract filelists from libkineto_defs.bzl file
 find_package(PythonInterp)
 function(get_filelist name outputvar)
   execute_process(
     COMMAND "${PYTHON_EXECUTABLE}" -c
-            "exec(open('defs.bzl').read());print(';'.join(${name}))"
+            "exec(open('libkineto_defs.bzl').read());print(';'.join(${name}))"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     OUTPUT_VARIABLE _tempvar)
   string(REPLACE "\n" "" _tempvar "${_tempvar}")
@@ -39,18 +39,14 @@ endif()
 get_filelist("get_libkineto_srcs()" LIBKINETO_SRCS)
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
 set(LIBKINETO_API_SRCS "${LIBKINETO_SOURCE_DIR}/external_api.cpp")
-set(FMT_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/fmt/include")
-set(CUPTI_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/cupti/include")
-set(CUDA_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/cuda-9.2/include")
 
-message(INFO " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
 
 add_library(kineto_base OBJECT ${LIBKINETO_SRCS})
 add_library(kineto_api OBJECT ${LIBKINETO_API_SRCS})
 
-# Make libraries depend on defs.bzl
-add_custom_target(defs.bzl DEPENDS defs.bzl)
-add_dependencies(kineto_base defs.bzl)
+# Make libraries depend on libkineto_defs.bzl
+add_custom_target(libkineto_defs.bzl DEPENDS libkineto_defs.bzl)
+add_dependencies(kineto_base libkineto_defs.bzl)
 
 set_target_properties(kineto_base kineto_api PROPERTIES
       CXX_STANDARD 14
@@ -63,8 +59,7 @@ target_compile_options(kineto_base PRIVATE "-DKINETO_NAMESPACE=libkineto"
 target_compile_options(kineto_api PRIVATE "-std=gnu++14")
 
 if(NOT TARGET fmt)
-  #Download fmt from github if FMT_SOURCE_DIR is not specified.
-  if(NOT DEFINED FMT_SOURCE_DIR)
+  if(NOT FMT_SOURCE_DIR)
     set(FMT_SOURCE_DIR "${LIBKINETO_THIRDPARTY_DIR}/fmt"
       CACHE STRING "fmt source directory from submodules")
   endif()
@@ -75,11 +70,25 @@ if(NOT TARGET fmt)
   set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
+set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
+if (NOT CUDA_SOURCE_DIR)
+    set(CUDA_SOURCE_DIR "$ENV{CUDA_SOURCE_DIR}")
+    message(INFO " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
+endif()
+if (NOT CUPTI_INCLUDE_DIR)
+    set(CUPTI_INCLUDE_DIR "${CUDA_SOURCE_DIR}/extras/CUPTI/include")
+endif()
+if (NOT CUDA_INCLUDE_DIRS)
+    set(CUDA_INCLUDE_DIRS "${CUDA_SOURCE_DIR}/include")
+endif()
+
+message(INFO " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
+
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${CUPTI_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${CUDA_INCLUDE_DIR}>)
+      $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>)
 
 target_include_directories(kineto_api PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>)

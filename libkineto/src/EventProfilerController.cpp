@@ -104,7 +104,7 @@ EventProfilerController::~EventProfilerController() {
     stopRunloop_ = true;
     profilerThread_->join();
   }
-  VLOG(0) << "Stopped activity profiler";
+  VLOG(0) << "Stopped event profiler";
 }
 
 // Profiler map singleton

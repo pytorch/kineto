@@ -31,12 +31,12 @@
 
 #include <cupti.h>
 
-#include "ActivityProfilerController.h"
+#include "ActivityProfilerProxy.h"
 #include "Config.h"
 #include "ConfigLoader.h"
 #include "EventProfilerController.h"
 #include "cupti_call.h"
-#include "external_api.h"
+#include "libkineto.h"
 
 #include "Logger.h"
 
@@ -48,7 +48,7 @@ static bool loadedByCuda = false;
 static void initProfilers(CUcontext ctx) {
   std::lock_guard<std::mutex> lock(initMutex);
   if (!initialized) {
-    ActivityProfilerController::init(/* cpuOnly */ false);
+    libkineto::api().initProfilerIfRegistered();
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }
@@ -127,19 +127,12 @@ static void libkineto_init(void) {
     return;
   }
 
-  // notify the external_api libkineto is loaded, so that we'll attach
-  // observer to the network.
-  // Pass in activity profiler initializer, used to lazily start
-  // the activity profiler and config reader threads.
-  // It's risky to start them here, since they may use glog and other
-  // functionality that needs explicit initialization.
-  libkineto::external_api::setLoaded([status] {
-    auto config = ConfigLoader::instance().getConfigCopy();
-    if (config->activityProfilerEnabled()) {
-      bool cpu_only = (status != CUPTI_SUCCESS);
-      ActivityProfilerController::init(cpu_only);
-    }
-  });
+  // Register activity profiler with libkineto API.
+  // The profiler will be start up lazily either when a client tracer is
+  // registered or when a CUDA context is created.
+  bool cpu_only = (status != CUPTI_SUCCESS);
+  libkineto::api().registerProfiler(
+      std::make_unique<ActivityProfilerProxy>(cpu_only));
 }
 
 #define CONCAT(a, b) a##b

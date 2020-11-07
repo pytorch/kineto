@@ -7,15 +7,19 @@
 
 #pragma once
 
-#include "CuptiActivityType.h"
+#include "ActivityType.h"
+#include "CuptiActivityBuffer.h"
 
 #include <atomic>
 #include <cupti.h>
 #include <functional>
-#include <queue>
+#include <list>
+#include <memory>
 #include <set>
 
 namespace KINETO_NAMESPACE {
+
+using namespace libkineto;
 
 class CuptiActivityInterface {
  public:
@@ -34,7 +38,11 @@ class CuptiActivityInterface {
     const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
+  void addActivityBuffer(uint8_t* buffer, size_t validSize);
+  std::unique_ptr<std::list<CuptiActivityBuffer>> activityBuffers();
+
   const std::pair<int, int> processActivities(
+      std::list<CuptiActivityBuffer>& buffers,
       std::function<void(const CUpti_Activity*)> handler);
 
   bool hasActivityBuffer() {
@@ -43,9 +51,8 @@ class CuptiActivityInterface {
 
   void setMaxBufferSize(int size);
 
-  std::atomic_bool stopCollection;
+  std::atomic_bool stopCollection{false};
   int64_t flushOverhead{0};
-  std::queue<std::pair<size_t, uint8_t*>> gpuTraceQueue;
 
  protected:
   CuptiActivityInterface() {}
@@ -66,6 +73,7 @@ class CuptiActivityInterface {
 
   int maxGpuBufferCount_{0};
   int allocatedGpuBufferCount{0};
+  std::unique_ptr<std::list<CuptiActivityBuffer>> gpuTraceBuffers_;
 };
 
 } // namespace KINETO_NAMESPACE

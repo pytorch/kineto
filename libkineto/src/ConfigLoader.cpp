@@ -12,6 +12,8 @@
 #include <chrono>
 #include <fstream>
 
+#include "libkineto.h"
+#include "ActivityProfilerProxy.h"
 #include "DaemonConfigLoader.h"
 
 #include "Logger.h"
@@ -20,6 +22,8 @@ using namespace std::chrono;
 using std::string;
 
 namespace KINETO_NAMESPACE {
+
+using namespace libkineto;
 
 const string kConfigFileEnvVar = "KINETO_CONFIG";
 const string kConfigFile = "/etc/libkineto.conf";
@@ -98,7 +102,7 @@ void ConfigLoader::setDaemonConfigLoaderFactory(
 }
 
 ConfigLoader& ConfigLoader::instance() {
-  static ConfigLoader config_loader;
+  static ConfigLoader config_loader(libkineto::api());
   return config_loader;
 }
 
@@ -110,7 +114,7 @@ std::string ConfigLoader::readOnDemandConfigFromDaemon(
   }
   bool events =
       now > onDemandEventProfilerConfig_->eventProfilerOnDemandEndTime();
-  bool activities = !activityProfilerBusy_;
+  bool activities = !libkinetoApi_.activityProfiler().isActive();
   return daemonConfigLoader_->readOnDemandConfig(events, activities);
 }
 
@@ -122,9 +126,9 @@ int ConfigLoader::contextCountForGpu(uint32_t device) {
   return daemonConfigLoader_->gpuContextCount(device);
 }
 
-ConfigLoader::ConfigLoader()
-    : onDemandEventProfilerConfig_(new Config()),
-      onDemandActivityProfilerConfig_(new Config()),
+ConfigLoader::ConfigLoader(LibkinetoApi& api)
+    : libkinetoApi_(api),
+      onDemandEventProfilerConfig_(new Config()),
       configUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
       onDemandConfigUpdateIntervalSecs_(kOnDemandConfigUpdateIntervalSecs),
       stopFlag_(false),
@@ -144,6 +148,7 @@ ConfigLoader::ConfigLoader()
 }
 
 ConfigLoader::~ConfigLoader() {
+  LOG(INFO) << "Destroying ConfigLoader";
   if (updateThread_) {
     stopFlag_ = true;
     {
@@ -194,12 +199,12 @@ void ConfigLoader::configureFromSignal(
   // Initiate a trace by default, even when not specified in the config.
   // Set trace duration and iterations to 0 to suppress.
   config.updateActivityProfilerRequestReceivedTime();
-  if (!activityProfilerBusy_) {
-    LOG(INFO) << "Starting on-demand activity profiling from signal";
-    std::lock_guard<std::mutex> lock(configLock_);
-    onDemandActivityProfilerConfig_ = config.clone();
-  } else {
-    LOG(ERROR) << "Activity profiler is busy";
+  try {
+    auto& profiler = dynamic_cast<ActivityProfilerProxy&>(
+        libkinetoApi_.activityProfiler());
+    profiler.scheduleTrace(config);
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Failed to schedule profiler request (busy?)";
   }
 }
 
@@ -214,9 +219,15 @@ void ConfigLoader::configureFromDaemon(
     std::lock_guard<std::mutex> lock(configLock_);
     onDemandEventProfilerConfig_ = config.clone();
   }
-  if (activityProfilerRequest(config)) {
-    std::lock_guard<std::mutex> lock(configLock_);
-    onDemandActivityProfilerConfig_ = config.clone();
+  if (config_.activityProfilerEnabled() &&
+      config.activityProfilerRequestReceivedTime() > now) {
+    try {
+      auto& profiler = dynamic_cast<ActivityProfilerProxy&>(
+          libkinetoApi_.activityProfiler());
+      profiler.scheduleTrace(config);
+    } catch (const std::exception& e) {
+      LOG(ERROR) << "Failed to schedule profiler request (busy?)";
+    }
   }
 }
 
@@ -277,18 +288,6 @@ bool ConfigLoader::hasNewEventProfilerOnDemandConfig(const Config& oldConfig) {
   std::lock_guard<std::mutex> lock(configLock_);
   return onDemandEventProfilerConfig_->eventProfilerOnDemandStartTime() >
       oldConfig.eventProfilerOnDemandStartTime();
-}
-
-bool ConfigLoader::hasNewActivityProfilerOnDemandConfig(
-    const Config& oldConfig) {
-  std::lock_guard<std::mutex> lock(configLock_);
-  return onDemandActivityProfilerConfig_
-             ->activityProfilerRequestReceivedTime() >
-      oldConfig.activityProfilerRequestReceivedTime();
-}
-
-void ConfigLoader::setActivityProfilerBusy(bool busy) {
-  activityProfilerBusy_ = busy;
 }
 
 } // namespace KINETO_NAMESPACE

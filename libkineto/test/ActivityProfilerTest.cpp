@@ -11,7 +11,7 @@
 #include <time.h>
 #include <chrono>
 
-#include "include/external_api.h"
+#include "include/libkineto.h"
 #include "src/ActivityProfiler.h"
 #include "src/Config.h"
 #include "src/CuptiActivityInterface.h"
@@ -43,7 +43,8 @@ TEST(ActivityProfiler, PyTorchTrace) {
 
   auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
   auto now = system_clock::now();
-  profiler.configure(cfg, std::move(logger), now);
+  profiler.configure(cfg, now);
+  profiler.setLogger(logger.get());
 
   EXPECT_TRUE(profiler.isActive());
 
@@ -66,7 +67,6 @@ TEST(ActivityProfiler, PyTorchTrace) {
   profiler.performRunLoopStep(next, next);
 
   // Assert that tracing has completed
-  EXPECT_FALSE(external_api::profileRequestActive());
   EXPECT_FALSE(profiler.isActive());
 
   // Check that the expected file was written and that it has some content

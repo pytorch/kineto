@@ -14,81 +14,54 @@
 #include <unordered_map>
 
 #include <cupti.h>
-#include "external_api.h"
+#include "ActivityBuffers.h"
+#include "ClientTraceActivity.h"
+#include "CuptiActivity.h"
+#include "ProcessInfo.h"
+#include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
+  class Config;
+  class RuntimeActivity;
+  class GpuKernelActivity;
+}
 
-class Config;
+namespace libkineto {
+
+using namespace KINETO_NAMESPACE;
 
 class ActivityLogger {
  public:
   virtual ~ActivityLogger() = default;
 
-  // Handle any configuration before staring the trace
-  virtual void configure(const Config& config) = 0;
-
-  virtual void handleProcessName(
-      pid_t pid,
-      const std::string& processName,
-      const std::string& label,
+  virtual void handleProcessInfo(
+      const ProcessInfo& processInfo,
       uint64_t time) = 0;
 
-  virtual void
-  handleThreadName(uint32_t tid, const std::string& label, uint64_t time) = 0;
+  virtual void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) = 0;
 
-  virtual void handleNetCPUSpan(
-      int netId,
-      const std::string& netName,
-      int iteration,
-      int opCount,
-      int gpuOpCount,
-      uint64_t startTime,
-      uint64_t stopTime) = 0;
+  virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
-  virtual void handleNetGPUSpan(
-      int netId,
-      const std::string& netName,
-      int iteration,
-      uint64_t startTime,
-      uint64_t stopTime) = 0;
-
-  virtual void handleIterationStart(
-      const std::string& netName,
-      int64_t time,
-      uint32_t tid) = 0;
+  virtual void handleIterationStart(const TraceSpan& span) = 0;
 
   virtual void handleCpuActivity(
-      const std::string& netName,
-      int netIteration,
-      const libkineto::external_api::OpDetails& activity) = 0;
+      const libkineto::ClientTraceActivity& activity,
+      const TraceSpan& span) = 0;
 
-  virtual void handleRuntimeActivity(
-      const CUpti_ActivityAPI* activity,
-      const libkineto::external_api::OpDetails& ext) = 0;
+  virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
 
   virtual void handleGpuActivity(
-      const CUpti_ActivityKernel4* kernel,
-      const libkineto::external_api::OpDetails& ext,
-      int smCount) = 0;
-
+      const GpuActivity<CUpti_ActivityKernel4>& activity) = 0;
   virtual void handleGpuActivity(
-      const CUpti_ActivityMemcpy* memcpy,
-      const libkineto::external_api::OpDetails& ext) = 0;
-
+      const GpuActivity<CUpti_ActivityMemcpy>& activity) = 0;
   virtual void handleGpuActivity(
-      const CUpti_ActivityMemcpy2* memcpy,
-      const libkineto::external_api::OpDetails& ext) = 0;
-
+      const GpuActivity<CUpti_ActivityMemcpy2>& activity) = 0;
   virtual void handleGpuActivity(
-      const CUpti_ActivityMemset* memset,
-      const libkineto::external_api::OpDetails& ext) = 0;
+      const GpuActivity<CUpti_ActivityMemset>& activity) = 0;
 
-  // Create a flow event to an external event
-  virtual void handleLinkStart(const CUpti_ActivityAPI* activity) = 0;
-  virtual void
-  handleLinkEnd(uint32_t id, int device, int stream, uint64_t tsUsecs) = 0;
-
-  virtual void finalizeTrace(const Config& config) = 0;
+  virtual void finalizeTrace(
+      const KINETO_NAMESPACE::Config& config,
+      std::unique_ptr<ActivityBuffers> buffers) = 0;
 
  protected:
   ActivityLogger() = default;

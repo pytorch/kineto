@@ -7,14 +7,15 @@
 
 #pragma once
 
-namespace KINETO_NAMESPACE {
+namespace libkineto {
 
 enum class ActivityType {
-    MEMCPY,
-    MEMSET,
+    CPU_OP,
+    GPU_MEMCPY,
+    GPU_MEMSET,
     CONCURRENT_KERNEL,
     EXTERNAL_CORRELATION,
-    RUNTIME
+    CUDA_RUNTIME
 };
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto

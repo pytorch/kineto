@@ -7,10 +7,15 @@
 
 #pragma once
 
-#include <cupti.h>
+#include <chrono>
 
 namespace libkineto {
 
-const char* runtimeCbidName(CUpti_CallbackId cbid);
+inline int64_t timeSinceEpoch(
+      const std::chrono::time_point<std::chrono::high_resolution_clock>& t) {
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+               t.time_since_epoch())
+        .count();
+}
 
 } // namespace libkineto

@@ -10,8 +10,10 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cupti.h>
 #include <list>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -20,14 +22,13 @@
 #include <unordered_set>
 #include <vector>
 
-#include <cupti.h>
-
 #include "ThreadName.h"
-#include "external_api.h"
+#include "TraceSpan.h"
+#include "libkineto.h"
+#include "output_base.h"
 
 namespace KINETO_NAMESPACE {
 
-class ActivityLogger;
 class Config;
 class CuptiActivityInterface;
 
@@ -50,50 +51,67 @@ class ActivityProfiler {
       const std::chrono::time_point<std::chrono::system_clock>& now,
       const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime);
 
-  // Set up profiler as specified in config.
-  void configure(
-      Config& config,
-      std::unique_ptr<ActivityLogger> logger,
+  // Used for async requests
+  void setLogger(ActivityLogger* logger) {
+    logger_ = logger;
+  }
+
+  // Explicit control
+  // FIXME: Refactor out profiler loop
+  void startTrace(
+      const std::chrono::time_point<std::chrono::system_clock>& now) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    startTraceUnlocked(now);
+  }
+
+  void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    stopTraceUnlocked(now);
+  }
+
+  // Process CPU and GPU traces
+  void processTrace(ActivityLogger& logger);
+
+  void cancelTrace(
       const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  // Registered with external API to pass CPU trace events over
+  void resetTrace();
+
+  // Set up profiler as specified in config.
+  void configure(
+      const Config& config,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
+
+  // Registered with client API to pass CPU trace events over
   void transferCpuTrace(
-      std::unique_ptr<libkineto::external_api::CpuTraceBuffer> cpuTrace);
+      std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 
   // Registered with external API so that CPU-side tracer can filter which nets
   // to trace
-  bool applyNetFilter(const std::string& name);
+  bool applyNetFilter(const std::string& name) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    return applyNetFilterUnlocked(name);
+  }
+
+  bool applyNetFilterUnlocked(const std::string& name);
+
+  Config& config() {
+    return *config_;
+  }
 
  private:
   class ExternalEventMap {
    public:
-    const libkineto::external_api::OpDetails& operator[](uint32_t id) {
-      auto* res = events_[correlationMap_[id]];
-      if (res == nullptr) {
-        // Entry may be missing because cpu trace hasn't been processed yet
-        // Insert a dummy element so that we can check for this in insertEvent
-        static const libkineto::external_api::OpDetails nullOp_{};
-        events_[correlationMap_[id]] = &nullOp_;
-        res = &nullOp_;
-      }
-      return *res;
-    }
-
-    void insertEvent(const libkineto::external_api::OpDetails* op);
+    const libkineto::ClientTraceActivity& operator[](uint32_t id);
+    void insertEvent(const libkineto::ClientTraceActivity* op);
 
     void addCorrelation(uint64_t external_id, uint32_t cuda_id) {
       correlationMap_[cuda_id] = external_id;
     }
 
-    void addTraceData(
-        std::unique_ptr<libkineto::external_api::CpuTraceBuffer> cpuTrace) {
-      cpuTraces_.push_back(std::move(cpuTrace));
-    }
-
     void clear() {
       events_.clear();
       correlationMap_.clear();
-      cpuTraces_.clear();
     }
 
    private:
@@ -102,7 +120,7 @@ class ActivityProfiler {
     // but this class also fully owns the objects it is pointing to so
     // it's not so bad. This is done for performance reasons and is an
     // implementation detail of this class that might change.
-    std::unordered_map<uint64_t, const libkineto::external_api::OpDetails*>
+    std::unordered_map<uint64_t, const libkineto::ClientTraceActivity*>
         events_;
 
     // Cuda correlation id -> external correlation id
@@ -114,13 +132,6 @@ class ActivityProfiler {
         uint32_t, // Cuda correlation ID
         uint64_t> // External correlation ID
         correlationMap_;
-
-    // Processed traces go here - they are kept around since pointers to
-    // the elements are stored in the event map and are accessed when the
-    // GPU trace is processed at some later time. Once we know it's safe,
-    // these are deleted.
-    std::vector<std::unique_ptr<libkineto::external_api::CpuTraceBuffer>>
-        cpuTraces_;
   };
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
@@ -129,58 +140,60 @@ class ActivityProfiler {
     int cntr;
   };
 
-  // Stop tracing
-  void endTrace();
+  void startTraceUnlocked(
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  // Compress and upload the trace to Manifold if configured
-  void finalizeTrace(const Config& config);
+  void stopTraceUnlocked(
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  // Process the CPU and GPU traces in the queue, start merging them if we can
-  void processTraces();
+  void finalizeTrace(const Config& config, ActivityLogger& logger);
 
   // Process a single CPU trace
   void processCpuTrace(
-      int instance,
-      std::unique_ptr<libkineto::external_api::CpuTraceBuffer> cpuTrace,
+      libkineto::CpuTraceBuffer& cpuTrace,
+      ActivityLogger& logger,
       bool logNet);
 
   bool inline passesGpuOpCountThreshold(
-      const libkineto::external_api::CpuTraceBuffer& cpuTrace) {
+      const libkineto::CpuTraceBuffer& cpuTrace) {
     return cpuOnly_ || cpuTrace.gpuOpCount < 0 ||
         cpuTrace.gpuOpCount >= netGpuOpCountThreshold_;
   }
 
+  // Record client trace span for subsequent lookups from activities
+  // Also creates a corresponding GPU-side span.
+  using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
+  CpuGpuSpanPair& recordTraceSpan(TraceSpan& span, int gpuOpCount);
+
   // Returns true if net name is to be tracked for a specified number of
   // iterations.
   bool iterationTargetMatch(
-      const libkineto::external_api::CpuTraceBuffer& trace);
+      const libkineto::CpuTraceBuffer& trace);
 
   // net name to id
   int netId(const std::string& netName);
 
   // Process generic CUPTI activity
-  void handleCuptiActivity(const CUpti_Activity* record);
+  void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
 
   // Process specific GPU activity types
-  void updateGpuNetSpan(
-      uint64_t startUsecs,
-      uint64_t endUsecs,
-      const libkineto::external_api::OpDetails& ext);
-  bool outOfRange(uint64_t startNsecs, uint64_t endNsecs);
+  void updateGpuNetSpan(const TraceActivity& gpuOp);
+  bool outOfRange(const TraceActivity& act);
   void handleCorrelationActivity(
       const CUpti_ActivityExternalCorrelation* correlation);
-  void handleRuntimeActivity(const CUpti_ActivityAPI* activity);
-  void handleGpuActivity(const CUpti_ActivityKernel4* kernel);
+  void handleRuntimeActivity(
+      const CUpti_ActivityAPI* activity, ActivityLogger* logger);
+  void handleGpuActivity(const TraceActivity& act, ActivityLogger* logger);
   template <class T>
-  void handleGpuActivity(const T* act, const char* name);
+  void handleGpuActivity(const T* act, ActivityLogger* logger);
 
   // Is logging disabled for this event?
   // Logging can be disabled due to operator count, net name filter etc.
-  inline bool loggingDisabled(const libkineto::external_api::OpDetails& event) {
-    const auto& it = opNetMap_.find(event.correlationId);
-    return it != opNetMap_.end() &&
-        externalDisabledNets_.find(it->second.net) !=
-        externalDisabledNets_.end();
+  inline bool loggingDisabled(const libkineto::TraceActivity& act) {
+    const auto& it = clientActivityTraceMap_.find(act.correlationId());
+    return it != clientActivityTraceMap_.end() &&
+        disabledTraceSpans_.find(it->second->first.name) !=
+        disabledTraceSpans_.end();
   }
 
   inline void recordThreadName(pthread_t pthreadId) {
@@ -189,11 +202,7 @@ class ActivityProfiler {
     }
   }
 
-  void resetTraceData() {
-    externalEvents_.clear();
-    externalDisabledNets_.clear();
-    gpuNetSpanMap_.clear();
-  }
+  void resetTraceData();
 
   void addOverheadSample(profilerOverhead& counter, int64_t overhead) {
     counter.overhead += overhead;
@@ -209,8 +218,8 @@ class ActivityProfiler {
   // On-demand request configuration
   std::unique_ptr<Config> config_;
 
-  // Logger that dumps all the activities to a json file.
-  std::unique_ptr<ActivityLogger> logger_;
+  // Logger used during trace processing
+  ActivityLogger* logger_;
 
   // Calls to CUPTI is encapsulated behind this interface
   CuptiActivityInterface& cupti_;
@@ -227,24 +236,25 @@ class ActivityProfiler {
   std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
 
   ExternalEventMap externalEvents_;
-  std::unordered_map<std::string, int> netIdMap_;
 
-  // Maintain a map of operator to net.
-  // Also keep track of which iteration of a net an operator belongs to.
-  struct NetId {
-    int net;
-    int instance;
-  };
-  std::unordered_map<uint64_t, NetId> opNetMap_;
-  std::vector<std::string> netNames_;
+  // All recorded trace spans, both CPU and GPU
+  // Trace Id -> list of iterations.
+  // Using map of lists for the iterator semantics, since we are recording
+  // pointers to the elements in this structure.
+  std::map<std::string, std::list<CpuGpuSpanPair>> traceSpans_;
+
+  // Maintain a map of client trace activity to trace span.
+  // Maps correlation id -> TraceSpan* held by traceSpans_.
+  std::unordered_map<int64_t, CpuGpuSpanPair*> clientActivityTraceMap_;
+
+  // Cache thread names for pthread ids
   std::unordered_map<uint64_t, std::string> threadNames_;
-  // Which net ids are disabled. Together with the operator -> net id map
+
+  // Which trace spans are disabled. Together with the operator -> net id map
   // this allows us to determine whether a GPU or CUDA API event should
   // be included in the trace.
   // If a CUDA event cannot be mapped to a net it will always be included.
-  std::unordered_set<int> externalDisabledNets_;
-  std::unordered_map<int, std::vector<std::pair<uint64_t, uint64_t>>>
-      gpuNetSpanMap_;
+  std::unordered_set<std::string> disabledTraceSpans_;
 
   // the overhead to flush the activity buffer
   profilerOverhead flushOverhead_;
@@ -288,13 +298,9 @@ class ActivityProfiler {
   // Needs to be atomic since it's set from a different thread.
   std::atomic_bool stopCollection_{false};
 
-  // the queue to store CPU traces;
-  // multiple producers -- transferCpuTrace
-  // single consumer -- profilerLoop
-  std::queue<std::pair<
-      int, // instance
-      std::unique_ptr<libkineto::external_api::CpuTraceBuffer>>>
-      cpuTraceQueue_;
+  // Buffers where trace data is stored
+  std::unique_ptr<ActivityBuffers> traceBuffers_;
+
 };
 
 } // namespace KINETO_NAMESPACE

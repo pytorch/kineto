@@ -192,7 +192,15 @@ void EventProfilerController::profilerLoop() {
     }
 
     if (reconfigure) {
-      profiler_->configure(*config, *on_demand_config);
+      try {
+        profiler_->configure(*config, *on_demand_config);
+      } catch (const std::exception& ex) {
+        LOG(ERROR) << "Encountered error while configuring event profiler: "
+            << ex.what();
+        // Exit profiling entirely when encountering an error here
+        // as it indicates a serious problem or bug.
+        break;
+      }
       now = high_resolution_clock::now();
       next_sample_time = now + profiler_->samplePeriod();
       next_report_time = now + profiler_->reportPeriod();

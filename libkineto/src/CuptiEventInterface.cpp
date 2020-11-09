@@ -64,7 +64,12 @@ uint32_t CuptiEventInterface::instanceCount(CUpti_EventGroup eventGroup) {
 }
 
 void CuptiEventInterface::enableGroupSet(CUpti_EventGroupSet& set) {
-  CUPTI_CALL(cuptiEventGroupSetEnable(&set));
+  CUptiResult res = cuptiEventGroupSetEnable(&set);
+  if (res != CUPTI_SUCCESS) {
+    const char* errstr = nullptr;
+    cuptiGetResultString(res, &errstr);
+    throw std::system_error(EIO, std::generic_category(), errstr);
+  }
 }
 
 void CuptiEventInterface::disableGroupSet(CUpti_EventGroupSet& set) {

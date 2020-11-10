@@ -420,7 +420,7 @@ void ActivityProfiler::startTraceUnlocked(const time_point<system_clock>& now) {
   if (libkineto::api().client()) {
     libkineto::api().client()->start();
   }
-  VLOG(0) << "CollectTrace -> ProcessTrace";
+  VLOG(0) << "Warmup -> CollectTrace";
   currentRunloopState_ = RunloopState::CollectTrace;
 }
 

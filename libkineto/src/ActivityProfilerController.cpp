@@ -31,7 +31,6 @@ ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
-  LOG(INFO) << "Destroying ActivityProfilerController";
   if (profilerThread_) {
     // signaling termination of the profiler loop
     stopRunloop_ = true;

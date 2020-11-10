@@ -8,7 +8,7 @@
 #pragma once
 
 #include "AbstractConfig.h"
-#include "CuptiActivityType.h"
+#include "ActivityType.h"
 
 #include <assert.h>
 #include <chrono>
@@ -19,6 +19,8 @@
 
 namespace KINETO_NAMESPACE {
 
+using namespace libkineto;
+
 class Config : public AbstractConfig {
  public:
   Config();
@@ -27,13 +29,15 @@ class Config : public AbstractConfig {
   Config& operator=(Config&&) = delete;
 
   // Return a full copy including feature config object
-  std::unique_ptr<Config> clone() {
+  std::unique_ptr<Config> clone() const {
     auto cfg = std::unique_ptr<Config>(new Config(*this));
     cloneFeaturesInto(*cfg);
     return cfg;
   }
 
   bool handleOption(const std::string& name, std::string& val) override;
+
+  void setClientDefaults() override;
 
   // Log events to this file
   const std::string& eventLogFile() const {
@@ -47,6 +51,10 @@ class Config : public AbstractConfig {
   // Log activitiy trace to this file
   const std::string& activitiesLogFile() const {
     return activitiesLogFile_;
+  }
+
+  bool activitiesLogToMemory() const {
+    return activitiesLogToMemory_;
   }
 
   // Is profiling enabled for the given device?
@@ -143,6 +151,10 @@ class Config : public AbstractConfig {
   // The types of activities selected in the configuration file
   const std::set<ActivityType>& selectedActivityTypes() const {
     return selectedActivityTypes_;
+  }
+
+  void setSelectedActivityTypes(const std::set<ActivityType>& types) {
+    selectedActivityTypes_ = types;
   }
 
   // Trace for this long
@@ -270,11 +282,11 @@ class Config : public AbstractConfig {
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
-    selectedActivityTypes_.insert(ActivityType::MEMCPY);
-    selectedActivityTypes_.insert(ActivityType::MEMSET);
+    selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
+    selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
     selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
     selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
-    selectedActivityTypes_.insert(ActivityType::RUNTIME);
+    selectedActivityTypes_.insert(ActivityType::CUDA_RUNTIME);
   }
 
   int verboseLogLevel_;
@@ -308,6 +320,9 @@ class Config : public AbstractConfig {
 
   // The activity profiler settings are all on-demand
   std::string activitiesLogFile_;
+
+  // Log activities to memory buffer
+  bool activitiesLogToMemory_{false};
 
   int activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;

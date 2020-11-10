@@ -34,7 +34,18 @@ class AbstractConfig {
   bool parse(const std::string& conf);
 
   // Default setup for signal-triggered profiling
-  virtual void setSignalDefaults() {}
+  virtual void setSignalDefaults() {
+    for (auto& p : featureConfigs_) {
+      p.second->setSignalDefaults();
+    }
+  }
+
+  // Default setup for client-triggered profiling
+  virtual void setClientDefaults() {
+    for (auto& p : featureConfigs_) {
+      p.second->setClientDefaults();
+    }
+  }
 
   // Time config was created / updated
   std::chrono::time_point<std::chrono::system_clock> timestamp() const {

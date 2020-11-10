@@ -9,9 +9,10 @@
 
 #include <chrono>
 
-#include "Logger.h"
 #include "cupti_call.h"
-#include "external_api.h"
+#include "libkineto.h"
+
+#include "Logger.h"
 
 using namespace std::chrono;
 using namespace libkineto;
@@ -91,14 +92,15 @@ void CuptiActivityInterface::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
-
 void CUPTIAPI CuptiActivityInterface::bufferRequested(
     uint8_t** buffer,
     size_t* size,
     size_t* maxNumRecords) {
   if (singleton().allocatedGpuBufferCount > singleton().maxGpuBufferCount_) {
     // Stop profiling if we hit the max allowance
-    external_api::setProfileRequestActive(false);
+    if (libkineto::api().client()) {
+      libkineto::api().client()->stop();
+    }
     singleton().stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << singleton().allocatedGpuBufferCount
@@ -114,6 +116,20 @@ void CUPTIAPI CuptiActivityInterface::bufferRequested(
   *buffer = (uint8_t*) malloc(kBufSize);
 
   singleton().allocatedGpuBufferCount++;
+}
+
+std::unique_ptr<std::list<CuptiActivityBuffer>> CuptiActivityInterface::activityBuffers() {
+  VLOG(1) << "Flushing GPU activity buffers";
+  time_point<high_resolution_clock> t1;
+  if (VLOG_IS_ON(1)) {
+    t1 = high_resolution_clock::now();
+  }
+  CUPTI_CALL(cuptiActivityFlushAll(0));
+  if (VLOG_IS_ON(1)) {
+    flushOverhead =
+        duration_cast<microseconds>(high_resolution_clock::now() - t1).count();
+  }
+  return std::move(gpuTraceBuffers_);
 }
 
 int CuptiActivityInterface::processActivitiesForBuffer(
@@ -132,42 +148,33 @@ int CuptiActivityInterface::processActivitiesForBuffer(
 }
 
 const std::pair<int, int> CuptiActivityInterface::processActivities(
+    std::list<CuptiActivityBuffer>& buffers,
     std::function<void(const CUpti_Activity*)> handler) {
-  VLOG(0) << "Flushing GPU activity buffers";
-  time_point<high_resolution_clock> t1;
-  if (VLOG_IS_ON(1)) {
-    t1 = high_resolution_clock::now();
-  }
-  CUPTI_CALL(cuptiActivityFlushAll(0));
-  if (VLOG_IS_ON(1)) {
-    flushOverhead =
-        duration_cast<microseconds>(high_resolution_clock::now() - t1).count();
-  }
-
-  int count = 0;
-  int bytes = 0;
-  while (!gpuTraceQueue.empty()) {
-    VLOG(1) << "Processing GPU buffer";
+  std::pair<int, int> res{0, 0};
+  for (auto& buf : buffers) {
     // No lock needed - only accessed from this thread
-    auto gpu_trace = gpuTraceQueue.front();
-    gpuTraceQueue.pop();
-    bytes += gpu_trace.first;
-    count += processActivitiesForBuffer(
-        gpu_trace.second, gpu_trace.first, handler);
-    free(gpu_trace.second);
+    res.first += processActivitiesForBuffer(buf.data, buf.validSize, handler);
+    res.second += buf.validSize;
   }
-
-  return {count, bytes};
+  return res;
 }
 
 void CuptiActivityInterface::clearActivities() {
   CUPTI_CALL(cuptiActivityFlushAll(0));
-  while (!gpuTraceQueue.empty()) {
-    // FIXME: We might want to make sure we reuse
-    // the same memory during warmup and tracing.
-    free(gpuTraceQueue.front().second);
-    gpuTraceQueue.pop();
+  // FIXME: We might want to make sure we reuse
+  // the same memory during warmup and tracing.
+  // Also, try to use the amount of memory required
+  // for active tracing during warmup.
+  if (gpuTraceBuffers_) {
+    gpuTraceBuffers_->clear();
   }
+}
+
+void CuptiActivityInterface::addActivityBuffer(uint8_t* buffer, size_t validSize) {
+  if (!gpuTraceBuffers_) {
+    gpuTraceBuffers_ = std::make_unique<std::list<CuptiActivityBuffer>>();
+  }
+  gpuTraceBuffers_->emplace_back(buffer, validSize);
 }
 
 void CUPTIAPI CuptiActivityInterface::bufferCompleted(
@@ -178,10 +185,10 @@ void CUPTIAPI CuptiActivityInterface::bufferCompleted(
     size_t validSize) {
   singleton().allocatedGpuBufferCount--;
 
-  // lock should be uncessary here, because gpuTraceQueue is read/written by
+  // lock should be uncessary here, because gpuTraceBuffers is read/written by
   // profilerLoop only. CUPTI should handle the cuptiActivityFlushAll and
   // bufferCompleted, so that there is no concurrency issues
-  singleton().gpuTraceQueue.push(std::make_pair(validSize, buffer));
+  singleton().addActivityBuffer(buffer, validSize);
 
   // report any records dropped from the queue; to avoid unnecessary cupti
   // API calls, we make it report only in verbose mode (it doesn't happen
@@ -204,10 +211,10 @@ void CuptiActivityInterface::enableCuptiActivities(
   }
 
   for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::MEMCPY) {
+    if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
     }
-    if (activity == ActivityType::MEMSET) {
+    if (activity == ActivityType::GPU_MEMSET) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
     }
     if (activity == ActivityType::CONCURRENT_KERNEL) {
@@ -216,7 +223,7 @@ void CuptiActivityInterface::enableCuptiActivities(
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
     }
-    if (activity == ActivityType::RUNTIME) {
+    if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
   }
@@ -228,10 +235,10 @@ void CuptiActivityInterface::enableCuptiActivities(
 void CuptiActivityInterface::disableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
   for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::MEMCPY) {
+    if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
     }
-    if (activity == ActivityType::MEMSET) {
+    if (activity == ActivityType::GPU_MEMSET) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
     }
     if (activity == ActivityType::CONCURRENT_KERNEL) {
@@ -240,7 +247,7 @@ void CuptiActivityInterface::disableCuptiActivities(
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
     }
-    if (activity == ActivityType::RUNTIME) {
+    if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
   }

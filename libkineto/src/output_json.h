@@ -14,86 +14,52 @@
 #include <unordered_map>
 
 #include <cupti.h>
-#include "external_api.h"
+#include "ClientTraceActivity.h"
 #include "output_base.h"
+
+namespace libkineto {
+  class TraceSpan;
+}
 
 namespace KINETO_NAMESPACE {
 
 class Config;
 
-class ChromeTraceLogger : public ActivityLogger {
+class ChromeTraceLogger : public libkineto::ActivityLogger {
  public:
   explicit ChromeTraceLogger(const std::string& traceFileName);
 
-  // Prepare / refresh file
-  void configure(const Config& config) override;
-
   // Note: the caller of these functions should handle concurrency
   // i.e., we these functions are not thread-safe
-  void handleProcessName(
-      pid_t pid,
-      const std::string& processName,
-      const std::string& label,
+  void handleProcessInfo(
+      const ProcessInfo& processInfo,
       uint64_t time) override;
 
-  void handleThreadName(uint32_t tid, const std::string& label, uint64_t time)
-      override;
+  void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) override;
 
-  void handleNetCPUSpan(
-      int netId,
-      const std::string& netName,
-      int iteration,
-      int opCount,
-      int gpuOpCount,
-      uint64_t startTime,
-      uint64_t stopTime) override;
+  void handleTraceSpan(const TraceSpan& span) override;
 
-  void handleNetGPUSpan(
-      int netId,
-      const std::string& netName,
-      int iteration,
-      uint64_t startTime,
-      uint64_t stopTime) override;
-
-  void handleIterationStart(
-      const std::string& netName,
-      int64_t time,
-      uint32_t tid) override;
+  void handleIterationStart(const TraceSpan& span) override;
 
   void handleCpuActivity(
-      const std::string& netName,
-      int netIteration,
-      const libkineto::external_api::OpDetails& activity) override;
+      const libkineto::ClientTraceActivity& activity,
+      const TraceSpan& span) override;
 
   void handleRuntimeActivity(
-      const CUpti_ActivityAPI* activity,
-      const libkineto::external_api::OpDetails& ext) override;
+      const RuntimeActivity& activity) override;
 
-  void handleGpuActivity(
-      const CUpti_ActivityKernel4* kernel,
-      const libkineto::external_api::OpDetails& ext,
-      int smCount) override;
+  void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override;
+  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override;
+  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override;
+  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
 
-  void handleGpuActivity(
-      const CUpti_ActivityMemcpy* memcpy,
-      const libkineto::external_api::OpDetails& ext) override;
-
-  void handleGpuActivity(
-      const CUpti_ActivityMemcpy2* memcpy,
-      const libkineto::external_api::OpDetails& ext) override;
-
-  void handleGpuActivity(
-      const CUpti_ActivityMemset* memset,
-      const libkineto::external_api::OpDetails& ext) override;
-
-  // Create a flow event to an external event
-  void handleLinkStart(const CUpti_ActivityAPI* activity) override;
-  void handleLinkEnd(uint32_t id, int device, int stream, uint64_t tsUsecs)
-      override;
-
-  void finalizeTrace(const Config& config) override;
+  void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers) override;
 
  private:
+  // Create a flow event to an external event
+  void handleLinkStart(const RuntimeActivity& s);
+  void handleLinkEnd(const TraceActivity& e);
+
   void logActivity(const CUpti_Activity* act);
 
   std::string fileName_;
@@ -107,6 +73,9 @@ class ChromeTraceLogger : public ActivityLogger {
 
   // Cache pid to avoid repeated calls to getpid()
   pid_t pid_;
+
+  // Number of SMs on current device
+  int smCount_;
 };
 
 } // namespace KINETO_NAMESPACE

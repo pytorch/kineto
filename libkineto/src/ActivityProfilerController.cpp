@@ -10,10 +10,11 @@
 #include <chrono>
 #include <thread>
 
-#include "ConfigLoader.h"
+#include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
 #include "ThreadName.h"
 #include "output_json.h"
+#include "output_membuf.h"
 
 #include "Logger.h"
 
@@ -22,36 +23,16 @@ using namespace std::chrono;
 namespace KINETO_NAMESPACE {
 
 constexpr milliseconds kDefaultInactiveProfilerIntervalMsecs(1000);
-constexpr milliseconds kDefaultActiveProfilerIntervalMsecs(250);
+constexpr milliseconds kDefaultActiveProfilerIntervalMsecs(200);
 
-void ActivityProfilerController::init(bool cpuOnly) {
-  static ActivityProfilerController instance(ConfigLoader::instance(), cpuOnly);
-}
-
-ActivityProfilerController::ActivityProfilerController(
-    ConfigLoader& config_loader,
-    bool cpuOnly)
-    : configLoader_(config_loader),
-      profiler_(CuptiActivityInterface::singleton(), cpuOnly) {
-  libkineto::external_api::initialize(
-      std::bind(
-          &ActivityProfiler::transferCpuTrace,
-          &profiler_,
-          std::placeholders::_1),
-      cpuOnly ? [](int) {} : CuptiActivityInterface::pushCorrelationID,
-      cpuOnly ? [] {} : CuptiActivityInterface::popCorrelationID,
-      std::bind(
-          &ActivityProfiler::applyNetFilter,
-          &profiler_,
-          std::placeholders::_1));
-
-  // start a profilerLoop() thread to handle trace requests
-  profilerThread_ =
-      new std::thread(&ActivityProfilerController::profilerLoop, this);
+ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
+  profiler_ = std::make_unique<ActivityProfiler>(
+      CuptiActivityInterface::singleton(), cpuOnly);
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
-  if (profilerThread_ != nullptr) {
+  LOG(INFO) << "Destroying ActivityProfilerController";
+  if (profilerThread_) {
     // signaling termination of the profiler loop
     stopRunloop_ = true;
     profilerThread_->join();
@@ -72,6 +53,9 @@ void ActivityProfilerController::setLoggerFactory(
 }
 
 static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
+  if (config.activitiesLogToMemory()) {
+    return std::make_unique<MemoryTraceLogger>(config);
+  }
   if (loggerFactory()) {
     return loggerFactory()(config);
   }
@@ -84,10 +68,8 @@ static milliseconds profilerInterval(bool profilerActive) {
 }
 
 void ActivityProfilerController::profilerLoop() {
-  setThreadName("CUPTI Activity Profiler");
-  VLOG(0) << "Entering activity profiling loop";
-
-  std::unique_ptr<Config> config = std::make_unique<Config>();
+  setThreadName("Kineto Activity Profiler");
+  VLOG(0) << "Entering activity profiler loop";
 
   auto now = system_clock::now();
   auto next_wakeup_time = now + profilerInterval(false);
@@ -100,29 +82,68 @@ void ActivityProfilerController::profilerLoop() {
       std::this_thread::sleep_for(next_wakeup_time - now);
       now = system_clock::now();
     }
-    if (!profiler_.isActive() &&
-        configLoader_.hasNewActivityProfilerOnDemandConfig(*config)) {
-      LOG(INFO) << "Received on-demand activity trace request";
-      config = configLoader_.getActivityProfilerOnDemandConfigCopy();
-      profiler_.configure(*config, makeLogger(*config), now);
+    if (!profiler_->isActive()) {
+      std::lock_guard<std::mutex> lock(asyncConfigLock_);
+      if (asyncRequestConfig_) {
+        LOG(INFO) << "Received on-demand activity trace request";
+        profiler_->configure(*asyncRequestConfig_, now);
+        logger_ = makeLogger(*asyncRequestConfig_);
+        profiler_->setLogger(logger_.get());
+        asyncRequestConfig_ = nullptr;
+      }
     }
-
-    configLoader_.setActivityProfilerBusy(profiler_.isActive());
 
     while (next_wakeup_time < now) {
-      next_wakeup_time += profilerInterval(profiler_.isActive());
+      next_wakeup_time += kDefaultActiveProfilerIntervalMsecs;
     }
 
-    if (profiler_.isActive()) {
-      next_wakeup_time = profiler_.performRunLoopStep(now, next_wakeup_time);
+    if (profiler_->isActive()) {
+      next_wakeup_time = profiler_->performRunLoopStep(now, next_wakeup_time);
+      VLOG(1) << "Profiler loop: "
+          << duration_cast<milliseconds>(system_clock::now() - now).count()
+          << "ms";
+    } else {
+      hasAsyncRequest_ = false;
     }
-
-    VLOG(1) << "Profiler loop: "
-            << duration_cast<milliseconds>(system_clock::now() - now).count()
-            << "ms";
   }
 
   VLOG(0) << "Exited activity profiling loop";
+}
+
+void ActivityProfilerController::scheduleTrace(const Config& config) {
+  std::lock_guard<std::mutex> lock(asyncConfigLock_);
+  asyncRequestConfig_ = config.clone();
+  // start a profilerLoop() thread to handle request
+  if (!profilerThread_) {
+    profilerThread_ =
+        new std::thread(&ActivityProfilerController::profilerLoop, this);
+  }
+}
+
+void ActivityProfilerController::prepareTrace(const Config& config) {
+  // Requests from ActivityProfilerApi have higher priority than
+  // requests from other sources (signal, daemon).
+  // Cancel any ongoing request and refuse new ones.
+  auto now = system_clock::now();
+  if (profiler_->isActive()) {
+    LOG(WARNING) << "Cancelling current trace request in order to start "
+                 << "higher priority synchronous request";
+    profiler_->cancelTrace(now);
+  }
+
+  profiler_->configure(config, now);
+}
+
+std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
+  // FIXME: Move into stopTrace() - but avoid deadlock issue
+  if (libkineto::api().client()) {
+    libkineto::api().client()->stop();
+  }
+  profiler_->stopTrace(std::chrono::system_clock::now());
+  auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
+  profiler_->processTrace(*logger);
+  profiler_->resetTrace();
+  return std::make_unique<ActivityTrace>(std::move(logger));
 }
 
 } // namespace KINETO_NAMESPACE

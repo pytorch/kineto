@@ -16,8 +16,13 @@
 
 #include "Config.h"
 
+namespace libkineto {
+  class LibkinetoApi;
+}
+
 namespace KINETO_NAMESPACE {
 
+using namespace libkineto;
 class DaemonConfigLoader;
 
 class ConfigLoader {
@@ -34,15 +39,8 @@ class ConfigLoader {
     return onDemandEventProfilerConfig_->clone();
   }
 
-  inline std::unique_ptr<Config> getActivityProfilerOnDemandConfigCopy() {
-    std::lock_guard<std::mutex> lock(configLock_);
-    return onDemandActivityProfilerConfig_->clone();
-  }
-
   bool hasNewConfig(const Config& oldConfig);
   bool hasNewEventProfilerOnDemandConfig(const Config& oldConfig);
-  bool hasNewActivityProfilerOnDemandConfig(const Config& oldConfig);
-  void setActivityProfilerBusy(bool busy);
   int contextCountForGpu(uint32_t gpu);
 
   void handleOnDemandSignal();
@@ -51,7 +49,7 @@ class ConfigLoader {
       std::function<std::unique_ptr<DaemonConfigLoader>()> factory);
 
  private:
-  ConfigLoader();
+  explicit ConfigLoader(libkineto::LibkinetoApi& api);
   ~ConfigLoader();
 
   void updateConfigThread();
@@ -73,22 +71,14 @@ class ConfigLoader {
         onDemandEventProfilerConfig_->eventProfilerOnDemandStartTime());
   }
 
-  inline bool activityProfilerRequest(const Config& config) {
-    return (
-        config.activityProfilerEnabled() &&
-        config.activityProfilerRequestReceivedTime() >
-            onDemandActivityProfilerConfig_
-                ->activityProfilerRequestReceivedTime());
-  }
-
   std::string readOnDemandConfigFromDaemon(
       std::chrono::time_point<std::chrono::high_resolution_clock> now);
 
+  LibkinetoApi& libkinetoApi_;
   std::mutex configLock_;
   const char* configFileName_;
   Config config_;
   std::unique_ptr<Config> onDemandEventProfilerConfig_;
-  std::unique_ptr<Config> onDemandActivityProfilerConfig_;
   std::unique_ptr<DaemonConfigLoader> daemonConfigLoader_;
 
   std::chrono::seconds configUpdateIntervalSecs_;
@@ -98,7 +88,6 @@ class ConfigLoader {
   std::mutex updateThreadMutex_;
   std::atomic_bool stopFlag_{false};
   std::atomic_bool onDemandSignal_{false};
-  std::atomic_bool activityProfilerBusy_{false};
 };
 
 } // namespace KINETO_NAMESPACE

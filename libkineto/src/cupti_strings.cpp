@@ -5,9 +5,65 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "cupti_runtime_cbid_names.h"
+#include "cupti_strings.h"
 
 namespace libkineto {
+
+const char* memcpyKindString(
+    CUpti_ActivityMemcpyKind kind) {
+  switch (kind) {
+    case CUPTI_ACTIVITY_MEMCPY_KIND_HTOD:
+      return "HtoD";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_DTOH:
+      return "DtoH";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_HTOA:
+      return "HtoA";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_ATOH:
+      return "AtoH";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_ATOA:
+      return "AtoA";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_ATOD:
+      return "AtoD";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_DTOA:
+      return "DtoA";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_DTOD:
+      return "DtoD";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_HTOH:
+      return "HtoH";
+    case CUPTI_ACTIVITY_MEMCPY_KIND_PTOP:
+      return "PtoP";
+    default:
+      break;
+  }
+  return "<unknown>";
+}
+
+const char* memoryKindString(
+    CUpti_ActivityMemoryKind kind) {
+  switch (kind) {
+    case CUPTI_ACTIVITY_MEMORY_KIND_UNKNOWN:
+      return "Unknown";
+    case CUPTI_ACTIVITY_MEMORY_KIND_PAGEABLE:
+      return "Pageable";
+    case CUPTI_ACTIVITY_MEMORY_KIND_PINNED:
+      return "Pinned";
+    case CUPTI_ACTIVITY_MEMORY_KIND_DEVICE:
+      return "Device";
+    case CUPTI_ACTIVITY_MEMORY_KIND_ARRAY:
+      return "Array";
+    case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED:
+      return "Managed";
+    case CUPTI_ACTIVITY_MEMORY_KIND_DEVICE_STATIC:
+      return "Device Static";
+    case CUPTI_ACTIVITY_MEMORY_KIND_MANAGED_STATIC:
+      return "Managed Static";
+    case CUPTI_ACTIVITY_MEMORY_KIND_FORCE_INT:
+      return "Force Int";
+    default:
+      return "Unrecognized";
+  }
+}
+
 
 static const char* runtimeCbidNames[] = {
     "INVALID",

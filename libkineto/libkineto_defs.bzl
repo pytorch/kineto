@@ -7,6 +7,7 @@ def get_libkineto_srcs():
     return [
         "src/ActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
+        "src/ActivityProfilerProxy.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
         "src/CuptiActivityInterface.cpp",
@@ -18,11 +19,20 @@ def get_libkineto_srcs():
         "src/Logger.cpp",
         "src/ProcessInfo.cpp",
         "src/ThreadName.cpp",
-        "src/cupti_runtime_cbid_names.cpp",
-        "src/libkineto.cpp",
+        "src/cupti_strings.cpp",
+        "src/init.cpp",
+        "src/libkineto_api.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",
     ]
 
 def get_libkineto_public_headers():
-    return ["include/external_api.h"]
+    return [
+        "include/ActivityProfilerInterface.h",
+        "include/ActivityType.h",
+        "include/ClientInterface.h",
+        "include/TraceActivity.h",
+        "include/TraceSpan.h",
+        "include/libkineto.h",
+        "include/time_since_epoch.h",
+    ]

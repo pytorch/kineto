@@ -196,15 +196,15 @@ void Config::addActivityTypes(
       if (activity == "") {
         continue;
       } else if (activity == kActivityMemcpy) {
-        selectedActivityTypes_.insert(ActivityType::MEMCPY);
+        selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
       } else if (activity == kActivityMemset) {
-        selectedActivityTypes_.insert(ActivityType::MEMSET);
+        selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
       } else if (activity == kActivityConcurrentKernel) {
         selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
       } else if (activity == kActivityExternalCorrelation) {
         selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
       } else if (activity == kActivityRuntime) {
-        selectedActivityTypes_.insert(ActivityType::RUNTIME);
+        selectedActivityTypes_.insert(ActivityType::CUDA_RUNTIME);
       } else {
         throw std::invalid_argument(fmt::format(
           "Invalid activity type selected: {}",
@@ -298,6 +298,11 @@ void Config::updateActivityProfilerRequestReceivedTime() {
   activitiesOnDemandTimestamp_ = high_resolution_clock::now();
 }
 
+void Config::setClientDefaults() {
+  AbstractConfig::setClientDefaults();
+  activitiesLogToMemory_ = true;
+}
+
 void Config::validate() {
   if (samplePeriod_.count() == 0) {
     LOG(WARNING) << "Sample period must be greater than 0, setting to 1ms";
@@ -385,10 +390,10 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Enabled activities: ";
   for (const auto& activity : selectedActivityTypes_) {
     switch(activity){
-      case ActivityType::MEMCPY:
+      case ActivityType::GPU_MEMCPY:
         s << kActivityMemcpy << " ";
         break;
-      case ActivityType::MEMSET:
+      case ActivityType::GPU_MEMSET:
         s << kActivityMemset << " ";
         break;
       case ActivityType::CONCURRENT_KERNEL:
@@ -397,7 +402,7 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
       case ActivityType::EXTERNAL_CORRELATION:
         s << kActivityExternalCorrelation << " ";
         break;
-      case ActivityType::RUNTIME:
+      case ActivityType::CUDA_RUNTIME:
         s << kActivityRuntime << " ";
         break;
       default:

@@ -8,6 +8,7 @@
 #include "output_json.h"
 
 #include <fmt/format.h>
+#include <fstream>
 #include <time.h>
 #include <map>
 #include <unistd.h>
@@ -388,8 +389,11 @@ void ChromeTraceLogger::finalizeTrace(
     LOG(ERROR) << "Failed to write to log file!";
     return;
   }
+  // Replace trailing comma with "]"
+  traceOf_.seekp(-1, std::ios_base::cur);
+  traceOf_ << std::endl << "]";
   traceOf_.close();
-  LOG(INFO) << "Chrome Trace written to " << config.activitiesLogFile();
+  LOG(INFO) << "Chrome Trace written to " << fileName_;
 }
 
 } // namespace KINETO_NAMESPACE

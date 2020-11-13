@@ -99,7 +99,8 @@ class MemoryTraceLogger : public ActivityLogger {
     for (auto& it : iterationList_) {
       logger.handleIterationStart(it);
     }
-    finalizeTrace(*config_, std::move(buffers_));
+    // Hold on to the buffers
+    logger.finalizeTrace(*config_, nullptr);
   }
 
  private:

@@ -148,7 +148,6 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
 }
 
 ConfigLoader::~ConfigLoader() {
-  LOG(INFO) << "Destroying ConfigLoader";
   if (updateThread_) {
     stopFlag_ = true;
     {

@@ -64,6 +64,14 @@ bool hasConfigEnvVar() {
   return getenv("KINETO_CONFIG") != nullptr;
 }
 
+bool hasGtestEnvVar() {
+  return getenv("GTEST_OUTPUT") != nullptr;
+}
+
+bool hasInjectionPathEnvVar() {
+  return getenv("CUDA_INJECTION64_PATH") != nullptr;
+}
+
 bool hasKnownJobIdEnvVar() {
   // FIXME: Find better way to auto-enable
   // E.g. add FEATURE_AUTO_INIT
@@ -143,8 +151,9 @@ static void libkineto_init(void) {
 // dlopen() will call this function before returning
 __attribute__((constructor)) void libkineto_create(void) {
   // If CUDA_INJECTION64_PATH is set, don't initialize the library
-  // since we're about to load a dynamic version
-  if (getenv("CUDA_INJECTION64_PATH") == nullptr) {
+  // since we're about to load a dynamic version.
+  // Also don't start if this is a unit test.
+  if (!hasInjectionPathEnvVar() && !hasGtestEnvVar()) {
     libkineto_init();
   }
 }

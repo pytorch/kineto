@@ -33,7 +33,7 @@ constexpr milliseconds kDefaultActivitiesProfileDurationMSecs(500);
 constexpr int kDefaultActivitiesExternalAPIIterations(3);
 constexpr int kDefaultActivitiesExternalAPINetSizeThreshold(0);
 constexpr int kDefaultActivitiesExternalAPIGpuOpCountThreshold(0);
-constexpr int kDefaultActivitiesMaxGpuBufferSize(64 * 1024 * 1024);
+constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
 constexpr seconds kDefaultActivitiesWarmupDurationSecs(15);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);

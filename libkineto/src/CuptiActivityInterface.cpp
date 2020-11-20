@@ -10,12 +10,10 @@
 #include <chrono>
 
 #include "cupti_call.h"
-#include "libkineto.h"
 
 #include "Logger.h"
 
 using namespace std::chrono;
-using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
 
@@ -97,10 +95,6 @@ void CUPTIAPI CuptiActivityInterface::bufferRequested(
     size_t* size,
     size_t* maxNumRecords) {
   if (singleton().allocatedGpuBufferCount > singleton().maxGpuBufferCount_) {
-    // Stop profiling if we hit the max allowance
-    if (libkineto::api().client()) {
-      libkineto::api().client()->stop();
-    }
     singleton().stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << singleton().allocatedGpuBufferCount

@@ -39,7 +39,7 @@ bool ActivityProfiler::iterationTargetMatch(
     const libkineto::CpuTraceBuffer& trace) {
   const string& name = trace.span.name;
   bool match = (name == netIterationsTarget_);
-  if (!match && applyNetFilterUnlocked(name) &&
+  if (!match && applyNetFilterInternal(name) &&
       passesGpuOpCountThreshold(trace)) {
     if (netIterationsTarget_.empty()) {
       match = true;
@@ -98,7 +98,7 @@ void ActivityProfiler::transferCpuTrace(
   traceBuffers_->cpu.push_back(std::move(cpuTrace));
 }
 
-bool ActivityProfiler::applyNetFilterUnlocked(const std::string& name) {
+bool ActivityProfiler::applyNetFilterInternal(const std::string& name) {
   if (netNameFilter_.empty()) {
     return true;
   }
@@ -118,7 +118,7 @@ ActivityProfiler::ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
       currentRunloopState_{RunloopState::WaitForRequest},
       stopCollection_{false} {}
 
-void ActivityProfiler::processTrace(ActivityLogger& logger) {
+void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size()
       << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
@@ -128,7 +128,7 @@ void ActivityProfiler::processTrace(ActivityLogger& logger) {
     VLOG(0) << "Processing CPU buffer for " << trace_name << " ("
             << cpu_trace->span.iteration << ") - "
             << cpu_trace->activities.size() << " records";
-    bool log_net = applyNetFilterUnlocked(trace_name) &&
+    bool log_net = applyNetFilterInternal(trace_name) &&
         passesGpuOpCountThreshold(*cpu_trace) &&
         cpu_trace->span.startTime < captureWindowEndTime_ &&
         cpu_trace->span.endTime > captureWindowStartTime_;
@@ -351,6 +351,11 @@ void ActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Activit
 void ActivityProfiler::configure(
     const Config& config,
     const time_point<system_clock>& now) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  if (isActive()) {
+    LOG(ERROR) << "ActivityProfiler already busy, terminating";
+    return;
+  }
   config_ = config.clone();
 
   if (config_->activitiesOnDemandDuration().count() == 0) {
@@ -364,7 +369,6 @@ void ActivityProfiler::configure(
     LOG(INFO) << "GPU-only tracing for "
               << config_->activitiesOnDemandDuration().count() << "ms";
   } else {
-    std::lock_guard<std::mutex> guard(mutex_);
     netNameFilter_ = config_->activitiesOnDemandExternalFilter();
     netGpuOpCountThreshold_ =
         config_->activitiesOnDemandExternalGpuOpCountThreshold();
@@ -373,9 +377,10 @@ void ActivityProfiler::configure(
         config_->activitiesOnDemandExternalNetSizeThreshold());
     netIterationsTargetCount_ = config_->activitiesOnDemandExternalIterations();
 
-    // Ensure we're starting in a clean state
-    resetTraceData();
   }
+
+  // Ensure we're starting in a clean state
+  resetTraceData();
 
   if (!cpuOnly_) {
     // Enabling CUPTI activity tracing incurs a larger perf hit at first,
@@ -397,7 +402,6 @@ void ActivityProfiler::configure(
     }
   }
 
-  std::lock_guard<std::mutex> guard(mutex_);
   profileStartTime_ = (config_->requestTimestamp() + config_->maxRequestAge()) +
       config_->activitiesWarmupDuration();
   if (profileStartTime_ < now) {
@@ -411,11 +415,7 @@ void ActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
-void ActivityProfiler::startTraceUnlocked(const time_point<system_clock>& now) {
-  if (currentRunloopState_ != RunloopState::Warmup) {
-    LOG(ERROR) << "Internal error: invalid runloop state";
-    cancelTrace(now);
-  }
+void ActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
   if (libkineto::api().client()) {
     libkineto::api().client()->start();
@@ -424,13 +424,7 @@ void ActivityProfiler::startTraceUnlocked(const time_point<system_clock>& now) {
   currentRunloopState_ = RunloopState::CollectTrace;
 }
 
-void ActivityProfiler::stopTraceUnlocked(const time_point<system_clock>& now) {
-  if (currentRunloopState_ != RunloopState::CollectTrace) {
-    LOG(WARNING) << "Called stopTrace with state == " <<
-        static_cast<std::underlying_type<RunloopState>::type>(
-            currentRunloopState_.load());
-  }
-
+void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
   if (captureWindowEndTime_ == 0) {
     captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
   }
@@ -446,24 +440,17 @@ void ActivityProfiler::stopTraceUnlocked(const time_point<system_clock>& now) {
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
-  VLOG(0) << "CollectTrace -> ProcessTrace";
+  if (currentRunloopState_ == RunloopState::CollectTrace) {
+    VLOG(0) << "CollectTrace -> ProcessTrace";
+  } else {
+    LOG(WARNING) << "Called stopTrace with state == " <<
+        static_cast<std::underlying_type<RunloopState>::type>(
+            currentRunloopState_.load());
+  }
   currentRunloopState_ = RunloopState::ProcessTrace;
 }
 
-void ActivityProfiler::cancelTrace(const time_point<system_clock>& now) {
-  // FIXME: Move this into stopTrace() - but need to avoid deadlock
-  if (libkineto::api().client()) {
-    libkineto::api().client()->stop();
-  }
-  std::lock_guard<std::mutex> guard(mutex_);
-  stopTraceUnlocked(now);
-  resetTraceData();
-  VLOG(0) << "-> WaitForRequest";
-  currentRunloopState_ = RunloopState::WaitForRequest;
-  LOG(WARNING) << "Trace request cancelled";
-}
-
-void ActivityProfiler::resetTrace() {
+void ActivityProfiler::resetInternal() {
   resetTraceData();
   currentRunloopState_ = RunloopState::WaitForRequest;
 }
@@ -485,8 +472,13 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
 
       if (cupti_.stopCollection) {
         // Go to process trace to clear any outstanding buffers etc
-        cancelTrace(now);
-        currentRunloopState_ = RunloopState::ProcessTrace;
+        if (libkineto::api().client()) {
+          libkineto::api().client()->stop();
+        }
+        std::lock_guard<std::mutex> guard(mutex_);
+        stopTraceInternal(now);
+        resetInternal();
+        VLOG(0) << "Warmup -> WaitForRequest";
       }
 
       if (now >= profileStartTime_) {
@@ -521,11 +513,11 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete";
         // FIXME: Need to communicate reason for stopping on errors
-        // FIXME: Refactor this - deadlock scenarios
         if (libkineto::api().client()) {
           libkineto::api().client()->stop();
         }
-        stopTrace(now);
+        std::lock_guard<std::mutex> guard(mutex_);
+        stopTraceInternal(now);
         VLOG_IF(0, now >= profileEndTime_) << "Reached profile end time";
       } else if (now < profileEndTime_ && profileEndTime_ < nextWakeupTime) {
         new_wakeup_time = profileEndTime_;
@@ -537,8 +529,8 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);
-      processTrace(*logger_);
-      resetTrace();
+      processTraceInternal(*logger_);
+      resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;
   }

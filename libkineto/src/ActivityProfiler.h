@@ -56,26 +56,28 @@ class ActivityProfiler {
     logger_ = logger;
   }
 
-  // Explicit control
-  // FIXME: Refactor out profiler loop
+  // Synchronous control API
   void startTrace(
       const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::mutex> guard(mutex_);
-    startTraceUnlocked(now);
+    startTraceInternal(now);
   }
 
   void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::mutex> guard(mutex_);
-    stopTraceUnlocked(now);
+    stopTraceInternal(now);
   }
 
   // Process CPU and GPU traces
-  void processTrace(ActivityLogger& logger);
+  void processTrace(ActivityLogger& logger) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    processTraceInternal(logger);
+  }
 
-  void cancelTrace(
-      const std::chrono::time_point<std::chrono::system_clock>& now);
-
-  void resetTrace();
+  void reset() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    resetInternal();
+  }
 
   // Set up profiler as specified in config.
   void configure(
@@ -90,10 +92,10 @@ class ActivityProfiler {
   // to trace
   bool applyNetFilter(const std::string& name) {
     std::lock_guard<std::mutex> guard(mutex_);
-    return applyNetFilterUnlocked(name);
+    return applyNetFilterInternal(name);
   }
 
-  bool applyNetFilterUnlocked(const std::string& name);
+  bool applyNetFilterInternal(const std::string& name);
 
   Config& config() {
     return *config_;
@@ -140,11 +142,15 @@ class ActivityProfiler {
     int cntr;
   };
 
-  void startTraceUnlocked(
+  void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  void stopTraceUnlocked(
+  void stopTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
+
+  void processTraceInternal(ActivityLogger& logger);
+
+  void resetInternal();
 
   void finalizeTrace(const Config& config, ActivityLogger& logger);
 

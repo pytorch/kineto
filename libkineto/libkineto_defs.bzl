@@ -5,6 +5,7 @@
 
 def get_libkineto_srcs():
     return [
+        "src/AbstractConfig.cpp",
         "src/ActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",

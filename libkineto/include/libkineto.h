@@ -64,8 +64,12 @@ class LibkinetoApi {
     }
   }
 
-  bool isProfilerInitialized() {
+  bool isProfilerInitialized() const {
     return activityProfiler_ && activityProfiler_->isInitialized();
+  }
+
+  bool isProfilerRegistered() const {
+    return activityProfiler_ != nullptr;
   }
 
   void setNetSizeThreshold(int gpu_ops) {
@@ -95,3 +99,7 @@ class LibkinetoApi {
 LibkinetoApi& api();
 
 } // namespace libkineto
+
+extern "C" {
+void libkineto_init(void);
+}

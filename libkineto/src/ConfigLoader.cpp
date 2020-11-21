@@ -140,7 +140,7 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
   config_.parse(readConfigFromConfigFile(configFileName_));
   SET_VERBOSE_LOG_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
   setupSignalHandler(config_.sigUsr2Enabled());
-  if (daemonConfigLoaderFactory) {
+  if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
   }
   updateThread_ =

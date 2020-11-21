@@ -103,7 +103,7 @@ static void CUPTIAPI callback(
   }
 }
 
-static void libkineto_init(void) {
+void libkineto_init(void) {
   // Can be more verbose when injected dynamically
   LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
   bool enable = hasConfigEnvVar() || hasKnownJobIdEnvVar();

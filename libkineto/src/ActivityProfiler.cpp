@@ -364,7 +364,9 @@ void ActivityProfiler::configure(
         config_->activitiesOnDemandDurationDefault());
   }
 
-  config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
+  if (LOG_IS_ON(INFO)) {
+    config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
+  }
   if (!cpuOnly_ && !libkineto::api().client()) {
     LOG(INFO) << "GPU-only tracing for "
               << config_->activitiesOnDemandDuration().count() << "ms";

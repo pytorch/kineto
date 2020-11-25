@@ -18,8 +18,9 @@
 
 namespace KINETO_NAMESPACE {
 
-int Logger::logLevel_{-1};
-uint64_t Logger::logModules_{~0ull};
+int Logger::severityLevel_{VERBOSE};
+int Logger::verboseLogLevel_{-1};
+uint64_t Logger::verboseLogModules_{~0ull};
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum) {
@@ -60,13 +61,13 @@ Logger::~Logger() {
   buf_.freeze(false);
 }
 
-void Logger::setLogModules(const std::vector<std::string>& modules) {
+void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
   if (modules.empty()) {
-    logModules_ = ~0ull;
+    verboseLogModules_ = ~0ull;
   } else {
-    logModules_ = 0;
+    verboseLogModules_ = 0;
     for (const std::string& name : modules) {
-      logModules_ |= hash(name.c_str());
+      verboseLogModules_ |= hash(name.c_str());
     }
   }
 }

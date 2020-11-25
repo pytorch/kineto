@@ -27,6 +27,11 @@
 #include "ClientTraceActivity.h"
 #include "TraceSpan.h"
 
+extern "C" {
+  void suppressLibkinetoLogMessages();
+  void libkineto_init();
+}
+
 namespace libkineto {
 
 class Config;
@@ -82,6 +87,10 @@ class LibkinetoApi {
     return netSizeThreshold_;
   }
 
+  void suppressLogMessages() {
+    suppressLibkinetoLogMessages();
+  }
+
  private:
 
   // Client is initialized once both it and libkineto has registered
@@ -100,6 +109,3 @@ LibkinetoApi& api();
 
 } // namespace libkineto
 
-extern "C" {
-void libkineto_init(void);
-}

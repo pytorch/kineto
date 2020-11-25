@@ -24,7 +24,8 @@
 
 #include <glog/logging.h>
 
-#define SET_VERBOSE_LOG_LEVEL(level, modules)
+#define SET_LOG_SEVERITY_LEVEL(level)
+#define SET_LOG_VERBOSITY_LEVEL(level, modules)
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
@@ -36,10 +37,10 @@
 
 namespace KINETO_NAMESPACE {
 
+constexpr int VERBOSE = 0;
 constexpr int INFO = 1;
 constexpr int WARNING = 2;
 constexpr int ERROR = 3;
-constexpr int VERBOSE = 4;
 
 class Logger {
  public:
@@ -50,12 +51,20 @@ class Logger {
     return buf_;
   }
 
-  static inline void setLogLevel(int level) {
-    logLevel_ = level;
+  static inline void setSeverityLevel(int level) {
+    severityLevel_ = level;
   }
 
-  static inline int logLevel() {
-    return logLevel_;
+  static inline int severityLevel() {
+    return severityLevel_;
+  }
+
+  static inline void setVerboseLogLevel(int level) {
+    verboseLogLevel_ = level;
+  }
+
+  static inline int verboseLogLevel() {
+    return verboseLogLevel_;
   }
 
   // This is constexpr so that the hash for a file name is computed at compile
@@ -81,18 +90,19 @@ class Logger {
         : s[off] == '/' ? basename(&s[off + 1]) : basename(s, off + 1);
   }
 
-  static void setLogModules(const std::vector<std::string>& modules);
+  static void setVerboseLogModules(const std::vector<std::string>& modules);
 
-  static inline uint64_t logModules() {
-    return logModules_;
+  static inline uint64_t verboseLogModules() {
+    return verboseLogModules_;
   }
 
  private:
   std::strstream buf_;
   std::ostream& out_;
   int errnum_;
-  static int logLevel_;
-  static uint64_t logModules_;
+  static int severityLevel_;
+  static int verboseLogLevel_;
+  static uint64_t verboseLogModules_;
 };
 
 class VoidLogger {
@@ -105,6 +115,7 @@ class VoidLogger {
 
 #ifdef LOG // Undefine in case these are already defined (quite likely)
 #undef LOG
+#undef LOG_IS_ON
 #undef LOG_IF
 #undef LOG_EVERY_N
 #undef LOG_IF_EVERY_N
@@ -124,11 +135,14 @@ class VoidLogger {
 #undef LOG_OCCURRENCES
 #endif
 
-#define LOG(severity) \
-  KINETO_NAMESPACE::Logger(severity, __LINE__, __FILE__).stream()
+#define LOG_IS_ON(severity) \
+  (severity >= KINETO_NAMESPACE::Logger::severityLevel())
 
 #define LOG_IF(severity, condition) \
-  !(condition) ? (void)0 : KINETO_NAMESPACE::VoidLogger() & LOG(severity)
+  !(LOG_IS_ON(severity) && (condition)) ? (void)0 : KINETO_NAMESPACE::VoidLogger() & \
+    KINETO_NAMESPACE::Logger(severity, __LINE__, __FILE__).stream()
+
+#define LOG(severity) LOG_IF(severity, true)
 
 #define LOCAL_VARNAME_CONCAT(name, suffix) _##name##suffix##_
 
@@ -149,8 +163,8 @@ struct __to_constant__ {
   __to_constant__<KINETO_NAMESPACE::Logger::hash( \
       KINETO_NAMESPACE::Logger::basename(__FILE__))>::val
 #define VLOG_IS_ON(verbosity)                           \
-  (KINETO_NAMESPACE::Logger::logLevel() >= verbosity && \
-   (KINETO_NAMESPACE::Logger::logModules() & FILENAME_HASH) == FILENAME_HASH)
+  (KINETO_NAMESPACE::Logger::verboseLogLevel() >= verbosity && \
+   (KINETO_NAMESPACE::Logger::verboseLogModules() & FILENAME_HASH) == FILENAME_HASH)
 
 #define VLOG_IF(verbosity, condition) \
   LOG_IF(VERBOSE, VLOG_IS_ON(verbosity) && (condition))
@@ -165,8 +179,11 @@ struct __to_constant__ {
 #define PLOG(severity) \
   KINETO_NAMESPACE::Logger(severity, __LINE__, __FILE__, errno).stream()
 
-#define SET_VERBOSE_LOG_LEVEL(level, modules)   \
-  KINETO_NAMESPACE::Logger::setLogLevel(level); \
-  KINETO_NAMESPACE::Logger::setLogModules(modules)
+#define SET_LOG_SEVERITY_LEVEL(level) \
+  KINETO_NAMESPACE::Logger::setSeverityLevel(level)
+
+#define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
+  KINETO_NAMESPACE::Logger::setVerboseLogLevel(level); \
+  KINETO_NAMESPACE::Logger::setVerboseLogModules(modules)
 
 #endif // USE_GOOGLE_LOG

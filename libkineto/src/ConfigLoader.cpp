@@ -138,7 +138,7 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
     configFileName_ = kConfigFile.data();
   }
   config_.parse(readConfigFromConfigFile(configFileName_));
-  SET_VERBOSE_LOG_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
+  SET_LOG_VERBOSITY_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
   setupSignalHandler(config_.sigUsr2Enabled());
   if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
@@ -265,14 +265,14 @@ void ConfigLoader::updateConfigThread() {
       LOG(INFO) << "Setting verbose level to "
                 << onDemandConfig->verboseLogLevel()
                 << " from on-demand config";
-      SET_VERBOSE_LOG_LEVEL(
+      SET_LOG_VERBOSITY_LEVEL(
           onDemandConfig->verboseLogLevel(),
           onDemandConfig->verboseLogModules());
       next_log_level_reset_time = now + kOnDemandConfigVerboseLogDurationSecs;
     }
     if (now > next_log_level_reset_time) {
       VLOG(0) << "Resetting verbose level";
-      SET_VERBOSE_LOG_LEVEL(
+      SET_LOG_VERBOSITY_LEVEL(
           config_.verboseLogLevel(), config_.verboseLogModules());
     }
   }

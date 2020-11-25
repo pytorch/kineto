@@ -65,9 +65,12 @@ if(NOT TARGET fmt)
   endif()
 
   #build fmt
+  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
   set(FMT_LIBRARY_TYPE static CACHE STRING "Set lib type to static")
   add_subdirectory("${FMT_SOURCE_DIR}" "${LIBKINETO_BINARY_DIR}/fmt")
   set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS} CACHE BOOL "Build shared libs" FORCE)
 endif()
 
 set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")

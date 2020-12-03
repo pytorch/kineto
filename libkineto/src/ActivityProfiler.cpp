@@ -226,10 +226,6 @@ void ActivityProfiler::ExternalEventMap::insertEvent(
   events_[op->correlationId()] = op;
 }
 
-static uint64_t usecs(uint64_t nsecs) {
-  return nsecs / 1000;
-}
-
 inline bool ActivityProfiler::outOfRange(const TraceActivity& act) {
   return act.timestamp() < captureWindowStartTime_ ||
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
@@ -598,7 +594,7 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
     }
   }
 
-  logger.finalizeTrace(config, std::move(traceBuffers_));
+  logger.finalizeTrace(config, std::move(traceBuffers_), captureWindowEndTime_);
 }
 
 void ActivityProfiler::resetTraceData() {

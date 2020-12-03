@@ -28,13 +28,23 @@ using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
 
+static constexpr int kSchemaVersion = 1;
+
+static void writeHeader(std::ofstream& stream) {
+  stream << fmt::format(R"JSON(
+{{
+  "schemaVersion": {},
+  "traceEvents": [
+  )JSON", kSchemaVersion);
+}
+
 static void openTraceFile(std::string& name, std::ofstream& stream) {
   stream.open(name, std::ofstream::out | std::ofstream::trunc);
   if (!stream) {
     PLOG(ERROR) << "Failed to open '" << name << "'";
   } else {
-    LOG(INFO) << "Logging to " << name;
-    stream << "[" << endl;
+    LOG(INFO) << "Tracing to " << name;
+    writeHeader(stream);
   }
 }
 
@@ -58,7 +68,7 @@ int ChromeTraceLogger::renameThreadID(uint32_t tid) {
   }
 }
 
-static uint64_t us(uint64_t timestamp) {
+static int64_t us(int64_t timestamp) {
   // It's important that this conversion is the same here and in the CPU trace.
   // No rounding!
   return timestamp / 1000;
@@ -171,7 +181,6 @@ void ChromeTraceLogger::handleCpuActivity(
     return;
   }
 
-  uint64_t duration = op.endTime - op.startTime;
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -384,14 +393,23 @@ void ChromeTraceLogger::handleGpuActivity(
 }
 
 void ChromeTraceLogger::finalizeTrace(
-    const Config& config, std::unique_ptr<ActivityBuffers> /*unused*/) {
+    const Config& /*unused*/,
+    std::unique_ptr<ActivityBuffers> /*unused*/,
+    int64_t endTime) {
   if (!traceOf_) {
     LOG(ERROR) << "Failed to write to log file!";
     return;
   }
-  // Replace trailing comma with "]"
-  traceOf_.seekp(-1, std::ios_base::cur);
-  traceOf_ << std::endl << "]";
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "name": "Record Window End", "ph": "i", "s": "g",
+    "pid": "", "tid": "", "ts": {}
+  }}
+]}})JSON",
+      endTime);
+  // clang-format on
+
   traceOf_.close();
   LOG(INFO) << "Chrome Trace written to " << fileName_;
 }

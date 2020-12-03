@@ -61,7 +61,8 @@ class ActivityLogger {
 
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,
-      std::unique_ptr<ActivityBuffers> buffers) = 0;
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) = 0;
 
  protected:
   ActivityLogger() = default;

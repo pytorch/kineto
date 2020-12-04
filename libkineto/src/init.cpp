@@ -143,6 +143,7 @@ void libkineto_init(void) {
       std::make_unique<ActivityProfilerProxy>(cpu_only));
 }
 
+#ifdef INIT_FROM_DLOPEN
 #define CONCAT(a, b) a##b
 #define FUNCNAME(a, b) CONCAT(a, b)
 #define LIBKINETO_CONSTRUCTOR FUNCNAME(KINETO_NAMESPACE, _create)
@@ -163,6 +164,7 @@ __attribute__((constructor)) void libkineto_create(void) {
 __attribute__((destructor)) void libkineto_destroy(void) {
   LOG_IF(INFO, loadedByCuda) << "Destroying libkineto";
 }
+#endif // INIT_FROM_DLOPEN
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment
 // variable is set

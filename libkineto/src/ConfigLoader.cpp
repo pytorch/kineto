@@ -142,6 +142,7 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
   setupSignalHandler(config_.sigUsr2Enabled());
   if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
+    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
   }
   updateThread_ =
       std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
@@ -173,6 +174,9 @@ void ConfigLoader::updateBaseConfig() {
     config_.~Config();
     new (&config_) Config();
     config_.parse(config_str);
+    if (daemonConfigLoader_) {
+      daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+    }
   }
   setupSignalHandler(config_.sigUsr2Enabled());
 }
@@ -186,6 +190,9 @@ void ConfigLoader::configureFromSignal(
       readConfigFromConfigFile(kOnDemandConfigFile.data());
   config.parse(config_str);
   config.setSignalDefaults();
+  if (daemonConfigLoader_) {
+    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+  }
   if (eventProfilerRequest(config)) {
     if (now > onDemandEventProfilerConfig_->eventProfilerOnDemandEndTime()) {
       LOG(INFO) << "Starting on-demand event profiling from signal";
@@ -214,6 +221,9 @@ void ConfigLoader::configureFromDaemon(
   LOG_IF(INFO, !config_str.empty()) << "Received config from dyno:\n"
                                     << config_str;
   config.parse(config_str);
+  if (daemonConfigLoader_) {
+    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+  }
   if (eventProfilerRequest(config)) {
     std::lock_guard<std::mutex> lock(configLock_);
     onDemandEventProfilerConfig_ = config.clone();

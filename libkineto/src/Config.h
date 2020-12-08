@@ -230,6 +230,10 @@ class Config : public AbstractConfig {
     return enableSigUsr2_;
   }
 
+  bool ipcFabricEnabled() const {
+    return enableIpcFabric_;
+  }
+
   static std::chrono::milliseconds alignUp(
       std::chrono::milliseconds duration,
       std::chrono::milliseconds alignment) {
@@ -347,6 +351,9 @@ class Config : public AbstractConfig {
 
   // Enable profiling via SIGUSR2
   bool enableSigUsr2_;
+
+  // Enable IPC Fabric instead of thrift communication
+  bool enableIpcFabric_;
 };
 
 } // namespace KINETO_NAMESPACE

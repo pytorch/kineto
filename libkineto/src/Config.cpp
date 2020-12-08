@@ -92,6 +92,10 @@ const string kRequestTimestampKey = "REQUEST_TIMESTAMP";
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
 const string kEnableSigUsr2Key = "ENABLE_SIGUSR2";
 
+// Enable communication through IPC Fabric
+// and disable thrift communication with dynolog daemon
+const string kEnableIpcFabricKey = "ENABLE_IPC_FABRIC";
+
 // Verbose log level
 // The actual glog is not used and --v and --vmodule has no effect.
 // Instead set the verbose level and modules in the config file.
@@ -144,7 +148,8 @@ Config::Config()
       activitiesExternalAPIGpuOpCountThreshold_(
           kDefaultActivitiesExternalAPIGpuOpCountThreshold),
       requestTimestamp_(milliseconds(0)),
-      enableSigUsr2_(true) {
+      enableSigUsr2_(true),
+      enableIpcFabric_(false) {
   for (const auto& p : configFactories()) {
     addFeature(p.first, p.second(*this));
   }
@@ -284,6 +289,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     requestTimestamp_ = handleRequestTimestamp(toInt64(val));
   } else if (name == kEnableSigUsr2Key) {
     enableSigUsr2_ = toBool(val);
+  } else if (name == kEnableIpcFabricKey) {
+    enableIpcFabric_ = toBool(val);
   } else {
     return false;
   }

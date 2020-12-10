@@ -17,6 +17,7 @@ def get_libkineto_srcs():
         "src/Demangle.cpp",
         "src/EventProfiler.cpp",
         "src/EventProfilerController.cpp",
+        "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",
         "src/ProcessInfo.cpp",
         "src/ThreadName.cpp",

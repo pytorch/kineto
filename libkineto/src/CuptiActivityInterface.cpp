@@ -28,15 +28,29 @@ CuptiActivityInterface& CuptiActivityInterface::singleton() {
   return instance;
 }
 
-void CuptiActivityInterface::pushCorrelationID(int id) {
+void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
   VLOG(2) << "pushCorrelationID(" << id << ")";
-  CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-      CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
+  switch(type) {
+    case Default:
+      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
+        break;
+    case User:
+      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
+  }
 }
 
-void CuptiActivityInterface::popCorrelationID() {
-  CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-      CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
+void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
+  switch(type) {
+    case Default:
+      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
+        break;
+    case User:
+      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
+  }
 }
 
 static int getSMCount() {

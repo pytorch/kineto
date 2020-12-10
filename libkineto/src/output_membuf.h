@@ -57,6 +57,12 @@ class MemoryTraceLogger : public ActivityLogger {
         std::make_unique<CpuActivityDecorator>(activity, span));
   }
 
+  void handleGenericActivity(
+      const GenericTraceActivity& activity) override {
+    activities_.push_back(
+        std::make_unique<GenericTraceActivity>(activity));
+  }
+
   void handleRuntimeActivity(
       const RuntimeActivity& activity) override {
     activities_.push_back(std::make_unique<RuntimeActivity>(activity));

@@ -56,11 +56,23 @@ bool ActivityProfilerProxy::isActive() {
 }
 
 void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
-  CuptiActivityInterface::pushCorrelationID(id);
+  CuptiActivityInterface::pushCorrelationID(id,
+    CuptiActivityInterface::CorrelationFlowType::Default);
 }
 
 void ActivityProfilerProxy::popCorrelationId() {
-  CuptiActivityInterface::popCorrelationID();
+  CuptiActivityInterface::popCorrelationID(
+    CuptiActivityInterface::CorrelationFlowType::Default);
+}
+
+void ActivityProfilerProxy::pushUserCorrelationId(uint64_t id) {
+  CuptiActivityInterface::pushCorrelationID(id,
+    CuptiActivityInterface::CorrelationFlowType::User);
+}
+
+void ActivityProfilerProxy::popUserCorrelationId() {
+  CuptiActivityInterface::popCorrelationID(
+    CuptiActivityInterface::CorrelationFlowType::User);
 }
 
 void ActivityProfilerProxy::transferCpuTrace(

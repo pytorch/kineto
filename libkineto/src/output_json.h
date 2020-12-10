@@ -45,6 +45,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       const libkineto::ClientTraceActivity& activity,
       const TraceSpan& span) override;
 
+  void handleGenericActivity(
+      const GenericTraceActivity& activity) override;
+
   void handleRuntimeActivity(
       const RuntimeActivity& activity) override;
 

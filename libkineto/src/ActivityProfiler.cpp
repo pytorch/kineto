@@ -198,20 +198,40 @@ void ActivityProfiler::processCpuTrace(
 
 inline void ActivityProfiler::handleCorrelationActivity(
     const CUpti_ActivityExternalCorrelation* correlation) {
-  externalEvents_.addCorrelation(
-      correlation->externalId, correlation->correlationId);
+  switch(correlation->externalKind) {
+    case CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0:
+      externalEvents_.addCorrelation(
+        correlation->externalId,
+        correlation->correlationId,
+        ExternalEventMap::CorrelationFlowType::Default);
+      break;
+    case CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1:
+      externalEvents_.addCorrelation(
+        correlation->externalId,
+        correlation->correlationId,
+        ExternalEventMap::CorrelationFlowType::User);
+      break;
+    default:
+      LOG(ERROR) << "Received correlation activity with undefined kind: "
+        << correlation->externalKind;
+      break;
+  }
   VLOG(2) << correlation->correlationId
           << ": CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION";
 }
 
 const libkineto::ClientTraceActivity&
-ActivityProfiler::ExternalEventMap::operator[](uint32_t id) {
+ActivityProfiler::ExternalEventMap::getClientTraceActivity(
+  uint32_t id, CorrelationFlowType flowType) {
   static const libkineto::ClientTraceActivity nullOp_{};
-  auto* res = events_[correlationMap_[id]];
+
+  auto& correlationMap = getCorrelationMap(flowType);
+
+  auto* res = events_[correlationMap[id]];
   if (res == nullptr) {
     // Entry may be missing because cpu trace hasn't been processed yet
     // Insert a dummy element so that we can check for this in insertEvent
-    events_[correlationMap_[id]] = &nullOp_;
+    events_[correlationMap[id]] = &nullOp_;
     res = &nullOp_;
   }
   return *res;
@@ -224,6 +244,57 @@ void ActivityProfiler::ExternalEventMap::insertEvent(
         << "Events processed out of order - link will be missing";
   }
   events_[op->correlationId()] = op;
+}
+
+void ActivityProfiler::ExternalEventMap::addCorrelation(
+  uint64_t external_id, uint32_t cuda_id, CorrelationFlowType flowType) {
+  switch(flowType){
+    case Default:
+      defaultCorrelationMap_[cuda_id] = external_id;
+      break;
+    case User:
+      userCorrelationMap_[cuda_id] = external_id;
+      break;
+  }
+}
+
+static void initUserGpuSpan(GenericTraceActivity& userTraceActivity,
+  const libkineto::TraceActivity& cpuTraceActivity,
+  const libkineto::TraceActivity& gpuTraceActivity) {
+  userTraceActivity.device = gpuTraceActivity.deviceId();
+  userTraceActivity.resource = gpuTraceActivity.resourceId();
+  userTraceActivity.startTime = gpuTraceActivity.timestamp();
+  userTraceActivity.endTime = gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
+  userTraceActivity.correlation = cpuTraceActivity.correlationId();
+  userTraceActivity.activityType = cpuTraceActivity.type();
+  userTraceActivity.activityName = cpuTraceActivity.name();
+}
+
+void ActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
+  const TraceActivity& cpuTraceActivity,
+  const TraceActivity& gpuTraceActivity) {
+  StreamKey key(gpuTraceActivity.deviceId(), gpuTraceActivity.resourceId());
+  CorrelationSpanMap& correlationSpanMap = streamSpanMap[key];
+  if (correlationSpanMap.count(cpuTraceActivity.correlationId()) == 0) {
+    GenericTraceActivity& userTraceActivity = correlationSpanMap[cpuTraceActivity.correlationId()];
+    initUserGpuSpan(userTraceActivity, cpuTraceActivity, gpuTraceActivity);
+  }
+  GenericTraceActivity& userTraceActivity = correlationSpanMap[cpuTraceActivity.correlationId()];
+  if (gpuTraceActivity.timestamp() < userTraceActivity.startTime || userTraceActivity.startTime == 0) {
+    userTraceActivity.startTime = gpuTraceActivity.timestamp();
+  }
+  if ((gpuTraceActivity.timestamp() + gpuTraceActivity.duration()) > userTraceActivity.endTime) {
+    userTraceActivity.endTime = gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
+  }
+}
+
+void ActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger *logger) {
+  for (auto const& streamMapPair : streamSpanMap) {
+    for (auto const& correlationSpanPair : streamMapPair.second) {
+      logger->handleGenericActivity(
+        correlationSpanPair.second);
+    }
+  }
 }
 
 inline bool ActivityProfiler::outOfRange(const TraceActivity& act) {
@@ -245,7 +316,9 @@ inline void ActivityProfiler::handleRuntimeActivity(
   VLOG(2) << activity->correlationId
           << ": CUPTI_ACTIVITY_KIND_RUNTIME, cbid=" << activity->cbid
           << " tid=" << activity->threadId;
-  const ClientTraceActivity& ext = externalEvents_[activity->correlationId];
+  const ClientTraceActivity& ext =
+    externalEvents_.getClientTraceActivity(activity->correlationId,
+      ExternalEventMap::CorrelationFlowType::Default);
   RuntimeActivity runtimeActivity(activity, ext);
   if (ext.correlationId() == 0 && outOfRange(runtimeActivity)) {
     return;
@@ -289,6 +362,13 @@ static bool timestampsInCorrectOrder(
 inline void ActivityProfiler::handleGpuActivity(
     const TraceActivity& act,
     ActivityLogger* logger) {
+  const ClientTraceActivity& extUser =
+    externalEvents_.getClientTraceActivity(act.correlationId(),
+      ExternalEventMap::CorrelationFlowType::User);
+  if (extUser.correlationId() != 0) {
+    gpuUserEventMap_.insertOrExtendEvent(extUser, act);
+  }
+
   const TraceActivity& ext = *act.linkedActivity();
   if (ext.timestamp() == 0 && outOfRange(act)) {
     return;
@@ -307,8 +387,9 @@ inline void ActivityProfiler::handleGpuActivity(
 
 template <class T>
 inline void ActivityProfiler::handleGpuActivity(const T* act, ActivityLogger* logger) {
-  const ClientTraceActivity& ext = externalEvents_[act->correlationId];
-  handleGpuActivity(GpuActivity<T>(act, ext), logger);
+  const ClientTraceActivity& extDefault = externalEvents_.getClientTraceActivity(act->correlationId,
+      ExternalEventMap::CorrelationFlowType::Default);
+  handleGpuActivity(GpuActivity<T>(act, extDefault), logger);
 }
 
 void ActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger) {
@@ -594,6 +675,8 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
     }
   }
 
+  gpuUserEventMap_.logEvents(&logger);
+
   logger.finalizeTrace(config, std::move(traceBuffers_), captureWindowEndTime_);
 }
 
@@ -602,6 +685,7 @@ void ActivityProfiler::resetTraceData() {
     cupti_.clearActivities();
   }
   externalEvents_.clear();
+  gpuUserEventMap_.clear();
   traceSpans_.clear();
   clientActivityTraceMap_.clear();
   disabledTraceSpans_.clear();

@@ -68,6 +68,10 @@ class ActivityProfilerInterface {
   virtual void transferCpuTrace(
       std::unique_ptr<CpuTraceBuffer> traceBuffer){}
 
+  // Correlation ids for user defined spans
+  virtual void pushUserCorrelationId(uint64_t){}
+  virtual void popUserCorrelationId(){}
+
   // Include regions with this name
   virtual bool enableForRegion(const std::string& match) {
     return true;

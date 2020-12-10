@@ -232,6 +232,29 @@ void ChromeTraceLogger::handleLinkEnd(const TraceActivity& e) {
   // clang-format on
 }
 
+void ChromeTraceLogger::handleGenericActivity(
+      const GenericTraceActivity& op) {
+    if (!traceOf_) {
+    return;
+  }
+
+  // FIXME: Make cat and tid customizable
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "X", "cat": "User", "name": "{}",
+    "pid": {}, "tid": "stream {} user",
+    "ts": {}, "dur": {},
+    "args": {{
+      "External id": {}
+    }}
+  }},)JSON",
+      op.name(), op.deviceId(), op.resourceId(),
+      op.timestamp(), op.duration(),
+      op.correlationId());
+  // clang-format on
+}
+
 void ChromeTraceLogger::handleRuntimeActivity(
     const RuntimeActivity& activity) {
   if (!traceOf_) {

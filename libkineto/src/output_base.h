@@ -17,6 +17,7 @@
 #include "ActivityBuffers.h"
 #include "ClientTraceActivity.h"
 #include "CuptiActivity.h"
+#include "GenericTraceActivity.h"
 #include "ProcessInfo.h"
 #include "TraceSpan.h"
 
@@ -47,6 +48,9 @@ class ActivityLogger {
   virtual void handleCpuActivity(
       const libkineto::ClientTraceActivity& activity,
       const TraceSpan& span) = 0;
+
+  virtual void handleGenericActivity(
+      const GenericTraceActivity& activity) = 0;
 
   virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
 

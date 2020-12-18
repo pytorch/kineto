@@ -1,0 +1,33 @@
+{
+  "name": "fe",
+  "private": "true",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "cross-env NODE_ENV=production webpack",
+    "build:dev": "webpack",
+    "dev": "webpack-dev-server",
+    "prettier": "prettier --config ./prettier.json --write ./src/**/*.{ts,tsx} ./*.js"
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.11.0",
+    "portable-fetch": "^3.0.0",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  },
+  "devDependencies": {
+    "@types/react": "^16.9.51",
+    "@types/react-dom": "^16.9.8",
+    "cross-env": "^7.0.2",
+    "css-loader": "^5.0.0",
+    "html-webpack-plugin": "^4.5.0",
+    "inline-chunk-html-plugin": "^1.1.1",
+    "prettier": "^2.1.2",
+    "style-loader": "^2.0.0",
+    "ts-loader": "^8.0.4",
+    "typescript": "^4.0.3",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.12",
+    "webpack-dev-server": "^3.11.0"
+  }
+}

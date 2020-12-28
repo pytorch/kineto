@@ -22,6 +22,8 @@ class DaemonConfigLoader {
   // Returns the number of tracked contexts for this device. The daemon has a
   // global view. If an unexpedted error occurs, return -1.
   virtual int gpuContextCount(uint32_t device) = 0;
+
+  virtual void setCommunicationFabric(bool enabled) = 0;
 };
 
 } // namespace KINETO_NAMESPACE

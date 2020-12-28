@@ -65,7 +65,6 @@ class ActivityProfilerController {
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
-  std::atomic_bool hasAsyncRequest_{false};
 };
 
 } // namespace KINETO_NAMESPACE

@@ -23,14 +23,19 @@ using namespace libkineto;
 
 class CuptiActivityInterface {
  public:
+  enum CorrelationFlowType {
+    Default,
+    User
+  };
+
   CuptiActivityInterface(const CuptiActivityInterface&) = delete;
   CuptiActivityInterface& operator=(const CuptiActivityInterface&) = delete;
 
   static CuptiActivityInterface& singleton();
 
   int smCount();
-  static void pushCorrelationID(int id);
-  static void popCorrelationID();
+  static void pushCorrelationID(int id, CorrelationFlowType type);
+  static void popCorrelationID(CorrelationFlowType type);
 
   void enableCuptiActivities(
     const std::set<ActivityType>& selected_activities);

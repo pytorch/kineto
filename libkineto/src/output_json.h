@@ -45,6 +45,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       const libkineto::ClientTraceActivity& activity,
       const TraceSpan& span) override;
 
+  void handleGenericActivity(
+      const GenericTraceActivity& activity) override;
+
   void handleRuntimeActivity(
       const RuntimeActivity& activity) override;
 
@@ -53,7 +56,10 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override;
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
 
-  void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers) override;
+  void finalizeTrace(
+      const Config& config,
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) override;
 
  private:
   // Create a flow event to an external event

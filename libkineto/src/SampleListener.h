@@ -140,7 +140,7 @@ class SampleListener {
   virtual ~SampleListener(){};
 
   // Report bucketed & aggregated values for event
-  virtual void handleSample(int device, const Sample& sample) = 0;
+  virtual void handleSample(int device, const Sample& sample, bool from_new_version) = 0;
 
   virtual void update(const Config& config) = 0;
 

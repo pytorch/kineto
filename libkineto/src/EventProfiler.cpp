@@ -579,7 +579,7 @@ void EventProfiler::dispatchSamples(
 
     for (auto& logger : loggers) {
       std::lock_guard<std::mutex> lock(logMutex());
-      logger->handleSample(device(), sample);
+      logger->handleSample(device(), sample, config.ipcFabricEnabled());
     }
   }
 

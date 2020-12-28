@@ -26,6 +26,7 @@
 #include "TraceSpan.h"
 #include "libkineto.h"
 #include "output_base.h"
+#include "GenericTraceActivity.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -56,26 +57,28 @@ class ActivityProfiler {
     logger_ = logger;
   }
 
-  // Explicit control
-  // FIXME: Refactor out profiler loop
+  // Synchronous control API
   void startTrace(
       const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::mutex> guard(mutex_);
-    startTraceUnlocked(now);
+    startTraceInternal(now);
   }
 
   void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::mutex> guard(mutex_);
-    stopTraceUnlocked(now);
+    stopTraceInternal(now);
   }
 
   // Process CPU and GPU traces
-  void processTrace(ActivityLogger& logger);
+  void processTrace(ActivityLogger& logger) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    processTraceInternal(logger);
+  }
 
-  void cancelTrace(
-      const std::chrono::time_point<std::chrono::system_clock>& now);
-
-  void resetTrace();
+  void reset() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    resetInternal();
+  }
 
   // Set up profiler as specified in config.
   void configure(
@@ -90,10 +93,10 @@ class ActivityProfiler {
   // to trace
   bool applyNetFilter(const std::string& name) {
     std::lock_guard<std::mutex> guard(mutex_);
-    return applyNetFilterUnlocked(name);
+    return applyNetFilterInternal(name);
   }
 
-  bool applyNetFilterUnlocked(const std::string& name);
+  bool applyNetFilterInternal(const std::string& name);
 
   Config& config() {
     return *config_;
@@ -102,16 +105,24 @@ class ActivityProfiler {
  private:
   class ExternalEventMap {
    public:
-    const libkineto::ClientTraceActivity& operator[](uint32_t id);
+    enum CorrelationFlowType {
+      // Default flow type
+      Default,
+      // User annotated flow type
+      User
+    };
+
+    // The correlation id of the GPU activity
+    const libkineto::ClientTraceActivity& getClientTraceActivity(
+      uint32_t correlation_id, CorrelationFlowType flowType);
     void insertEvent(const libkineto::ClientTraceActivity* op);
 
-    void addCorrelation(uint64_t external_id, uint32_t cuda_id) {
-      correlationMap_[cuda_id] = external_id;
-    }
+    void addCorrelation(uint64_t external_id, uint32_t cuda_id, CorrelationFlowType flowType);
 
     void clear() {
       events_.clear();
-      correlationMap_.clear();
+      defaultCorrelationMap_.clear();
+      userCorrelationMap_.clear();
     }
 
    private:
@@ -123,7 +134,7 @@ class ActivityProfiler {
     std::unordered_map<uint64_t, const libkineto::ClientTraceActivity*>
         events_;
 
-    // Cuda correlation id -> external correlation id
+    // Cuda correlation id -> external correlation id for default events
     // CUPTI provides a mechanism for correlating Cuda events to arbitrary
     // external events, e.g.operator events from Caffe2.
     // It also marks GPU activities with the Cuda event correlation ID.
@@ -131,8 +142,56 @@ class ActivityProfiler {
     std::unordered_map<
         uint32_t, // Cuda correlation ID
         uint64_t> // External correlation ID
-        correlationMap_;
+        defaultCorrelationMap_;
+
+    // Cuda correlation id -> external correlation id for user annotated
+    // events
+    // CUPTI provides a mechanism for correlating Cuda events to arbitrary
+    // external events, e.g.operator events from Caffe2.
+    // It also marks GPU activities with the Cuda event correlation ID.
+    // So by connecting the two, we get the complete picture.
+    std::unordered_map<
+        uint32_t, // Cuda correlation ID
+        uint64_t> // External correlation ID
+        userCorrelationMap_;
+
+    std::unordered_map<uint32_t, uint64_t>&
+      getCorrelationMap(CorrelationFlowType flowType) {
+        switch(flowType){
+          case Default:
+            return defaultCorrelationMap_;
+            break;
+          case User:
+            return userCorrelationMap_;
+        }
+      }
   };
+
+  // Map of gpu activities to user defined events
+  class GpuUserEventMap {
+   public:
+    // Insert a user defined event which maps to the gpu trace activity.
+    // If the user defined event mapping already exists this will update the
+    // gpu side span to include the span of gpuTraceActivity.
+    void insertOrExtendEvent(const TraceActivity& cpuTraceActivity,
+      const TraceActivity& gpuTraceActivity);
+    // Log out the events to the logger
+    void logEvents(ActivityLogger *logger);
+
+    void clear() {
+      streamSpanMap.clear();
+    }
+
+   private:
+    // device id and stream name
+    typedef std::pair<int64_t, int64_t> StreamKey;
+
+    // map of correlation id to TraceSpan
+    typedef std::unordered_map<int64_t, GenericTraceActivity> CorrelationSpanMap;
+    std::map<StreamKey, CorrelationSpanMap> streamSpanMap;
+  };
+
+  GpuUserEventMap gpuUserEventMap_;
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
   struct profilerOverhead {
@@ -140,11 +199,15 @@ class ActivityProfiler {
     int cntr;
   };
 
-  void startTraceUnlocked(
+  void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  void stopTraceUnlocked(
+  void stopTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
+
+  void processTraceInternal(ActivityLogger& logger);
+
+  void resetInternal();
 
   void finalizeTrace(const Config& config, ActivityLogger& logger);
 
@@ -183,7 +246,8 @@ class ActivityProfiler {
       const CUpti_ActivityExternalCorrelation* correlation);
   void handleRuntimeActivity(
       const CUpti_ActivityAPI* activity, ActivityLogger* logger);
-  void handleGpuActivity(const TraceActivity& act, ActivityLogger* logger);
+  void handleGpuActivity(const TraceActivity& act,
+      ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
 

@@ -138,17 +138,17 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
     configFileName_ = kConfigFile.data();
   }
   config_.parse(readConfigFromConfigFile(configFileName_));
-  SET_VERBOSE_LOG_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
+  SET_LOG_VERBOSITY_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
   setupSignalHandler(config_.sigUsr2Enabled());
-  if (daemonConfigLoaderFactory) {
+  if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
+    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
   }
   updateThread_ =
       std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
 }
 
 ConfigLoader::~ConfigLoader() {
-  LOG(INFO) << "Destroying ConfigLoader";
   if (updateThread_) {
     stopFlag_ = true;
     {
@@ -174,6 +174,9 @@ void ConfigLoader::updateBaseConfig() {
     config_.~Config();
     new (&config_) Config();
     config_.parse(config_str);
+    if (daemonConfigLoader_) {
+      daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+    }
   }
   setupSignalHandler(config_.sigUsr2Enabled());
 }
@@ -187,6 +190,9 @@ void ConfigLoader::configureFromSignal(
       readConfigFromConfigFile(kOnDemandConfigFile.data());
   config.parse(config_str);
   config.setSignalDefaults();
+  if (daemonConfigLoader_) {
+    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+  }
   if (eventProfilerRequest(config)) {
     if (now > onDemandEventProfilerConfig_->eventProfilerOnDemandEndTime()) {
       LOG(INFO) << "Starting on-demand event profiling from signal";
@@ -215,6 +221,9 @@ void ConfigLoader::configureFromDaemon(
   LOG_IF(INFO, !config_str.empty()) << "Received config from dyno:\n"
                                     << config_str;
   config.parse(config_str);
+  if (daemonConfigLoader_) {
+    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+  }
   if (eventProfilerRequest(config)) {
     std::lock_guard<std::mutex> lock(configLock_);
     onDemandEventProfilerConfig_ = config.clone();
@@ -266,14 +275,14 @@ void ConfigLoader::updateConfigThread() {
       LOG(INFO) << "Setting verbose level to "
                 << onDemandConfig->verboseLogLevel()
                 << " from on-demand config";
-      SET_VERBOSE_LOG_LEVEL(
+      SET_LOG_VERBOSITY_LEVEL(
           onDemandConfig->verboseLogLevel(),
           onDemandConfig->verboseLogModules());
       next_log_level_reset_time = now + kOnDemandConfigVerboseLogDurationSecs;
     }
     if (now > next_log_level_reset_time) {
       VLOG(0) << "Resetting verbose level";
-      SET_VERBOSE_LOG_LEVEL(
+      SET_LOG_VERBOSITY_LEVEL(
           config_.verboseLogLevel(), config_.verboseLogModules());
     }
   }

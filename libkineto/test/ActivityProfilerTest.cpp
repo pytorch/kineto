@@ -27,7 +27,7 @@ class MockCuptiActivities : public CuptiActivityInterface {};
 TEST(ActivityProfiler, PyTorchTrace) {
   std::vector<std::string> log_modules(
       {"ActivityProfiler.cpp", "output_json.cpp"});
-  SET_VERBOSE_LOG_LEVEL(1, log_modules);
+  SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
   MockCuptiActivities activities;
   ActivityProfiler profiler(activities, /*cpu only*/ true);

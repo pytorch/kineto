@@ -85,9 +85,9 @@ void ActivityProfilerController::profilerLoop() {
       std::lock_guard<std::mutex> lock(asyncConfigLock_);
       if (asyncRequestConfig_) {
         LOG(INFO) << "Received on-demand activity trace request";
-        profiler_->configure(*asyncRequestConfig_, now);
         logger_ = makeLogger(*asyncRequestConfig_);
         profiler_->setLogger(logger_.get());
+        profiler_->configure(*asyncRequestConfig_, now);
         asyncRequestConfig_ = nullptr;
       }
     }
@@ -101,8 +101,6 @@ void ActivityProfilerController::profilerLoop() {
       VLOG(1) << "Profiler loop: "
           << duration_cast<milliseconds>(system_clock::now() - now).count()
           << "ms";
-    } else {
-      hasAsyncRequest_ = false;
     }
   }
 
@@ -127,21 +125,24 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
   if (profiler_->isActive()) {
     LOG(WARNING) << "Cancelling current trace request in order to start "
                  << "higher priority synchronous request";
-    profiler_->cancelTrace(now);
+    if (libkineto::api().client()) {
+      libkineto::api().client()->stop();
+    }
+    profiler_->stopTrace(now);
+    profiler_->reset();
   }
 
   profiler_->configure(config, now);
 }
 
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
-  // FIXME: Move into stopTrace() - but avoid deadlock issue
   if (libkineto::api().client()) {
     libkineto::api().client()->stop();
   }
   profiler_->stopTrace(std::chrono::system_clock::now());
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
-  profiler_->resetTrace();
+  profiler_->reset();
   return std::make_unique<ActivityTrace>(std::move(logger));
 }
 

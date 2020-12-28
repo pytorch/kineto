@@ -27,6 +27,11 @@
 #include "ClientTraceActivity.h"
 #include "TraceSpan.h"
 
+extern "C" {
+  void suppressLibkinetoLogMessages();
+  void libkineto_init();
+}
+
 namespace libkineto {
 
 class Config;
@@ -64,8 +69,12 @@ class LibkinetoApi {
     }
   }
 
-  bool isProfilerInitialized() {
+  bool isProfilerInitialized() const {
     return activityProfiler_ && activityProfiler_->isInitialized();
+  }
+
+  bool isProfilerRegistered() const {
+    return activityProfiler_ != nullptr;
   }
 
   void setNetSizeThreshold(int gpu_ops) {
@@ -76,6 +85,10 @@ class LibkinetoApi {
   // FIXME: Rename and move elsewhere
   int netSizeThreshold() {
     return netSizeThreshold_;
+  }
+
+  void suppressLogMessages() {
+    suppressLibkinetoLogMessages();
   }
 
  private:
@@ -95,3 +108,4 @@ class LibkinetoApi {
 LibkinetoApi& api();
 
 } // namespace libkineto
+

@@ -17,6 +17,7 @@
 #include "ActivityBuffers.h"
 #include "ClientTraceActivity.h"
 #include "CuptiActivity.h"
+#include "GenericTraceActivity.h"
 #include "ProcessInfo.h"
 #include "TraceSpan.h"
 
@@ -48,6 +49,9 @@ class ActivityLogger {
       const libkineto::ClientTraceActivity& activity,
       const TraceSpan& span) = 0;
 
+  virtual void handleGenericActivity(
+      const GenericTraceActivity& activity) = 0;
+
   virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
 
   virtual void handleGpuActivity(
@@ -61,7 +65,8 @@ class ActivityLogger {
 
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,
-      std::unique_ptr<ActivityBuffers> buffers) = 0;
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) = 0;
 
  protected:
   ActivityLogger() = default;

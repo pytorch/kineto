@@ -47,9 +47,12 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   void startTrace() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
 
-
   void pushCorrelationId(uint64_t id) override;
   void popCorrelationId() override;
+
+  void pushUserCorrelationId(uint64_t id) override;
+  void popUserCorrelationId() override;
+
   void transferCpuTrace(
      std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
 

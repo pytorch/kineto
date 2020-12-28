@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
@@ -64,10 +64,16 @@ if(NOT TARGET fmt)
       CACHE STRING "fmt source directory from submodules")
   endif()
 
-  #build fmt
+  # Build FMT.
+  # FMT and some other libraries use BUILD_SHARED_LIBS to control
+  # the library type.
+  # Save and restore the value after configuring FMT
+  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
   set(FMT_LIBRARY_TYPE static CACHE STRING "Set lib type to static")
   add_subdirectory("${FMT_SOURCE_DIR}" "${LIBKINETO_BINARY_DIR}/fmt")
   set_property(TARGET fmt PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS} CACHE BOOL "Build shared libs" FORCE)
 endif()
 
 set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
@@ -98,6 +104,10 @@ if(KINETO_LIBRARY_TYPE STREQUAL "default")
   add_library(kineto
     $<TARGET_OBJECTS:kineto_base>
     $<TARGET_OBJECTS:kineto_api>)
+elseif(KINETO_LIBRARY_TYPE STREQUAL "static")
+  add_library(kineto STATIC
+    $<TARGET_OBJECTS:kineto_base>
+    $<TARGET_OBJECTS:kineto_api>)
 elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
   add_library(kineto SHARED
     $<TARGET_OBJECTS:kineto_base>)
@@ -107,6 +117,8 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
+
+target_link_libraries(kineto "${CUDA_cupti_LIBRARY}")
 
 target_link_libraries(kineto $<BUILD_INTERFACE:fmt>)
 add_dependencies(kineto fmt)

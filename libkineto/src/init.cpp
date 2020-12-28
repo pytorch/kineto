@@ -64,6 +64,14 @@ bool hasConfigEnvVar() {
   return getenv("KINETO_CONFIG") != nullptr;
 }
 
+bool hasGtestEnvVar() {
+  return getenv("GTEST_OUTPUT") != nullptr;
+}
+
+bool hasInjectionPathEnvVar() {
+  return getenv("CUDA_INJECTION64_PATH") != nullptr;
+}
+
 bool hasKnownJobIdEnvVar() {
   // FIXME: Find better way to auto-enable
   // E.g. add FEATURE_AUTO_INIT
@@ -95,7 +103,7 @@ static void CUPTIAPI callback(
   }
 }
 
-static void libkineto_init(void) {
+void libkineto_init(void) {
   // Can be more verbose when injected dynamically
   LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
   bool enable = hasConfigEnvVar() || hasKnownJobIdEnvVar();
@@ -135,6 +143,7 @@ static void libkineto_init(void) {
       std::make_unique<ActivityProfilerProxy>(cpu_only));
 }
 
+#ifdef INIT_FROM_DLOPEN
 #define CONCAT(a, b) a##b
 #define FUNCNAME(a, b) CONCAT(a, b)
 #define LIBKINETO_CONSTRUCTOR FUNCNAME(KINETO_NAMESPACE, _create)
@@ -143,8 +152,9 @@ static void libkineto_init(void) {
 // dlopen() will call this function before returning
 __attribute__((constructor)) void libkineto_create(void) {
   // If CUDA_INJECTION64_PATH is set, don't initialize the library
-  // since we're about to load a dynamic version
-  if (getenv("CUDA_INJECTION64_PATH") == nullptr) {
+  // since we're about to load a dynamic version.
+  // Also don't start if this is a unit test.
+  if (!hasInjectionPathEnvVar() && !hasGtestEnvVar()) {
     libkineto_init();
   }
 }
@@ -154,6 +164,7 @@ __attribute__((constructor)) void libkineto_create(void) {
 __attribute__((destructor)) void libkineto_destroy(void) {
   LOG_IF(INFO, loadedByCuda) << "Destroying libkineto";
 }
+#endif // INIT_FROM_DLOPEN
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment
 // variable is set
@@ -161,6 +172,10 @@ int InitializeInjection(void) {
   loadedByCuda = true;
   libkineto_init();
   return 1;
+}
+
+void suppressLibkinetoLogMessages() {
+  SET_LOG_SEVERITY_LEVEL(ERROR);
 }
 
 } // extern C

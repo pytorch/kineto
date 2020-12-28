@@ -294,7 +294,7 @@ TEST(EventGroupSetTest, CollectSample) {
 
 class MockLogger : public SampleListener {
  public:
-  MOCK_METHOD2(handleSample, void(int device, const Sample& sample));
+  MOCK_METHOD3(handleSample, void(int device, const Sample& sample, bool from_new_version));
   MOCK_METHOD1(update, void(const Config& config));
 };
 
@@ -552,9 +552,9 @@ TEST_F(EventProfilerTest, ReportSample) {
       .Times(10)
       .WillRepeatedly(Return(SampleValue(0.3)));
   auto& logger = dynamic_cast<MockLogger&>(*loggers_[0]);
-  EXPECT_CALL(logger, handleSample(0, _))
+  EXPECT_CALL(logger, handleSample(0, _, _))
       .Times(1)
-      .WillOnce(Invoke([](int device, const Sample& sample) {
+      .WillOnce(Invoke([](int device, const Sample& sample, bool from_new_version) {
         // Sample will include all stats - logger must pick the
         // ones it wants.
         EXPECT_EQ(sample.stats.size(), 4);
@@ -576,7 +576,7 @@ TEST_F(EventProfilerTest, ReportSample) {
   profiler_->reportSamples();
 
   auto& on_demand_logger = dynamic_cast<MockLogger&>(*onDemandLoggers_[0]);
-  EXPECT_CALL(on_demand_logger, handleSample(0, _)).Times(1);
+  EXPECT_CALL(on_demand_logger, handleSample(0, _, _)).Times(1);
   profiler_->reportOnDemandSamples();
 
   EXPECT_CALL(*cuptiEvents_, disableGroupSet(_)).Times(1);

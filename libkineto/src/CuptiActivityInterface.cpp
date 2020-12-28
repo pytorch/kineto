@@ -10,12 +10,10 @@
 #include <chrono>
 
 #include "cupti_call.h"
-#include "libkineto.h"
 
 #include "Logger.h"
 
 using namespace std::chrono;
-using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
 
@@ -30,15 +28,29 @@ CuptiActivityInterface& CuptiActivityInterface::singleton() {
   return instance;
 }
 
-void CuptiActivityInterface::pushCorrelationID(int id) {
+void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
   VLOG(2) << "pushCorrelationID(" << id << ")";
-  CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-      CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
+  switch(type) {
+    case Default:
+      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
+        break;
+    case User:
+      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
+  }
 }
 
-void CuptiActivityInterface::popCorrelationID() {
-  CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-      CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
+void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
+  switch(type) {
+    case Default:
+      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
+        break;
+    case User:
+      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
+  }
 }
 
 static int getSMCount() {
@@ -97,10 +109,6 @@ void CUPTIAPI CuptiActivityInterface::bufferRequested(
     size_t* size,
     size_t* maxNumRecords) {
   if (singleton().allocatedGpuBufferCount > singleton().maxGpuBufferCount_) {
-    // Stop profiling if we hit the max allowance
-    if (libkineto::api().client()) {
-      libkineto::api().client()->stop();
-    }
     singleton().stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << singleton().allocatedGpuBufferCount

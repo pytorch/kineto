@@ -57,6 +57,12 @@ class MemoryTraceLogger : public ActivityLogger {
         std::make_unique<CpuActivityDecorator>(activity, span));
   }
 
+  void handleGenericActivity(
+      const GenericTraceActivity& activity) override {
+    activities_.push_back(
+        std::make_unique<GenericTraceActivity>(activity));
+  }
+
   void handleRuntimeActivity(
       const RuntimeActivity& activity) override {
     activities_.push_back(std::make_unique<RuntimeActivity>(activity));
@@ -75,8 +81,12 @@ class MemoryTraceLogger : public ActivityLogger {
     activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemset>>(activity));
   }
 
-  void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers) override {
+  void finalizeTrace(
+      const Config& config,
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) override {
     buffers_ = std::move(buffers);
+    endTime_ = endTime;
   }
 
   const std::vector<std::unique_ptr<TraceActivity>>* traceActivities() {
@@ -99,7 +109,8 @@ class MemoryTraceLogger : public ActivityLogger {
     for (auto& it : iterationList_) {
       logger.handleIterationStart(it);
     }
-    finalizeTrace(*config_, std::move(buffers_));
+    // Hold on to the buffers
+    logger.finalizeTrace(*config_, nullptr, endTime_);
   }
 
  private:
@@ -134,6 +145,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::vector<TraceSpan> traceSpanList_;
   std::vector<TraceSpan> iterationList_;
   std::unique_ptr<ActivityBuffers> buffers_;
+  int64_t endTime_{0};
 };
 
 } // namespace KINETO_NAMESPACE

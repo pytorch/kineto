@@ -452,6 +452,17 @@
           },
           "name": {
             "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "p": {
+            "type": "object",
+            "properties": {
+              "html": {
+                "type": "boolean"
+              }
+            }
           }
         }
       },

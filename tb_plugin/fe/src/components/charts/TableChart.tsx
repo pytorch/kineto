@@ -34,7 +34,12 @@ export const TableChart: React.FC<IProps> = (props) => {
 
     const data = new google.visualization.DataTable()
     graph.columns.forEach((column) => {
-      data.addColumn(column.type, column.name)
+      data.addColumn({
+        type: column.type,
+        label: column.name,
+        role: column.role,
+        p: column.p
+      })
     })
     data.addRows(graph.rows)
 
@@ -53,7 +58,8 @@ export const TableChart: React.FC<IProps> = (props) => {
       height: '100%',
       page: 'enable',
       allowHtml,
-      pageSize: 30
+      pageSize: 30,
+      tooltip: { isHtml: true }
     }
 
     const chart = new google.visualization.Table(element)

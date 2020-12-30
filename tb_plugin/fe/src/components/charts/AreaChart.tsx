@@ -30,7 +30,12 @@ export const AreaChart: React.FC<IProps> = (props) => {
     const data = new google.visualization.DataTable()
     data.addColumn('string', 'step')
     graph.columns.forEach((column) => {
-      data.addColumn(column.type, column.name)
+      data.addColumn({
+        type: column.type,
+        label: column.name,
+        role: column.role,
+        p: column.p
+      })
     })
     data.addRows(graph.rows.map((x, i) => [(i + 1).toString(), ...x]))
 
@@ -39,6 +44,7 @@ export const AreaChart: React.FC<IProps> = (props) => {
       isStacked: true,
       height,
       legend: { position: 'bottom' },
+      tooltip: { isHtml: true },
       chartArea: { left: '15%', width: '80%', top: '10%' },
       hAxis: {
         title: hAxisTitle

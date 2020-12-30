@@ -30,7 +30,12 @@ export const SteppedAreaChart: React.FC<IProps> = (props) => {
 
     const data = new google.visualization.DataTable()
     graph.columns.forEach((column) => {
-      data.addColumn(column.type, column.name)
+      data.addColumn({
+        type: column.type,
+        label: column.name,
+        role: column.role,
+        p: column.p
+      })
     })
     data.addRows(graph.rows)
 
@@ -40,6 +45,8 @@ export const SteppedAreaChart: React.FC<IProps> = (props) => {
       height,
       legend: { position: 'bottom' },
       chartArea: { left: '15%', width: '80%', top: '10%' },
+      areaOpacity: 0.8,
+      tooltip: { isHtml: true },
       hAxis: {
         title: hAxisTitle
       },

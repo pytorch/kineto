@@ -34,7 +34,12 @@ export const PieChart: React.FC<IProps> = (props) => {
 
     const data = new google.visualization.DataTable()
     graph.columns.forEach((column) => {
-      data.addColumn(column.type, column.name)
+      data.addColumn({
+        type: column.type,
+        label: column.name,
+        role: column.role,
+        p: column.p
+      })
     })
 
     const rows =
@@ -50,7 +55,7 @@ export const PieChart: React.FC<IProps> = (props) => {
       width: '100%',
       title: graph.title,
       pieHole: 0.4,
-      tooltip: { trigger: 'selection' },
+      tooltip: { trigger: 'selection', isHtml: true },
       chartArea: noLegend ? noLegendArea : normalArea,
       legend: noLegend ? 'none' : undefined,
       sliceVisibilityThreshold: 0

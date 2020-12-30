@@ -39,6 +39,16 @@ class RunGenerator(object):
         return profile_run
 
     def _generate_overview(self):
+        def build_part_time_str(part_cost, part_name):
+            format_str = '<div class="visualization-tooltip" style="white-space: nowrap;">' \
+                         'Step {}<br>' \
+                         'Total: {}us<br>' \
+                         '<b>{}: {}us</b><br>' \
+                         'Percentage: {}%' \
+                         '</div>'
+            percentage = round(100 * part_cost / costs.step_total_cost, 2)
+            return format_str.format(step_name, costs.step_total_cost, part_name, part_cost, percentage)
+
         def build_avg_cost_dict(part_name, part_cost):
             cost_dict = {"name": part_name,
                          "description": "",
@@ -48,25 +58,46 @@ class RunGenerator(object):
 
         show_gpu = self.profile_data.is_gpu_used
 
+        column_tootip = {"type": "string", "role": "tooltip", "p": {"html": "true"}}
         data = {}
         data["steps"] = {}
         data["steps"]["columns"] = [{"type": "string", "name": "Step"}]
         if show_gpu:
             data["steps"]["columns"].extend([{"type": "number", "name": "Kernel"},
+                                             column_tootip,
                                              {"type": "number", "name": "Memcpy"},
+                                             column_tootip,
                                              {"type": "number", "name": "Memset"},
-                                             {"type": "number", "name": "Runtime"}])
+                                             column_tootip,
+                                             {"type": "number", "name": "Runtime"},
+                                             column_tootip])
         data["steps"]["columns"].extend([{"type": "number", "name": "DataLoader"},
+                                         column_tootip,
                                          {"type": "number", "name": "CPU Exec"},
-                                         {"type": "number", "name": "Other"}])
+                                         column_tootip,
+                                         {"type": "number", "name": "Other"},
+                                         column_tootip])
 
         data["steps"]["rows"] = []
         for i in range(len(self.profile_data.steps_costs)):
             costs = self.profile_data.steps_costs[i]
-            row = [self.profile_data.steps_names[i]]
+            step_name = self.profile_data.steps_names[i]
+            row = [step_name]
             if show_gpu:
-                row.extend([costs.kernel_cost, costs.memcpy_cost, costs.memset_cost, costs.runtime_cost])
-            row.extend([costs.dataloader_cost, costs.cpuop_cost, costs.other_cost])
+                row.extend([costs.kernel_cost,
+                            build_part_time_str(costs.kernel_cost, "Kernel"),
+                            costs.memcpy_cost,
+                            build_part_time_str(costs.memcpy_cost, "Memcpy"),
+                            costs.memset_cost,
+                            build_part_time_str(costs.memset_cost, "Memset"),
+                            costs.runtime_cost,
+                            build_part_time_str(costs.runtime_cost, "Runtime")])
+            row.extend([costs.dataloader_cost,
+                        build_part_time_str(costs.dataloader_cost, "DataLoader"),
+                        costs.cpuop_cost,
+                        build_part_time_str(costs.cpuop_cost, "CPU Exec"),
+                        costs.other_cost,
+                        build_part_time_str(costs.other_cost, "Other")])
             data["steps"]["rows"].append(row)
 
         avg_costs = []

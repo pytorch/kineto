@@ -55,8 +55,9 @@ class OverallParser(object):
             result.other_cost_ranges = step & self.other_cost_ranges
             return result
 
-        def get_costs(self):
+        def get_costs(self, step):
             result = OverallParser.Costs()
+            result.step_total_cost = step[1] - step[0]
             result.kernel_cost = get_ranges_sum(self.kernel_cost_ranges)
             result.memcpy_cost = get_ranges_sum(self.memcpy_cost_ranges)
             result.memset_cost = get_ranges_sum(self.memset_cost_ranges)
@@ -121,7 +122,7 @@ class OverallParser(object):
         self.steps_costs = []
         for i in range(valid_steps):
             self.steps_stat = global_stats.intersection_with_step(self.steps[i])
-            self.steps_costs.append(self.steps_stat.get_costs())
+            self.steps_costs.append(self.steps_stat.get_costs(self.steps[i]))
             self.avg_costs.step_total_cost += (self.steps[i][1] - self.steps[i][0])
             self.avg_costs.kernel_cost += self.steps_costs[i].kernel_cost
             self.avg_costs.memcpy_cost += self.steps_costs[i].memcpy_cost

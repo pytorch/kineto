@@ -201,9 +201,9 @@ export const Operator: React.FC<IProps> = (props) => {
                       onChange={onGroupByChanged}
                     >
                       <MenuItem value={GroupBy.OperationAndInputShape}>
-                        Operation + Input Shape
+                        Operator + Input Shape
                       </MenuItem>
-                      <MenuItem value={GroupBy.Operation}>Operation</MenuItem>
+                      <MenuItem value={GroupBy.Operation}>Operator</MenuItem>
                     </Select>
                   </Grid>
                   <Grid item>

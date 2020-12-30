@@ -10,8 +10,8 @@ export function transformPerformanceIntoTable(
 ): api.Graph {
   const columns: api.GraphColumn[] = [
     { type: 'string', name: 'Category' },
-    { type: 'string', name: 'Time Duration' },
-    { type: 'string', name: 'Percentage' }
+    { type: 'number', name: 'Time Duration (us)' },
+    { type: 'number', name: 'Percentage (%)' }
   ]
 
   const rows: api.Graph['rows'] = []

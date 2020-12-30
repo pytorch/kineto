@@ -39,6 +39,13 @@ class RunGenerator(object):
         return profile_run
 
     def _generate_overview(self):
+        def build_avg_cost_dict(part_name, part_cost):
+            cost_dict = {"name": part_name,
+                         "description": "",
+                         "value": round(part_cost),
+                         "extra": round(100 * part_cost / self.profile_data.avg_costs.step_total_cost, 2)}
+            return cost_dict
+
         show_gpu = self.profile_data.is_gpu_used
 
         data = {}
@@ -65,46 +72,20 @@ class RunGenerator(object):
         avg_costs = []
         if show_gpu:
             avg_costs.extend([
-                {"name": "Kernel", "description": "",
-                 "value": str(round(self.profile_data.avg_costs.kernel_cost)) + " us",
-                 "extra": str(
-                     round(100 * self.profile_data.avg_costs.kernel_cost / self.profile_data.avg_costs.step_total_cost,
-                           2)) + "%"},
-                {"name": "Memcpy", "description": "",
-                 "value": str(round(self.profile_data.avg_costs.memcpy_cost)) + " us",
-                 "extra": str(
-                     round(100 * self.profile_data.avg_costs.memcpy_cost / self.profile_data.avg_costs.step_total_cost,
-                           2)) + "%"},
-                {"name": "Memset", "description": "",
-                 "value": str(round(self.profile_data.avg_costs.memset_cost)) + " us",
-                 "extra": str(
-                     round(100 * self.profile_data.avg_costs.memset_cost / self.profile_data.avg_costs.step_total_cost,
-                           2)) + "%"},
-                {"name": "Runtime", "description": "",
-                 "value": str(round(self.profile_data.avg_costs.runtime_cost)) + " us",
-                 "extra": str(
-                     round(100 * self.profile_data.avg_costs.runtime_cost / self.profile_data.avg_costs.step_total_cost,
-                           2)) + "%"}])
+                build_avg_cost_dict("Kernel", self.profile_data.avg_costs.kernel_cost),
+                build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.memcpy_cost),
+                build_avg_cost_dict("Memset", self.profile_data.avg_costs.memset_cost),
+                build_avg_cost_dict("Runtime", self.profile_data.avg_costs.runtime_cost)
+            ])
         avg_costs.extend([
-            {"name": "DataLoader", "description": "",
-             "value": str(round(self.profile_data.avg_costs.dataloader_cost)) + " us",
-             "extra": str(
-                 round(100 * self.profile_data.avg_costs.dataloader_cost / self.profile_data.avg_costs.step_total_cost,
-                       2)) + "%"},
-            {"name": "CPU Exec", "description": "",
-             "value": str(round(self.profile_data.avg_costs.cpuop_cost)) + " us",
-             "extra": str(
-                 round(100 * self.profile_data.avg_costs.cpuop_cost / self.profile_data.avg_costs.step_total_cost,
-                       2)) + "%"},
-            {"name": "Other", "description": "",
-             "value": str(round(self.profile_data.avg_costs.other_cost)) + " us",
-             "extra": str(
-                 round(100 * self.profile_data.avg_costs.other_cost / self.profile_data.avg_costs.step_total_cost,
-                       2)) + "%"}])
+            build_avg_cost_dict("DataLoader", self.profile_data.avg_costs.dataloader_cost),
+            build_avg_cost_dict("CPU Exec", self.profile_data.avg_costs.cpuop_cost),
+            build_avg_cost_dict("Other", self.profile_data.avg_costs.other_cost)
+        ])
 
         data["performance"] = [{"name": "Average Step Time", "description": "",
-                                "value": str(round(self.profile_data.avg_costs.step_total_cost)) + " us",
-                                "extra": "100%", "children": avg_costs}]
+                                "value": round(self.profile_data.avg_costs.step_total_cost),
+                                "extra": 100, "children": avg_costs}]
 
         if len(self.profile_data.recommendations) == 0:
             html = "<li>N/A</li>"

@@ -18,8 +18,7 @@ setuptools.setup(
     },
     install_requires=[
         "tensorboard",
-        "pandas",
-        "portion"
+        "pandas"
     ],
     entry_points={
         "tensorboard_plugins": [

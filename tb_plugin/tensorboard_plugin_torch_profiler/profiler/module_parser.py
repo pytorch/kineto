@@ -199,19 +199,19 @@ class ModuleParser:
     def parse_events(self, events):
 
         def parse_event(event, corrid_to_device, corrid_to_runtime, tid2list):
-            name = event.name
-            ts = event.ts
-            dur = event.duration
-            evt_type = event.type
+
+            def build_node(node, event):
+                node.name = event.name
+                node.start_time = event.ts
+                node.end_time = event.ts + event.duration
+                node.type = event.type
+
             corrid = event.args["correlation"] if "correlation" in event.args else None
             input_shape = event.args["Input dims"] if "Input dims" in event.args else None
             tid = event.tid
-            if evt_type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
+            if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
                 device_node = DeviceNode()
-                device_node.name = name
-                device_node.start_time = ts
-                device_node.end_time = ts + dur
-                device_node.type = evt_type
+                build_node(device_node, event)
                 if corrid in corrid_to_runtime:
                     rt_node = corrid_to_runtime[corrid]  # Don't pop it because it may be used by next kernel.
                     if rt_node.device_nodes is None:
@@ -223,12 +223,9 @@ class ModuleParser:
                         corrid_to_device[corrid] = [device_node]
                     else:
                         corrid_to_device[corrid].append(device_node)
-            elif evt_type == EventTypes.RUNTIME:
+            elif event.type == EventTypes.RUNTIME:
                 rt_node = RuntimeNode()
-                rt_node.name = name
-                rt_node.start_time = ts
-                rt_node.end_time = ts + dur
-                rt_node.type = evt_type
+                build_node(rt_node, event)
                 corrid_to_runtime[corrid] = rt_node
                 if corrid in corrid_to_device:
                     rt_node.device_nodes = []
@@ -236,15 +233,12 @@ class ModuleParser:
                 if not tid in tid2list:
                     tid2list[tid] = []
                 tid2list[tid].append(rt_node)
-            elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
+            elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
                 if event.type == EventTypes.PROFILER_STEP:
                     op_node = ProfilerStepNode()
                 else:
                     op_node = OperatorNode()
-                op_node.name = name
-                op_node.type = evt_type
-                op_node.start_time = ts
-                op_node.end_time = ts + dur
+                build_node(op_node, event)
                 op_node.input_shape = input_shape
                 if not tid in tid2list:
                     tid2list[tid] = []

@@ -177,10 +177,10 @@ void ActivityProfiler::processCpuTrace(
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
     VLOG(2) << act.correlationId() << ": OP " << act.opType
-            << " tid: " << act.threadId;
+            << " tid: " << act.pthreadId;
     if (logTrace) {
       logger.handleCpuActivity(act, cpu_span);
-      recordThreadName(act.threadId);
+      recordThreadName(act.sysThreadId, act.pthreadId);
     }
     // Stash event so we can look it up later when processing GPU trace
     externalEvents_.insertEvent(&act);
@@ -319,7 +319,13 @@ inline void ActivityProfiler::handleRuntimeActivity(
   const ClientTraceActivity& ext =
     externalEvents_.getClientTraceActivity(activity->correlationId,
       ExternalEventMap::CorrelationFlowType::Default);
-  RuntimeActivity runtimeActivity(activity, ext);
+  int32_t tid = activity->threadId;
+  const auto& it = threadNames_.find(tid);
+  if (it != threadNames_.end()) {
+    const auto& name_and_tid = it->second;
+    tid = name_and_tid.second;
+  }
+  RuntimeActivity runtimeActivity(activity, ext, tid);
   if (ext.correlationId() == 0 && outOfRange(runtimeActivity)) {
     return;
   }
@@ -661,8 +667,9 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
   }
   // Thread names
   for (auto pair : threadNames_) {
+    const auto& name_and_tid = pair.second;
     logger.handleThreadInfo(
-        {(int32_t)pair.first, pair.second},
+        {name_and_tid.second, name_and_tid.first},
         captureWindowStartTime_);
   }
 

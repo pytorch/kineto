@@ -46,13 +46,19 @@ struct CuptiActivity : public TraceActivity {
 
 // CUpti_ActivityAPI - CUDA runtime activities
 struct RuntimeActivity : public CuptiActivity<CUpti_ActivityAPI> {
-  explicit RuntimeActivity(const CUpti_ActivityAPI* activity, const TraceActivity& linked)
-      : CuptiActivity(activity, linked) {}
+  explicit RuntimeActivity(
+      const CUpti_ActivityAPI* activity,
+      const TraceActivity& linked,
+      int32_t threadId)
+      : CuptiActivity(activity, linked), threadId_(threadId) {}
   int64_t deviceId() const override {return cachedPid();}
-  int64_t resourceId() const override {return activity_.threadId;}
+  int64_t resourceId() const override {return threadId_;}
   ActivityType type() const override {return ActivityType::CUDA_RUNTIME;}
   const std::string name() const override {return runtimeCbidName(activity_.cbid);}
   void log(ActivityLogger& logger) const override;
+
+ private:
+  const int32_t threadId_;
 };
 
 // Base class for GPU activities.

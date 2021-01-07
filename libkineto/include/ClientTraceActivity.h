@@ -25,7 +25,7 @@ struct ClientTraceActivity : TraceActivity {
   }
 
   int64_t resourceId() const override {
-    return threadId;
+    return sysThreadId;
   }
 
   int64_t timestamp() const override {
@@ -56,11 +56,13 @@ struct ClientTraceActivity : TraceActivity {
     // Unimplemented by default
   }
 
-  int64_t startTime;
-  int64_t endTime;
-  int64_t correlation;
-  int device;
-  pthread_t threadId;
+  int64_t startTime{0};
+  int64_t endTime{0};
+  int64_t correlation{0};
+  int device{-1};
+  // TODO: Add OS abstraction
+  pthread_t pthreadId{};
+  int32_t sysThreadId{0};
   std::string opType;
   std::string inputDims;
   std::string inputTypes;

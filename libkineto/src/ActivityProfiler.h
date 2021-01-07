@@ -260,9 +260,9 @@ class ActivityProfiler {
         disabledTraceSpans_.end();
   }
 
-  inline void recordThreadName(pthread_t pthreadId) {
-    if (threadNames_.find(pthreadId) == threadNames_.end()) {
-      threadNames_[pthreadId] = getThreadName(pthreadId);
+  inline void recordThreadName(pid_t tid, pthread_t pthreadId) {
+    if (threadNames_.find((int32_t)pthreadId) == threadNames_.end()) {
+      threadNames_[(int32_t)pthreadId] = {getThreadName(pthreadId), tid};
     }
   }
 
@@ -311,8 +311,10 @@ class ActivityProfiler {
   // Maps correlation id -> TraceSpan* held by traceSpans_.
   std::unordered_map<int64_t, CpuGpuSpanPair*> clientActivityTraceMap_;
 
-  // Cache thread names for pthread ids
-  std::unordered_map<uint64_t, std::string> threadNames_;
+  // Cache thread names and system thread ids for pthread ids
+  // Note we're using the lower 32 bits of the (opaque) pthread id
+  // as key, because that's what CUPTI records.
+  std::unordered_map<int32_t, std::pair<std::string, int32_t>> threadNames_;
 
   // Which trace spans are disabled. Together with the operator -> net id map
   // this allows us to determine whether a GPU or CUDA API event should

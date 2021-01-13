@@ -1,0 +1,611 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Pytorch profile API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/data/plugin/torch_profiler"
+    }
+  ],
+  "paths": {
+    "/runs": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workers": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful workers",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/views": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful views",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "Overview",
+                      "Operator",
+                      "Kernel"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/overview": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/operation": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Operation",
+                "OperationAndInputShape"
+              ]
+            },
+            "description": "Group By"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorGraph"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/operation/table": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Operation",
+                "OperationAndInputShape"
+              ]
+            },
+            "description": "Group By"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kernel": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Kernel",
+                "KernelNameAndOpName"
+              ]
+            },
+            "description": "Group By"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/KernelGraph"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kernel/table": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Kernel",
+                "KernelNameAndOpName"
+              ]
+            },
+            "description": "Group By"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful kernel",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trace": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful trace data",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Performance": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "extra": {
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Performance"
+            }
+          }
+        }
+      },
+      "Environment": {
+        "type": "object",
+        "required": [
+          "title",
+          "value"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "GraphColumn": {
+        "type": "object",
+        "required": [
+          "type",
+          "name"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "p": {
+            "type": "object",
+            "properties": {
+              "html": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "ValueAndFormat": {
+        "type": "object",
+        "required": [
+          "v",
+          "f"
+        ],
+        "properties": {
+          "v": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "f": {
+            "type": "string"
+          }
+        }
+      },
+      "Graph": {
+        "type": "object",
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphColumn"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ValueAndFormat"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "Overview": {
+        "type": "object",
+        "required": [
+          "performance",
+          "environments",
+          "steps",
+          "recommendations"
+        ],
+        "properties": {
+          "performance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Performance"
+            }
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Environment"
+            }
+          },
+          "steps": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "recommendations": {
+            "type": "string"
+          }
+        }
+      },
+      "OperatorGraph": {
+        "type": "object",
+        "required": [
+          "device_total_timeA",
+          "device_self_time",
+          "host_total_time",
+          "host_self_time"
+        ],
+        "properties": {
+          "device_total_time": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "device_self_time": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "host_total_time": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "host_self_time": {
+            "$ref": "#/components/schemas/Graph"
+          }
+        }
+      },
+      "TableData": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Graph"
+          }
+        }
+      },
+      "KernelGraph": {
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "properties": {
+          "total": {
+            "$ref": "#/components/schemas/Graph"
+          }
+        }
+      }
+    }
+  }
+}
+

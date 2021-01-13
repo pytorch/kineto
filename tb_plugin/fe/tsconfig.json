@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "strictPropertyInitialization": false,
+        "module": "esnext",
+        "moduleResolution": "node",
+        "rootDir": "src",
+        "outDir": "dist",
+        "jsx": "react"
+    }
+}
+

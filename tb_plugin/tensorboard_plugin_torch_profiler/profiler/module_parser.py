@@ -251,7 +251,7 @@ class ModuleParser:
                 if not tid in tid2list:
                     tid2list[tid] = []
                 tid2list[tid].append(rt_node)
-            elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
+            elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
                     op_node = ProfilerStepNode()
                 else:

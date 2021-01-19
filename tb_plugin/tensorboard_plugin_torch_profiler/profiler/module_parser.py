@@ -100,19 +100,6 @@ class KernelAggByNameOp:
         self.avg_duration = self.total_duration / self.calls
 
 
-class KernelAggByName:
-    def __init__(self):
-        self.name = None
-        self.calls = 0
-        self.total_duration = 0
-        self.avg_duration = 0
-        self.min_duration = sys.maxsize
-        self.max_duration = 0
-
-    def average(self):
-        self.avg_duration = self.total_duration / self.calls
-
-
 class ModuleParser:
     def __init__(self):
         self.tid2tree = {}

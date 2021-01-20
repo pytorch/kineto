@@ -28,12 +28,15 @@ class CuptiActivityInterface {
     User
   };
 
+  CuptiActivityInterface() = default;
   CuptiActivityInterface(const CuptiActivityInterface&) = delete;
   CuptiActivityInterface& operator=(const CuptiActivityInterface&) = delete;
 
+  virtual ~CuptiActivityInterface() {}
+
   static CuptiActivityInterface& singleton();
 
-  int smCount();
+  virtual int smCount();
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
@@ -44,23 +47,16 @@ class CuptiActivityInterface {
   void clearActivities();
 
   void addActivityBuffer(uint8_t* buffer, size_t validSize);
-  std::unique_ptr<std::list<CuptiActivityBuffer>> activityBuffers();
+  virtual std::unique_ptr<std::list<CuptiActivityBuffer>> activityBuffers();
 
-  const std::pair<int, int> processActivities(
+  virtual const std::pair<int, int> processActivities(
       std::list<CuptiActivityBuffer>& buffers,
       std::function<void(const CUpti_Activity*)> handler);
-
-  bool hasActivityBuffer() {
-    return allocatedGpuBufferCount > 0;
-  }
 
   void setMaxBufferSize(int size);
 
   std::atomic_bool stopCollection{false};
   int64_t flushOverhead{0};
-
- protected:
-  CuptiActivityInterface() {}
 
  private:
   int processActivitiesForBuffer(

@@ -26,8 +26,7 @@ constexpr milliseconds kDefaultInactiveProfilerIntervalMsecs(1000);
 constexpr milliseconds kDefaultActiveProfilerIntervalMsecs(200);
 
 ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
-  profiler_ = std::make_unique<ActivityProfiler>(
-      CuptiActivityInterface::singleton(), cpuOnly);
+  profiler_ = std::make_unique<ActivityProfiler>(cuptiActivities_, cpuOnly);
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
@@ -58,7 +57,9 @@ static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
   if (loggerFactory()) {
     return loggerFactory()(config);
   }
-  return std::make_unique<ChromeTraceLogger>(config.activitiesLogFile());
+  return std::make_unique<ChromeTraceLogger>(
+      config.activitiesLogFile(),
+      CuptiActivityInterface::singleton().smCount());
 }
 
 static milliseconds profilerInterval(bool profilerActive) {
@@ -143,7 +144,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger));
+  return std::make_unique<ActivityTrace>(std::move(logger), cuptiActivities_);
 }
 
 } // namespace KINETO_NAMESPACE

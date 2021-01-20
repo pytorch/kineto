@@ -29,7 +29,7 @@
 
 extern "C" {
   void suppressLibkinetoLogMessages();
-  void libkineto_init();
+  void libkineto_init(bool cpuOnly = false);
 }
 
 namespace libkineto {

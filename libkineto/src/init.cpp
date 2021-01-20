@@ -103,44 +103,47 @@ static void CUPTIAPI callback(
   }
 }
 
-void libkineto_init(void) {
+void libkineto_init(bool cpuOnly) {
   // Can be more verbose when injected dynamically
   LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
   bool enable = hasConfigEnvVar() || hasKnownJobIdEnvVar();
-  CUpti_SubscriberHandle subscriber;
-  CUptiResult status = CUPTI_ERROR_UNKNOWN;
-  // libcupti will be lazily loaded on this call.
-  // If it is not available (e.g. CUDA is not installed),
-  // then this call will return an error and we just abort init.
-  status = cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)callback, nullptr);
-  if (status == CUPTI_SUCCESS) {
-    status = cuptiEnableCallback(
-        1,
-        subscriber,
-        CUPTI_CB_DOMAIN_RESOURCE,
-        CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
-    if (loadedByCuda) {
-      CUPTI_CALL(status);
+  if (!cpuOnly) {
+    CUpti_SubscriberHandle subscriber;
+    CUptiResult status = CUPTI_ERROR_UNKNOWN;
+    // libcupti will be lazily loaded on this call.
+    // If it is not available (e.g. CUDA is not installed),
+    // then this call will return an error and we just abort init.
+    status = cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)callback, nullptr);
+    if (status == CUPTI_SUCCESS) {
+      status = cuptiEnableCallback(
+          1,
+          subscriber,
+          CUPTI_CB_DOMAIN_RESOURCE,
+          CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
+      if (loadedByCuda) {
+        CUPTI_CALL(status);
+      }
+      status = cuptiEnableCallback(
+          1,
+          subscriber,
+          CUPTI_CB_DOMAIN_RESOURCE,
+          CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
+      if (loadedByCuda) {
+        CUPTI_CALL(status);
+      }
+    } else if (!enable) {
+      // Not explicitly enabled and no GPU present - do not enable external API
+      return;
     }
-    status = cuptiEnableCallback(
-        1,
-        subscriber,
-        CUPTI_CB_DOMAIN_RESOURCE,
-        CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
-    if (loadedByCuda) {
-      CUPTI_CALL(status);
-    }
-  } else if (!enable) {
-    // Not explicitly enabled and no GPU present - do not enable external API
-    return;
+
+    // Register activity profiler with libkineto API.
+    // The profiler will be start up lazily either when a client tracer is
+    // registered or when a CUDA context is created.
+    cpuOnly = (status != CUPTI_SUCCESS);
   }
 
-  // Register activity profiler with libkineto API.
-  // The profiler will be start up lazily either when a client tracer is
-  // registered or when a CUDA context is created.
-  bool cpu_only = (status != CUPTI_SUCCESS);
   libkineto::api().registerProfiler(
-      std::make_unique<ActivityProfilerProxy>(cpu_only));
+      std::make_unique<ActivityProfilerProxy>(cpuOnly));
 }
 
 #ifdef INIT_FROM_DLOPEN

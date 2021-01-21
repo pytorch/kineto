@@ -48,10 +48,11 @@ static void openTraceFile(std::string& name, std::ofstream& stream) {
   }
 }
 
-ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
-    : fileName_(traceFileName), pid_(getpid()), smCount_(smCount) {
+ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName)
+    : fileName_(traceFileName), pid_(getpid()) {
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile(fileName_, traceOf_);
+  smCount_ = CuptiActivityInterface::singleton().smCount();
 }
 
 int ChromeTraceLogger::renameThreadID(uint32_t tid) {

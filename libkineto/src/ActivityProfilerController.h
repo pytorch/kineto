@@ -14,7 +14,6 @@
 #include "ActivityProfiler.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
-#include "CuptiActivityInterface.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -66,7 +65,6 @@ class ActivityProfilerController {
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
-  CuptiActivityInterface cuptiActivities_;
 };
 
 } // namespace KINETO_NAMESPACE

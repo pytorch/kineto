@@ -16,6 +16,7 @@ class BaseNode:
         self.start_time = None
         self.end_time = None
         self.type = None
+        self.external_id = None  # For consistency check.
 
 
 class HostNode(BaseNode):
@@ -99,19 +100,6 @@ class KernelAggByNameOp:
         self.avg_duration = self.total_duration / self.calls
 
 
-class KernelAggByName:
-    def __init__(self):
-        self.name = None
-        self.calls = 0
-        self.total_duration = 0
-        self.avg_duration = 0
-        self.min_duration = sys.maxsize
-        self.max_duration = 0
-
-    def average(self):
-        self.avg_duration = self.total_duration / self.calls
-
-
 class ModuleParser:
     def __init__(self):
         self.tid2tree = {}
@@ -135,6 +123,10 @@ class ModuleParser:
                     if node.start_time < tail_node.end_time:
                         if node.end_time <= tail_node.end_time:
                             if tail_node.type != EventTypes.RUNTIME:
+                                if (node.type == EventTypes.RUNTIME and
+                                        node.external_id != 0 and
+                                        tail_node.external_id != node.external_id):
+                                    logger.warning("Operator contains Runtime but with different external id!")
                                 tail_node.children.append(node)
                                 node_stack.append(node)
                             else:
@@ -205,6 +197,10 @@ class ModuleParser:
                 node.start_time = event.ts
                 node.end_time = event.ts + event.duration
                 node.type = event.type
+                if "external id" in event.args:
+                    node.external_id = event.args["external id"]
+                elif "External id" in event.args:
+                    node.external_id = event.args["External id"]
 
             corrid = event.args["correlation"] if "correlation" in event.args else None
             input_shape = event.args["Input dims"] if "Input dims" in event.args else None
@@ -218,6 +214,10 @@ class ModuleParser:
                         rt_node.device_nodes = [device_node]
                     else:
                         rt_node.device_nodes.append(device_node)
+                    if rt_node.external_id != device_node.external_id:
+                        logger.warning(
+                            "Runtime and Device-op have same correlation id but with different external id!"
+                        )
                 else:
                     if corrid not in corrid_to_device:
                         corrid_to_device[corrid] = [device_node]
@@ -230,10 +230,15 @@ class ModuleParser:
                 if corrid in corrid_to_device:
                     rt_node.device_nodes = []
                     rt_node.device_nodes.extend(corrid_to_device[corrid])
-                if tid not in tid2list:
+                    for device_node in corrid_to_device[corrid]:
+                        if rt_node.external_id != device_node.external_id:
+                            logger.warning(
+                                "Runtime and Device-op have same correlation id but with different external id!"
+                            )
+                if not tid in tid2list:
                     tid2list[tid] = []
                 tid2list[tid].append(rt_node)
-            elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
+            elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
                     op_node = ProfilerStepNode()
                 else:

@@ -4,8 +4,8 @@
 
 import sys
 
-from .. import utils
 from .trace import EventTypes
+from .. import utils
 
 logger = utils.get_logger()
 
@@ -28,7 +28,8 @@ class HostNode(BaseNode):
 class OperatorNode(HostNode):
     def __init__(self):
         super(OperatorNode, self).__init__()
-        self.children = []
+        self.children = []  # OperatorNode and ProfilerStepNode.
+        self.runtimes = []  # RuntimeNode
         self.input_shape = None
         self.self_host_duration = 0
         self.self_device_duration = 0
@@ -38,10 +39,10 @@ class OperatorNode(HostNode):
         for child in self.children:
             self.device_duration += child.device_duration
             # To be consistent with pytorch autograd profiler.Include child Runtime time as self time.
-            if child.type != EventTypes.RUNTIME:
-                self.self_host_duration -= (child.end_time - child.start_time)
-            if isinstance(child, RuntimeNode):
-                self.self_device_duration += child.device_duration
+            self.self_host_duration -= (child.end_time - child.start_time)
+        for rt in self.runtimes:
+            self.device_duration += rt.device_duration
+            self.self_device_duration += rt.device_duration
 
 
 class ProfilerStepNode(OperatorNode):
@@ -109,28 +110,28 @@ class ModuleParser:
         self.op_list_groupby_name_input = []  # For Operator-view.
         self.kernel_list_groupby_name_op = {}  # For Kernel-view.
 
-    def _build_tree(self, host_node_list):
+    # host_node_list: list of OperatorNode and ProfilerStepNode.
+    # rt_list: list of RuntimeNode with external_id=0.
+    def _build_tree(self, host_node_list, rt_list):
 
-        def build_tree_relationship(host_node_list):
+        def build_tree_relationship(host_node_list, rt_list):
             node_stack = []
             root_node = OperatorNode()
             root_node.start_time = -sys.maxsize - 1
             root_node.end_time = sys.maxsize
+            root_node.runtimes = rt_list  # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
                 while True:  # break loop when the node is inserted.
                     tail_node = node_stack[-1]
                     if node.start_time < tail_node.end_time:
                         if node.end_time <= tail_node.end_time:
-                            if tail_node.type != EventTypes.RUNTIME:
-                                if (node.type == EventTypes.RUNTIME and
-                                        node.external_id != 0 and
-                                        tail_node.external_id != node.external_id):
-                                    logger.warning("Operator contains Runtime but with different external id!")
-                                tail_node.children.append(node)
-                                node_stack.append(node)
-                            else:
-                                logger.error("Error in input data: runtime range should not have children!")
+                            if (node.type == EventTypes.RUNTIME and
+                                    node.external_id != 0 and
+                                    tail_node.external_id != node.external_id):
+                                logger.warning("Operator contains Runtime but with different external id!")
+                            tail_node.children.append(node)
+                            node_stack.append(node)
                         else:
                             logger.error("Error in input data: ranges on the same thread should not intersect!"
                                          "Father:({},{},{}) Child:({},{},{})".format(
@@ -155,6 +156,7 @@ class ModuleParser:
                 child = node.children[0]
                 if node.name == child.name and node.type == EventTypes.OPERATOR and child.type == EventTypes.OPERATOR:
                     node.children = child.children
+                    node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
                     remove_dup_nodes(node)  # This node may have to merge with child's child.
             for child in node.children:
                 remove_dup_nodes(child)
@@ -163,11 +165,12 @@ class ModuleParser:
         def fill_stats(node):
             if node.type != EventTypes.RUNTIME:
                 for child in node.children:
-                    if child.type == EventTypes.RUNTIME:
-                        if child.device_nodes is not None:
-                            for device_node in child.device_nodes:
-                                device_node.op_node = node
                     fill_stats(child)
+                for rt in node.runtimes:
+                    fill_stats(rt)
+                    if rt.device_nodes is not None:
+                        for device_node in rt.device_nodes:
+                            device_node.op_node = node
 
             if node.name == "CallTreeRoot":
                 node.start_time = node.end_time = None
@@ -179,6 +182,7 @@ class ModuleParser:
                     if node.children[i].end_time is not None:
                         node.end_time = node.children[i].end_time
                         break
+
             node.fill_stats()
             if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \
                     and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__")) \
@@ -187,14 +191,14 @@ class ModuleParser:
             if node.type == EventTypes.RUNTIME and node.device_nodes is not None:
                 self.kernel_list.extend([n for n in node.device_nodes if n.type == EventTypes.KERNEL])
 
-        root_node = build_tree_relationship(host_node_list)
+        root_node = build_tree_relationship(host_node_list, rt_list)
         remove_dup_nodes(root_node)
         fill_stats(root_node)
         return root_node
 
     def parse_events(self, events):
 
-        def parse_event(event, corrid_to_device, corrid_to_runtime, tid2list):
+        def parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2rt_list):
 
             def build_node(node, event):
                 node.name = event.name
@@ -239,9 +243,16 @@ class ModuleParser:
                             logger.warning(
                                 "Runtime and Device-op have same correlation id but with different external id!"
                             )
-                if not tid in tid2list:
-                    tid2list[tid] = []
-                tid2list[tid].append(rt_node)
+                if rt_node.external_id in externalid_to_runtime:
+                    externalid_to_runtime[rt_node.external_id].append(rt_node)
+                else:
+                    externalid_to_runtime[rt_node.external_id] = [rt_node]
+                # Some runtimes has external_id 0, which will not be correlated to any operator.
+                # So get them and attach them to root node.
+                if rt_node.external_id == 0:
+                    if tid not in tid2rt_list:
+                        tid2rt_list[tid] = []
+                    tid2rt_list[tid].append(rt_node)
             elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
                     op_node = ProfilerStepNode()
@@ -304,14 +315,30 @@ class ModuleParser:
 
             return kernel_list_groupby_name_op
 
-        tid2list = {}
+        # For OperatorNode and ProfilerStepNode:
+        #   Use time interval containing relationship to build father-child correlation,
+        #   which is consistent with autograd profiler.
+        # For RuntimeNode:
+        #   Use external_id to build correlation with its father OperatorNode or ProfilerStepNode.
+        #   Because in the case when RuntimeNode has duration 0 and starts at same time as a OperatorNode,
+        #   just use interval containing relationship can't tell it is child or brother of the OperatorNode.
+        tid2list = {}  # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
+        tid2rt_list = {}  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
         corrid_to_device = {}  # value is a list of DeviceNode
         corrid_to_runtime = {}  # value is a RuntimeNode
+        externalid_to_runtime = {}  # value is a list of RuntimeNode
         for event in events:
-            parse_event(event, corrid_to_device, corrid_to_runtime, tid2list)
-        for tid, host_node_list in tid2list.items():
-            host_node_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            root_node = self._build_tree(host_node_list)
+            parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2rt_list)
+        # associate CUDA Runtimes with CPU events
+        for _, op_list in tid2list.items():
+            for op in op_list:
+                if op.external_id in externalid_to_runtime:
+                    op.runtimes.extend(externalid_to_runtime[op.external_id])
+        for tid, op_list in tid2list.items():
+            rt_list = tid2rt_list[tid] if tid in tid2rt_list else []
+            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
+            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
+            root_node = self._build_tree(op_list, rt_list)
             self.tid2tree[tid] = root_node
         self.op_list_groupby_name, self.op_list_groupby_name_input = parse_ops(self.cpp_op_list)
         self.kernel_list_groupby_name_op = parse_kernels(self.kernel_list)

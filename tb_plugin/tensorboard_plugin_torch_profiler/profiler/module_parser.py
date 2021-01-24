@@ -132,7 +132,11 @@ class ModuleParser:
                             else:
                                 logger.error("Error in input data: runtime range should not have children!")
                         else:
-                            logger.error("Error in input data: ranges on the same thread should not intersect!")
+                            logger.error("Error in input data: ranges on the same thread should not intersect!"
+                                         "Father:({},{},{}) Child:({},{},{})".format(
+                                tail_node.name, tail_node.start_time, tail_node.end_time,
+                                node.name, node.start_time, node.end_time
+                            ))
                         break
                     else:
                         node_stack.pop()
@@ -306,7 +310,7 @@ class ModuleParser:
         for event in events:
             parse_event(event, corrid_to_device, corrid_to_runtime, tid2list)
         for tid, host_node_list in tid2list.items():
-            host_node_list.sort(key=lambda x: (x.start_time, x.end_time))
+            host_node_list.sort(key=lambda x: (x.start_time, -x.end_time))
             root_node = self._build_tree(host_node_list)
             self.tid2tree[tid] = root_node
         self.op_list_groupby_name, self.op_list_groupby_name_input = parse_ops(self.cpp_op_list)

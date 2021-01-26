@@ -50,7 +50,7 @@
 
 * Control Panel
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/control_panel.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/control_panel.PNG)
 
 Runs: Select a run. Each run is a PyTorch running with profiling.
 
@@ -60,7 +60,7 @@ Views: We organize the profiling result into multiple view pages, from most coar
 
 * Overall View
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/overall_view.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/overall_view.PNG)
 
 Step Time Breakdown: This shows high-level summary of performance. We regard each iteration (usually a mini-batch) as a step. Each step is broken into the multiple categories (with different colors) of where time is spent.
 The main categories include:
@@ -85,7 +85,7 @@ Performance Recommendation: Leverage the profiling result to automatically get t
 
 This view displays the performance of every Pytorch operator that is executed either on the host or device.
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/operator_view.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/operator_view.PNG)
 Each table row is a “Pytorch operator”, which is a computation operator in C++ side, such as “aten::relu_”, “aten::convolution”.
 
 Device Self Duration: The time spent on GPU(maybe not GPU fully utilized during this time range), not including this operator’s sub-functions.
@@ -100,7 +100,7 @@ The top 4 pie charts are visualizations of the above 4 columns.
 
 “Group By” could choose between “Operator” and “Operator + Input Shape”. The “Input Shape” is each operator’s input argument list’s tensor shapes, “[]” is scalar type. For example, “[[32, 256, 14, 14], [1024, 256, 1, 1], [], [], [], [], [], [], []]” means this operator has 9 input arguments, 1st is a tensor of size 32\*256\*14\*14, 2nd is a tensor of size 1024\*256\*1\*1, the following 7 ones are scalar variables.
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/operator_view_group_by_inputshape.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
 
 * Kernel View
 
@@ -108,7 +108,7 @@ This view shows all kernels’ time spent on GPU. It is got from kernel’s end 
 
 Note: This time just records a kernel's eplased time on GPU device. It does not mean GPU is fully busy during this time interval. That is, GPU occupancy may be less than 100% during this time interval. 
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/kernel_view.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/kernel_view.PNG)
 
 Total Duration: The summarization time of all calls of this kernel.
 
@@ -122,7 +122,7 @@ The top pie is a visualization of "Total Duration" column.
 
 * Trace View
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/trace_view.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/trace_view.PNG)
 
 The “thread 0” is the CPU thread that do “backward” of neural network.
 
@@ -134,9 +134,9 @@ We can see there are 6 “ProfilerStep” we captured.
 
 We cat scroll the bar to zoom into it.
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/trace_view_one_step.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/trace_view_one_step.PNG)
 
 The “Optimizer.step#SGD.step”、”enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__” are high-level python side operations.
 
-![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/tensorboard_plugin_torch_profiler/docs/images/trace_view_launch.PNG)
+![Alt text](https://github.com/gaoteng-git/kineto/blob/readme/tb_plugin/docs/images/trace_view_launch.PNG)
 When you select right-top corner's “Flow events” to ”async”, you can see which operator launched which GPU kernel.

@@ -107,7 +107,11 @@ const useStyles = makeStyles((theme) => ({
   },
   fab: {
     marginLeft: theme.spacing(1),
-    marginTop: theme.spacing(1)
+    marginTop: theme.spacing(1),
+    position: 'absolute'
+  },
+  iconButton: {
+    padding: '8px'
   }
 }))
 
@@ -226,7 +230,10 @@ export const App = () => {
         }}
       >
         <div className={classes.toolbar}>
-          <IconButton onClick={handleDrawerClose}>
+          <IconButton
+            className={classes.iconButton}
+            onClick={handleDrawerClose}
+          >
             <ChevronLeftIcon />
           </IconButton>
         </div>
@@ -260,6 +267,7 @@ export const App = () => {
       {!open && (
         <Fab
           className={classes.fab}
+          size="small"
           color="primary"
           aria-label="show menu"
           onClick={handleDrawerOpen}

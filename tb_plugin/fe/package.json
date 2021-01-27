@@ -4,13 +4,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "cross-env NODE_ENV=production webpack",
+    "build": "cross-env NODE_ENV=production webpack && node ./update-static.js",
     "build:dev": "webpack",
     "dev": "webpack-dev-server",
     "prettier": "prettier --config ./prettier.json --write ./src/**/*.{ts,tsx} ./*.js"
   },
   "dependencies": {
     "@material-ui/core": "^4.11.0",
+    "@material-ui/icons": "^4.11.2",
+    "clsx": "^1.1.1",
     "portable-fetch": "^3.0.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1"

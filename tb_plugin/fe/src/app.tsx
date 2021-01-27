@@ -5,12 +5,16 @@
 import CssBaseline from '@material-ui/core/CssBaseline'
 import Drawer from '@material-ui/core/Drawer'
 import FormControl from '@material-ui/core/FormControl'
+import IconButton from '@material-ui/core/IconButton'
 import ListSubheader from '@material-ui/core/ListSubheader'
 import { makeStyles } from '@material-ui/core/styles'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import { Overview } from './components/Overview'
+import Divider from '@material-ui/core/Divider'
+import Fab from '@material-ui/core/Fab'
 import * as React from 'react'
+import clsx from 'clsx'
 import { Operator } from './components/Operator'
 import { Kernel } from './components/Kernel'
 import * as api from './api'
@@ -19,6 +23,8 @@ import { setup } from './setup'
 import './styles.css'
 import { TraceView } from './components/TraceView'
 import { FullCircularProgress } from './components/FullCircularProgress'
+import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 
 export enum Views {
   Overview = 'Overview',
@@ -40,28 +46,72 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex'
   },
   appBar: {
+    zIndex: theme.zIndex.drawer + 1,
+    transition: theme.transitions.create(['width', 'margin'], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen
+    })
+  },
+  appBarShift: {
+    marginLeft: drawerWidth,
     width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: drawerWidth
+    transition: theme.transitions.create(['width', 'margin'], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen
+    })
+  },
+  menuButton: {
+    marginRight: 36
+  },
+  hide: {
+    display: 'none'
   },
   drawer: {
     width: drawerWidth,
-    flexShrink: 0
+    flexShrink: 0,
+    whiteSpace: 'nowrap'
   },
-  drawerPaper: {
+  drawerOpen: {
     width: drawerWidth,
-    paddingLeft: theme.spacing(1),
-    paddingRight: theme.spacing(1)
+    transition: theme.transitions.create('width', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen
+    })
   },
-  // necessary for content to be below app bar
-  toolbar: theme.mixins.toolbar,
+  drawerClose: {
+    transition: theme.transitions.create('width', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen
+    }),
+    overflowX: 'hidden',
+    width: 0,
+    [theme.breakpoints.up('sm')]: {
+      width: 0
+    }
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    padding: theme.spacing(0, 1),
+    // necessary for content to be below app bar
+    ...theme.mixins.toolbar
+  },
   content: {
     flexGrow: 1,
-    backgroundColor: theme.palette.background.default,
     padding: theme.spacing(3)
   },
   formControl: {
     margin: theme.spacing(1),
     minWidth: 120
+  },
+  fab: {
+    marginLeft: theme.spacing(1),
+    marginTop: theme.spacing(1),
+    position: 'absolute'
+  },
+  iconButton: {
+    padding: '8px'
   }
 }))
 
@@ -135,6 +185,16 @@ export const App = () => {
     setView(event.target.value as Views)
   }
 
+  const [open, setOpen] = React.useState(true)
+
+  const handleDrawerOpen = () => {
+    setOpen(true)
+  }
+
+  const handleDrawerClose = () => {
+    setOpen(false)
+  }
+
   const renderContent = () => {
     if (!loaded || !run || !worker || !view) {
       return <FullCircularProgress />
@@ -156,14 +216,28 @@ export const App = () => {
     <div className={classes.root}>
       <CssBaseline />
       <Drawer
-        className={classes.drawer}
         variant="permanent"
         anchor="left"
+        className={clsx(classes.drawer, {
+          [classes.drawerOpen]: open,
+          [classes.drawerClose]: !open
+        })}
         classes={{
-          paper: classes.drawerPaper
+          paper: clsx({
+            [classes.drawerOpen]: open,
+            [classes.drawerClose]: !open
+          })
         }}
       >
-        <div className={classes.toolbar} />
+        <div className={classes.toolbar}>
+          <IconButton
+            className={classes.iconButton}
+            onClick={handleDrawerClose}
+          >
+            <ChevronLeftIcon />
+          </IconButton>
+        </div>
+        <Divider />
         <ListSubheader>Runs</ListSubheader>
         <FormControl variant="outlined" className={classes.formControl}>
           <Select value={run} onChange={handleRunChange}>
@@ -188,7 +262,19 @@ export const App = () => {
             ))}
           </Select>
         </FormControl>
+        )
       </Drawer>
+      {!open && (
+        <Fab
+          className={classes.fab}
+          size="small"
+          color="primary"
+          aria-label="show menu"
+          onClick={handleDrawerOpen}
+        >
+          <ChevronRightIcon />
+        </Fab>
+      )}
       <main className={classes.content}>{renderContent()}</main>
     </div>
   )

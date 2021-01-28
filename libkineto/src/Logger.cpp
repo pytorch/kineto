@@ -58,7 +58,6 @@ Logger::~Logger() {
   }
   buf_ << std::ends;
   out_ << buf_.str() << std::endl;
-  buf_.freeze(false);
 }
 
 void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {

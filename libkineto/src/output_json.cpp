@@ -189,6 +189,7 @@ void ChromeTraceLogger::handleCpuActivity(
        "Input dims": {}, "Input type": {}, "Input names": {},
        "Output dims": {}, "Output type": {}, "Output names": {},
        "Device": {}, "External id": {}, "Extra arguments": {},
+       "Stack traces": "{}",
        "Trace name": "{}", "Trace iteration": {}
     }}
   }},)JSON",
@@ -197,6 +198,7 @@ void ChromeTraceLogger::handleCpuActivity(
       op.inputDims, op.inputTypes, op.inputNames,
       op.outputDims, op.outputTypes, op.outputNames,
       op.device, op.correlation, op.arguments,
+      op.stackTraces,
       span.name, span.iteration);
   // clang-format on
 }

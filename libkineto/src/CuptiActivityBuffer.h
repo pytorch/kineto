@@ -7,12 +7,9 @@
 
 #pragma once
 
-#include <cupti.h>
-#include <sys/types.h>
+#include <stdlib.h>
 #include <unistd.h>
-
-#include "TraceActivity.h"
-#include "cupti_strings.h"
+#include <cstdint>
 
 namespace KINETO_NAMESPACE {
 

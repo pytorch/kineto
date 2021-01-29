@@ -56,4 +56,4 @@ with torch.profiler.profile(
         optimizer.step()
         if step + 1 >= 11:
             break
-        p.next_step()
+        p.step()

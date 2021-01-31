@@ -69,7 +69,7 @@ struct ClientTraceActivity : TraceActivity {
   std::string outputTypes;
   std::string inputNames;
   std::string outputNames;
-  std::string stackTraces;
+  std::string callStack;
 };
 
 } // namespace libkineto

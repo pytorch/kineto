@@ -32,7 +32,7 @@
 #include <atomic>
 #include <ostream>
 #include <string>
-#include <strstream>
+#include <sstream>
 #include <vector>
 
 namespace KINETO_NAMESPACE {
@@ -97,7 +97,7 @@ class Logger {
   }
 
  private:
-  std::strstream buf_;
+  std::stringstream buf_;
   std::ostream& out_;
   int errnum_;
   static int severityLevel_;

@@ -334,7 +334,7 @@ class ModuleParser:
         for ext_id in externalid_to_runtime:
             if ext_id != 0:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
-                    len(externalid_to_runtime[ext_id])), ext_id)
+                    len(externalid_to_runtime[ext_id]), ext_id))
         for tid, op_list in tid2list.items():
             zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
             # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.

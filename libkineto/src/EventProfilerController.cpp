@@ -155,10 +155,15 @@ void EventProfilerController::profilerLoop() {
     return;
   }
 
+  if (!profiler_->setContinuousMode()) {
+    VLOG(0) << "Continuous mode not supported for GPU "
+            << profiler_->device() << ". Not starting Event Profiler.";
+    return;
+  }
+
   VLOG(0) << "Starting Event Profiler for GPU " << profiler_->device();
   setThreadName("CUPTI Event Profiler");
 
-  profiler_->setContinuousMode();
   auto on_demand_config = std::make_unique<Config>();
 
   time_point<high_resolution_clock> next_sample_time;

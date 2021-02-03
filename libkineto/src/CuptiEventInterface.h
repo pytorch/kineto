@@ -28,7 +28,7 @@ class CuptiEventInterface {
       std::vector<CUpti_EventID>& ids);
   virtual void destroyGroupSets(CUpti_EventGroupSets* sets);
 
-  virtual void setContinuousMode();
+  virtual bool setContinuousMode();
 
   virtual void enablePerInstance(CUpti_EventGroup eventGroup);
   virtual uint32_t instanceCount(CUpti_EventGroup eventGroup);

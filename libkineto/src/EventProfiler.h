@@ -222,8 +222,8 @@ class EventProfiler {
     return cuptiEvents_->device();
   }
 
-  void setContinuousMode() {
-    cuptiEvents_->setContinuousMode();
+  bool setContinuousMode() {
+    return cuptiEvents_->setContinuousMode();
   }
 
   std::chrono::milliseconds samplePeriod() {

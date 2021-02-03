@@ -215,7 +215,7 @@ class MockCuptiEvents : public CuptiEventInterface {
       createGroupSets,
       CUpti_EventGroupSets*(std::vector<CUpti_EventID>& ids));
   MOCK_METHOD1(destroyGroupSets, void(CUpti_EventGroupSets* sets));
-  MOCK_METHOD0(setContinuousMode, void());
+  MOCK_METHOD0(setContinuousMode, bool());
   MOCK_METHOD1(enablePerInstance, void(CUpti_EventGroup eventGroup));
   MOCK_METHOD1(instanceCount, uint32_t(CUpti_EventGroup eventGroup));
   MOCK_METHOD1(enableGroupSet, void(CUpti_EventGroupSet& set));

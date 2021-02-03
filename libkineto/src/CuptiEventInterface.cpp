@@ -41,9 +41,10 @@ void CuptiEventInterface::destroyGroupSets(CUpti_EventGroupSets* sets) {
   CUPTI_CALL(cuptiEventGroupSetsDestroy(sets));
 }
 
-void CuptiEventInterface::setContinuousMode() {
-  CUPTI_CALL(cuptiSetEventCollectionMode(
+bool CuptiEventInterface::setContinuousMode() {
+  CUptiResult res = CUPTI_CALL(cuptiSetEventCollectionMode(
       context_, CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS));
+  return (res == CUPTI_SUCCESS);
 }
 
 void CuptiEventInterface::enablePerInstance(CUpti_EventGroup eventGroup) {

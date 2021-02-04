@@ -305,8 +305,12 @@ void ChromeTraceLogger::handleGpuActivity(
   const CUpti_ActivityKernel4* kernel = &activity.raw();
   const TraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
-  float warps_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) *
-      (kernel->blockX * kernel->blockY * kernel->blockZ) / (float) threads_per_warp / smCount_;
+  float warps_per_sm = -1.0;
+  if (smCount_) {
+    warps_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) *
+        (kernel->blockX * kernel->blockY * kernel->blockZ) /
+        (float) threads_per_warp / smCount_;
+  }
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{

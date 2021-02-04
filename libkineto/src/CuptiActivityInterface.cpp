@@ -57,6 +57,7 @@ static int getSMCount() {
   // There may be a simpler way to get the number of SMs....
   // Look for domain_d - this has 80 instances on Volta and
   // 56 instances on Pascal, corresponding to the number of SMs
+  // FIXME: This does not work on Turing and later
   uint32_t domainCount{0};
   CUPTI_CALL(cuptiDeviceGetNumEventDomains(0, &domainCount));
   std::vector<CUpti_EventDomainID> ids(domainCount);

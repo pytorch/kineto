@@ -113,21 +113,24 @@ void libkineto_init(bool cpuOnly) {
     // libcupti will be lazily loaded on this call.
     // If it is not available (e.g. CUDA is not installed),
     // then this call will return an error and we just abort init.
-    status = cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)callback, nullptr);
+    status = CUPTI_CALL_NOWARN(
+        cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)callback, nullptr));
     if (status == CUPTI_SUCCESS) {
-      status = cuptiEnableCallback(
-          1,
-          subscriber,
-          CUPTI_CB_DOMAIN_RESOURCE,
-          CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
+      status = CUPTI_CALL_NOWARN(
+          cuptiEnableCallback(
+              1,
+              subscriber,
+              CUPTI_CB_DOMAIN_RESOURCE,
+              CUPTI_CBID_RESOURCE_CONTEXT_CREATED));
       if (loadedByCuda) {
         CUPTI_CALL(status);
       }
-      status = cuptiEnableCallback(
-          1,
-          subscriber,
-          CUPTI_CB_DOMAIN_RESOURCE,
-          CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
+      status = CUPTI_CALL_NOWARN(
+          cuptiEnableCallback(
+              1,
+              subscriber,
+              CUPTI_CB_DOMAIN_RESOURCE,
+              CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING));
       if (loadedByCuda) {
         CUPTI_CALL(status);
       }

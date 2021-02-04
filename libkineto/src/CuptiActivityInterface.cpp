@@ -89,8 +89,8 @@ static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,
     CUpti_Activity*& record) {
-  CUptiResult status =
-      cuptiActivityGetNextRecord(buffer, valid_size, &record);
+  CUptiResult status = CUPTI_CALL_NOWARN(
+      cuptiActivityGetNextRecord(buffer, valid_size, &record));
   if (status != CUPTI_SUCCESS) {
     if (status != CUPTI_ERROR_MAX_LIMIT_REACHED) {
       CUPTI_CALL(status);

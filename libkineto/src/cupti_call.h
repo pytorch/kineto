@@ -9,7 +9,10 @@
 
 #include <fmt/format.h>
 
-// TODO: Handle lazy loading error differently (invalid _status_)
+#ifdef HAS_LIBCUPTI
+
+#include <cupti.h>
+
 #define CUPTI_CALL(call)                           \
   [&]() -> CUptiResult {                           \
     CUptiResult _status_ = call;                   \
@@ -24,3 +27,12 @@
     }                                              \
     return _status_;                               \
   }()
+
+#define CUPTI_CALL_NOWARN(call) call
+
+#else
+
+#define CUPTI_CALL(call) CUPTI_ERROR_NOT_INITIALIZED
+#define CUPTI_CALL_NOWARN(call) CUPTI_ERROR_NOT_INITIALIZED
+
+#endif

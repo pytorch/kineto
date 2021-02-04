@@ -32,7 +32,7 @@ CUpti_MetricID CuptiMetricInterface::idFromName(const std::string& name) {
 // be set to the empty string.
 std::map<CUpti_EventID, std::string> CuptiMetricInterface::events(
     CUpti_MetricID metric_id) {
-  uint32_t num_events;
+  uint32_t num_events = 0;
   CUPTI_CALL(cuptiMetricGetNumEvents(metric_id, &num_events));
   vector<CUpti_EventID> ids(num_events);
   size_t array_size = num_events * sizeof(CUpti_EventID);

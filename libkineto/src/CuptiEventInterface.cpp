@@ -30,7 +30,7 @@ CUpti_EventGroupSets* CuptiEventInterface::createGroupSets(
 
   if (res != CUPTI_SUCCESS || group_sets == nullptr) {
     const char* errstr = nullptr;
-    cuptiGetResultString(res, &errstr);
+    CUPTI_CALL(cuptiGetResultString(res, &errstr));
     throw std::system_error(EINVAL, std::generic_category(), errstr);
   }
 
@@ -65,10 +65,10 @@ uint32_t CuptiEventInterface::instanceCount(CUpti_EventGroup eventGroup) {
 }
 
 void CuptiEventInterface::enableGroupSet(CUpti_EventGroupSet& set) {
-  CUptiResult res = cuptiEventGroupSetEnable(&set);
+  CUptiResult res = CUPTI_CALL_NOWARN(cuptiEventGroupSetEnable(&set));
   if (res != CUPTI_SUCCESS) {
     const char* errstr = nullptr;
-    cuptiGetResultString(res, &errstr);
+    CUPTI_CALL(cuptiGetResultString(res, &errstr));
     throw std::system_error(EIO, std::generic_category(), errstr);
   }
 }

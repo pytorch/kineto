@@ -10,7 +10,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <cupti.h>
 #include <list>
 #include <map>
 #include <memory>
@@ -157,13 +156,7 @@ class ActivityProfiler {
 
     std::unordered_map<uint32_t, uint64_t>&
       getCorrelationMap(CorrelationFlowType flowType) {
-        switch(flowType){
-          case Default:
-            return defaultCorrelationMap_;
-            break;
-          case User:
-            return userCorrelationMap_;
-        }
+        return flowType == User ? userCorrelationMap_ : defaultCorrelationMap_;
       }
   };
 

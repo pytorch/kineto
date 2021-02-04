@@ -11,7 +11,9 @@
 #include "CuptiActivityBuffer.h"
 
 #include <atomic>
+#ifdef HAS_CUPTI
 #include <cupti.h>
+#endif
 #include <functional>
 #include <list>
 #include <memory>
@@ -20,6 +22,10 @@
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
+
+#ifndef HAS_CUPTI
+using CUpti_Activity = void;
+#endif
 
 class CuptiActivityInterface {
  public:
@@ -63,6 +69,7 @@ class CuptiActivityInterface {
   CuptiActivityInterface() {}
 
  private:
+#ifdef HAS_CUPTI
   int processActivitiesForBuffer(
       uint8_t* buf,
       size_t validSize,
@@ -75,6 +82,7 @@ class CuptiActivityInterface {
       uint8_t* buffer,
       size_t /* unused */,
       size_t validSize);
+#endif // HAS_CUPTI
 
   int maxGpuBufferCount_{0};
   int allocatedGpuBufferCount{0};

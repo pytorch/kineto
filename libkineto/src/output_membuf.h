@@ -12,12 +12,16 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef HAS_CUPTI
 #include <cupti.h>
+#endif
 
 #include "Config.h"
 #include "ClientTraceActivity.h"
+#ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
+#endif // HAS_CUPTI
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {
@@ -63,6 +67,7 @@ class MemoryTraceLogger : public ActivityLogger {
         std::make_unique<GenericTraceActivity>(activity));
   }
 
+#ifdef HAS_CUPTI
   void handleRuntimeActivity(
       const RuntimeActivity& activity) override {
     activities_.push_back(std::make_unique<RuntimeActivity>(activity));
@@ -80,6 +85,7 @@ class MemoryTraceLogger : public ActivityLogger {
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override {
     activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemset>>(activity));
   }
+#endif // HAS_CUPTI
 
   void finalizeTrace(
       const Config& config,

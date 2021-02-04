@@ -9,7 +9,7 @@
 
 #include <fmt/format.h>
 
-#ifdef HAS_LIBCUPTI
+#ifdef HAS_CUPTI
 
 #include <cupti.h>
 
@@ -35,4 +35,4 @@
 #define CUPTI_CALL(call) CUPTI_ERROR_NOT_INITIALIZED
 #define CUPTI_CALL_NOWARN(call) CUPTI_ERROR_NOT_INITIALIZED
 
-#endif
+#endif // HAS_CUPTI

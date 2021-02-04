@@ -13,10 +13,12 @@
 #include <thread>
 #include <unordered_map>
 
+#ifdef HAS_CUPTI
 #include <cupti.h>
+#include "CuptiActivity.h"
+#endif // HAS_CUPTI
 #include "ActivityBuffers.h"
 #include "ClientTraceActivity.h"
-#include "CuptiActivity.h"
 #include "GenericTraceActivity.h"
 #include "ProcessInfo.h"
 #include "TraceSpan.h"
@@ -52,6 +54,7 @@ class ActivityLogger {
   virtual void handleGenericActivity(
       const GenericTraceActivity& activity) = 0;
 
+#ifdef HAS_CUPTI
   virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
 
   virtual void handleGpuActivity(
@@ -62,6 +65,7 @@ class ActivityLogger {
       const GpuActivity<CUpti_ActivityMemcpy2>& activity) = 0;
   virtual void handleGpuActivity(
       const GpuActivity<CUpti_ActivityMemset>& activity) = 0;
+#endif // HAS_CUPTI
 
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,

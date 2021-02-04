@@ -229,6 +229,7 @@ class ActivityProfiler {
   // net name to id
   int netId(const std::string& netName);
 
+#ifdef HAS_CUPTI
   // Process generic CUPTI activity
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
 
@@ -243,6 +244,7 @@ class ActivityProfiler {
       ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
+#endif // HAS_CUPTI
 
   // Is logging disabled for this event?
   // Logging can be disabled due to operator count, net name filter etc.

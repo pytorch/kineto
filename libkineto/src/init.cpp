@@ -29,12 +29,12 @@
 #include <memory>
 #include <mutex>
 
-#include <cupti.h>
-
 #include "ActivityProfilerProxy.h"
 #include "Config.h"
 #include "ConfigLoader.h"
+#ifdef HAS_CUPTI
 #include "EventProfilerController.h"
+#endif
 #include "cupti_call.h"
 #include "libkineto.h"
 
@@ -42,9 +42,12 @@
 
 namespace KINETO_NAMESPACE {
 
+static bool loadedByCuda = false;
+
+#ifdef HAS_CUPTI
 static bool initialized = false;
 static std::mutex initMutex;
-static bool loadedByCuda = false;
+
 static void initProfilers(CUcontext ctx) {
   std::lock_guard<std::mutex> lock(initMutex);
   if (!initialized) {
@@ -59,6 +62,7 @@ static void stopProfiler(CUcontext ctx) {
   std::lock_guard<std::mutex> lock(initMutex);
   EventProfilerController::stop(ctx);
 }
+#endif // HAS_CUPTI
 
 bool hasConfigEnvVar() {
   return getenv("KINETO_CONFIG") != nullptr;
@@ -84,6 +88,7 @@ bool hasKnownJobIdEnvVar() {
 using namespace KINETO_NAMESPACE;
 extern "C" {
 
+#ifdef HAS_CUPTI
 static void CUPTIAPI callback(
     void* /* unused */,
     CUpti_CallbackDomain domain,
@@ -102,11 +107,14 @@ static void CUPTIAPI callback(
     }
   }
 }
+#endif // HAS_CUPTI
 
 void libkineto_init(bool cpuOnly) {
   // Can be more verbose when injected dynamically
   LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
   bool enable = hasConfigEnvVar() || hasKnownJobIdEnvVar();
+
+#ifdef HAS_CUPTI
   if (!cpuOnly) {
     CUpti_SubscriberHandle subscriber;
     CUptiResult status = CUPTI_ERROR_UNKNOWN;
@@ -144,6 +152,7 @@ void libkineto_init(bool cpuOnly) {
     // registered or when a CUDA context is created.
     cpuOnly = (status != CUPTI_SUCCESS);
   }
+#endif // HAS_CUPTI
 
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly));

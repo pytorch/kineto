@@ -18,13 +18,17 @@
 #include <thread>
 #include <vector>
 
+#ifdef HAS_CUPTI
 #include <cupti.h>
+#endif
 
 #include "Config.h"
 #include "time_since_epoch.h"
+#ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
+#endif // HAS_CUPTI
 #include "output_base.h"
 
 #include "Logger.h"
@@ -138,6 +142,7 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     processCpuTrace(*cpu_trace, logger, log_net);
   }
 
+#ifdef HAS_CUPTI
   if (!cpuOnly_) {
     traceBuffers_->gpu = cupti_.activityBuffers();
     if (VLOG_IS_ON(1)) {
@@ -151,6 +156,7 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
                 << " GPU records (" << count_and_size.second << " bytes)";
     }
   }
+#endif // HAS_CUPTI
 
   finalizeTrace(*config_, logger);
 }
@@ -196,6 +202,7 @@ void ActivityProfiler::processCpuTrace(
   }
 }
 
+#ifdef HAS_CUPTI
 inline void ActivityProfiler::handleCorrelationActivity(
     const CUpti_ActivityExternalCorrelation* correlation) {
   switch(correlation->externalKind) {
@@ -219,6 +226,7 @@ inline void ActivityProfiler::handleCorrelationActivity(
   VLOG(2) << correlation->correlationId
           << ": CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION";
 }
+#endif // HAS_CUPTI
 
 const libkineto::ClientTraceActivity&
 ActivityProfiler::ExternalEventMap::getClientTraceActivity(
@@ -297,6 +305,7 @@ void ActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger *logger) {
   }
 }
 
+#ifdef HAS_CUPTI
 inline bool ActivityProfiler::outOfRange(const TraceActivity& act) {
   return act.timestamp() < captureWindowStartTime_ ||
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
@@ -424,6 +433,7 @@ void ActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Activit
       break;
   }
 }
+#endif // HAS_CUPTI
 
 void ActivityProfiler::configure(
     const Config& config,
@@ -461,6 +471,7 @@ void ActivityProfiler::configure(
   // Ensure we're starting in a clean state
   resetTraceData();
 
+#ifdef HAS_CUPTI
   if (!cpuOnly_) {
     // Enabling CUPTI activity tracing incurs a larger perf hit at first,
     // presumably because structures are allocated and initialized, callbacks
@@ -480,6 +491,7 @@ void ActivityProfiler::configure(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
+#endif // HAS_CUPTI
 
   profileStartTime_ = (config_->requestTimestamp() + config_->maxRequestAge()) +
       config_->activitiesWarmupDuration();
@@ -507,6 +519,7 @@ void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
   if (captureWindowEndTime_ == 0) {
     captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
   }
+#ifdef HAS_CUPTI
   if (!cpuOnly_) {
     time_point<high_resolution_clock> timestamp;
     if (VLOG_IS_ON(1)) {
@@ -519,6 +532,7 @@ void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
+#endif // HAS_CUPTI
   if (currentRunloopState_ == RunloopState::CollectTrace) {
     VLOG(0) << "CollectTrace -> ProcessTrace";
   } else {
@@ -544,6 +558,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       break;
 
     case RunloopState::Warmup:
+#ifdef HAS_CUPTI
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && nextWakeupTime < profileStartTime_) {
         cupti_.clearActivities();
@@ -559,6 +574,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
         resetInternal();
         VLOG(0) << "Warmup -> WaitForRequest";
       }
+#endif // HAS_CUPTI
 
       if (now >= profileStartTime_) {
         if (now > profileStartTime_ + milliseconds(10)) {
@@ -587,8 +603,11 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
             config_->activitiesOnDemandDuration();
       }
 
-      if (now >= profileEndTime_ || stopCollection_.exchange(false) ||
-          cupti_.stopCollection) {
+      if (now >= profileEndTime_ || stopCollection_.exchange(false)
+#ifdef HAS_CUPTI
+          || cupti_.stopCollection
+#endif
+      ){
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete";
         // FIXME: Need to communicate reason for stopping on errors
@@ -681,9 +700,11 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
 }
 
 void ActivityProfiler::resetTraceData() {
+#ifdef HAS_CUPTI
   if (!cpuOnly_) {
     cupti_.clearActivities();
   }
+#endif // HAS_CUPTI
   externalEvents_.clear();
   gpuUserEventMap_.clear();
   traceSpans_.clear();

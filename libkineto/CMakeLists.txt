@@ -35,11 +35,26 @@ if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
+if (NOT CUDA_SOURCE_DIR)
+    set(CUDA_SOURCE_DIR "$ENV{CUDA_SOURCE_DIR}")
+    message(INFO " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
+endif()
+
+# Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
+# Otherwise, CUPTI is disabled if not found
+IF (NOT CUDA_SOURCE_DIR AND NOT CUPTI_INCLUDE_DIR)
+    set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
+endif()
+
 # Define file lists
-get_filelist("get_libkineto_srcs()" LIBKINETO_SRCS)
+if (LIBKINETO_NOCUPTI)
+    get_filelist("get_libkineto_cpu_only_srcs()" LIBKINETO_SRCS)
+    message(INFO " CUPTI unavailable or disabled - not building GPU profilers")
+else()
+    get_filelist("get_libkineto_srcs()" LIBKINETO_SRCS)
+endif()
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
 set(LIBKINETO_API_SRCS "${LIBKINETO_SOURCE_DIR}/libkineto_api.cpp")
-
 
 add_library(kineto_base OBJECT ${LIBKINETO_SRCS})
 add_library(kineto_api OBJECT ${LIBKINETO_API_SRCS})
@@ -57,6 +72,9 @@ set_target_properties(kineto_base kineto_api PROPERTIES
 target_compile_options(kineto_base PRIVATE "-DKINETO_NAMESPACE=libkineto"
 "-std=gnu++14")
 target_compile_options(kineto_api PRIVATE "-std=gnu++14")
+if (NOT LIBKINETO_NOCUPTI)
+    target_compile_options(kineto_base PRIVATE "-DHAS_CUPTI")
+endif()
 
 if(NOT TARGET fmt)
   if(NOT FMT_SOURCE_DIR)
@@ -77,10 +95,6 @@ if(NOT TARGET fmt)
 endif()
 
 set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
-if (NOT CUDA_SOURCE_DIR)
-    set(CUDA_SOURCE_DIR "$ENV{CUDA_SOURCE_DIR}")
-    message(INFO " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
-endif()
 if (NOT CUPTI_INCLUDE_DIR)
     set(CUPTI_INCLUDE_DIR "${CUDA_SOURCE_DIR}/extras/CUPTI/include")
 endif()

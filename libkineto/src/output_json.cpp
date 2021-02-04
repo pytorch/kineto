@@ -13,11 +13,12 @@
 #include <map>
 #include <unistd.h>
 
-#include "cupti_strings.h"
 #include "Config.h"
+#ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
+#endif // HAS_CUPTI
 #include "Demangle.h"
 #include "TraceSpan.h"
 
@@ -52,7 +53,9 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName)
     : fileName_(traceFileName), pid_(getpid()) {
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile(fileName_, traceOf_);
+#ifdef HAS_CUPTI
   smCount_ = CuptiActivityInterface::singleton().smCount();
+#endif
 }
 
 int ChromeTraceLogger::renameThreadID(uint32_t tid) {
@@ -203,6 +206,30 @@ void ChromeTraceLogger::handleCpuActivity(
   // clang-format on
 }
 
+void ChromeTraceLogger::handleGenericActivity(
+      const GenericTraceActivity& op) {
+    if (!traceOf_) {
+    return;
+  }
+
+  // FIXME: Make cat and tid customizable
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "X", "cat": "User", "name": "{}",
+    "pid": {}, "tid": "stream {} user",
+    "ts": {}, "dur": {},
+    "args": {{
+      "External id": {}
+    }}
+  }},)JSON",
+      op.name(), op.deviceId(), op.resourceId(),
+      op.timestamp(), op.duration(),
+      op.correlationId());
+  // clang-format on
+}
+
+#ifdef HAS_CUPTI
 void ChromeTraceLogger::handleLinkStart(const RuntimeActivity& s) {
   if (!traceOf_) {
     return;
@@ -231,29 +258,6 @@ void ChromeTraceLogger::handleLinkEnd(const TraceActivity& e) {
     "cat": "async", "name": "launch", "bp": "e"
   }},)JSON",
       e.correlationId(), e.deviceId(), e.resourceId(), e.timestamp());
-  // clang-format on
-}
-
-void ChromeTraceLogger::handleGenericActivity(
-      const GenericTraceActivity& op) {
-    if (!traceOf_) {
-    return;
-  }
-
-  // FIXME: Make cat and tid customizable
-  // clang-format off
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "User", "name": "{}",
-    "pid": {}, "tid": "stream {} user",
-    "ts": {}, "dur": {},
-    "args": {{
-      "External id": {}
-    }}
-  }},)JSON",
-      op.name(), op.deviceId(), op.resourceId(),
-      op.timestamp(), op.duration(),
-      op.correlationId());
   // clang-format on
 }
 
@@ -416,6 +420,7 @@ void ChromeTraceLogger::handleGpuActivity(
 
   handleLinkEnd(activity);
 }
+#endif // HAS_CUPTI
 
 void ChromeTraceLogger::finalizeTrace(
     const Config& /*unused*/,

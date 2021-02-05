@@ -37,6 +37,7 @@ def get_libkineto_cpu_only_srcs():
         "src/ActivityProfilerProxy.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
+        "src/CuptiActivityInterface.cpp",
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",

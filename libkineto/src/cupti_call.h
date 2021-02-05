@@ -32,7 +32,7 @@
 
 #else
 
-#define CUPTI_CALL(call) CUPTI_ERROR_NOT_INITIALIZED
-#define CUPTI_CALL_NOWARN(call) CUPTI_ERROR_NOT_INITIALIZED
+#define CUPTI_CALL(call)
+#define CUPTI_CALL_NOWARN(call)
 
 #endif // HAS_CUPTI

@@ -29,6 +29,7 @@ CuptiActivityInterface& CuptiActivityInterface::singleton() {
 }
 
 void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
+#ifdef HAS_CUPTI
   VLOG(2) << "pushCorrelationID(" << id << ")";
   switch(type) {
     case Default:
@@ -39,9 +40,11 @@ void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type)
       CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
         CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
   }
+#endif
 }
 
 void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
+#ifdef HAS_CUPTI
   switch(type) {
     case Default:
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
@@ -51,9 +54,11 @@ void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
         CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
   }
+#endif
 }
 
 static int getSMCount() {
+#ifdef HAS_CUPTI
   // There may be a simpler way to get the number of SMs....
   // Look for domain_d - this has 80 instances on Volta and
   // 56 instances on Pascal, corresponding to the number of SMs
@@ -77,6 +82,7 @@ static int getSMCount() {
       return count;
     }
   }
+#endif
 
   return -1;
 }
@@ -90,6 +96,7 @@ static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,
     CUpti_Activity*& record) {
+#ifdef HAS_CUPTI
   CUptiResult status = CUPTI_CALL_NOWARN(
       cuptiActivityGetNextRecord(buffer, valid_size, &record));
   if (status != CUPTI_SUCCESS) {
@@ -98,6 +105,7 @@ static bool nextActivityRecord(
     }
     record = nullptr;
   }
+#endif
   return record != nullptr;
 }
 
@@ -105,6 +113,7 @@ void CuptiActivityInterface::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
+#ifdef HAS_CUPTI
 void CUPTIAPI CuptiActivityInterface::bufferRequested(
     uint8_t** buffer,
     size_t* size,
@@ -126,8 +135,10 @@ void CUPTIAPI CuptiActivityInterface::bufferRequested(
 
   singleton().allocatedGpuBufferCount++;
 }
+#endif
 
 std::unique_ptr<std::list<CuptiActivityBuffer>> CuptiActivityInterface::activityBuffers() {
+#ifdef HAS_CUPTI
   VLOG(1) << "Flushing GPU activity buffers";
   time_point<high_resolution_clock> t1;
   if (VLOG_IS_ON(1)) {
@@ -138,9 +149,11 @@ std::unique_ptr<std::list<CuptiActivityBuffer>> CuptiActivityInterface::activity
     flushOverhead =
         duration_cast<microseconds>(high_resolution_clock::now() - t1).count();
   }
+#endif
   return std::move(gpuTraceBuffers_);
 }
 
+#ifdef HAS_CUPTI
 int CuptiActivityInterface::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
@@ -167,6 +180,7 @@ const std::pair<int, int> CuptiActivityInterface::processActivities(
   }
   return res;
 }
+#endif
 
 void CuptiActivityInterface::clearActivities() {
   CUPTI_CALL(cuptiActivityFlushAll(0));
@@ -186,6 +200,7 @@ void CuptiActivityInterface::addActivityBuffer(uint8_t* buffer, size_t validSize
   gpuTraceBuffers_->emplace_back(buffer, validSize);
 }
 
+#ifdef HAS_CUPTI
 void CUPTIAPI CuptiActivityInterface::bufferCompleted(
     CUcontext ctx,
     uint32_t streamId,
@@ -210,9 +225,11 @@ void CUPTIAPI CuptiActivityInterface::bufferCompleted(
     }
   }
 }
+#endif
 
 void CuptiActivityInterface::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
+#ifdef HAS_CUPTI
   static bool registered = false;
   if (!registered) {
     CUPTI_CALL(
@@ -236,6 +253,7 @@ void CuptiActivityInterface::enableCuptiActivities(
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
   }
+#endif
 
   // Explicitly enabled, so reset this flag if set
   stopCollection = false;
@@ -243,6 +261,7 @@ void CuptiActivityInterface::enableCuptiActivities(
 
 void CuptiActivityInterface::disableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
+#ifdef HAS_CUPTI
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
@@ -260,6 +279,7 @@ void CuptiActivityInterface::disableCuptiActivities(
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
   }
+#endif
 }
 
 } // namespace KINETO_NAMESPACE

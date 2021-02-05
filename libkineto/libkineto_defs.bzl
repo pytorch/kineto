@@ -21,6 +21,7 @@ def get_libkineto_srcs():
         "src/Logger.cpp",
         "src/ProcessInfo.cpp",
         "src/ThreadName.cpp",
+        "src/WeakSymbols.cpp",
         "src/cupti_strings.cpp",
         "src/init.cpp",
         "src/libkineto_api.cpp",

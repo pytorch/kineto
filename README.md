@@ -1,23 +1,21 @@
 # Kineto
 
-Kineto is a PyTorch performance profiling library and framework focused on providing low-overhead full-system instrumentation for production workloads. For the moment, it consists of libkineto, an in-process profiling library integrated with PyTorch.
-Going forward however there will be other related components added such as infrastructure for dameon-based deployment and trace processing pipelines.
+Kineto is a PyTorch performance profiling library (libkineto) focused on providing low-overhead full-system instrumentation for production workloads.
+Libkineto is fully integrated with the PyToch Profiler, providing GPU profiling capabilities and in the future other system-level profiling.
+This repo also includes the PyTorch Profiler Tensorboard plugin, providing an easy-to-use end-to-end profiling experience.
 
-## What is libkineto?
-Libkineto, a component of the overall Kineto project, is an in-process profiling library which also provides a C++ API. Please refer to the [README](libkineto/README.md) file in the libkineto folder.
+## libkineto
+Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the libkineto folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
 
-## Planned for initial release:
-- libkineto, an in-process library providing CPU + GPU timeline tracing capabilities.
-- An API allowing the PyTorch profiler to control timeline trace collection.
-- Visualization in the Chrome browser using the chrome://tracing extension.
+## PyTorch Tensorboard Profiler
+The goal of the PyTorch Tensorboard plugin is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the Tensorboard UI.
+Please refer to the [README](tb_plugin/README.md) file in the `tb_plugin` folder.
 
-## Future development:
-- Tensorboard integration 
-- Collaboration features
-- Daemon-based deployment for larger setups
-- Distributed tracing support
-- Trace processing and analysis pipeline
-- System-level events, multiple tracing sources
+## Future development direction:
+- Support for tracing distributed workloads
+- Trace processing, analysis and recommendation engine
+- System-level activities, multiple tracing sources
+- Profiling and monitoring daemon for larger scale deployments
 
 ## Releases and Contributing
 We will follow the PyTorch release schedule which roughly happens on an every 3 month basis.

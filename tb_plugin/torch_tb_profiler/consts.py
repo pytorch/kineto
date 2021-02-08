@@ -8,7 +8,7 @@ from __future__ import print_function
 
 from collections import namedtuple
 
-PLUGIN_NAME = "torch_profiler"
+PLUGIN_NAME = "pytorch_profiler"
 
 TRACE_FILE_SUFFIX = ".pt.trace.json"
 TRACE_GZIP_FILE_SUFFIX = ".pt.trace.json.gz"

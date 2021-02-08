@@ -1,8 +1,8 @@
 import json
 import unittest
 
-import tensorboard_plugin_torch_profiler.profiler.trace as trace
-from tensorboard_plugin_torch_profiler.profiler.data import RunProfileData
+import torch_tb_profiler.profiler.trace as trace
+from torch_tb_profiler.profiler.data import RunProfileData
 
 SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"

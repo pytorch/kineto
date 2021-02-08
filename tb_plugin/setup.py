@@ -9,12 +9,12 @@ from __future__ import print_function
 import setuptools
 
 setuptools.setup(
-    name="tensorboard_plugin_torch_profiler",
+    name="torch_tb_profiler",
     version="0.1.0",
     description="PyTorch Profiler TensorBoard Plugin",
     packages=setuptools.find_packages(),
     package_data={
-        "tensorboard_plugin_torch_profiler": ["static/**"],
+        "torch_tb_profiler": ["static/**"],
     },
     install_requires=[
         "tensorboard",
@@ -22,7 +22,7 @@ setuptools.setup(
     ],
     entry_points={
         "tensorboard_plugins": [
-            "torch_profiler = tensorboard_plugin_torch_profiler.plugin:TorchProfilerPlugin",
+            "torch_profiler = torch_tb_profiler.plugin:TorchProfilerPlugin",
         ],
     },
 )

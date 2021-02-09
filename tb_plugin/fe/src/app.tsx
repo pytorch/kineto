@@ -262,7 +262,6 @@ export const App = () => {
             ))}
           </Select>
         </FormControl>
-        )
       </Drawer>
       {!open && (
         <Fab

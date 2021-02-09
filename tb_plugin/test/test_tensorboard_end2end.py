@@ -67,7 +67,7 @@ class TestEnd2End(unittest.TestCase):
                     response = urllib.request.urlopen(link)
                     self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
                     i = i + 1
-            self.assertEqual(i, 20)
+            self.assertEqual(i, 10)
         finally:
             tb.kill()
 

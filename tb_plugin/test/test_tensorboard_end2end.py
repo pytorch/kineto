@@ -14,7 +14,7 @@ class TestEnd2End(unittest.TestCase):
         tb = Popen(['tensorboard', '--logdir='+test_folder])
 
         run_link = "http://localhost:6006/data/plugin/torch_profiler/runs"
-        expected_runs = b'["resnet50_autograd_api_num_workers_0", "resnet50_autograd_api_num_workers_4", "resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
+        expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
         host='localhost'
         port=6006
 
@@ -54,9 +54,7 @@ class TestEnd2End(unittest.TestCase):
         expected_links_format.append(link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel')
         expected_links_format.append(link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel')
         links=[]
-        for run in ["resnet50_autograd_api_num_workers_0",
-                    "resnet50_autograd_api_num_workers_4",
-                    "resnet50_profiler_api_num_workers_0",
+        for run in ["resnet50_profiler_api_num_workers_0",
                     "resnet50_profiler_api_num_workers_4"]:
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))

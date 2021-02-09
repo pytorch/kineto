@@ -14,11 +14,11 @@
 
 * Verify installation is complete
 
-  `pip list | grep tensorboard-plugin-torch-profiler`
+  `pip list | grep torch-tb-profiler`
 
   Should display
 
-  `tensorboard-plugin-torch-profiler 0.1.0`
+  `torch-tb-profiler      0.1.0`
 
 
 ### Quick Start Instructions

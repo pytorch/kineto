@@ -13,7 +13,7 @@ class TestEnd2End(unittest.TestCase):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
         tb = Popen(['tensorboard', '--logdir='+test_folder])
 
-        run_link = "http://localhost:6006/data/plugin/torch_profiler/runs"
+        run_link = "http://localhost:6006/data/plugin/pytorch_profiler/runs"
         expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
         host='localhost'
         port=6006
@@ -46,7 +46,7 @@ class TestEnd2End(unittest.TestCase):
             except Exception:
                 continue
 
-        link_prefix = 'http://localhost:6006/data/plugin/torch_profiler/'
+        link_prefix = 'http://localhost:6006/data/plugin/pytorch_profiler/'
         expected_links_format=[]
         expected_links_format.append(link_prefix + 'overview?run={}&worker=worker0&view=Overview')
         expected_links_format.append(link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation')

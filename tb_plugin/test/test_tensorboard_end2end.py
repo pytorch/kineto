@@ -13,8 +13,8 @@ class TestEnd2End(unittest.TestCase):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
         tb = Popen(['tensorboard', '--logdir='+test_folder])
 
-        run_link = "http://localhost:6006/data/plugin/torch_profiler/runs"
-        expected_runs = b'["resnet50_autograd_api_num_workers_0", "resnet50_autograd_api_num_workers_4", "resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
+        run_link = "http://localhost:6006/data/plugin/pytorch_profiler/runs"
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
         host='localhost'
         port=6006
 
@@ -46,7 +46,7 @@ class TestEnd2End(unittest.TestCase):
             except Exception:
                 continue
 
-        link_prefix = 'http://localhost:6006/data/plugin/torch_profiler/'
+        link_prefix = 'http://localhost:6006/data/plugin/pytorch_profiler/'
         expected_links_format=[]
         expected_links_format.append(link_prefix + 'overview?run={}&worker=worker0&view=Overview')
         expected_links_format.append(link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation')
@@ -54,10 +54,8 @@ class TestEnd2End(unittest.TestCase):
         expected_links_format.append(link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel')
         expected_links_format.append(link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel')
         links=[]
-        for run in ["resnet50_autograd_api_num_workers_0",
-                    "resnet50_autograd_api_num_workers_4",
-                    "resnet50_profiler_api_num_workers_0",
-                    "resnet50_profiler_api_num_workers_4"]:
+        for run in ["resnet50_num_workers_0",
+                    "resnet50_num_workers_4"]:
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 
@@ -69,7 +67,7 @@ class TestEnd2End(unittest.TestCase):
                     response = urllib.request.urlopen(link)
                     self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
                     i = i + 1
-            self.assertEqual(i, 20)
+            self.assertEqual(i, 10)
         finally:
             tb.kill()
 

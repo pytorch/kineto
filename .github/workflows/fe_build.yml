@@ -1,0 +1,25 @@
+name: FE Build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+    - name: install yarn
+      run: npm install -g yarn
+    - name: install deps
+      run: yarn
+      working-directory: ./tb_plugin/fe
+    - name: build
+      run: yarn build:copy
+      working-directory: ./tb_plugin/fe
+    - name: commit changes
+      uses: elstudio/actions-js-build/commit@v3
+      with:
+        commitMessage: "fixup: [fe] `npm run build:copy`"

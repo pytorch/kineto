@@ -101,9 +101,9 @@ Such as cudaLaunchKernel, cudaMemcpyAsync, cudaStreamSynchronize, ...
 Note: The summary of all the above categories is end-to-end wall-clock time. 
 We count time by priority. The time cost with highest priority category(Kernel) is counted firstly, 
 then Memcpy, then Memset, ...,  and Other is last counted.
-In the following example, the "Kernel" is counted firstly as 7-6 seconds; 
+In the following example, the "Kernel" is counted firstly as 7-2=5 seconds; 
 Then the "Memcpy" is counted as 0 seconds, because it is fully hidden by "Kernel"; 
-Then "CPU Exec" is counted as 2-1 seconds, because the [2,3] interval is hidden by "Kernel", only [1,2] interval is counted.  
+Then "CPU Exec" is counted as 2-1=1 seconds, because the [2,3] interval is hidden by "Kernel", only [1,2] interval is counted.  
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/time_breakdown_priority.PNG)
 
 Performance Recommendation: Leverage the profiling result to automatically get the bottlenecks 

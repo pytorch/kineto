@@ -69,7 +69,7 @@ export const TraceView: React.FC<IProps> = (props) => {
           <iframe
             className={classes.frame}
             ref={iframeRef}
-            src="/data/plugin/torch_profiler/trace_embedding.html"
+            src="/data/plugin/pytorch_profiler/trace_embedding.html"
           ></iframe>
         ),
         []

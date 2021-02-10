@@ -38,9 +38,11 @@ class OperatorNode(HostNode):
         self.self_host_duration = self.end_time - self.start_time
         for child in self.children:
             self.device_duration += child.device_duration
-            # To be consistent with pytorch autograd profiler.Include child Runtime time as self time.
             self.self_host_duration -= (child.end_time - child.start_time)
         for rt in self.runtimes:
+            # From PyTorch 1.8 RC1, cpu_self_time does not include runtime's time.
+            # So here we keep consistent with it.
+            self.self_host_duration -= (rt.end_time - rt.start_time)
             self.device_duration += rt.device_duration
             self.self_device_duration += rt.device_duration
 

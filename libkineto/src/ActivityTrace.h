@@ -19,19 +19,23 @@ namespace libkineto {
 
 class ActivityTrace : public ActivityTraceInterface {
  public:
-  ActivityTrace(std::unique_ptr<MemoryTraceLogger> logger) : logger_(std::move(logger)) {}
+  ActivityTrace(
+      std::unique_ptr<MemoryTraceLogger> logger,
+      CuptiActivityInterface& cuptiActivities)
+    : logger_(std::move(logger)), cuptiActivities_(cuptiActivities) {}
 
   const std::vector<std::unique_ptr<TraceActivity>>* activities() override {
     return logger_->traceActivities();
   };
 
   void save(const std::string& path) override {
-    ChromeTraceLogger chrome_logger(path);
+    ChromeTraceLogger chrome_logger(path, cuptiActivities_.smCount());
     return logger_->log(chrome_logger);
   };
 
  private:
   std::unique_ptr<MemoryTraceLogger> logger_;
+  CuptiActivityInterface& cuptiActivities_;
 };
 
 } // namespace libkineto

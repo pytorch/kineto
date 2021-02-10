@@ -49,8 +49,8 @@ static void openTraceFile(std::string& name, std::ofstream& stream) {
   }
 }
 
-ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName)
-    : fileName_(traceFileName), pid_(getpid()) {
+ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
+    : fileName_(traceFileName), pid_(getpid()), smCount_(smCount) {
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile(fileName_, traceOf_);
 #ifdef HAS_CUPTI

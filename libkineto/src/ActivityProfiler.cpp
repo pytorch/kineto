@@ -144,6 +144,7 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 
 #ifdef HAS_CUPTI
   if (!cpuOnly_) {
+    VLOG(0) << "Retrieving GPU activity buffers";
     traceBuffers_->gpu = cupti_.activityBuffers();
     if (VLOG_IS_ON(1)) {
       addOverheadSample(flushOverhead_, cupti_.flushOverhead);
@@ -307,8 +308,14 @@ void ActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger *logger) {
 
 #ifdef HAS_CUPTI
 inline bool ActivityProfiler::outOfRange(const TraceActivity& act) {
-  return act.timestamp() < captureWindowStartTime_ ||
+  bool out_of_range = act.timestamp() < captureWindowStartTime_ ||
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
+  if (out_of_range) {
+    VLOG(2) << "TraceActivity outside of profiling window: " << act.name()
+        << " (" << act.timestamp() << " < " << captureWindowStartTime_ << " or "
+        << (act.timestamp() + act.duration()) << " > " << captureWindowEndTime_;
+  }
+  return out_of_range;
 }
 
 inline void ActivityProfiler::handleRuntimeActivity(

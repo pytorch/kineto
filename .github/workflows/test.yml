@@ -1,9 +1,14 @@
-name: Python package
+name: Test
 
 on:
   push:
     branches:
       - tb_plugin
+      - master
+  pull_request:
+    branches:
+      - tb_plugin
+      - master
 
 jobs:
   build:
@@ -20,5 +25,17 @@ jobs:
         # Optional - x64 or x86 architecture, defaults to x64
         architecture: 'x64'
     # You can test your matrix by printing the current Python version
-    - name: Display Python version
-      run: python -c "import sys; print(sys.version)"
+    - name: Test
+      run: |
+        set -e
+        pip install numpy tensorboard
+        # pip install --pre torch -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+        pip install --pre torch -f https://download.pytorch.org/whl/nightly/cu110/torch_nightly.html
+        pip install typing-extensions pillow
+        pip install --pre torchvision --no-deps -f https://download.pytorch.org/whl/nightly/cu110/torch_nightly.html
+        python -c "import torch; print(torch.__version__); from torch.autograd import kineto_available; print(kineto_available())"
+        cd tb_plugin
+        pip install pytest
+        pip install .
+        cd test
+        pytest

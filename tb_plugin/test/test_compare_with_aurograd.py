@@ -1,4 +1,5 @@
 import os
+import pytest
 import time
 import unittest
 import torch
@@ -9,7 +10,7 @@ import torch.utils.data
 import torchvision
 import torchvision.transforms as T
 import torchvision.models as models
-from tensorboard_plugin_torch_profiler.profiler import RunLoader
+from torch_tb_profiler.profiler import RunLoader
 
 def create_log_dir():
     log_dir_name='./log{}'.format(str(int(time.time()*1000)))
@@ -73,9 +74,10 @@ def get_plugin_result(run):
                     result_dict[worker_name + "#kernel"].append(row[:3])
     return result_dict
 
-def get_train_func():
+def get_train_func(use_gpu=True):
     model = models.resnet50(pretrained=True)
-    model.cuda()
+    if use_gpu:
+        model.cuda()
     cudnn.benchmark = True
 
     transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor()])
@@ -84,9 +86,15 @@ def get_train_func():
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,
                                               shuffle=True, num_workers=0)
 
-    criterion = nn.CrossEntropyLoss().cuda()
+    if use_gpu:
+        criterion = nn.CrossEntropyLoss().cuda()
+    else:
+        criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    device = torch.device("cuda:0")
+    if use_gpu:
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
     model.train()
 
     def train(train_step, prof=None):
@@ -133,6 +141,7 @@ class TestCompareWithAutogradResult(unittest.TestCase):
                     self.assertTrue(line in autograd_result[key])
         self.assertEqual(count, len(plugin_result.keys()))
 
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
     def test_autograd_api(self):
         with torch.autograd.profiler.profile(use_cuda=True, use_kineto=True, record_shapes=True) as p:
             get_train_func()(5)
@@ -161,18 +170,22 @@ class TestCompareWithAutogradResult(unittest.TestCase):
             profile_memory=profile_memory,
             with_stack=with_stack
         ) as p:
-            get_train_func()(13, p)
+            get_train_func(use_gpu)(13, p)
         self.compare_results(log_dir, profilers_dict, use_gpu)
 
+    @pytest.mark.skipif('CI' in os.environ, reason="")
     def test_profiler_api_without_gpu(self):
         self.base_profiler_api(False, True, True, False)
 
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
     def test_profiler_api_with_record_shapes_memory_stack(self):
         self.base_profiler_api(True, True, True, True)
 
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
     def test_profiler_api_without_record_shapes_memory_stack(self):
         self.base_profiler_api(True, False, False, False)
 
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
     def test_profiler_api_without_step(self):
         log_dir = create_log_dir()
         profilers_dict = dict()

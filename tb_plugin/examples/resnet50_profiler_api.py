@@ -26,13 +26,6 @@ optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 device = torch.device("cuda:0")
 model.train()
 
-def output_fn(p):
-    try:
-        os.mkdir("result")
-    except Exception as e:
-        pass
-    p.export_chrome_trace("./result/worker0.pt.trace.json")
-
 with torch.profiler.profile(
     activities=[
         torch.profiler.ProfilerActivity.CPU,
@@ -41,7 +34,7 @@ with torch.profiler.profile(
         wait=2,
         warmup=3,
         active=6),
-    on_trace_ready=output_fn,
+    on_trace_ready=torch.profiler.tensorboard_trace_handler('./result'),
     record_shapes=True
 ) as p:
     for step, data in enumerate(trainloader, 0):

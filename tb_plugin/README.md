@@ -6,9 +6,9 @@
 
   `git clone https://github.com/pytorch/kineto.git`
 
-* Navigate to the plugin directory
+* Navigate to the kineto/tb_plugin directory
 
-* Install pytorch_profiler
+* Install the profiler
 
   `pip install .`
 
@@ -26,7 +26,7 @@
 * Start tensorboard
 
   Specify your profiling samples folder.
-  Or you can specify <pytorch_profiler>/samples as an example.
+  Or you can specify kineto/tb_plugin/samples as an example.
 
   `tensorboard --logdir=./samples`
 
@@ -41,16 +41,20 @@
 
   Open URL `http://localhost:6006` in the browser.
 
-* Navigate to TORCH_PROFILER tab
+* Navigate to PYTORCH_PROFILER tab
 
-  If the files under `--logdir` are too big or too many.
-  Refresh the browser to check latest loaded result.
+  If the files under `--logdir` are too big or too many, 
+  please wait a while and refresh the browser to check latest loaded result.
 
 ### Quick Usage Instructions
 
-The profiler organizes each sub-folder under "--logdir" as a run.
-In each run, there could be multiple processes if DDP is used.
-Each process's dumped chrome tracing file is called a worker.
+We regard each running with profiler enabled as a "run".
+In most cases a run is a single process. If DDP is enabled, then a run includes multiple processes.
+We name each process as a "worker".
+
+Each run corresponds to a sub-folder under "--logdir" specified folder.
+Under each run's sub-folder, each file is one worker's dumped chrome tracing file.
+The kineto/tb_plugin/samples is an example of how to organize the files.
 
 You can select run and worker on the left control panel.
    

@@ -126,7 +126,7 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 70)
                     self.assertEqual(op_agg.device_duration, 30)
-                    self.assertEqual(op_agg.self_host_duration, 70)
+                    self.assertEqual(op_agg.self_host_duration, 70 - 20 - 10 - 5)
                     self.assertEqual(op_agg.self_device_duration, 30)
             self.assertEqual(op_count, 2)
 
@@ -497,7 +497,7 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 70)
                     self.assertEqual(op_agg.device_duration, 100)
-                    self.assertEqual(op_agg.self_host_duration, 70)
+                    self.assertEqual(op_agg.self_host_duration, 70 - 20)
                     self.assertEqual(op_agg.self_device_duration, 100)
             self.assertEqual(op_count, 2)
 
@@ -564,7 +564,7 @@ class TestProfiler(unittest.TestCase):
           {
             "ph": "X", "cat": "Runtime", 
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
-            "ts": 400, "dur": 20,
+            "ts": 400, "dur": 5,
             "args": {"correlation": 40348, "external id": 4}
           }]
         """
@@ -586,9 +586,9 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.kernel_cost, (350 + 150) - 410)
         self.assertEqual(step.memcpy_cost, 0)
         self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 410 - 400)
+        self.assertEqual(step.runtime_cost, 5)
         self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, 400 - 360)
+        self.assertEqual(step.cpuop_cost, 50 - 5)
         self.assertEqual(step.other_cost, 360 - 350)
         self.assertEqual(step.step_total_cost, 150)  # Only the time inside ProfilerStep will count.
         self.assertEqual(profile.avg_costs.step_total_cost, (200 + 150) / 2)
@@ -605,7 +605,7 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 60)
                     self.assertEqual(op_agg.device_duration, 40)
-                    self.assertEqual(op_agg.self_host_duration, 60)
+                    self.assertEqual(op_agg.self_host_duration, 60 - 5)
                     self.assertEqual(op_agg.self_device_duration, 40)
                 if op_agg.name == "aten::mm":
                     op_count += 1
@@ -613,7 +613,7 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 50)
                     self.assertEqual(op_agg.device_duration, 200)
-                    self.assertEqual(op_agg.self_host_duration, 50)
+                    self.assertEqual(op_agg.self_host_duration, 50 - 5)
                     self.assertEqual(op_agg.self_device_duration, 200)
             self.assertEqual(op_count, 2)
 

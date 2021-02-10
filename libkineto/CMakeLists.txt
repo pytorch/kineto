@@ -20,7 +20,7 @@ endfunction()
 project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 set(KINETO_LIBRARY_TYPE "default" CACHE STRING
-  "Type of library (default or shared) to build")
+  "Type of library (default, static or shared) to build")
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
 

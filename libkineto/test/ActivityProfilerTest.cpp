@@ -144,6 +144,7 @@ class ActivityProfilerTest : public ::testing::Test {
   void SetUp() override {
     profiler_ = std::make_unique<ActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
+    cfg_ = std::make_unique<Config>();
   }
 
   std::list<CuptiActivityBuffer> createCuptiActivityBuffers() {
@@ -152,7 +153,7 @@ class ActivityProfilerTest : public ::testing::Test {
     return res;
   }
 
-  Config cfg_;
+  std::unique_ptr<Config> cfg_;
   MockCuptiActivities cuptiActivities_;
   std::unique_ptr<ActivityProfiler> profiler_;
 };
@@ -234,7 +235,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   int64_t start_time_us = 100;
   int64_t duration_us = 300;
   auto start_time = time_point<system_clock>(microseconds(start_time_us));
-  profiler.configure(cfg_, start_time);
+  profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + microseconds(duration_us));
 
@@ -257,7 +258,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Have the profiler process them
-  auto logger = std::make_unique<MemoryTraceLogger>(cfg_);
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler.processTrace(*logger);
 
   // Profiler can be reset at this point - logger owns the activities

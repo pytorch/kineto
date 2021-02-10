@@ -6,9 +6,9 @@
 
   `git clone https://github.com/pytorch/kineto.git`
 
-* Navigate to the plugin directory
+* Navigate to the kineto/tb_plugin directory
 
-* Install pytorch_profiler
+* Install the profiler
 
   `pip install .`
 
@@ -26,7 +26,7 @@
 * Start tensorboard
 
   Specify your profiling samples folder.
-  Or you can specify <pytorch_profiler>/samples as an example.
+  Or you can specify kineto/tb_plugin/samples as an example.
 
   `tensorboard --logdir=./samples`
 
@@ -41,16 +41,20 @@
 
   Open URL `http://localhost:6006` in the browser.
 
-* Navigate to TORCH_PROFILER tab
+* Navigate to PYTORCH_PROFILER tab
 
-  If the files under `--logdir` are too big or too many.
-  Refresh the browser to check latest loaded result.
+  If the files under `--logdir` are too big or too many, 
+  please wait a while and refresh the browser to check latest loaded result.
 
 ### Quick Usage Instructions
 
-The profiler organizes each sub-folder under "--logdir" as a run.
-In each run, there could be multiple processes if DDP is used.
-Each process's dumped chrome tracing file is called a worker.
+We regard each running with profiler enabled as a "run".
+In most cases a run is a single process. If DDP is enabled, then a run includes multiple processes.
+We name each process as a "worker".
+
+Each run corresponds to a sub-folder under "--logdir" specified folder.
+Under each run's sub-folder, each file is one worker's dumped chrome tracing file.
+The kineto/tb_plugin/samples is an example of how to organize the files.
 
 You can select run and worker on the left control panel.
    
@@ -96,25 +100,31 @@ Such as cudaLaunchKernel, cudaMemcpyAsync, cudaStreamSynchronize, ...
 
 6. CPU Exec: Host compute time, including every PyTorch operator running time;
 
-7. Other: The time that is not included in any of the above.
+7. Other: The time not included in any of the above.
 
-Note: The summary of all the above categories is end-to-end wall-clock time. 
-We count time by priority. The time cost with highest priority category(Kernel) is counted firstly, 
-then Memcpy, then Memset, ...,  and Other is last counted.
-In the following example, the "Kernel" is counted firstly as 7-6 seconds; 
+Note: The summary of all the above categories is end-to-end wall-clock time.
+ 
+The above list is ranked by priority from high to low. We count time by priority.
+The time cost with highest priority category(Kernel) is counted firstly, 
+then Memcpy, then Memset, ...,  and Other is last counted. 
+In the following example, the "Kernel" is counted firstly as 7-2=5 seconds; 
 Then the "Memcpy" is counted as 0 seconds, because it is fully hidden by "Kernel"; 
-Then "CPU Exec" is counted as 2-1 seconds, because the [2,3] interval is hidden by "Kernel", only [1,2] interval is counted.  
+Then "CPU Exec" is counted as 2-1=1 seconds, because the [2,3] interval is hidden by "Kernel", only [1,2] interval is counted.
+
+In this way, summarization of all the 7 categories' counted time in a step 
+will be the same with this step's total wall clock time.
+     
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/time_breakdown_priority.PNG)
 
-Performance Recommendation: Leverage the profiling result to automatically get the bottlenecks 
-and give suggestions to optimize. 
+Performance Recommendation: Leverage the profiling result to automatically give user hints of bottlenecks,  
+and give user feasible suggestions to optimize. 
  
 * Operator View
 
-This view displays the performance of every Pytorch operator that is executed either on the host or device.
+This view displays the performance of every PyTorch operator that is executed either on the host or device.
 
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/operator_view.PNG)
-Each table row is a “Pytorch operator”, which is a computation operator in C++ side, 
+Each table row is a PyTorch operator, which is a computation operator implemented by C++, 
 such as “aten::relu_”, “aten::convolution”.
 
 Calls: The operator's number of calls.
@@ -129,15 +139,16 @@ Host Total Duration: The accumulated time spent on Host, including this operator
 
 Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
 
-The top 4 pie charts are visualizations of the above 4 columns. 
+The top 4 pie charts are visualizations of the above 4 columns of durations. 
 They could show each operator's time percentage more straight forward.
-You can change how many operators with top accumulated time to show in the pie charts. 
+Only N operators with top most durations will be shown in the pie charts. And you can change this N in the text box. 
 
 The search box enables searching operators by name.
 
 “Group By” could choose between “Operator” and “Operator + Input Shape”. 
-The “Input Shape” is each operator’s input argument list’s tensor shapes, 
-“[]” is scalar type. For example, “[[32, 256, 14, 14], [1024, 256, 1, 1], [], [], [], [], [], [], []]” 
+The “Input Shape” is shapes of tensors in this operator’s input argument list.
+The empty “[]” means argument with scalar type. 
+For example, “[[32, 256, 14, 14], [1024, 256, 1, 1], [], [], [], [], [], [], []]” 
 means this operator has 9 input arguments, 
 1st is a tensor of size 32\*256\*14\*14, 
 2nd is a tensor of size 1024\*256\*1\*1, 
@@ -147,13 +158,9 @@ the following 7 ones are scalar variables.
 
 * Kernel View
 
-This view shows all kernels’ time spent on GPU. The time is got from kernel’s end time minus kernel’s start time. 
+This view shows all kernels’ time spent on GPU. The time is got by the kernel's end time minus its start time. 
 
-Note: It does not include cudaMemcpy or cudaMemset now.
-
-Note: This time just records a kernel's elapsed time on GPU device. 
-It does not mean GPU is fully busy during this time interval. 
-That is, GPU occupancy may be less than 100% during this time interval. 
+Note: This view does not include cudaMemcpy or cudaMemset. Because they are not kernels.
 
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/kernel_view.PNG)
 
@@ -165,19 +172,25 @@ Max Duration: The maximum time duration among all calls.
 
 Min Duration: The minimum time duration among all calls.
 
-The top pie is a visualization of "Total Duration" column. 
+Note: This duration just records a kernel's elapsed time on GPU device. 
+It does not mean the GPU is fully busy during this time interval. 
+In another word, GPU occupancy may be less than 100% during this time interval.
+
+The top pie chart is a visualization of "Total Duration" column. 
 It could show each kernel's time percentage more straight forward.
-You can change how many kernels with top accumulated time to show in the pie chart. 
+Only N kernels with top most accumulated time will be shown in the pie chart.
+And you can change this N in the text box. 
 
 The search box enables searching kernels by name.
+
 “Group By” could choose between “Kernel Name” and “Kernel Name + Op Name”. 
-The "Operator" is the operator which launches this kernel.
+The "Operator" is the PyTorch operator which launches this kernel.
 
 * Trace View
 
-This view shows time line in chrome tracing. Each horizontal bar represents a thread or a CUDA stream.
-Each range interval represents an operator, or a CUDA runtime, or a GPU op which executes on GPU 
-such as a kernel, a CUDA memory copy, a CUDA memory set, ...
+This view shows time line in chrome tracing. Each horizontal area represents a thread or a CUDA stream.
+Each colored rectangle represents an operator, or a CUDA runtime, or a GPU op which executes on GPU
+(such as a kernel, a CUDA memory copy, a CUDA memory set, ...)
 
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/trace_view.PNG)
 
@@ -185,19 +198,21 @@ In the above example:
 
 The “thread 0” is the CPU thread that do “backward” of neural network.
 
-The “thread 1” is the main CPU thread, which mainly do data loading, forward of neural network, Optimizer.step.
+The “thread 1” is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
 
-The “stream 7” is CUDA stream trace line, you can see all kernels there.
+The “stream 7” is a CUDA stream, which shows all kernels of this stream.
 
-You can see there are 6 “ProfilerStep” we captured.
+You can see there are 6 “ProfilerStep” at the top of "thread 1". Each “ProfilerStep” represents a mini-batch step.
 
-When the up-down arrow is enabled, 
-you can zoom in or zoom out by dragging the mouse up or down with mouse's left button pushed.
+The suspended toolbar has functionalities to help view the trace line.
+For example, when the up-down arrow is enabled, 
+you can zoom in by dragging the mouse up and keeping mouse's left button pushed down.
 
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/trace_view_one_step.PNG)
 
-The “Optimizer.step#SGD.step” and ”enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__”
-are high-level python side operations.
+The “Optimizer.step#SGD.step” and ”enumerate(DataLoader)#_SingleProcessDataLoaderIter.\__next\__”
+are high-level python side functions.
 
-When you select right-top corner's “Flow events” to ”async”, you can see which operator launched which GPU kernel.
+When you select top-right corner's “Flow events” to ”async”, 
+you can see the relationship between operator and its launched kernels.
 ![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/trace_view_launch.PNG)

@@ -8,10 +8,6 @@ process, either via the library public API or by sending a signal, if enabled.
 
 Currently only NVIDIA GPUs are supported.
 
-## Examples
-
-TODO
-
 ## Build Notes
 Libkineto uses the standard CMAKE-based build flow.
 
@@ -59,21 +55,16 @@ make install
 ```
 
 ## How Libkineto works
-For a high-level overview, design philosophy and brief descriptions of various
-parts of Libkineto please see [our blog][4]. [TODO]
+We will provide a high-level overview, design philosophy and brief descriptions of various
+parts of Libkineto in upcoming blogs.
 
 ## Full documentation
-We have extensively used comments in our source files. The best and up-do-date
+We strive to keep our source files readable. The best and up-do-date
 documentation is available in the source files.
 
-## Join the Libkineto community
-See the [`CONTRIBUTING`](CONTRIBUTING.md) file for how to help out.
-
 ## License
-Libkineto is BSD licensed, as found in the [`LICENSE`](LICENSE) file.
-
+Libkineto is BSD licensed, as detailed in the [LICENSE](../LICENSE) file.
 
 [1]:https://developer.nvidia.com/CUPTI-CTK10_2
 [2]:https://github.com/fmt
 [3]:https://github.com/google/googletest
-[4]:https://code.fb.com/ml-applications/kineto

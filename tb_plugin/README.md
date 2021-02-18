@@ -174,9 +174,8 @@ Max Duration: The maximum time duration among all calls.
 Min Duration: The minimum time duration among all calls.
 
 Note: This duration only includes a kernel's elapsed time on GPU device. 
-It does not mean the GPU is fully busy during this time interval. 
-In another word, GPU [occupancy](https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm) 
-may be less than 100% during this time interval.
+It does not mean the GPU is fully busy on executing instructions during this time interval. 
+Some of the GPU cores may be idle due to such as memory access latency or imbalance workload. 
 
 The top pie chart is a visualization of "Total Duration" column. 
 It makes the breakdowns visible at a glance.

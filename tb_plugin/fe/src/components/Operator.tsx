@@ -218,7 +218,7 @@ export const Operator: React.FC<IProps> = (props) => {
               </Grid>
               <Grid item>
                 <DataLoading value={searchedOperatorTable}>
-                  {(graph) => <TableChart graph={graph} />}
+                  {(graph) => <TableChart graph={graph} sortColumn={2} />}
                 </DataLoading>
               </Grid>
             </Grid>

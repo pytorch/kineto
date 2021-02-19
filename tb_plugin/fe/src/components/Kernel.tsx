@@ -205,7 +205,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                 </Grid>
                 <Grid item>
                   <DataLoading value={searchedOpTable}>
-                    {(graph) => <TableChart graph={graph} />}
+                    {(graph) => <TableChart graph={graph} sortColumn={2}/>}
                   </DataLoading>
                 </Grid>
               </Grid>

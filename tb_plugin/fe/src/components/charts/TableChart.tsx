@@ -7,7 +7,8 @@ import * as React from 'react'
 import { Graph } from '../../api'
 
 interface IProps {
-  graph: Graph
+  graph: Graph, 
+  sortColumn?: number,
   height?: number
   allowHtml?: boolean
   setCellProperty?: (
@@ -24,7 +25,7 @@ const useStyles = makeStyles(() => ({
 }))
 
 export const TableChart: React.FC<IProps> = (props) => {
-  const { graph, setCellProperty, allowHtml } = props
+  const { graph, sortColumn, setCellProperty, allowHtml } = props
   const classes = useStyles(props)
   const graphRef = React.useRef<HTMLDivElement>(null)
 
@@ -59,7 +60,9 @@ export const TableChart: React.FC<IProps> = (props) => {
       page: 'enable',
       allowHtml,
       pageSize: 30,
-      tooltip: { isHtml: true }
+      tooltip: { isHtml: true }, 
+      sortColumn: sortColumn, 
+      sortAscending: false
     }
 
     const chart = new google.visualization.Table(element)

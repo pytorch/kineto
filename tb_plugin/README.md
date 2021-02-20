@@ -10,7 +10,7 @@
 
 * Install pytorch_profiler
 
-  `python setup.py develop`
+  `pip install .`
 
 * Verify installation is complete
 
@@ -19,10 +19,6 @@
   Should display
 
   `tensorboard-plugin-torch-profiler 0.1.0`
-
-  To uninstall, you can run 
-
-  `python setup.py develop --uninstall`
 
 
 ### Quick Start Instructions

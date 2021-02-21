@@ -1,0 +1,41 @@
+name: Test TB Plugin
+
+on:
+  push:
+    branches:
+      - tb_plugin
+      - master
+  pull_request:
+    branches:
+      - tb_plugin
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        cuda-version: [cpu, cu101, cu102, cu111, cu112]
+        pytorch-version: [nightly, 1.8rc]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: 'x64'
+    - name: Test
+      env:
+        CUDA_VERSION: ${{ matrix.cuda-version }}
+        PYTORCH_VERSION: ${{ matrix.pytorch-version }}
+      run: |
+        set -e
+        cd tb_plugin
+        sh ./ci_scripts/install_env.sh
+        pip install .
+        cd test
+        pytest
+

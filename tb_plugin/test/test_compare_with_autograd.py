@@ -47,7 +47,8 @@ def get_autograd_result(p, worker_name):
 
     result_dict = dict()
     result_dict[worker_name + "#operator"] = list()
-    result_dict[worker_name + "#kernel"] = list()
+    if is_gpu:
+        result_dict[worker_name + "#kernel"] = list()
     for avg in avgs:
         evt_type = get_type(avg)
         if evt_type == "operator":
@@ -64,6 +65,7 @@ def get_autograd_result(p, worker_name):
 def get_plugin_result(run):
     result_dict =  dict()
     for worker_name, profile in run.profiles.items():
+        worker_name = worker_name.split('.')[0]
         if not profile.operation_table_by_name is None:
             rows = profile.operation_table_by_name["data"]["rows"]
             result_dict[worker_name + "#operator"] = rows
@@ -118,8 +120,10 @@ def get_output_fn(dir_name, profilers_dict):
     def output_fn(p):
         # In current torch.profiler.profile, at beginning of each span, a new p.profiler will be created.
         # So the same p.profiler will not be shared among different spans
-        profilers_dict["worker{}".format(p.step_num)] = p.profiler
-        p.export_chrome_trace(os.path.join(dir_name, "worker{}.pt.trace.json".format(p.step_num)))
+        worker_name = "worker{}".format(p.step_num)
+        profilers_dict[worker_name] = p.profiler
+        tb_trace_handler = torch.profiler.tensorboard_trace_handler(dir_name, worker_name)
+        tb_trace_handler(p)
     return output_fn
 
 class TestCompareWithAutogradResult(unittest.TestCase):
@@ -136,8 +140,6 @@ class TestCompareWithAutogradResult(unittest.TestCase):
                 self.assertTrue(key in plugin_result.keys())
                 self.assertEqual(len(plugin_result[key]), len(autograd_result[key]))
                 for line in plugin_result[key]:
-                    if not use_gpu:
-                        line = line[0:2]+line[4:]
                     self.assertTrue(line in autograd_result[key])
         self.assertEqual(count, len(plugin_result.keys()))
 
@@ -146,7 +148,7 @@ class TestCompareWithAutogradResult(unittest.TestCase):
         with torch.autograd.profiler.profile(use_cuda=True, use_kineto=True, record_shapes=True) as p:
             get_train_func()(5)
         log_dir = create_log_dir()
-        p.export_chrome_trace(os.path.join(log_dir, "worker0.pt.trace.json"))
+        p.export_chrome_trace(os.path.join(log_dir, "worker0.{}.pt.trace.json".format(int(time.time() * 1000))))
         self.compare_results(log_dir, {"worker0":p})
 
     def base_profiler_api(self, use_gpu, record_shapes, profile_memory, with_stack):

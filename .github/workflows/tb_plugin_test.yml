@@ -1,4 +1,4 @@
-name: Test
+name: Test TB Plugin
 
 on:
   push:
@@ -14,28 +14,27 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        cuda-version: [cpu, cu101, cu102, cu111, cu112]
+        pytorch-version: [nightly, 1.8rc]
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.x
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        # Semantic version range syntax or exact version of a Python version
-        python-version: '3.x'
-        # Optional - x64 or x86 architecture, defaults to x64
+        python-version: ${{ matrix.python-version }}
         architecture: 'x64'
-    # You can test your matrix by printing the current Python version
     - name: Test
+      env:
+        CUDA_VERSION: ${{ matrix.cuda-version }}
+        PYTORCH_VERSION: ${{ matrix.pytorch-version }}
       run: |
         set -e
-        pip install numpy tensorboard
-        # pip install --pre torch -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
-        pip install --pre torch -f https://download.pytorch.org/whl/nightly/cu110/torch_nightly.html
-        pip install typing-extensions pillow
-        pip install --pre torchvision --no-deps -f https://download.pytorch.org/whl/nightly/cu110/torch_nightly.html
-        python -c "import torch; print(torch.__version__); from torch.autograd import kineto_available; print(kineto_available())"
         cd tb_plugin
-        pip install pytest
+        sh ./ci_scripts/install_env.sh
         pip install .
         cd test
         pytest

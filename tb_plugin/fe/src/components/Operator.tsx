@@ -28,6 +28,13 @@ import Radio from '@material-ui/core/Radio'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import { UseTop, useTopN } from '../utils/top'
 import { useSearch } from '../utils/search'
+import {
+  DeviceSelfTimeTooltip,
+  DeviceTotalTimeTooltip,
+  HostSelfTimeTooltip,
+  HostTotalTimeTooltip
+} from './TooltipDescriptions'
+import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -62,6 +69,11 @@ enum GroupBy {
 export const Operator: React.FC<IProps> = (props) => {
   const { run, worker, view } = props
   const classes = useStyles()
+  const tooltipCommonClasses = useTooltipCommonStyles()
+  const chartHeaderRenderer = React.useMemo(
+    () => makeChartHeaderRenderer(tooltipCommonClasses),
+    [tooltipCommonClasses]
+  )
 
   const [operatorGraph, setOperatorGraph] = React.useState<
     OperatorGraph | undefined
@@ -135,19 +147,59 @@ export const Operator: React.FC<IProps> = (props) => {
       <GridList className={classes.full} cellHeight="auto" cols={2}>
         {graph.device_self_time && (
           <GridListTile>
-            <PieChart graph={graph.device_self_time} top={actualTop} />
+            <Card>
+              {graph.device_self_time.title && (
+                <CardHeader
+                  title={chartHeaderRenderer(
+                    graph.device_self_time.title,
+                    DeviceSelfTimeTooltip
+                  )}
+                />
+              )}
+              <PieChart graph={graph.device_self_time} top={actualTop} />
+            </Card>
           </GridListTile>
         )}
         {graph.device_total_time && (
           <GridListTile>
-            <PieChart graph={graph.device_total_time} top={actualTop} />
+            <Card>
+              {graph.device_total_time.title && (
+                <CardHeader
+                  title={chartHeaderRenderer(
+                    graph.device_total_time.title,
+                    DeviceTotalTimeTooltip
+                  )}
+                />
+              )}
+              <PieChart graph={graph.device_total_time} top={actualTop} />
+            </Card>
           </GridListTile>
         )}
         <GridListTile>
-          <PieChart graph={graph.host_self_time} top={actualTop} />
+          <Card>
+            {graph.host_self_time.title && (
+              <CardHeader
+                title={chartHeaderRenderer(
+                  graph.host_self_time.title,
+                  HostSelfTimeTooltip
+                )}
+              />
+            )}
+            <PieChart graph={graph.host_self_time} top={actualTop} />
+          </Card>
         </GridListTile>
         <GridListTile>
-          <PieChart graph={graph.host_total_time} top={actualTop} />
+          <Card>
+            {graph.host_total_time.title && (
+              <CardHeader
+                title={chartHeaderRenderer(
+                  graph.host_total_time.title,
+                  HostTotalTimeTooltip
+                )}
+              />
+            )}
+            <PieChart graph={graph.host_total_time} top={actualTop} />
+          </Card>
         </GridListTile>
       </GridList>
     )

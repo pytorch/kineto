@@ -8,11 +8,7 @@ import Grid from '@material-ui/core/Grid'
 import Card from '@material-ui/core/Card'
 import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import {
-  TextListItem,
-  IStylesProps as TextListItemStyles
-} from './TextListItem'
-import { AreaChart } from './charts/AreaChart'
+import { TextListItem } from './TextListItem'
 import * as api from '../api'
 import { DataLoading } from './DataLoading'
 import { SteppedAreaChart } from './charts/SteppedAreaChart'
@@ -22,6 +18,8 @@ import {
 } from './transform'
 import { TableChart } from './charts/TableChart'
 import { PieChart } from './charts/PieChart'
+import { StepTimeBreakDownTooltip } from './TooltipDescriptions'
+import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
 const topGraphHeight = 230
 
@@ -95,6 +93,16 @@ export const Overview: React.FC<IProps> = (props) => {
   }, [run, worker, view])
 
   const classes = useStyles()
+  const tooltipCommonClasses = useTooltipCommonStyles()
+  const chartHeaderRenderer = React.useMemo(
+    () => makeChartHeaderRenderer(tooltipCommonClasses, false),
+    [tooltipCommonClasses]
+  )
+
+  const stepTimeBreakDownTitle = React.useMemo(
+    () => chartHeaderRenderer('Step Time Breakdown', StepTimeBreakDownTooltip),
+    [tooltipCommonClasses, chartHeaderRenderer]
+  )
 
   return (
     <div className={classes.root}>
@@ -145,7 +153,7 @@ export const Overview: React.FC<IProps> = (props) => {
         <Grid container item>
           <Grid item sm={12}>
             <Card variant="outlined">
-              <CardHeader title="Step Time Breakdown" />
+              <CardHeader title={stepTimeBreakDownTitle} />
               <CardContent>
                 <DataLoading value={steps}>
                   {(graph) => (

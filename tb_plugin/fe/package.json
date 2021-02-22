@@ -6,7 +6,7 @@
   "scripts": {
     "build": "cross-env NODE_ENV=production webpack && node ./update-static.js",
     "build:dev": "webpack",
-    "dev": "webpack-dev-server",
+    "dev": "webpack serve",
     "prettier": "prettier --config ./prettier.json --write ./src/**/*.{ts,tsx} ./*.js"
   },
   "dependencies": {
@@ -30,6 +30,6 @@
     "typescript": "^4.0.3",
     "webpack": "^4.44.2",
     "webpack-cli": "^4.5.0",
-    "webpack-dev-server": "^3.11.0"
+    "webpack-dev-server": "^3.11.2"
   }
 }

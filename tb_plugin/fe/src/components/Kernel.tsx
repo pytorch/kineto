@@ -161,7 +161,9 @@ export const Kernel: React.FC<IProps> = (props) => {
             </Grid>
             <Grid item sm={6}>
               <DataLoading value={kernelGraph}>
-                {(graph) => <PieChart graph={graph} top={actualTop} />}
+                {(graph) => (
+                  <PieChart title={graph.title} graph={graph} top={actualTop} />
+                )}
               </DataLoading>
             </Grid>
             <Grid item sm={12}>

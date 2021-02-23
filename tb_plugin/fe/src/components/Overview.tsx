@@ -18,11 +18,13 @@ import { DataLoading } from './DataLoading'
 import { SteppedAreaChart } from './charts/SteppedAreaChart'
 import {
   transformPerformanceIntoTable,
-  transformPerformanceIntoPie
+  transformPerformanceIntoPie,
+  autoScalePerformanceData, 
+  transformDictIntoTooltipHtml
 } from './transform'
 import { TableChart } from './charts/TableChart'
 import { PieChart } from './charts/PieChart'
-
+import { assertDef } from '../utils/def'
 const topGraphHeight = 230
 
 const useStyles = makeStyles((theme) => ({
@@ -77,14 +79,27 @@ export const Overview: React.FC<IProps> = (props) => {
   const [environments, setEnvironments] = React.useState<api.Environment[]>([])
   const [recommendations, setRecommendations] = React.useState('')
 
-  const synthesizedTableGraph = React.useMemo(() => {
-    return transformPerformanceIntoTable(performances)
+  const isScaled = React.useMemo(() => {
+    return autoScalePerformanceData(performances)
   }, [performances])
+  
+  const unit = React.useMemo(() => {
+    return isScaled? "m": "u"
+  }, [isScaled])
+
+  React.useMemo(() => {
+    transformDictIntoTooltipHtml(steps as api.Graph, unit)
+  }, [unit, steps])
+
+  const synthesizedTableGraph = React.useMemo(() => {
+    return transformPerformanceIntoTable(performances, unit)
+  }, [performances, unit])
 
   const synthesizedPieGraph = React.useMemo(() => {
     return transformPerformanceIntoPie(performances)
-  }, [performances])
+  }, [performances, unit])
 
+  
   React.useEffect(() => {
     api.defaultApi.overviewGet(run, worker, view).then((resp) => {
       setPerformances(resp.performance)
@@ -152,7 +167,7 @@ export const Overview: React.FC<IProps> = (props) => {
                     <SteppedAreaChart
                       graph={graph}
                       hAxisTitle="Step"
-                      vAxisTitle={'Step Time (microseconds)'}
+                      vAxisTitle={`Step Time (${unit}s)`}
                     />
                   )}
                 </DataLoading>

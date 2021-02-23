@@ -5,6 +5,7 @@
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import { Graph } from '../../api'
+import { assertDef } from '../../utils/def'
 
 interface IProps {
   graph: Graph

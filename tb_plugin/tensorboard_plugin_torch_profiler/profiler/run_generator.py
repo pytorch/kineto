@@ -39,15 +39,16 @@ class RunGenerator(object):
         return profile_run
 
     def _generate_overview(self):
-        def build_part_time_str(part_cost, part_name):
-            format_str = '<div class="visualization-tooltip" style="white-space: nowrap;">' \
-                         'Step {}<br>' \
-                         'Total: {}us<br>' \
-                         '<b>{}: {}us</b><br>' \
-                         'Percentage: {}%' \
-                         '</div>'
+        def build_part_time_dict(part_cost, part_name):
             percentage = round(100 * part_cost / costs.step_total_cost, 2)
-            return format_str.format(step_name, costs.step_total_cost, part_name, part_cost, percentage)
+            tool_tip_dict = {
+                "Step": step_name,
+                "Total": costs.step_total_cost,
+                "PartName": part_name,
+                "PartCost": part_cost, 
+                "Percentage": percentage
+            }
+            return tool_tip_dict
 
         def build_avg_cost_dict(part_name, part_cost):
             cost_dict = {"name": part_name,
@@ -85,19 +86,19 @@ class RunGenerator(object):
             row = [step_name]
             if show_gpu:
                 row.extend([costs.kernel_cost,
-                            build_part_time_str(costs.kernel_cost, "Kernel"),
+                            build_part_time_dict(costs.kernel_cost, "Kernel"),
                             costs.memcpy_cost,
-                            build_part_time_str(costs.memcpy_cost, "Memcpy"),
+                            build_part_time_dict(costs.memcpy_cost, "Memcpy"),
                             costs.memset_cost,
-                            build_part_time_str(costs.memset_cost, "Memset"),
+                            build_part_time_dict(costs.memset_cost, "Memset"),
                             costs.runtime_cost,
-                            build_part_time_str(costs.runtime_cost, "Runtime")])
+                            build_part_time_dict(costs.runtime_cost, "Runtime")])
             row.extend([costs.dataloader_cost,
-                        build_part_time_str(costs.dataloader_cost, "DataLoader"),
+                        build_part_time_dict(costs.dataloader_cost, "DataLoader"),
                         costs.cpuop_cost,
-                        build_part_time_str(costs.cpuop_cost, "CPU Exec"),
+                        build_part_time_dict(costs.cpuop_cost, "CPU Exec"),
                         costs.other_cost,
-                        build_part_time_str(costs.other_cost, "Other")])
+                        build_part_time_dict(costs.other_cost, "Other")])
             data["steps"]["rows"].append(row)
 
         avg_costs = []

@@ -176,6 +176,9 @@ Min Duration: The minimum time duration among all calls.
 Note: This duration only includes a kernel's elapsed time on GPU device. 
 It does not mean the GPU is fully busy on executing instructions during this time interval. 
 Some of the GPU cores may be idle due to such as memory access latency or imbalance workload. 
+There may be insufficient number of available warps per SM for the GPU to effectively hide memory access latencies, 
+or some SMs may be entirely idle due to an insufficient number of blocks. 
+Please refer to [Nvidia's best-practices guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html).
 
 The top pie chart is a visualization of "Total Duration" column. 
 It makes the breakdowns visible at a glance.

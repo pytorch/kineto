@@ -75,6 +75,7 @@ export const Operator: React.FC<IProps> = (props) => {
     defaultUseTop: UseTop.Use,
     defaultTop: 10
   })
+  const [sortColumn, setSortColumn] = React.useState(2);
 
   React.useEffect(() => {
     if (operatorGraph) {
@@ -116,6 +117,7 @@ export const Operator: React.FC<IProps> = (props) => {
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
     setGroupBy(event.target.value as GroupBy)
+    setSortColumn(event.target.value == GroupBy.Operation? 2 : 3)
   }
 
   const onUseTopChanged: RadioGroupProps['onChange'] = (event) => {
@@ -216,9 +218,9 @@ export const Operator: React.FC<IProps> = (props) => {
                   </Grid>
                 </Grid>
               </Grid>
-              <Grid item>
-                <DataLoading value={searchedOperatorTable}>
-                  {(graph) => <TableChart graph={graph} sortColumn={2} />}
+              <Grid>
+                <DataLoading value={searchedOperatorTable} >
+                  {(graph) => <TableChart graph={graph} sortColumn={sortColumn}/>}
                 </DataLoading>
               </Grid>
             </Grid>

@@ -237,7 +237,6 @@ export const Operator: React.FC<IProps> = (props) => {
                     value={top}
                     onChange={onTopChanged}
                   />
-                  <span className={classes.description}>(microseconds)</span>
                 </Grid>
               )}
             </Grid>

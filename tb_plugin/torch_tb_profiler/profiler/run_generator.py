@@ -162,28 +162,28 @@ class RunGenerator(object):
         host_self_time = {}
 
         if len(op_device_total_time) > 0:
-            device_total_time["title"] = "Device Total Time"
+            device_total_time["title"] = "Device Total Time (us)"
             device_total_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
             device_total_time["rows"] = op_device_total_time
         else:
             device_total_time = None
 
         if len(op_device_self_time) > 0:
-            device_self_time["title"] = "Device Self Time"
+            device_self_time["title"] = "Device Self Time (us)"
             device_self_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
             device_self_time["rows"] = op_device_self_time
         else:
             device_self_time = None
 
         if len(op_host_total_time) > 0:
-            host_total_time["title"] = "Host Total Time"
+            host_total_time["title"] = "Host Total Time (us)"
             host_total_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
             host_total_time["rows"] = op_host_total_time
         else:
             host_total_time = None
 
         if len(op_host_self_time) > 0:
-            host_self_time["title"] = "Host Self Time"
+            host_self_time["title"] = "Host Self Time (us)"
             host_self_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
             host_self_time["rows"] = op_host_self_time
         else:
@@ -255,7 +255,9 @@ class RunGenerator(object):
         return data
 
     def _generate_kernel_pie(self):
-        pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
+        pie = {"title": "Total Time (us)",
+               "columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}],
+               "rows": []}
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
             pie["rows"].append([name, row["sum"]])
         data = {"total": pie}

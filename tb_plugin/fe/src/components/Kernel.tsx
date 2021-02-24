@@ -132,11 +132,6 @@ export const Kernel: React.FC<IProps> = (props) => {
     min: 1
   }
 
-  const GPUKernelTotalTimeTitle = React.useMemo(
-    () => chartHeaderRenderer('Total Time', GPUKernelTotalTimeTooltip),
-    [chartHeaderRenderer]
-  )
-
   return (
     <div className={classes.root}>
       <Card variant="outlined">
@@ -174,12 +169,15 @@ export const Kernel: React.FC<IProps> = (props) => {
               <DataLoading value={kernelGraph}>
                 {(graph) => (
                   <Card elevation={0}>
-                    <CardHeader title={GPUKernelTotalTimeTitle} />
-                    <PieChart
-                      title={graph.title}
-                      graph={graph}
-                      top={actualTop}
-                    />
+                    {graph.title && (
+                      <CardHeader
+                        title={chartHeaderRenderer(
+                          graph.title,
+                          GPUKernelTotalTimeTooltip
+                        )}
+                      />
+                    )}
+                    <PieChart graph={graph} top={actualTop} />
                   </Card>
                 )}
               </DataLoading>

@@ -1,0 +1,3 @@
+# ignore common items
+.idea
+.vscode

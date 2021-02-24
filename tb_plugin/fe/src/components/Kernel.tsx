@@ -25,6 +25,8 @@ import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
 import Radio from '@material-ui/core/Radio'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import { useSearch } from '../utils/search'
+import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
+import { GPUKernelTotalTimeTooltip } from './TooltipDescriptions'
 
 export interface IProps {
   run: string
@@ -56,6 +58,11 @@ const useStyles = makeStyles((theme) => ({
 export const Kernel: React.FC<IProps> = (props) => {
   const { run, worker, view } = props
   const classes = useStyles()
+  const tooltipCommonClasses = useTooltipCommonStyles()
+  const chartHeaderRenderer = React.useMemo(
+    () => makeChartHeaderRenderer(tooltipCommonClasses),
+    [tooltipCommonClasses]
+  )
 
   const [kernelGraph, setKernelGraph] = React.useState<Graph | undefined>(
     undefined
@@ -125,6 +132,11 @@ export const Kernel: React.FC<IProps> = (props) => {
     min: 1
   }
 
+  const GPUKernelTotalTimeTitle = React.useMemo(
+    () => chartHeaderRenderer('Total Time', GPUKernelTotalTimeTooltip),
+    [chartHeaderRenderer]
+  )
+
   return (
     <div className={classes.root}>
       <Card variant="outlined">
@@ -161,7 +173,16 @@ export const Kernel: React.FC<IProps> = (props) => {
             </Grid>
             <Grid item sm={6}>
               <DataLoading value={kernelGraph}>
-                {(graph) => <PieChart graph={graph} top={actualTop} />}
+                {(graph) => (
+                  <Card elevation={0}>
+                    <CardHeader title={GPUKernelTotalTimeTitle} />
+                    <PieChart
+                      title={graph.title}
+                      graph={graph}
+                      top={actualTop}
+                    />
+                  </Card>
+                )}
               </DataLoading>
             </Grid>
             <Grid item sm={12}>

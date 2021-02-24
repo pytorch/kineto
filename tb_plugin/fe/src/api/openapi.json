@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "/data/plugin/torch_profiler"
+      "url": "/data/plugin/pytorch_profiler"
     }
   ],
   "paths": {

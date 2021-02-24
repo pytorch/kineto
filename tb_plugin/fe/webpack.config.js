@@ -33,7 +33,7 @@ module.exports = {
   ].filter(Boolean),
   devServer: {
     // proxy: {
-    //     '/data/plugin/torch_profiler': ''
+    //     '/data/plugin/pytorch_profiler': ''
     // }
   }
 }

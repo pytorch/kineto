@@ -12,6 +12,7 @@ interface IProps {
   height?: number
   top?: number
   noLegend?: boolean
+  title?: string
 }
 
 const useStyles = makeStyles(() => ({
@@ -22,9 +23,10 @@ const useStyles = makeStyles(() => ({
 
 const noLegendArea = { left: '5%', width: '90%', top: '5%', height: '90%' }
 const normalArea = { left: '5%', width: '95%' }
+const noTitleArea = { left: '5%', width: '95%', top: '10%', height: '80%' }
 
 export const PieChart: React.FC<IProps> = (props) => {
-  const { graph, height = 300, top, noLegend } = props
+  const { graph, height = 300, top, noLegend, title } = props
   const classes = useStyles(props)
   const graphRef = React.useRef<HTMLDivElement>(null)
 
@@ -53,10 +55,10 @@ export const PieChart: React.FC<IProps> = (props) => {
     const options = {
       height,
       width: '100%',
-      title: graph.title,
+      title,
       pieHole: 0.4,
       tooltip: { trigger: 'selection', isHtml: true },
-      chartArea: noLegend ? noLegendArea : normalArea,
+      chartArea: noLegend ? noLegendArea : !title ? noTitleArea : normalArea,
       legend: noLegend ? 'none' : undefined,
       sliceVisibilityThreshold: 0
     }

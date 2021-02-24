@@ -167,7 +167,6 @@ export const Kernel: React.FC<IProps> = (props) => {
                     value={top}
                     onChange={onTopChanged}
                   />
-                  <span className={classes.description}>(microseconds)</span>
                 </Grid>
               )}
             </Grid>

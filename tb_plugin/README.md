@@ -58,7 +58,7 @@ The kineto/tb_plugin/samples is an example of how the files are organized.
 
 You can select the run and worker on the left control panel.
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/control_panel.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/control_panel.PNG)
 
 Runs: Select a run. Each run is a PyTorch workload with profiling enabled.
 
@@ -82,7 +82,7 @@ It shows an overview of time cost, including both host and GPU devices.
 You can select the current worker in the left panel's "Workers" dropdown menu.
 
 An example of overall view:
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/overall_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/overall_view.PNG)
 
 Step Time Breakdown: This shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
 The time spent on each step is broken down into multiple categories as follows:
@@ -114,7 +114,7 @@ Then "CPU Exec" is counted as 2-1=1 seconds, because the [2,3] interval is hidde
 In this way, summarization of all the 7 categories' counted time in a step
 will be the same with this step's total wall clock time.
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/time_breakdown_priority.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/time_breakdown_priority.PNG)
 
 Performance Recommendation: Leverage the profiling result to automatically highlight likely bottlenecks,
 and give users actionable optimization suggestions.
@@ -123,7 +123,7 @@ and give users actionable optimization suggestions.
 
 This view displays the performance of every PyTorch operator that is executed either on the host or device.
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/operator_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/operator_view.PNG)
 Each table row is a PyTorch operator, which is a computation operator implemented by C++,
 such as “aten::relu_”, “aten::convolution”.
 
@@ -154,7 +154,7 @@ means this operator has 9 input arguments,
 2nd is a tensor of size 1024\*256\*1\*1,
 the following 7 ones are scalar variables.
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
 
 * Kernel View
 
@@ -163,7 +163,7 @@ The time is calculated by subtracting the kernel's start time from the end time.
 
 Note: This view does not include cudaMemcpy or cudaMemset. Because they are not kernels.
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/kernel_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/kernel_view.PNG)
 
 Total Duration: The accumulated time of all calls of this kernel.
 
@@ -195,7 +195,7 @@ This view shows timeline using the chrome tracing plugin. Each horizontal area r
 Each colored rectangle represents an operator, or a CUDA runtime, or a GPU op which executes on GPU
 (such as a kernel, a CUDA memory copy, a CUDA memory set, ...)
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/trace_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view.PNG)
 
 In the above example:
 
@@ -211,11 +211,11 @@ The suspended toolbar has functionalities to help view the trace line.
 For example, when the up-down arrow is enabled,
 you can zoom in by dragging the mouse up and keeping mouse's left button pushed down.
 
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/trace_view_one_step.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_one_step.PNG)
 
 The “Optimizer.step#SGD.step” and ”enumerate(DataLoader)#_SingleProcessDataLoaderIter.\__next\__”
 are high-level python side functions.
 
 When you select the top-right corner's “Flow events” to ”async”,
 you can see the relationship between an operator and its launched kernels.
-![Alt text](https://github.com/pytorch/kineto/blob/tb_plugin/tb_plugin/docs/images/trace_view_launch.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_launch.PNG)

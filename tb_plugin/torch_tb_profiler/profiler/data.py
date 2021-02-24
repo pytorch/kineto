@@ -9,6 +9,7 @@ from __future__ import print_function
 import gzip
 import json
 import os
+import tempfile
 from collections import OrderedDict
 
 from . import trace
@@ -56,8 +57,20 @@ class RunProfileData(object):
         if not os.path.isfile(trace_path):
             raise FileNotFoundError(trace_path)
 
-        with fopen(trace_path, 'r') as f:
-            trace_json = json.load(f)
+        try:
+            with fopen(trace_path, 'r') as f:
+                trace_json = json.load(f)
+        except json.decoder.JSONDecodeError as e:
+            # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
+            # to handleJSONDecodeError, re-encode it and save to a temp file
+            with fopen(trace_path, 'r') as f:
+                trace_json = json.load(f, strict=False)
+            fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
+            fp.close()
+            with gzip.open(fp.name, mode='wt') as fzip:
+                fzip.write(json.dumps(trace_json))
+            logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
+            trace_path = fp.name
 
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path

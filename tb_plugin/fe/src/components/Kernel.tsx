@@ -73,6 +73,7 @@ export const Kernel: React.FC<IProps> = (props) => {
   const [groupBy, setGroupBy] = React.useState(GroupBy.Kernel)
   const [searchKernelName, setSearchKernelName] = React.useState('')
   const [searchOpName, setSearchOpName] = React.useState('')
+  const [sortColumn, setSortColumn] = React.useState(2);
 
   const [top, actualTop, useTop, setTop, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
@@ -110,6 +111,7 @@ export const Kernel: React.FC<IProps> = (props) => {
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
     setGroupBy(event.target.value as GroupBy)
+    setSortColumn(event.target.value == GroupBy.Kernel? 2 : 3)
   }
 
   const onSearchKernelChanged: TextFieldProps['onChange'] = (event) => {
@@ -226,7 +228,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                 </Grid>
                 <Grid item>
                   <DataLoading value={searchedOpTable}>
-                    {(graph) => <TableChart graph={graph} />}
+                    {(graph) => <TableChart graph={graph} sortColumn={sortColumn}/>}
                   </DataLoading>
                 </Grid>
               </Grid>

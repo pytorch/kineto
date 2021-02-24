@@ -45,7 +45,8 @@ export const SteppedAreaChart: React.FC<IProps> = (props) => {
       height,
       legend: { position: 'bottom' },
       chartArea: { left: '15%', width: '80%', top: '10%' },
-      areaOpacity: 0.8,
+      connectSteps: false,
+      areaOpacity: 0.9,
       tooltip: { isHtml: true },
       hAxis: {
         title: hAxisTitle

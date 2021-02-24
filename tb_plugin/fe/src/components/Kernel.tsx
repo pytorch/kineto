@@ -135,7 +135,7 @@ export const Kernel: React.FC<IProps> = (props) => {
   }
 
   const GPUKernelTotalTimeTitle = React.useMemo(
-    () => chartHeaderRenderer('Total Time', GPUKernelTotalTimeTooltip),
+    () => chartHeaderRenderer('Total Time (us)', GPUKernelTotalTimeTooltip),
     [chartHeaderRenderer]
   )
 
@@ -169,7 +169,6 @@ export const Kernel: React.FC<IProps> = (props) => {
                     value={top}
                     onChange={onTopChanged}
                   />
-                  <span className={classes.description}>(microseconds)</span>
                 </Grid>
               )}
             </Grid>

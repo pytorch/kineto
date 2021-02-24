@@ -29,30 +29,22 @@ export const TraceView: React.FC<IProps> = (props) => {
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
-  const [[traceData, resolveTraceData]] = React.useState(() => {
-    let resolve: (v: string) => void = undefined!
-    const pormise = new Promise<string>((r) => {
-      resolve = r
-    })
-    return [pormise, resolve] as const
-  })
+  const [traceData, setTraceData] = React.useState<Promise<string> | null>(null)
+  const [traceViewReady, setTraceViewReady] = React.useState(false)
 
   React.useEffect(() => {
-    api.defaultApi.traceGet(run, worker, view).then((resp) => {
-      resolveTraceData(JSON.stringify(resp))
-    })
-  }, [run, worker, view, resolveTraceData])
+    setTraceData(
+      api.defaultApi.traceGet(run, worker, view).then((resp) => {
+        return JSON.stringify(resp)
+      })
+    )
+  }, [run, worker, view])
 
   React.useEffect(() => {
     function callback(event: MessageEvent) {
       const data = event.data || {}
       if (data.msg === 'ready') {
-        traceData.then((data) => {
-          iframeRef.current?.contentWindow?.postMessage(
-            { msg: 'data', data },
-            '*'
-          )
-        })
+        setTraceViewReady(true)
       }
     }
 
@@ -61,6 +53,17 @@ export const TraceView: React.FC<IProps> = (props) => {
       window.removeEventListener('message', callback)
     }
   }, [])
+
+  React.useEffect(() => {
+    if (traceData && traceViewReady) {
+      traceData.then((data) => {
+        iframeRef.current?.contentWindow?.postMessage(
+          { msg: 'data', data },
+          '*'
+        )
+      })
+    }
+  }, [traceData, traceViewReady])
 
   return (
     <div className={classes.root}>

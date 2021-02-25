@@ -36,6 +36,7 @@ setuptools.setup(
     version=get_version(),
     description="PyTorch Profiler TensorBoard Plugin",
     long_description=get_readme(),
+    long_description_content_type='text/markdown',
     url="https://github.com/pytorch/kineto/tree/master/tb_plugin",
     author="Microsoft Inc.",
     packages=setuptools.find_packages(),

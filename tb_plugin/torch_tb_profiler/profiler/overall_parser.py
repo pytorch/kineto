@@ -169,7 +169,9 @@ class OverallParser(object):
         self.cpuop_ranges = []
         self.steps = []
         self.steps_names = []
-        self.is_gpu_used = False
+        self.has_runtime = False
+        self.has_kernel = False
+        self.has_memory = False
         self.min_ts = sys.maxsize
         self.max_ts = -sys.maxsize - 1
         self.steps_costs = []
@@ -238,12 +240,16 @@ class OverallParser(object):
         evt_type = event.type
         if evt_type == EventTypes.KERNEL:
             self.kernel_ranges.append((ts, ts + dur))
+            self.has_kernel = True
         elif evt_type == EventTypes.MEMCPY:
             self.memcpy_ranges.append((ts, ts + dur))
+            self.has_memory = True
         elif evt_type == EventTypes.MEMSET:
             self.memset_ranges.append((ts, ts + dur))
+            self.has_memory = True
         elif evt_type == EventTypes.RUNTIME:
             self.runtime_ranges.append((ts, ts + dur))
+            self.has_runtime = True
         elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
                 and event.name.endswith(".__next__"):
             self.dataloader_ranges.append((ts, ts + dur))
@@ -252,9 +258,6 @@ class OverallParser(object):
             self.steps_names.append(str(event.step))
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
             self.cpuop_ranges.append((ts, ts + dur))
-
-        if evt_type == EventTypes.RUNTIME:
-            self.is_gpu_used = True
 
         if ts < self.min_ts:
             self.min_ts = ts

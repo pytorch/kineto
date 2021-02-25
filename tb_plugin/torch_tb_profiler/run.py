@@ -48,7 +48,9 @@ class RunProfile(object):
     def __init__(self, worker):
         self.worker = worker
         self.views = []
-        self.is_gpu_used = False
+        self.has_runtime = False
+        self.has_kernel = False
+        self.has_memory = False
         self.overview = None
         self.operation_pie_by_name = None
         self.operation_table_by_name = None

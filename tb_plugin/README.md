@@ -1,7 +1,7 @@
 # PyTorch Tensorboard Profiler
 
 This is a plugin that provides visualization of PyTorch profiling.
-It can parse, process, and visualize the PyTorch Profiler's dumped result,
+It can parse, process and visualize the PyTorch Profiler's dumped result,
 and give optimization recommendations.
 
 ### Quick Installation Instructions

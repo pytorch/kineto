@@ -10,7 +10,7 @@
 
   `pip list | grep torch-tb-profiler`
 
-  Should display `torch-tb-profiler`
+  Should display "torch-tb-profiler"
 
 * Or you can install from source
 

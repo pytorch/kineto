@@ -14,13 +14,13 @@
 
 * Or you can install from source
 
-  Clone the git repository
+  Clone the git repository:
 
   `git clone https://github.com/pytorch/kineto.git`
 
-  Navigate to the kineto/tb_plugin directory
+  Navigate to the kineto/tb_plugin directory.
 
-  Install the profiler
+  Install the profiler:
 
   `pip install .`
 

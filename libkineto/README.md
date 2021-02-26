@@ -14,14 +14,9 @@ Libkineto uses the standard CMAKE-based build flow.
 ### Dependencies
 Libkineto requires gcc 5+.
 
-+ ###### CUDA
-Libkineto uses CUPTI to collect traces and metrics from NVIDIA GPUs.
-
-+ ###### fmt
-fmt is used for its convenient and lightweight string formatting functionality.
-
-+ ###### googletest
-googletest is required to build and run Kineto's tests. **googletest is not
+- CUDA: Libkineto uses CUPTI to collect traces and metrics from NVIDIA GPUs.
+- fmt: used for its convenient and lightweight string formatting functionality.
+- googletest: required to build and run Kineto's tests. **googletest is not
 required** if you don't want to run Kineto tests. By default, building of tests
 is **on**. Turn it off by setting KINETO\_BUILD\_TESTS to off.
 

@@ -241,6 +241,7 @@ class ModuleParser:
                             logger.warning(
                                 "Runtime and Device-op have same correlation id but with different external id!"
                             )
+                    del corrid_to_device[corrid]
                 if rt_node.external_id in externalid_to_runtime:
                     externalid_to_runtime[rt_node.external_id].append(rt_node)
                 else:
@@ -296,12 +297,13 @@ class ModuleParser:
         def parse_kernels(kernel_list):
             name_op_to_agg = {}
             for kernel in kernel_list:
-                key = kernel.name + "###" + kernel.op_node.name
+                op_name = "<None>" if kernel.op_node is None else kernel.op_node.name
+                key = kernel.name + "###" + op_name
                 if key not in name_op_to_agg:
                     name_op_to_agg[key] = KernelAggByNameOp()
                 agg = name_op_to_agg[key]
                 agg.name = kernel.name
-                agg.op_name = kernel.op_node.name
+                agg.op_name = op_name
                 agg.calls += 1
                 dur = kernel.end_time - kernel.start_time
                 agg.total_duration += dur
@@ -327,6 +329,10 @@ class ModuleParser:
         externalid_to_runtime = {}  # value is a list of RuntimeNode
         for event in events:
             parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
+        # Kernel that not owned by any operator should also be shown in kernel view
+        # when group by "Kernel Name + Op Name".
+        for _, device_nodes in corrid_to_device.items():
+            self.kernel_list.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
         # associate CUDA Runtimes with CPU events
         for _, op_list in tid2list.items():
             for op in op_list:

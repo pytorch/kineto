@@ -297,7 +297,7 @@ class ModuleParser:
         def parse_kernels(kernel_list):
             name_op_to_agg = {}
             for kernel in kernel_list:
-                op_name = "<None>" if kernel.op_node is None else kernel.op_node.name
+                op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
                 key = kernel.name + "###" + op_name
                 if key not in name_op_to_agg:
                     name_op_to_agg[key] = KernelAggByNameOp()

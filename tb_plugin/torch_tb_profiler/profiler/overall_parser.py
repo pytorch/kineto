@@ -171,7 +171,7 @@ class OverallParser(object):
         self.steps_names = []
         self.has_runtime = False
         self.has_kernel = False
-        self.has_memory = False
+        self.has_memcpy_or_memset = False
         self.min_ts = sys.maxsize
         self.max_ts = -sys.maxsize - 1
         self.steps_costs = []
@@ -243,10 +243,10 @@ class OverallParser(object):
             self.has_kernel = True
         elif evt_type == EventTypes.MEMCPY:
             self.memcpy_ranges.append((ts, ts + dur))
-            self.has_memory = True
+            self.has_memcpy_or_memset = True
         elif evt_type == EventTypes.MEMSET:
             self.memset_ranges.append((ts, ts + dur))
-            self.has_memory = True
+            self.has_memcpy_or_memset = True
         elif evt_type == EventTypes.RUNTIME:
             self.runtime_ranges.append((ts, ts + dur))
             self.has_runtime = True

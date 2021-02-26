@@ -98,7 +98,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertTrue(profile.has_runtime)
         self.assertTrue(profile.has_kernel)
-        self.assertTrue(profile.has_memory)
+        self.assertTrue(profile.has_memcpy_or_memset)
         step = profile.steps_costs[0]
         self.assertEqual(step.kernel_cost, 15)
         self.assertEqual(step.memcpy_cost, 10)
@@ -467,7 +467,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertTrue(profile.has_runtime)
         self.assertTrue(profile.has_kernel)
-        self.assertTrue(not profile.has_memory)
+        self.assertTrue(not profile.has_memcpy_or_memset)
         self.assertEqual(len(profile.steps_costs), 1)
         step = profile.steps_costs[0]
         self.assertEqual(step.kernel_cost, 100)
@@ -577,7 +577,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertTrue(profile.has_runtime)
         self.assertTrue(profile.has_kernel)
-        self.assertTrue(profile.has_memory)
+        self.assertTrue(profile.has_memcpy_or_memset)
         self.assertEqual(len(profile.steps_costs), 2)
         step = profile.steps_costs[0]
         self.assertEqual(step.kernel_cost, 0)

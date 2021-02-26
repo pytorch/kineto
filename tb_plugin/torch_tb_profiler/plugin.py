@@ -179,7 +179,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self.get_run(name)
         profile = run.get_profile(worker)
         data = profile.overview
-        is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memory
+        is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
         if is_gpu_used:

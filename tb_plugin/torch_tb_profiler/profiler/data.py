@@ -36,7 +36,7 @@ class RunProfileData(object):
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
-        self.has_memory = False
+        self.has_memcpy_or_memset = False
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
@@ -97,7 +97,7 @@ class RunProfileData(object):
         overall_parser.parse_events(self.events)
         self.has_runtime = overall_parser.has_runtime
         self.has_kernel = overall_parser.has_kernel
-        self.has_memory = overall_parser.has_memory
+        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
         self.steps_costs = overall_parser.steps_costs
         self.steps_names = overall_parser.steps_names
         self.avg_costs = overall_parser.avg_costs

@@ -19,7 +19,7 @@ class RunGenerator(object):
         profile_run = RunProfile(self.worker)
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
-        profile_run.has_memory = self.profile_data.has_memory
+        profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
 
@@ -58,7 +58,7 @@ class RunGenerator(object):
                          "extra": round(100 * part_cost / self.profile_data.avg_costs.step_total_cost, 2)}
             return cost_dict
 
-        show_gpu = self.profile_data.has_runtime or self.profile_data.has_kernel or self.profile_data.has_memory
+        show_gpu = self.profile_data.has_runtime or self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset
 
         column_tootip = {"type": "string", "role": "tooltip", "p": {"html": "true"}}
         data = {}
@@ -199,7 +199,7 @@ class RunGenerator(object):
         return data
 
     def _generate_op_table(self, group_by_input_shape=False):
-        show_gpu = self.profile_data.has_kernel or self.profile_data.has_memory
+        show_gpu = self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset
 
         columns = [{"type": "string", "name": "Name"}]
         if group_by_input_shape:

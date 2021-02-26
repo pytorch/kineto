@@ -1,17 +1,26 @@
 # Kineto
 
-Kineto is a PyTorch performance profiling library (libkineto) focused on providing low-overhead full-system instrumentation for production workloads.
-Libkineto is fully integrated with the PyToch Profiler, providing GPU profiling capabilities and in the future other system-level profiling.
-This repo also includes the PyTorch Profiler Tensorboard plugin, providing an easy-to-use end-to-end profiling experience.
+Kineto is part of the PyTorch Profiler.
+
+The Kineto project was started to help enable
+- **performance observability and diagnostics** across common ML bottleneck components
+- **actionable recommendations** for common issues
+- Integration of external system-level profiling tools
+- Integration with popular visualization platforms and analysis pipelines
+
+A central component is libkineto, a profiling library with special focus on low-overhead GPU timeline tracing.
+
+The PyTorch Profiler Tensorboard plugin provides powerful and intuitive visualizations of profiling results, as well asactionable recommendations, and is the best way to experience the new PyTorch Profiler.
 
 ## libkineto
 Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the libkineto folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
 
 ## PyTorch Tensorboard Profiler
-The goal of the PyTorch Tensorboard plugin is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the Tensorboard UI.
+The goal of the PyTorch Profiler is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the Tensorboard UI.
 Please refer to the [README](tb_plugin/README.md) file in the `tb_plugin` folder.
 
 ## Future development direction:
+Some areas we're currently working on:
 - Support for tracing distributed workloads
 - Trace processing, analysis and recommendation engine
 - System-level activities, multiple tracing sources

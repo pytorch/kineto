@@ -19,13 +19,10 @@
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
 #endif // HAS_CUPTI
-#include "Demangle.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
 
-using std::endl;
-using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
 

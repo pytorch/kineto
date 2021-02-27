@@ -8,7 +8,6 @@
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 
-using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
   void GenericTraceActivity::log(ActivityLogger& logger) const {

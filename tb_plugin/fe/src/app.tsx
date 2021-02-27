@@ -127,6 +127,7 @@ export const App = () => {
   const [views, setViews] = React.useState<Views[]>([])
   const [view, setView] = React.useState<Views | ''>('')
   const [loaded, setLoaded] = React.useState(false)
+  const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
   React.useEffect(() => {
     setup().then(() => {
@@ -189,10 +190,12 @@ export const App = () => {
 
   const handleDrawerOpen = () => {
     setOpen(true)
+    iframeRef.current?.focus()
   }
 
   const handleDrawerClose = () => {
     setOpen(false)
+    iframeRef.current?.focus()
   }
 
   const renderContent = () => {
@@ -208,7 +211,7 @@ export const App = () => {
       case Views.Kernel:
         return <Kernel run={run} worker={worker} view={view} />
       case Views.Trace:
-        return <TraceView run={run} worker={worker} view={view} />
+        return <TraceView run={run} worker={worker} view={view} iframeRef={iframeRef}/>
     }
   }
 

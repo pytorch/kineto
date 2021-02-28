@@ -34,7 +34,9 @@ class RunProfileData(object):
         self.data_schema_version = None
         self.events = None
         self.trace_file_path = None
-        self.is_gpu_used = False
+        self.has_runtime = False
+        self.has_kernel = False
+        self.has_memcpy_or_memset = False
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
@@ -93,7 +95,9 @@ class RunProfileData(object):
         logger.debug("OverallParser")
         overall_parser = OverallParser()
         overall_parser.parse_events(self.events)
-        self.is_gpu_used = overall_parser.is_gpu_used
+        self.has_runtime = overall_parser.has_runtime
+        self.has_kernel = overall_parser.has_kernel
+        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
         self.steps_costs = overall_parser.steps_costs
         self.steps_names = overall_parser.steps_names
         self.avg_costs = overall_parser.avg_costs
@@ -105,7 +109,7 @@ class RunProfileData(object):
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.kernel_list_groupby_name_op = module_parser.kernel_list_groupby_name_op
 
-        if self.is_gpu_used:
+        if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)

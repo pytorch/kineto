@@ -17,10 +17,6 @@ def get_version():
         version = os.getenv('TORCH_TB_PROFILER_BUILD_VERSION')
     return version
 
-def get_readme():
-    with open("README.md", encoding="utf-8") as f:
-        return f.read()
-
 INSTALL_REQUIRED = [
     "pandas",
     "tensorboard >= 1.15, !=2.1.0"
@@ -35,9 +31,11 @@ setuptools.setup(
     name="torch_tb_profiler",
     version=get_version(),
     description="PyTorch Profiler TensorBoard Plugin",
-    long_description=get_readme(),
+    long_description="PyTorch Profiler TensorBoard Plugin : \
+        https://github.com/pytorch/kineto/tree/master/tb_plugin",
     url="https://github.com/pytorch/kineto/tree/master/tb_plugin",
-    author="Microsoft Inc.",
+    author="Pytorch Team",
+    author_email="packages@pytorch.org",
     packages=setuptools.find_packages(),
     package_data={
         "torch_tb_profiler": ["static/**"],

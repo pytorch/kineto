@@ -179,9 +179,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self.get_run(name)
         profile = run.get_profile(worker)
         data = profile.overview
+        is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
-                                {"title": "Device Type", "value": "GPU" if profile.is_gpu_used else "CPU"}]
-        if profile.is_gpu_used:
+                                {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
+        if is_gpu_used:
             data["environments"].append({"title": "Number of Device(s)", "value": "1"})
         return self.respond_as_json(data)
 

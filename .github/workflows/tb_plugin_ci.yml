@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9]
-        cuda-version: [cpu, cu101, cu102, cu111, cu112]
+        cuda-version: [cpu, cu101, cu102, cu111]
         pytorch-version: [nightly, 1.8rc]
 
     steps:

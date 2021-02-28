@@ -1,25 +1,32 @@
-# PyTorch Profiler
+# PyTorch Tensorboard Profiler
+
+This is a plugin that provides visualization of PyTorch profiling.
+It can parse, process and visualize the PyTorch Profiler's dumped result,
+and give optimization recommendations.
 
 ### Quick Installation Instructions
 
-* Clone the git repository
+* Install from pypi
 
-  `git clone https://github.com/pytorch/kineto.git`
-
-* Navigate to the kineto/tb_plugin directory
-
-* Install the profiler
-
-  `pip install .`
+  `pip install torch-tb-profiler`
 
 * Verify installation is complete
 
   `pip list | grep torch-tb-profiler`
 
-  Should display
+  Should display "torch-tb-profiler"
 
-  `torch-tb-profiler      0.1.0`
+* Or you can install from source
 
+  Clone the git repository:
+
+  `git clone https://github.com/pytorch/kineto.git`
+
+  Navigate to the kineto/tb_plugin directory.
+
+  Install the profiler:
+
+  `pip install .`
 
 ### Quick Start Instructions
 

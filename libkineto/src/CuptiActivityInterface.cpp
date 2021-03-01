@@ -133,7 +133,7 @@ std::unique_ptr<std::list<CuptiActivityBuffer>> CuptiActivityInterface::activity
   if (VLOG_IS_ON(1)) {
     t1 = high_resolution_clock::now();
   }
-  CUPTI_CALL(cuptiActivityFlushAll(0));
+  CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
   if (VLOG_IS_ON(1)) {
     flushOverhead =
         duration_cast<microseconds>(high_resolution_clock::now() - t1).count();

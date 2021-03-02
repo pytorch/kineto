@@ -13,6 +13,7 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 import { Overview } from './components/Overview'
 import Divider from '@material-ui/core/Divider'
 import Fab from '@material-ui/core/Fab'
+import ClickAwayListener from '@material-ui/core/ClickAwayListener';
 import * as React from 'react'
 import clsx from 'clsx'
 import { Operator } from './components/Operator'
@@ -247,29 +248,35 @@ export const App = () => {
         </div>
         <Divider />
         <ListSubheader>Runs</ListSubheader>
-        <FormControl variant="outlined" className={classes.formControl}>
-          <Select value={run} onChange={handleRunChange}>
-            {runs.map((run) => (
-              <MenuItem value={run}>{run}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={run} onChange={handleRunChange}>
+              {runs.map((run) => (
+                <MenuItem value={run}>{run}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
         <ListSubheader>Workers</ListSubheader>
-        <FormControl variant="outlined" className={classes.formControl}>
-          <Select value={worker} onChange={handleWorkerChange}>
-            {workers.map((worker) => (
-              <MenuItem value={worker}>{worker}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={worker} onChange={handleWorkerChange}>
+              {workers.map((worker) => (
+                <MenuItem value={worker}>{worker}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
         <ListSubheader>Views</ListSubheader>
-        <FormControl variant="outlined" className={classes.formControl}>
-          <Select value={view} onChange={handleViewChange}>
-            {views.map((view) => (
-              <MenuItem value={view}>{ViewNames[view]}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={view} onChange={handleViewChange}>
+              {views.map((view) => (
+                <MenuItem value={view}>{ViewNames[view]}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+      </ClickAwayListener>
       </Drawer>
       {!open && (
         <Fab

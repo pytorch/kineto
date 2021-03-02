@@ -366,7 +366,8 @@ static bool timestampsInCorrectOrder(
     const TraceActivity& gpuOp) {
   if (ext.timestamp() > gpuOp.timestamp()) {
     LOG(WARNING) << "GPU op timestamp (" << gpuOp.timestamp()
-                 << ") < runtime timestamp (" << ext.timestamp() << ")";
+                 << ") < runtime timestamp (" << ext.timestamp() << ") by "
+                 << ext.timestamp() - gpuOp.timestamp() << "us";
     LOG(WARNING) << "Name: " << gpuOp.name()
                  << " Device: " << gpuOp.deviceId()
                  << " Stream: " << gpuOp.resourceId();
@@ -378,19 +379,12 @@ static bool timestampsInCorrectOrder(
 inline void ActivityProfiler::handleGpuActivity(
     const TraceActivity& act,
     ActivityLogger* logger) {
-  const ClientTraceActivity& extUser =
-    externalEvents_.getClientTraceActivity(act.correlationId(),
-      ExternalEventMap::CorrelationFlowType::User);
-  if (extUser.correlationId() != 0) {
-    gpuUserEventMap_.insertOrExtendEvent(extUser, act);
-  }
-
   const TraceActivity& ext = *act.linkedActivity();
   if (ext.timestamp() == 0 && outOfRange(act)) {
     return;
   }
   if (!timestampsInCorrectOrder(ext, act)) {
-    return;
+    //return;
   }
 
   VLOG(2) << ext.correlationId() << "," << act.correlationId() << ": "
@@ -398,6 +392,14 @@ inline void ActivityProfiler::handleGpuActivity(
   if (!loggingDisabled(ext)) {
     act.log(*logger);
     updateGpuNetSpan(act);
+    const ClientTraceActivity& extUser =
+      externalEvents_.getClientTraceActivity(act.correlationId(),
+        ExternalEventMap::CorrelationFlowType::User);
+    if (extUser.correlationId() != 0) {
+      VLOG(2) << extUser.correlationId() << "," << act.correlationId()
+              << " (user): "<< act.name();
+      gpuUserEventMap_.insertOrExtendEvent(extUser, act);
+    }
   }
 }
 

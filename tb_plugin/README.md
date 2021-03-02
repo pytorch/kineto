@@ -1,4 +1,4 @@
-# PyTorch Tensorboard Profiler
+# PyTorch Profiler TensorBoard Plugin
 
 This is a plugin that provides visualization of PyTorch profiling.
 It can parse, process and visualize the PyTorch Profiler's dumped result,
@@ -30,21 +30,32 @@ and give optimization recommendations.
 
 ### Quick Start Instructions
 
-* Start tensorboard
+* Prepare profiling data
 
-  Specify your profiling samples folder.
-  Or you can specify kineto/tb_plugin/samples as an example.
+  You can download [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/master/tb_plugin/samples)
+  to your local and specify it as an example.
+  These profiling samples are produced by
+  [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
+  You can learn how to profile your model from this example code
+  or learn from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
+
+  Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
+  to "on_trace_ready" on creation of "torch.profiler.schedule".
+
+* Start TensorBoard
+
+  Specify your profiling data folder to "logdir". If you use the above samples data, start TensorBoard with:
 
   `tensorboard --logdir=./samples`
 
-  If your web browser is not in the same machine that you start tensorboard,
+  If your web browser is not in the same machine that you start TensorBoard,
   you can add `--bind_all` option, such as:
 
   `tensorboard --logdir=./samples --bind_all`
 
   Note: Make sure the default port 6006 is open to the browser's host.
 
-* Open tensorboard in Chrome browser
+* Open TensorBoard in Chrome browser
 
   Open URL `http://localhost:6006` in the browser.
 

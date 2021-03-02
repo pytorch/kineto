@@ -190,11 +190,15 @@ export const App = () => {
 
   const handleDrawerOpen = () => {
     setOpen(true)
-    iframeRef.current?.focus()
+    SetIframeActive()
   }
 
   const handleDrawerClose = () => {
     setOpen(false)
+    SetIframeActive()
+  }
+
+  const SetIframeActive = () => {
     iframeRef.current?.focus()
   }
 
@@ -231,6 +235,7 @@ export const App = () => {
             [classes.drawerClose]: !open
           })
         }}
+        onClick={SetIframeActive}
       >
         <div className={classes.toolbar}>
           <IconButton

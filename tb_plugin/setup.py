@@ -18,7 +18,7 @@ def get_version():
     return version
 
 INSTALL_REQUIRED = [
-    "pandas",
+    "pandas >= 1.0.0",
     "tensorboard >= 1.15, !=2.1.0"
 ]
 

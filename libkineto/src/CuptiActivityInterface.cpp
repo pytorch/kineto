@@ -168,19 +168,21 @@ int CuptiActivityInterface::processActivitiesForBuffer(
   }
   return count;
 }
+#endif
 
 const std::pair<int, int> CuptiActivityInterface::processActivities(
     std::list<CuptiActivityBuffer>& buffers,
     std::function<void(const CUpti_Activity*)> handler) {
   std::pair<int, int> res{0, 0};
+#ifdef HAS_CUPTI
   for (auto& buf : buffers) {
     // No lock needed - only accessed from this thread
     res.first += processActivitiesForBuffer(buf.data, buf.validSize, handler);
     res.second += buf.validSize;
   }
+#endif
   return res;
 }
-#endif
 
 void CuptiActivityInterface::clearActivities() {
   CUPTI_CALL(cuptiActivityFlushAll(0));

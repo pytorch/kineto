@@ -50,6 +50,10 @@ const useStyles = makeStyles((theme) => ({
   inputWidth: {
     width: '4em'
   },
+  inputWidthOverflow: {
+    minWidth: '15em',
+    whiteSpace: 'nowrap'
+  },
   description: {
     marginLeft: theme.spacing(1)
   }
@@ -73,7 +77,7 @@ export const Kernel: React.FC<IProps> = (props) => {
   const [groupBy, setGroupBy] = React.useState(GroupBy.Kernel)
   const [searchKernelName, setSearchKernelName] = React.useState('')
   const [searchOpName, setSearchOpName] = React.useState('')
-  const [sortColumn, setSortColumn] = React.useState(2);
+  const [sortColumn, setSortColumn] = React.useState(2)
 
   const [top, actualTop, useTop, setTop, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
@@ -111,7 +115,7 @@ export const Kernel: React.FC<IProps> = (props) => {
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
     setGroupBy(event.target.value as GroupBy)
-    setSortColumn(event.target.value == GroupBy.Kernel? 2 : 3)
+    setSortColumn(event.target.value == GroupBy.Kernel ? 2 : 3)
   }
 
   const onSearchKernelChanged: TextFieldProps['onChange'] = (event) => {
@@ -207,6 +211,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                   <Grid sm={6} item container spacing={1}>
                     <Grid item>
                       <TextField
+                        classes={{ root: classes.inputWidthOverflow }}
                         value={searchKernelName}
                         onChange={onSearchKernelChanged}
                         type="search"
@@ -216,6 +221,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                     {groupBy === GroupBy.KernelNameAndOpName && (
                       <Grid item>
                         <TextField
+                          classes={{ root: classes.inputWidthOverflow }}
                           value={searchOpName}
                           onChange={onSearchOpChanged}
                           type="search"
@@ -227,7 +233,9 @@ export const Kernel: React.FC<IProps> = (props) => {
                 </Grid>
                 <Grid item>
                   <DataLoading value={searchedOpTable}>
-                    {(graph) => <TableChart graph={graph} sortColumn={sortColumn}/>}
+                    {(graph) => (
+                      <TableChart graph={graph} sortColumn={sortColumn} />
+                    )}
                   </DataLoading>
                 </Grid>
               </Grid>

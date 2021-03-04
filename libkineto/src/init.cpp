@@ -64,24 +64,6 @@ static void stopProfiler(CUcontext ctx) {
 }
 #endif // HAS_CUPTI
 
-bool hasConfigEnvVar() {
-  return getenv("KINETO_CONFIG") != nullptr;
-}
-
-bool hasGtestEnvVar() {
-  return getenv("GTEST_OUTPUT") != nullptr;
-}
-
-bool hasInjectionPathEnvVar() {
-  return getenv("CUDA_INJECTION64_PATH") != nullptr;
-}
-
-bool hasKnownJobIdEnvVar() {
-  // FIXME: Find better way to auto-enable
-  // E.g. add FEATURE_AUTO_INIT
-  return getenv("CHRONOS_JOB_INSTANCE_ID");
-}
-
 } // namespace KINETO_NAMESPACE
 
 // Callback interface with CUPTI and library constructors
@@ -112,7 +94,6 @@ static void CUPTIAPI callback(
 void libkineto_init(bool cpuOnly) {
   // Can be more verbose when injected dynamically
   LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
-  bool enable = hasConfigEnvVar() || hasKnownJobIdEnvVar();
 
 #ifdef HAS_CUPTI
   if (!cpuOnly) {
@@ -142,9 +123,6 @@ void libkineto_init(bool cpuOnly) {
       if (loadedByCuda) {
         CUPTI_CALL(status);
       }
-    } else if (!enable) {
-      // Not explicitly enabled and no GPU present - do not enable external API
-      return;
     }
 
     // Register activity profiler with libkineto API.
@@ -158,34 +136,11 @@ void libkineto_init(bool cpuOnly) {
       std::make_unique<ActivityProfilerProxy>(cpuOnly));
 }
 
-#ifdef INIT_FROM_DLOPEN
-#define CONCAT(a, b) a##b
-#define FUNCNAME(a, b) CONCAT(a, b)
-#define LIBKINETO_CONSTRUCTOR FUNCNAME(KINETO_NAMESPACE, _create)
-#define LIBKINETO_DESTRUCTOR FUNCNAME(KINETO_NAMESPACE, _destroy)
-
-// dlopen() will call this function before returning
-__attribute__((constructor)) void libkineto_create(void) {
-  // If CUDA_INJECTION64_PATH is set, don't initialize the library
-  // since we're about to load a dynamic version.
-  // Also don't start if this is a unit test.
-  if (!hasInjectionPathEnvVar() && !hasGtestEnvVar()) {
-    libkineto_init();
-  }
-}
-
-// dlclose() will call this function before returning
-// It's also called when the program exits
-__attribute__((destructor)) void libkineto_destroy(void) {
-  LOG_IF(INFO, loadedByCuda) << "Destroying libkineto";
-}
-#endif // INIT_FROM_DLOPEN
-
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment
 // variable is set
 int InitializeInjection(void) {
   loadedByCuda = true;
-  libkineto_init();
+  libkineto_init(false);
   return 1;
 }
 

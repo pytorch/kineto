@@ -21,7 +21,9 @@ struct ProcessInfo {
 };
 
 struct ThreadInfo {
-  int64_t tid;
+  ThreadInfo(int64_t tid, const std::string name) :
+    tid(tid), name(name) {}
+  int32_t tid;
   const std::string name;
 };
 

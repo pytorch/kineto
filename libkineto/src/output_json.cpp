@@ -58,19 +58,6 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCou
 #endif
 }
 
-int ChromeTraceLogger::renameThreadID(uint32_t tid) {
-  // the tid here is the thread ID that schedules the operator
-  static int curr_tid = 0;
-
-  // Note this function is not thread safe; The user of this ChromeTraceLogger
-  // need to maintain thread safety
-  if (tidMap_.count(tid)) {
-    return tidMap_[tid];
-  } else {
-    return tidMap_[tid] = curr_tid++;
-  }
-}
-
 static int64_t us(int64_t timestamp) {
   // It's important that this conversion is the same here and in the CPU trace.
   // No rounding!
@@ -124,8 +111,8 @@ void ChromeTraceLogger::handleThreadInfo(
       "name": "thread {} ({})"
     }}
   }},)JSON",
-      time, pid_, (uint32_t)threadInfo.tid,
-      renameThreadID((uint32_t)threadInfo.tid), threadInfo.name);
+      time, pid_, threadInfo.tid,
+      threadInfo.tid, threadInfo.name);
   // clang-format on
 }
 

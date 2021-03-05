@@ -45,7 +45,8 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     op.startTime = startTime;
     op.endTime = endTime;
     op.device = 0;
-    op.threadId = pthread_self();
+    op.pthreadId = pthread_self();
+    op.sysThreadId = 123;
     op.correlation = correlation;
     activities.push_back(std::move(op));
     span.opCount++;
@@ -84,7 +85,7 @@ struct MockCuptiActivityBuffer {
         start_us, end_us, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_MEMCPY;
     act.deviceId = 0;
-    act.streamId = 1;
+    act.streamId = 2;
     act.copyKind = CUPTI_ACTIVITY_MEMCPY_KIND_HTOD;
     act.srcKind = CUPTI_ACTIVITY_MEMORY_KIND_PINNED;
     act.dstKind = CUPTI_ACTIVITY_MEMORY_KIND_DEVICE;
@@ -267,20 +268,28 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), cuptiActivities_);
   EXPECT_EQ(trace.activities()->size(), 9);
-  std::map<std::string, int> counts;
+  std::map<std::string, int> activityCounts;
+  std::map<int64_t, int> resourceIds;
   for (auto& activity : *trace.activities()) {
-    counts[activity->name()]++;
+    activityCounts[activity->name()]++;
+    resourceIds[activity->resourceId()]++;
   }
-  for (const auto& p : counts) {
+  for (const auto& p : activityCounts) {
     LOG(INFO) << p.first << ": " << p.second;
   }
-  EXPECT_EQ(counts["op1"], 1);
-  EXPECT_EQ(counts["op2"], 1);
-  EXPECT_EQ(counts["op3"], 1);
-  EXPECT_EQ(counts["cudaLaunchKernel"], 2);
-  EXPECT_EQ(counts["cudaMemcpy"], 1);
-  EXPECT_EQ(counts["kernel"], 2);
-  EXPECT_EQ(counts["Memcpy HtoD (Pinned -> Device)"], 1);
+  EXPECT_EQ(activityCounts["op1"], 1);
+  EXPECT_EQ(activityCounts["op2"], 1);
+  EXPECT_EQ(activityCounts["op3"], 1);
+  EXPECT_EQ(activityCounts["cudaLaunchKernel"], 2);
+  EXPECT_EQ(activityCounts["cudaMemcpy"], 1);
+  EXPECT_EQ(activityCounts["kernel"], 2);
+  EXPECT_EQ(activityCounts["Memcpy HtoD (Pinned -> Device)"], 1);
+
+  // Ops and runtime events are on thread 123
+  EXPECT_EQ(resourceIds[123], 6);
+  // Kernels are on stream 1, memcpy on stream 2
+  EXPECT_EQ(resourceIds[1], 2);
+  EXPECT_EQ(resourceIds[2], 1);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);

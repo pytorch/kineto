@@ -76,12 +76,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   std::string fileName_;
   std::ofstream traceOf_;
 
-  // store the mapping of thread id vs. showing on the trace
-  std::unordered_map<uint32_t, int> tidMap_;
-
-  // get a cleaner thread id
-  int renameThreadID(uint32_t tid);
-
   // Cache pid to avoid repeated calls to getpid()
   pid_t pid_;
 

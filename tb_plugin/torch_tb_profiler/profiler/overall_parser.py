@@ -177,10 +177,77 @@ class OverallParser(object):
         self.steps_costs = []
         self.avg_costs = OverallParser.Costs()
 
-    def parse_events(self, events):
+    def update_steps_consider_device_side(self, runtime_node_list, device_node_list):
+        logger.debug("len(runtime_node_list)={}".format(len(runtime_node_list)))
+        runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
+        # Assume self.steps is sorted by time.
+        # Use similar code with two-way merge to get all runtimes inside each host-side step span,
+        # then record each step's min kernel start time and max kernel end time:
+        steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(self.steps)
+        i_step = 0
+        i_runtime = 0
+        step_device_min_ts = sys.maxsize
+        step_device_max_ts = -sys.maxsize - 1
+        matched_device_nodes = set()
+        while i_step < len(self.steps) and i_runtime < len(runtime_node_list):
+            if runtime_node_list[i_runtime].start_time < self.steps[i_step][0]:
+                # This runtime is ahead of or intersects with this step span. Skip this runtime.
+                i_runtime += 1
+            elif runtime_node_list[i_runtime].end_time <= self.steps[i_step][1]:
+                # This runtime is inside this step span. Scan its device_nodes.
+                rt = runtime_node_list[i_runtime]
+                if rt.device_nodes is not None:
+                    for device_node in rt.device_nodes:
+                        step_device_min_ts = min(device_node.start_time, step_device_min_ts)
+                        step_device_max_ts = max(device_node.end_time, step_device_max_ts)
+                        matched_device_nodes.add(device_node)
+                i_runtime += 1
+            elif runtime_node_list[i_runtime].start_time <= self.steps[i_step][1]:
+                # This runtime intersects with this step span. Skip this runtime.
+                i_runtime += 1
+            else:
+                # This runtime starts after this step's end. Record and move forward this step.
+                steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
+                logger.debug("steps_device[{}]={}".format(i_step, steps_device[i_step]))
+                i_step += 1
+                step_device_min_ts = sys.maxsize
+                step_device_max_ts = -sys.maxsize - 1
+        if i_step < len(self.steps):
+            steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
+            logger.debug("steps_device[{}]={}".format(i_step, steps_device[i_step]))
+        # Change step time to device side on the condition that all steps have device time.
+        is_all_gpu = True
+        for steps_device_item in steps_device:
+            if steps_device_item[0] == sys.maxsize and steps_device_item[1] == -sys.maxsize - 1:
+                is_all_gpu = False
+        logger.debug("is_all_gpu={}".format(is_all_gpu))
+        if is_all_gpu:
+            prev_step_end_time = self.steps[0][0]
+            for device_node in device_node_list:
+                if device_node not in matched_device_nodes:
+                    # Now this device_node is not launched inside any step span.
+                    if device_node.end_time < steps_device_item[0]:
+                        prev_step_end_time = max(prev_step_end_time, device_node.end_time)
+            logger.debug("prev_step_end_time={}".format(prev_step_end_time))
+            for i_step in range(len(self.steps)):
+                step_start_time = prev_step_end_time  # Set next step's start time same as previous step's end time.
+                step_end_time = max(self.steps[i_step][1], steps_device[i_step][1])
+                self.steps[i_step] = (step_start_time, step_end_time) # Update step time considering device side.
+                logger.debug("self.steps[{}]={}".format(i_step, self.steps[i_step]))
+                prev_step_end_time = step_end_time
+
+    def parse_events(self, events, runtime_node_list, device_node_list):
         logger.debug("Overall, parse events")
         for event in events:
             self.parse_event(event)
+
+        if len(self.steps) == 0:
+            self.steps.append((self.min_ts, self.max_ts))
+            self.steps_names.append("0")
+        else:
+            self.update_steps_consider_device_side(runtime_node_list, device_node_list)
+        merged_steps = list(self.steps)
+        merged_steps = merge_ranges(merged_steps)
 
         self.kernel_ranges = merge_ranges(self.kernel_ranges)
         self.memcpy_ranges = merge_ranges(self.memcpy_ranges)
@@ -188,11 +255,6 @@ class OverallParser(object):
         self.runtime_ranges = merge_ranges(self.runtime_ranges)
         self.dataloader_ranges = merge_ranges(self.dataloader_ranges)
         self.cpuop_ranges = merge_ranges(self.cpuop_ranges)
-        if len(self.steps) == 0:
-            self.steps.append((self.min_ts, self.max_ts))
-            self.steps_names.append("0")
-        merged_steps = list(self.steps)
-        merged_steps = merge_ranges(merged_steps)
 
         logger.debug("Overall, statistics")
         global_stats = OverallParser.Statistics()

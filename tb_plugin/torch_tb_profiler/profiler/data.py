@@ -92,22 +92,22 @@ class RunProfileData(object):
         return profile
 
     def process(self):
-        logger.debug("OverallParser")
-        overall_parser = OverallParser()
-        overall_parser.parse_events(self.events)
-        self.has_runtime = overall_parser.has_runtime
-        self.has_kernel = overall_parser.has_kernel
-        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
-        self.steps_costs = overall_parser.steps_costs
-        self.steps_names = overall_parser.steps_names
-        self.avg_costs = overall_parser.avg_costs
-
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
         module_parser.parse_events(self.events)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.kernel_list_groupby_name_op = module_parser.kernel_list_groupby_name_op
+
+        logger.debug("OverallParser")
+        overall_parser = OverallParser()
+        overall_parser.parse_events(self.events, module_parser.runtime_node_list, module_parser.device_node_list)
+        self.has_runtime = overall_parser.has_runtime
+        self.has_kernel = overall_parser.has_kernel
+        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
+        self.steps_costs = overall_parser.steps_costs
+        self.steps_names = overall_parser.steps_names
+        self.avg_costs = overall_parser.avg_costs
 
         if self.has_kernel:
             logger.debug("KernelParser")

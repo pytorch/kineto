@@ -111,6 +111,8 @@ class ModuleParser:
         self.op_list_groupby_name = []  # For Operator-view.
         self.op_list_groupby_name_input = []  # For Operator-view.
         self.kernel_list_groupby_name_op = {}  # For Kernel-view.
+        self.runtime_node_list = []  # For Overall-view.
+        self.device_node_list = []  # For Overall-view.
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.
@@ -229,6 +231,7 @@ class ModuleParser:
                         corrid_to_device[corrid] = [device_node]
                     else:
                         corrid_to_device[corrid].append(device_node)
+                self.device_node_list.append(device_node)
             elif event.type == EventTypes.RUNTIME:
                 rt_node = RuntimeNode()
                 build_node(rt_node, event)
@@ -252,6 +255,7 @@ class ModuleParser:
                     if tid not in tid2zero_rt_list:
                         tid2zero_rt_list[tid] = []
                     tid2zero_rt_list[tid].append(rt_node)
+                self.runtime_node_list.append(rt_node)
             elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
                     op_node = ProfilerStepNode()

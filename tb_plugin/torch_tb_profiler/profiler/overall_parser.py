@@ -179,6 +179,7 @@ class OverallParser(object):
 
     def update_steps_consider_device_side(self, runtime_node_list, device_node_list):
         logger.debug("len(runtime_node_list)={}".format(len(runtime_node_list)))
+        logger.debug("len(device_node_list)={}".format(len(device_node_list)))
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
         # Assume self.steps is sorted by time.
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
@@ -230,9 +231,9 @@ class OverallParser(object):
                         prev_step_end_time = max(prev_step_end_time, device_node.end_time)
             logger.debug("prev_step_end_time={}".format(prev_step_end_time))
             for i_step in range(len(self.steps)):
-                step_start_time = prev_step_end_time  # Set next step's start time same as previous step's end time.
+                step_start_time = max(prev_step_end_time, self.steps[i_step][0])
                 step_end_time = max(self.steps[i_step][1], steps_device[i_step][1])
-                self.steps[i_step] = (step_start_time, step_end_time) # Update step time considering device side.
+                self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
                 logger.debug("self.steps[{}]={}".format(i_step, self.steps[i_step]))
                 prev_step_end_time = step_end_time
 

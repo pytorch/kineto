@@ -521,7 +521,8 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(profile.kernel_stat.iloc[0]["min"], 100)
         self.assertEqual(profile.kernel_stat.iloc[0]["max"], 100)
 
-    def test_multiple_profilersteps(self):
+    # 2 steps without overlap with each other.
+    def test_multiple_profilersteps_no_overlap(self):
         json_content = """
           [{
             "ph": "X", "cat": "Operator", 
@@ -581,23 +582,23 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(len(profile.steps_costs), 2)
         step = profile.steps_costs[0]
         self.assertEqual(step.kernel_cost, 0)
-        self.assertEqual(step.memcpy_cost, (100 + 200) - 280)
+        self.assertEqual(step.memcpy_cost, 40)
         self.assertEqual(step.memset_cost, 0)
         self.assertEqual(step.runtime_cost, 5)
         self.assertEqual(step.dataloader_cost, 0)
         self.assertEqual(step.cpuop_cost, 60 - 5)
         self.assertEqual(step.other_cost, 200 - 60 - 20)
-        self.assertEqual(step.step_total_cost, 200)  # Only the time inside ProfilerStep will count.
+        self.assertEqual(step.step_total_cost, 320 - 100)  # Device side takes effect.
         step = profile.steps_costs[1]
-        self.assertEqual(step.kernel_cost, (350 + 150) - 410)
+        self.assertEqual(step.kernel_cost, 200)
         self.assertEqual(step.memcpy_cost, 0)
         self.assertEqual(step.memset_cost, 0)
         self.assertEqual(step.runtime_cost, 5)
         self.assertEqual(step.dataloader_cost, 0)
         self.assertEqual(step.cpuop_cost, 50 - 5)
         self.assertEqual(step.other_cost, 360 - 350)
-        self.assertEqual(step.step_total_cost, 150)  # Only the time inside ProfilerStep will count.
-        self.assertEqual(profile.avg_costs.step_total_cost, (200 + 150) / 2)
+        self.assertEqual(step.step_total_cost, 610 - 350)  # Device side takes effect.
+        self.assertEqual(profile.avg_costs.step_total_cost, ((320 - 100) + (610 - 350)) / 2)
 
         self.assertEqual(len(profile.op_list_groupby_name), 2)
         self.assertEqual(len(profile.op_list_groupby_name_input), 2)
@@ -701,6 +702,95 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.self_device_duration, 20)
             self.assertEqual(op_count, 2)
 
+    # 2 steps with overlap with each other.
+    def test_multiple_profilersteps_with_overlap(self):
+        # The kernel with "correlation" as 123 is launched by previous step,
+        # its end time is bigger than "ProfilerStep#1"'s start time,
+        # so it is regarded as beginning of "ProfilerStep#1".
+        # The memcpy with "correlation" as 334 is launched by "ProfilerStep#1",
+        # its end time is bigger than "ProfilerStep#2"'s start time,
+        # so it is regarded as beginning of "ProfilerStep#2".
+        json_content = """
+          [{
+            "ph": "X", "cat": "Operator", 
+            "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
+            "ts": 100, "dur": 200,
+            "args": {"Input dims": [], "External id": 1}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 60,
+            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
+            "ts": 350, "dur": 150,
+            "args": {"Input dims": [], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::mm", "pid": 13721, "tid": "123",
+            "ts": 360, "dur": 50,
+            "args": {"Input dims": [], "External id": 4}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "ts": 150, "dur": 90,
+            "args": {"correlation": 123, "external id": 0}
+          },              
+          {
+            "ph": "X", "cat": "Memcpy", 
+            "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
+            "ts": 280, "dur": 100,
+            "args": {"stream": 7, "correlation": 334, "external id": 2}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaMemcpyAsync", "pid": 13721, "tid": "123",
+            "ts": 250, "dur": 5,
+            "args": {"correlation": 334, "external id": 2}
+          },          
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "ts": 410, "dur": 200,
+            "args": {"correlation": 40348, "external id": 4}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
+            "ts": 400, "dur": 5,
+            "args": {"correlation": 40348, "external id": 4}
+          }]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        self.assertTrue(profile.has_runtime)
+        self.assertTrue(profile.has_kernel)
+        self.assertTrue(profile.has_memcpy_or_memset)
+        self.assertEqual(len(profile.steps_costs), 2)
+        step = profile.steps_costs[0]
+        self.assertEqual(step.kernel_cost, 0)
+        self.assertEqual(step.memcpy_cost, 100)
+        self.assertEqual(step.memset_cost, 0)
+        self.assertEqual(step.runtime_cost, 5)
+        self.assertEqual(step.dataloader_cost, 0)
+        self.assertEqual(step.cpuop_cost, (200 + 60) - (150 + 90) - 5)
+        self.assertEqual(step.other_cost, 280 - (200 + 60))
+        self.assertEqual(step.step_total_cost, (280 + 100) - (150 + 90))  # Device side takes effect.
+        step = profile.steps_costs[1]
+        self.assertEqual(step.kernel_cost, 200)
+        self.assertEqual(step.memcpy_cost, 0)
+        self.assertEqual(step.memset_cost, 0)
+        self.assertEqual(step.runtime_cost, 5)
+        self.assertEqual(step.dataloader_cost, 0)
+        self.assertEqual(step.cpuop_cost, (280 + 100) - 360 + (410 - 405))
+        self.assertEqual(step.other_cost, 0)
+        self.assertEqual(step.step_total_cost, 610 - (280 + 100))  # Device side takes effect.
 
 if __name__ == '__main__':
     unittest.main()

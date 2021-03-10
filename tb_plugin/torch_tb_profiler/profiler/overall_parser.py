@@ -195,6 +195,7 @@ class OverallParser(object):
                 # This runtime is ahead of or intersects with this step span. Skip this runtime.
                 i_runtime += 1
             elif runtime_node_list[i_runtime].end_time <= self.steps[i_step][1]:
+                # and runtime_node_list[i_runtime].start_time >= self.steps[i_step][0]
                 # This runtime is inside this step span. Scan its device_nodes.
                 rt = runtime_node_list[i_runtime]
                 if rt.device_nodes is not None:
@@ -203,7 +204,8 @@ class OverallParser(object):
                         step_device_max_ts = max(device_node.end_time, step_device_max_ts)
                         matched_device_nodes.add(device_node)
                 i_runtime += 1
-            elif runtime_node_list[i_runtime].start_time <= self.steps[i_step][1]:
+            elif runtime_node_list[i_runtime].start_time < self.steps[i_step][1]:
+                # and runtime_node_list[i_runtime].end_time > self.steps[i_step][1]
                 # This runtime intersects with this step span. Skip this runtime.
                 i_runtime += 1
             else:
@@ -227,7 +229,7 @@ class OverallParser(object):
             for device_node in device_node_list:
                 if device_node not in matched_device_nodes:
                     # Now this device_node is not launched inside any step span.
-                    if device_node.end_time < steps_device_item[0]:
+                    if device_node.end_time < steps_device[0][0]:
                         prev_step_end_time = max(prev_step_end_time, device_node.end_time)
             logger.debug("prev_step_end_time={}".format(prev_step_end_time))
             for i_step in range(len(self.steps)):

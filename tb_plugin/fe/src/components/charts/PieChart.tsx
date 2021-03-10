@@ -71,6 +71,11 @@ export const PieChart: React.FC<IProps> = (props) => {
       chart.setSelection([{ row: entry.row }])
     })
 
+    google.visualization.events.addListener(chart, 'onmouseout', function (
+    ) {
+        chart.setSelection([])
+    })
+
     chart.draw(data, options)
 
     return () => {

@@ -10,6 +10,7 @@ export interface IProps {
   run: string
   worker: string
   view: string
+  iframeRef: React.RefObject<HTMLIFrameElement>
 }
 
 const useStyles = makeStyles(() => ({
@@ -24,10 +25,8 @@ const useStyles = makeStyles(() => ({
 }))
 
 export const TraceView: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, view, iframeRef } = props
   const classes = useStyles()
-
-  const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
   const [traceData, setTraceData] = React.useState<Promise<string> | null>(null)
   const [traceViewReady, setTraceViewReady] = React.useState(false)

@@ -114,14 +114,18 @@ void CuptiActivityInterface::setMaxBufferSize(int size) {
 }
 
 #ifdef HAS_CUPTI
-void CUPTIAPI CuptiActivityInterface::bufferRequested(
+void CUPTIAPI CuptiActivityInterface::bufferRequestedTrampoline(
     uint8_t** buffer,
     size_t* size,
     size_t* maxNumRecords) {
-  if (singleton().allocatedGpuBufferCount > singleton().maxGpuBufferCount_) {
-    singleton().stopCollection = true;
+  singleton().bufferRequested(buffer, size, maxNumRecords);
+}
+
+void CuptiActivityInterface::bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
+  if (allocatedGpuBufferCount > maxGpuBufferCount_) {
+    stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
-                 << singleton().allocatedGpuBufferCount
+                 << allocatedGpuBufferCount
                  << ") - terminating tracing";
   }
 
@@ -133,7 +137,7 @@ void CUPTIAPI CuptiActivityInterface::bufferRequested(
   // if we allocated new space from the heap)
   *buffer = (uint8_t*) malloc(kBufSize);
 
-  singleton().allocatedGpuBufferCount++;
+  allocatedGpuBufferCount++;
 }
 #endif
 
@@ -203,18 +207,27 @@ void CuptiActivityInterface::addActivityBuffer(uint8_t* buffer, size_t validSize
 }
 
 #ifdef HAS_CUPTI
-void CUPTIAPI CuptiActivityInterface::bufferCompleted(
+void CUPTIAPI CuptiActivityInterface::bufferCompletedTrampoline(
     CUcontext ctx,
     uint32_t streamId,
     uint8_t* buffer,
     size_t /* unused */,
     size_t validSize) {
-  singleton().allocatedGpuBufferCount--;
+  singleton().bufferCompleted(ctx, streamId, buffer, 0, validSize);
+}
+
+void CuptiActivityInterface::bufferCompleted(
+    CUcontext ctx,
+    uint32_t streamId,
+    uint8_t* buffer,
+    size_t /* unused */,
+    size_t validSize) {
+  allocatedGpuBufferCount--;
 
   // lock should be uncessary here, because gpuTraceBuffers is read/written by
   // profilerLoop only. CUPTI should handle the cuptiActivityFlushAll and
   // bufferCompleted, so that there is no concurrency issues
-  singleton().addActivityBuffer(buffer, validSize);
+  addActivityBuffer(buffer, validSize);
 
   // report any records dropped from the queue; to avoid unnecessary cupti
   // API calls, we make it report only in verbose mode (it doesn't happen
@@ -235,7 +248,7 @@ void CuptiActivityInterface::enableCuptiActivities(
   static bool registered = false;
   if (!registered) {
     CUPTI_CALL(
-        cuptiActivityRegisterCallbacks(bufferRequested, bufferCompleted));
+        cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
   }
 
   for (const auto& activity : selected_activities) {

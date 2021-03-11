@@ -71,8 +71,8 @@ class CuptiActivityInterface {
       size_t validSize,
       std::function<void(const CUpti_Activity*)> handler);
   static void CUPTIAPI
-  bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
-  static void CUPTIAPI bufferCompleted(
+  bufferRequestedTrampoline(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
+  static void CUPTIAPI bufferCompletedTrampoline(
       CUcontext ctx,
       uint32_t streamId,
       uint8_t* buffer,
@@ -83,6 +83,17 @@ class CuptiActivityInterface {
   int maxGpuBufferCount_{0};
   int allocatedGpuBufferCount{0};
   std::unique_ptr<std::list<CuptiActivityBuffer>> gpuTraceBuffers_;
+
+ protected:
+#ifdef HAS_CUPTI
+  void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
+  void bufferCompleted(
+      CUcontext ctx,
+      uint32_t streamId,
+      uint8_t* buffer,
+      size_t /* unused */,
+      size_t validSize);
+#endif
 };
 
 } // namespace KINETO_NAMESPACE

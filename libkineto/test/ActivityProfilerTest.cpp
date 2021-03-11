@@ -144,6 +144,10 @@ class MockCuptiActivities : public CuptiActivityInterface {
     return list;
   }
 
+  void bufferRequestedOverride(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
+    this->bufferRequested(buffer, size, maxNumRecords);
+  }
+
   std::unique_ptr<MockCuptiActivityBuffer> activityBuffer;
 };
 
@@ -359,4 +363,37 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   // The GPU launch kernel activities should have been dropped due to invalid timestamps
   EXPECT_EQ(counts["cudaLaunchKernel"], 0);
   EXPECT_EQ(counts["launchKernel"], 1);
+}
+
+TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
+  ActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+
+  auto now = system_clock::now();
+
+  int maxBufferSizeMB = 1;
+  std::string maxBufferSizeMBStr = std::to_string(maxBufferSizeMB);
+  cfg_->handleOption("ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB", maxBufferSizeMBStr);
+
+  EXPECT_FALSE(profiler.isActive());
+  profiler.configure(*cfg_, now);
+  EXPECT_TRUE(profiler.isActive());
+
+  for (size_t i = 0; i <= maxBufferSizeMB + 1; i++) {
+    uint8_t* buf;
+    size_t gpuBufferSize;
+    size_t maxNumRecords;
+    cuptiActivities_.bufferRequestedOverride(&buf, &gpuBufferSize, &maxNumRecords);
+
+    // we don't actually do anything with the buf so just free it to prevent leaks in tests
+    free(buf);
+  }
+
+  profiler.performRunLoopStep(now, now);
+
+  auto next = now + milliseconds(1000);
+  profiler.performRunLoopStep(next, next);
+  profiler.performRunLoopStep(next, next);
+  profiler.performRunLoopStep(next, next);
+
+  EXPECT_FALSE(profiler.isActive());
 }

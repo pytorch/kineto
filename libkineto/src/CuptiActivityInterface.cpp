@@ -122,7 +122,7 @@ void CUPTIAPI CuptiActivityInterface::bufferRequestedTrampoline(
 }
 
 void CuptiActivityInterface::bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
-  if (allocatedGpuBufferCount > maxGpuBufferCount_) {
+  if (allocatedGpuBufferCount >= maxGpuBufferCount_) {
     stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << allocatedGpuBufferCount

@@ -370,7 +370,7 @@ TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
 
   auto now = system_clock::now();
 
-  int maxBufferSizeMB = 1;
+  int maxBufferSizeMB = 3;
   std::string maxBufferSizeMBStr = std::to_string(maxBufferSizeMB);
   cfg_->handleOption("ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB", maxBufferSizeMBStr);
 
@@ -378,7 +378,7 @@ TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
   profiler.configure(*cfg_, now);
   EXPECT_TRUE(profiler.isActive());
 
-  for (size_t i = 0; i <= maxBufferSizeMB + 1; i++) {
+  for (size_t i = 0; i < maxBufferSizeMB; i++) {
     uint8_t* buf;
     size_t gpuBufferSize;
     size_t maxNumRecords;

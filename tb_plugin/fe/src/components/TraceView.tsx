@@ -5,6 +5,7 @@
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import * as api from '../api'
+import ClickAwayListener from '@material-ui/core/ClickAwayListener';
 
 export interface IProps {
   run: string
@@ -63,16 +64,20 @@ export const TraceView: React.FC<IProps> = (props) => {
       })
     }
   }, [traceData, traceViewReady])
-
+  const SetIframeActive = () => {
+    iframeRef.current?.focus()
+  }
   return (
     <div className={classes.root}>
       {React.useMemo(
         () => (
-          <iframe
-            className={classes.frame}
-            ref={iframeRef}
-            src="/data/plugin/pytorch_profiler/trace_embedding.html"
-          ></iframe>
+          <ClickAwayListener onClickAway={SetIframeActive}>
+            <iframe
+              className={classes.frame}
+              ref={iframeRef}
+              src="/data/plugin/pytorch_profiler/trace_embedding.html"
+            ></iframe>
+          </ClickAwayListener>
         ),
         []
       )}

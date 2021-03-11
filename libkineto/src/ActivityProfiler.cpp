@@ -388,6 +388,7 @@ inline void ActivityProfiler::handleGpuActivity(
   if (ext.timestamp() == 0 && outOfRange(act)) {
     return;
   }
+  // Correlated GPU runtime activity cannot have timestamp greater than the GPU activity's
   if (!timestampsInCorrectOrder(ext, act)) {
     //return;
   }
@@ -400,6 +401,11 @@ inline void ActivityProfiler::handleGpuActivity(
     const ClientTraceActivity& extUser =
       externalEvents_.getClientTraceActivity(act.correlationId(),
         ExternalEventMap::CorrelationFlowType::User);
+    // Correlated CPU activity cannot have timestamp greater than the GPU activity's
+    if (!timestampsInCorrectOrder(extUser, act)) {
+      return;
+    }
+
     if (extUser.correlationId() != 0) {
       VLOG(2) << extUser.correlationId() << "," << act.correlationId()
               << " (user): "<< act.name();

@@ -55,6 +55,15 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
 
 // Provides ability to easily create a few test CUPTI ops
 struct MockCuptiActivityBuffer {
+  void addCorrelationActivity(int64_t correlation, CUpti_ExternalCorrelationKind externalKind, int64_t externalId) {
+    auto& act = *(CUpti_ActivityExternalCorrelation*) malloc(sizeof(CUpti_ActivityExternalCorrelation));
+    act.kind = CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION;
+    act.externalId = externalId;
+    act.externalKind = externalKind;
+    act.correlationId = correlation;
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
   void addRuntimeActivity(
       CUpti_runtime_api_trace_cbid_enum cbid,
       int64_t start_us, int64_t end_us, int64_t correlation) {
@@ -304,4 +313,50 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
+}
+
+TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
+  // Verbose logging is useful for debugging
+  std::vector<std::string> log_modules(
+      {"ActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  // Start and stop profiling
+  ActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_us = 100;
+  int64_t duration_us = 300;
+  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + microseconds(duration_us));
+
+  // Scenario 1: Test mismatch in CPU and GPU events.
+  // When launching kernel, the CPU event should always precede the GPU event.
+  int64_t kernelLaunchTime = 120;
+
+  // set up CPU event
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_us, start_time_us + duration_us);
+  cpuOps->addOp("launchKernel", kernelLaunchTime, kernelLaunchTime + 10, 1);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  // set up GPU event
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, 1);
+  gpuOps->addKernelActivity(kernelLaunchTime - 1, kernelLaunchTime + 10, 1);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  // process trace
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+
+  ActivityTrace trace(std::move(logger), cuptiActivities_);
+  std::map<std::string, int> counts;
+  for (auto& activity : *trace.activities()) {
+    counts[activity->name()]++;
+  }
+
+  // The GPU launch kernel activities should have been dropped due to invalid timestamps
+  EXPECT_EQ(counts["cudaLaunchKernel"], 0);
+  EXPECT_EQ(counts["launchKernel"], 1);
 }

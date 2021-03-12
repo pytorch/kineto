@@ -339,6 +339,10 @@ void ChromeTraceLogger::handleGpuActivity(
   handleLinkEnd(activity);
 }
 
+static std::string bandwidth(uint64_t bytes, uint64_t duration) {
+  return duration == 0 ? "N/A" : fmt::format("{}", bytes * 1.0 / duration);
+}
+
 // GPU side memcpy activity
 void ChromeTraceLogger::handleGpuActivity(
     const GpuActivity<CUpti_ActivityMemcpy>& activity) {
@@ -362,7 +366,7 @@ void ChromeTraceLogger::handleGpuActivity(
       // args
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId, ext.correlationId(),
-      memcpy.bytes, memcpy.bytes * 1.0 / (memcpy.end - memcpy.start));
+      memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
   handleLinkEnd(activity);
@@ -392,7 +396,7 @@ void ChromeTraceLogger::handleGpuActivity(
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
       memcpy.streamId, memcpy.correlationId, ext.correlationId(),
-      memcpy.bytes, memcpy.bytes * 1.0 / (memcpy.end - memcpy.start));
+      memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
   handleLinkEnd(activity);
@@ -419,7 +423,7 @@ void ChromeTraceLogger::handleGpuActivity(
       // args
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId, ext.correlationId(),
-      memset.bytes, memset.bytes * 1.0 / (memset.end - memset.start));
+      memset.bytes, bandwidth(memset.bytes, memset.end - memset.start));
   // clang-format on
 
   handleLinkEnd(activity);

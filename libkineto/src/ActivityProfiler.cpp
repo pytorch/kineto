@@ -390,7 +390,7 @@ inline void ActivityProfiler::handleGpuActivity(
   }
   // Correlated GPU runtime activity cannot have timestamp greater than the GPU activity's
   if (!timestampsInCorrectOrder(ext, act)) {
-    //return;
+    return;
   }
 
   VLOG(2) << ext.correlationId() << "," << act.correlationId() << ": "

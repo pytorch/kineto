@@ -42,8 +42,6 @@
 
 namespace KINETO_NAMESPACE {
 
-static bool loadedByCuda = false;
-
 #ifdef HAS_CUPTI
 static bool initialized = false;
 static std::mutex initMutex;
@@ -91,10 +89,9 @@ static void CUPTIAPI callback(
 }
 #endif // HAS_CUPTI
 
-void libkineto_init(bool cpuOnly) {
-  // Can be more verbose when injected dynamically
-  LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
-
+// Return true if no CUPTI errors occurred during init
+bool libkineto_init(bool cpuOnly, bool logOnError) {
+  bool success = true;
 #ifdef HAS_CUPTI
   if (!cpuOnly) {
     CUpti_SubscriberHandle subscriber;
@@ -111,36 +108,41 @@ void libkineto_init(bool cpuOnly) {
               subscriber,
               CUPTI_CB_DOMAIN_RESOURCE,
               CUPTI_CBID_RESOURCE_CONTEXT_CREATED));
-      if (loadedByCuda) {
+
+      if (status == CUPTI_SUCCESS) {
+        status = CUPTI_CALL_NOWARN(
+            cuptiEnableCallback(
+                1,
+                subscriber,
+                CUPTI_CB_DOMAIN_RESOURCE,
+                CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING));
+        }
+    }
+    if (status != CUPTI_SUCCESS) {
+      success = false;
+      cpuOnly = true;
+      if (logOnError) {
         CUPTI_CALL(status);
-      }
-      status = CUPTI_CALL_NOWARN(
-          cuptiEnableCallback(
-              1,
-              subscriber,
-              CUPTI_CB_DOMAIN_RESOURCE,
-              CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING));
-      if (loadedByCuda) {
-        CUPTI_CALL(status);
+        LOG(WARNING) << "CUPTI initialization failed - "
+                     << "CUDA profiler activities will be missing";
+        LOG(INFO) << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
+                  << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
       }
     }
-
-    // Register activity profiler with libkineto API.
-    // The profiler will be start up lazily either when a client tracer is
-    // registered or when a CUDA context is created.
-    cpuOnly = (status != CUPTI_SUCCESS);
   }
 #endif // HAS_CUPTI
 
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly));
+
+  return success;
 }
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment
 // variable is set
 int InitializeInjection(void) {
-  loadedByCuda = true;
-  libkineto_init(false);
+  LOG(INFO) << "Injection mode: Initializing libkineto";
+  libkineto_init(false /*cpuOnly*/, true /*logOnError*/);
   return 1;
 }
 

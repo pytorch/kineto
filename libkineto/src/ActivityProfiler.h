@@ -260,7 +260,7 @@ class ActivityProfiler {
     if (threadInfo_.find((int32_t)pthreadId) == threadInfo_.end()) {
       threadInfo_.emplace(
           (int32_t)pthreadId,
-          ThreadInfo((int32_t) tid, getThreadName(pthreadId)));
+          ThreadInfo((int32_t) tid, getThreadName(tid)));
     }
   }
 

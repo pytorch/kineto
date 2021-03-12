@@ -14,6 +14,6 @@
 namespace KINETO_NAMESPACE {
 
 bool setThreadName(const std::string& name);
-std::string getThreadName(pid_t tid);
+std::string getThreadName(pthread_t id);
 
 } // namespace KINETO_NAMESPACE

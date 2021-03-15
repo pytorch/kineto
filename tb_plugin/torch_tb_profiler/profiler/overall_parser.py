@@ -4,8 +4,8 @@
 
 import sys
 
-from .. import utils
 from .trace import EventTypes
+from .. import utils
 
 logger = utils.get_logger()
 
@@ -177,11 +177,13 @@ class OverallParser(object):
         self.steps_costs = []
         self.avg_costs = OverallParser.Costs()
 
+    # Update self.steps considering device side events launched by each host side step.
     def update_steps_consider_device_side(self, runtime_node_list, device_node_list):
         logger.debug("len(runtime_node_list)={}".format(len(runtime_node_list)))
         logger.debug("len(device_node_list)={}".format(len(device_node_list)))
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
-        # Assume self.steps is sorted by time.
+        # Make sure self.steps is sorted by time.
+        self.steps = sorted(self.steps, key=lambda x: x[0])
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
         # then record each step's min kernel start time and max kernel end time:
         steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(self.steps)
@@ -191,11 +193,13 @@ class OverallParser(object):
         step_device_max_ts = -sys.maxsize - 1
         matched_device_nodes = set()
         while i_step < len(self.steps) and i_runtime < len(runtime_node_list):
-            if runtime_node_list[i_runtime].start_time < self.steps[i_step][0]:
+            step_host_start_time = self.steps[i_step][0]
+            step_host_end_time = self.steps[i_step][1]
+            if runtime_node_list[i_runtime].start_time < step_host_start_time:
                 # This runtime is ahead of or intersects with this step span. Skip this runtime.
                 i_runtime += 1
-            elif runtime_node_list[i_runtime].end_time <= self.steps[i_step][1]:
-                # and runtime_node_list[i_runtime].start_time >= self.steps[i_step][0]
+            elif runtime_node_list[i_runtime].end_time <= step_host_end_time:
+                # and runtime_node_list[i_runtime].start_time >= step_host_start_time
                 # This runtime is inside this step span. Scan its device_nodes.
                 rt = runtime_node_list[i_runtime]
                 if rt.device_nodes is not None:
@@ -204,11 +208,12 @@ class OverallParser(object):
                         step_device_max_ts = max(device_node.end_time, step_device_max_ts)
                         matched_device_nodes.add(device_node)
                 i_runtime += 1
-            elif runtime_node_list[i_runtime].start_time < self.steps[i_step][1]:
-                # and runtime_node_list[i_runtime].end_time > self.steps[i_step][1]
+            elif runtime_node_list[i_runtime].start_time < step_host_end_time:
+                # and runtime_node_list[i_runtime].end_time > step_host_end_time
                 # This runtime intersects with this step span. Skip this runtime.
                 i_runtime += 1
             else:
+                # runtime_node_list[i_runtime].start_time >= step_host_end_time
                 # This runtime starts after this step's end. Record and move forward this step.
                 steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
                 logger.debug("steps_device[{}]={}".format(i_step, steps_device[i_step]))
@@ -218,6 +223,8 @@ class OverallParser(object):
         if i_step < len(self.steps):
             steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
             logger.debug("steps_device[{}]={}".format(i_step, steps_device[i_step]))
+            # If there are steps during [i_step+1, len(self.steps) which has no runtime,
+            # then their steps_device will keep as initial value "(sys.maxsize, -sys.maxsize - 1)".
         # Change step time to device side on the condition that all steps have device time.
         is_all_gpu = True
         for steps_device_item in steps_device:
@@ -235,6 +242,10 @@ class OverallParser(object):
             for i_step in range(len(self.steps)):
                 step_start_time = max(prev_step_end_time, self.steps[i_step][0])
                 step_end_time = max(self.steps[i_step][1], steps_device[i_step][1])
+                if step_end_time < step_start_time:
+                    logger.warning(
+                        "Abnormal step_end_time of step {}: [{}, {}]".format(i_step, step_start_time, step_end_time))
+                    step_end_time = step_start_time
                 self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
                 logger.debug("self.steps[{}]={}".format(i_step, self.steps[i_step]))
                 prev_step_end_time = step_end_time

@@ -64,22 +64,12 @@ static void stopProfiler(CUcontext ctx) {
 }
 #endif // HAS_CUPTI
 
-bool hasConfigEnvVar() {
-  return getenv("KINETO_CONFIG") != nullptr;
-}
-
 bool hasGtestEnvVar() {
   return getenv("GTEST_OUTPUT") != nullptr;
 }
 
 bool hasInjectionPathEnvVar() {
   return getenv("CUDA_INJECTION64_PATH") != nullptr;
-}
-
-bool hasKnownJobIdEnvVar() {
-  // FIXME: Find better way to auto-enable
-  // E.g. add FEATURE_AUTO_INIT
-  return getenv("CHRONOS_JOB_INSTANCE_ID");
 }
 
 } // namespace KINETO_NAMESPACE
@@ -112,7 +102,6 @@ static void CUPTIAPI callback(
 void libkineto_init(bool cpuOnly) {
   // Can be more verbose when injected dynamically
   LOG_IF(INFO, loadedByCuda) << "Initializing libkineto ";
-  bool enable = hasConfigEnvVar() || hasKnownJobIdEnvVar();
 
 #ifdef HAS_CUPTI
   if (!cpuOnly) {
@@ -142,9 +131,6 @@ void libkineto_init(bool cpuOnly) {
       if (loadedByCuda) {
         CUPTI_CALL(status);
       }
-    } else if (!enable) {
-      // Not explicitly enabled and no GPU present - do not enable external API
-      return;
     }
 
     // Register activity profiler with libkineto API.

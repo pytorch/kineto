@@ -179,8 +179,6 @@ class OverallParser(object):
 
     # Update self.steps considering device side events launched by each host side step.
     def update_steps_consider_device_side(self, runtime_node_list, device_node_list):
-        logger.debug("len(runtime_node_list)={}".format(len(runtime_node_list)))
-        logger.debug("len(device_node_list)={}".format(len(device_node_list)))
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
         # Make sure self.steps is sorted by time.
         self.steps = sorted(self.steps, key=lambda x: x[0])
@@ -216,38 +214,41 @@ class OverallParser(object):
                 # runtime_node_list[i_runtime].start_time >= step_host_end_time
                 # This runtime starts after this step's end. Record and move forward this step.
                 steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
-                logger.debug("steps_device[{}]={}".format(i_step, steps_device[i_step]))
                 i_step += 1
                 step_device_min_ts = sys.maxsize
                 step_device_max_ts = -sys.maxsize - 1
         if i_step < len(self.steps):
             steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
-            logger.debug("steps_device[{}]={}".format(i_step, steps_device[i_step]))
             # If there are steps during [i_step+1, len(self.steps) which has no runtime,
             # then their steps_device will keep as initial value "(sys.maxsize, -sys.maxsize - 1)".
-        # Change step time to device side on the condition that all steps have device time.
-        is_all_gpu = True
+        # Change step time to device side on the condition that any step have device time.
+        is_use_gpu = False
         for steps_device_item in steps_device:
-            if steps_device_item[0] == sys.maxsize and steps_device_item[1] == -sys.maxsize - 1:
-                is_all_gpu = False
-        logger.debug("is_all_gpu={}".format(is_all_gpu))
-        if is_all_gpu:
+            if steps_device_item[0] != sys.maxsize:
+                is_use_gpu = True
+                break
+        if is_use_gpu:
             prev_step_end_time = self.steps[0][0]
-            for device_node in device_node_list:
-                if device_node not in matched_device_nodes:
-                    # Now this device_node is not launched inside any step span.
-                    if device_node.end_time < steps_device[0][0]:
-                        prev_step_end_time = max(prev_step_end_time, device_node.end_time)
-            logger.debug("prev_step_end_time={}".format(prev_step_end_time))
+            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
+                for device_node in device_node_list:
+                    if device_node not in matched_device_nodes:
+                        # Now this device_node is not launched inside any step span.
+                        if device_node.end_time < steps_device[0][0]:
+                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
             for i_step in range(len(self.steps)):
                 step_start_time = max(prev_step_end_time, self.steps[i_step][0])
-                step_end_time = max(self.steps[i_step][1], steps_device[i_step][1])
-                if step_end_time < step_start_time:
-                    logger.warning(
-                        "Abnormal step_end_time of step {}: [{}, {}]".format(i_step, step_start_time, step_end_time))
-                    step_end_time = step_start_time
+                step_end_time = self.steps[i_step][1]
+                if steps_device[i_step][0] == sys.maxsize:  # When step i_step has no device event.
+                    # Assign to step_start_time when kernel is behind host step end.
+                    step_end_time = max(step_end_time, step_start_time)
+                else:
+                    step_end_time = max(step_end_time, steps_device[i_step][1])
+                    if step_end_time < step_start_time:
+                        logger.warning(
+                            "Abnormal step_end_time of step {}: [{}, {}]".format(
+                                i_step, step_start_time, step_end_time))
+                        step_end_time = step_start_time
                 self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
-                logger.debug("self.steps[{}]={}".format(i_step, self.steps[i_step]))
                 prev_step_end_time = step_end_time
 
     def parse_events(self, events, runtime_node_list, device_node_list):

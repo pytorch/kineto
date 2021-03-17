@@ -42,13 +42,9 @@ TEST(ThreadNameTest, otherThread) {
   std::thread thread([&stop_flag, &tid]() {
       setThreadName("New Thread");
       tid = syscall(SYS_gettid);
-      while (!stop_flag) {
-        sleep(1);
-      }
+      while (!stop_flag) {}
   });
-  while (!tid) {
-    sleep(1);
-  }
+  while (!tid) {}
   EXPECT_EQ(getThreadName(tid), "New Thread");
   stop_flag = true;
   thread.join();
@@ -60,15 +56,16 @@ TEST(ThreadNameTest, deadThread) {
   std::thread thread([&stop_flag, &tid]() {
       setThreadName("New Thread");
       tid = syscall(SYS_gettid);
-      while (!stop_flag) {
-        sleep(1);
-      }
+      while (!stop_flag) {}
   });
-  while (!tid) {
-    sleep(1);
-  }
+  while (!tid) {}
   stop_flag = true;
   thread.join();
-  EXPECT_EQ(getThreadName(tid), "Unknown");
+  // There appears to be a delay before the thread info is
+  // removed from proc - we can therefore expect either
+  // "Unknown" or "New Thread" to be returned.
+  std::string name = getThreadName(tid);
+  EXPECT_TRUE(name == "Unknown" || name == "New Thread")
+    << "Where name = " << name;
 }
 

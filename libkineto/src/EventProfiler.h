@@ -269,6 +269,14 @@ class EventProfiler {
     onDemandSamples_ -= erase_count;
   }
 
+  void clearSamples() {
+    for (auto& pair : events_) {
+      pair.second.clearSamples();
+    }
+    baseSamples_ = 0;
+    onDemandSamples_ = 0;
+  }
+
  private:
   // Functions to initialize profiler based on Config settings.
   bool applyConfig(const Config& config);
@@ -291,12 +299,6 @@ class EventProfiler {
       const Config& config,
       const std::vector<std::unique_ptr<SampleListener>>& loggers,
       int report_nr);
-
-  void clearSamples() {
-    for (auto& pair : events_) {
-      pair.second.clearSamples();
-    }
-  }
 
   void eraseSamples(int count) {
     for (auto& pair : events_) {

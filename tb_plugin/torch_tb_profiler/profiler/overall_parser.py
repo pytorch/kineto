@@ -217,10 +217,10 @@ class OverallParser(object):
                 i_step += 1
                 step_device_min_ts = sys.maxsize
                 step_device_max_ts = -sys.maxsize - 1
-        if i_step < len(self.steps):
+        while i_step < len(self.steps):
+            # This step doesn't launch any device side event, just assign it as empty.
             steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
-            # If there are steps during [i_step+1, len(self.steps) which has no runtime,
-            # then their steps_device will keep as initial value "(sys.maxsize, -sys.maxsize - 1)".
+            i_step += 1
         # Change step time to device side on the condition that any step have device time.
         is_use_gpu = False
         for steps_device_item in steps_device:

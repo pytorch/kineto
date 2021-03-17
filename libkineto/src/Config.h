@@ -148,6 +148,14 @@ class Config : public AbstractConfig {
     return eventProfilerMaxInstancesPerGpu_;
   }
 
+  // On Cuda11 we've seen occasional hangs when reprogramming counters
+  // Monitor profiling threads and report when a thread is not responding
+  // for a given number of seconds.
+  // A period of 0 means disable.
+  std::chrono::seconds eventProfilerHeartbeatMonitorPeriod() const {
+    return eventProfilerHeartbeatMonitorPeriod_;
+  }
+
   // The types of activities selected in the configuration file
   const std::set<ActivityType>& selectedActivityTypes() const {
     return selectedActivityTypes_;
@@ -311,6 +319,10 @@ class Config : public AbstractConfig {
       eventProfilerOnDemandTimestamp_;
 
   int eventProfilerMaxInstancesPerGpu_;
+
+  // Monitor whether event profiler threads are stuck
+  // at this frequency
+  std::chrono::seconds eventProfilerHeartbeatMonitorPeriod_;
 
   // These settings can not be changed on-demand
   std::string eventLogFile_;

@@ -10,6 +10,8 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "ConfigLoader.h"
 #include "CuptiEventInterface.h"
@@ -26,31 +28,23 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
-static vector<std::function<unique_ptr<SampleListener>(const Config&)>>&
+namespace {
+
+vector<std::function<unique_ptr<SampleListener>(const Config&)>>&
 loggerFactories() {
   static vector<std::function<unique_ptr<SampleListener>(const Config&)>>
       factories;
   return factories;
 }
 
-void EventProfilerController::addLoggerFactory(
-    std::function<unique_ptr<SampleListener>(const Config&)> factory) {
-  loggerFactories().push_back(factory);
-}
-
-static vector<std::function<unique_ptr<SampleListener>(const Config&)>>&
+vector<std::function<unique_ptr<SampleListener>(const Config&)>>&
 onDemandLoggerFactories() {
   static vector<std::function<unique_ptr<SampleListener>(const Config&)>>
       factories;
   return factories;
 }
 
-void EventProfilerController::addOnDemandLoggerFactory(
-    std::function<unique_ptr<SampleListener>(const Config&)> factory) {
-  onDemandLoggerFactories().push_back(factory);
-}
-
-static vector<unique_ptr<SampleListener>> makeLoggers(const Config& config) {
+vector<unique_ptr<SampleListener>> makeLoggers(const Config& config) {
   vector<unique_ptr<SampleListener>> loggers;
   for (const auto& factory : loggerFactories()) {
     loggers.push_back(factory(config));
@@ -60,7 +54,7 @@ static vector<unique_ptr<SampleListener>> makeLoggers(const Config& config) {
   return loggers;
 }
 
-static vector<unique_ptr<SampleListener>> makeOnDemandLoggers(
+vector<unique_ptr<SampleListener>> makeOnDemandLoggers(
     const Config& config) {
   vector<unique_ptr<SampleListener>> loggers;
   for (const auto& factory : onDemandLoggerFactories()) {
@@ -70,25 +64,146 @@ static vector<unique_ptr<SampleListener>> makeOnDemandLoggers(
   return loggers;
 }
 
-static vector<unique_ptr<SampleListener>>& loggers(const Config& config) {
+vector<unique_ptr<SampleListener>>& loggers(const Config& config) {
   static auto res = makeLoggers(config);
   return res;
 }
 
-static vector<unique_ptr<SampleListener>>& onDemandLoggers(
+vector<unique_ptr<SampleListener>>& onDemandLoggers(
     const Config& config) {
   static auto res = makeOnDemandLoggers(config);
   return res;
 }
 
+// Keep an eye on profiling threads.
+// We've observed deadlocks in Cuda11 in libcuda / libcupti..
+class HeartbeatMonitor {
+
+ public:
+  ~HeartbeatMonitor() {
+    stopMonitoring();
+  }
+
+  static HeartbeatMonitor& instance() {
+    static HeartbeatMonitor monitor;
+    return monitor;
+  }
+
+  void profilerHeartbeat() {
+    pid_t tid = syscall(SYS_gettid);
+    std::lock_guard<std::mutex> lock(mutex_);
+    profilerAliveMap_[tid]++;
+  }
+
+  void setPeriod(seconds period) {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (period_ == period) {
+        return;
+      }
+      period_ = period;
+    }
+    if (period == seconds(0)) {
+      stopMonitoring();
+    } else {
+      startMonitoring();
+    }
+  }
+
+ private:
+  HeartbeatMonitor() = default;
+
+  void monitorLoop() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    while(!stopMonitor_) {
+      auto cv_status = condVar_.wait_for(lock, seconds(period_));
+      // Don't perform check on spurious wakeup or on notify
+      if (cv_status == std::cv_status::timeout) {
+        for (auto& [tid, i] : profilerAliveMap_) {
+          if (i == 0) {
+            LOG(ERROR) << "Thread " << tid << " appears stuck!";
+          }
+          i = 0;
+        }
+      }
+    }
+  }
+
+  void startMonitoring() {
+    if (!monitorThread_) {
+      VLOG(0) << "Starting monitoring thread";
+      stopMonitor_ = false;
+      monitorThread_ = std::make_unique<std::thread>(
+          &HeartbeatMonitor::monitorLoop, this);
+    }
+  }
+
+  void stopMonitoring() {
+    if (monitorThread_) {
+      VLOG(0) << "Stopping monitoring thread";
+      stopMonitor_ = true;
+      condVar_.notify_one();
+      monitorThread_->join();
+      monitorThread_ = nullptr;
+      VLOG(0) << "Monitoring thread terminated";
+    }
+  }
+
+  std::map<pid_t, int> profilerAliveMap_;
+  std::unique_ptr<std::thread> monitorThread_;
+  std::mutex mutex_;
+  std::condition_variable condVar_;
+  std::atomic_bool stopMonitor_{false};
+  seconds period_{0};
+};
+
+// Profiler map singleton
+std::map<CUcontext, unique_ptr<EventProfilerController>>& profilerMap() {
+  static std::map<CUcontext, unique_ptr<EventProfilerController>> instance;
+  return instance;
+}
+
+void reportLateSample(
+    int sleepMs,
+    int sampleMs,
+    int reportMs,
+    int reprogramMs) {
+  LOG_EVERY_N(WARNING, 10) << "Lost sample due to delays (ms): " << sleepMs
+                           << ", " << sampleMs << ", " << reportMs << ", "
+                           << reprogramMs;
+}
+
+void configureHeartbeatMonitor(
+    HeartbeatMonitor& monitor, const Config& base, const Config& onDemand) {
+  seconds base_period =
+      base.eventProfilerHeartbeatMonitorPeriod();
+  seconds on_demand_period =
+      onDemand.eventProfilerHeartbeatMonitorPeriod();
+  monitor.setPeriod(
+      on_demand_period > seconds(0) ? on_demand_period : base_period);
+}
+
+} // anon namespace
+
+void EventProfilerController::addLoggerFactory(
+    std::function<unique_ptr<SampleListener>(const Config&)> factory) {
+  loggerFactories().push_back(factory);
+}
+
+void EventProfilerController::addOnDemandLoggerFactory(
+    std::function<unique_ptr<SampleListener>(const Config&)> factory) {
+  onDemandLoggerFactories().push_back(factory);
+}
+
 EventProfilerController::EventProfilerController(
     CUcontext context,
-    ConfigLoader& config_loader)
-    : configLoader_(config_loader) {
+    ConfigLoader& configLoader,
+    HeartbeatMonitor& heartbeatMonitor)
+    : configLoader_(configLoader), heartbeatMonitor_(heartbeatMonitor) {
   auto cupti_events = std::make_unique<CuptiEventInterface>(context);
   auto cupti_metrics =
       std::make_unique<CuptiMetricInterface>(cupti_events->device());
-  auto config = config_loader.getConfigCopy();
+  auto config = configLoader.getConfigCopy();
   profiler_ = std::make_unique<EventProfiler>(
       std::move(cupti_events),
       std::move(cupti_metrics),
@@ -107,16 +222,11 @@ EventProfilerController::~EventProfilerController() {
   VLOG(0) << "Stopped event profiler";
 }
 
-// Profiler map singleton
-static std::map<CUcontext, unique_ptr<EventProfilerController>>& profilerMap() {
-  static std::map<CUcontext, unique_ptr<EventProfilerController>> instance;
-  return instance;
-}
-
 // Must be called under lock
 void EventProfilerController::start(CUcontext ctx) {
   profilerMap()[ctx] = unique_ptr<EventProfilerController>(
-      new EventProfilerController(ctx, ConfigLoader::instance()));
+      new EventProfilerController(
+          ctx, ConfigLoader::instance(), HeartbeatMonitor::instance()));
 }
 
 // Must be called under lock
@@ -133,16 +243,6 @@ bool EventProfilerController::enableForDevice(Config& cfg) {
   int instances = configLoader_.contextCountForGpu(profiler_->device());
   VLOG(0) << "Device context count: " << instances;
   return instances >= 0 && instances <= cfg.maxEventProfilersPerGpu();
-}
-
-void reportLateSample(
-    int sleepMs,
-    int sampleMs,
-    int reportMs,
-    int reprogramMs) {
-  LOG_EVERY_N(WARNING, 10) << "Lost sample due to delays (ms): " << sleepMs
-                           << ", " << sampleMs << ", " << reportMs << ", "
-                           << reprogramMs;
 }
 
 void EventProfilerController::profilerLoop() {
@@ -174,6 +274,7 @@ void EventProfilerController::profilerLoop() {
   int report_count = 0;
   int on_demand_report_count = 0;
   while (!stopRunloop_) {
+    heartbeatMonitor_.profilerHeartbeat();
     if (configLoader_.hasNewConfig(*config)) {
       config = configLoader_.getConfigCopy();
       VLOG(0) << "Base config changed";
@@ -206,6 +307,7 @@ void EventProfilerController::profilerLoop() {
         // as it indicates a serious problem or bug.
         break;
       }
+      configureHeartbeatMonitor(heartbeatMonitor_, *config, *on_demand_config);
       now = high_resolution_clock::now();
       next_sample_time = now + profiler_->samplePeriod();
       next_report_time = now + profiler_->reportPeriod();

@@ -792,5 +792,62 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.other_cost, 0)
         self.assertEqual(step.step_total_cost, 610 - (280 + 100))  # Device side takes effect.
 
+    # Test whether step time is calculated correctly when the last 2 steps have no kernels launched.
+    def test_last_steps_no_kernel(self):
+        json_content = """
+          [{
+            "ph": "X", "cat": "Operator",
+            "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
+            "ts": 100, "dur": 200,
+            "args": {"Input dims": [], "External id": 1}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 120, "dur": 10,
+            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
+            "ts": 300, "dur": 100,
+            "args": {"Input dims": [], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "ProfilerStep#3", "pid": 13721, "tid": "123",
+            "ts": 400, "dur": 50,
+            "args": {"Input dims": [], "External id": 4}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "ts": 90, "dur": 20,
+            "args": {"correlation": 123, "external id": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime",
+            "name": "cudaMemcpyAsync", "pid": 13721, "tid": "123",
+            "ts": 125, "dur": 5,
+            "args": {"correlation": 334, "external id": 2}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "ts": 150, "dur": 180,
+            "args": {"correlation": 334, "external id": 2}
+          }]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        self.assertEqual(len(profile.steps_costs), 3)
+        step = profile.steps_costs[0]
+        self.assertEqual(step.step_total_cost, (150 + 180) - (90 + 20))
+        step = profile.steps_costs[1]
+        self.assertEqual(step.step_total_cost, (300 + 100) - (150 + 180))
+        step = profile.steps_costs[2]
+        self.assertEqual(step.step_total_cost, 50)
+
 if __name__ == '__main__':
     unittest.main()

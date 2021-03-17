@@ -271,6 +271,7 @@ void EventProfilerController::profilerLoop() {
   time_point<high_resolution_clock> next_on_demand_report_time;
   time_point<high_resolution_clock> next_multiplex_time;
   bool reconfigure = true;
+  bool restart = true;
   int report_count = 0;
   int on_demand_report_count = 0;
   while (!stopRunloop_) {
@@ -308,13 +309,23 @@ void EventProfilerController::profilerLoop() {
         break;
       }
       configureHeartbeatMonitor(heartbeatMonitor_, *config, *on_demand_config);
+      reconfigure = false;
+      restart = true;
+    }
+
+    if (restart) {
       now = high_resolution_clock::now();
       next_sample_time = now + profiler_->samplePeriod();
       next_report_time = now + profiler_->reportPeriod();
       next_on_demand_report_time = now + profiler_->onDemandReportPeriod();
       next_multiplex_time = now + profiler_->multiplexPeriod();
-      reconfigure = false;
+      // Collect an initial sample and throw it away
+      // The next sample is the first valid one
+      profiler_->collectSample();
+      profiler_->clearSamples();
+      restart = false;
     }
+
     auto start_sleep = now;
     while (now < next_sample_time) {
       /* sleep override */
@@ -323,22 +334,15 @@ void EventProfilerController::profilerLoop() {
     }
     int sleep_time = duration_cast<milliseconds>(now - start_sleep).count();
 
-    next_sample_time += profiler_->samplePeriod();
-
-    if (now > next_sample_time) {
-      reportLateSample(sleep_time, 0, 0, 0);
-      reconfigure = true;
-      continue;
-    }
-
     auto start_sample = now;
     profiler_->collectSample();
     now = high_resolution_clock::now();
     int sample_time = duration_cast<milliseconds>(now - start_sample).count();
 
+    next_sample_time += profiler_->samplePeriod();
     if (now > next_sample_time) {
       reportLateSample(sleep_time, sample_time, 0, 0);
-      reconfigure = true;
+      restart = true;
       continue;
     }
 
@@ -360,7 +364,7 @@ void EventProfilerController::profilerLoop() {
 
     if (now > next_sample_time) {
       reportLateSample(sleep_time, sample_time, report_time, 0);
-      reconfigure = true;
+      restart = true;
       continue;
     }
 
@@ -375,8 +379,7 @@ void EventProfilerController::profilerLoop() {
 
     if (now > next_sample_time) {
       reportLateSample(sleep_time, sample_time, report_time, multiplex_time);
-      reconfigure = true;
-      continue;
+      restart = true;
     }
 
     VLOG(0) << "Runloop execution time: "

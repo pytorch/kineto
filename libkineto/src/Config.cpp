@@ -38,6 +38,7 @@ constexpr seconds kDefaultActivitiesWarmupDurationSecs(15);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);
+constexpr int kDefaultEventProfilerHearbeatMonitorPeriod(0);
 constexpr seconds kMaxRequestAge(10);
 
 // Event Profiler
@@ -51,6 +52,8 @@ const string kEventsLogFileKey = "EVENTS_LOG_FILE";
 const string kEventsEnabledDevicesKey = "EVENTS_ENABLED_DEVICES";
 const string kOnDemandDurationKey = "EVENTS_DURATION_SECS";
 const string kMaxEventProfilersPerGpuKey = "MAX_EVENT_PROFILERS_PER_GPU";
+const string kHeartbeatMonitorPeriodKey =
+    "EVENTS_HEARTBEAT_MONITOR_PERIOD_SECS";
 
 // Activity Profiler
 const string kActivitiesEnabledKey = "ACTIVITIES_ENABLED";
@@ -136,6 +139,8 @@ Config::Config()
       samplesPerReport_(kDefaultSamplesPerReport),
       eventProfilerOnDemandDuration_(seconds(0)),
       eventProfilerMaxInstancesPerGpu_(kDefaultMaxEventProfilersPerGpu),
+      eventProfilerHeartbeatMonitorPeriod_(
+          kDefaultEventProfilerHearbeatMonitorPeriod),
       multiplexPeriod_(kDefaultMultiplexPeriodMsecs),
       activityProfilerEnabled_(true),
       activitiesLogFile_(defaultTraceFileName()),
@@ -248,6 +253,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     eventProfilerOnDemandTimestamp_ = timestamp();
   } else if (name == kMaxEventProfilersPerGpuKey) {
     eventProfilerMaxInstancesPerGpu_ = toInt32(val);
+  } else if (name == kHeartbeatMonitorPeriodKey) {
+    eventProfilerHeartbeatMonitorPeriod_ = seconds(toInt32(val));
   }
 
   // Activity Profiler

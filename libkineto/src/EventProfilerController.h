@@ -21,6 +21,10 @@ class ConfigLoader;
 class EventProfiler;
 class SampleListener;
 
+namespace {
+class HeartbeatMonitor;
+}
+
 class EventProfilerController {
  public:
   EventProfilerController(const EventProfilerController&) = delete;
@@ -40,11 +44,13 @@ class EventProfilerController {
  private:
   explicit EventProfilerController(
       CUcontext context,
-      ConfigLoader& config_loader);
+      ConfigLoader& configLoader,
+      HeartbeatMonitor& heartbeatMonitor);
   bool enableForDevice(Config& cfg);
   void profilerLoop();
 
   ConfigLoader& configLoader_;
+  HeartbeatMonitor& heartbeatMonitor_;
   std::unique_ptr<EventProfiler> profiler_;
   std::unique_ptr<std::thread> profilerThread_;
   std::atomic_bool stopRunloop_{false};

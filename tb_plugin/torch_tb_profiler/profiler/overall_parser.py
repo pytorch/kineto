@@ -224,11 +224,7 @@ class OverallParser(object):
             step_device_max_ts = -sys.maxsize - 1
             i_step += 1
         # Change step time to device side on the condition that any step have device time.
-        is_use_gpu = False
-        for steps_device_item in steps_device:
-            if steps_device_item[0] != sys.maxsize:
-                is_use_gpu = True
-                break
+        is_use_gpu = (len(matched_device_nodes) > 0)
         if is_use_gpu:
             prev_step_end_time = self.steps[0][0]
             if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.

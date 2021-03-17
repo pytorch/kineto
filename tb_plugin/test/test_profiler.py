@@ -849,5 +849,56 @@ class TestProfiler(unittest.TestCase):
         step = profile.steps_costs[2]
         self.assertEqual(step.step_total_cost, 50)
 
+    def test_pure_cpu(self):
+        json_content = """
+          [{
+            "ph": "X", "cat": "Operator",
+            "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
+            "ts": 100, "dur": 200,
+            "args": {"Input dims": [], "External id": 1}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 120, "dur": 10,
+            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
+            "ts": 300, "dur": 100,
+            "args": {"Input dims": [], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "aten::mm", "pid": 13721, "tid": "123",
+            "ts": 350, "dur": 40,
+            "args": {"Input dims": [], "External id": 4}
+          }]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        self.assertEqual(len(profile.steps_costs), 2)
+        step = profile.steps_costs[0]
+        self.assertEqual(step.kernel_cost, 0)
+        self.assertEqual(step.memcpy_cost, 0)
+        self.assertEqual(step.memset_cost, 0)
+        self.assertEqual(step.runtime_cost, 0)
+        self.assertEqual(step.dataloader_cost, 0)
+        self.assertEqual(step.cpuop_cost, 10)
+        self.assertEqual(step.other_cost, 200 - 10)
+        self.assertEqual(step.step_total_cost, 200)
+        step = profile.steps_costs[1]
+        self.assertEqual(step.kernel_cost, 0)
+        self.assertEqual(step.memcpy_cost, 0)
+        self.assertEqual(step.memset_cost, 0)
+        self.assertEqual(step.runtime_cost, 0)
+        self.assertEqual(step.dataloader_cost, 0)
+        self.assertEqual(step.cpuop_cost, 40)
+        self.assertEqual(step.other_cost, 100 - 40)
+        self.assertEqual(step.step_total_cost, 100)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -475,9 +475,9 @@ static const char* runtimeCbidNames[] = {
 };
 
 const char* runtimeCbidName(CUpti_CallbackId cbid) {
-  static_assert(CUPTI_RUNTIME_TRACE_CBID_SIZE <
-      (sizeof(runtimeCbidNames) / sizeof(runtimeCbidNames[0])));
-  if (cbid < 0 || cbid > CUPTI_RUNTIME_TRACE_CBID_SIZE) {
+  constexpr int names_size =
+      sizeof(runtimeCbidNames) / sizeof(runtimeCbidNames[0]);
+  if (cbid < 0 || cbid >= names_size) {
     return runtimeCbidNames[CUPTI_RUNTIME_TRACE_CBID_INVALID];
   }
   return runtimeCbidNames[cbid];

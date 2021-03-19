@@ -841,13 +841,9 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertEqual(len(profile.steps_costs), 3)
+        self.assertEqual(len(profile.steps_costs), 1)  # The last 2 steps without kernels are removed from overall view.
         step = profile.steps_costs[0]
         self.assertEqual(step.step_total_cost, (150 + 180) - (90 + 20))
-        step = profile.steps_costs[1]
-        self.assertEqual(step.step_total_cost, (300 + 100) - (150 + 180))
-        step = profile.steps_costs[2]
-        self.assertEqual(step.step_total_cost, 50)
 
     def test_pure_cpu(self):
         json_content = """

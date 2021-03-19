@@ -178,6 +178,7 @@ class OverallParser(object):
         self.avg_costs = OverallParser.Costs()
 
     # Update self.steps considering device side events launched by each host side step.
+    # Update self.steps_names if some tail steps are removed.
     def update_steps_consider_device_side(self, runtime_node_list, device_node_list):
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
         # Make sure self.steps is sorted by time.
@@ -185,6 +186,7 @@ class OverallParser(object):
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
         # then record each step's min kernel start time and max kernel end time:
         steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(self.steps)
+        steps_matched_device_nodes = [0] * len(self.steps)
         i_step = 0
         i_runtime = 0
         step_device_min_ts = sys.maxsize
@@ -205,6 +207,7 @@ class OverallParser(object):
                         step_device_min_ts = min(device_node.start_time, step_device_min_ts)
                         step_device_max_ts = max(device_node.end_time, step_device_max_ts)
                         matched_device_nodes.add(device_node)
+                        steps_matched_device_nodes[i_step] += 1
                 i_runtime += 1
             elif runtime_node_list[i_runtime].start_time < step_host_end_time:
                 # and runtime_node_list[i_runtime].end_time > step_host_end_time
@@ -249,6 +252,26 @@ class OverallParser(object):
                 self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
                 prev_step_end_time = step_end_time
 
+        is_remove_tail_steps = True  # TODO: Use tensorboard argument instead.
+        if is_use_gpu and len(self.steps) > 1 and is_remove_tail_steps:
+            i_step = len(self.steps) - 1
+            while i_step >= 0:
+                if steps_matched_device_nodes[i_step] > 0:
+                    break
+                i_step -= 1
+            if i_step >= 0:
+                keep_steps = i_step + 1
+                if i_step > 0 and steps_matched_device_nodes[i_step - 1] * 0.8 > steps_matched_device_nodes[i_step]:
+                    keep_steps = i_step
+                if keep_steps < len(self.steps):
+                    logger.warning(
+                        "Remove the last {} steps because of suspected lost of kernels in tracing file".format(
+                            len(self.steps) - keep_steps
+                        ))
+                    self.steps = self.steps[:keep_steps]
+                    self.steps_names = self.steps_names[:keep_steps]
+
+
     def parse_events(self, events, runtime_node_list, device_node_list):
         logger.debug("Overall, parse events")
         for event in events:
@@ -257,8 +280,7 @@ class OverallParser(object):
         if len(self.steps) == 0:
             self.steps.append((self.min_ts, self.max_ts))
             self.steps_names.append("0")
-        else:
-            self.update_steps_consider_device_side(runtime_node_list, device_node_list)
+        self.update_steps_consider_device_side(runtime_node_list, device_node_list)
         merged_steps = list(self.steps)
         merged_steps = merge_ranges(merged_steps)
 
@@ -334,7 +356,9 @@ class OverallParser(object):
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
             self.cpuop_ranges.append((ts, ts + dur))
 
-        if ts < self.min_ts:
-            self.min_ts = ts
-        if ts + dur > self.max_ts:
-            self.max_ts = ts + dur
+        # Record host side min and max time.
+        if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+            if ts < self.min_ts:
+                self.min_ts = ts
+            if ts + dur > self.max_ts:
+                self.max_ts = ts + dur

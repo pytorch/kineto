@@ -265,7 +265,8 @@ class OverallParser(object):
                     keep_steps = i_step
                 if keep_steps < len(self.steps):
                     logger.warning(
-                        "Remove the last {} steps because of suspected lost of kernels in tracing file".format(
+                        "Remove the last {} steps from overview. "
+                        "Because the profiler may fail to capture all the kernels launched by these steps.".format(
                             len(self.steps) - keep_steps
                         ))
                     self.steps = self.steps[:keep_steps]

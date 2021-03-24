@@ -327,7 +327,7 @@ void ChromeTraceLogger::handleGpuActivity(
 }
 
 static std::string bandwidth(uint64_t bytes, uint64_t duration) {
-  return duration == 0 ? "N/A" : fmt::format("{}", bytes * 1.0 / duration);
+  return duration == 0 ? "\"N/A\"" : fmt::format("{}", bytes * 1.0 / duration);
 }
 
 // GPU side memcpy activity

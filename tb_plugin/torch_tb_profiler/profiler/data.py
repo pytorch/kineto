@@ -10,6 +10,7 @@ import gzip
 import io
 import json
 import os
+import re
 import tempfile
 from collections import OrderedDict
 
@@ -74,7 +75,8 @@ class RunProfileData(object):
                     f.seek(0)
                     with io.StringIO() as fout:
                         for line in f:
-                            fout.write(line.replace('N/A', '\"N/A\"'))
+                            # only replace the N/A without surrounding double quote
+                            fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", line))
                         trace_json = json.loads(fout.getvalue())
 
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)

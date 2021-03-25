@@ -7,6 +7,7 @@ from __future__ import division
 from __future__ import print_function
 
 import gzip
+import io
 import json
 import os
 import tempfile
@@ -71,13 +72,10 @@ class RunProfileData(object):
                 except json.decoder.JSONDecodeError:
                     # TODO: remove the workaround after the libkineto fix for N/A is merged into pytorch
                     f.seek(0)
-                    patched_json = trace_path + "_fixed.json"
-                    with open(patched_json, "wt") as fout:
+                    with io.StringIO() as fout:
                         for line in f:
                             fout.write(line.replace('N/A', '\"N/A\"'))
-                    with open(patched_json, "r") as f2:
-                        trace_json = json.load(f2)
-                    os.remove(patched_json)
+                        trace_json = json.loads(fout.getvalue())
 
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
             fp.close()

@@ -7,8 +7,8 @@ import * as React from 'react'
 import { Graph } from '../../api'
 
 interface IProps {
-  graph: Graph, 
-  sortColumn?: number,
+  graph: Graph
+  sortColumn?: number
   height?: number
   allowHtml?: boolean
   setCellProperty?: (
@@ -60,8 +60,8 @@ export const TableChart: React.FC<IProps> = (props) => {
       page: 'enable',
       allowHtml,
       pageSize: 30,
-      tooltip: { isHtml: true }, 
-      sortColumn: sortColumn, 
+      tooltip: { isHtml: true },
+      sortColumn: sortColumn,
       sortAscending: false
     }
 

@@ -1,8 +1,13 @@
 .goog-tooltip {
-    z-index: 1;
+    display: none !important;
 }
 
 .visualization-tooltip {
     padding: 4px 10px;
     white-space: nowrap;
+}
+
+div.google-visualization-tooltip { 
+    pointer-events: none;
+    max-width: 90%;
 }

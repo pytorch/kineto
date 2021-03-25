@@ -18,7 +18,7 @@ def get_version():
     return version
 
 INSTALL_REQUIRED = [
-    "pandas",
+    "pandas >= 1.0.0",
     "tensorboard >= 1.15, !=2.1.0"
 ]
 
@@ -34,7 +34,7 @@ setuptools.setup(
     long_description="PyTorch Profiler TensorBoard Plugin : \
         https://github.com/pytorch/kineto/tree/master/tb_plugin",
     url="https://github.com/pytorch/kineto/tree/master/tb_plugin",
-    author="Pytorch Team",
+    author="PyTorch Team",
     author_email="packages@pytorch.org",
     packages=setuptools.find_packages(),
     package_data={

@@ -7,8 +7,10 @@ from __future__ import division
 from __future__ import print_function
 
 import gzip
+import io
 import json
 import os
+import re
 import tempfile
 from collections import OrderedDict
 
@@ -65,8 +67,18 @@ class RunProfileData(object):
         except json.decoder.JSONDecodeError as e:
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
             # to handleJSONDecodeError, re-encode it and save to a temp file
-            with fopen(trace_path, 'r') as f:
-                trace_json = json.load(f, strict=False)
+            with fopen(trace_path, 'rt') as f:
+                try:
+                    trace_json = json.load(f, strict=False)
+                except json.decoder.JSONDecodeError:
+                    # TODO: remove the workaround after the libkineto fix for N/A is merged into pytorch
+                    f.seek(0)
+                    with io.StringIO() as fout:
+                        for line in f:
+                            # only replace the N/A without surrounding double quote
+                            fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", line))
+                        trace_json = json.loads(fout.getvalue())
+
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
             fp.close()
             with gzip.open(fp.name, mode='wt') as fzip:
@@ -92,22 +104,22 @@ class RunProfileData(object):
         return profile
 
     def process(self):
-        logger.debug("OverallParser")
-        overall_parser = OverallParser()
-        overall_parser.parse_events(self.events)
-        self.has_runtime = overall_parser.has_runtime
-        self.has_kernel = overall_parser.has_kernel
-        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
-        self.steps_costs = overall_parser.steps_costs
-        self.steps_names = overall_parser.steps_names
-        self.avg_costs = overall_parser.avg_costs
-
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
         module_parser.parse_events(self.events)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.kernel_list_groupby_name_op = module_parser.kernel_list_groupby_name_op
+
+        logger.debug("OverallParser")
+        overall_parser = OverallParser()
+        overall_parser.parse_events(self.events, module_parser.runtime_node_list, module_parser.device_node_list)
+        self.has_runtime = overall_parser.has_runtime
+        self.has_kernel = overall_parser.has_kernel
+        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
+        self.steps_costs = overall_parser.steps_costs
+        self.steps_names = overall_parser.steps_names
+        self.avg_costs = overall_parser.avg_costs
 
         if self.has_kernel:
             logger.debug("KernelParser")

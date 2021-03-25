@@ -5,11 +5,13 @@
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import * as api from '../api'
+import ClickAwayListener from '@material-ui/core/ClickAwayListener';
 
 export interface IProps {
   run: string
   worker: string
   view: string
+  iframeRef: React.RefObject<HTMLIFrameElement>
 }
 
 const useStyles = makeStyles(() => ({
@@ -24,10 +26,8 @@ const useStyles = makeStyles(() => ({
 }))
 
 export const TraceView: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, view, iframeRef } = props
   const classes = useStyles()
-
-  const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
   const [traceData, setTraceData] = React.useState<Promise<string> | null>(null)
   const [traceViewReady, setTraceViewReady] = React.useState(false)
@@ -64,16 +64,20 @@ export const TraceView: React.FC<IProps> = (props) => {
       })
     }
   }, [traceData, traceViewReady])
-
+  const SetIframeActive = () => {
+    iframeRef.current?.focus()
+  }
   return (
     <div className={classes.root}>
       {React.useMemo(
         () => (
-          <iframe
-            className={classes.frame}
-            ref={iframeRef}
-            src="/data/plugin/pytorch_profiler/trace_embedding.html"
-          ></iframe>
+          <ClickAwayListener onClickAway={SetIframeActive}>
+            <iframe
+              className={classes.frame}
+              ref={iframeRef}
+              src="/data/plugin/pytorch_profiler/trace_embedding.html"
+            ></iframe>
+          </ClickAwayListener>
         ),
         []
       )}

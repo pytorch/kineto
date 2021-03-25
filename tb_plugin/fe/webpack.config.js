@@ -27,6 +27,7 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       inject: true,
+      scriptLoading: 'blocking',
       template: 'index.html'
     }),
     !isDev ? new InlineChunkHtmlPlugin(HtmlWebpackPlugin, [/.*/]) : undefined

@@ -66,7 +66,22 @@ class RunProfileData(object):
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
             # to handleJSONDecodeError, re-encode it and save to a temp file
             with fopen(trace_path, 'r') as f:
-                trace_json = json.load(f, strict=False)
+                try:
+                    trace_json = json.load(f, strict=False)
+                except json.decoder.JSONDecodeError:
+                    # TODO: remove the workaround after the libkineto fix for N/A is merged into pytorch
+                    if os.path.splitext(trace_path)[1].lower() != ".json":
+                        # ignore gz files
+                        raise
+
+                    f.seek(0)
+                    patched_json = trace_path + "_fixed.json"
+                    with open(patched_json, "wt") as fout:
+                        for line in f:
+                            fout.write(line.replace('N/A', '\"N/A\"'))
+                    with open(patched_json, "r") as f2:
+                        trace_json = json.load(f2, strict=False)
+
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
             fp.close()
             with gzip.open(fp.name, mode='wt') as fzip:

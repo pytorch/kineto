@@ -7,8 +7,10 @@ from __future__ import division
 from __future__ import print_function
 
 import gzip
+import io
 import json
 import os
+import re
 import tempfile
 from collections import OrderedDict
 
@@ -65,8 +67,18 @@ class RunProfileData(object):
         except json.decoder.JSONDecodeError as e:
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
             # to handleJSONDecodeError, re-encode it and save to a temp file
-            with fopen(trace_path, 'r') as f:
-                trace_json = json.load(f, strict=False)
+            with fopen(trace_path, 'rt') as f:
+                try:
+                    trace_json = json.load(f, strict=False)
+                except json.decoder.JSONDecodeError:
+                    # TODO: remove the workaround after the libkineto fix for N/A is merged into pytorch
+                    f.seek(0)
+                    with io.StringIO() as fout:
+                        for line in f:
+                            # only replace the N/A without surrounding double quote
+                            fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", line))
+                        trace_json = json.loads(fout.getvalue())
+
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
             fp.close()
             with gzip.open(fp.name, mode='wt') as fzip:

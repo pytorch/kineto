@@ -94,10 +94,9 @@ class RunProfileData(object):
             profile.data_schema_version = version
             trace_json = trace_json["traceEvents"]
 
-        parser = trace.get_event_parser(profile.data_schema_version)
         profile.events = []
         for data in trace_json:
-            event = parser.parse(data)
+            event = trace.create_event(data)
             if event is not None:
                 profile.events.append(event)
 

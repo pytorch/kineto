@@ -53,7 +53,7 @@ def create_event(event):
         category = event.get("cat")
         if category == "Operator":
             name = event.get("name")
-            if name.startswith("ProfilerStep#"):
+            if name and name.startswith("ProfilerStep#"):
                 return ProfilerStepEvent(event)
 
         if category in Supported_EventTypes:
@@ -62,4 +62,4 @@ def create_event(event):
             return None
     except Exception as ex:
         logger.warning("Failed to parse profile event. Exception=%s. Event=%s", ex, event, exc_info=True)
-        raise ex
+        raise

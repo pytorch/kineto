@@ -11,10 +11,9 @@ WORKER_NAME = "worker0"
 def parse_json_trace(json_content):
     trace_json = json.loads(json_content)
     profile = RunProfileData(WORKER_NAME)
-    parser = trace.get_event_parser(SCHEMA_VERSION)
     profile.events = []
     for data in trace_json:
-        event = parser.parse(data)
+        event = trace.create_event(data)
         if event is not None:
             profile.events.append(event)
     return profile

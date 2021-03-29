@@ -479,7 +479,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.CpuOp], 60 + (310 - 300))
         # If no ProfilerStep, all events will be regarded as a step.
         self.assertEqual(step.costs[ProfileRole.Other], 300 - (100 + 60))
-        self.assertEqual(step.step_total_cost, (320 + 100) - 100)
+        self.assertEqual(step.costs[ProfileRole.Total], (320 + 100) - 100)
         self.assertEqual(len(profile.op_list_groupby_name), 2)
         self.assertEqual(len(profile.op_list_groupby_name_input), 2)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
@@ -589,7 +589,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 60 - 5)
         self.assertEqual(step.costs[ProfileRole.Other], 200 - 60 - 20)
-        self.assertEqual(step.step_total_cost, 320 - 100)  # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total], 320 - 100)  # Device side takes effect.
         step = profile.steps_costs[1]
         self.assertEqual(step.costs[ProfileRole.Kernel], 200)
         self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
@@ -598,8 +598,8 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 50 - 5)
         self.assertEqual(step.costs[ProfileRole.Other], 360 - 350)
-        self.assertEqual(step.step_total_cost, 610 - 350)  # Device side takes effect.
-        self.assertEqual(profile.avg_costs.step_total_cost, ((320 - 100) + (610 - 350)) / 2)
+        self.assertEqual(step.costs[ProfileRole.Total], 610 - 350)  # Device side takes effect.
+        self.assertEqual(profile.avg_costs.costs[ProfileRole.Total], ((320 - 100) + (610 - 350)) / 2)
 
         self.assertEqual(len(profile.op_list_groupby_name), 2)
         self.assertEqual(len(profile.op_list_groupby_name_input), 2)
@@ -782,7 +782,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], (200 + 60) - (150 + 90) - 5)
         self.assertEqual(step.costs[ProfileRole.Other], 280 - (200 + 60))
-        self.assertEqual(step.step_total_cost, (280 + 100) - (150 + 90))  # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total], (280 + 100) - (150 + 90))  # Device side takes effect.
         step = profile.steps_costs[1]
         self.assertEqual(step.costs[ProfileRole.Kernel], 200)
         self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
@@ -791,7 +791,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], (280 + 100) - 360 + (410 - 405))
         self.assertEqual(step.costs[ProfileRole.Other], 0)
-        self.assertEqual(step.step_total_cost, 610 - (280 + 100))  # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total], 610 - (280 + 100))  # Device side takes effect.
 
     # Test whether step time is calculated correctly when the last 2 steps have no kernels launched.
     def test_last_steps_no_kernel(self):
@@ -844,7 +844,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertEqual(len(profile.steps_costs), 1)  # The last 2 steps without kernels are removed from overall view.
         step = profile.steps_costs[0]
-        self.assertEqual(step.step_total_cost, (150 + 180) - (90 + 20))
+        self.assertEqual(step.costs[ProfileRole.Total], (150 + 180) - (90 + 20))
 
     def test_pure_cpu(self):
         json_content = """
@@ -885,7 +885,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 10)
         self.assertEqual(step.costs[ProfileRole.Other], 200 - 10)
-        self.assertEqual(step.step_total_cost, 200)
+        self.assertEqual(step.costs[ProfileRole.Total], 200)
         step = profile.steps_costs[1]
         self.assertEqual(step.costs[ProfileRole.Kernel], 0)
         self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
@@ -894,7 +894,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 40)
         self.assertEqual(step.costs[ProfileRole.Other], 100 - 40)
-        self.assertEqual(step.step_total_cost, 100)
+        self.assertEqual(step.costs[ProfileRole.Total], 100)
 
 
 if __name__ == '__main__':

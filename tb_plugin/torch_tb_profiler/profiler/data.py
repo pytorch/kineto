@@ -128,7 +128,7 @@ class RunProfileData(object):
 
     def analyze(self):
         self.recommendations = []
-        dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.step_total_cost
+        dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
         if dataloader_ratio > 0.05:
             text = "This run has high time cost on input data loading. " \
                    "{}% of the step time is in DataLoader. You could " \

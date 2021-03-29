@@ -126,21 +126,22 @@ class ProfileRole:
     Other = 6
 
     Total = 7
-
+    # the last one use to calculate the count of the roles
+    NumOfRole = 8
 
 class OverallParser(object):
     class Costs:
-        def __init__(self, total_cost=0):
-            self.step_total_cost = total_cost
-            self.costs = [0] * ProfileRole.Total
+        def __init__(self):
+            self.costs = [0] * ProfileRole.NumOfRole
 
         @classmethod
         def calculate_costs(cls, statistics, step):
             total_cost = step[1] - step[0]
-            costs = cls(total_cost)
+            cost_obj = cls()
             for i in range(len(statistics.cost_ranges)):
-                costs.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
-            return costs
+                cost_obj.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
+            cost_obj.costs[ProfileRole.Total] = total_cost
+            return cost_obj
 
     class Statistics:
         def __init__(self, cost_ranges):
@@ -306,11 +307,9 @@ class OverallParser(object):
         for i in range(valid_steps):
             steps_stat = global_stats.intersection_with_step(self.steps[i])
             self.steps_costs.append(OverallParser.Costs.calculate_costs(steps_stat, self.steps[i]))
-            self.avg_costs.step_total_cost += self.steps_costs[i].step_total_cost
             for cost_index in range(len(self.avg_costs.costs)):
                 self.avg_costs.costs[cost_index] += self.steps_costs[i].costs[cost_index]
 
-        self.avg_costs.step_total_cost /= valid_steps
         for i in range(len(self.avg_costs.costs)):
             self.avg_costs.costs[i] /= valid_steps
 

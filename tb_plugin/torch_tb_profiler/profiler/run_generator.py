@@ -48,14 +48,14 @@ class RunGenerator(object):
                          '<b>{}: {}us</b><br>' \
                          'Percentage: {}%' \
                          '</div>'
-            percentage = round(100 * part_cost / costs.step_total_cost, 2)
-            return format_str.format(step_name, costs.step_total_cost, part_name, part_cost, percentage)
+            percentage = round(100 * part_cost / costs.costs[ProfileRole.Total], 2)
+            return format_str.format(step_name, costs.costs[ProfileRole.Total], part_name, part_cost, percentage)
 
         def build_avg_cost_dict(part_name, part_cost):
             cost_dict = {"name": part_name,
                          "description": "",
                          "value": round(part_cost),
-                         "extra": round(100 * part_cost / self.profile_data.avg_costs.step_total_cost, 2)}
+                         "extra": round(100 * part_cost / self.profile_data.avg_costs.costs[ProfileRole.Total], 2)}
             return cost_dict
 
         show_gpu = self.profile_data.has_runtime or self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset
@@ -117,7 +117,7 @@ class RunGenerator(object):
         ])
 
         data["performance"] = [{"name": "Average Step Time", "description": "",
-                                "value": round(self.profile_data.avg_costs.step_total_cost),
+                                "value": round(self.profile_data.avg_costs.costs[ProfileRole.Total]),
                                 "extra": 100, "children": avg_costs}]
 
         if len(self.profile_data.recommendations) == 0:

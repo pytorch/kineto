@@ -75,8 +75,12 @@ vector<unique_ptr<SampleListener>>& onDemandLoggers(
   return res;
 }
 
+} // anon namespace
+
 // Keep an eye on profiling threads.
 // We've observed deadlocks in Cuda11 in libcuda / libcupti..
+namespace detail {
+
 class HeartbeatMonitor {
 
  public:
@@ -157,6 +161,9 @@ class HeartbeatMonitor {
   seconds period_{0};
 };
 
+} // namespace detail
+
+namespace {
 // Profiler map singleton
 std::map<CUcontext, unique_ptr<EventProfilerController>>& profilerMap() {
   static std::map<CUcontext, unique_ptr<EventProfilerController>> instance;
@@ -174,7 +181,7 @@ void reportLateSample(
 }
 
 void configureHeartbeatMonitor(
-    HeartbeatMonitor& monitor, const Config& base, const Config& onDemand) {
+    detail::HeartbeatMonitor& monitor, const Config& base, const Config& onDemand) {
   seconds base_period =
       base.eventProfilerHeartbeatMonitorPeriod();
   seconds on_demand_period =
@@ -198,7 +205,7 @@ void EventProfilerController::addOnDemandLoggerFactory(
 EventProfilerController::EventProfilerController(
     CUcontext context,
     ConfigLoader& configLoader,
-    HeartbeatMonitor& heartbeatMonitor)
+    detail::HeartbeatMonitor& heartbeatMonitor)
     : configLoader_(configLoader), heartbeatMonitor_(heartbeatMonitor) {
   auto cupti_events = std::make_unique<CuptiEventInterface>(context);
   auto cupti_metrics =
@@ -226,7 +233,7 @@ EventProfilerController::~EventProfilerController() {
 void EventProfilerController::start(CUcontext ctx) {
   profilerMap()[ctx] = unique_ptr<EventProfilerController>(
       new EventProfilerController(
-          ctx, ConfigLoader::instance(), HeartbeatMonitor::instance()));
+          ctx, ConfigLoader::instance(), detail::HeartbeatMonitor::instance()));
 }
 
 // Must be called under lock

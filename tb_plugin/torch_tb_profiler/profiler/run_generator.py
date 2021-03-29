@@ -2,9 +2,9 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
+from torch_tb_profiler.profiler.overall_parser import ProfileRole
 
 from .. import consts
 from ..run import RunProfile
@@ -86,34 +86,34 @@ class RunGenerator(object):
             step_name = self.profile_data.steps_names[i]
             row = [step_name]
             if show_gpu:
-                row.extend([costs.kernel_cost,
-                            build_part_time_str(costs.kernel_cost, "Kernel"),
-                            costs.memcpy_cost,
-                            build_part_time_str(costs.memcpy_cost, "Memcpy"),
-                            costs.memset_cost,
-                            build_part_time_str(costs.memset_cost, "Memset"),
-                            costs.runtime_cost,
-                            build_part_time_str(costs.runtime_cost, "Runtime")])
-            row.extend([costs.dataloader_cost,
-                        build_part_time_str(costs.dataloader_cost, "DataLoader"),
-                        costs.cpuop_cost,
-                        build_part_time_str(costs.cpuop_cost, "CPU Exec"),
-                        costs.other_cost,
-                        build_part_time_str(costs.other_cost, "Other")])
+                row.extend([costs.costs[ProfileRole.Kernel],
+                            build_part_time_str(costs.costs[ProfileRole.Kernel], "Kernel"),
+                            costs.costs[ProfileRole.Memcpy],
+                            build_part_time_str(costs.costs[ProfileRole.Memcpy], "Memcpy"),
+                            costs.costs[ProfileRole.Memset],
+                            build_part_time_str(costs.costs[ProfileRole.Memset], "Memset"),
+                            costs.costs[ProfileRole.Runtime],
+                            build_part_time_str(costs.costs[ProfileRole.Runtime], "Runtime")])
+            row.extend([costs.costs[ProfileRole.DataLoader],
+                        build_part_time_str(costs.costs[ProfileRole.DataLoader], "DataLoader"),
+                        costs.costs[ProfileRole.CpuOp],
+                        build_part_time_str(costs.costs[ProfileRole.CpuOp], "CPU Exec"),
+                        costs.costs[ProfileRole.Other],
+                        build_part_time_str(costs.costs[ProfileRole.Other], "Other")])
             data["steps"]["rows"].append(row)
 
         avg_costs = []
         if show_gpu:
             avg_costs.extend([
-                build_avg_cost_dict("Kernel", self.profile_data.avg_costs.kernel_cost),
-                build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.memcpy_cost),
-                build_avg_cost_dict("Memset", self.profile_data.avg_costs.memset_cost),
-                build_avg_cost_dict("Runtime", self.profile_data.avg_costs.runtime_cost)
+                build_avg_cost_dict("Kernel", self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
+                build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
+                build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset]),
+                build_avg_cost_dict("Runtime", self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([
-            build_avg_cost_dict("DataLoader", self.profile_data.avg_costs.dataloader_cost),
-            build_avg_cost_dict("CPU Exec", self.profile_data.avg_costs.cpuop_cost),
-            build_avg_cost_dict("Other", self.profile_data.avg_costs.other_cost)
+            build_avg_cost_dict("DataLoader", self.profile_data.avg_costs.costs[ProfileRole.DataLoader]),
+            build_avg_cost_dict("CPU Exec", self.profile_data.avg_costs.costs[ProfileRole.CpuOp]),
+            build_avg_cost_dict("Other", self.profile_data.avg_costs.costs[ProfileRole.Other])
         ])
 
         data["performance"] = [{"name": "Average Step Time", "description": "",

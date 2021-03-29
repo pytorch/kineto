@@ -3,6 +3,7 @@ import unittest
 
 import torch_tb_profiler.profiler.trace as trace
 from torch_tb_profiler.profiler.data import RunProfileData
+from torch_tb_profiler.profiler.overall_parser import ProfileRole
 
 SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
@@ -99,13 +100,13 @@ class TestProfiler(unittest.TestCase):
         self.assertTrue(profile.has_kernel)
         self.assertTrue(profile.has_memcpy_or_memset)
         step = profile.steps_costs[0]
-        self.assertEqual(step.kernel_cost, 15)
-        self.assertEqual(step.memcpy_cost, 10)
-        self.assertEqual(step.memset_cost, 5)
-        self.assertEqual(step.runtime_cost, 30)
-        self.assertEqual(step.dataloader_cost, 180)
-        self.assertEqual(step.cpuop_cost, 35)
-        self.assertEqual(step.other_cost, 125)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 15)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 10)
+        self.assertEqual(step.costs[ProfileRole.Memset], 5)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 30)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 180)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 35)
+        self.assertEqual(step.costs[ProfileRole.Other], 125)
 
         self.assertEqual(len(profile.op_list_groupby_name), 2)
         self.assertEqual(len(profile.op_list_groupby_name_input), 2)
@@ -385,10 +386,10 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
         step = profile.steps_costs[0]
-        self.assertEqual(step.kernel_cost, 8)
-        self.assertEqual(step.runtime_cost, 20)
-        self.assertEqual(step.cpuop_cost, 0)
-        self.assertEqual(step.other_cost, 300 - 8 - 20)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 8)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 20)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 0)
+        self.assertEqual(step.costs[ProfileRole.Other], 300 - 8 - 20)
         self.assertEqual(len(profile.op_list_groupby_name), 0)  # ProfilerStep is not regarded as an operator.
         self.assertEqual(len(profile.op_list_groupby_name_input), 0)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
@@ -469,14 +470,15 @@ class TestProfiler(unittest.TestCase):
         self.assertTrue(not profile.has_memcpy_or_memset)
         self.assertEqual(len(profile.steps_costs), 1)
         step = profile.steps_costs[0]
-        self.assertEqual(step.kernel_cost, 100)
-        self.assertEqual(step.memcpy_cost, 0)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 320 - 310)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, 60 + (310 - 300))
+
+        self.assertEqual(step.costs[ProfileRole.Kernel], 100)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 320 - 310)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 60 + (310 - 300))
         # If no ProfilerStep, all events will be regarded as a step.
-        self.assertEqual(step.other_cost, 300 - (100 + 60))
+        self.assertEqual(step.costs[ProfileRole.Other], 300 - (100 + 60))
         self.assertEqual(step.step_total_cost, (320 + 100) - 100)
         self.assertEqual(len(profile.op_list_groupby_name), 2)
         self.assertEqual(len(profile.op_list_groupby_name_input), 2)
@@ -580,22 +582,22 @@ class TestProfiler(unittest.TestCase):
         self.assertTrue(profile.has_memcpy_or_memset)
         self.assertEqual(len(profile.steps_costs), 2)
         step = profile.steps_costs[0]
-        self.assertEqual(step.kernel_cost, 0)
-        self.assertEqual(step.memcpy_cost, 40)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 5)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, 60 - 5)
-        self.assertEqual(step.other_cost, 200 - 60 - 20)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 0)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 40)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 5)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 60 - 5)
+        self.assertEqual(step.costs[ProfileRole.Other], 200 - 60 - 20)
         self.assertEqual(step.step_total_cost, 320 - 100)  # Device side takes effect.
         step = profile.steps_costs[1]
-        self.assertEqual(step.kernel_cost, 200)
-        self.assertEqual(step.memcpy_cost, 0)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 5)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, 50 - 5)
-        self.assertEqual(step.other_cost, 360 - 350)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 200)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 5)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 50 - 5)
+        self.assertEqual(step.costs[ProfileRole.Other], 360 - 350)
         self.assertEqual(step.step_total_cost, 610 - 350)  # Device side takes effect.
         self.assertEqual(profile.avg_costs.step_total_cost, ((320 - 100) + (610 - 350)) / 2)
 
@@ -773,22 +775,22 @@ class TestProfiler(unittest.TestCase):
         self.assertTrue(profile.has_memcpy_or_memset)
         self.assertEqual(len(profile.steps_costs), 2)
         step = profile.steps_costs[0]
-        self.assertEqual(step.kernel_cost, 0)
-        self.assertEqual(step.memcpy_cost, 100)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 5)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, (200 + 60) - (150 + 90) - 5)
-        self.assertEqual(step.other_cost, 280 - (200 + 60))
+        self.assertEqual(step.costs[ProfileRole.Kernel], 0)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 100)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 5)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], (200 + 60) - (150 + 90) - 5)
+        self.assertEqual(step.costs[ProfileRole.Other], 280 - (200 + 60))
         self.assertEqual(step.step_total_cost, (280 + 100) - (150 + 90))  # Device side takes effect.
         step = profile.steps_costs[1]
-        self.assertEqual(step.kernel_cost, 200)
-        self.assertEqual(step.memcpy_cost, 0)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 5)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, (280 + 100) - 360 + (410 - 405))
-        self.assertEqual(step.other_cost, 0)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 200)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 5)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], (280 + 100) - 360 + (410 - 405))
+        self.assertEqual(step.costs[ProfileRole.Other], 0)
         self.assertEqual(step.step_total_cost, 610 - (280 + 100))  # Device side takes effect.
 
     # Test whether step time is calculated correctly when the last 2 steps have no kernels launched.
@@ -876,22 +878,22 @@ class TestProfiler(unittest.TestCase):
 
         self.assertEqual(len(profile.steps_costs), 2)
         step = profile.steps_costs[0]
-        self.assertEqual(step.kernel_cost, 0)
-        self.assertEqual(step.memcpy_cost, 0)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 0)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, 10)
-        self.assertEqual(step.other_cost, 200 - 10)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 0)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 0)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 10)
+        self.assertEqual(step.costs[ProfileRole.Other], 200 - 10)
         self.assertEqual(step.step_total_cost, 200)
         step = profile.steps_costs[1]
-        self.assertEqual(step.kernel_cost, 0)
-        self.assertEqual(step.memcpy_cost, 0)
-        self.assertEqual(step.memset_cost, 0)
-        self.assertEqual(step.runtime_cost, 0)
-        self.assertEqual(step.dataloader_cost, 0)
-        self.assertEqual(step.cpuop_cost, 40)
-        self.assertEqual(step.other_cost, 100 - 40)
+        self.assertEqual(step.costs[ProfileRole.Kernel], 0)
+        self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
+        self.assertEqual(step.costs[ProfileRole.Memset], 0)
+        self.assertEqual(step.costs[ProfileRole.Runtime], 0)
+        self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
+        self.assertEqual(step.costs[ProfileRole.CpuOp], 40)
+        self.assertEqual(step.costs[ProfileRole.Other], 100 - 40)
         self.assertEqual(step.step_total_cost, 100)
 
 

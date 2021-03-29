@@ -132,7 +132,7 @@ class OverallParser(object):
     class Costs:
         def __init__(self):
             self.step_total_cost = 0
-            self.costs = [0] * ProfileRole.Total
+            self.costs = [0 for _ in range(ProfileRole.Total)]
 
         def calculate_costs(self, statistics, step):
             self.step_total_cost = step[1] - step[0]
@@ -153,8 +153,10 @@ class OverallParser(object):
             return result
 
     def __init__(self):
-        self.role_ranges = [[]] * (ProfileRole.Total - 1)
-
+        # we could not use [[]] * len here since they all point to same memory
+        # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
+        # https://stackoverflow.com/questions/240178/list-of-lists-changes-reflected-across-sublists-unexpectedly
+        self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
         self.steps = []
         self.steps_names = []
 
@@ -276,7 +278,6 @@ class OverallParser(object):
 
         logger.debug("Overall, statistics")
         global_stats = OverallParser.Statistics()
-
         slots = []
         for i in range(len(self.role_ranges)):
             if slots:
@@ -284,7 +285,7 @@ class OverallParser(object):
                 slots = subtract_ranges_lists(slots, global_stats.cost_ranges[i])
             else:
                 global_stats.cost_ranges[i] = self.role_ranges[i]
-                slots = merged_steps
+                slots = subtract_ranges_lists(merged_steps, self.role_ranges[i])
         global_stats.cost_ranges[ProfileRole.Other] = slots
 
         logger.debug("Overall, aggregation")

@@ -115,7 +115,7 @@ class RunProfileData(object):
         overall_parser.parse_events(self.events, module_parser.runtime_node_list, module_parser.device_node_list)
         self.has_runtime = bool(overall_parser.role_ranges[ProfileRole.Runtime])
         self.has_kernel = bool(overall_parser.role_ranges[ProfileRole.Kernel])
-        self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy]) or bool(overall_parser.role_ranges[ProfileRole.Memset])
+        self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy] or overall_parser.role_ranges[ProfileRole.Memset])
         self.steps_costs = overall_parser.steps_costs
         self.steps_names = overall_parser.steps_names
         self.avg_costs = overall_parser.avg_costs

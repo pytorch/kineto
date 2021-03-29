@@ -130,27 +130,51 @@ class ProfileRole:
 
 class OverallParser(object):
     class Costs:
-        def __init__(self):
-            self.step_total_cost = 0
-            self.costs = [0 for _ in range(ProfileRole.Total)]
+        def __init__(self, total_cost=0):
+            self.step_total_cost = total_cost
+            self.costs = [0] * ProfileRole.Total
 
-        def calculate_costs(self, statistics, step):
-            self.step_total_cost = step[1] - step[0]
-            for i in range(len(self.costs)):
-                self.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
+        @classmethod
+        def calculate_costs(cls, statistics, step):
+            total_cost = step[1] - step[0]
+            costs = cls(total_cost)
+            for i in range(len(statistics.cost_ranges)):
+                costs.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
+            return costs
 
     class Statistics:
-        def __init__(self):
-            self.cost_ranges = [[]] * ProfileRole.Total
+        def __init__(self, cost_ranges):
+            if not cost_ranges:
+                raise ValueError("the cost ranges is None")
+
+            self.cost_ranges = cost_ranges
+
+        @classmethod
+        def create_statistics(cls, steps, role_ranges):
+            assert len(role_ranges) == ProfileRole.Total - 1
+
+            cost_ranges = []
+            slots = []
+            for role in role_ranges:
+                if slots:
+                    range = intersection_ranges_lists(slots, role)
+                else:
+                    range = role
+                    slots = merge_ranges(list(steps))
+                cost_ranges.append(range)
+                slots = subtract_ranges_lists(slots, range)
+            # The last one is ProfileRole.Other
+            cost_ranges.append(slots)
+
+            return cls(cost_ranges)
 
         def intersection_with_step(self, step):
-            result = OverallParser.Statistics()
+            cost_ranges = []
             step = [step]
+            for range in self.cost_ranges:
+                cost_ranges.append(intersection_ranges_lists(step, range))
 
-            for i in range(len(result.cost_ranges)):
-                result.cost_ranges[i] = intersection_ranges_lists(step, self.cost_ranges[i])
-
-            return result
+            return OverallParser.Statistics(cost_ranges)
 
     def __init__(self):
         # we could not use [[]] * len here since they all point to same memory
@@ -270,30 +294,18 @@ class OverallParser(object):
             self.steps.append((self.min_ts, self.max_ts))
             self.steps_names.append("0")
         self.update_steps_consider_device_side(runtime_node_list, device_node_list)
-        merged_steps = list(self.steps)
-        merged_steps = merge_ranges(merged_steps)
 
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
 
         logger.debug("Overall, statistics")
-        global_stats = OverallParser.Statistics()
-        slots = []
-        for i in range(len(self.role_ranges)):
-            if slots:
-                global_stats.cost_ranges[i] = intersection_ranges_lists(slots, self.role_ranges[i])
-                slots = subtract_ranges_lists(slots, global_stats.cost_ranges[i])
-            else:
-                global_stats.cost_ranges[i] = self.role_ranges[i]
-                slots = subtract_ranges_lists(merged_steps, self.role_ranges[i])
-        global_stats.cost_ranges[ProfileRole.Other] = slots
+        global_stats = OverallParser.Statistics.create_statistics(self.steps, self.role_ranges)
 
         logger.debug("Overall, aggregation")
         valid_steps = len(self.steps)
         for i in range(valid_steps):
             steps_stat = global_stats.intersection_with_step(self.steps[i])
-            self.steps_costs.append(OverallParser.Costs())
-            self.steps_costs[i].calculate_costs(steps_stat, self.steps[i])
+            self.steps_costs.append(OverallParser.Costs.calculate_costs(steps_stat, self.steps[i]))
             self.avg_costs.step_total_cost += self.steps_costs[i].step_total_cost
             for cost_index in range(len(self.avg_costs.costs)):
                 self.avg_costs.costs[cost_index] += self.steps_costs[i].costs[cost_index]

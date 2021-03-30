@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 
 import sys
+from enum import IntEnum
 
 from .. import utils
 from .trace import EventTypes
@@ -116,31 +117,20 @@ def pop_list(range_list, index):
     return next_item, next_index
 
 
-class ProfileRole:
-    Kernel = 0
-    Memcpy = 1
-    Memset = 2
-    Runtime = 3
-    DataLoader = 4
-    CpuOp = 5
-    Other = 6
+ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
 
-    Total = 7
-    # the last one use to calculate the count of the roles
-    NumOfRole = 8
 
 class OverallParser(object):
     class Costs:
         def __init__(self):
-            self.costs = [0] * ProfileRole.NumOfRole
+            self.costs = [0] * len(ProfileRole)
 
         @classmethod
         def calculate_costs(cls, statistics, step):
-            total_cost = step[1] - step[0]
             cost_obj = cls()
             for i in range(len(statistics.cost_ranges)):
                 cost_obj.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
-            cost_obj.costs[ProfileRole.Total] = total_cost
+            cost_obj.costs[ProfileRole.Total] = step[1] - step[0]
             return cost_obj
 
     class Statistics:

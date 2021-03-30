@@ -39,7 +39,7 @@ class TraceEvent(object):
 
 class ProfilerStepEvent(TraceEvent):
     def __init__(self, data):
-        super(ProfilerStepEvent, self).__init__(EventTypes.PROFILER_STEP, data)
+        super().__init__(EventTypes.PROFILER_STEP, data)
         # torch.profiler.profile.step will invoke record_function with name like "ProfilerStep#5"
         self.step = int(self.name.split("#")[1])
 

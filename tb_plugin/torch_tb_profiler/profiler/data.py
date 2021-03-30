@@ -53,6 +53,26 @@ class RunProfileData(object):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, worker)
 
         trace_path = os.path.join(run_dir, "{}{}".format(worker, consts.TRACE_FILE_SUFFIX))
+        trace_path, trace_json= RunProfileData._preprocess_file(trace_path)
+
+        profile = RunProfileData(worker)
+        profile.trace_file_path = trace_path
+        if type(trace_json) is dict:
+            metadata = trace_json.get("profilerMetadata", None)
+            version = metadata.get("DataSchemaVersion") if metadata else None
+            profile.data_schema_version = version
+            trace_json = trace_json["traceEvents"]
+
+        profile.events = []
+        for data in trace_json:
+            event = trace.create_event(data)
+            if event is not None:
+                profile.events.append(event)
+
+        return profile
+
+    @staticmethod
+    def _preprocess_file(trace_path):
         fopen = open
         if not os.path.isfile(trace_path):
             trace_path += ".gz"
@@ -85,22 +105,8 @@ class RunProfileData(object):
                 fzip.write(json.dumps(trace_json))
             logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
             trace_path = fp.name
-
-        profile = RunProfileData(worker)
-        profile.trace_file_path = trace_path
-        if type(trace_json) is dict:
-            metadata = trace_json.get("profilerMetadata", None)
-            version = metadata.get("DataSchemaVersion") if metadata else None
-            profile.data_schema_version = version
-            trace_json = trace_json["traceEvents"]
-
-        profile.events = []
-        for data in trace_json:
-            event = trace.create_event(data)
-            if event is not None:
-                profile.events.append(event)
-
-        return profile
+        
+        return trace_path, trace_json
 
     def process(self):
         logger.debug("ModuleParser")

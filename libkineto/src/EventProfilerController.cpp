@@ -123,7 +123,9 @@ class HeartbeatMonitor {
       auto cv_status = condVar_.wait_for(lock, seconds(period_));
       // Don't perform check on spurious wakeup or on notify
       if (cv_status == std::cv_status::timeout) {
-        for (auto& [tid, i] : profilerAliveMap_) {
+        for (auto& pair : profilerAliveMap_) {
+          pid_t tid = pair.first;
+          int& i = pair.second;
           if (i == 0) {
             LOG(ERROR) << "Thread " << tid << " appears stuck!";
           }

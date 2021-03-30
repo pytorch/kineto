@@ -256,7 +256,7 @@ class ModuleParser:
                     corrid_to_device.setdefault(corrid, []).append(device_node)
                 self.device_node_list.append(device_node)
             elif event.type == EventTypes.RUNTIME:
-                device_nodes = corrid_to_device.pop(corrid, [])
+                device_nodes = corrid_to_device.pop(corrid, None)
                 rt_node = RuntimeNode.create(event, device_nodes)
                 corrid_to_runtime[corrid] = rt_node
                 externalid_to_runtime.setdefault(rt_node.external_id, []).append(rt_node)

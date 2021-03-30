@@ -2,9 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import gzip
 import io
@@ -14,11 +12,11 @@ import re
 import tempfile
 from collections import OrderedDict
 
+from .. import consts, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
 from .overall_parser import OverallParser, ProfileRole
-from .. import consts, utils
 
 logger = utils.get_logger()
 

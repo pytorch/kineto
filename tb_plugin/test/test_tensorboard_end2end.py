@@ -1,3 +1,4 @@
+import json
 import os
 import socket
 import time
@@ -17,6 +18,8 @@ class TestEnd2End(unittest.TestCase):
 
         link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
         run_link = link_prefix + 'runs'
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
+
         expected_links_format=[
             link_prefix + 'overview?run={}&worker=worker0&view=Overview',
             link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation',
@@ -24,7 +27,6 @@ class TestEnd2End(unittest.TestCase):
             link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel',
             link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel'
         ]
-        runs = ["resnet50_num_workers_0", "resnet50_num_workers_4"]
 
         tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)])
 
@@ -43,7 +45,6 @@ class TestEnd2End(unittest.TestCase):
                 continue
 
         timeout = 60
-        expected_runs = '[{}]'.format(", ".join("\"{}\"".format(r) for r in runs)).encode('utf-8')
 
         while True:
             try:
@@ -59,7 +60,7 @@ class TestEnd2End(unittest.TestCase):
                 continue
 
         links=[]
-        for run in runs:
+        for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 

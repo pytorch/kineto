@@ -5,6 +5,7 @@
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import { Graph } from '../../api'
+import { useResizeEventDependency } from '../../utils/resize'
 
 interface IProps {
   graph: Graph
@@ -23,6 +24,7 @@ export const SteppedAreaChart: React.FC<IProps> = (props) => {
   const { graph, height = 400, hAxisTitle, vAxisTitle } = props
   const classes = useStyles({ height })
   const graphRef = React.useRef<HTMLDivElement>(null)
+  const [resizeEventDependency] = useResizeEventDependency()
 
   React.useLayoutEffect(() => {
     const element = graphRef.current
@@ -63,7 +65,7 @@ export const SteppedAreaChart: React.FC<IProps> = (props) => {
     return () => {
       chart.clearChart()
     }
-  }, [graph, height])
+  }, [graph, height, resizeEventDependency])
 
   return (
     <div className={classes.root}>

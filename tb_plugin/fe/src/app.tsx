@@ -13,7 +13,7 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 import { Overview } from './components/Overview'
 import Divider from '@material-ui/core/Divider'
 import Fab from '@material-ui/core/Fab'
-import ClickAwayListener from '@material-ui/core/ClickAwayListener';
+import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import * as React from 'react'
 import clsx from 'clsx'
 import { Operator } from './components/Operator'
@@ -216,7 +216,14 @@ export const App = () => {
       case Views.Kernel:
         return <Kernel run={run} worker={worker} view={view} />
       case Views.Trace:
-        return <TraceView run={run} worker={worker} view={view} iframeRef={iframeRef}/>
+        return (
+          <TraceView
+            run={run}
+            worker={worker}
+            view={view}
+            iframeRef={iframeRef}
+          />
+        )
     }
   }
 
@@ -276,7 +283,7 @@ export const App = () => {
               ))}
             </Select>
           </FormControl>
-      </ClickAwayListener>
+        </ClickAwayListener>
       </Drawer>
       {!open && (
         <Fab

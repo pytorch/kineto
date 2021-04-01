@@ -5,6 +5,7 @@
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import { Graph } from '../../api'
+import { useResizeEventDependency } from '../../utils/resize'
 
 interface IProps {
   graph: Graph
@@ -28,6 +29,7 @@ export const TableChart: React.FC<IProps> = (props) => {
   const { graph, sortColumn, setCellProperty, allowHtml } = props
   const classes = useStyles(props)
   const graphRef = React.useRef<HTMLDivElement>(null)
+  const [resizeEventDependency] = useResizeEventDependency()
 
   React.useLayoutEffect(() => {
     const element = graphRef.current
@@ -68,7 +70,7 @@ export const TableChart: React.FC<IProps> = (props) => {
     const chart = new google.visualization.Table(element)
 
     chart.draw(data, options)
-  }, [graph])
+  }, [graph, resizeEventDependency])
 
   return (
     <div className={classes.root}>

@@ -87,6 +87,10 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 #endif // HAS_CUPTI
 
+  void beginTrace(const Metadata& metadata) override {
+    metadata_ = metadata;
+  }
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -100,6 +104,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void log(ActivityLogger& logger) {
+    logger.beginTrace(metadata_);
     for (auto& activity : activities_) {
       activity->log(logger);
     }
@@ -143,6 +148,7 @@ class MemoryTraceLogger : public ActivityLogger {
     const TraceSpan span_;
   };
 
+  Metadata metadata_;
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
   std::vector<std::unique_ptr<TraceActivity>> activities_;

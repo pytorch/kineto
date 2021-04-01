@@ -31,12 +31,48 @@ namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
 
-static void writeHeader(std::ofstream& stream) {
+static void writeHeader(std::ofstream& stream, const Metadata& metadata) {
   stream << fmt::format(R"JSON(
 {{
   "schemaVersion": {},
-  "traceEvents": [
+  "metadata": {{
   )JSON", kSchemaVersion);
+
+  if (metadata.gpus_.size() > 0){
+    stream << R"JSON(
+      "devices": {{
+    )JSON";
+  
+    for (size_t i = 0; i < metadata.gpus_.size(); i++) {
+      const auto& gpu = metadata.gpus_[i];
+      stream << fmt::format(R"JSON(
+        "GPU {}": {{
+          "id": {},
+          "sku": "{}",
+          "memory": {}
+        }},
+      )JSON", i, i, gpu.name_, gpu.totalMemory_);
+    }
+
+    stream << R"JSON(
+      }}
+    )JSON";
+  }
+
+  if (!metadata.distributed_.backend_.empty()){
+    stream << fmt::format(R"JSON(
+      "distributed": {{
+        "backend": "{}",
+        "rank": {},
+        "work_size": {}
+      }}
+    )JSON", metadata.distributed_.backend_, metadata.distributed_.rank_, metadata.distributed_.worldSize_);
+  }
+
+  stream << R"JSON(
+    }},
+    "traceEvents": [
+  )JSON";
 }
 
 static void openTraceFile(std::string& name, std::ofstream& stream) {
@@ -45,7 +81,6 @@ static void openTraceFile(std::string& name, std::ofstream& stream) {
     PLOG(ERROR) << "Failed to open '" << name << "'";
   } else {
     LOG(INFO) << "Tracing to " << name;
-    writeHeader(stream);
   }
 }
 
@@ -56,6 +91,15 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCou
 #ifdef HAS_CUPTI
   smCount_ = CuptiActivityInterface::singleton().smCount();
 #endif
+}
+
+void ChromeTraceLogger::beginTrace(const Metadata& metadata) {
+  if (!traceOf_) {
+    return;
+  }
+
+  // TODO: write metadata here
+  writeHeader(traceOf_, metadata);
 }
 
 static int64_t us(int64_t timestamp) {

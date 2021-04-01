@@ -123,6 +123,7 @@ ActivityProfiler::ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
       stopCollection_{false} {}
 
 void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
+  logger.beginTrace(metadata_);
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size()
       << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "

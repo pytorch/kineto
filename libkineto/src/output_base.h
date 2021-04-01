@@ -67,6 +67,8 @@ class ActivityLogger {
       const GpuActivity<CUpti_ActivityMemset>& activity) = 0;
 #endif // HAS_CUPTI
 
+  virtual void beginTrace(const Metadata& metadata) = 0;
+
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,
       std::unique_ptr<ActivityBuffers> buffers,

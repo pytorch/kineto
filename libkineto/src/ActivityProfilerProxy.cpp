@@ -34,12 +34,13 @@ void ActivityProfilerProxy::scheduleTrace(const Config& config) {
 }
 
 void ActivityProfilerProxy::prepareTrace(
-    const std::set<ActivityType>& activityTypes) {
+    const std::set<ActivityType>& activityTypes,
+    const Metadata& metadata) {
   Config config;
   config.setClientDefaults();
   config.setSelectedActivityTypes(activityTypes);
   config.validate();
-  controller_->prepareTrace(config);
+  controller_->prepareTrace(config, metadata);
 }
 
 void ActivityProfilerProxy::startTrace() {

@@ -13,6 +13,7 @@
 
 #include "ActivityType.h"
 #include "ActivityTraceInterface.h"
+#include "Metadata.h"
 
 namespace libkineto {
 
@@ -49,7 +50,7 @@ class ActivityProfilerInterface {
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
   // TODO: Add optional config string param
-  virtual void prepareTrace(const std::set<ActivityType>& activityTypes) {}
+  virtual void prepareTrace(const std::set<ActivityType>& activityTypes, const Metadata& metadata) {}
 
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.

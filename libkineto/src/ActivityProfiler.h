@@ -27,6 +27,7 @@
 #include "libkineto.h"
 #include "output_base.h"
 #include "GenericTraceActivity.h"
+#include "Metadata.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -55,6 +56,10 @@ class ActivityProfiler {
   // Used for async requests
   void setLogger(ActivityLogger* logger) {
     logger_ = logger;
+  }
+
+  void prepareTrace(const Metadata& metadata){
+    metadata_ = metadata;
   }
 
   // Synchronous control API
@@ -279,6 +284,9 @@ class ActivityProfiler {
 
   // On-demand request configuration
   std::unique_ptr<Config> config_;
+
+  // the metadata
+  Metadata metadata_;
 
   // Logger used during trace processing
   ActivityLogger* logger_;

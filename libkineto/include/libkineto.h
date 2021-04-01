@@ -26,6 +26,7 @@
 #include "ClientInterface.h"
 #include "ClientTraceActivity.h"
 #include "TraceSpan.h"
+#include "Metadata.h"
 
 extern "C" {
   void suppressLibkinetoLogMessages();

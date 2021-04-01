@@ -9,7 +9,7 @@ namespace libkineto {
 struct DistributedMetadata{
   std::string backend_;
   int rank_;
-  int32_t worldSize_;
+  int worldSize_;
 };
 
 struct GpuInfo{

@@ -29,14 +29,14 @@ using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
 
-static constexpr int kSchemaVersion = 1;
+static void writeMetadata(std::ofstream& stream, const std::shared_ptr<Metadata>& metadata){
+  if (metadata == nullptr || (metadata->gpus_.size() == 0 && metadata->distributed_ == nullptr)) {
+     return;
+  }
 
-static void writeHeader(std::ofstream& stream, const std::shared_ptr<Metadata>& metadata) {
-  stream << fmt::format(R"JSON(
-{{
-  "schemaVersion": {},
-  "metadata": {{
-  )JSON", kSchemaVersion);
+  stream << R"JSON(
+      "metadata": {{
+  )JSON";
 
   if (metadata->gpus_.size() > 0){
     stream << R"JSON(
@@ -59,18 +59,32 @@ static void writeHeader(std::ofstream& stream, const std::shared_ptr<Metadata>& 
     )JSON";
   }
 
-  if (!metadata->distributed_.backend_.empty()){
+  if (metadata->distributed_ != nullptr){
     stream << fmt::format(R"JSON(
       "distributed": {{
         "backend": "{}",
         "rank": {},
         "world_size": {}
       }}
-    )JSON", metadata->distributed_.backend_, metadata->distributed_.rank_, metadata->distributed_.worldSize_);
+    )JSON", metadata->distributed_->backend_, metadata->distributed_->rank_, metadata->distributed_->worldSize_);
   }
 
   stream << R"JSON(
     }},
+  )JSON";
+}
+
+static constexpr int kSchemaVersion = 1;
+
+static void writeHeader(std::ofstream& stream, const std::shared_ptr<Metadata>& metadata) {
+  stream << fmt::format(R"JSON(
+{{
+  "schemaVersion": {},
+  )JSON", kSchemaVersion);
+
+  writeMetadata(stream, metadata);
+
+  stream << R"JSON(
     "traceEvents": [
   )JSON";
 }

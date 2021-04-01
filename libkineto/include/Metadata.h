@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace libkineto {
 
@@ -19,7 +20,7 @@ struct GpuInfo{
 
 struct Metadata {
   std::vector<GpuInfo> gpus_;
-  DistributedMetadata distributed_;
+  std::unique_ptr<DistributedMetadata> distributed_;
 };
 
 } // namespace libkineto

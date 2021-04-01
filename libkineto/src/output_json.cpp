@@ -31,27 +31,27 @@ namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
 
-static void writeHeader(std::ofstream& stream, const Metadata& metadata) {
+static void writeHeader(std::ofstream& stream, const std::shared_ptr<Metadata>& metadata) {
   stream << fmt::format(R"JSON(
 {{
   "schemaVersion": {},
   "metadata": {{
   )JSON", kSchemaVersion);
 
-  if (metadata.gpus_.size() > 0){
+  if (metadata->gpus_.size() > 0){
     stream << R"JSON(
       "devices": {{
     )JSON";
   
-    for (size_t i = 0; i < metadata.gpus_.size(); i++) {
-      const auto& gpu = metadata.gpus_[i];
+    for (size_t i = 0; i < metadata->gpus_.size(); i++) {
+      const auto& gpu = metadata->gpus_[i];
       stream << fmt::format(R"JSON(
         "GPU {}": {{
           "id": {},
           "sku": "{}",
           "memory": {}
         }},
-      )JSON", i, i, gpu.name_, gpu.totalMemory_);
+      )JSON", gpu.id_, gpu.id_, gpu.name_, gpu.totalMemory_);
     }
 
     stream << R"JSON(
@@ -59,14 +59,14 @@ static void writeHeader(std::ofstream& stream, const Metadata& metadata) {
     )JSON";
   }
 
-  if (!metadata.distributed_.backend_.empty()){
+  if (!metadata->distributed_.backend_.empty()){
     stream << fmt::format(R"JSON(
       "distributed": {{
         "backend": "{}",
         "rank": {},
-        "work_size": {}
+        "world_size": {}
       }}
-    )JSON", metadata.distributed_.backend_, metadata.distributed_.rank_, metadata.distributed_.worldSize_);
+    )JSON", metadata->distributed_.backend_, metadata->distributed_.rank_, metadata->distributed_.worldSize_);
   }
 
   stream << R"JSON(
@@ -93,7 +93,7 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCou
 #endif
 }
 
-void ChromeTraceLogger::beginTrace(const Metadata& metadata) {
+void ChromeTraceLogger::beginTrace(const std::shared_ptr<Metadata>& metadata) {
   if (!traceOf_) {
     return;
   }

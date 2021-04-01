@@ -58,8 +58,8 @@ class ActivityProfiler {
     logger_ = logger;
   }
 
-  void prepareTrace(const Metadata& metadata){
-    metadata_ = metadata;
+  void prepareTrace(std::unique_ptr<Metadata>&& metadata){
+    metadata_ = std::move(metadata);
   }
 
   // Synchronous control API
@@ -286,7 +286,7 @@ class ActivityProfiler {
   std::unique_ptr<Config> config_;
 
   // the metadata
-  Metadata metadata_;
+  std::shared_ptr<Metadata> metadata_;
 
   // Logger used during trace processing
   ActivityLogger* logger_;

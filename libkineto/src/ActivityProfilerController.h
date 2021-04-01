@@ -36,7 +36,7 @@ class ActivityProfilerController {
 
   void scheduleTrace(const Config& config);
 
-  void prepareTrace(const Config& config, const Metadata& metadata);
+  void prepareTrace(const Config& config, std::unique_ptr<Metadata>&& metadata);
 
   void startTrace() {
     profiler_->startTrace(std::chrono::system_clock::now());

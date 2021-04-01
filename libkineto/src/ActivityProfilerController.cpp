@@ -118,7 +118,7 @@ void ActivityProfilerController::scheduleTrace(const Config& config) {
   }
 }
 
-void ActivityProfilerController::prepareTrace(const Config& config, const Metadata& metadata) {
+void ActivityProfilerController::prepareTrace(const Config& config, std::unique_ptr<Metadata>&& metadata) {
   // Requests from ActivityProfilerApi have higher priority than
   // requests from other sources (signal, daemon).
   // Cancel any ongoing request and refuse new ones.
@@ -134,7 +134,7 @@ void ActivityProfilerController::prepareTrace(const Config& config, const Metada
   }
 
   profiler_->configure(config, now);
-  profiler_->prepareTrace(metadata);
+  profiler_->prepareTrace(std::move(metadata));
 }
 
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {

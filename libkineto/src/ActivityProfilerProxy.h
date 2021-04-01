@@ -43,7 +43,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   void scheduleTrace(const std::string& configStr) override;
   void scheduleTrace(const Config& config);
 
-  void prepareTrace(const std::set<ActivityType>& activityTypes, const Metadata& metada) override;
+  void prepareTrace(const std::set<ActivityType>& activityTypes, std::unique_ptr<Metadata>&& metadata) override;
   void startTrace() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
 

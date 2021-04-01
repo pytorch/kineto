@@ -50,7 +50,7 @@ class ActivityProfilerInterface {
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
   // TODO: Add optional config string param
-  virtual void prepareTrace(const std::set<ActivityType>& activityTypes, const Metadata& metadata) {}
+  virtual void prepareTrace(const std::set<ActivityType>& activityTypes, std::unique_ptr<Metadata>&& metadata) {}
 
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.

@@ -87,7 +87,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 #endif // HAS_CUPTI
 
-  void beginTrace(const Metadata& metadata) override {
+  void beginTrace(const std::shared_ptr<Metadata>& metadata) override {
     metadata_ = metadata;
   }
 
@@ -148,7 +148,7 @@ class MemoryTraceLogger : public ActivityLogger {
     const TraceSpan span_;
   };
 
-  Metadata metadata_;
+  std::shared_ptr<Metadata> metadata_;
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
   std::vector<std::unique_ptr<TraceActivity>> activities_;

@@ -12,7 +12,7 @@ class KernelParser:
     def parse_events(self, events):
         events_dict = []
         for event in events:
-            events_dict.append(event.to_dict())
+            events_dict.append(vars(event))
         events = events_dict
         events = pd.DataFrame(events)
         events = events.astype({"type": "category", "category": "category", "name": "string"}, copy=False)

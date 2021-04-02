@@ -60,13 +60,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def get_plugin_apps(self):
         return {
             "/index.js": self.static_file_route,
-            "/main.js": self.static_file_route,
             "/index.html": self.static_file_route,
-            "/overall.html": self.static_file_route,
             "/trace_viewer_full.html": self.static_file_route,
             "/trace_embedding.html": self.static_file_route,
-            "/operator.html": self.static_file_route,
-            "/kernel.html": self.static_file_route,
             "/runs": self.runs_route,
             "/views": self.views_route,
             "/workers": self.workers_route,

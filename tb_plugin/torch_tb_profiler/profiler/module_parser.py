@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 
 import sys
+from abc import ABC
 
 from .trace import EventTypes
 from .. import utils
@@ -10,31 +11,56 @@ from .. import utils
 logger = utils.get_logger()
 
 
-class BaseNode:
-    def __init__(self):
-        self.name = None
-        self.start_time = None
-        self.end_time = None
-        self.type = None
-        self.external_id = None  # For consistency check.
+class BaseNode(ABC):
+    def __init__(self, name, start_time, end_time, type, external_id):
+        self.name = name
+        self.start_time = start_time
+        self.end_time = end_time
+        self.type = type
+        self.external_id = external_id  # For consistency check.
+
+    @staticmethod
+    def get_node_argument(event):
+        kwargs = {}
+        kwargs['name'] = event.name
+        kwargs['start_time'] = event.ts
+        kwargs['end_time'] = event.ts + event.duration
+        kwargs['type'] = event.type
+
+        if "external id" in event.args:
+            kwargs['external_id'] = event.args["external id"]
+        elif "External id" in event.args:
+            kwargs['external_id'] = event.args["External id"]
+        return kwargs
 
 
 class HostNode(BaseNode):
-    def __init__(self):
-        super(HostNode, self).__init__()
-        self.device_duration = 0  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream?
+    def __init__(self, name, start_time, end_time, type, external_id, device_duration=0):
+        super().__init__(name, start_time, end_time, type, external_id)
+        self.device_duration = device_duration  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream?
 
 
 class OperatorNode(HostNode):
-    def __init__(self):
-        super(OperatorNode, self).__init__()
-        self.children = []  # OperatorNode and ProfilerStepNode.
-        self.runtimes = []  # RuntimeNode
-        self.input_shape = None
-        self.self_host_duration = 0
-        self.self_device_duration = 0
+    # Don't use [] as default parameters
+    # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
+    # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
+    def __init__(self, name, start_time, end_time, type, external_id=None, device_duration=0,
+            children=None, runtimes=None, input_shape=None, self_host_duration=0, self_device_duration=0):
+        super().__init__(name, start_time, end_time, type, external_id, device_duration)
+        self.children = [] if children is None else children # OperatorNode and ProfilerStepNode.
+        self.runtimes = [] if runtimes is None else runtimes # RuntimeNode
+        self.input_shape = input_shape
+        self.self_host_duration = self_host_duration
+        self.self_device_duration = self_device_duration
 
     def fill_stats(self):
+        # TODO: Replace recursive by using a stack, in case of too deep callstack.
+        for child in self.children:
+            child.fill_stats()
+        for rt in self.runtimes:
+            rt.fill_stats()
+            rt.update_device_op_node(self)
+
         self.self_host_duration = self.end_time - self.start_time
         for child in self.children:
             self.device_duration += child.device_duration
@@ -46,29 +72,54 @@ class OperatorNode(HostNode):
             self.device_duration += rt.device_duration
             self.self_device_duration += rt.device_duration
 
+    def replace_time_by_children(self):
+            self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)
+            self.end_time = next((child.end_time for child in reversed(self.children) if child.end_time is not None), None)
+
+    @classmethod
+    def create(cls, event, input_shape):
+        kwargs = BaseNode.get_node_argument(event)
+        return cls(input_shape=input_shape, **kwargs)
+
 
 class ProfilerStepNode(OperatorNode):
-    def __init__(self):
-        super(ProfilerStepNode, self).__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class RuntimeNode(HostNode):
-    def __init__(self):
-        super(RuntimeNode, self).__init__()
+    def __init__(self, name, start_time, end_time, type, external_id=None, device_duration=0,
+            device_nodes=None):
+        super().__init__(name, start_time, end_time, type, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
-        self.device_nodes = None
+        self.device_nodes = device_nodes
 
     def fill_stats(self):
-        if self.device_nodes is None:
-            return
-        for device_node in self.device_nodes:
-            self.device_duration += device_node.end_time - device_node.start_time
+        if self.device_nodes:
+            for device_node in self.device_nodes:
+                self.device_duration += device_node.end_time - device_node.start_time
+
+    def update_device_op_node(self, node):
+        if self.device_nodes:
+            for device_node in self.device_nodes:
+                device_node.op_node = node
+
+    @classmethod
+    def create(cls, event, device_nodes):
+        kwargs = BaseNode.get_node_argument(event)
+        return cls(device_nodes=device_nodes, **kwargs)
 
 
 class DeviceNode(BaseNode):
-    def __init__(self):
-        super(DeviceNode, self).__init__()
-        self.op_node = None  # The cpu operator that launched it.
+    def __init__(self, name, start_time, end_time, type, external_id=None,
+            op_node=None):
+        super().__init__(name, start_time, end_time, type, external_id)
+        self.op_node = op_node  # The cpu operator that launched it.
+
+    @classmethod
+    def create(cls, event):
+        kwargs = BaseNode.get_node_argument(event)
+        return cls(**kwargs)
 
 
 class OperatorAgg:
@@ -81,12 +132,14 @@ class OperatorAgg:
         self.self_host_duration = 0
         self.self_device_duration = 0
         # TODO: Think about adding these avgs to UI.
-        self.avg_host_duration = 0
-        self.avg_device_duration = 0
 
-    def average(self):
-        self.avg_host_duration = self.host_duration / self.calls
-        self.avg_device_duration = self.device_duration / self.calls
+    @property
+    def avg_host_duration(self):
+        return self.host_duration / self.calls
+
+    @property
+    def avg_device_duration(self):
+        return  self.device_duration / self.calls
 
 
 class KernelAggByNameOp:
@@ -95,12 +148,12 @@ class KernelAggByNameOp:
         self.op_name = None
         self.calls = 0
         self.total_duration = 0
-        self.avg_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
 
-    def average(self):
-        self.avg_duration = self.total_duration / self.calls
+    @property
+    def avg_duration(self):
+        return self.total_duration / self.calls
 
 
 class ModuleParser:
@@ -120,10 +173,12 @@ class ModuleParser:
 
         def build_tree_relationship(host_node_list, zero_rt_list):
             node_stack = []
-            root_node = OperatorNode()
-            root_node.start_time = -sys.maxsize - 1
-            root_node.end_time = sys.maxsize
-            root_node.runtimes = zero_rt_list  # Give the list of RuntimeNode with external_id=0 to root node.
+            root_node = OperatorNode(
+                name="CallTreeRoot",
+                start_time=-sys.maxsize - 1,
+                end_time=sys.maxsize,
+                type=EventTypes.PYTHON,
+                runtimes=zero_rt_list) # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
                 while True:  # break loop when the node is inserted.
@@ -141,8 +196,6 @@ class ModuleParser:
                         break
                     else:
                         node_stack.pop()
-            root_node.name = "CallTreeRoot"
-            root_node.type = EventTypes.PYTHON
             return root_node
 
         # Merge the consecutive calls to same function into one.
@@ -161,29 +214,13 @@ class ModuleParser:
             for child in node.children:
                 remove_dup_nodes(child)
 
-        # TODO: Replace recursive by using a stack, in case of too deep callstack.
-        def fill_stats(node):
+        def traverse_node(node):
             if node.type != EventTypes.RUNTIME:
                 for child in node.children:
-                    fill_stats(child)
+                    traverse_node(child)
                 for rt in node.runtimes:
-                    fill_stats(rt)
-                    if rt.device_nodes is not None:
-                        for device_node in rt.device_nodes:
-                            device_node.op_node = node
+                    traverse_node(rt)
 
-            if node.name == "CallTreeRoot":
-                node.start_time = node.end_time = None
-                for i in range(len(node.children)):
-                    if node.children[i].start_time is not None:
-                        node.start_time = node.children[i].start_time
-                        break
-                for i in range(len(node.children) - 1, -1, -1):
-                    if node.children[i].end_time is not None:
-                        node.end_time = node.children[i].end_time
-                        break
-
-            node.fill_stats()
             if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \
                     and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__")) \
                     and not node.name.startswith("Optimizer."):
@@ -193,79 +230,53 @@ class ModuleParser:
 
         root_node = build_tree_relationship(host_node_list, zero_rt_list)
         remove_dup_nodes(root_node)
-        fill_stats(root_node)
+        root_node.replace_time_by_children()
+        root_node.fill_stats()
+        traverse_node(root_node)
         return root_node
 
     def parse_events(self, events):
 
         def parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
-
-            def build_node(node, event):
-                node.name = event.name
-                node.start_time = event.ts
-                node.end_time = event.ts + event.duration
-                node.type = event.type
-                if "external id" in event.args:
-                    node.external_id = event.args["external id"]
-                elif "External id" in event.args:
-                    node.external_id = event.args["External id"]
-
-            corrid = event.args["correlation"] if "correlation" in event.args else None
-            input_shape = event.args["Input dims"] if "Input dims" in event.args else None
+            corrid = event.args.get("correlation", None)
+            input_shape = event.args.get("Input dims", None)
             tid = event.tid
             if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
-                device_node = DeviceNode()
-                build_node(device_node, event)
+                device_node = DeviceNode.create(event)
                 if corrid in corrid_to_runtime:
                     rt_node = corrid_to_runtime[corrid]  # Don't pop it because it may be used by next kernel.
                     if rt_node.device_nodes is None:
-                        rt_node.device_nodes = [device_node]
-                    else:
-                        rt_node.device_nodes.append(device_node)
+                        rt_node.device_nodes = []
+                    rt_node.device_nodes.append(device_node)
+
+                    # Check the external_id
                     if rt_node.external_id != device_node.external_id:
-                        logger.warning(
-                            "Runtime and Device-op have same correlation id but with different external id!"
-                        )
+                        logger.warning("Runtime and Device-op have same correlation id but with different external id!")
                 else:
-                    if corrid not in corrid_to_device:
-                        corrid_to_device[corrid] = [device_node]
-                    else:
-                        corrid_to_device[corrid].append(device_node)
+                    corrid_to_device.setdefault(corrid, []).append(device_node)
                 self.device_node_list.append(device_node)
             elif event.type == EventTypes.RUNTIME:
-                rt_node = RuntimeNode()
-                build_node(rt_node, event)
+                device_nodes = corrid_to_device.pop(corrid, None)
+                rt_node = RuntimeNode.create(event, device_nodes)
                 corrid_to_runtime[corrid] = rt_node
-                if corrid in corrid_to_device:
-                    rt_node.device_nodes = []
-                    rt_node.device_nodes.extend(corrid_to_device[corrid])
-                    for device_node in corrid_to_device[corrid]:
-                        if rt_node.external_id != device_node.external_id:
-                            logger.warning(
-                                "Runtime and Device-op have same correlation id but with different external id!"
-                            )
-                    del corrid_to_device[corrid]
-                if rt_node.external_id in externalid_to_runtime:
-                    externalid_to_runtime[rt_node.external_id].append(rt_node)
-                else:
-                    externalid_to_runtime[rt_node.external_id] = [rt_node]
+                externalid_to_runtime.setdefault(rt_node.external_id, []).append(rt_node)
                 # Some runtimes has external_id 0, which will not be correlated to any operator.
                 # So get them and attach them to root node.
                 if rt_node.external_id == 0:
-                    if tid not in tid2zero_rt_list:
-                        tid2zero_rt_list[tid] = []
-                    tid2zero_rt_list[tid].append(rt_node)
+                    tid2zero_rt_list.setdefault(tid, []).append(rt_node)
                 self.runtime_node_list.append(rt_node)
+
+                # check the external_id
+                if device_nodes:
+                    for device_node in device_nodes:
+                        if rt_node.external_id != device_node.external_id:
+                            logger.warning("Runtime and Device-op have same correlation id but with different external id!")
             elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
-                    op_node = ProfilerStepNode()
+                    op_node = ProfilerStepNode.create(event, input_shape)
                 else:
-                    op_node = OperatorNode()
-                build_node(op_node, event)
-                op_node.input_shape = input_shape
-                if tid not in tid2list:
-                    tid2list[tid] = []
-                tid2list[tid].append(op_node)
+                    op_node = OperatorNode.create(event, input_shape)
+                tid2list.setdefault(tid, []).append(op_node)
 
         def parse_ops(cpp_op_list):
             def aggregate(key_to_agg, key, op):
@@ -282,20 +293,13 @@ class ModuleParser:
                 return agg
 
             name_to_agg = {}
-            for op in cpp_op_list:
-                agg = aggregate(name_to_agg, op.name, op)
-            for _, agg in name_to_agg.items():
-                agg.average()
-            op_list_groupby_name = list(name_to_agg.values())
-
             name_input_to_agg = {}
             for op in cpp_op_list:
-                name_input = op.name + "###" + str(op.input_shape)
-                agg = aggregate(name_input_to_agg, name_input, op)
-            for _, agg in name_input_to_agg.items():
-                agg.average()
-            op_list_groupby_name_input = list(name_input_to_agg.values())
+                aggregate(name_to_agg, op.name, op)
+                aggregate(name_input_to_agg, op.name + "###" + str(op.input_shape), op)
 
+            op_list_groupby_name = list(name_to_agg.values())
+            op_list_groupby_name_input = list(name_input_to_agg.values())
             return op_list_groupby_name, op_list_groupby_name_input
 
         def parse_kernels(kernel_list):
@@ -313,10 +317,8 @@ class ModuleParser:
                 agg.total_duration += dur
                 agg.min_duration = min(agg.min_duration, dur)
                 agg.max_duration = max(agg.max_duration, dur)
-            for _, agg in name_op_to_agg.items():
-                agg.average()
-            kernel_list_groupby_name_op = list(name_op_to_agg.values())
 
+            kernel_list_groupby_name_op = list(name_op_to_agg.values())
             return kernel_list_groupby_name_op
 
         # For OperatorNode and ProfilerStepNode:
@@ -340,9 +342,9 @@ class ModuleParser:
         # associate CUDA Runtimes with CPU events
         for _, op_list in tid2list.items():
             for op in op_list:
-                if op.external_id in externalid_to_runtime:
-                    op.runtimes.extend(externalid_to_runtime[op.external_id])
-                    del externalid_to_runtime[op.external_id]
+                runtime_nodes = externalid_to_runtime.pop(op.external_id, [])
+                if runtime_nodes:
+                    op.runtimes.extend(runtime_nodes)
         for ext_id in externalid_to_runtime:
             if ext_id != 0:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(

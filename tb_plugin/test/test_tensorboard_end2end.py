@@ -1,3 +1,4 @@
+import json
 import os
 import socket
 import time
@@ -11,12 +12,23 @@ class TestEnd2End(unittest.TestCase):
 
     def test_tensorboard_end2end(self):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
-        tb = Popen(['tensorboard', '--logdir='+test_folder])
 
-        run_link = "http://localhost:6006/data/plugin/pytorch_profiler/runs"
-        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
         host='localhost'
         port=6006
+
+        link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
+        run_link = link_prefix + 'runs'
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
+
+        expected_links_format=[
+            link_prefix + 'overview?run={}&worker=worker0&view=Overview',
+            link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation',
+            link_prefix + 'operation/table?run={}&worker=worker0&view=Operator&group_by=Operation',
+            link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel',
+            link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel'
+        ]
+
+        tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)])
 
         timeout = 60
         while True:
@@ -33,6 +45,7 @@ class TestEnd2End(unittest.TestCase):
                 continue
 
         timeout = 60
+
         while True:
             try:
                 response = urllib.request.urlopen(run_link)
@@ -46,16 +59,8 @@ class TestEnd2End(unittest.TestCase):
             except Exception:
                 continue
 
-        link_prefix = 'http://localhost:6006/data/plugin/pytorch_profiler/'
-        expected_links_format=[]
-        expected_links_format.append(link_prefix + 'overview?run={}&worker=worker0&view=Overview')
-        expected_links_format.append(link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation')
-        expected_links_format.append(link_prefix + 'operation/table?run={}&worker=worker0&view=Operator&group_by=Operation')
-        expected_links_format.append(link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel')
-        expected_links_format.append(link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel')
         links=[]
-        for run in ["resnet50_num_workers_0",
-                    "resnet50_num_workers_4"]:
+        for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 

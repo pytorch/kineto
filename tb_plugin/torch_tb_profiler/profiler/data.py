@@ -2,9 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import gzip
 import io
@@ -14,11 +12,11 @@ import re
 import tempfile
 from collections import OrderedDict
 
+from .. import consts, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
-from .overall_parser import OverallParser
-from .. import consts, utils
+from .overall_parser import OverallParser, ProfileRole
 
 logger = utils.get_logger()
 
@@ -53,6 +51,26 @@ class RunProfileData(object):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, worker)
 
         trace_path = os.path.join(run_dir, "{}{}".format(worker, consts.TRACE_FILE_SUFFIX))
+        trace_path, trace_json= RunProfileData._preprocess_file(trace_path)
+
+        profile = RunProfileData(worker)
+        profile.trace_file_path = trace_path
+        if type(trace_json) is dict:
+            metadata = trace_json.get("profilerMetadata", None)
+            version = metadata.get("DataSchemaVersion") if metadata else None
+            profile.data_schema_version = version
+            trace_json = trace_json["traceEvents"]
+
+        profile.events = []
+        for data in trace_json:
+            event = trace.create_event(data)
+            if event is not None:
+                profile.events.append(event)
+
+        return profile
+
+    @staticmethod
+    def _preprocess_file(trace_path):
         fopen = open
         if not os.path.isfile(trace_path):
             trace_path += ".gz"
@@ -85,23 +103,8 @@ class RunProfileData(object):
                 fzip.write(json.dumps(trace_json))
             logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
             trace_path = fp.name
-
-        profile = RunProfileData(worker)
-        profile.trace_file_path = trace_path
-        if type(trace_json) is dict:
-            metadata = trace_json.get("profilerMetadata", None)
-            version = metadata.get("DataSchemaVersion") if metadata else None
-            profile.data_schema_version = version
-            trace_json = trace_json["traceEvents"]
-
-        parser = trace.get_event_parser(profile.data_schema_version)
-        profile.events = []
-        for data in trace_json:
-            event = parser.parse(data)
-            if event is not None:
-                profile.events.append(event)
-
-        return profile
+        
+        return trace_path, trace_json
 
     def process(self):
         logger.debug("ModuleParser")
@@ -114,9 +117,9 @@ class RunProfileData(object):
         logger.debug("OverallParser")
         overall_parser = OverallParser()
         overall_parser.parse_events(self.events, module_parser.runtime_node_list, module_parser.device_node_list)
-        self.has_runtime = overall_parser.has_runtime
-        self.has_kernel = overall_parser.has_kernel
-        self.has_memcpy_or_memset = overall_parser.has_memcpy_or_memset
+        self.has_runtime = bool(overall_parser.role_ranges[ProfileRole.Runtime])
+        self.has_kernel = bool(overall_parser.role_ranges[ProfileRole.Kernel])
+        self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy] or overall_parser.role_ranges[ProfileRole.Memset])
         self.steps_costs = overall_parser.steps_costs
         self.steps_names = overall_parser.steps_names
         self.avg_costs = overall_parser.avg_costs
@@ -129,7 +132,7 @@ class RunProfileData(object):
 
     def analyze(self):
         self.recommendations = []
-        dataloader_ratio = self.avg_costs.dataloader_cost / self.avg_costs.step_total_cost
+        dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
         if dataloader_ratio > 0.05:
             text = "This run has high time cost on input data loading. " \
                    "{}% of the step time is in DataLoader. You could " \

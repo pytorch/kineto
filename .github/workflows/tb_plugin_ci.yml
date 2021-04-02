@@ -5,13 +5,13 @@ on:
     branches:
       - master
       - release/**
-      - tb_plugin
+      - plugin/**
 
   pull_request:
     branches:
       - master
       - release/**
-      - tb_plugin
+      - plugin/**
 
 jobs:
   build:

@@ -3,9 +3,10 @@
 # --------------------------------------------------------------------------
 
 import sys
+from enum import IntEnum
 
-from .trace import EventTypes
 from .. import utils
+from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -116,62 +117,64 @@ def pop_list(range_list, index):
     return next_item, next_index
 
 
+ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
+
+
 class OverallParser(object):
     class Costs:
         def __init__(self):
-            self.step_total_cost = 0
-            self.kernel_cost = 0
-            self.memcpy_cost = 0
-            self.memset_cost = 0
-            self.runtime_cost = 0
-            self.dataloader_cost = 0
-            self.cpuop_cost = 0
-            self.other_cost = 0
+            self.costs = [0] * len(ProfileRole)
 
-        def calculate_costs(self, statistics, step):
-            self.step_total_cost = step[1] - step[0]
-            self.kernel_cost = get_ranges_sum(statistics.kernel_cost_ranges)
-            self.memcpy_cost = get_ranges_sum(statistics.memcpy_cost_ranges)
-            self.memset_cost = get_ranges_sum(statistics.memset_cost_ranges)
-            self.runtime_cost = get_ranges_sum(statistics.runtime_cost_ranges)
-            self.dataloader_cost = get_ranges_sum(statistics.dataloader_cost_ranges)
-            self.cpuop_cost = get_ranges_sum(statistics.cpuop_cost_ranges)
-            self.other_cost = get_ranges_sum(statistics.other_cost_ranges)
+        @classmethod
+        def calculate_costs(cls, statistics, step):
+            cost_obj = cls()
+            for i in range(len(statistics.cost_ranges)):
+                cost_obj.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
+            cost_obj.costs[ProfileRole.Total] = step[1] - step[0]
+            return cost_obj
 
     class Statistics:
-        def __init__(self):
-            self.kernel_cost_ranges = []
-            self.memcpy_cost_ranges = []
-            self.memset_cost_ranges = []
-            self.runtime_cost_ranges = []
-            self.dataloader_cost_ranges = []
-            self.cpuop_cost_ranges = []
-            self.other_cost_ranges = []
+        def __init__(self, cost_ranges):
+            if not cost_ranges:
+                raise ValueError("the cost ranges is None")
+
+            self.cost_ranges = cost_ranges
+
+        @classmethod
+        def create_statistics(cls, steps, role_ranges):
+            assert len(role_ranges) == ProfileRole.Total - 1
+
+            cost_ranges = []
+            slots = []
+            for role in role_ranges:
+                if slots:
+                    range = intersection_ranges_lists(slots, role)
+                else:
+                    range = role
+                    slots = merge_ranges(list(steps))
+                cost_ranges.append(range)
+                slots = subtract_ranges_lists(slots, range)
+            # The last one is ProfileRole.Other
+            cost_ranges.append(slots)
+
+            return cls(cost_ranges)
 
         def intersection_with_step(self, step):
-            result = OverallParser.Statistics()
+            cost_ranges = []
             step = [step]
-            result.kernel_cost_ranges = intersection_ranges_lists(step, self.kernel_cost_ranges)
-            result.memcpy_cost_ranges = intersection_ranges_lists(step, self.memcpy_cost_ranges)
-            result.memset_cost_ranges = intersection_ranges_lists(step, self.memset_cost_ranges)
-            result.runtime_cost_ranges = intersection_ranges_lists(step, self.runtime_cost_ranges)
-            result.dataloader_cost_ranges = intersection_ranges_lists(step, self.dataloader_cost_ranges)
-            result.cpuop_cost_ranges = intersection_ranges_lists(step, self.cpuop_cost_ranges)
-            result.other_cost_ranges = intersection_ranges_lists(step, self.other_cost_ranges)
-            return result
+            for range in self.cost_ranges:
+                cost_ranges.append(intersection_ranges_lists(step, range))
+
+            return OverallParser.Statistics(cost_ranges)
 
     def __init__(self):
-        self.kernel_ranges = []
-        self.memcpy_ranges = []
-        self.memset_ranges = []
-        self.runtime_ranges = []
-        self.dataloader_ranges = []
-        self.cpuop_ranges = []
+        # we could not use [[]] * len here since they all point to same memory
+        # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
+        # https://stackoverflow.com/questions/240178/list-of-lists-changes-reflected-across-sublists-unexpectedly
+        self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
         self.steps = []
         self.steps_names = []
-        self.has_runtime = False
-        self.has_kernel = False
-        self.has_memcpy_or_memset = False
+
         self.min_ts = sys.maxsize
         self.max_ts = -sys.maxsize - 1
         self.steps_costs = []
@@ -282,80 +285,44 @@ class OverallParser(object):
             self.steps.append((self.min_ts, self.max_ts))
             self.steps_names.append("0")
         self.update_steps_consider_device_side(runtime_node_list, device_node_list)
-        merged_steps = list(self.steps)
-        merged_steps = merge_ranges(merged_steps)
 
-        self.kernel_ranges = merge_ranges(self.kernel_ranges)
-        self.memcpy_ranges = merge_ranges(self.memcpy_ranges)
-        self.memset_ranges = merge_ranges(self.memset_ranges)
-        self.runtime_ranges = merge_ranges(self.runtime_ranges)
-        self.dataloader_ranges = merge_ranges(self.dataloader_ranges)
-        self.cpuop_ranges = merge_ranges(self.cpuop_ranges)
+        for i in range(len(self.role_ranges)):
+            self.role_ranges[i] = merge_ranges(self.role_ranges[i])
 
         logger.debug("Overall, statistics")
-        global_stats = OverallParser.Statistics()
-        global_stats.kernel_cost_ranges = self.kernel_ranges
-        slots = subtract_ranges_lists(merged_steps, self.kernel_ranges)
-        global_stats.memcpy_cost_ranges = intersection_ranges_lists(slots, self.memcpy_ranges)
-        slots = subtract_ranges_lists(slots, global_stats.memcpy_cost_ranges)
-        global_stats.memset_cost_ranges = intersection_ranges_lists(slots, self.memset_ranges)
-        slots = subtract_ranges_lists(slots, global_stats.memset_cost_ranges)
-        global_stats.runtime_cost_ranges = intersection_ranges_lists(slots, self.runtime_ranges)
-        slots = subtract_ranges_lists(slots, global_stats.runtime_cost_ranges)
-        global_stats.dataloader_cost_ranges = intersection_ranges_lists(slots, self.dataloader_ranges)
-        slots = subtract_ranges_lists(slots, global_stats.dataloader_cost_ranges)
-        global_stats.cpuop_cost_ranges = intersection_ranges_lists(slots, self.cpuop_ranges)
-        slots = subtract_ranges_lists(slots, global_stats.cpuop_cost_ranges)
-        global_stats.other_cost_ranges = slots
+        global_stats = OverallParser.Statistics.create_statistics(self.steps, self.role_ranges)
 
         logger.debug("Overall, aggregation")
         valid_steps = len(self.steps)
         for i in range(valid_steps):
             steps_stat = global_stats.intersection_with_step(self.steps[i])
-            self.steps_costs.append(OverallParser.Costs())
-            self.steps_costs[i].calculate_costs(steps_stat, self.steps[i])
-            self.avg_costs.step_total_cost += self.steps_costs[i].step_total_cost
-            self.avg_costs.kernel_cost += self.steps_costs[i].kernel_cost
-            self.avg_costs.memcpy_cost += self.steps_costs[i].memcpy_cost
-            self.avg_costs.memset_cost += self.steps_costs[i].memset_cost
-            self.avg_costs.runtime_cost += self.steps_costs[i].runtime_cost
-            self.avg_costs.dataloader_cost += self.steps_costs[i].dataloader_cost
-            self.avg_costs.cpuop_cost += self.steps_costs[i].cpuop_cost
-            self.avg_costs.other_cost += self.steps_costs[i].other_cost
+            self.steps_costs.append(OverallParser.Costs.calculate_costs(steps_stat, self.steps[i]))
+            for cost_index in range(len(self.avg_costs.costs)):
+                self.avg_costs.costs[cost_index] += self.steps_costs[i].costs[cost_index]
 
-        self.avg_costs.step_total_cost /= valid_steps
-        self.avg_costs.kernel_cost /= valid_steps
-        self.avg_costs.memcpy_cost /= valid_steps
-        self.avg_costs.memset_cost /= valid_steps
-        self.avg_costs.runtime_cost /= valid_steps
-        self.avg_costs.dataloader_cost /= valid_steps
-        self.avg_costs.cpuop_cost /= valid_steps
-        self.avg_costs.other_cost /= valid_steps
+        for i in range(len(self.avg_costs.costs)):
+            self.avg_costs.costs[i] /= valid_steps
 
     def parse_event(self, event):
         ts = event.ts
         dur = event.duration
         evt_type = event.type
         if evt_type == EventTypes.KERNEL:
-            self.kernel_ranges.append((ts, ts + dur))
-            self.has_kernel = True
+            self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
         elif evt_type == EventTypes.MEMCPY:
-            self.memcpy_ranges.append((ts, ts + dur))
-            self.has_memcpy_or_memset = True
+            self.role_ranges[ProfileRole.Memcpy].append((ts, ts + dur))
         elif evt_type == EventTypes.MEMSET:
-            self.memset_ranges.append((ts, ts + dur))
-            self.has_memcpy_or_memset = True
+            self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
         elif evt_type == EventTypes.RUNTIME:
-            self.runtime_ranges.append((ts, ts + dur))
-            self.has_runtime = True
+            self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
         elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
                 and event.name.endswith(".__next__"):
-            self.dataloader_ranges.append((ts, ts + dur))
+            self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
-            self.cpuop_ranges.append((ts, ts + dur))
+            self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
 
         # Record host side min and max time.
         if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:

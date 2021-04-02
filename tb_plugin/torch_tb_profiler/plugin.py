@@ -69,6 +69,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/overview": self.overview_route,
             "/operation": self.operation_pie_route,
             "/operation/table": self.operation_table_route,
+            "/operation/stack": self.operation_stack_route,
             "/kernel": self.kernel_pie_route,
             "/kernel/table": self.kernel_table_route,
             "/trace": self.trace_route
@@ -203,6 +204,20 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return self.respond_as_json(profile.operation_table_by_name_input)
         else:
             return self.respond_as_json(profile.operation_table_by_name)
+
+    @wrappers.Request.application
+    def operation_stack_route(self, request):
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        group_by = request.args.get("group_by")
+        op_name = request.args.get("op_name")
+        input_shape = request.args.get("input_shape")
+        run = self.get_run(name)
+        profile = run.get_profile(worker)
+        if group_by == "OperationAndInputShape":
+            return self.respond_as_json(profile.operation_stack_by_name_input[str(op_name)+"###"+str(input_shape)])
+        else:
+            return self.respond_as_json(profile.operation_stack_by_name[str(op_name)])
 
     @wrappers.Request.application
     def kernel_pie_route(self, request):

@@ -53,6 +53,7 @@ class ModuleParser:
         self.op_list_groupby_name = []  # For Operator-view.
         self.op_list_groupby_name_input = []  # For Operator-view.
         self.kernel_list_groupby_name_op = {}  # For Kernel-view.
+        self.runtime_node_list = []  # For rule based recommendation of gpu metrics.
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.

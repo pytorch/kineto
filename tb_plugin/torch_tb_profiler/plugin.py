@@ -144,6 +144,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
+        for gpu_id in profile.gpu_ids:
+            data["environments"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
+                                         "value": "{} %".format(round(profile.gpu_utilization[gpu_id] * 100, 2))})
+            if profile.sm_efficency[gpu_id] > 0.0:
+                data["environments"].append({"title": "Est. SM Efficiency of GPU{}".format(gpu_id),
+                                             "value": "{} %".format(round(profile.sm_efficency[gpu_id] * 100, 2))})
+            if profile.occupancy[gpu_id] > 0.0:
+                data["environments"].append({"title": "Est. Achieved Occupancy of GPU{}".format(gpu_id),
+                                             "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
         return self.respond_as_json(data)
 
     @wrappers.Request.application
@@ -206,12 +215,32 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def trace_route(self, request):
+        def build_trace_counter(gpu_id, start_time, counter_value):
+            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", " \
+                        "\"pid\":{}, \"ts\":{}, " \
+                        "\"args\":{{\"Est. SM Efficiency\":{}}}}}".format(
+                gpu_id, gpu_id, start_time, counter_value
+            )
+            return util_json
         name = request.args.get("run")
         worker = request.args.get("worker")
 
         run = self._get_run(name)
         profile = run.get_profile(worker)
         raw_data = self._cache.read(profile.trace_file_path)
+        util_bytes = profile.gpu_util_json
+
+        counter_json_str = ""
+        for gpu_id in range(len(profile.approximated_sm_efficency_ranges)):
+            ranges = profile.approximated_sm_efficency_ranges[gpu_id]
+            for r in ranges:
+                efficiency_json_start = build_trace_counter(gpu_id, r[0][0], r[1])
+                efficiency_json_finish = build_trace_counter(gpu_id, r[0][1], 0)
+                counter_json_str += (efficiency_json_start + efficiency_json_finish)
+        counter_json_bytes = bytes(counter_json_str, 'utf-8')
+
+        raw_data = b''.join([raw_data[:-2], util_bytes, counter_json_bytes, b']}'])
+
         if not profile.trace_file_path.endswith('.gz'):
             import gzip
             raw_data = gzip.compress(raw_data, 1)

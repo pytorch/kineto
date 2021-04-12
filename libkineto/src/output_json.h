@@ -18,6 +18,7 @@
 #endif
 #include "ClientTraceActivity.h"
 #include "output_base.h"
+#include "../third_party/cuda_occupancy.h"
 
 namespace libkineto {
   class TraceSpan;
@@ -83,6 +84,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // Number of SMs on current device
   int smCount_{0};
 #endif
+  std::vector<cudaOccDeviceProp> occProps_;
 };
 
 } // namespace KINETO_NAMESPACE

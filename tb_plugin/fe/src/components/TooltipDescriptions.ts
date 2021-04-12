@@ -1,3 +1,7 @@
+/*---------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ *--------------------------------------------------------------------------------------------*/
+
 export const StepTimeBreakDownTooltip = `The time spent on each step is broken down into multiple categories as follows:
 Kernel: Kernels execution time on GPU device;
 Memcpy: GPU involved memory copy time (either D2D, D2H or H2D);

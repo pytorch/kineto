@@ -74,6 +74,7 @@ export const CallStackTable = (props: IProps) => {
     <Table
       loading={!transformedData}
       size="small"
+      bordered
       columns={columns}
       dataSource={transformedData}
       expandable={expandable}

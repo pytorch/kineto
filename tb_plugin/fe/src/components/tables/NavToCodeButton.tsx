@@ -17,7 +17,7 @@ export const NavToCodeButton = (props: IProps) => {
 
   const onClick = () => {
     if (line && file) {
-      navToCode(file, line)
+      navToCode(file, line - 1)
     }
   }
 

@@ -3,7 +3,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 export function navToCode(filename: string, line: number) {
-  console.log(filename, line)
   window.parent.parent.postMessage(
     {
       filename,

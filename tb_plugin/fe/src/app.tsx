@@ -26,6 +26,9 @@ import { TraceView } from './components/TraceView'
 import { FullCircularProgress } from './components/FullCircularProgress'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
+import 'antd/es/list/style/css'
+import 'antd/es/table/style/css'
+import 'antd/es/button/style/css'
 
 export enum Views {
   Overview = 'Overview',

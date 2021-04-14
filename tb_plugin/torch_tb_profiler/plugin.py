@@ -29,6 +29,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     """TensorBoard plugin for Torch Profiler."""
 
     plugin_name = consts.PLUGIN_NAME
+    headers = [('X-Content-Type-Options', 'nosniff')]
 
     def __init__(self, context):
         """Instantiates TorchProfilerPlugin.
@@ -237,9 +238,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if profile.trace_file_path.endswith('.gz'):
             headers = []
             headers.append(('Content-Encoding', 'gzip'))
+            headers.extend(TorchProfilerPlugin.headers)
             return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
         else:
-            return werkzeug.Response(raw_data, content_type="application/json")
+            return werkzeug.Response(raw_data, content_type="application/json", headers=TorchProfilerPlugin.headers)
 
     @wrappers.Request.application
     def static_file_route(self, request):
@@ -258,15 +260,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            return werkzeug.Response('404 Not Found', 'text/plain', code=404)
+            return werkzeug.Response('404 Not Found', 'text/plain', code=404, headers=TorchProfilerPlugin.headers)
         return werkzeug.Response(
-            contents, content_type=mimetype
+            contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
 
     @staticmethod
     def respond_as_json(obj):
         content = json.dumps(obj)
-        return werkzeug.Response(content, content_type="application/json")
+        return werkzeug.Response(content, content_type="application/json", headers=TorchProfilerPlugin.headers)
 
 
 def _load_run(queue, name, run_dir):

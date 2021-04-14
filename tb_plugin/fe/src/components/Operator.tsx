@@ -26,7 +26,7 @@ import { DataLoading } from './DataLoading'
 import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
 import Radio from '@material-ui/core/Radio'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
-import { UseTop, useTopN } from '../utils/top'
+import { topIsValid, UseTop, useTopN } from '../utils/top'
 import { useSearch } from '../utils/search'
 import {
   DeviceSelfTimeTooltip,
@@ -87,7 +87,7 @@ export const Operator: React.FC<IProps> = (props) => {
   )
   const [groupBy, setGroupBy] = React.useState(GroupBy.Operation)
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
-  const [top, actualTop, useTop, setTop, setUseTop] = useTopN({
+  const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
     defaultTop: 10
   })
@@ -101,7 +101,7 @@ export const Operator: React.FC<IProps> = (props) => {
         operatorGraph.host_self_time.rows?.length ?? 0,
         operatorGraph.host_total_time.rows?.length ?? 0
       ]
-      setTop(Math.min(Math.max(...counts), 10))
+      setTopText(String(Math.min(Math.max(...counts), 10)))
     }
   }, [operatorGraph])
 
@@ -141,7 +141,7 @@ export const Operator: React.FC<IProps> = (props) => {
   }
 
   const onTopChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setTop(Number(event.target.value))
+    setTopText(event.target.value)
   }
 
   const inputProps: StandardTextFieldProps['inputProps'] = {
@@ -238,8 +238,9 @@ export const Operator: React.FC<IProps> = (props) => {
                     classes={{ root: classes.inputWidth }}
                     inputProps={inputProps}
                     type="number"
-                    value={top}
+                    value={topText}
                     onChange={onTopChanged}
+                    error={!topIsValid(topText)}
                   />
                 </Grid>
               )}

@@ -112,6 +112,7 @@ target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>)
 
 target_include_directories(kineto_api PUBLIC
+      $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>)
 
 if(KINETO_LIBRARY_TYPE STREQUAL "default")

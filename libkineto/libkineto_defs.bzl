@@ -53,6 +53,7 @@ def get_libkineto_public_headers():
     return [
         "include/ActivityProfilerInterface.h",
         "include/ActivityType.h",
+        "include/ClientTraceActivity.h",
         "include/ClientInterface.h",
         "include/TraceActivity.h",
         "include/TraceSpan.h",

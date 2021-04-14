@@ -7,8 +7,10 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "TraceActivity.h"
 
@@ -56,6 +58,16 @@ struct ClientTraceActivity : TraceActivity {
     // Unimplemented by default
   }
 
+  // Encode client side metadata as a key/value string.
+  void addMetadata(const std::string& key, const std::string& value) {
+    auto kv = fmt::format("\"{}\": {}", key, value);
+    metadata_.push_back(std::move(kv));
+  }
+
+  [[nodiscard]] const std::string getMetadata() const {
+    return fmt::format("{}", fmt::join(metadata_, ", "));
+  }
+
   int64_t startTime{0};
   int64_t endTime{0};
   int64_t correlation{0};
@@ -72,6 +84,9 @@ struct ClientTraceActivity : TraceActivity {
   std::string inputNames;
   std::string outputNames;
   std::string callStack;
+
+ private:
+  std::vector<std::string> metadata_;
 };
 
 } // namespace libkineto

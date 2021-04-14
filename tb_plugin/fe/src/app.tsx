@@ -139,10 +139,20 @@ export const App = () => {
     })
   }, [])
 
+  const waitForRuns = async () => {
+    while (true) {
+      try {
+        const runs = await api.defaultApi.runsGet()
+        setRuns(runs)
+        break
+      } catch (e) {
+        console.info('Cannot fetch runs: ', e)
+      }
+    }
+  }
+
   React.useEffect(() => {
-    api.defaultApi.runsGet().then((runs) => {
-      setRuns(runs)
-    })
+    waitForRuns()
   }, [])
 
   React.useEffect(() => {

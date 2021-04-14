@@ -76,14 +76,6 @@ struct ClientTraceActivity : TraceActivity {
   pthread_t pthreadId{};
   int32_t sysThreadId{0};
   std::string opType;
-  std::string inputDims;
-  std::string inputTypes;
-  std::string arguments;
-  std::string outputDims;
-  std::string outputTypes;
-  std::string inputNames;
-  std::string outputNames;
-  std::string callStack;
 
  private:
   std::vector<std::string> metadata_;

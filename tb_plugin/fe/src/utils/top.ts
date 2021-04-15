@@ -38,5 +38,5 @@ export function useTopN(options?: IOptions) {
 
 export function topIsValid(topText: string) {
   const top = Number(topText)
-  return top > 0 && Number.isInteger(top)
+  return !Number.isNaN(top) && top > 0 && Number.isInteger(top)
 }

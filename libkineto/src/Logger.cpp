@@ -9,12 +9,13 @@
 
 #ifndef USE_GOOGLE_LOG
 
-#include <sys/syscall.h>
-#include <unistd.h>
 #include <chrono>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <time.h>
+
+#include "ThreadUtil.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -45,17 +46,18 @@ Logger::Logger(int severity, int line, const char* filePath, int errnum)
   const auto tt =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const char* file = strrchr(filePath, '/');
-  std::tm tm;
-  buf_ << std::put_time(localtime_r(&tt, &tm), "%F %T") << " " << getpid()
-       << ":" << syscall(SYS_gettid) << " " << (file ? file + 1 : filePath)
+  buf_ << std::put_time(localtime(&tt), "%F %T") << " " << processId()
+       << ":" << systemThreadId() << " " << (file ? file + 1 : filePath)
        << ":" << line << "] ";
 }
 
 Logger::~Logger() {
+#ifdef __linux__
   if (errnum_ != 0) {
     thread_local char buf[1024];
     buf_ << " : " << strerror_r(errnum_, buf, sizeof(buf));
   }
+#endif
   buf_ << std::ends;
   out_ << buf_.str() << std::endl;
 }

@@ -5,10 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "src/ThreadName.h"
+#include "include/ThreadUtil.h"
 
 #include <atomic>
-#include <sys/syscall.h>
 #include <thread>
 
 #include <fmt/format.h>
@@ -18,18 +17,18 @@ using namespace KINETO_NAMESPACE;
 
 TEST(ThreadNameTest, setAndGet) {
   setThreadName("ThreadNameTest");
-  EXPECT_EQ(getThreadName(getpid()), "ThreadNameTest");
+  EXPECT_EQ(getThreadName(systemThreadId()), "ThreadNameTest");
 
   setThreadName("");
-  EXPECT_EQ(getThreadName(getpid()), "");
+  EXPECT_EQ(getThreadName(systemThreadId()), "");
 
   // Spaces etc are ok
   setThreadName("Name w/ spaces");
-  EXPECT_EQ(getThreadName(getpid()), "Name w/ spaces");
+  EXPECT_EQ(getThreadName(systemThreadId()), "Name w/ spaces");
 
   // More than 16 chars is not OK
   setThreadName("More than 16 characters");
-  EXPECT_EQ(getThreadName(getpid()), "Name w/ spaces");
+  EXPECT_EQ(getThreadName(systemThreadId()), "Name w/ spaces");
 }
 
 TEST(ThreadNameTest, invalidThread) {
@@ -41,7 +40,7 @@ TEST(ThreadNameTest, otherThread) {
   std::atomic_int tid = 0;
   std::thread thread([&stop_flag, &tid]() {
       setThreadName("New Thread");
-      tid = syscall(SYS_gettid);
+      tid = systemThreadId();
       while (!stop_flag) {}
   });
   while (!tid) {}
@@ -55,7 +54,7 @@ TEST(ThreadNameTest, deadThread) {
   std::atomic_int tid = 0;
   std::thread thread([&stop_flag, &tid]() {
       setThreadName("New Thread");
-      tid = syscall(SYS_gettid);
+      tid = systemThreadId();
       while (!stop_flag) {}
   });
   while (!tid) {}
@@ -68,4 +67,3 @@ TEST(ThreadNameTest, deadThread) {
   EXPECT_TRUE(name == "Unknown" || name == "New Thread")
     << "Where name = " << name;
 }
-

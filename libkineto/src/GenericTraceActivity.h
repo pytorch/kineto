@@ -51,7 +51,7 @@ struct GenericTraceActivity : libkineto::TraceActivity {
   void log(libkineto::ActivityLogger& logger) const override;
 
   int64_t device;
-  pthread_t resource;
+  int32_t resource;
 
   int64_t startTime;
   int64_t endTime;

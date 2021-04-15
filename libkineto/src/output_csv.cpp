@@ -44,12 +44,11 @@ void EventCSVLogger::handleSample(int device, const Sample& sample, bool from_ne
   if (out_) {
     auto now = system_clock::now();
     auto time = system_clock::to_time_t(now);
-    struct tm tm;
     for (const Stat& s : sample.stats) {
       if (eventNames_.find(s.name) == eventNames_.end()) {
         continue;
       }
-      *out_ << std::put_time(localtime_r(&time, &tm), "%F %T") << ",";
+      *out_ << std::put_time(localtime(&time), "%F %T") << ",";
       *out_ << sample.deltaMsec << ",";
       *out_ << device << ",";
       *out_ << s.name;

@@ -48,13 +48,13 @@ endif()
 
 # Define file lists
 if (LIBKINETO_NOCUPTI)
-    get_filelist("get_libkineto_cpu_only_srcs()" LIBKINETO_SRCS)
+    get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " CUPTI unavailable or disabled - not building GPU profilers")
 else()
-    get_filelist("get_libkineto_srcs()" LIBKINETO_SRCS)
+    get_filelist("get_libkineto_srcs(with_api=False)" LIBKINETO_SRCS)
 endif()
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
-set(LIBKINETO_API_SRCS "${LIBKINETO_SOURCE_DIR}/libkineto_api.cpp")
+get_filelist("get_libkineto_api_srcs()" LIBKINETO_API_SRCS)
 
 add_library(kineto_base OBJECT ${LIBKINETO_SRCS})
 add_library(kineto_api OBJECT ${LIBKINETO_API_SRCS})
@@ -69,12 +69,19 @@ set_target_properties(kineto_base kineto_api PROPERTIES
       CXX_EXTENSIONS NO
       CXX_VISIBILITY_PRESET hidden)
 
-target_compile_options(kineto_base PRIVATE "-DKINETO_NAMESPACE=libkineto"
-"-std=gnu++14")
-target_compile_options(kineto_api PRIVATE "-std=gnu++14")
-if (NOT LIBKINETO_NOCUPTI)
-    target_compile_options(kineto_base PRIVATE "-DHAS_CUPTI")
+set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
+list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
+if(NOT MSVC)
+  list(APPEND KINETO_COMPILE_OPTIONS "-std=c++14")
+else()
+  list(APPEND KINETO_COMPILE_OPTIONS "/std:c++14")
 endif()
+if (NOT LIBKINETO_NOCUPTI)
+    list(APPEND KINETO_COMPILE_OPTIONS "-DHAS_CUPTI")
+endif()
+
+target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
+target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
 if(NOT TARGET fmt)
   if(NOT FMT_SOURCE_DIR)
@@ -95,6 +102,8 @@ if(NOT TARGET fmt)
 endif()
 
 set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
+message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
+message(STATUS "Kineto: FMT_INCLUDE_DIR = ${FMT_INCLUDE_DIR}")
 if (NOT CUPTI_INCLUDE_DIR)
     set(CUPTI_INCLUDE_DIR "${CUDA_SOURCE_DIR}/extras/CUPTI/include")
 endif()
@@ -134,9 +143,8 @@ else()
 endif()
 
 target_link_libraries(kineto "${CUDA_cupti_LIBRARY}")
-
-target_link_libraries(kineto $<BUILD_INTERFACE:fmt>)
-add_dependencies(kineto fmt)
+target_link_libraries(kineto fmt::fmt-header-only)
+add_dependencies(kineto fmt::fmt-header-only)
 
 install(TARGETS kineto EXPORT kinetoLibraryConfig
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

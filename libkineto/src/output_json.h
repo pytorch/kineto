@@ -81,8 +81,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   std::string fileName_;
   std::ofstream traceOf_;
 
-  // Cache pid to avoid repeated calls to getpid()
-  pid_t pid_;
+  // Cache pid
+  int32_t pid_;
 
 #ifdef HAS_CUPTI
   // Number of SMs on current device

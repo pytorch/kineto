@@ -37,10 +37,10 @@
 
 namespace KINETO_NAMESPACE {
 
-constexpr int VERBOSE = 0;
-constexpr int INFO = 1;
-constexpr int WARNING = 2;
-constexpr int ERROR = 3;
+#define VERBOSE 0
+#define INFO 1
+#define WARNING 2
+#define ERROR 3
 
 class Logger {
  public:

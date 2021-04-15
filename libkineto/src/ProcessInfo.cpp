@@ -9,9 +9,8 @@
 
 #include <fmt/format.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
 
+#include "ThreadUtil.h"
 #include "Logger.h"
 
 static const std::string kChronosJobIDEnvVar = "CHRONOS_JOB_INSTANCE_ID";
@@ -22,18 +21,19 @@ namespace KINETO_NAMESPACE {
 constexpr int kMaxParentPids = 10;
 
 // Return a pair of <parent_pid, command_of_current_pid>
-static std::pair<pid_t, std::string> parentPidAndCommand(pid_t pid) {
+static std::pair<int32_t, std::string> parentPidAndCommand(int32_t pid) {
+#ifdef __linux__
   FILE* statfile = fopen(fmt::format("/proc/{}/stat", pid).c_str(), "r");
   if (statfile == nullptr) {
     return std::make_pair(0, "");
   }
-  pid_t parent_pid;
+  int32_t parent_pid;
   char* command = nullptr;
   int scanned = fscanf(statfile, "%*d (%m[^)]) %*c %d", &command, &parent_pid);
   fclose(statfile);
   VLOG(2) << " Current PID: " << pid << " Command: " << command
           << " Parent PID: " << parent_pid;
-  std::pair<pid_t, std::string> ret;
+  std::pair<int32_t, std::string> ret;
   if (scanned == 2) {
     ret = std::make_pair(parent_pid, std::string(command));
   } else {
@@ -45,14 +45,17 @@ static std::pair<pid_t, std::string> parentPidAndCommand(pid_t pid) {
   // for the parsed string, which we need to free here.
   free(command);
   return ret;
+#else
+  return std::make_pair(0, "");
+#endif
 }
 
-std::vector<std::pair<pid_t, std::string>> pidCommandPairsOfAncestors() {
-  std::vector<std::pair<pid_t, std::string>> pairs;
+std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors() {
+  std::vector<std::pair<int32_t, std::string>> pairs;
   pairs.reserve(kMaxParentPids + 1);
-  pid_t curr_pid = getpid();
+  int32_t curr_pid = processId();
   for (int i = 0; i <= kMaxParentPids && curr_pid > 1; i++) {
-    std::pair<pid_t, std::string> ppid_and_comm = parentPidAndCommand(curr_pid);
+    std::pair<int32_t, std::string> ppid_and_comm = parentPidAndCommand(curr_pid);
     pairs.push_back(std::make_pair(curr_pid, ppid_and_comm.second));
     curr_pid = ppid_and_comm.first;
   }

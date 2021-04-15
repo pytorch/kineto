@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "TraceActivity.h"
+#include "ThreadUtil.h"
 
 namespace libkineto {
 
@@ -23,7 +24,7 @@ struct ClientTraceActivity : TraceActivity {
   ~ClientTraceActivity() override {}
 
   int64_t deviceId() const override {
-    return cachedPid();
+    return processId();
   }
 
   int64_t resourceId() const override {
@@ -72,7 +73,6 @@ struct ClientTraceActivity : TraceActivity {
   int64_t endTime{0};
   int64_t correlation{0};
   int device{-1};
-  // TODO: Add OS abstraction
   int32_t sysThreadId{0};
   std::string opType;
 

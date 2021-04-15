@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,13 +14,13 @@
 namespace KINETO_NAMESPACE {
 
 struct ProcessInfo {
-  pid_t pid;
+  int32_t pid;
   const std::string name;
   const std::string label;
 };
 
 struct ThreadInfo {
-  ThreadInfo(int64_t tid, const std::string name) :
+  ThreadInfo(int32_t tid, const std::string name) :
     tid(tid), name(name) {}
   int32_t tid;
   const std::string name;
@@ -30,6 +29,6 @@ struct ThreadInfo {
 
 // Return a list of pids and process names for the current process
 // and its parents.
-std::vector<std::pair<pid_t, std::string>> pidCommandPairsOfAncestors();
+std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors();
 
 } // namespace KINETO_NAMESPACE

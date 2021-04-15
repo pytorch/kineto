@@ -8,7 +8,6 @@
 #include "Config.h"
 
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <fmt/format.h>
 #include <chrono>
@@ -17,8 +16,10 @@
 #include <istream>
 #include <ostream>
 #include <sstream>
+#include <time.h>
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 
@@ -129,7 +130,7 @@ void Config::addConfigFactory(
 }
 
 static string defaultTraceFileName() {
-  return fmt::format(kDefaultLogFileFmt, getpid());
+  return fmt::format(kDefaultLogFileFmt, processId());
 }
 
 Config::Config()
@@ -174,9 +175,7 @@ const seconds Config::maxRequestAge() const {
 
 static char* printTime(time_point<system_clock> t, char* buf, int size) {
   std::time_t t_c = system_clock::to_time_t(t);
-  std::tm lt;
-  localtime_r(&t_c, &lt);
-  std::strftime(buf, size, "%H:%M:%S", &lt);
+  std::strftime(buf, size, "%H:%M:%S", localtime(&t_c));
   return buf;
 }
 
@@ -309,7 +308,7 @@ std::chrono::milliseconds Config::activitiesOnDemandDurationDefault() const {
 };
 
 void Config::updateActivityProfilerRequestReceivedTime() {
-  activitiesOnDemandTimestamp_ = high_resolution_clock::now();
+  activitiesOnDemandTimestamp_ = system_clock::now();
 }
 
 void Config::setClientDefaults() {
@@ -386,9 +385,8 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << std::endl;
   if (hasRequestTimestamp()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    std::tm tm;
     s << "Trace request client timestamp: "
-      << std::put_time(localtime_r(&t_c, &tm), "%F %T") << std::endl;
+      << std::put_time(localtime(&t_c), "%F %T") << std::endl;
   }
   s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
     << std::endl;

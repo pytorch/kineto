@@ -45,7 +45,6 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     op.startTime = startTime;
     op.endTime = endTime;
     op.device = 0;
-    op.pthreadId = pthread_self();
     op.sysThreadId = 123;
     op.correlation = correlation;
     activities.push_back(std::move(op));
@@ -253,6 +252,8 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + microseconds(duration_us));
 
+  profiler.recordThreadInfo(123, pthread_self());
+
   // Log some cpu ops
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
       start_time_us, start_time_us + duration_us);
@@ -337,6 +338,8 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   // Scenario 1: Test mismatch in CPU and GPU events.
   // When launching kernel, the CPU event should always precede the GPU event.
   int64_t kernelLaunchTime = 120;
+
+  profiler.recordThreadInfo(123, pthread_self());
 
   // set up CPU event
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(

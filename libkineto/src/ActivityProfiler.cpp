@@ -183,11 +183,9 @@ void ActivityProfiler::processCpuTrace(
   CpuGpuSpanPair& span_pair = recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
-    VLOG(2) << act.correlationId() << ": OP " << act.opType
-            << " tid: " << act.pthreadId;
+    VLOG(2) << act.correlationId() << ": OP " << act.opType;
     if (logTrace) {
       logger.handleCpuActivity(act, cpu_span);
-      recordThreadInfo(act.sysThreadId, act.pthreadId);
     }
     // Stash event so we can look it up later when processing GPU trace
     externalEvents_.insertEvent(&act);

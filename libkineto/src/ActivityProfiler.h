@@ -102,6 +102,15 @@ class ActivityProfiler {
     return *config_;
   }
 
+  inline void recordThreadInfo(pid_t tid, pthread_t pthreadId) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (threadInfo_.find((int32_t)pthreadId) == threadInfo_.end()) {
+      threadInfo_.emplace(
+          (int32_t)pthreadId,
+          ThreadInfo((int32_t) tid, getThreadName(tid)));
+    }
+  }
+
  private:
   class ExternalEventMap {
    public:
@@ -254,14 +263,6 @@ class ActivityProfiler {
     return it != clientActivityTraceMap_.end() &&
         disabledTraceSpans_.find(it->second->first.name) !=
         disabledTraceSpans_.end();
-  }
-
-  inline void recordThreadInfo(pid_t tid, pthread_t pthreadId) {
-    if (threadInfo_.find((int32_t)pthreadId) == threadInfo_.end()) {
-      threadInfo_.emplace(
-          (int32_t)pthreadId,
-          ThreadInfo((int32_t) tid, getThreadName(tid)));
-    }
   }
 
   void resetTraceData();

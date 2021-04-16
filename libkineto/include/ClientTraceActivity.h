@@ -73,7 +73,6 @@ struct ClientTraceActivity : TraceActivity {
   int64_t correlation{0};
   int device{-1};
   // TODO: Add OS abstraction
-  pthread_t pthreadId{};
   int32_t sysThreadId{0};
   std::string opType;
 

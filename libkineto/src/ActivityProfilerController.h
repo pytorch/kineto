@@ -57,6 +57,10 @@ class ActivityProfilerController {
     return profiler_->transferCpuTrace(std::move(cpuTrace));
   }
 
+  void recordThreadInfo(pid_t tid, pthread_t pthreadId) {
+    profiler_->recordThreadInfo(tid, pthreadId); 
+  }
+
  private:
   void profilerLoop();
 

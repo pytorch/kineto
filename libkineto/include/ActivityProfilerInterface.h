@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <set>
+#include <thread>
 #include <vector>
 
 #include "ActivityType.h"
@@ -76,6 +77,10 @@ class ActivityProfilerInterface {
   virtual bool enableForRegion(const std::string& match) {
     return true;
   }
+
+  // Maps kernel thread id -> pthread id for CPU ops.
+  // Client must record any new kernel thread where the activity has occured.
+  virtual void recordThreadInfo(pid_t tid, pthread_t pthreadId) {}
 };
 
 } // namespace libkineto

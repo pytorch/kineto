@@ -171,19 +171,23 @@ void ChromeTraceLogger::handleCpuActivity(
     return;
   }
 
+  auto metadata = op.getMetadata();
+  if (!metadata.empty()) {
+    metadata += ",";
+  }
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Operator", {},
     "args": {{
-       {},
-       "Device": {}, "External id": {}, 
+       {}
+       "Device": {}, "External id": {},
        "Trace name": "{}", "Trace iteration": {}
     }}
   }},)JSON",
       traceActivityJson(op, ""),
       // args
-      op.getMetadata(),
+      metadata,
       op.device, op.correlation,
       span.name, span.iteration);
   // clang-format on

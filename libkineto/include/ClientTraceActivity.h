@@ -64,7 +64,7 @@ struct ClientTraceActivity : TraceActivity {
     metadata_.push_back(std::move(kv));
   }
 
-  [[nodiscard]] const std::string getMetadata() const {
+  const std::string getMetadata() const {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 

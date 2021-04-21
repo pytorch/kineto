@@ -31,28 +31,48 @@ namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
 
-static void writeHeader(std::ofstream& stream) {
-  stream << fmt::format(R"JSON(
+void ChromeTraceLogger::handleTraceStart(
+    const std::unordered_map<std::string, std::string>& metadata) {
+  traceOf_ << fmt::format(R"JSON(
 {{
   "schemaVersion": {},
-  "traceEvents": [
   )JSON", kSchemaVersion);
+
+  if (!metadata.empty()) {
+    traceOf_ << R"JSON(
+  "metadata": {
+  )JSON";
+    bool first = true;
+    for (const auto& kv : metadata) {
+      if (!first) {
+        traceOf_ << ",\n";
+      }
+      traceOf_ << fmt::format("    \"{}\": \"{}\"", kv.first, kv.second);
+      first = false;
+    }
+    traceOf_ << R"JSON(
+  },
+  )JSON";
+  }
+
+  traceOf_ << R"JSON(
+  "traceEvents": [
+  )JSON";
 }
 
-static void openTraceFile(std::string& name, std::ofstream& stream) {
-  stream.open(name, std::ofstream::out | std::ofstream::trunc);
-  if (!stream) {
-    PLOG(ERROR) << "Failed to open '" << name << "'";
+void ChromeTraceLogger::openTraceFile() {
+  traceOf_.open(fileName_, std::ofstream::out | std::ofstream::trunc);
+  if (!traceOf_) {
+    PLOG(ERROR) << "Failed to open '" << fileName_ << "'";
   } else {
-    LOG(INFO) << "Tracing to " << name;
-    writeHeader(stream);
+    LOG(INFO) << "Tracing to " << fileName_;
   }
 }
 
 ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
     : fileName_(traceFileName), pid_(getpid()) {
   traceOf_.clear(std::ios_base::badbit);
-  openTraceFile(fileName_, traceOf_);
+  openTraceFile();
 #ifdef HAS_CUPTI
   smCount_ = CuptiActivityInterface::singleton().smCount();
 #endif

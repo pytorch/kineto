@@ -85,7 +85,12 @@ bool ActivityProfilerProxy::enableForRegion(const std::string& match) {
 }
 
 void ActivityProfilerProxy::recordThreadInfo(pid_t tid, pthread_t pthreadId) {
-  controller_->recordThreadInfo(tid, pthreadId); 
+  controller_->recordThreadInfo(tid, pthreadId);
+}
+
+void ActivityProfilerProxy::addMetadata(
+    const std::string& key, const std::string& value) {
+  controller_->addMetadata(key, value);
 }
 
 } // namespace libkineto

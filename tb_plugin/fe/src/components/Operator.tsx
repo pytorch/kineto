@@ -19,15 +19,18 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 
 import * as React from 'react'
 import { PieChart } from './charts/PieChart'
-import { TableChart } from './charts/TableChart'
 import * as api from '../api'
-import { Graph, OperatorGraph } from '../api'
+import {
+  OperationTableData,
+  OperationTableDataInner,
+  OperatorGraph
+} from '../api'
 import { DataLoading } from './DataLoading'
 import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
 import Radio from '@material-ui/core/Radio'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
+import { useSearchDirectly } from '../utils/search'
 import { topIsValid, UseTop, useTopN } from '../utils/top'
-import { useSearch } from '../utils/search'
 import {
   DeviceSelfTimeTooltip,
   DeviceTotalTimeTooltip,
@@ -35,6 +38,8 @@ import {
   HostTotalTimeTooltip
 } from './TooltipDescriptions'
 import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
+import { OperationGroupBy } from '../constants/groupBy'
+import { OperationTable } from './tables/OperationTable'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -65,11 +70,6 @@ export interface IProps {
   view: string
 }
 
-enum GroupBy {
-  Operation = 'Operation',
-  OperationAndInputShape = 'OperationAndInputShape'
-}
-
 export const Operator: React.FC<IProps> = (props) => {
   const { run, worker, view } = props
   const classes = useStyles()
@@ -82,16 +82,29 @@ export const Operator: React.FC<IProps> = (props) => {
   const [operatorGraph, setOperatorGraph] = React.useState<
     OperatorGraph | undefined
   >(undefined)
-  const [operatorTable, setOperatorTable] = React.useState<Graph | undefined>(
-    undefined
-  )
-  const [groupBy, setGroupBy] = React.useState(GroupBy.Operation)
+  const [operatorTable, setOperatorTable] = React.useState<
+    OperationTableData | undefined
+  >(undefined)
+  const [groupBy, setGroupBy] = React.useState(OperationGroupBy.Operation)
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
   const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
     defaultTop: 10
   })
-  const [sortColumn, setSortColumn] = React.useState(2)
+
+  const getName = React.useCallback(
+    (row: OperationTableDataInner) => row.name,
+    []
+  )
+  const [searchedOperatorTable] = useSearchDirectly(
+    searchOperatorName,
+    getName,
+    operatorTable
+  )
+
+  const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
+    setSearchOperatorName(event.target.value as string)
+  }
 
   React.useEffect(() => {
     if (operatorGraph) {
@@ -109,31 +122,20 @@ export const Operator: React.FC<IProps> = (props) => {
     api.defaultApi
       .operationTableGet(run, worker, view, groupBy)
       .then((resp) => {
-        setOperatorTable(resp.data)
+        setOperatorTable(resp)
       })
   }, [run, worker, view, groupBy])
 
   React.useEffect(() => {
     api.defaultApi
-      .operationGet(run, worker, view, GroupBy.Operation)
+      .operationGet(run, worker, view, OperationGroupBy.Operation)
       .then((resp) => {
         setOperatorGraph(resp)
       })
   }, [run, worker, view])
 
-  const [searchedOperatorTable] = useSearch(
-    searchOperatorName,
-    'name',
-    operatorTable
-  )
-
-  const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
-    setSearchOperatorName(event.target.value as string)
-  }
-
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
-    setGroupBy(event.target.value as GroupBy)
-    setSortColumn(event.target.value == GroupBy.Operation ? 2 : 3)
+    setGroupBy(event.target.value as OperationGroupBy)
   }
 
   const onUseTopChanged: RadioGroupProps['onChange'] = (event) => {
@@ -258,10 +260,12 @@ export const Operator: React.FC<IProps> = (props) => {
                       value={groupBy}
                       onChange={onGroupByChanged}
                     >
-                      <MenuItem value={GroupBy.OperationAndInputShape}>
+                      <MenuItem value={OperationGroupBy.OperationAndInputShape}>
                         Operator + Input Shape
                       </MenuItem>
-                      <MenuItem value={GroupBy.Operation}>Operator</MenuItem>
+                      <MenuItem value={OperationGroupBy.Operation}>
+                        Operator
+                      </MenuItem>
                     </Select>
                   </Grid>
                   <Grid item>
@@ -277,8 +281,14 @@ export const Operator: React.FC<IProps> = (props) => {
               </Grid>
               <Grid>
                 <DataLoading value={searchedOperatorTable}>
-                  {(graph) => (
-                    <TableChart graph={graph} sortColumn={sortColumn} />
+                  {(table) => (
+                    <OperationTable
+                      data={table}
+                      groupBy={groupBy}
+                      run={run}
+                      view={view}
+                      worker={worker}
+                    />
                   )}
                 </DataLoading>
               </Grid>

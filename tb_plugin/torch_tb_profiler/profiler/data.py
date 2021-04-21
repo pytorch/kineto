@@ -42,6 +42,8 @@ class RunProfileData(object):
         self.avg_costs = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
+        self.stack_lists_group_by_name = None
+        self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
         self.kernel_stat = None
         self.recommendations = []
@@ -112,6 +114,8 @@ class RunProfileData(object):
         module_parser.parse_events(self.events)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
+        self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
+        self.stack_lists_group_by_name_input = module_parser.stack_lists_group_by_name_input
         self.kernel_list_groupby_name_op = module_parser.kernel_list_groupby_name_op
 
         logger.debug("OverallParser")

@@ -88,6 +88,67 @@ export class RequiredError extends Error {
 /**
  *
  * @export
+ * @interface CallStackTableData
+ */
+export interface CallStackTableData extends Array<CallStackTableDataInner> {}
+/**
+ *
+ * @export
+ * @interface CallStackTableDataInner
+ */
+export interface CallStackTableDataInner {
+  /**
+   *
+   * @type {string}
+   * @memberof CallStackTableDataInner
+   */
+  name: string
+  /**
+   *
+   * @type {string}
+   * @memberof CallStackTableDataInner
+   */
+  inputShape?: string
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  calls: number
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  deviceSelfDuration?: number
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  deviceTotalDuration?: number
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  hostSelfDuration: number
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  hostTotalDuration: number
+  /**
+   *
+   * @type {string}
+   * @memberof CallStackTableDataInner
+   */
+  callStack?: string
+}
+/**
+ *
+ * @export
  * @interface Environment
  */
 export interface Environment {
@@ -185,6 +246,67 @@ export interface KernelGraph {
    * @memberof KernelGraph
    */
   total: Graph
+}
+/**
+ *
+ * @export
+ * @interface OperationTableData
+ */
+export interface OperationTableData extends Array<OperationTableDataInner> {}
+/**
+ *
+ * @export
+ * @interface OperationTableDataInner
+ */
+export interface OperationTableDataInner {
+  /**
+   *
+   * @type {string}
+   * @memberof OperationTableDataInner
+   */
+  name: string
+  /**
+   *
+   * @type {string}
+   * @memberof OperationTableDataInner
+   */
+  inputShape?: string
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  calls: number
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  deviceSelfDuration?: number
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  deviceTotalDuration?: number
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  hostSelfDuration: number
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  hostTotalDuration: number
+  /**
+   *
+   * @type {boolean}
+   * @memberof OperationTableDataInner
+   */
+  hasCallStack: boolean
 }
 /**
  *
@@ -552,6 +674,110 @@ export const DefaultApiFetchParamCreator = function (
 
       if (groupBy !== undefined) {
         localVarQueryParameter['group_by'] = groupBy
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {string} groupBy Group By
+     * @param {string} opName
+     * @param {string} [inputShape]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    operationStackGet(
+      run: string,
+      worker: string,
+      view: string,
+      groupBy: string,
+      opName: string,
+      inputShape?: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling operationStackGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling operationStackGet.'
+        )
+      }
+      // verify required parameter 'view' is not null or undefined
+      if (view === null || view === undefined) {
+        throw new RequiredError(
+          'view',
+          'Required parameter view was null or undefined when calling operationStackGet.'
+        )
+      }
+      // verify required parameter 'groupBy' is not null or undefined
+      if (groupBy === null || groupBy === undefined) {
+        throw new RequiredError(
+          'groupBy',
+          'Required parameter groupBy was null or undefined when calling operationStackGet.'
+        )
+      }
+      // verify required parameter 'opName' is not null or undefined
+      if (opName === null || opName === undefined) {
+        throw new RequiredError(
+          'opName',
+          'Required parameter opName was null or undefined when calling operationStackGet.'
+        )
+      }
+      const localVarPath = `/operation/stack`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (view !== undefined) {
+        localVarQueryParameter['view'] = view
+      }
+
+      if (groupBy !== undefined) {
+        localVarQueryParameter['group_by'] = groupBy
+      }
+
+      if (opName !== undefined) {
+        localVarQueryParameter['op_name'] = opName
+      }
+
+      if (inputShape !== undefined) {
+        localVarQueryParameter['input_shape'] = inputShape
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1039,6 +1265,53 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} worker
      * @param {string} view
      * @param {string} groupBy Group By
+     * @param {string} opName
+     * @param {string} [inputShape]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    operationStackGet(
+      run: string,
+      worker: string,
+      view: string,
+      groupBy: string,
+      opName: string,
+      inputShape?: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<CallStackTableData> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).operationStackGet(
+        run,
+        worker,
+        view,
+        groupBy,
+        opName,
+        inputShape,
+        options
+      )
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1048,7 +1321,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       view: string,
       groupBy: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<TableData> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<OperationTableData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).operationTableGet(run, worker, view, groupBy, options)
@@ -1310,6 +1583,36 @@ export const DefaultApiFactory = function (
      * @param {string} worker
      * @param {string} view
      * @param {string} groupBy Group By
+     * @param {string} opName
+     * @param {string} [inputShape]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    operationStackGet(
+      run: string,
+      worker: string,
+      view: string,
+      groupBy: string,
+      opName: string,
+      inputShape?: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).operationStackGet(
+        run,
+        worker,
+        view,
+        groupBy,
+        opName,
+        inputShape,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1473,6 +1776,38 @@ export class DefaultApi extends BaseAPI {
       worker,
       view,
       groupBy,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} view
+   * @param {string} groupBy Group By
+   * @param {string} opName
+   * @param {string} [inputShape]
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public operationStackGet(
+    run: string,
+    worker: string,
+    view: string,
+    groupBy: string,
+    opName: string,
+    inputShape?: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).operationStackGet(
+      run,
+      worker,
+      view,
+      groupBy,
+      opName,
+      inputShape,
       options
     )(this.fetch, this.basePath)
   }

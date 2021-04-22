@@ -16,6 +16,15 @@ class TestEnd2End(unittest.TestCase):
         host='localhost'
         port=6006
 
+        try:
+            tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)])
+            self._test_tensorboard(host, port)
+        finally:
+            pid = tb.pid
+            tb.kill()
+            print("tensorboard process {} is killed".format(pid))
+
+    def _test_tensorboard(self, host, port):
         link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
         run_link = link_prefix + 'runs'
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
@@ -28,9 +37,7 @@ class TestEnd2End(unittest.TestCase):
             link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel'
         ]
 
-        tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)])
-
-        timeout = 60
+        retry_times = 60
         while True:
             try:
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -38,44 +45,41 @@ class TestEnd2End(unittest.TestCase):
                 break
             except socket.error:
                 time.sleep(2)
-                timeout -= 1
-                if timeout < 0:
+                retry_times -= 1
+                if retry_times < 0:
                     self.fail("tensorboard start timeout")
                 continue
 
-        timeout = 60
+        retry_times = 60
 
         while True:
             try:
                 response = urllib.request.urlopen(run_link)
                 if response.read()==expected_runs:
                     break
-                if timeout % 10 == 0:
+                if retry_times % 10 == 0:
                     print("receive mismatched data, retrying", response.read())
                 time.sleep(2)
-                timeout -= 1
-                if timeout<0:
+                retry_times -= 1
+                if retry_times<0:
                     self.fail("Load run timeout")
             except Exception as e:
-                if timeout > 0:
+                if retry_times > 0:
                     continue
                 else:
                     print(e)
-                    self.fail("Load run timeout")
+                    self.fail("exception happens {}".format(e))
 
         links=[]
         for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 
-        try:
-            with open('result_check_file.txt', 'r') as f:
-                lines=f.readlines()
-                i = 0
-                for link in links:
-                    response = urllib.request.urlopen(link)
-                    self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
-                    i = i + 1
-            self.assertEqual(i, 10)
-        finally:
-            tb.kill()
+        with open('result_check_file.txt', 'r') as f:
+            lines=f.readlines()
+            i = 0
+            for link in links:
+                response = urllib.request.urlopen(link)
+                self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
+                i = i + 1
+        self.assertEqual(i, 10)

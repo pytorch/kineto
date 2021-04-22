@@ -1,11 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import multiprocessing
 import os
@@ -17,9 +12,7 @@ import werkzeug
 from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
 
-from . import consts
-from . import io
-from . import utils
+from . import consts, io, utils
 from .profiler import RunLoader
 from .run import Run
 
@@ -133,14 +126,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             /run2
                 /[worker1].pt.trace.json
         """
-        for root, _, files in os.walk(self.logdir):
+        for root, _, files in io.walk(self.logdir):
             for file in files:
                 if utils.is_chrome_trace_file(file):
-                    run_dir = os.path.abspath(root)
+                    run_dir = io.abspath(root)
                     if run_dir == self.logdir:
-                        name = os.path.basename(run_dir)
+                        name = io.basename(run_dir)
                     else:
-                        name = os.path.relpath(run_dir, self.logdir)
+                        name = io.relpath(run_dir, self.logdir)
                     yield name, run_dir
                     break
 

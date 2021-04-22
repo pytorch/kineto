@@ -53,6 +53,18 @@ class BaseFileSystem(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def abspath(self, path):
+        raise NotImplementedError
+
+    @abstractmethod
+    def basename(self, path):
+        raise NotImplementedError
+
+    @abstractmethod
+    def relpath(self, path, start):
+        raise NotImplementedError
+
+    @abstractmethod
     def join(self, path, *paths):
         raise NotImplementedError
 
@@ -94,6 +106,15 @@ class LocalFileSystem(BaseFileSystem):
     def exists(self, filename):
         """Determines whether a path exists or not."""
         return os.path.exists(filename)
+
+    def abspath(self, path):
+        return os.path.abspath(path)
+
+    def basename(self, path):
+        return os.path.basename(path)
+
+    def relpath(self, path, start):
+        return os.path.relpath(path, start)
 
     def join(self, path, *paths):
         """Join paths with path delimiter."""
@@ -229,6 +250,15 @@ class S3FileSystem(BaseFileSystem):
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
         return False
+
+    def abspath(self, path):
+        return path
+
+    def basename(self, path):
+        return path.split('/')[-1]
+
+    def relpath(self, path, start):
+        return path
 
     def join(self, path, *paths):
         """Join paths with a slash."""
@@ -588,6 +618,17 @@ def exists(filename):
     """
     return get_filesystem(filename).exists(filename)
 
+def abspath(path):
+    return get_filesystem(path).abspath(path)
+
+def basename(path):
+    return get_filesystem(path).basename(path)
+
+def relpath(path, start):
+    return get_filesystem(path).relpath(path)
+
+def join(path, *paths):
+    return get_filesystem(path).join(path, *paths)
 
 def glob(filename):
     """Returns a list of files that match the given pattern(s).

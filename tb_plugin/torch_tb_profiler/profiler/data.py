@@ -1,19 +1,14 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import, division, print_function
-
 import gzip
 import io as sysio
 import json
-import os
 import re
 import tempfile
 from collections import OrderedDict
 
-from .. import io
-from .. import consts, utils
+from .. import io, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
@@ -53,7 +48,7 @@ class RunProfileData(object):
     def parse(run_dir, worker, path):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
 
-        trace_path, trace_json= RunProfileData._preprocess_file(os.path.join(run_dir, path))
+        trace_path, trace_json= RunProfileData._preprocess_file(io.join(run_dir, path))
 
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path

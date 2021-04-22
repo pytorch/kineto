@@ -1,15 +1,10 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import, division, print_function
-
-import os
-
+from .. import consts, io, utils
+from ..run import Run
 from .data import RunData, RunProfileData
 from .run_generator import RunGenerator
-from .. import consts, utils
-from ..run import Run
 
 logger = utils.get_logger()
 
@@ -33,8 +28,8 @@ class RunLoader(object):
 
     def _parse(self):
         workers = []
-        for path in os.listdir(self.run.run_dir):
-            if os.path.isdir(path):
+        for path in io.listdir(self.run.run_dir):
+            if io.isdir(path):
                 continue
             for pattern in [consts.TRACE_GZIP_FILE_SUFFIX, consts.TRACE_FILE_SUFFIX]:
                 if path.endswith(pattern):

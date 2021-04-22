@@ -22,6 +22,11 @@ TESTS_REQUIRED = INSTALL_REQUIRED + [
     "torchvision >= 0.8"
 ]
 
+EXTRAS = {
+    "aws": ["boto3"],
+    #"azure": ["azure-storage-blob"]
+}
+
 setuptools.setup(
     name="torch_tb_profiler",
     version=get_version(),
@@ -58,4 +63,5 @@ setuptools.setup(
     ],
     license='BSD-3',
     keywords='pytorch tensorboard profile plugin',
+    extras_require=EXTRAS
 )

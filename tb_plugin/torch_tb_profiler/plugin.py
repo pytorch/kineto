@@ -18,6 +18,7 @@ from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
 
 from . import consts
+from . import io
 from . import utils
 from .profiler import RunLoader
 from .run import Run
@@ -246,8 +247,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         run = self.get_run(name)
         profile = run.get_profile(worker)
-        fopen = open
-        with fopen(profile.trace_file_path, 'rb') as f:
+        with io.GFile(profile.trace_file_path, 'rb') as f:
             raw_data = f.read()
         if profile.trace_file_path.endswith('.gz'):
             headers = []

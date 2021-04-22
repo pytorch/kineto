@@ -39,12 +39,12 @@ class RunLoader(object):
             for pattern in [consts.TRACE_GZIP_FILE_SUFFIX, consts.TRACE_FILE_SUFFIX]:
                 if path.endswith(pattern):
                     worker = path[:-len(pattern)]
-                    workers.append(worker)
+                    workers.append((worker, path))
                     break
 
-        for worker in sorted(workers):
+        for worker, path in sorted(workers):
             try:
-                data = RunProfileData.parse(self.run.run_dir, worker)
+                data = RunProfileData.parse(self.run.run_dir, worker, path)
                 self.run.profiles[worker] = data
             except Exception as ex:
                 logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",

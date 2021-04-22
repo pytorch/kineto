@@ -40,8 +40,7 @@ class TestEnd2End(unittest.TestCase):
                 time.sleep(2)
                 timeout -= 1
                 if timeout < 0:
-                    tb.kill()
-                    raise RuntimeError("tensorboard start timeout")
+                    self.fail("tensorboard start timeout")
                 continue
 
         timeout = 60
@@ -56,10 +55,13 @@ class TestEnd2End(unittest.TestCase):
                 time.sleep(2)
                 timeout -= 1
                 if timeout<0:
-                    tb.kill()
-                    raise RuntimeError("Load run timeout")
-            except Exception:
-                continue
+                    self.fail("Load run timeout")
+            except Exception as e:
+                if timeout > 0:
+                    continue
+                else:
+                    print(e)
+                    self.fail("Load run timeout")
 
         links=[]
         for run in json.loads(expected_runs):
@@ -77,4 +79,3 @@ class TestEnd2End(unittest.TestCase):
             self.assertEqual(i, 10)
         finally:
             tb.kill()
-

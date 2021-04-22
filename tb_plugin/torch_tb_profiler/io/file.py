@@ -14,8 +14,7 @@ try:
 except ImportError:
     S3_ENABLED = False
 
-# A good default block size depends on the system in question.
-# A somewhat conservative default chosen here.
+
 _DEFAULT_BLOCK_SIZE = 16 * 1024 * 1024
 
 # Registry of filesystems by prefix.
@@ -101,10 +100,10 @@ class BaseFileSystem(ABC):
         raise NotImplementedError
 
 class LocalFileSystem(BaseFileSystem):
-    """Provides local fileystem access."""
+    def __init__(self):
+        pass
 
     def exists(self, filename):
-        """Determines whether a path exists or not."""
         return os.path.exists(filename)
 
     def abspath(self, path):
@@ -117,29 +116,9 @@ class LocalFileSystem(BaseFileSystem):
         return os.path.relpath(path, start)
 
     def join(self, path, *paths):
-        """Join paths with path delimiter."""
         return os.path.join(path, *paths)
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
-        """Reads contents of a file to a string.
-
-        Args:
-            filename: string, a path
-            binary_mode: bool, read as binary if True, otherwise text
-            size: int, number of bytes or characters to read, otherwise
-                read all the contents of the file (from the continuation
-                marker, if present).
-            continue_from: An opaque value returned from a prior invocation of
-                `read(...)` marking the last read position, so that reading
-                may continue from there.  Otherwise read from the beginning.
-
-        Returns:
-            A tuple of `(data, continuation_token)` where `data' provides either
-            bytes read from the file (if `binary_mode == true`) or the decoded
-            string representation thereof (otherwise), and `continuation_token`
-            is an opaque value that can be passed to the next invocation of
-            `read(...) ' in order to continue from the last read position.
-        """
         mode = "rb" if binary_mode else "r"
         encoding = None if binary_mode else "utf8"
         if not self.exists(filename):
@@ -159,23 +138,12 @@ class LocalFileSystem(BaseFileSystem):
             return (data, continuation_token)
 
     def write(self, filename, file_content, binary_mode=False):
-        """Writes string file contents to a file, overwriting any existing
-        contents.
-
-        Args:
-            filename: string, a path
-            file_content: string, the contents
-            binary_mode: bool, write as binary if True, otherwise text
+        """Writes string file contents to a file, overwriting any existing contents.
         """
         self._write(filename, file_content, "wb" if binary_mode else "w")
 
     def append(self, filename, file_content, binary_mode=False):
         """Append string file contents to a file.
-
-        Args:
-            filename: string, a path
-            file_content: string, the contents to append
-            binary_mode: bool, write as binary if True, otherwise text
         """
         self._write(filename, file_content, "ab" if binary_mode else "a")
 
@@ -204,17 +172,14 @@ class LocalFileSystem(BaseFileSystem):
             ]
 
     def isdir(self, dirname):
-        """Returns whether the path is a directory or not."""
         return os.path.isdir(as_bytes(dirname))
 
     def listdir(self, dirname):
-        """Returns a list of entries contained within a directory."""
         entries = os.listdir(as_str_any(dirname))
         entries = [as_str_any(item) for item in entries]
         return entries
 
     def makedirs(self, path):
-        """Creates a directory and all parent/intermediate directories."""
         os.makedirs(path, exist_ok=True)
 
     def stat(self, filename):
@@ -231,16 +196,6 @@ class S3FileSystem(BaseFileSystem):
         if not boto3:
             raise ImportError("boto3 must be installed for S3 support.")
         self._s3_endpoint = os.environ.get("S3_ENDPOINT", None)
-
-    def bucket_and_path(self, url):
-        """Split an S3-prefixed URL into bucket and path."""
-        url = as_str_any(url)
-        if url.startswith("s3://"):
-            url = url[len("s3://") :]
-        idx = url.index("/")
-        bucket = url[:idx]
-        path = url[(idx + 1) :]
-        return bucket, path
 
     def exists(self, filename):
         """Determines whether a path exists or not."""
@@ -266,23 +221,6 @@ class S3FileSystem(BaseFileSystem):
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         """Reads contents of a file to a string.
-
-        Args:
-            filename: string, a path
-            binary_mode: bool, read as binary if True, otherwise text
-            size: int, number of bytes or characters to read, otherwise
-                read all the contents of the file (from the continuation
-                marker, if present).
-            continue_from: An opaque value returned from a prior invocation of
-                `read(...)` marking the last read position, so that reading
-                may continue from there.  Otherwise read from the beginning.
-
-        Returns:
-            A tuple of `(data, continuation_token)` where `data' provides either
-            bytes read from the file (if `binary_mode == true`) or the decoded
-            string representation thereof (otherwise), and `continuation_token`
-            is an opaque value that can be passed to the next invocation of
-            `read(...) ' in order to continue from the last read position.
         """
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
@@ -296,13 +234,9 @@ class S3FileSystem(BaseFileSystem):
 
         endpoint = ""
         if size is not None:
-            # TODO(orionr): This endpoint risks splitting a multi-byte
-            # character or splitting \r and \n in the case of CRLFs,
-            # producing decoding errors below.
             endpoint = offset + size
 
         if offset != 0 or endpoint != "":
-            # Asked for a range, so modify the request
             args["Range"] = "bytes={}-{}".format(offset, endpoint)
 
         try:
@@ -335,15 +269,9 @@ class S3FileSystem(BaseFileSystem):
 
     def write(self, filename, file_content, binary_mode=False):
         """Writes string file contents to a file.
-
-        Args:
-            filename: string, a path
-            file_content: string, the contents
-            binary_mode: bool, write as binary if True, otherwise text
         """
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
-        # Always convert to bytes for writing
         if binary_mode:
             if not isinstance(file_content, bytes):
                 raise TypeError("File content type must be bytes")
@@ -361,12 +289,8 @@ class S3FileSystem(BaseFileSystem):
                 "{} not supported by compat glob".format(filename)
             )
         if star_i != len(filename) - 1:
-            # Just return empty so we can use glob from directory watcher
-            #
-            # TODO: Remove and instead handle in GetLogdirSubdirectories.
-            # However, we would need to handle it for all non-local registered
-            # filesystems in some way.
             return []
+
         filename = filename[:-1]
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
@@ -375,7 +299,7 @@ class S3FileSystem(BaseFileSystem):
         for r in p.paginate(Bucket=bucket, Prefix=path):
             for o in r.get("Contents", []):
                 key = o["Key"][len(path) :]
-                if key:  # Skip the base dir, which would add an empty string
+                if key:
                     keys.append(filename + key)
         return keys
 
@@ -384,7 +308,7 @@ class S3FileSystem(BaseFileSystem):
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(dirname)
         if not path.endswith("/"):
-            path += "/"  # This will now only retrieve subdir content
+            path += "/"
         r = client.list_objects(Bucket=bucket, Prefix=path, Delimiter="/")
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
@@ -396,7 +320,7 @@ class S3FileSystem(BaseFileSystem):
         bucket, path = self.bucket_and_path(dirname)
         p = client.get_paginator("list_objects")
         if not path.endswith("/"):
-            path += "/"  # This will now only retrieve subdir content
+            path += "/"
         keys = []
         for r in p.paginate(Bucket=bucket, Prefix=path, Delimiter="/"):
             keys.extend(
@@ -429,27 +353,29 @@ class S3FileSystem(BaseFileSystem):
         obj = client.head_object(Bucket=bucket, Key=path)
         return StatData(obj["ContentLength"])
 
+    def bucket_and_path(self, url):
+        """Split an S3-prefixed URL into bucket and path."""
+        url = as_str_any(url)
+        if url.startswith("s3://"):
+            url = url[len("s3://") :]
+        idx = url.index("/")
+        bucket = url[:idx]
+        path = url[(idx + 1) :]
+        return bucket, path
 
 register_filesystem("", LocalFileSystem())
 if S3_ENABLED:
     register_filesystem("s3", S3FileSystem())
 
 
-class GFile(object):
-    # Only methods needed for TensorBoard are implemented.
-
+class File(object):
     def __init__(self, filename, mode):
         if mode not in ("r", "rb", "br", "w", "wb", "bw"):
-            raise NotImplementedError(
-                "mode {} not supported by compat GFile".format(mode)
-            )
+            raise ValueError("mode {} not supported by File".format(mode))
         self.filename = filename
         self.fs = get_filesystem(self.filename)
         self.fs_supports_append = hasattr(self.fs, "append")
         self.buff = None
-        # The buffer offset and the buffer chunk size are measured in the
-        # natural units of the underlying stream, i.e. bytes for binary mode,
-        # or characters in text mode.
         self.buff_chunk_size = _DEFAULT_BLOCK_SIZE
         self.buff_offset = 0
         self.continuation_token = None
@@ -505,9 +431,7 @@ class GFile(object):
 
         # read from filesystem
         read_size = max(self.buff_chunk_size, n) if n is not None else None
-        (self.buff, self.continuation_token) = self.fs.read(
-            self.filename, self.binary_mode, read_size, self.continuation_token
-        )
+        (self.buff, self.continuation_token) = self.fs.read(self.filename, self.binary_mode, read_size, self.continuation_token)
         self.buff_offset = 0
 
         # add from filesystem
@@ -523,9 +447,6 @@ class GFile(object):
     def write(self, file_content):
         """Writes string file contents to file, clearing contents of the file
         on first write and then appending on subsequent calls.
-
-        Args:
-            file_content: string, the contents
         """
         if not self.write_mode:
             raise OSError("File not opened in write mode")
@@ -605,16 +526,6 @@ class GFile(object):
 
 def exists(filename):
     """Determines whether a path exists or not.
-
-    Args:
-      filename: string, a path
-
-    Returns:
-      True if the path exists, whether its a file or a directory.
-      False if the path does not exist and there are no filesystem errors.
-
-    Raises:
-      errors.OpError: Propagates any errors reported by the FileSystem API.
     """
     return get_filesystem(filename).exists(filename)
 
@@ -632,27 +543,12 @@ def join(path, *paths):
 
 def glob(filename):
     """Returns a list of files that match the given pattern(s).
-
-    Args:
-      filename: string or iterable of strings. The glob pattern(s).
-
-    Returns:
-      A list of strings containing filenames that match the given pattern(s).
-
-    Raises:
-      errors.OpError: If there are filesystem / directory listing errors.
     """
     return get_filesystem(filename).glob(filename)
 
 
 def isdir(dirname):
     """Returns whether the path is a directory or not.
-
-    Args:
-      dirname: string, path to a potential directory
-
-    Returns:
-      True, if the path is a directory; False otherwise
     """
     return get_filesystem(dirname).isdir(dirname)
 
@@ -662,30 +558,12 @@ def listdir(dirname):
 
     The list is in arbitrary order. It does not contain the special entries "."
     and "..".
-
-    Args:
-      dirname: string, path to a directory
-
-    Returns:
-      [filename1, filename2, ... filenameN] as strings
-
-    Raises:
-      errors.NotFoundError if directory doesn't exist
     """
     return get_filesystem(dirname).listdir(dirname)
 
 
 def makedirs(path):
     """Creates a directory and all parent/intermediate directories.
-
-    It succeeds if path already exists and is writable.
-
-    Args:
-      path: string, name of the directory to be created
-
-    Raises:
-      errors.AlreadyExistsError: If leaf directory already exists or
-        cannot be created.
     """
     return get_filesystem(path).makedirs(path)
 
@@ -737,14 +615,5 @@ def walk(top, topdown=True, onerror=None):
 
 def stat(filename):
     """Returns file statistics for a given path.
-
-    Args:
-      filename: string, path to a file
-
-    Returns:
-      FileStatistics struct that contains information about the path
-
-    Raises:
-      errors.OpError: If the operation fails.
     """
     return get_filesystem(filename).stat(filename)

@@ -241,7 +241,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         run = self.get_run(name)
         profile = run.get_profile(worker)
-        with io.GFile(profile.trace_file_path, 'rb') as f:
+        with io.File(profile.trace_file_path, 'rb') as f:
             raw_data = f.read()
         if profile.trace_file_path.endswith('.gz'):
             headers = []

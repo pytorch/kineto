@@ -69,7 +69,11 @@ export const TableChart: React.FC<IProps> = (props) => {
 
     const chart = new google.visualization.Table(element)
 
+    if (element.offsetHeight > 0) {
+      element.parentElement!.style.height = element.offsetHeight + "px"
+    }
     chart.draw(data, options)
+    element.parentElement!.style.height = ''
   }, [graph, resizeEventDependency])
 
   return (

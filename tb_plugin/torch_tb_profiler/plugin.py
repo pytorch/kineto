@@ -76,29 +76,32 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def monitor_runs(self):
         logger.info("Monitor runs begin")
 
-        # Set _is_active quickly based on file pattern match, don't wait for data loading
-        self._is_active = any(self._get_run_dirs())
-        self._is_active_initialized_event.set()
+        try:
+            # Set _is_active quickly based on file pattern match, don't wait for data loading
+            self._is_active = any(self._get_run_dirs())
+            self._is_active_initialized_event.set()
 
-        touched = set()
-        while True:
-            try:
-                logger.debug("Scan run dir")
-                run_dirs = self._get_run_dirs()
+            touched = set()
+            while True:
+                try:
+                    logger.debug("Scan run dir")
+                    run_dirs = self._get_run_dirs()
 
-                # Assume no deletion on run directories, trigger async load if find a new run
-                for name, run_dir in run_dirs:
-                    if name not in touched:
-                        logger.info("Find run %s under %s", name, run_dir)
-                        touched.add(name)
-                        # Use multiprocessing to avoid UI stall and reduce data parsing time
-                        process = multiprocessing.Process(target=_load_run, args=(self._queue, name, run_dir))
-                        process.daemon = True
-                        process.start()
-            except Exception as ex:
-                logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
+                    # Assume no deletion on run directories, trigger async load if find a new run
+                    for name, run_dir in run_dirs:
+                        if name not in touched:
+                            logger.info("Find run %s under %s", name, run_dir)
+                            touched.add(name)
+                            # Use multiprocessing to avoid UI stall and reduce data parsing time
+                            process = multiprocessing.Process(target=_load_run, args=(self._queue, name, run_dir))
+                            process.daemon = True
+                            process.start()
+                except Exception as ex:
+                    logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 
-            time.sleep(consts.MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS)
+                time.sleep(consts.MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS)
+        except:
+            logger.exception("Failed to start monitor_runs")
 
     def receive_runs(self):
         while True:

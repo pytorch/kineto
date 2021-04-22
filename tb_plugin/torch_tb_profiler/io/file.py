@@ -536,7 +536,7 @@ def basename(path):
     return get_filesystem(path).basename(path)
 
 def relpath(path, start):
-    return get_filesystem(path).relpath(path)
+    return get_filesystem(path).relpath(path, start)
 
 def join(path, *paths):
     return get_filesystem(path).join(path, *paths)

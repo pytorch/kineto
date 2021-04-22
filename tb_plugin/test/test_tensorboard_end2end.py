@@ -51,6 +51,8 @@ class TestEnd2End(unittest.TestCase):
                 response = urllib.request.urlopen(run_link)
                 if response.read()==expected_runs:
                     break
+                if timeout % 10 == 0:
+                    print("receive mismatched data, retrying", response.read())
                 time.sleep(2)
                 timeout -= 1
                 if timeout<0:

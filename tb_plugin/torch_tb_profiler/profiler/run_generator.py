@@ -1,9 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import, division, print_function
-
 from .. import consts
 from ..run import RunProfile
 from .overall_parser import ProfileRole

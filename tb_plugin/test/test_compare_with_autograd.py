@@ -1,7 +1,7 @@
 import os
-import pytest
 import time
 import unittest
+import pytest
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
@@ -20,7 +20,7 @@ def create_log_dir():
         raise RuntimeError("Can't create directory: " + log_dir_name)
     return log_dir_name
 
-def get_autograd_result(p, worker_name):
+def get_autograd_result(p, worker_name, record_shapes=False, with_stack=False):
     avgs = p.key_averages()
     sort_by = 'self_cuda_time_total'
     avgs = sorted(
@@ -60,20 +60,111 @@ def get_autograd_result(p, worker_name):
         elif is_gpu and evt_type == "kernel":
             line = [avg.key, int(avg.count), int(avg.self_cuda_time_total)]
             result_dict[worker_name + "#kernel"].append(line)
+    if record_shapes:
+        result_dict[worker_name + "#operator#input_shape"] = list()
+        avgs = p.key_averages(True)
+        sort_by = 'self_cuda_time_total'
+        avgs = sorted(
+            avgs, key=lambda evt: getattr(evt, sort_by), reverse=True
+        )
+        for avg in avgs:
+            evt_type = get_type(avg)
+            if evt_type == "operator":
+                line = [avg.key, str(avg.input_shapes), int(avg.count)]
+                if is_gpu:
+                    line.extend([int(avg.self_cuda_time_total), int(avg.cuda_time_total)])
+                line.extend([int(avg.self_cpu_time_total), int(avg.cpu_time_total)])
+                result_dict[worker_name + "#operator#input_shape"].append(line)
+    # The call stack for legacy and kineto profiler is different for now,
+    # The legacy profiler has stack for backward while kineto not
+    # So, just disable call stack compare for the moment
+    if False and with_stack:
+        result_dict[worker_name + "#operator#stack"] = list()
+        avgs = p.key_averages(False, 100)
+        sort_by = 'self_cuda_time_total'
+        avgs = sorted(
+            avgs, key=lambda evt: getattr(evt, sort_by), reverse=True
+        )
+        for avg in avgs:
+            evt_type = get_type(avg)
+            if evt_type == "operator" and avg.stack:
+                line = [avg.key, int(avg.count)]
+                if is_gpu:
+                    line.extend([int(avg.self_cuda_time_total), int(avg.cuda_time_total)])
+                line.extend([int(avg.self_cpu_time_total), int(avg.cpu_time_total), ''.join(avg.stack)])
+                result_dict[worker_name + "#operator#stack"].append(line)
+
+        result_dict[worker_name + "#operator#stack#input_shape"] = list()
+        avgs = p.key_averages(True, 100)
+        sort_by = 'self_cuda_time_total'
+        avgs = sorted(
+            avgs, key=lambda evt: getattr(evt, sort_by), reverse=True
+        )
+        for avg in avgs:
+            evt_type = get_type(avg)
+            if evt_type == "operator" and avg.stack:
+                line = [avg.key, str(avg.input_shapes), int(avg.count)]
+                if is_gpu:
+                    line.extend([int(avg.self_cuda_time_total), int(avg.cuda_time_total)])
+                line.extend([int(avg.self_cpu_time_total), int(avg.cpu_time_total), ''.join(avg.stack)])
+                result_dict[worker_name + "#operator#stack#input_shape"].append(line)
+
     return result_dict
 
-def get_plugin_result(run):
+def generate_plugin_result_row(data):
+    row = list()
+    row.append(data['name'])
+    if 'input_shape' in data:
+        row.append(data['input_shape'])
+    row.append(data['calls'])
+    if 'device_self_duration' in data:
+        row.append(data['device_self_duration'])
+        row.append(data['device_total_duration'])
+    row.extend([data['host_self_duration'], data['host_total_duration']])
+    if 'call_stack' in data:
+        row.append(data['call_stack'])
+    return row
+
+def get_plugin_result(run, record_shapes=False, with_stack=False):
     result_dict =  dict()
     for worker_name, profile in run.profiles.items():
         worker_name = worker_name.split('.')[0]
-        if profile.operation_table_by_name is not None:
-            rows = profile.operation_table_by_name["data"]["rows"]
-            result_dict[worker_name + "#operator"] = rows
-            if profile.kernel_table is not None:
-                rows = profile.kernel_table["data"]["rows"]
-                result_dict[worker_name + "#kernel"] = list()
-                for row in rows:
-                    result_dict[worker_name + "#kernel"].append(row[:3])
+        assert profile.operation_table_by_name is not None
+        result_dict[worker_name + "#operator"] = list()
+        for data in profile.operation_table_by_name:
+            row = generate_plugin_result_row(data)
+            result_dict[worker_name + "#operator"].append(row)
+        if profile.kernel_table is not None:
+            rows = profile.kernel_table["data"]["rows"]
+            result_dict[worker_name + "#kernel"] = list()
+            for row in rows:
+                result_dict[worker_name + "#kernel"].append(row[:3])
+        if record_shapes:
+            assert profile.operation_table_by_name_input is not None
+            result_dict[worker_name + "#operator#input_shape"] = list()
+            for data in profile.operation_table_by_name_input:
+                row = generate_plugin_result_row(data)
+                result_dict[worker_name + "#operator#input_shape"].append(row)
+        # The call stack for legacy and kineto profiler is different for now,
+        # The legacy profiler has stack for backward while kineto not
+        # So, just disable call stack compare for the moment
+        if False and with_stack:
+            assert profile.operation_stack_by_name is not None
+            assert profile.operation_stack_by_name_input is not None
+            result_dict[worker_name + "#operator#stack"] = list()
+            op_stack_dict = profile.operation_stack_by_name
+            for k,datalist in op_stack_dict.items():
+                for data in datalist:
+                    row = generate_plugin_result_row(data)
+                    result_dict[worker_name + "#operator#stack"].append(row)
+            if record_shapes:
+                result_dict[worker_name + "#operator#stack#input_shape"] = list()
+                op_stack_dict = profile.operation_stack_by_name_input
+                for k,datalist in op_stack_dict.items():
+                    for data in datalist:
+                        row = generate_plugin_result_row(data)
+                        result_dict[worker_name + "#operator#stack#input_shape"].append(row)
+
     return result_dict
 
 def get_train_func(use_gpu=True):
@@ -128,13 +219,13 @@ def get_output_fn(dir_name, profilers_dict):
 
 class TestCompareWithAutogradResult(unittest.TestCase):
 
-    def compare_results(self, log_dir, profilers_dict, use_gpu=True):
+    def compare_results(self, log_dir, profilers_dict, use_gpu=True, record_shapes=False, with_stack=False):
         loader = RunLoader(os.path.split(log_dir)[-1], log_dir)
         run = loader.load()
-        plugin_result = get_plugin_result(run)
+        plugin_result = get_plugin_result(run, record_shapes, with_stack)
         count = 0
         for worker_name, p in profilers_dict.items():
-            autograd_result = get_autograd_result(p, worker_name)
+            autograd_result = get_autograd_result(p, worker_name, record_shapes, with_stack)
             for key in autograd_result.keys():
                 count += 1
                 self.assertTrue(key in plugin_result.keys())
@@ -173,7 +264,7 @@ class TestCompareWithAutogradResult(unittest.TestCase):
             with_stack=with_stack
         ) as p:
             get_train_func(use_gpu)(13, p)
-        self.compare_results(log_dir, profilers_dict, use_gpu)
+        self.compare_results(log_dir, profilers_dict, use_gpu, record_shapes, with_stack)
 
     @pytest.mark.skipif('CI' in os.environ, reason="")
     def test_profiler_api_without_gpu(self):

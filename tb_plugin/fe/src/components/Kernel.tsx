@@ -20,23 +20,19 @@ import { TableChart } from './charts/TableChart'
 import * as api from '../api'
 import { Graph } from '../api'
 import { DataLoading } from './DataLoading'
-import { UseTop, useTopN } from '../utils/top'
+import { topIsValid, UseTop, useTopN } from '../utils/top'
 import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
 import Radio from '@material-ui/core/Radio'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import { useSearch } from '../utils/search'
 import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 import { GPUKernelTotalTimeTooltip } from './TooltipDescriptions'
+import { KernelGroupBy } from '../constants/groupBy'
 
 export interface IProps {
   run: string
   worker: string
   view: string
-}
-
-enum GroupBy {
-  Kernel = 'Kernel',
-  KernelNameAndOpName = 'KernelNameAndOpName'
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -74,12 +70,12 @@ export const Kernel: React.FC<IProps> = (props) => {
   const [kernelTable, setKernelTable] = React.useState<Graph | undefined>(
     undefined
   )
-  const [groupBy, setGroupBy] = React.useState(GroupBy.Kernel)
+  const [groupBy, setGroupBy] = React.useState(KernelGroupBy.Kernel)
   const [searchKernelName, setSearchKernelName] = React.useState('')
   const [searchOpName, setSearchOpName] = React.useState('')
   const [sortColumn, setSortColumn] = React.useState(2)
 
-  const [top, actualTop, useTop, setTop, setUseTop] = useTopN({
+  const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
     defaultTop: 10
   })
@@ -90,7 +86,7 @@ export const Kernel: React.FC<IProps> = (props) => {
 
   React.useEffect(() => {
     if (kernelGraph) {
-      setTop(Math.min(kernelGraph.rows?.length, 10))
+      setTopText(String(Math.min(kernelGraph.rows?.length, 10)))
     }
   }, [kernelGraph])
 
@@ -101,9 +97,11 @@ export const Kernel: React.FC<IProps> = (props) => {
   }, [run, worker, view, groupBy])
 
   React.useEffect(() => {
-    api.defaultApi.kernelGet(run, worker, view, GroupBy.Kernel).then((resp) => {
-      setKernelGraph(resp.total)
-    })
+    api.defaultApi
+      .kernelGet(run, worker, view, KernelGroupBy.Kernel)
+      .then((resp) => {
+        setKernelGraph(resp.total)
+      })
   }, [run, worker, view])
 
   const [searchedKernelTable] = useSearch(searchKernelName, 'name', kernelTable)
@@ -114,8 +112,8 @@ export const Kernel: React.FC<IProps> = (props) => {
   )
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
-    setGroupBy(event.target.value as GroupBy)
-    setSortColumn(event.target.value == GroupBy.Kernel ? 2 : 3)
+    setGroupBy(event.target.value as KernelGroupBy)
+    setSortColumn(event.target.value == KernelGroupBy.Kernel ? 2 : 3)
   }
 
   const onSearchKernelChanged: TextFieldProps['onChange'] = (event) => {
@@ -131,7 +129,7 @@ export const Kernel: React.FC<IProps> = (props) => {
   }
 
   const onTopChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setTop(Number(event.target.value))
+    setTopText(event.target.value)
   }
 
   const inputProps: StandardTextFieldProps['inputProps'] = {
@@ -170,8 +168,9 @@ export const Kernel: React.FC<IProps> = (props) => {
                     classes={{ root: classes.inputWidth }}
                     inputProps={inputProps}
                     type="number"
-                    value={top}
+                    value={topText}
                     onChange={onTopChanged}
+                    error={!topIsValid(topText)}
                   />
                 </Grid>
               )}
@@ -201,10 +200,12 @@ export const Kernel: React.FC<IProps> = (props) => {
                         value={groupBy}
                         onChange={onGroupByChanged}
                       >
-                        <MenuItem value={GroupBy.KernelNameAndOpName}>
+                        <MenuItem value={KernelGroupBy.KernelNameAndOpName}>
                           Kernel Name + Op Name
                         </MenuItem>
-                        <MenuItem value={GroupBy.Kernel}>Kernel Name</MenuItem>
+                        <MenuItem value={KernelGroupBy.Kernel}>
+                          Kernel Name
+                        </MenuItem>
                       </Select>
                     </Grid>
                   </Grid>
@@ -218,7 +219,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                         label="Search by Kernel Name"
                       />
                     </Grid>
-                    {groupBy === GroupBy.KernelNameAndOpName && (
+                    {groupBy === KernelGroupBy.KernelNameAndOpName && (
                       <Grid item>
                         <TextField
                           classes={{ root: classes.inputWidthOverflow }}

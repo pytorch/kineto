@@ -2,28 +2,17 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import debounce from '@material-ui/core/utils/debounce'
 import * as React from 'react'
 import { value } from '.'
 import * as api from '../api'
+import { useDebounce } from './debounce'
 
 export function useSearch(
   searchName: string,
   columnName: string,
   table: api.Graph | undefined
 ): [api.Graph | undefined] {
-  const [searchNameDebounce, setSearchNameDebounce] = React.useState(searchName)
-
-  const onSearchOperatorNameChanged = React.useCallback(
-    debounce((value: string) => {
-      setSearchNameDebounce(value.trim())
-    }, 500),
-    []
-  )
-
-  React.useEffect(() => {
-    onSearchOperatorNameChanged(searchName)
-  }, [searchName])
+  const searchNameDebounce = useDebounce(searchName.trim(), 500)
 
   const searchedTable: api.Graph | undefined = React.useMemo(() => {
     if (!searchNameDebounce) {
@@ -51,4 +40,28 @@ export function useSearch(
     }
   }, [table, searchNameDebounce])
   return [searchedTable]
+}
+
+export function useSearchDirectly<T>(
+  searchName: string,
+  field: (v: T) => string,
+  table: T[] | undefined
+): [T[] | undefined] {
+  const searchNameDebounce = useDebounce(searchName.trim(), 500)
+
+  const result = React.useMemo(() => {
+    if (!searchNameDebounce) {
+      return table
+    }
+
+    if (!table) {
+      return undefined
+    }
+
+    return table.filter((row) => {
+      return field(row).toLowerCase().includes(searchNameDebounce)
+    })
+  }, [table, field, searchNameDebounce])
+  console.log(result)
+  return [result]
 }

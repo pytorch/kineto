@@ -26,6 +26,9 @@ import { TraceView } from './components/TraceView'
 import { FullCircularProgress } from './components/FullCircularProgress'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
+import 'antd/es/list/style/css'
+import 'antd/es/table/style/css'
+import 'antd/es/button/style/css'
 
 export enum Views {
   Overview = 'Overview',
@@ -136,10 +139,20 @@ export const App = () => {
     })
   }, [])
 
+  const waitForRuns = async () => {
+    while (true) {
+      try {
+        const runs = await api.defaultApi.runsGet()
+        setRuns(runs)
+        break
+      } catch (e) {
+        console.info('Cannot fetch runs: ', e)
+      }
+    }
+  }
+
   React.useEffect(() => {
-    api.defaultApi.runsGet().then((runs) => {
-      setRuns(runs)
-    })
+    waitForRuns()
   }, [])
 
   React.useEffect(() => {

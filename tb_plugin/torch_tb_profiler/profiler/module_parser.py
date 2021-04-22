@@ -45,11 +45,12 @@ class OperatorNode(HostNode):
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
     def __init__(self, name, start_time, end_time, type, external_id=None, device_duration=0,
-            children=None, runtimes=None, input_shape=None, self_host_duration=0, self_device_duration=0):
+            children=None, runtimes=None, input_shape=None, call_stack=None, self_host_duration=0, self_device_duration=0):
         super().__init__(name, start_time, end_time, type, external_id, device_duration)
         self.children = [] if children is None else children # OperatorNode and ProfilerStepNode.
         self.runtimes = [] if runtimes is None else runtimes # RuntimeNode
         self.input_shape = input_shape
+        self.call_stack = call_stack
         self.self_host_duration = self_host_duration
         self.self_device_duration = self_device_duration
 
@@ -77,9 +78,9 @@ class OperatorNode(HostNode):
             self.end_time = next((child.end_time for child in reversed(self.children) if child.end_time is not None), None)
 
     @classmethod
-    def create(cls, event, input_shape):
+    def create(cls, event, input_shape, call_stack):
         kwargs = BaseNode.get_node_argument(event)
-        return cls(input_shape=input_shape, **kwargs)
+        return cls(input_shape=input_shape, call_stack=call_stack, **kwargs)
 
 
 class ProfilerStepNode(OperatorNode):
@@ -126,6 +127,7 @@ class OperatorAgg:
     def __init__(self):
         self.name = None
         self.input_shape = None  # Optional
+        self.call_stacks = set()  # Optional
         self.calls = 0
         self.host_duration = 0
         self.device_duration = 0
@@ -240,6 +242,7 @@ class ModuleParser:
         def parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
             corrid = event.args.get("correlation", None)
             input_shape = event.args.get("Input dims", None)
+            call_stack = event.args.get("Call stack", "")
             tid = event.tid
             if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
                 device_node = DeviceNode.create(event)
@@ -273,9 +276,9 @@ class ModuleParser:
                             logger.warning("Runtime and Device-op have same correlation id but with different external id!")
             elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
-                    op_node = ProfilerStepNode.create(event, input_shape)
+                    op_node = ProfilerStepNode.create(event, input_shape, None)
                 else:
-                    op_node = OperatorNode.create(event, input_shape)
+                    op_node = OperatorNode.create(event, input_shape, call_stack)
                 tid2list.setdefault(tid, []).append(op_node)
 
         def parse_ops(cpp_op_list):
@@ -285,6 +288,7 @@ class ModuleParser:
                 agg = key_to_agg[key]
                 agg.name = op.name
                 agg.input_shape = str(op.input_shape)
+                agg.call_stacks.add(op.call_stack)
                 agg.calls += 1
                 agg.host_duration += op.end_time - op.start_time
                 agg.device_duration += op.device_duration
@@ -294,13 +298,29 @@ class ModuleParser:
 
             name_to_agg = {}
             name_input_to_agg = {}
+            name_stack_to_agg = {}
+            name_input_stack_to_agg = {}
             for op in cpp_op_list:
                 aggregate(name_to_agg, op.name, op)
                 aggregate(name_input_to_agg, op.name + "###" + str(op.input_shape), op)
+                aggregate(name_stack_to_agg, op.name + "###" + str(op.call_stack), op)
+                aggregate(name_input_stack_to_agg, op.name + "###" + str(op.input_shape) + "###" + str(op.call_stack), op)
 
             op_list_groupby_name = list(name_to_agg.values())
             op_list_groupby_name_input = list(name_input_to_agg.values())
-            return op_list_groupby_name, op_list_groupby_name_input
+            stack_lists_group_by_name = dict()
+            stack_lists_group_by_name_input = dict()
+            for agg in name_stack_to_agg.values():
+                assert (len(agg.call_stacks) == 1)
+                if list(agg.call_stacks)[0]:
+                    stack_lists_group_by_name.setdefault(agg.name, []).append(agg)
+            for agg in name_input_stack_to_agg.values():
+                assert (len(agg.call_stacks) == 1)
+                if list(agg.call_stacks)[0]:
+                    key = agg.name + "###" + str(agg.input_shape)
+                    stack_lists_group_by_name_input.setdefault(key, []).append(agg)
+
+            return op_list_groupby_name, op_list_groupby_name_input, stack_lists_group_by_name, stack_lists_group_by_name_input
 
         def parse_kernels(kernel_list):
             name_op_to_agg = {}
@@ -355,5 +375,5 @@ class ModuleParser:
             op_list.sort(key=lambda x: (x.start_time, -x.end_time))
             root_node = self._build_tree(op_list, zero_rt_list)
             self.tid2tree[tid] = root_node
-        self.op_list_groupby_name, self.op_list_groupby_name_input = parse_ops(self.cpp_op_list)
+        self.op_list_groupby_name, self.op_list_groupby_name_input, self.stack_lists_group_by_name, self.stack_lists_group_by_name_input = parse_ops(self.cpp_op_list)
         self.kernel_list_groupby_name_op = parse_kernels(self.kernel_list)

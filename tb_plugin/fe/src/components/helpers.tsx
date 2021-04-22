@@ -1,3 +1,7 @@
+/*---------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ *--------------------------------------------------------------------------------------------*/
+
 import * as React from 'react'
 import HelpOutline from '@material-ui/icons/HelpOutline'
 import Tooltip from '@material-ui/core/Tooltip'

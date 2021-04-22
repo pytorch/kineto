@@ -40,7 +40,7 @@ setuptools.setup(
             "torch_profiler = torch_tb_profiler.plugin:TorchProfilerPlugin",
         ],
     },
-    python_requires=">= 2.7, != 3.0.*, != 3.1.*",
+    python_requires=">=3.6.2",
     install_requires=INSTALL_REQUIRED,
     tests_require=TESTS_REQUIRED,
     classifiers=[

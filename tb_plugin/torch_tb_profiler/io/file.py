@@ -196,6 +196,10 @@ class S3FileSystem(BaseFileSystem):
         if not boto3:
             raise ImportError("boto3 must be installed for S3 support.")
         self._s3_endpoint = os.environ.get("S3_ENDPOINT", None)
+        access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+        if access_key and secret_key:
+            boto3.setup_default_session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
     def exists(self, filename):
         """Determines whether a path exists or not."""
@@ -584,13 +588,13 @@ def walk(top, topdown=True, onerror=None):
     """
     fs = get_filesystem(top)
     top = fs.abspath(top)
-    listing = listdir(top)
+    listing = fs.listdir(top)
 
     files = []
     subdirs = []
     for item in listing:
         full_path = fs.join(top, item)
-        if isdir(full_path):
+        if fs.isdir(full_path):
             subdirs.append(item)
         else:
             files.append(item)

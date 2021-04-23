@@ -31,7 +31,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
           context: A base_plugin.TBContext instance.
         """
         super(TorchProfilerPlugin, self).__init__(context)
-        self.logdir = context.logdir
+        self.logdir = context.logdir.rstrip('/')
 
         self._is_active = None
         self._is_active_initialized_event = threading.Event()

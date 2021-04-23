@@ -8,7 +8,7 @@ import re
 import tempfile
 from collections import OrderedDict
 
-from .. import io, utils
+from .. import cache, io, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
@@ -45,10 +45,10 @@ class RunProfileData(object):
         self.recommendations = []
 
     @staticmethod
-    def parse(run_dir, worker, path):
+    def parse(run_dir, worker, path, caches):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
 
-        trace_path, trace_json= RunProfileData._preprocess_file(io.join(run_dir, path))
+        trace_path, trace_json= RunProfileData._preprocess_file(caches, io.join(run_dir, path))
 
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path
@@ -67,35 +67,34 @@ class RunProfileData(object):
         return profile
 
     @staticmethod
-    def _preprocess_file(trace_path):
+    def _preprocess_file(caches, trace_path):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
-        with io.File(trace_path, 'rb') as f:
-            data = f.read()
-            if trace_path.endswith('.gz'):
-                data = gzip.decompress(data)
+        data = cache.read_cache(caches, trace_path)
+        if trace_path.endswith('.gz'):
+            data = gzip.decompress(data)
 
+        try:
+            trace_json = json.loads(data)
+        except json.decoder.JSONDecodeError as e:
+            # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
+            # to handleJSONDecodeError, re-encode it and save to a temp file
             try:
-                trace_json = json.loads(data)
-            except json.decoder.JSONDecodeError as e:
-                # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
-                # to handleJSONDecodeError, re-encode it and save to a temp file
-                try:
-                    trace_json = json.loads(data, strict=False)
-                except json.decoder.JSONDecodeError:
-                    with sysio.StringIO() as fout:
-                        str_data = data.decode("utf-8")
-                        # only replace the N/A without surrounding double quote
-                        fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", str_data))
-                        trace_json = json.loads(fout.getvalue())
+                trace_json = json.loads(data, strict=False)
+            except json.decoder.JSONDecodeError:
+                with sysio.StringIO() as fout:
+                    str_data = data.decode("utf-8")
+                    # only replace the N/A without surrounding double quote
+                    fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", str_data))
+                    trace_json = json.loads(fout.getvalue())
 
-                fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
-                fp.close()
-                with gzip.open(fp.name, mode='wt') as fzip:
-                    fzip.write(json.dumps(trace_json))
-                logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
-                trace_path = fp.name
+            fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
+            fp.close()
+            with gzip.open(fp.name, mode='wt') as fzip:
+                fzip.write(json.dumps(trace_json))
+            logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
+            trace_path = fp.name
 
         return trace_path, trace_json
 

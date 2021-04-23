@@ -4,7 +4,10 @@ import tempfile
 from abc import ABC, abstractmethod
 from collections import namedtuple
 
+from .. import utils
 from .utils import as_bytes, as_text
+
+logger = utils.get_logger()
 
 try:
     import boto3
@@ -14,6 +17,11 @@ try:
 except ImportError:
     S3_ENABLED = False
 
+try:
+    from azure.storage.blob import ContainerClient
+    BLOB_ENABLED = True
+except ImportError:
+    BLOB_ENABLED = False
 
 _DEFAULT_BLOCK_SIZE = 16 * 1024 * 1024
 
@@ -36,7 +44,14 @@ def get_filesystem(filename):
     index = filename.find("://")
     if index >= 0:
         prefix = filename[:index]
-    fs = _REGISTERED_FILESYSTEMS.get(prefix, None)
+    if prefix.upper() in ('HTTP', 'HTTPS'):
+        root, _ = parse_blob_url(filename)
+        if root.lower().endswith('.blob.core.windows.net'):
+            fs = _REGISTERED_FILESYSTEMS.get('blob', None)
+        else:
+            raise ValueError("Not supported file system for prefix %s" % root)
+    else:
+        fs = _REGISTERED_FILESYSTEMS.get(prefix, None)
     if fs is None:
         raise ValueError("No recognized filesystem for prefix %s" % prefix)
     return fs
@@ -44,6 +59,12 @@ def get_filesystem(filename):
 # Data returned from the Stat call.
 StatData = namedtuple("StatData", ["length"])
 
+def parse_blob_url(url):
+    from urllib import parse
+    url_path = parse.urlparse(url)
+
+    parts = url_path.path.lstrip('/').split('/', 1)
+    return url_path.netloc, tuple(parts)
 
 class BaseFileSystem(ABC):
     @abstractmethod
@@ -73,6 +94,9 @@ class BaseFileSystem(ABC):
     @abstractmethod
     def write(self, filename, file_content, binary_mode=False):
         raise NotImplementedError
+
+    def download_file(self, filename):
+        return filename
 
     def support_append(self):
         return False
@@ -246,6 +270,7 @@ class S3FileSystem(BaseFileSystem):
         if offset != 0 or endpoint != "":
             args["Range"] = "bytes={}-{}".format(offset, endpoint)
 
+        logger.info("s3: starting reading file %s" % filename)
         try:
             stream = s3.Object(bucket, path).get(**args)["Body"].read()
         except botocore.exceptions.ClientError as exc:
@@ -265,6 +290,8 @@ class S3FileSystem(BaseFileSystem):
                     stream = s3.Object(bucket, path).get(**args)["Body"].read()
             else:
                 raise
+
+        logger.info("s3: file %s download is done, size is %d" % (filename, len(stream)))
         # `stream` should contain raw bytes here (i.e., there has been neither
         # decoding nor newline translation), so the byte offset increases by
         # the expected amount.
@@ -284,6 +311,18 @@ class S3FileSystem(BaseFileSystem):
         else:
             file_content = as_bytes(file_content)
         client.put_object(Body=file_content, Bucket=bucket, Key=path)
+
+    def download_file(self, filename):
+        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
+        fp.close()
+
+        logger.info("s3: starting downloading file %s as %s" % (filename, fp.name))
+        s3 = boto3.client('s3')
+        bucket, path = self.bucket_and_path(filename)
+        with open(fp.name, 'wb') as downloaded_file:
+            s3.download_fileobj(bucket, path, downloaded_file)
+            logger.info("s3: file %s download is as %s" % (filename, fp.name))
+            return fp.name
 
     def glob(self, filename):
         """Returns a list of files that match the given pattern(s)."""
@@ -368,10 +407,194 @@ class S3FileSystem(BaseFileSystem):
         path = url[(idx + 1) :]
         return bucket, path
 
+class AzureBlobSystem(BaseFileSystem):
+    """Provides filesystem access to S3."""
+
+    def __init__(self):
+        if not ContainerClient:
+            raise ImportError("azure-storage-blob must be installed for Azure Blob support.")
+        self.connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", None)
+
+    def exists(self, filename):
+        """Determines whether a path exists or not."""
+        account, container, path = self.container_and_path(filename)
+        client = self.create_container_client(account, container)
+        blobs = client.list_blobs(name_starts_with=path, maxresults=1)
+        for blob in blobs:
+            dir_path = os.path.dirname(path)
+            if dir_path:
+                basename = os.path.basename(path)
+                rel_path = blob.name[len(dir_path):]
+                parts = rel_path.lstrip('/').split('/')
+                return basename == parts[0]
+            else:
+                parts = blob.name.split('/')
+                return path == parts[0]
+        return False
+
+    def abspath(self, path):
+        return path
+
+    def basename(self, path):
+        return path.split('/')[-1]
+
+    def relpath(self, path, start):
+        if not path.startswith(start):
+            return path
+        start = start.rstrip('/')
+        begin = len(start) + 1 # include the ending slash '/'
+        return path[begin:]
+
+    def join(self, path, *paths):
+        """Join paths with a slash."""
+        return "/".join((path,) + paths)
+
+    def read(self, filename, binary_mode=False, size=None, continue_from=None):
+        """Reads contents of a file to a string."""
+        logger.info("azure blob: starting reading file %s" % filename)
+        account, container, path = self.container_and_path(filename)
+        client = self.create_container_client(account, container)
+        blob_client = client.get_blob_client(path)
+        if not blob_client.exists():
+            raise FileNotFoundError("file %s doesn't exist!" % path)
+
+        downloader = blob_client.download_blob(offset=continue_from, length=size)
+        if continue_from is not None:
+            continuation_token = continue_from + downloader.size
+        else:
+            continuation_token = downloader.size
+
+        data = downloader.readall()
+        logger.info("azure blob: file %s download is done, size is %d" % (filename, len(data)))
+        if binary_mode:
+            return as_bytes(data), continuation_token
+        else:
+            return as_text(data), continuation_token
+
+    def write(self, filename, file_content, binary_mode=False):
+        """Writes string file contents to a file."""
+        account, container, path = self.container_and_path(filename)
+        client = self.create_container_client(account, container)
+
+        if binary_mode:
+            if not isinstance(file_content, bytes):
+                raise TypeError("File content type must be bytes")
+        else:
+            file_content = as_bytes(file_content)
+        client.upload_blob(path, file_content)
+
+    def download_file(self, filename):
+        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
+        fp.close()
+
+        logger.info("azure blob: starting downloading file %s as %s" % (filename, fp.name))
+        account, container, path = self.container_and_path(filename)
+        client = self.create_container_client(account, container)
+        blob_client = client.get_blob_client(path)
+        if not blob_client.exists():
+            raise FileNotFoundError("file %s doesn't exist!" % path)
+
+        downloader = blob_client.download_blob()
+        with open(fp.name, 'wb') as downloaded_file:
+            data = downloader.readall()
+            downloaded_file.write(data)
+            logger.info("azure blob: file %s download is as %s, size is %d" % (filename, fp.name, len(data)))
+            return fp.name
+
+    def glob(self, filename):
+        """Returns a list of files that match the given pattern(s)."""
+        # Only support prefix with * at the end and no ? in the string
+        star_i = filename.find("*")
+        quest_i = filename.find("?")
+        if quest_i >= 0:
+            raise NotImplementedError(
+                "{} not supported by compat glob".format(filename)
+            )
+        if star_i != len(filename) - 1:
+            return []
+
+        filename = filename[:-1]
+
+        account, container, path = self.container_and_path(filename)
+        client = self.create_container_client(account, container)
+        blobs = client.list_blobs(name_starts_with=path)
+        return [blob.name for blob in blobs]
+
+    def isdir(self, dirname):
+        """Returns whether the path is a directory or not."""
+        account, container, path = self.container_and_path(dirname)
+        client = self.create_container_client(account, container)
+        blobs = client.list_blobs(name_starts_with=path, maxresults=1)
+
+        for blob in blobs:
+            dir_path = os.path.dirname(path)
+            if dir_path:
+                basename = os.path.basename(path)
+                rel_path = blob.name[len(dir_path):]
+                parts = rel_path.lstrip('/').split('/')
+                return basename == parts[0] and len(parts) > 1
+            else:
+                parts = blob.name.split('/')
+                return path == parts[0] and len(parts) > 1
+        return False
+
+    def listdir(self, dirname):
+        """Returns a list of entries contained within a directory."""
+        account, container, path = self.container_and_path(dirname)
+        client = self.create_container_client(account, container)
+        blob_iter = client.list_blobs(name_starts_with=path)
+        items = []
+        for blob in blob_iter:
+            item = os.path.relpath(blob.name, path)
+            if items not in items:
+                items.append(item)
+        return items
+
+    def makedirs(self, dirname):
+        """No need create directory since the upload blob will automatically create"""
+        pass
+
+    def stat(self, filename):
+        """Returns file statistics for a given path."""
+        account, container, path = self.container_and_path(filename)
+        client = self.create_container_client(account, container)
+        blob_client = client.get_blob_client(path)
+        props = blob_client.get_blob_properties()
+        return StatData(props.size)
+
+    def walk(self, top, topdown=True, onerror=None):
+        account, container, path = self.container_and_path(top)
+        client = self.create_container_client(account, container)
+        blobs = client.list_blobs(name_starts_with=path)
+        results = {}
+        for blob in blobs:
+            dirname = os.path.dirname(blob.name)
+            dirname = "https://{}/{}/{}".format(account, container, dirname)
+            basename = os.path.basename(blob.name)
+            results.setdefault(dirname, []).append(basename)
+        for key, value in results.items():
+            yield key, None, value
+
+    def container_and_path(self, url):
+        """Split an Azure blob -prefixed URL into container and blob path."""
+        root, parts = parse_blob_url(url)
+        if len(parts) != 2:
+            raise ValueError("Invalid azure blob url %s" % url)
+        return root, parts[0], parts[1]
+
+    def create_container_client(self, account, container):
+        if self.connection_string:
+            client = ContainerClient.from_connection_string(self.connection_string, container)
+        else:
+            client = ContainerClient.from_container_url("https://{}/{}".format(account, container))
+        return client
+
 register_filesystem("", LocalFileSystem())
 if S3_ENABLED:
     register_filesystem("s3", S3FileSystem())
 
+if BLOB_ENABLED:
+    register_filesystem("blob", AzureBlobSystem())
 
 class File(object):
     def __init__(self, filename, mode):
@@ -545,15 +768,16 @@ def relpath(path, start):
 def join(path, *paths):
     return get_filesystem(path).join(path, *paths)
 
+def download_file(filename):
+    return get_filesystem(filename).download_file(filename)
+
 def glob(filename):
     """Returns a list of files that match the given pattern(s)."""
     return get_filesystem(filename).glob(filename)
 
-
 def isdir(dirname):
     """Returns whether the path is a directory or not."""
     return get_filesystem(dirname).isdir(dirname)
-
 
 def listdir(dirname):
     """Returns a list of entries contained within a directory.
@@ -563,11 +787,9 @@ def listdir(dirname):
     """
     return get_filesystem(dirname).listdir(dirname)
 
-
 def makedirs(path):
     """Creates a directory and all parent/intermediate directories."""
     return get_filesystem(path).makedirs(path)
-
 
 def walk(top, topdown=True, onerror=None):
     """Recursive directory tree generator for directories.
@@ -587,31 +809,33 @@ def walk(top, topdown=True, onerror=None):
       as strings
     """
     fs = get_filesystem(top)
-    top = fs.abspath(top)
-    listing = fs.listdir(top)
+    if hasattr(fs, "walk"):
+        yield from fs.walk(top, topdown, onerror)
+    else:
+        top = fs.abspath(top)
+        listing = fs.listdir(top)
 
-    files = []
-    subdirs = []
-    for item in listing:
-        full_path = fs.join(top, item)
-        if fs.isdir(full_path):
-            subdirs.append(item)
-        else:
-            files.append(item)
+        files = []
+        subdirs = []
+        for item in listing:
+            full_path = fs.join(top, item)
+            if fs.isdir(full_path):
+                subdirs.append(item)
+            else:
+                files.append(item)
 
-    here = (top, subdirs, files)
+        here = (top, subdirs, files)
 
-    if topdown:
-        yield here
+        if topdown:
+            yield here
 
-    for subdir in subdirs:
-        joined_subdir = fs.join(top, subdir)
-        for subitem in walk(joined_subdir, topdown, onerror=onerror):
-            yield subitem
+        for subdir in subdirs:
+            joined_subdir = fs.join(top, subdir)
+            for subitem in walk(joined_subdir, topdown, onerror=onerror):
+                yield subitem
 
-    if not topdown:
-        yield here
-
+        if not topdown:
+            yield here
 
 def stat(filename):
     """Returns file statistics for a given path."""

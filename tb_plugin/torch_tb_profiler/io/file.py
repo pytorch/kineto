@@ -4,7 +4,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from collections import namedtuple
 
-from .utils import as_bytes, as_str_any, as_text
+from .utils import as_bytes, as_text
 
 try:
     import boto3
@@ -32,7 +32,6 @@ def register_filesystem(prefix, filesystem):
 
 def get_filesystem(filename):
     """Return the registered filesystem for the given file."""
-    filename = as_str_any(filename)
     prefix = ""
     index = filename.find("://")
     if index >= 0:
@@ -75,9 +74,11 @@ class BaseFileSystem(ABC):
     def write(self, filename, file_content, binary_mode=False):
         raise NotImplementedError
 
-    @abstractmethod
+    def support_append(self):
+        return False
+
     def append(self, filename, file_content, binary_mode=False):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def glob(self, filename):
@@ -107,7 +108,7 @@ class LocalFileSystem(BaseFileSystem):
         return os.path.exists(filename)
 
     def abspath(self, path):
-        return os.path.abspath(path)
+        return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
 
     def basename(self, path):
         return os.path.basename(path)
@@ -142,6 +143,9 @@ class LocalFileSystem(BaseFileSystem):
         """
         self._write(filename, file_content, "wb" if binary_mode else "w")
 
+    def support_append(self):
+        return True
+
     def append(self, filename, file_content, binary_mode=False):
         """Append string file contents to a file.
         """
@@ -157,26 +161,22 @@ class LocalFileSystem(BaseFileSystem):
         """Returns a list of files that match the given pattern(s)."""
         if isinstance(filename, str):
             return [
-                # Convert the filenames to string from bytes.
-                as_str_any(matching_filename)
-                for matching_filename in py_glob.glob(as_bytes(filename))
+                matching_filename
+                for matching_filename in py_glob.glob(filename)
             ]
         else:
             return [
-                # Convert the filenames to string from bytes.
-                as_str_any(matching_filename)
+                matching_filename
                 for single_filename in filename
-                for matching_filename in py_glob.glob(
-                    as_bytes(single_filename)
-                )
+                for matching_filename in py_glob.glob(single_filename)
             ]
 
     def isdir(self, dirname):
-        return os.path.isdir(as_bytes(dirname))
+        return os.path.isdir(dirname)
 
     def listdir(self, dirname):
-        entries = os.listdir(as_str_any(dirname))
-        entries = [as_str_any(item) for item in entries]
+        entries = os.listdir(dirname)
+        entries = [item for item in entries]
         return entries
 
     def makedirs(self, path):
@@ -186,7 +186,7 @@ class LocalFileSystem(BaseFileSystem):
         """Returns file statistics for a given path."""
         # NOTE: Size of the file is given by .st_size as returned from
         # os.stat(), but we convert to .length
-        file_length = os.stat(as_bytes(filename)).st_size
+        file_length = os.stat(filename).st_size
         return StatData(file_length)
 
 class S3FileSystem(BaseFileSystem):
@@ -213,15 +213,18 @@ class S3FileSystem(BaseFileSystem):
         return path.split('/')[-1]
 
     def relpath(self, path, start):
-        return path
+        if not path.startswith(start):
+            return path
+        start = start.rstrip('/')
+        begin = len(start) + 1 # include the ending slash '/'
+        return path[begin:]
 
     def join(self, path, *paths):
         """Join paths with a slash."""
         return "/".join((path,) + paths)
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
-        """Reads contents of a file to a string.
-        """
+        """Reads contents of a file to a string."""
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
         args = {}
@@ -268,8 +271,7 @@ class S3FileSystem(BaseFileSystem):
             return (stream.decode("utf-8"), continuation_token)
 
     def write(self, filename, file_content, binary_mode=False):
-        """Writes string file contents to a file.
-        """
+        """Writes string file contents to a file."""
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
         if binary_mode:
@@ -355,7 +357,6 @@ class S3FileSystem(BaseFileSystem):
 
     def bucket_and_path(self, url):
         """Split an S3-prefixed URL into bucket and path."""
-        url = as_str_any(url)
         if url.startswith("s3://"):
             url = url[len("s3://") :]
         idx = url.index("/")
@@ -374,7 +375,7 @@ class File(object):
             raise ValueError("mode {} not supported by File".format(mode))
         self.filename = filename
         self.fs = get_filesystem(self.filename)
-        self.fs_supports_append = hasattr(self.fs, "append")
+        self.fs_supports_append = self.fs.support_append()
         self.buff = None
         self.buff_chunk_size = _DEFAULT_BLOCK_SIZE
         self.buff_offset = 0
@@ -525,8 +526,7 @@ class File(object):
 
 
 def exists(filename):
-    """Determines whether a path exists or not.
-    """
+    """Determines whether a path exists or not."""
     return get_filesystem(filename).exists(filename)
 
 def abspath(path):
@@ -542,14 +542,12 @@ def join(path, *paths):
     return get_filesystem(path).join(path, *paths)
 
 def glob(filename):
-    """Returns a list of files that match the given pattern(s).
-    """
+    """Returns a list of files that match the given pattern(s)."""
     return get_filesystem(filename).glob(filename)
 
 
 def isdir(dirname):
-    """Returns whether the path is a directory or not.
-    """
+    """Returns whether the path is a directory or not."""
     return get_filesystem(dirname).isdir(dirname)
 
 
@@ -563,8 +561,7 @@ def listdir(dirname):
 
 
 def makedirs(path):
-    """Creates a directory and all parent/intermediate directories.
-    """
+    """Creates a directory and all parent/intermediate directories."""
     return get_filesystem(path).makedirs(path)
 
 
@@ -585,15 +582,14 @@ def walk(top, topdown=True, onerror=None):
       (dirname, [subdirname, subdirname, ...], [filename, filename, ...])
       as strings
     """
-    top = as_str_any(top)
     fs = get_filesystem(top)
-
+    top = fs.abspath(top)
     listing = listdir(top)
 
     files = []
     subdirs = []
     for item in listing:
-        full_path = fs.join(top, as_str_any(item))
+        full_path = fs.join(top, item)
         if isdir(full_path):
             subdirs.append(item)
         else:
@@ -605,7 +601,7 @@ def walk(top, topdown=True, onerror=None):
         yield here
 
     for subdir in subdirs:
-        joined_subdir = fs.join(top, as_str_any(subdir))
+        joined_subdir = fs.join(top, subdir)
         for subitem in walk(joined_subdir, topdown, onerror=onerror):
             yield subitem
 
@@ -614,6 +610,5 @@ def walk(top, topdown=True, onerror=None):
 
 
 def stat(filename):
-    """Returns file statistics for a given path.
-    """
+    """Returns file statistics for a given path."""
     return get_filesystem(filename).stat(filename)

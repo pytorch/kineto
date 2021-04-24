@@ -8,7 +8,7 @@ import re
 import tempfile
 from collections import OrderedDict
 
-from .. import cache, io, utils
+from .. import io, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
@@ -71,7 +71,7 @@ class RunProfileData(object):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
-        data = cache.read_cache(caches, trace_path)
+        data = caches.read(trace_path)
         if trace_path.endswith('.gz'):
             data = gzip.decompress(data)
 

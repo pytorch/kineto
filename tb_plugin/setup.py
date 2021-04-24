@@ -24,7 +24,7 @@ TESTS_REQUIRED = INSTALL_REQUIRED + [
 
 EXTRAS = {
     "s3": ["boto3"],
-    #"blob": ["azure-storage-blob"]
+    "blob": ["azure-storage-blob"]
 }
 
 setuptools.setup(

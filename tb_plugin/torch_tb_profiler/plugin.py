@@ -13,7 +13,6 @@ from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
 
 from . import consts, io, utils
-from .cache import read_cache
 from .profiler import RunLoader
 from .run import Run
 
@@ -41,8 +40,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._runs_lock = threading.Lock()
 
         self._queue = multiprocessing.Queue()
-        self._manager = multiprocessing.Manager()
-        self._file_caches = self._manager.dict()
+        self._cache = io.Cache()
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
@@ -175,7 +173,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         run = self._get_run(name)
         profile = run.get_profile(worker)
-        raw_data = read_cache(self._file_caches, profile.trace_file_path)
+        raw_data = self._cache.read(profile.trace_file_path)
         if profile.trace_file_path.endswith('.gz'):
             headers = []
             headers.append(('Content-Encoding', 'gzip'))
@@ -284,7 +282,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             name = self._get_run_name(run_dir)
             logger.info("Load run %s", name)
             # Currently, assume run data is immutable, so just load once
-            loader = RunLoader(name, run_dir, self._file_caches)
+            loader = RunLoader(name, run_dir, self._cache)
             run = loader.load()
             logger.info("Run %s loaded", name)
             self._queue.put(run)

@@ -321,7 +321,7 @@ class S3FileSystem(BaseFileSystem):
         bucket, path = self.bucket_and_path(filename)
         with open(fp.name, 'wb') as downloaded_file:
             s3.download_fileobj(bucket, path, downloaded_file)
-            logger.info("s3: file %s download is as %s" % (filename, fp.name))
+            logger.info("s3: file %s is downloaded as %s" % (filename, fp.name))
             return fp.name
 
     def glob(self, filename):
@@ -498,7 +498,7 @@ class AzureBlobSystem(BaseFileSystem):
         with open(fp.name, 'wb') as downloaded_file:
             data = downloader.readall()
             downloaded_file.write(data)
-            logger.info("azure blob: file %s download is as %s, size is %d" % (filename, fp.name, len(data)))
+            logger.info("azure blob: file %s is downloaded as %s, size is %d" % (filename, fp.name, len(data)))
             return fp.name
 
     def glob(self, filename):

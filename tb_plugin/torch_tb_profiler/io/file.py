@@ -235,17 +235,13 @@ class S3FileSystem(BaseFileSystem):
         return False
 
     def abspath(self, path):
-        return path
+        return UrlPath.abspath(path)
 
     def basename(self, path):
-        return path.split('/')[-1]
+        return UrlPath.basename(path)
 
     def relpath(self, path, start):
-        if not path.startswith(start):
-            return path
-        start = start.rstrip('/')
-        begin = len(start) + 1 # include the ending slash '/'
-        return path[begin:]
+        return UrlPath.relpath(path, start)
 
     def join(self, path, *paths):
         """Join paths with a slash."""
@@ -415,35 +411,25 @@ class AzureBlobSystem(BaseFileSystem):
             raise ImportError("azure-storage-blob must be installed for Azure Blob support.")
         self.connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", None)
 
-    def exists(self, filename):
-        """Determines whether a path exists or not."""
-        account, container, path = self.container_and_path(filename)
-        client = self.create_container_client(account, container)
-        blobs = client.list_blobs(name_starts_with=path, maxresults=1)
-        for blob in blobs:
-            dir_path = os.path.dirname(path)
-            if dir_path:
-                basename = os.path.basename(path)
-                rel_path = blob.name[len(dir_path):]
-                parts = rel_path.lstrip('/').split('/')
-                return basename == parts[0]
-            else:
-                parts = blob.name.split('/')
-                return path == parts[0]
-        return False
+    def exists(self, dirname):
+        """Returns whether the path is a directory or not."""
+        basename, parts = self.split_blob_path(dirname)
+        if basename is None or parts is None:
+            return False
+        if basename == "":
+            # root container case
+            return True
+        else:
+            return basename == parts[0]
 
     def abspath(self, path):
-        return path
+        return UrlPath.abspath(path)
 
     def basename(self, path):
-        return path.split('/')[-1]
+        return UrlPath.basename(path)
 
     def relpath(self, path, start):
-        if not path.startswith(start):
-            return path
-        start = start.rstrip('/')
-        begin = len(start) + 1 # include the ending slash '/'
-        return path[begin:]
+        return UrlPath.relpath(path, start)
 
     def join(self, path, *paths):
         """Join paths with a slash."""
@@ -522,21 +508,14 @@ class AzureBlobSystem(BaseFileSystem):
 
     def isdir(self, dirname):
         """Returns whether the path is a directory or not."""
-        account, container, path = self.container_and_path(dirname)
-        client = self.create_container_client(account, container)
-        blobs = client.list_blobs(name_starts_with=path, maxresults=1)
-
-        for blob in blobs:
-            dir_path = os.path.dirname(path)
-            if dir_path:
-                basename = os.path.basename(path)
-                rel_path = blob.name[len(dir_path):]
-                parts = rel_path.lstrip('/').split('/')
-                return basename == parts[0] and len(parts) > 1
-            else:
-                parts = blob.name.split('/')
-                return path == parts[0] and len(parts) > 1
-        return False
+        basename, parts = self.split_blob_path(dirname)
+        if basename is None or parts is None:
+            return False
+        if basename == "":
+            # root container case
+            return True
+        else:
+            return basename == parts[0] and len(parts) > 1
 
     def listdir(self, dirname):
         """Returns a list of entries contained within a directory."""
@@ -545,7 +524,7 @@ class AzureBlobSystem(BaseFileSystem):
         blob_iter = client.list_blobs(name_starts_with=path)
         items = []
         for blob in blob_iter:
-            item = os.path.relpath(blob.name, path)
+            item = self.relpath(blob.name, path)
             if items not in items:
                 items.append(item)
         return items
@@ -568,12 +547,37 @@ class AzureBlobSystem(BaseFileSystem):
         blobs = client.list_blobs(name_starts_with=path)
         results = {}
         for blob in blobs:
-            dirname = os.path.dirname(blob.name)
+            dirname, basename = UrlPath.split(blob.name)
             dirname = "https://{}/{}/{}".format(account, container, dirname)
-            basename = os.path.basename(blob.name)
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value
+
+    def split_blob_path(self, blob_path):
+        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
+        return (basename(blob_path), [relative splitted pathes])
+        If blob_path doesn't exist, return (None, None)
+        For example, 
+            For blob https://trainingdaemon.blob.core.windows.net/tests/test1/test2/test.txt
+            * If the blob_path is '', return ('', [test1, test2, test.txt])
+            * If the blob_path is test1, return (test1, [test2, test.txt])
+            * If the blob_path is test1/test2, return (test2, [test2, test.txt])
+            * If the blob_path is test1/test2/test.txt, return (test.txt, [test.txt])
+        """
+        account, container, path = self.container_and_path(blob_path)
+        client = self.create_container_client(account, container)
+        blobs = client.list_blobs(name_starts_with=path, maxresults=1)
+
+        for blob in blobs:
+            dir_path, basename = UrlPath.split(path)
+            if dir_path:
+                rel_path = blob.name[len(dir_path):]
+                parts = rel_path.lstrip('/').split('/')
+            else:
+                parts = blob.name.split('/')
+            return (basename, parts)
+        return (None, None)
+
 
     def container_and_path(self, url):
         """Split an Azure blob -prefixed URL into container and blob path."""
@@ -751,6 +755,32 @@ class File(object):
             self.write_started = False
         self.closed = True
 
+class UrlPath:
+    @staticmethod
+    def split(path):
+        """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+        everything after the final slash.  Either part may be empty."""
+        sep = '/'
+        i = path.rfind(sep) + 1
+        head, tail = path[:i], path[i:]
+        head = head.rstrip(sep)
+        return (head, tail)
+
+    @staticmethod
+    def abspath(path):
+        return path
+
+    @staticmethod
+    def basename(path):
+        return path.split('/')[-1]
+
+    @staticmethod
+    def relpath(path, start):
+        if not path.startswith(start):
+            return path
+        start = start.rstrip('/')
+        begin = len(start) + 1 # include the ending slash '/'
+        return path[begin:]
 
 def exists(filename):
     """Determines whether a path exists or not."""

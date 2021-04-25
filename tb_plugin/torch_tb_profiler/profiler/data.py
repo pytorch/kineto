@@ -79,7 +79,7 @@ class RunProfileData(object):
             trace_json = json.loads(data)
         except json.decoder.JSONDecodeError as e:
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
-            # to handleJSONDecodeError, re-encode it and save to a temp file
+            # to handle JSONDecodeError, re-encode it and save to a temp file
             try:
                 trace_json = json.loads(data, strict=False)
             except json.decoder.JSONDecodeError:

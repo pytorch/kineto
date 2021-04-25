@@ -174,13 +174,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         profile = run.get_profile(worker)
         raw_data = self._cache.read(profile.trace_file_path)
-        if profile.trace_file_path.endswith('.gz'):
-            headers = []
-            headers.append(('Content-Encoding', 'gzip'))
-            headers.extend(TorchProfilerPlugin.headers)
-            return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
-        else:
-            return werkzeug.Response(raw_data, content_type="application/json", headers=TorchProfilerPlugin.headers)
+        print("original size = ", len(raw_data))
+        if not profile.trace_file_path.endswith('.gz'):
+            import gzip
+            raw_data = gzip.compress(raw_data, 1)
+        headers = []
+        headers.append(('Content-Encoding', 'gzip'))
+        headers.extend(TorchProfilerPlugin.headers)
+        return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
+
 
     @wrappers.Request.application
     def static_file_route(self, request):

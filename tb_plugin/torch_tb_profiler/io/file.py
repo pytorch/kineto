@@ -255,13 +255,14 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
         if access_key and secret_key:
-            boto3.setup_default_session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+            boto3.setup_default_session(
+                aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
     def exists(self, filename):
         """Determines whether a path exists or not."""
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
-        r = client.list_objects(Bucket=bucket, Prefix=path, Delimiter="/")
+        r = client.list_objects(Bucket=bucket, Delimiter="/", Prefix=path)
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
         return False
@@ -270,10 +271,8 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         """Reads contents of a file to a string."""
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
-        args = {}
 
-        # For the S3 case, we use continuation tokens of the form
-        # {byte_offset: number}
+        # S3 use continuation tokens of the form: {byte_offset: number}
         offset = 0
         if continue_from is not None:
             offset = continue_from.get("byte_offset", 0)
@@ -282,6 +281,7 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         if size is not None:
             endpoint = offset + size
 
+        args = {}
         if offset != 0 or endpoint != "":
             args["Range"] = "bytes={}-{}".format(offset, endpoint)
 
@@ -306,59 +306,60 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
             else:
                 raise
 
-        logger.info("s3: file %s download is done, size is %d" % (filename, len(stream)))
-        # `stream` should contain raw bytes here (i.e., there has been neither
-        # decoding nor newline translation), so the byte offset increases by
-        # the expected amount.
+        logger.info("s3: file %s download is done, size is %d" %
+                    (filename, len(stream)))
+        # `stream` should contain raw bytes here (i.e., there has been neither decoding nor newline translation),
+        # so the byte offset increases by the expected amount.
         continuation_token = {"byte_offset": (offset + len(stream))}
         if binary_mode:
             return (bytes(stream), continuation_token)
         else:
             return (stream.decode("utf-8"), continuation_token)
 
-    def write(self, filename, file_content, binary_mode=False):
+    def write(self, filename, content, binary_mode=False):
         """Writes string file contents to a file."""
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
         if binary_mode:
-            if not isinstance(file_content, bytes):
-                raise TypeError("File content type must be bytes")
+            if not isinstance(content, bytes):
+                raise TypeError("Content type must be bytes")
         else:
-            file_content = as_bytes(file_content)
-        client.put_object(Body=file_content, Bucket=bucket, Key=path)
+            content = as_bytes(content)
+        client.put_object(Body=content, Bucket=bucket, Key=path)
 
     def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
+        fp = tempfile.NamedTemporaryFile(
+            'w+t', suffix='.%s' % self.basename(filename), delete=False)
         fp.close()
 
-        logger.info("s3: starting downloading file %s as %s" % (filename, fp.name))
+        logger.info("s3: starting downloading file %s as %s" %
+                    (filename, fp.name))
         s3 = boto3.client('s3')
         bucket, path = self.bucket_and_path(filename)
         with open(fp.name, 'wb') as downloaded_file:
             s3.download_fileobj(bucket, path, downloaded_file)
-            logger.info("s3: file %s is downloaded as %s" % (filename, fp.name))
+            logger.info("s3: file %s is downloaded as %s" %
+                        (filename, fp.name))
             return fp.name
 
-    def glob(self, filename):
+    def glob(self, filepattern):
         """Returns a list of files that match the given pattern(s)."""
         # Only support prefix with * at the end and no ? in the string
-        star_i = filename.find("*")
-        quest_i = filename.find("?")
+        star_i = filepattern.find("*")
+        quest_i = filepattern.find("?")
         if quest_i >= 0:
-            raise NotImplementedError(
-                "{} not supported by compat glob".format(filename)
-            )
-        if star_i != len(filename) - 1:
+            raise NotImplementedError("{} not supported".format(filepattern))
+        if star_i != len(filepattern) - 1:
             return []
 
-        filename = filename[:-1]
+        filename = filepattern[:-1]
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
         p = client.get_paginator("list_objects")
         keys = []
         for r in p.paginate(Bucket=bucket, Prefix=path):
             for o in r.get("Contents", []):
-                key = o["Key"][len(path) :]
+                key = o["Key"][len(path):]
                 if key:
                     keys.append(filename + key)
         return keys
@@ -369,7 +370,7 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         bucket, path = self.bucket_and_path(dirname)
         if not path.endswith("/"):
             path += "/"
-        r = client.list_objects(Bucket=bucket, Prefix=path, Delimiter="/")
+        r = client.list_objects(Bucket=bucket, Delimiter="/", Prefix=path)
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
         return False
@@ -382,13 +383,13 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         if not path.endswith("/"):
             path += "/"
         keys = []
-        for r in p.paginate(Bucket=bucket, Prefix=path, Delimiter="/"):
+        for r in p.paginate(Bucket=bucket, Delimiter="/", Prefix=path):
             keys.extend(
-                o["Prefix"][len(path) : -1] for o in r.get("CommonPrefixes", [])
+                o["Prefix"][len(path): -1] for o in r.get("CommonPrefixes", [])
             )
             for o in r.get("Contents", []):
-                key = o["Key"][len(path) :]
-                if key:  # Skip the base dir, which would add an empty string
+                key = o["Key"][len(path):]
+                if key:
                     keys.append(key)
         return keys
 
@@ -400,13 +401,12 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(dirname)
         if not path.endswith("/"):
-            path += "/"  # This will make sure we don't override a file
+            path += "/"
         client.put_object(Body="", Bucket=bucket, Key=path)
 
     def stat(self, filename):
         """Returns file statistics for a given path."""
-        # NOTE: Size of the file is given by ContentLength from S3,
-        # but we convert to .length
+        # Size of the file is given by ContentLength from S3
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
 
@@ -416,10 +416,10 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
     def bucket_and_path(self, url):
         """Split an S3-prefixed URL into bucket and path."""
         if url.startswith("s3://"):
-            url = url[len("s3://") :]
+            url = url[len("s3://"):]
         idx = url.index("/")
         bucket = url[:idx]
-        path = url[(idx + 1) :]
+        path = url[(idx + 1):]
         return bucket, path
 
 class AzureBlobSystem(_RemotePath, BaseFileSystem):

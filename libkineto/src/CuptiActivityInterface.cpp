@@ -92,6 +92,35 @@ int CuptiActivityInterface::smCount() {
   return sm_count;
 }
 
+#ifdef HAS_CUPTI
+static std::vector<cudaOccDeviceProp> getOccDeviceProp() {
+  std::vector<cudaOccDeviceProp> occProps;
+  int device_count;
+  cudaError_t error_id = cudaGetDeviceCount(&device_count);
+  // Return empty vector if error.
+  if (error_id != cudaSuccess) {
+    return std::vector<cudaOccDeviceProp>();
+  }
+  for (int i = 0; i < device_count; ++i) {
+    cudaDeviceProp prop;
+    error_id = cudaGetDeviceProperties(&prop, i);
+    // Return empty vector if any device property fail to get.
+    if (error_id != cudaSuccess) {
+      return std::vector<cudaOccDeviceProp>();
+    }
+    cudaOccDeviceProp occProp;
+    occProp = prop;
+    occProps.push_back(occProp);
+  }
+  return occProps;
+}
+
+std::vector<cudaOccDeviceProp> CuptiActivityInterface::occDeviceProps() {
+  static std::vector<cudaOccDeviceProp> occProps = getOccDeviceProp();
+  return occProps;
+}
+#endif
+
 static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,

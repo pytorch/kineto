@@ -75,6 +75,7 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCou
   openTraceFile();
 #ifdef HAS_CUPTI
   smCount_ = CuptiActivityInterface::singleton().smCount();
+  occProps_ = CuptiActivityInterface::singleton().occDeviceProps();
 #endif
 }
 
@@ -312,12 +313,34 @@ void ChromeTraceLogger::handleGpuActivity(
   const CUpti_ActivityKernel4* kernel = &activity.raw();
   const TraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
-  float warps_per_sm = -1.0;
+  float blocks_per_sm = -1.0;
   if (smCount_) {
-    warps_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) *
-        (kernel->blockX * kernel->blockY * kernel->blockZ) /
-        (float) threads_per_warp / smCount_;
+    blocks_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) / (float) smCount_;
   }
+
+  // Calculate occupancy
+  float occupancy = -1.0;
+  if (kernel->deviceId < occProps_.size()) {
+    cudaOccFuncAttributes occFuncAttr;
+    occFuncAttr.maxThreadsPerBlock = INT_MAX;
+    occFuncAttr.numRegs = kernel->registersPerThread;
+    occFuncAttr.sharedSizeBytes = kernel->staticSharedMemory;
+    occFuncAttr.partitionedGCConfig = PARTITIONED_GC_OFF;
+    occFuncAttr.shmemLimitConfig = FUNC_SHMEM_LIMIT_DEFAULT;
+    occFuncAttr.maxDynamicSharedSizeBytes = 0;
+    const cudaOccDeviceState occDeviceState = {};
+    int blockSize = kernel->blockX * kernel->blockY * kernel->blockZ;
+    size_t dynamicSmemSize = kernel->dynamicSharedMemory;
+    cudaOccResult occ_result;
+    cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
+          &occ_result, &occProps_[kernel->deviceId], &occFuncAttr, &occDeviceState,
+          blockSize, dynamicSmemSize);
+    if (status == CUDA_OCC_SUCCESS) {
+      occupancy = occ_result.activeBlocksPerMultiprocessor * blockSize /
+          (float) occProps_[kernel->deviceId].maxThreadsPerMultiprocessor;
+    }
+  }
+
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -327,9 +350,10 @@ void ChromeTraceLogger::handleGpuActivity(
       "stream": {}, "correlation": {}, "external id": {},
       "registers per thread": {},
       "shared memory": {},
-      "warps per SM": {},
+      "blocks per SM": {},
       "grid": [{}, {}, {}],
-      "block": [{}, {}, {}]
+      "block": [{}, {}, {}],
+      "occupancy": {}
     }}
   }},)JSON",
       traceActivityJson(activity, "stream "),
@@ -338,9 +362,10 @@ void ChromeTraceLogger::handleGpuActivity(
       kernel->streamId, kernel->correlationId, ext.correlationId(),
       kernel->registersPerThread,
       kernel->staticSharedMemory + kernel->dynamicSharedMemory,
-      warps_per_sm,
+      blocks_per_sm,
       kernel->gridX, kernel->gridY, kernel->gridZ,
-      kernel->blockX, kernel->blockY, kernel->blockZ);
+      kernel->blockX, kernel->blockY, kernel->blockZ,
+      occupancy);
   // clang-format on
 
   handleLinkEnd(activity);

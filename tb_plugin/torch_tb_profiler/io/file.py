@@ -67,24 +67,17 @@ def parse_blob_url(url):
     return url_path.netloc, tuple(parts)
 
 class BaseFileSystem(ABC):
+    def support_append(self):
+        return False
+
+    def append(self, filename, file_content, binary_mode=False):
+        pass
+
+    def download_file(self, filename):
+        return filename
+
     @abstractmethod
     def exists(self, filename):
-        raise NotImplementedError
-
-    @abstractmethod
-    def abspath(self, path):
-        raise NotImplementedError
-
-    @abstractmethod
-    def basename(self, path):
-        raise NotImplementedError
-
-    @abstractmethod
-    def relpath(self, path, start):
-        raise NotImplementedError
-
-    @abstractmethod
-    def join(self, path, *paths):
         raise NotImplementedError
 
     @abstractmethod
@@ -94,15 +87,6 @@ class BaseFileSystem(ABC):
     @abstractmethod
     def write(self, filename, file_content, binary_mode=False):
         raise NotImplementedError
-
-    def download_file(self, filename):
-        return filename
-
-    def support_append(self):
-        return False
-
-    def append(self, filename, file_content, binary_mode=False):
-        pass
 
     @abstractmethod
     def glob(self, filename):
@@ -124,13 +108,24 @@ class BaseFileSystem(ABC):
     def stat(self, filename):
         raise NotImplementedError
 
-class LocalFileSystem(BaseFileSystem):
-    def __init__(self):
+class PathBase(ABC):
+    @abstractmethod
+    def join(self, path, *paths):
         pass
 
-    def exists(self, filename):
-        return os.path.exists(filename)
+    @abstractmethod
+    def abspath(self, path):
+        pass
 
+    @abstractmethod
+    def basename(self, path):
+        pass
+
+    @abstractmethod
+    def relpath(self, path, start):
+        pass
+
+class _LocalPath(PathBase):
     def abspath(self, path):
         return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
 
@@ -142,6 +137,40 @@ class LocalFileSystem(BaseFileSystem):
 
     def join(self, path, *paths):
         return os.path.join(path, *paths)
+
+class _RemotePath(PathBase):
+    def split(self, path):
+        """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+        everything after the final slash.  Either part may be empty."""
+        sep = '/'
+        i = path.rfind(sep) + 1
+        head, tail = path[:i], path[i:]
+        head = head.rstrip(sep)
+        return (head, tail)
+
+    def join(self, path, *paths):
+        """Join paths with a slash."""
+        return "/".join((path,) + paths)
+
+    def abspath(self, path):
+        return path
+
+    def basename(self, path):
+        return path.split('/')[-1]
+
+    def relpath(self, path, start):
+        if not path.startswith(start):
+            return path
+        start = start.rstrip('/')
+        begin = len(start) + 1 # include the ending slash '/'
+        return path[begin:]
+
+class LocalFileSystem(_LocalPath, BaseFileSystem):
+    def __init__(self):
+        pass
+
+    def exists(self, filename):
+        return os.path.exists(filename)
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         mode = "rb" if binary_mode else "r"
@@ -213,7 +242,10 @@ class LocalFileSystem(BaseFileSystem):
         file_length = os.stat(filename).st_size
         return StatData(file_length)
 
-class S3FileSystem(BaseFileSystem):
+    def walk(self, top, topdown=True, onerror=None):
+        yield from os.walk(top, topdown, onerror)
+
+class S3FileSystem(_RemotePath, BaseFileSystem):
     """Provides filesystem access to S3."""
 
     def __init__(self):
@@ -233,19 +265,6 @@ class S3FileSystem(BaseFileSystem):
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
         return False
-
-    def abspath(self, path):
-        return UrlPath.abspath(path)
-
-    def basename(self, path):
-        return UrlPath.basename(path)
-
-    def relpath(self, path, start):
-        return UrlPath.relpath(path, start)
-
-    def join(self, path, *paths):
-        """Join paths with a slash."""
-        return "/".join((path,) + paths)
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         """Reads contents of a file to a string."""
@@ -403,7 +422,7 @@ class S3FileSystem(BaseFileSystem):
         path = url[(idx + 1) :]
         return bucket, path
 
-class AzureBlobSystem(BaseFileSystem):
+class AzureBlobSystem(_RemotePath, BaseFileSystem):
     """Provides filesystem access to S3."""
 
     def __init__(self):
@@ -421,19 +440,6 @@ class AzureBlobSystem(BaseFileSystem):
             return True
         else:
             return basename == parts[0]
-
-    def abspath(self, path):
-        return UrlPath.abspath(path)
-
-    def basename(self, path):
-        return UrlPath.basename(path)
-
-    def relpath(self, path, start):
-        return UrlPath.relpath(path, start)
-
-    def join(self, path, *paths):
-        """Join paths with a slash."""
-        return "/".join((path,) + paths)
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         """Reads contents of a file to a string."""
@@ -547,7 +553,7 @@ class AzureBlobSystem(BaseFileSystem):
         blobs = client.list_blobs(name_starts_with=path)
         results = {}
         for blob in blobs:
-            dirname, basename = UrlPath.split(blob.name)
+            dirname, basename = self.split(blob.name)
             dirname = "https://{}/{}/{}".format(account, container, dirname)
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
@@ -555,9 +561,9 @@ class AzureBlobSystem(BaseFileSystem):
 
     def split_blob_path(self, blob_path):
         """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
-        return (basename(blob_path), [relative splitted pathes])
+        return (basename(blob_path), [relative splitted paths])
         If blob_path doesn't exist, return (None, None)
-        For example, 
+        For example,
             For blob https://trainingdaemon.blob.core.windows.net/tests/test1/test2/test.txt
             * If the blob_path is '', return ('', [test1, test2, test.txt])
             * If the blob_path is test1, return (test1, [test2, test.txt])
@@ -569,7 +575,7 @@ class AzureBlobSystem(BaseFileSystem):
         blobs = client.list_blobs(name_starts_with=path, maxresults=1)
 
         for blob in blobs:
-            dir_path, basename = UrlPath.split(path)
+            dir_path, basename = self.split(path)
             if dir_path:
                 rel_path = blob.name[len(dir_path):]
                 parts = rel_path.lstrip('/').split('/')
@@ -577,7 +583,6 @@ class AzureBlobSystem(BaseFileSystem):
                 parts = blob.name.split('/')
             return (basename, parts)
         return (None, None)
-
 
     def container_and_path(self, url):
         """Split an Azure blob -prefixed URL into container and blob path."""
@@ -755,32 +760,6 @@ class File(object):
             self.write_started = False
         self.closed = True
 
-class UrlPath:
-    @staticmethod
-    def split(path):
-        """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
-        everything after the final slash.  Either part may be empty."""
-        sep = '/'
-        i = path.rfind(sep) + 1
-        head, tail = path[:i], path[i:]
-        head = head.rstrip(sep)
-        return (head, tail)
-
-    @staticmethod
-    def abspath(path):
-        return path
-
-    @staticmethod
-    def basename(path):
-        return path.split('/')[-1]
-
-    @staticmethod
-    def relpath(path, start):
-        if not path.startswith(start):
-            return path
-        start = start.rstrip('/')
-        begin = len(start) + 1 # include the ending slash '/'
-        return path[begin:]
 
 def exists(filename):
     """Determines whether a path exists or not."""

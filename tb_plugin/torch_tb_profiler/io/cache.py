@@ -21,3 +21,9 @@ class Cache:
         logger.debug("reading local cache %s for file %s" % (local_file, filename))
         with File(local_file, 'rb') as f:
             return f.read()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._manager.__exit__(exc_type, exc_value, traceback)

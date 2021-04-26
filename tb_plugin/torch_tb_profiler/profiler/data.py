@@ -95,6 +95,7 @@ class RunProfileData(object):
                 fzip.write(json.dumps(trace_json))
             logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
             trace_path = fp.name
+            caches.add_tempfile(fp.name)
 
         return trace_path, trace_json
 

@@ -21,8 +21,8 @@ class TestEnd2End(unittest.TestCase):
             self._test_tensorboard(host, port)
         finally:
             pid = tb.pid
-            tb.kill()
-            print("tensorboard process {} is killed".format(pid))
+            tb.terminate()
+            print("tensorboard process {} is terminated.".format(pid))
 
     def _test_tensorboard(self, host, port):
         link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)

@@ -1,9 +1,11 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+import atexit
 import json
 import multiprocessing
 import os
+import sys
 import threading
 import time
 from collections import OrderedDict
@@ -39,13 +41,18 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._runs = OrderedDict()
         self._runs_lock = threading.Lock()
 
-        self._queue = multiprocessing.Queue()
         self._cache = io.Cache()
+        self._queue = multiprocessing.Queue()
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
         receive_runs = threading.Thread(target=self._receive_runs, name="receive_runs", daemon=True)
         receive_runs.start()
+
+        def clean():
+            logger.debug("starting cleanup...")
+            self._cache.__exit__(*sys.exc_info())
+        atexit.register(clean)
 
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
@@ -174,7 +181,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         profile = run.get_profile(worker)
         raw_data = self._cache.read(profile.trace_file_path)
-        print("original size = ", len(raw_data))
         if not profile.trace_file_path.endswith('.gz'):
             import gzip
             raw_data = gzip.compress(raw_data, 1)

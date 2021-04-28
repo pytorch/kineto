@@ -32,11 +32,12 @@ class RunLoader(object):
         for path in io.listdir(self.run.run_dir):
             if io.isdir(io.join(self.run.run_dir, path)):
                 continue
-            for pattern in [consts.TRACE_GZIP_FILE_SUFFIX, consts.TRACE_FILE_SUFFIX]:
-                if path.endswith(pattern):
-                    worker = path[:-len(pattern)]
-                    workers.append((worker, path))
-                    break
+            match = consts.WORKER_PATTERN.match(path)
+            if not match:
+                continue
+
+            worker = match.group(1)
+            workers.append((worker, path))
 
         for worker, path in sorted(workers):
             try:

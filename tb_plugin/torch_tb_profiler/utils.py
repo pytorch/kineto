@@ -13,4 +13,4 @@ def get_logger():
 
 
 def is_chrome_trace_file(path):
-    return path.endswith(consts.TRACE_GZIP_FILE_SUFFIX) or path.endswith(consts.TRACE_FILE_SUFFIX)
+    return consts.WORKER_PATTERN.match(path)

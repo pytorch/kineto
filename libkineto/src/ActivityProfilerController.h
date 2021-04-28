@@ -58,8 +58,10 @@ class ActivityProfilerController {
   }
 
   void recordThreadInfo(pid_t tid, pthread_t pthreadId) {
-    profiler_->recordThreadInfo(tid, pthreadId); 
+    profiler_->recordThreadInfo(tid, pthreadId);
   }
+
+  void addMetadata(const std::string& key, const std::string& value);
 
  private:
   void profilerLoop();

@@ -60,6 +60,8 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   bool enableForRegion(const std::string& match) override;
 
+  void addMetadata(const std::string& key, const std::string& value) override;
+
  private:
   bool cpuOnly_{true};
   ActivityProfilerController* controller_{nullptr};

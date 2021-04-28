@@ -60,6 +60,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
 #endif // HAS_CUPTI
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) override;
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -72,6 +75,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleLinkStart(const RuntimeActivity& s);
   void handleLinkEnd(const TraceActivity& e);
 #endif // HAS_CUPTI
+
+  void openTraceFile();
 
   std::string fileName_;
   std::ofstream traceOf_;

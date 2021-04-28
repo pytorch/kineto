@@ -19,7 +19,7 @@ import clsx from 'clsx'
 import { Operator } from './components/Operator'
 import { Kernel } from './components/Kernel'
 import * as api from './api'
-import { firstOrUndefined } from './utils'
+import { firstOrUndefined, sleep } from './utils'
 import { setup } from './setup'
 import './styles.css'
 import { TraceView } from './components/TraceView'
@@ -139,12 +139,12 @@ export const App = () => {
     })
   }, [])
 
-  const waitForRuns = async () => {
+  const continuouslyFetchRuns = async () => {
     while (true) {
       try {
         const runs = await api.defaultApi.runsGet()
         setRuns(runs)
-        break
+        await sleep(100)
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
       }
@@ -152,11 +152,13 @@ export const App = () => {
   }
 
   React.useEffect(() => {
-    waitForRuns()
+    continuouslyFetchRuns()
   }, [])
 
   React.useEffect(() => {
-    setRun(firstOrUndefined(runs) ?? '')
+    if (!run || !runs.includes(run)) {
+      setRun(firstOrUndefined(runs) ?? '')
+    }
   }, [runs])
 
   React.useEffect(() => {

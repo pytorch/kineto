@@ -81,6 +81,10 @@ class ActivityProfilerInterface {
   // Maps kernel thread id -> pthread id for CPU ops.
   // Client must record any new kernel thread where the activity has occured.
   virtual void recordThreadInfo(pid_t tid, pthread_t pthreadId) {}
+
+  // Record trace metadata, currently supporting only string key and values,
+  // values with the same key are overwritten
+  virtual void addMetadata(const std::string& key, const std::string& value) = 0;
 };
 
 } // namespace libkineto

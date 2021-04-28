@@ -127,6 +127,7 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
       << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
+  logger.handleTraceStart(metadata_);
   for (auto& cpu_trace : traceBuffers_->cpu) {
     string trace_name = cpu_trace->span.name;
     VLOG(0) << "Processing CPU buffer for " << trace_name << " ("
@@ -696,6 +697,7 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
       }
     }
   }
+
   // Thread info
   for (auto pair : threadInfo_) {
     const auto& thread_info = pair.second;
@@ -728,6 +730,7 @@ void ActivityProfiler::resetTraceData() {
   clientActivityTraceMap_.clear();
   disabledTraceSpans_.clear();
   traceBuffers_ = nullptr;
+  metadata_.clear();
 }
 
 

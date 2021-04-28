@@ -147,4 +147,9 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   return std::make_unique<ActivityTrace>(std::move(logger), CuptiActivityInterface::singleton());
 }
 
+void ActivityProfilerController::addMetadata(
+    const std::string& key, const std::string& value) {
+  profiler_->addMetadata(key, value);
+}
+
 } // namespace KINETO_NAMESPACE

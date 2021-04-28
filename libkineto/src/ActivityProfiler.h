@@ -111,6 +111,11 @@ class ActivityProfiler {
     }
   }
 
+  void addMetadata(const std::string& key, const std::string& value) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    metadata_[key] = value;
+  }
+
  private:
   class ExternalEventMap {
    public:
@@ -365,6 +370,9 @@ class ActivityProfiler {
 
   // Buffers where trace data is stored
   std::unique_ptr<ActivityBuffers> traceBuffers_;
+
+  // Trace metadata
+  std::unordered_map<std::string, std::string> metadata_;
 
 };
 

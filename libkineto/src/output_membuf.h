@@ -87,6 +87,11 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 #endif // HAS_CUPTI
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) override {
+    metadata_ = metadata;
+  }
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -100,6 +105,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void log(ActivityLogger& logger) {
+    logger.handleTraceStart(metadata_);
     for (auto& activity : activities_) {
       activity->log(logger);
     }
@@ -151,6 +157,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::vector<TraceSpan> traceSpanList_;
   std::vector<TraceSpan> iterationList_;
   std::unique_ptr<ActivityBuffers> buffers_;
+  std::unordered_map<std::string, std::string> metadata_;
   int64_t endTime_{0};
 };
 

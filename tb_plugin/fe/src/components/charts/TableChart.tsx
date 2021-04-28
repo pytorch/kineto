@@ -69,7 +69,14 @@ export const TableChart: React.FC<IProps> = (props) => {
 
     const chart = new google.visualization.Table(element)
 
+    /* `chart.draw()` removes the contents of `element` and rebuilds it. This can cause a jump in the scroll position
+     * if the height/width change to 0. Since we can't change the code of Google Charts, we temporarily lock the dims
+     * of the parent container. */
+    if (element.offsetHeight > 0) {
+      element.parentElement!.style.height = element.offsetHeight + "px"
+    }
     chart.draw(data, options)
+    element.parentElement!.style.height = ''
   }, [graph, resizeEventDependency])
 
   return (

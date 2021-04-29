@@ -235,8 +235,6 @@ TEST(ActivityProfiler, AsyncTrace) {
 
 
 TEST_F(ActivityProfilerTest, SyncTrace) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(

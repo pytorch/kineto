@@ -13,13 +13,11 @@
 #include <atomic>
 #ifdef HAS_CUPTI
 #include <cupti.h>
-#include <cuda_occupancy.h>
 #endif
 #include <functional>
 #include <list>
 #include <memory>
 #include <set>
-#include <vector>
 
 namespace KINETO_NAMESPACE {
 
@@ -45,9 +43,6 @@ class CuptiActivityInterface {
   static CuptiActivityInterface& singleton();
 
   virtual int smCount();
-  #ifdef HAS_CUPTI
-  virtual std::vector<cudaOccDeviceProp> occDeviceProps();
-  #endif
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 

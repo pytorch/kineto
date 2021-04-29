@@ -18,6 +18,7 @@
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
+#include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "Demangle.h"
 #include "TraceSpan.h"
@@ -75,7 +76,7 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCou
   openTraceFile();
 #ifdef HAS_CUPTI
   smCount_ = CuptiActivityInterface::singleton().smCount();
-  occProps_ = CuptiActivityInterface::singleton().occDeviceProps();
+  initOccDeviceProp();
 #endif
 }
 
@@ -319,27 +320,9 @@ void ChromeTraceLogger::handleGpuActivity(
   }
 
   // Calculate occupancy
-  float occupancy = -1.0;
-  if (kernel->deviceId < occProps_.size()) {
-    cudaOccFuncAttributes occFuncAttr;
-    occFuncAttr.maxThreadsPerBlock = INT_MAX;
-    occFuncAttr.numRegs = kernel->registersPerThread;
-    occFuncAttr.sharedSizeBytes = kernel->staticSharedMemory;
-    occFuncAttr.partitionedGCConfig = PARTITIONED_GC_OFF;
-    occFuncAttr.shmemLimitConfig = FUNC_SHMEM_LIMIT_DEFAULT;
-    occFuncAttr.maxDynamicSharedSizeBytes = 0;
-    const cudaOccDeviceState occDeviceState = {};
-    int blockSize = kernel->blockX * kernel->blockY * kernel->blockZ;
-    size_t dynamicSmemSize = kernel->dynamicSharedMemory;
-    cudaOccResult occ_result;
-    cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
-          &occ_result, &occProps_[kernel->deviceId], &occFuncAttr, &occDeviceState,
-          blockSize, dynamicSmemSize);
-    if (status == CUDA_OCC_SUCCESS) {
-      occupancy = occ_result.activeBlocksPerMultiprocessor * blockSize /
-          (float) occProps_[kernel->deviceId].maxThreadsPerMultiprocessor;
-    }
-  }
+  float occupancy = KINETO_NAMESPACE::getKernelOccupancy(kernel->deviceId, kernel->registersPerThread,
+                                       kernel->staticSharedMemory, kernel->dynamicSharedMemory,
+                                       kernel->blockX, kernel->blockY, kernel->blockZ);
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(

@@ -27,6 +27,7 @@ def get_libkineto_srcs():
         "src/libkineto_api.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",
+        "src/CudaDeviceProperties.cpp",
     ]
 
 def get_libkineto_cpu_only_srcs():

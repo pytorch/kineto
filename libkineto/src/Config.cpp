@@ -71,6 +71,7 @@ const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
 // Valid configuration file entries for activity types
+const string kActivityCpuOp = "cpu_op";
 const string kActivityMemcpy = "gpu_memcpy";
 const string kActivityMemset = "gpu_memset";
 const string kActivityConcurrentKernel = "concurrent_kernel";
@@ -199,12 +200,15 @@ static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   return t;
 }
 
-void Config::addActivityTypes(
+void Config::setActivityTypes(
   const std::vector<std::string>& selected_activities) {
+  selectedActivityTypes_.clear();
   if (selected_activities.size() > 0) {
     for (const auto& activity : selected_activities) {
       if (activity == "") {
         continue;
+      } else if (activity == kActivityCpuOp) {
+        selectedActivityTypes_.insert(ActivityType::CPU_OP);
       } else if (activity == kActivityMemcpy) {
         selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
       } else if (activity == kActivityMemset) {
@@ -235,7 +239,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     metricNames_.insert(metric_names.begin(), metric_names.end());
   } else if (name == kActivityTypesKey) {
     vector<string> activity_types = splitAndTrim(toLower(val), ',');
-    addActivityTypes(activity_types);
+    setActivityTypes(activity_types);
   } else if (name == kSamplePeriodKey) {
     samplePeriod_ = milliseconds(toInt32(val));
   } else if (name == kMultiplexPeriodKey) {
@@ -404,6 +408,9 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Enabled activities: ";
   for (const auto& activity : selectedActivityTypes_) {
     switch(activity){
+      case ActivityType::CPU_OP:
+        s << kActivityCpuOp << " ";
+        break;
       case ActivityType::GPU_MEMCPY:
         s << kActivityMemcpy << " ";
         break;

@@ -191,23 +191,20 @@ void ChromeTraceLogger::handleCpuActivity(
     return;
   }
 
-  auto metadata = op.getMetadata();
-  if (!metadata.empty()) {
-    metadata += ",";
-  }
+  const std::string metadata = op.getMetadata();
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Operator", {},
     "args": {{
-       {}
+       {}{}
        "Device": {}, "External id": {},
        "Trace name": "{}", "Trace iteration": {}
     }}
   }},)JSON",
       traceActivityJson(op, ""),
       // args
-      metadata,
+      metadata, metadata.empty() ? "" : ",",
       op.device, op.correlation,
       span.name, span.iteration);
   // clang-format on

@@ -60,8 +60,7 @@ struct ClientTraceActivity : TraceActivity {
 
   // Encode client side metadata as a key/value string.
   void addMetadata(const std::string& key, const std::string& value) {
-    auto kv = fmt::format("\"{}\": {}", key, value);
-    metadata_.push_back(std::move(kv));
+    metadata_.push_back(fmt::format("\"{}\": {}", key, value));
   }
 
   const std::string getMetadata() const {

@@ -24,7 +24,7 @@
 #include "ActivityTraceInterface.h"
 #include "ActivityType.h"
 #include "ClientInterface.h"
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #include "TraceSpan.h"
 
 extern "C" {
@@ -39,7 +39,7 @@ class Config;
 struct CpuTraceBuffer {
   TraceSpan span;
   int gpuOpCount;
-  std::vector<ClientTraceActivity> activities;
+  std::vector<GenericTraceActivity> activities;
 };
 
 class LibkinetoApi {

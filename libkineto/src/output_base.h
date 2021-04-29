@@ -18,15 +18,14 @@
 #include "CuptiActivity.h"
 #endif // HAS_CUPTI
 #include "ActivityBuffers.h"
-#include "ClientTraceActivity.h"
 #include "GenericTraceActivity.h"
 #include "ProcessInfo.h"
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
   class Config;
-  class RuntimeActivity;
   class GpuKernelActivity;
+  struct RuntimeActivity;
 }
 
 namespace libkineto {
@@ -48,7 +47,7 @@ class ActivityLogger {
   virtual void handleIterationStart(const TraceSpan& span) = 0;
 
   virtual void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
+      const libkineto::GenericTraceActivity& activity,
       const TraceSpan& span) = 0;
 
   virtual void handleGenericActivity(

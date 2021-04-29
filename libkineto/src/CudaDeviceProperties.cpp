@@ -14,27 +14,31 @@
 
 namespace KINETO_NAMESPACE {
 
-std::vector<cudaOccDeviceProp> occProps;
-
-void initOccDeviceProp() {
-  occProps.clear();
+std::vector<cudaOccDeviceProp> createOccDeviceProps() {
+  std::vector<cudaOccDeviceProp> occProps;
   int device_count;
   cudaError_t error_id = cudaGetDeviceCount(&device_count);
   // Return empty vector if error.
   if (error_id != cudaSuccess) {
-    return;
+    return occProps;
   }
   for (int i = 0; i < device_count; ++i) {
     cudaDeviceProp prop;
     error_id = cudaGetDeviceProperties(&prop, i);
     // Return empty vector if any device property fail to get.
     if (error_id != cudaSuccess) {
-      return;
+      return occProps;
     }
     cudaOccDeviceProp occProp;
     occProp = prop;
     occProps.push_back(occProp);
   }
+  return occProps;
+}
+
+const std::vector<cudaOccDeviceProp>& occDeviceProps() {
+  static std::vector<cudaOccDeviceProp> occProps = createOccDeviceProps();
+  return occProps;
 }
 
 float getKernelOccupancy(uint32_t deviceId, uint16_t registersPerThread, 
@@ -42,6 +46,7 @@ float getKernelOccupancy(uint32_t deviceId, uint16_t registersPerThread,
                          int32_t blockX, int32_t blockY, int32_t blockZ) {
   // Calculate occupancy
   float occupancy = -1.0;
+  const std::vector<cudaOccDeviceProp> &occProps = occDeviceProps();
   if (deviceId < occProps.size()) {
     cudaOccFuncAttributes occFuncAttr;
     occFuncAttr.maxThreadsPerBlock = INT_MAX;

@@ -10,6 +10,7 @@ from .. import utils
 
 logger = utils.get_logger()
 
+CommunicationOpNameSet = {'nccl:broadcast', 'nccl:all_reduce'}
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, external_id):
@@ -34,6 +35,22 @@ class BaseNode(ABC):
         return kwargs
 
 
+class CommunicationNode(BaseNode):
+    def __init__(self, name, start_time, end_time, type, external_id, input_shape, input_type):
+        super().__init__(name, start_time, end_time, type, external_id)
+        self.input_shape = input_shape
+        self.input_type = input_type
+        self.kernel_ranges = []
+        self.total_time = 0
+        self.real_time = 0
+        self.step_index = -1
+
+    @classmethod
+    def create(cls, event, input_shape, input_type):
+        kwargs = BaseNode.get_node_argument(event)
+        return cls(input_shape=input_shape, input_type=input_type, **kwargs)
+
+
 class HostNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, external_id, device_duration=0):
         super().__init__(name, start_time, end_time, type, external_id)
@@ -45,11 +62,12 @@ class OperatorNode(HostNode):
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
     def __init__(self, name, start_time, end_time, type, external_id=None, device_duration=0,
-            children=None, runtimes=None, input_shape=None, call_stack=None, self_host_duration=0, self_device_duration=0):
+            children=None, runtimes=None, input_shape=None, input_type=None, call_stack=None, self_host_duration=0, self_device_duration=0):
         super().__init__(name, start_time, end_time, type, external_id, device_duration)
         self.children = [] if children is None else children # OperatorNode and ProfilerStepNode.
         self.runtimes = [] if runtimes is None else runtimes # RuntimeNode
         self.input_shape = input_shape
+        self.input_type = input_type
         self.call_stack = call_stack
         self.self_host_duration = self_host_duration
         self.self_device_duration = self_device_duration
@@ -78,9 +96,9 @@ class OperatorNode(HostNode):
             self.end_time = next((child.end_time for child in reversed(self.children) if child.end_time is not None), None)
 
     @classmethod
-    def create(cls, event, input_shape, call_stack):
+    def create(cls, event, input_shape, input_type, call_stack):
         kwargs = BaseNode.get_node_argument(event)
-        return cls(input_shape=input_shape, call_stack=call_stack, **kwargs)
+        return cls(input_shape=input_shape, input_type=input_type, call_stack=call_stack, **kwargs)
 
 
 class ProfilerStepNode(OperatorNode):
@@ -168,6 +186,7 @@ class ModuleParser:
         self.kernel_list_groupby_name_op = {}  # For Kernel-view.
         self.runtime_node_list = []  # For Overall-view.
         self.device_node_list = []  # For Overall-view.
+        self.communication_data = dict()
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.
@@ -241,7 +260,8 @@ class ModuleParser:
 
         def parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
             corrid = event.args.get("correlation", None)
-            input_shape = event.args.get("Input dims", None)
+            input_shape = event.args.get("Input Dims", None)
+            input_type = event.args.get("Input type", None)
             call_stack = event.args.get("Call stack", "")
             tid = event.tid
             if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
@@ -276,9 +296,11 @@ class ModuleParser:
                             logger.warning("Runtime and Device-op have same correlation id but with different external id!")
             elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
-                    op_node = ProfilerStepNode.create(event, input_shape, None)
+                    op_node = ProfilerStepNode.create(event, input_shape, input_type, None)
                 else:
-                    op_node = OperatorNode.create(event, input_shape, call_stack)
+                    op_node = OperatorNode.create(event, input_shape, input_type, call_stack)
+                if event.name in CommunicationOpNameSet:
+                    self.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
                 tid2list.setdefault(tid, []).append(op_node)
 
         def parse_ops(cpp_op_list):

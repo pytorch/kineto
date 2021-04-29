@@ -70,6 +70,8 @@ class RunGenerator(object):
                                              column_tootip,
                                              {"type": "number", "name": "Memcpy"},
                                              column_tootip,
+                                             {"type": "number", "name": "Communication"},
+                                             column_tootip,
                                              {"type": "number", "name": "Memset"},
                                              column_tootip,
                                              {"type": "number", "name": "Runtime"},
@@ -93,6 +95,8 @@ class RunGenerator(object):
                             build_part_time_str(costs.costs[ProfileRole.Memcpy], "Memcpy"),
                             costs.costs[ProfileRole.Memset],
                             build_part_time_str(costs.costs[ProfileRole.Memset], "Memset"),
+                            costs.costs[ProfileRole.Communication],
+                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication"),
                             costs.costs[ProfileRole.Runtime],
                             build_part_time_str(costs.costs[ProfileRole.Runtime], "Runtime")])
             row.extend([costs.costs[ProfileRole.DataLoader],
@@ -109,6 +113,7 @@ class RunGenerator(object):
                 build_avg_cost_dict("Kernel", self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
                 build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
                 build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset]),
+                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication]),
                 build_avg_cost_dict("Runtime", self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([

@@ -16,7 +16,7 @@
 #ifdef HAS_CUPTI
 #include <cupti.h>
 #endif
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #include "output_base.h"
 
 namespace libkineto {
@@ -44,7 +44,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleIterationStart(const TraceSpan& span) override;
 
   void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
+      const libkineto::GenericTraceActivity& activity,
       const TraceSpan& span) override;
 
   void handleGenericActivity(

@@ -127,9 +127,9 @@ class ActivityProfiler {
     };
 
     // The correlation id of the GPU activity
-    const libkineto::ClientTraceActivity& getClientTraceActivity(
+    const libkineto::GenericTraceActivity& getGenericTraceActivity(
       uint32_t correlation_id, CorrelationFlowType flowType);
-    void insertEvent(const libkineto::ClientTraceActivity* op);
+    void insertEvent(const libkineto::GenericTraceActivity* op);
 
     void addCorrelation(uint64_t external_id, uint32_t cuda_id, CorrelationFlowType flowType);
 
@@ -145,7 +145,7 @@ class ActivityProfiler {
     // but this class also fully owns the objects it is pointing to so
     // it's not so bad. This is done for performance reasons and is an
     // implementation detail of this class that might change.
-    std::unordered_map<uint64_t, const libkineto::ClientTraceActivity*>
+    std::unordered_map<uint64_t, const libkineto::GenericTraceActivity*>
         events_;
 
     // Cuda correlation id -> external correlation id for default events

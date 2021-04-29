@@ -16,11 +16,9 @@
 
 namespace libkineto {
 
-struct ClientTraceActivity : TraceActivity {
-  ClientTraceActivity() = default;
-  ClientTraceActivity(ClientTraceActivity&&) = default;
-  ClientTraceActivity& operator=(ClientTraceActivity&&) = default;
-  ~ClientTraceActivity() override {}
+// @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
+// @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
+struct GenericTraceActivity : TraceActivity {
 
   int64_t deviceId() const override {
     return cachedPid();
@@ -43,28 +41,26 @@ struct ClientTraceActivity : TraceActivity {
   }
 
   ActivityType type() const override {
-    return ActivityType::CPU_OP;
+    return activityType;
   }
 
   const std::string name() const override {
-    return opType;
+    return activityName;
   }
 
   const TraceActivity* linkedActivity() const override {
     return nullptr;
   }
 
-  void log(ActivityLogger& logger) const override {
-    // Unimplemented by default
-  }
+  void log(ActivityLogger& logger) const override;
 
-  // Encode client side metadata as a key/value string.
+  //Encode client side metadata as a key/value string.
   void addMetadata(const std::string& key, const std::string& value) {
     auto kv = fmt::format("\"{}\": {}", key, value);
     metadata_.push_back(std::move(kv));
   }
 
-  const std::string getMetadata() const {
+   const std::string getMetadata() const {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
@@ -74,7 +70,8 @@ struct ClientTraceActivity : TraceActivity {
   int device{-1};
   // TODO: Add OS abstraction
   int32_t sysThreadId{0};
-  std::string opType;
+  std::string activityName;
+  ActivityType activityType;
 
  private:
   std::vector<std::string> metadata_;

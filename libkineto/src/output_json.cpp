@@ -185,7 +185,7 @@ static std::string traceActivityJson(const TraceActivity& activity, std::string 
 }
 
 void ChromeTraceLogger::handleCpuActivity(
-    const libkineto::ClientTraceActivity& op,
+    const libkineto::GenericTraceActivity& op,
     const TraceSpan& span) {
   if (!traceOf_) {
     return;

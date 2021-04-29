@@ -184,7 +184,7 @@ void ActivityProfiler::processCpuTrace(
   CpuGpuSpanPair& span_pair = recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
-    VLOG(2) << act.correlationId() << ": OP " << act.opType;
+    VLOG(2) << act.correlationId() << ": OP " << act.activityName;
     if (logTrace) {
       logger.handleCpuActivity(act, cpu_span);
     }
@@ -228,10 +228,10 @@ inline void ActivityProfiler::handleCorrelationActivity(
 }
 #endif // HAS_CUPTI
 
-const libkineto::ClientTraceActivity&
-ActivityProfiler::ExternalEventMap::getClientTraceActivity(
+const libkineto::GenericTraceActivity&
+ActivityProfiler::ExternalEventMap::getGenericTraceActivity(
   uint32_t id, CorrelationFlowType flowType) {
-  static const libkineto::ClientTraceActivity nullOp_{};
+  static const libkineto::GenericTraceActivity nullOp_{};
 
   auto& correlationMap = getCorrelationMap(flowType);
 
@@ -246,7 +246,7 @@ ActivityProfiler::ExternalEventMap::getClientTraceActivity(
 }
 
 void ActivityProfiler::ExternalEventMap::insertEvent(
-    const libkineto::ClientTraceActivity* op) {
+    const libkineto::GenericTraceActivity* op) {
   if (events_[op->correlationId()] != nullptr) {
     LOG_EVERY_N(WARNING, 100)
         << "Events processed out of order - link will be missing";
@@ -270,8 +270,8 @@ static void initUserGpuSpan(GenericTraceActivity& userTraceActivity,
   const libkineto::TraceActivity& cpuTraceActivity,
   const libkineto::TraceActivity& gpuTraceActivity) {
   userTraceActivity.device = gpuTraceActivity.deviceId();
-  userTraceActivity.resource = gpuTraceActivity.resourceId();
   userTraceActivity.startTime = gpuTraceActivity.timestamp();
+  userTraceActivity.sysThreadId = gpuTraceActivity.resourceId();
   userTraceActivity.endTime = gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
   userTraceActivity.correlation = cpuTraceActivity.correlationId();
   userTraceActivity.activityType = cpuTraceActivity.type();
@@ -331,8 +331,8 @@ inline void ActivityProfiler::handleRuntimeActivity(
   VLOG(2) << activity->correlationId
           << ": CUPTI_ACTIVITY_KIND_RUNTIME, cbid=" << activity->cbid
           << " tid=" << activity->threadId;
-  const ClientTraceActivity& ext =
-    externalEvents_.getClientTraceActivity(activity->correlationId,
+  const GenericTraceActivity& ext =
+    externalEvents_.getGenericTraceActivity(activity->correlationId,
       ExternalEventMap::CorrelationFlowType::Default);
   int32_t tid = activity->threadId;
   const auto& it = threadInfo_.find(tid);
@@ -397,8 +397,8 @@ inline void ActivityProfiler::handleGpuActivity(
   if (!loggingDisabled(ext)) {
     act.log(*logger);
     updateGpuNetSpan(act);
-    const ClientTraceActivity& extUser =
-      externalEvents_.getClientTraceActivity(act.correlationId(),
+    const GenericTraceActivity& extUser =
+      externalEvents_.getGenericTraceActivity(act.correlationId(),
         ExternalEventMap::CorrelationFlowType::User);
     // Correlated CPU activity cannot have timestamp greater than the GPU activity's
     if (!timestampsInCorrectOrder(extUser, act)) {
@@ -415,7 +415,7 @@ inline void ActivityProfiler::handleGpuActivity(
 
 template <class T>
 inline void ActivityProfiler::handleGpuActivity(const T* act, ActivityLogger* logger) {
-  const ClientTraceActivity& extDefault = externalEvents_.getClientTraceActivity(act->correlationId,
+  const GenericTraceActivity& extDefault = externalEvents_.getGenericTraceActivity(act->correlationId,
       ExternalEventMap::CorrelationFlowType::Default);
   handleGpuActivity(GpuActivity<T>(act, extDefault), logger);
 }

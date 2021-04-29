@@ -40,8 +40,9 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
   }
 
   void addOp(std::string name, int64_t startTime, int64_t endTime, int64_t correlation) {
-    ClientTraceActivity op;
-    op.opType = name;
+    GenericTraceActivity op;
+    op.activityName = name;
+    op.activityType = ActivityType::CPU_OP;
     op.startTime = startTime;
     op.endTime = endTime;
     op.device = 0;

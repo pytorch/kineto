@@ -289,11 +289,12 @@ class Config : public AbstractConfig {
 
   // Adds valid activity types from the user defined string list in the
   // configuration file
-  void addActivityTypes(const std::vector<std::string>& selected_activities);
+  void setActivityTypes(const std::vector<std::string>& selected_activities);
 
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
+    selectedActivityTypes_.insert(ActivityType::CPU_OP);
     selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
     selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
     selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);

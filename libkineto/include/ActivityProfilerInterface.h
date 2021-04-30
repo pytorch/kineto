@@ -18,7 +18,7 @@
 namespace libkineto {
 
 class ActivityProfilerController;
-class CpuTraceBuffer;
+struct CpuTraceBuffer;
 class Config;
 
 class ActivityProfilerInterface {
@@ -78,9 +78,9 @@ class ActivityProfilerInterface {
     return true;
   }
 
-  // Maps kernel thread id -> pthread id for CPU ops.
+  // Saves information for the current thread to be used in profiler output
   // Client must record any new kernel thread where the activity has occured.
-  virtual void recordThreadInfo(pid_t tid, pthread_t pthreadId) {}
+  virtual void recordThreadInfo() {}
 
   // Record trace metadata, currently supporting only string key and values,
   // values with the same key are overwritten

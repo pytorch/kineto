@@ -7,6 +7,8 @@
 
 #include "libkineto.h"
 
+#include "ThreadUtil.h"
+
 namespace libkineto {
 
 LibkinetoApi& api() {
@@ -16,12 +18,12 @@ LibkinetoApi& api() {
 
 void LibkinetoApi::initClientIfRegistered() {
   if (client_) {
-    if (clientRegisterThread_ != pthread_self()) {
+    if (clientRegisterThread_ != threadId()) {
       fprintf(
           stderr,
           "ERROR: External init callback must run in same thread as registerClient "
           "(%d != %d)\n",
-          (int)pthread_self(),
+          threadId(),
           (int)clientRegisterThread_);
     } else {
       client_->init();
@@ -37,7 +39,7 @@ void LibkinetoApi::registerClient(ClientInterface* client) {
   }
   // Assume here that the external init callback is *not* threadsafe
   // and only call it if it's the same thread that called registerClient
-  clientRegisterThread_ = pthread_self();
+  clientRegisterThread_ = threadId();
 }
 
 } // namespace libkineto

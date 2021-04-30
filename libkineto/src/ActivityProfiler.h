@@ -21,8 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ProcessInfo.h"
-#include "ThreadName.h"
+#include "ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"
 #include "output_base.h"
@@ -102,12 +101,14 @@ class ActivityProfiler {
     return *config_;
   }
 
-  inline void recordThreadInfo(pid_t tid, pthread_t pthreadId) {
+  inline void recordThreadInfo() {
+    int32_t sysTid = systemThreadId();
+    int32_t tid = threadId();
     std::lock_guard<std::mutex> guard(mutex_);
-    if (threadInfo_.find((int32_t)pthreadId) == threadInfo_.end()) {
+    if (threadInfo_.find(tid) == threadInfo_.end()) {
       threadInfo_.emplace(
-          (int32_t)pthreadId,
-          ThreadInfo((int32_t) tid, getThreadName(tid)));
+          tid,
+          ThreadInfo(sysTid, getThreadName()));
     }
   }
 

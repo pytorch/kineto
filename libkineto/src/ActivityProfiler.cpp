@@ -8,10 +8,7 @@
 #include "ActivityProfiler.h"
 
 #include <fmt/format.h>
-#include <libgen.h>
-#include <sys/types.h>
 #include <time.h>
-#include <unistd.h>
 #include <atomic>
 #include <iomanip>
 #include <string>
@@ -32,6 +29,7 @@
 #include "output_base.h"
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 using namespace libkineto;
@@ -617,7 +615,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       // FIXME: Is this a good idea for synced start?
       {
         std::lock_guard<std::mutex> guard(mutex_);
-        profileEndTime_ = time_point<high_resolution_clock>(
+        profileEndTime_ = time_point<system_clock>(
                               microseconds(captureWindowStartTime_)) +
             config_->activitiesOnDemandDuration();
       }
@@ -655,23 +653,6 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
   return new_wakeup_time;
 }
 
-// Extract process name from /proc/pid/cmdline. This does not have
-// the 16 character limit that /proc/pid/status and /prod/pid/comm has.
-const string processName(pid_t pid) {
-  FILE* cmdfile = fopen(fmt::format("/proc/{}/cmdline", pid).c_str(), "r");
-  if (cmdfile != nullptr) {
-    char* command = nullptr;
-    int scanned = fscanf(cmdfile, "%ms", &command);
-    if (scanned > 0 && command) {
-      string ret(basename(command));
-      free(command);
-      return ret;
-    }
-  }
-  VLOG(1) << "Failed to read process name for pid " << pid;
-  return "";
-}
-
 void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logger) {
   LOG(INFO) << "Recorded nets:";
   {
@@ -682,9 +663,9 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
   }
 
   // Process names
-  string process_name = processName(getpid());
+  string process_name = processName(processId());
   if (!process_name.empty()) {
-    pid_t pid = getpid();
+    int32_t pid = processId();
     logger.handleProcessInfo(
         {pid, process_name, "CPU"}, captureWindowStartTime_);
     if (!cpuOnly_) {

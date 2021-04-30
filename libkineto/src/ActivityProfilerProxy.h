@@ -40,7 +40,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   bool isActive() override;
 
-  void recordThreadInfo(pid_t tid, pthread_t pthreadId) override;
+  void recordThreadInfo() override;
 
   void scheduleTrace(const std::string& configStr) override;
   void scheduleTrace(const Config& config);

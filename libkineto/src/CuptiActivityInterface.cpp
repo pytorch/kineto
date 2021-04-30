@@ -10,7 +10,6 @@
 #include <chrono>
 
 #include "cupti_call.h"
-
 #include "Logger.h"
 
 using namespace std::chrono;

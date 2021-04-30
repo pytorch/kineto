@@ -12,7 +12,7 @@
 
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
-#include "ThreadName.h"
+#include "ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"
 

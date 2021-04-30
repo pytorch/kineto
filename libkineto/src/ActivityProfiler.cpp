@@ -590,6 +590,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
         stopTraceInternal(now);
         resetInternal();
         VLOG(0) << "Warmup -> WaitForRequest";
+        break;
       }
 #endif // HAS_CUPTI
 

@@ -7,6 +7,7 @@
 
 #include "AbstractConfig.h"
 
+#include <array>
 #include <fmt/format.h>
 #include <sstream>
 

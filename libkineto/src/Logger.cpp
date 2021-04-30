@@ -9,14 +9,18 @@
 
 #ifndef USE_GOOGLE_LOG
 
-#include <sys/syscall.h>
-#include <unistd.h>
 #include <chrono>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <time.h>
 
-namespace KINETO_NAMESPACE {
+#include <fmt/chrono.h>
+#include <fmt/format.h>
+
+#include "ThreadUtil.h"
+
+namespace libkineto {
 
 int Logger::severityLevel_{VERBOSE};
 int Logger::verboseLogLevel_{-1};
@@ -25,6 +29,9 @@ uint64_t Logger::verboseLogModules_{~0ull};
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum) {
   switch (severity) {
+    case VERBOSE:
+      buf_ << "V:";
+      break;
     case INFO:
       buf_ << "INFO:";
       break;
@@ -34,9 +41,6 @@ Logger::Logger(int severity, int line, const char* filePath, int errnum)
     case ERROR:
       buf_ << "ERROR:";
       break;
-    case VERBOSE:
-      buf_ << "V:";
-      break;
     default:
       buf_ << "???:";
       break;
@@ -45,17 +49,18 @@ Logger::Logger(int severity, int line, const char* filePath, int errnum)
   const auto tt =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const char* file = strrchr(filePath, '/');
-  std::tm tm;
-  buf_ << std::put_time(localtime_r(&tt, &tm), "%F %T") << " " << getpid()
-       << ":" << syscall(SYS_gettid) << " " << (file ? file + 1 : filePath)
-       << ":" << line << "] ";
+  buf_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(tt)) << " "
+       << processId() << ":" << systemThreadId() << " "
+       << (file ? file + 1 : filePath) << ":" << line << "] ";
 }
 
 Logger::~Logger() {
+#ifdef __linux__
   if (errnum_ != 0) {
     thread_local char buf[1024];
     buf_ << " : " << strerror_r(errnum_, buf, sizeof(buf));
   }
+#endif
   buf_ << std::ends;
   out_ << buf_.str() << std::endl;
 }
@@ -71,6 +76,6 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
   }
 }
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto
 
 #endif // USE_GOOGLE_LOG

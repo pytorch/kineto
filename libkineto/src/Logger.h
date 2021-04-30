@@ -35,12 +35,15 @@
 #include <sstream>
 #include <vector>
 
-namespace KINETO_NAMESPACE {
+// unset a predefined ERROR (windows)
+#undef ERROR
 
-constexpr int VERBOSE = 0;
-constexpr int INFO = 1;
-constexpr int WARNING = 2;
-constexpr int ERROR = 3;
+#define VERBOSE 0
+#define INFO 1
+#define WARNING 2
+#define ERROR 3
+
+namespace libkineto {
 
 class Logger {
  public:
@@ -111,7 +114,7 @@ class VoidLogger {
   void operator&(std::ostream&) {}
 };
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto
 
 #ifdef LOG // Undefine in case these are already defined (quite likely)
 #undef LOG
@@ -136,11 +139,11 @@ class VoidLogger {
 #endif
 
 #define LOG_IS_ON(severity) \
-  (severity >= KINETO_NAMESPACE::Logger::severityLevel())
+  (severity >= libkineto::Logger::severityLevel())
 
 #define LOG_IF(severity, condition) \
-  !(LOG_IS_ON(severity) && (condition)) ? (void)0 : KINETO_NAMESPACE::VoidLogger() & \
-    KINETO_NAMESPACE::Logger(severity, __LINE__, __FILE__).stream()
+  !(LOG_IS_ON(severity) && (condition)) ? (void)0 : libkineto::VoidLogger() & \
+    libkineto::Logger(severity, __LINE__, __FILE__).stream()
 
 #define LOG(severity) LOG_IF(severity, true)
 
@@ -160,11 +163,11 @@ struct __to_constant__ {
   static const uint64_t val = n;
 };
 #define FILENAME_HASH                             \
-  __to_constant__<KINETO_NAMESPACE::Logger::hash( \
-      KINETO_NAMESPACE::Logger::basename(__FILE__))>::val
+  __to_constant__<libkineto::Logger::hash( \
+      libkineto::Logger::basename(__FILE__))>::val
 #define VLOG_IS_ON(verbosity)                           \
-  (KINETO_NAMESPACE::Logger::verboseLogLevel() >= verbosity && \
-   (KINETO_NAMESPACE::Logger::verboseLogModules() & FILENAME_HASH) == FILENAME_HASH)
+  (libkineto::Logger::verboseLogLevel() >= verbosity && \
+   (libkineto::Logger::verboseLogModules() & FILENAME_HASH) == FILENAME_HASH)
 
 #define VLOG_IF(verbosity, condition) \
   LOG_IF(VERBOSE, VLOG_IS_ON(verbosity) && (condition))
@@ -177,13 +180,13 @@ struct __to_constant__ {
       << "(x" << LOG_OCCURRENCES << ") "
 
 #define PLOG(severity) \
-  KINETO_NAMESPACE::Logger(severity, __LINE__, __FILE__, errno).stream()
+  libkineto::Logger(severity, __LINE__, __FILE__, errno).stream()
 
 #define SET_LOG_SEVERITY_LEVEL(level) \
-  KINETO_NAMESPACE::Logger::setSeverityLevel(level)
+  libkineto::Logger::setSeverityLevel(level)
 
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
-  KINETO_NAMESPACE::Logger::setVerboseLogLevel(level); \
-  KINETO_NAMESPACE::Logger::setVerboseLogModules(modules)
+  libkineto::Logger::setVerboseLogLevel(level); \
+  libkineto::Logger::setVerboseLogModules(modules)
 
 #endif // USE_GOOGLE_LOG

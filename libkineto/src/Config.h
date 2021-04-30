@@ -249,17 +249,17 @@ class Config : public AbstractConfig {
     return duration - (duration % alignment);
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandStartTime() const {
     return eventProfilerOnDemandTimestamp_;
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandEndTime() const {
     return eventProfilerOnDemandTimestamp_ + eventProfilerOnDemandDuration_;
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   activityProfilerRequestReceivedTime() const {
     return activitiesOnDemandTimestamp_;
   }
@@ -315,7 +315,7 @@ class Config : public AbstractConfig {
   // On-demand duration
   std::chrono::seconds eventProfilerOnDemandDuration_;
   // Last on-demand request
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
       eventProfilerOnDemandTimestamp_;
 
   int eventProfilerMaxInstancesPerGpu_;
@@ -355,7 +355,7 @@ class Config : public AbstractConfig {
   // Only profile nets with at least this many GPU operators
   int activitiesExternalAPIGpuOpCountThreshold_;
   // Last activity profiler request
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
       activitiesOnDemandTimestamp_;
 
   // Synchronized start timestamp

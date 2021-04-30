@@ -12,6 +12,7 @@
 #include <thread>
 #include <vector>
 
+#include "ThreadUtil.h"
 #include "TraceActivity.h"
 
 namespace libkineto {
@@ -21,7 +22,7 @@ namespace libkineto {
 struct GenericTraceActivity : TraceActivity {
 
   int64_t deviceId() const override {
-    return cachedPid();
+    return processId();
   }
 
   int64_t resourceId() const override {
@@ -60,7 +61,7 @@ struct GenericTraceActivity : TraceActivity {
     metadata_.push_back(std::move(kv));
   }
 
-   const std::string getMetadata() const {
+  const std::string getMetadata() const {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
@@ -68,7 +69,6 @@ struct GenericTraceActivity : TraceActivity {
   int64_t endTime{0};
   int64_t correlation{0};
   int device{-1};
-  // TODO: Add OS abstraction
   int32_t sysThreadId{0};
   std::string activityName;
   ActivityType activityType;

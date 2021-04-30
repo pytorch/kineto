@@ -8,8 +8,8 @@
 #include "Config.h"
 
 #include <stdlib.h>
-#include <unistd.h>
 
+#include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <chrono>
 #include <fstream>
@@ -17,8 +17,10 @@
 #include <istream>
 #include <ostream>
 #include <sstream>
+#include <time.h>
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 
@@ -129,7 +131,7 @@ void Config::addConfigFactory(
 }
 
 static string defaultTraceFileName() {
-  return fmt::format(kDefaultLogFileFmt, getpid());
+  return fmt::format(kDefaultLogFileFmt, processId());
 }
 
 Config::Config()
@@ -172,28 +174,24 @@ const seconds Config::maxRequestAge() const {
   return kMaxRequestAge;
 }
 
-static char* printTime(time_point<system_clock> t, char* buf, int size) {
+std::string getTimeStr(time_point<system_clock> t) {
   std::time_t t_c = system_clock::to_time_t(t);
-  std::tm lt;
-  localtime_r(&t_c, &lt);
-  std::strftime(buf, size, "%H:%M:%S", &lt);
-  return buf;
+  return fmt::format("{:%H:%M:%S}", fmt::localtime(t_c));
 }
 
 static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   auto t = time_point<system_clock>(milliseconds(ms));
   auto now = system_clock::now();
-  char buf[32];
   if (t > now) {
     throw std::invalid_argument(fmt::format(
         "Invalid {}: {} - time is in future",
         kRequestTimestampKey,
-        printTime(t, buf, sizeof(buf))));
+        getTimeStr(t)));
   } else if ((now - t) > kMaxRequestAge) {
     throw std::invalid_argument(fmt::format(
         "Invalid {}: {} - time is more than {}s in the past",
         kRequestTimestampKey,
-        printTime(t, buf, sizeof(buf)),
+        getTimeStr(t),
         kMaxRequestAge.count()));
   }
   return t;
@@ -309,7 +307,7 @@ std::chrono::milliseconds Config::activitiesOnDemandDurationDefault() const {
 };
 
 void Config::updateActivityProfilerRequestReceivedTime() {
-  activitiesOnDemandTimestamp_ = high_resolution_clock::now();
+  activitiesOnDemandTimestamp_ = system_clock::now();
 }
 
 void Config::setClientDefaults() {
@@ -386,9 +384,8 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << std::endl;
   if (hasRequestTimestamp()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    std::tm tm;
     s << "Trace request client timestamp: "
-      << std::put_time(localtime_r(&t_c, &tm), "%F %T") << std::endl;
+      << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c)) << std::endl;
   }
   s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
     << std::endl;

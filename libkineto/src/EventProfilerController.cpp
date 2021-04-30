@@ -10,17 +10,15 @@
 #include <chrono>
 #include <thread>
 #include <vector>
-#include <sys/syscall.h>
-#include <unistd.h>
 
 #include "ConfigLoader.h"
 #include "CuptiEventInterface.h"
 #include "CuptiMetricInterface.h"
 #include "EventProfiler.h"
-#include "ThreadName.h"
 #include "output_csv.h"
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 using std::unique_ptr;
@@ -94,7 +92,7 @@ class HeartbeatMonitor {
   }
 
   void profilerHeartbeat() {
-    pid_t tid = syscall(SYS_gettid);
+    int32_t tid = systemThreadId();
     std::lock_guard<std::mutex> lock(mutex_);
     profilerAliveMap_[tid]++;
   }
@@ -124,7 +122,7 @@ class HeartbeatMonitor {
       // Don't perform check on spurious wakeup or on notify
       if (cv_status == std::cv_status::timeout) {
         for (auto& pair : profilerAliveMap_) {
-          pid_t tid = pair.first;
+          int32_t tid = pair.first;
           int& i = pair.second;
           if (i == 0) {
             LOG(ERROR) << "Thread " << tid << " appears stuck!";
@@ -155,7 +153,7 @@ class HeartbeatMonitor {
     }
   }
 
-  std::map<pid_t, int> profilerAliveMap_;
+  std::map<int32_t, int> profilerAliveMap_;
   std::unique_ptr<std::thread> monitorThread_;
   std::mutex mutex_;
   std::condition_variable condVar_;

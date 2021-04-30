@@ -3,7 +3,13 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-def get_libkineto_srcs():
+def get_libkineto_api_srcs():
+    return [
+        "src/ThreadUtil.cpp",
+        "src/libkineto_api.cpp",
+    ]
+
+def get_libkineto_srcs(with_api = True):
     return [
         "src/AbstractConfig.cpp",
         "src/ActivityProfiler.cpp",
@@ -19,17 +25,14 @@ def get_libkineto_srcs():
         "src/EventProfilerController.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",
-        "src/ProcessInfo.cpp",
-        "src/ThreadName.cpp",
         "src/WeakSymbols.cpp",
         "src/cupti_strings.cpp",
         "src/init.cpp",
-        "src/libkineto_api.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",
-    ]
+    ] + (get_libkineto_api_srcs() if with_api else [])
 
-def get_libkineto_cpu_only_srcs():
+def get_libkineto_cpu_only_srcs(with_api = True):
     return [
         "src/AbstractConfig.cpp",
         "src/ActivityProfiler.cpp",
@@ -41,22 +44,20 @@ def get_libkineto_cpu_only_srcs():
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",
-        "src/ProcessInfo.cpp",
-        "src/ThreadName.cpp",
         "src/init.cpp",
-        "src/libkineto_api.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",
-    ]
+    ] + (get_libkineto_api_srcs() if with_api else [])
 
 def get_libkineto_public_headers():
     return [
         "include/ActivityProfilerInterface.h",
         "include/ActivityType.h",
-        "include/ClientTraceActivity.h",
         "include/ClientInterface.h",
+        "include/GenericTraceActivity.h",
         "include/TraceActivity.h",
         "include/TraceSpan.h",
+        "include/ThreadUtil.h",
         "include/libkineto.h",
         "include/time_since_epoch.h",
     ]

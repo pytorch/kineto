@@ -11,7 +11,6 @@
 #include <fstream>
 #include <time.h>
 #include <map>
-#include <unistd.h>
 
 #include "Config.h"
 #ifdef HAS_CUPTI
@@ -70,7 +69,7 @@ void ChromeTraceLogger::openTraceFile() {
 }
 
 ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
-    : fileName_(traceFileName), pid_(getpid()) {
+    : fileName_(traceFileName) {
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile();
 #ifdef HAS_CUPTI
@@ -131,7 +130,7 @@ void ChromeTraceLogger::handleThreadInfo(
       "name": "thread {} ({})"
     }}
   }},)JSON",
-      time, pid_, threadInfo.tid,
+      time, processId(), threadInfo.tid,
       threadInfo.tid, threadInfo.name);
   // clang-format on
 }
@@ -248,7 +247,7 @@ void ChromeTraceLogger::handleLinkStart(const RuntimeActivity& s) {
     "ph": "s", "id": {}, "pid": {}, "tid": {}, "ts": {},
     "cat": "async", "name": "launch"
   }},)JSON",
-      s.correlationId(), pid_, s.resourceId(), s.timestamp());
+      s.correlationId(), processId(), s.resourceId(), s.timestamp());
   // clang-format on
 
 }

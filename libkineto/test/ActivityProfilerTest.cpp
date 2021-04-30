@@ -132,7 +132,7 @@ class MockCuptiActivities : public CuptiActivityInterface {
   }
 
   virtual const std::pair<int, int> processActivities(
-      std::list<CuptiActivityBuffer>& /*unused*/,
+      CuptiActivityBufferMap&, /*unused*/
       std::function<void(const CUpti_Activity*)> handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
       handler(act);
@@ -140,11 +140,13 @@ class MockCuptiActivities : public CuptiActivityInterface {
     return {activityBuffer->activities.size(), 100};
   }
 
-  virtual std::unique_ptr<std::list<CuptiActivityBuffer>>
+  virtual std::unique_ptr<CuptiActivityBufferMap>
   activityBuffers() override {
-    auto list = std::make_unique<std::list<CuptiActivityBuffer>>();
-    list->emplace_back(nullptr, 100);
-    return list;
+    auto map = std::make_unique<CuptiActivityBufferMap>();
+    auto buf = std::make_unique<CuptiActivityBuffer>(100);
+    uint8_t* addr = buf->data();
+    (*map)[addr] = std::move(buf);
+    return map;
   }
 
   void bufferRequestedOverride(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
@@ -162,12 +164,6 @@ class ActivityProfilerTest : public ::testing::Test {
     profiler_ = std::make_unique<ActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
-  }
-
-  std::list<CuptiActivityBuffer> createCuptiActivityBuffers() {
-    std::list<CuptiActivityBuffer> res;
-    res.emplace_back(nullptr, 100);
-    return res;
   }
 
   std::unique_ptr<Config> cfg_;
@@ -395,9 +391,6 @@ TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
     size_t gpuBufferSize;
     size_t maxNumRecords;
     cuptiActivities_.bufferRequestedOverride(&buf, &gpuBufferSize, &maxNumRecords);
-
-    // we don't actually do anything with the buf so just free it to prevent leaks in tests
-    free(buf);
   }
 
   profiler.performRunLoopStep(now, now);

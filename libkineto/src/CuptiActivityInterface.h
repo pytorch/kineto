@@ -17,6 +17,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <mutex>
 #include <set>
 
 namespace KINETO_NAMESPACE {
@@ -52,11 +53,10 @@ class CuptiActivityInterface {
     const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
-  void addActivityBuffer(uint8_t* buffer, size_t validSize);
-  virtual std::unique_ptr<std::list<CuptiActivityBuffer>> activityBuffers();
+  virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers();
 
   virtual const std::pair<int, int> processActivities(
-      std::list<CuptiActivityBuffer>& buffers,
+      CuptiActivityBufferMap&,
       std::function<void(const CUpti_Activity*)> handler);
 
   void setMaxBufferSize(int size);
@@ -81,8 +81,9 @@ class CuptiActivityInterface {
 #endif // HAS_CUPTI
 
   int maxGpuBufferCount_{0};
-  int allocatedGpuBufferCount{0};
-  std::unique_ptr<std::list<CuptiActivityBuffer>> gpuTraceBuffers_;
+  CuptiActivityBufferMap allocatedGpuTraceBuffers_;
+  std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
+  std::mutex mutex_;
 
  protected:
 #ifdef HAS_CUPTI

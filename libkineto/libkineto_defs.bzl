@@ -17,6 +17,7 @@ def get_libkineto_srcs(with_api = True):
         "src/ActivityProfilerProxy.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
+        "src/CudaDeviceProperties.cpp",
         "src/CuptiActivityInterface.cpp",
         "src/CuptiEventInterface.cpp",
         "src/CuptiMetricInterface.cpp",

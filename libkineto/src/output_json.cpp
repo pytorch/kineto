@@ -17,6 +17,7 @@
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
+#include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "Demangle.h"
 #include "TraceSpan.h"
@@ -307,12 +308,27 @@ void ChromeTraceLogger::handleGpuActivity(
   const CUpti_ActivityKernel4* kernel = &activity.raw();
   const TraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
+  float blocks_per_sm = -1.0;
   float warps_per_sm = -1.0;
   if (smCount_) {
-    warps_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) *
-        (kernel->blockX * kernel->blockY * kernel->blockZ) /
-        (float) threads_per_warp / smCount_;
+    blocks_per_sm =
+        (kernel->gridX * kernel->gridY * kernel->gridZ) / (float) smCount_;
+    warps_per_sm =
+        blocks_per_sm * (kernel->blockX * kernel->blockY * kernel->blockZ)
+        / threads_per_warp;
   }
+
+  // Calculate occupancy
+  float occupancy = KINETO_NAMESPACE::kernelOccupancy(
+      kernel->deviceId,
+      kernel->registersPerThread,
+      kernel->staticSharedMemory,
+      kernel->dynamicSharedMemory,
+      kernel->blockX,
+      kernel->blockY,
+      kernel->blockZ,
+      blocks_per_sm);
+
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -322,9 +338,11 @@ void ChromeTraceLogger::handleGpuActivity(
       "stream": {}, "correlation": {}, "external id": {},
       "registers per thread": {},
       "shared memory": {},
+      "blocks per SM": {},
       "warps per SM": {},
       "grid": [{}, {}, {}],
-      "block": [{}, {}, {}]
+      "block": [{}, {}, {}],
+      "theoretical occupancy %": {}
     }}
   }},)JSON",
       traceActivityJson(activity, "stream "),
@@ -333,9 +351,11 @@ void ChromeTraceLogger::handleGpuActivity(
       kernel->streamId, kernel->correlationId, ext.correlationId(),
       kernel->registersPerThread,
       kernel->staticSharedMemory + kernel->dynamicSharedMemory,
+      blocks_per_sm,
       warps_per_sm,
       kernel->gridX, kernel->gridY, kernel->gridZ,
-      kernel->blockX, kernel->blockY, kernel->blockZ);
+      kernel->blockX, kernel->blockY, kernel->blockZ,
+      (int) (0.5 + occupancy * 100.0));
   // clang-format on
 
   handleLinkEnd(activity);

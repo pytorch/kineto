@@ -40,7 +40,7 @@ and give optimization recommendations.
   or learn from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
 
   Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
-  to "on_trace_ready" on creation of "torch.profiler.schedule".
+  to "on_trace_ready" on creation of "torch.profiler.profile".
 
 * Start TensorBoard
 

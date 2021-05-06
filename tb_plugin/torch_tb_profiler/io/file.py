@@ -345,13 +345,15 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
 
         logger.info("s3: starting downloading file %s as %s" %
                     (filename, fp.name))
-        s3 = boto3.client('s3')
+        # Use boto3.resource instead of boto3.client('s3') to support minio.
+        # https://docs.min.io/docs/how-to-use-aws-sdk-for-python-with-minio-server.html
+        # To support minio, the S3_ENDPOINT need to be set like: S3_ENDPOINT=http://localhost:9000
+        s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
-        with open(fp.name, 'wb') as downloaded_file:
-            s3.download_fileobj(bucket, path, downloaded_file)
-            logger.info("s3: file %s is downloaded as %s" %
+        s3.Bucket(bucket).download_file(path, fp.name)
+        logger.info("s3: file %s is downloaded as %s" %
                         (filename, fp.name))
-            return fp.name
+        return fp.name
 
     def glob(self, filepattern):
         """Returns a list of files that match the given pattern(s)."""

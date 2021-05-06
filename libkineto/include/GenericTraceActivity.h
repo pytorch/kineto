@@ -22,7 +22,7 @@ namespace libkineto {
 struct GenericTraceActivity : TraceActivity {
 
   int64_t deviceId() const override {
-    return processId();
+    return device;
   }
 
   int64_t resourceId() const override {

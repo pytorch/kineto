@@ -191,13 +191,18 @@ void ChromeTraceLogger::handleCpuActivity(
     return;
   }
 
+  auto op_metadata = op.getMetadata();
+  std::string separator = "";
+  if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
+    separator = ",";
+  }
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Operator", {},
     "args": {{
        "Device": {}, "External id": {},
-       "Trace name": "{}", "Trace iteration": {},
+       "Trace name": "{}", "Trace iteration": {} {}
        {}
     }}
   }},)JSON",
@@ -205,7 +210,8 @@ void ChromeTraceLogger::handleCpuActivity(
       // args
       op.device, op.correlation,
       span.name, span.iteration,
-      op.getMetadata());
+      separator,
+      op_metadata);
   // clang-format on
 }
 

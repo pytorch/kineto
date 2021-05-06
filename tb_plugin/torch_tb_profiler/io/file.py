@@ -23,12 +23,23 @@ try:
 except ImportError:
     BLOB_ENABLED = False
 
+try:
+    # Imports the Google Cloud client library
+    from google.cloud import storage
+    GS_ENABLED = True
+except ImportError:
+    GS_ENABLED = False
+
+
 _DEFAULT_BLOCK_SIZE = 16 * 1024 * 1024
 
 # Registry of filesystems by prefix.
 #
-# Currently supports "s3://" URLs for S3 based on boto3 and falls
-# back to local filesystem.
+# Currently supports:
+#  * "s3://" URLs for S3 based on boto3
+#  * "https://<account>.blob.core.windows.net" for Azure Blob based on azure-storage-blob
+#  * "gs://" URLs for Google Cloud based on google-cloud-storage
+#  * Local filesystem when not match any prefix.
 _REGISTERED_FILESYSTEMS = {}
 
 
@@ -598,12 +609,135 @@ class AzureBlobSystem(_RemotePath, BaseFileSystem):
             client = ContainerClient.from_container_url("https://{}/{}".format(account, container))
         return client
 
+class GoogleBlobSystem(_RemotePath, BaseFileSystem):
+    """Provides filesystem access to S3."""
+
+    def __init__(self):
+        if not storage:
+            raise ImportError("google-cloud-storage must be installed for Google Cloud Blob support.")
+
+    def exists(self, dirname):
+        """Returns whether the path is a directory or not."""
+        bucket_name, path = self.bucket_and_path(dirname)
+        client = self.create_google_cloud_client()
+        bucket = client.bucket(bucket_name)
+        return bucket.blob(path).exists()
+
+    def read(self, filename, binary_mode=False, size=None, continue_from=None):
+        raise NotImplementedError
+
+    def write(self, filename, file_content, binary_mode=False):
+        raise NotImplementedError
+
+    def glob(self, filename):
+        raise NotImplementedError
+
+    def download_file(self, filename):
+        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
+        fp.close()
+        bucket_name, path = self.bucket_and_path(filename)
+        client = self.create_google_cloud_client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(path)
+        blob.download_to_filename(fp.name)
+        return fp.name
+
+    def isdir(self, dirname):
+        """Returns whether the path is a directory or not."""
+        basename, parts = self.split_blob_path(dirname)
+        if basename is None or parts is None:
+            return False
+        if basename == "":
+            # root container case
+            return True
+        else:
+            return basename == parts[0] and len(parts) > 1
+
+    def listdir(self, dirname):
+        """Returns a list of entries contained within a directory."""
+        bucket_name, path = self.bucket_and_path(dirname)
+        client = self.create_google_cloud_client()
+        blobs = client.list_blobs(bucket_name, prefix=path)
+        items = []
+        for blob in blobs:
+            item = self.relpath(blob.name, path)
+            if items not in items:
+                items.append(item)
+        return items
+
+    def makedirs(self, dirname):
+        """No need create directory since the upload blob will automatically create"""
+        pass
+
+    def stat(self, filename):
+        """Returns file statistics for a given path."""
+        bucket_name, path = self.bucket_and_path(filename)
+        client = self.create_google_cloud_client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.get_blob(path)
+        return StatData(blob.size)
+
+    def walk(self, top, topdown=True, onerror=None):
+        bucket_name, path = self.bucket_and_path(top)
+        client = self.create_google_cloud_client()
+        blobs = client.list_blobs(bucket_name, prefix=path)
+        results = {}
+        for blob in blobs:
+            dirname, basename = self.split(blob.name)
+            dirname = "gs://{}/{}".format(bucket_name, dirname)
+            results.setdefault(dirname, []).append(basename)
+        for key, value in results.items():
+            yield key, None, value
+
+    def split_blob_path(self, blob_path):
+        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
+        return (basename(blob_path), [relative splitted paths])
+        If blob_path doesn't exist, return (None, None)
+        For example,
+            For blob gs://tests/test1/test2/test.txt
+            * If the blob_path is '', return ('', [test1, test2, test.txt])
+            * If the blob_path is test1, return (test1, [test2, test.txt])
+            * If the blob_path is test1/test2, return (test2, [test2, test.txt])
+            * If the blob_path is test1/test2/test.txt, return (test.txt, [test.txt])
+        """
+        bucket_name, path = self.bucket_and_path(blob_path)
+        client = self.create_google_cloud_client()
+        blobs = client.list_blobs(bucket_name, prefix=path, delimiter=None, max_results=1)
+
+        for blob in blobs:
+            dir_path, basename = self.split(path)
+            if dir_path:
+                rel_path = blob.name[len(dir_path):]
+                parts = rel_path.lstrip('/').split('/')
+            else:
+                parts = blob.name.split('/')
+            return (basename, parts)
+        return (None, None)
+
+    def bucket_and_path(self, url):
+        """Split an S3-prefixed URL into bucket and path."""
+        if url.startswith("gs://"):
+            url = url[len("gs://"):]
+        idx = url.index("/")
+        bucket = url[:idx]
+        path = url[(idx + 1):]
+        return bucket, path
+
+    def create_google_cloud_client(self):
+        # TODO: support client with credential?
+        client = storage.Client.create_anonymous_client()
+        return client
+
+
 register_filesystem("", LocalFileSystem())
 if S3_ENABLED:
     register_filesystem("s3", S3FileSystem())
 
 if BLOB_ENABLED:
     register_filesystem("blob", AzureBlobSystem())
+
+if GS_ENABLED:
+    register_filesystem("gs", GoogleBlobSystem())
 
 class File(object):
     def __init__(self, filename, mode):

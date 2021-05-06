@@ -66,6 +66,7 @@ and give optimization recommendations.
 * AWS S3 and Azure blob support
   * S3: install boto3. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.
   * Azure Blob: install azure-storage-blob. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`
+  * Google Cloud: install google-cloud-storage.
 
 ### Quick Usage Instructions
 

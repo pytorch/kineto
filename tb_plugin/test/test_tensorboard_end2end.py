@@ -16,6 +16,7 @@ class TestEnd2End(unittest.TestCase):
         host='localhost'
         port=6006
 
+        # default start method: fork
         try:
             tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)])
             self._test_tensorboard(host, port)
@@ -23,6 +24,16 @@ class TestEnd2End(unittest.TestCase):
             pid = tb.pid
             tb.terminate()
             print("tensorboard process {} is terminated.".format(pid))
+
+        try:
+            env = os.environ.copy()
+            env['TORCH_PROFILER_START_METHOD'] = 'spawn'
+            tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
+            self._test_tensorboard(host, port)
+        finally:
+            pid = tb.pid
+            tb.terminate()
+            print("tensorboard process {} for spawn mode is terminated.".format(pid))
 
     def _test_tensorboard(self, host, port):
         link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)

@@ -184,10 +184,34 @@ static std::string traceActivityJson(const TraceActivity& activity, std::string 
   // clang-format on
 }
 
+void ChromeTraceLogger::handleGenericInstantEvent(
+    const libkineto::GenericTraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
+
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "i", "s": "t", "name": "{}",
+    "pid": {}, "tid": {},
+    "ts": {},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+      op.name(), op.deviceId(), op.resourceId(),
+      op.timestamp(), op.getMetadata());
+}
+
 void ChromeTraceLogger::handleCpuActivity(
     const libkineto::GenericTraceActivity& op,
     const TraceSpan& span) {
   if (!traceOf_) {
+    return;
+  }
+
+  if (op.activityType == ActivityType::CPU_INSTANT_EVENT) {
+    handleGenericInstantEvent(op);
     return;
   }
 
@@ -201,9 +225,9 @@ void ChromeTraceLogger::handleCpuActivity(
   {{
     "ph": "X", "cat": "Operator", {},
     "args": {{
-       "Device": {}, "External id": {},
-       "Trace name": "{}", "Trace iteration": {} {}
-       {}
+      "Device": {}, "External id": {},
+      "Trace name": "{}", "Trace iteration": {} {}
+      {}
     }}
   }},)JSON",
       traceActivityJson(op, ""),
@@ -216,8 +240,8 @@ void ChromeTraceLogger::handleCpuActivity(
 }
 
 void ChromeTraceLogger::handleGenericActivity(
-      const GenericTraceActivity& op) {
-    if (!traceOf_) {
+    const GenericTraceActivity& op) {
+  if (!traceOf_) {
     return;
   }
 

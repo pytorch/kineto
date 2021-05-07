@@ -497,13 +497,13 @@ void ActivityProfiler::configure(
     LOG(INFO) << "Enabling GPU tracing";
     cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
 
-    time_point<high_resolution_clock> timestamp;
+    time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
-      timestamp = high_resolution_clock::now();
+      timestamp = system_clock::now();
     }
     cupti_.enableCuptiActivities(config_->selectedActivityTypes());
     if (VLOG_IS_ON(1)) {
-      auto t2 = high_resolution_clock::now();
+      auto t2 = system_clock::now();
       addOverheadSample(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
@@ -538,13 +538,13 @@ void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
   }
 #ifdef HAS_CUPTI
   if (!cpuOnly_) {
-    time_point<high_resolution_clock> timestamp;
+    time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
-      timestamp = high_resolution_clock::now();
+      timestamp = system_clock::now();
     }
     cupti_.disableCuptiActivities(config_->selectedActivityTypes());
     if (VLOG_IS_ON(1)) {
-      auto t2 = high_resolution_clock::now();
+      auto t2 = system_clock::now();
       addOverheadSample(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }

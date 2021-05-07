@@ -153,16 +153,16 @@ CuptiActivityInterface::activityBuffers() {
 
 #ifdef HAS_CUPTI
   VLOG(1) << "Flushing GPU activity buffers";
-  time_point<high_resolution_clock> t1;
+  time_point<system_clock> t1;
   if (VLOG_IS_ON(1)) {
-    t1 = high_resolution_clock::now();
+    t1 = system_clock::now();
   }
   // Can't hold mutex_ during this call, since bufferCompleted
   // will be called by libcupti and mutex_ is acquired there.
   CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
   if (VLOG_IS_ON(1)) {
     flushOverhead =
-        duration_cast<microseconds>(high_resolution_clock::now() - t1).count();
+        duration_cast<microseconds>(system_clock::now() - t1).count();
   }
 #endif
   std::lock_guard<std::mutex> guard(mutex_);

@@ -59,7 +59,7 @@ TEST(PercentileTest, Normalize) {
 TEST(EventTest, SumSamples) {
   Event ev;
   ev.instanceCount = 4;
-  auto t = high_resolution_clock::now();
+  auto t = system_clock::now();
   ev.addSample(t, {1, 2, 3, 4});
   ev.addSample(t, {10, 20, 30, 40});
   ev.addSample(t, {100, 200, 300, 400});
@@ -94,7 +94,7 @@ TEST(EventTest, SumSamples) {
 TEST(EventTest, Percentiles) {
   Event ev;
   ev.instanceCount = 4;
-  auto t = high_resolution_clock::now();
+  auto t = system_clock::now();
   ev.addSample(t, {3, 2, 1, 4});
   ev.addSample(t, {30, 20, 10, 40});
   ev.addSample(t, {300, 200, 100, 400});

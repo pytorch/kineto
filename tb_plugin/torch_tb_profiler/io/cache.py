@@ -20,6 +20,7 @@ class Cache:
         '''
         data = self.__dict__.copy()
         # remove the _manager to bypass the following pickle error
+        # TypeError: cannot pickle 'weakref' object
         del data['_manager']
         logger.debug("Cache.__getstate__: %s " % data)
         return data

@@ -1,5 +1,5 @@
+import multiprocessing as mp
 import os
-from multiprocessing import Lock, Manager
 
 from .. import utils
 from .file import File, download_file
@@ -8,10 +8,28 @@ logger = utils.get_logger()
 
 class Cache:
     def __init__(self):
-        self._lock = Lock()
-        self._manager = Manager()
+        self._lock = mp.Lock()
+        self._manager = mp.Manager()
         self._cache_dict = self._manager.dict()
         self._tempfiles = self._manager.list()
+
+    def __getstate__(self):
+        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
+        The default mode is fork in Unix and spawn on Windows and macOS.
+        Therefore, the __getstate__ and __setstate__ are used to pickle/unpickle the state in spawn mode.
+        '''
+        data = self.__dict__.copy()
+        # remove the _manager to bypass the following pickle error
+        del data['_manager']
+        logger.debug("Cache.__getstate__: %s " % data)
+        return data
+
+    def __setstate__(self, state):
+        '''The default logging level in new process is warning. 
+        As the result, the logger.info will be ignored.
+        '''
+        logger.info("Cache.__setstate__ %s " % state)
+        self.__dict__.update(state)
 
     def read(self, filename):
         local_file = self._cache_dict.get(filename)

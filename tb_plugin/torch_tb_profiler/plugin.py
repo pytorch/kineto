@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------------
 import atexit
 import json
-import multiprocessing
+import multiprocessing as mp
 import os
 import sys
 import threading
@@ -42,7 +42,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._runs_lock = threading.Lock()
 
         self._cache = io.Cache()
-        self._queue = multiprocessing.Queue()
+        self._queue = mp.Queue()
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
@@ -53,6 +53,27 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             logger.debug("starting cleanup...")
             self._cache.__exit__(*sys.exc_info())
         atexit.register(clean)
+
+    def __getstate__(self):
+        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
+        The default mode is fork in Unix and spawn on Windows and macOS.
+        Therefore, the __getstate__ and __setstate__ are used to pickle/unpickle the state in spawn mode.
+        '''
+        data = self.__dict__.copy()
+        # remove self._runs_lock and self._is_active_initialized_event since they are threading stuff to
+        # make sure the plugin instance could be pickled to the data parsing process
+        # otherwise, 'TypeError: cannot pickle '_thread.lock' object' will be raised.
+        del data['_runs_lock']
+        del data['_is_active_initialized_event']
+        logger.debug("TorchProfilerPlugin.__getstate__: %s " % data)
+        return data
+
+    def __setstate__(self, d):
+        '''The default logging level in new process is warning. 
+        As the result, the logger.info will be ignored.
+        '''
+        logger.info("TorchProfilerPlugin.__setstate__ with %s " % d)
+        self.__dict__.update(d)
 
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
@@ -238,7 +259,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                             touched.add(run_dir)
                             logger.info("Find run directory %s", run_dir)
                             # Use multiprocessing to avoid UI stall and reduce data parsing time
-                            process = multiprocessing.Process(target=self._load_run, args=(run_dir,))
+                            process = mp.Process(target=self._load_run, args=(run_dir,))
                             process.daemon = True
                             process.start()
                 except Exception as ex:

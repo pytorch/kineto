@@ -65,6 +65,8 @@ struct GenericTraceActivity : TraceActivity {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
+  virtual ~GenericTraceActivity() {};
+
   int64_t startTime{0};
   int64_t endTime{0};
   int64_t correlation{0};

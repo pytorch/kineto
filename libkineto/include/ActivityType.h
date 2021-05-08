@@ -10,12 +10,13 @@
 namespace libkineto {
 
 enum class ActivityType {
-    CPU_OP,
+    CPU_OP = 0, // cpu side ops
     GPU_MEMCPY,
     GPU_MEMSET,
-    CONCURRENT_KERNEL,
+    CONCURRENT_KERNEL, // on-device kernels
     EXTERNAL_CORRELATION,
-    CUDA_RUNTIME
+    CUDA_RUNTIME, // host side cuda runtime events
+    CPU_INSTANT_EVENT, // host side point-like events
 };
 
 } // namespace libkineto

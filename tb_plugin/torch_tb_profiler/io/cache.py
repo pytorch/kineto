@@ -26,10 +26,11 @@ class Cache:
         return data
 
     def __setstate__(self, state):
-        '''The default logging level in new process is warning. 
-        As the result, the logger.info will be ignored.
+        '''The default logging level in new process is warning. Only warning and error log can be written to 
+        streams.
         '''
-        logger.info("Cache.__setstate__ %s " % state)
+        with utils.mp_logging() as logger:
+            logger.debug("Cache.__setstate__ %s " % state)
         self.__dict__.update(state)
 
     def read(self, filename):

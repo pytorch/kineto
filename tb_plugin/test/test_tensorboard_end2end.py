@@ -11,29 +11,28 @@ from subprocess import Popen
 class TestEnd2End(unittest.TestCase):
 
     def test_tensorboard_end2end(self):
+        print("starting fork mode testing")
+        self._test_tensorboard_with_env()
+        print("starting spawn mode testing...")
+        self._test_tensorboard_with_env({'TORCH_PROFILER_START_METHOD':'spawn'})
+
+    def _test_tensorboard_with_env(self, env=None):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
 
         host='localhost'
         port=6006
 
-        # default start method: fork
         try:
-            tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)])
-            self._test_tensorboard(host, port)
-        finally:
-            pid = tb.pid
-            tb.terminate()
-            print("tensorboard process {} is terminated.".format(pid))
-
-        try:
-            env = os.environ.copy()
-            env['TORCH_PROFILER_START_METHOD'] = 'spawn'
+            if env:
+                env_copy = os.environ.copy()
+                env_copy.update(env)
+                env = env_copy
             tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
             self._test_tensorboard(host, port)
         finally:
             pid = tb.pid
             tb.terminate()
-            print("tensorboard process {} for spawn mode is terminated.".format(pid))
+            print("tensorboard process {} is terminated.".format(pid))
 
     def _test_tensorboard(self, host, port):
         link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)

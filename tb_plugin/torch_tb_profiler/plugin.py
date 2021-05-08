@@ -73,9 +73,11 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def __setstate__(self, d):
         '''The default logging level in new process is warning. 
-        As the result, the logger.info will be ignored.
+        As the result, the logger.info will be ignored. We have to leverage the multiprocessing.get_logger() which will be used by the 
+        python multiprocessing.
         '''
-        logger.info("TorchProfilerPlugin.__setstate__ with %s " % d)
+        with utils.mp_logging() as logger:
+            logger.debug("TorchProfilerPlugin.__setstate__ with %s " % d)
         self.__dict__.update(d)
 
     def is_active(self):

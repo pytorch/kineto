@@ -78,6 +78,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void openTraceFile();
 
+  void handleGenericInstantEvent(const GenericTraceActivity& op);
+
   std::string fileName_;
   std::ofstream traceOf_;
 

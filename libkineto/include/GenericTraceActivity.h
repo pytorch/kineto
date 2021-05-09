@@ -22,7 +22,7 @@ namespace libkineto {
 struct GenericTraceActivity : TraceActivity {
 
   int64_t deviceId() const override {
-    return processId();
+    return device;
   }
 
   int64_t resourceId() const override {
@@ -64,6 +64,8 @@ struct GenericTraceActivity : TraceActivity {
   const std::string getMetadata() const {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
+
+  virtual ~GenericTraceActivity() {};
 
   int64_t startTime{0};
   int64_t endTime{0};

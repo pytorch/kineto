@@ -372,7 +372,7 @@ void ChromeTraceLogger::handleGpuActivity(
       "warps per SM": {},
       "grid": [{}, {}, {}],
       "block": [{}, {}, {}],
-      "theoretical occupancy %": {}
+      "est. achieved occupancy %": {}
     }}
   }},)JSON",
       traceActivityJson(activity, "stream "),

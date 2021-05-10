@@ -33,12 +33,44 @@ static constexpr int kSchemaVersion = 1;
 
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata) {
+  std::string cudaOccDeviceProps = "";
+#ifdef HAS_CUPTI
+  const std::vector<cudaOccDeviceProp>& occProps = KINETO_NAMESPACE::occDeviceProps();
+  if (occProps.size() > 0) {
+    std::ostringstream oss;
+    oss << "[";
+    bool first = true;
+    for (size_t i = 0; i < occProps.size(); i += 1) {
+      const cudaOccDeviceProp& occProp = occProps[i];
+      if (!first) {
+        oss << ", ";
+      }
+      oss << "{";
+      oss << "\"computeMajor\": " << occProp.computeMajor << ", ";
+      oss << "\"computeMinor\": " << occProp.computeMinor << ", ";
+      oss << "\"maxThreadsPerBlock\": " << occProp.maxThreadsPerBlock << ", ";
+      oss << "\"maxThreadsPerMultiprocessor\": " << occProp.maxThreadsPerMultiprocessor << ", ";
+      oss << "\"regsPerBlock\": " << occProp.regsPerBlock << ", ";
+      oss << "\"regsPerMultiprocessor\": " << occProp.regsPerMultiprocessor << ", ";
+      oss << "\"warpSize\": " << occProp.warpSize << ", ";
+      oss << "\"sharedMemPerBlock\": " << occProp.sharedMemPerBlock << ", ";
+      oss << "\"sharedMemPerMultiprocessor\": " << occProp.sharedMemPerMultiprocessor << ", ";
+      oss << "\"numSms\": " << occProp.numSms << ", ";
+      oss << "\"sharedMemPerBlockOptin\": " << occProp.sharedMemPerBlockOptin;
+      oss << "}";
+      first = false;
+    }
+    oss << "]";
+    cudaOccDeviceProps = oss.str();
+  }
+#endif // HAS_CUPTI
+
   traceOf_ << fmt::format(R"JSON(
 {{
   "schemaVersion": {},
   )JSON", kSchemaVersion);
 
-  if (!metadata.empty()) {
+  if (!metadata.empty() || !cudaOccDeviceProps.empty()) {
     traceOf_ << R"JSON(
   "metadata": {
   )JSON";
@@ -50,6 +82,14 @@ void ChromeTraceLogger::handleTraceStart(
       traceOf_ << fmt::format(R"(    "{}": "{}")", kv.first, kv.second);
       first = false;
     }
+    if (!cudaOccDeviceProps.empty()) {
+      if (!first) {
+          traceOf_ << ",\n";
+      }
+      traceOf_ << fmt::format(R"(    "{}": {})", "cudaOccDeviceProps", cudaOccDeviceProps);
+      first = false;
+    }
+
     traceOf_ << R"JSON(
   },
   )JSON";

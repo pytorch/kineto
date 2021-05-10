@@ -7,10 +7,7 @@
 
 #include "CudaDeviceProperties.h"
 
-#include <vector>
-
 #include <cuda_runtime.h>
-#include <cuda_occupancy.h>
 
 #include "Logger.h"
 

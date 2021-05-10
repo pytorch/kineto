@@ -7,9 +7,13 @@
 
 #pragma once
 
+#include <vector>
 #include <stdint.h>
+#include <cuda_occupancy.h>
 
 namespace KINETO_NAMESPACE {
+
+const std::vector<cudaOccDeviceProp>& occDeviceProps();
 
 float kernelOccupancy(
     uint32_t deviceId,

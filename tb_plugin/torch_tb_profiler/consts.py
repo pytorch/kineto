@@ -1,17 +1,16 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import re
 from collections import namedtuple
 
 PLUGIN_NAME = "pytorch_profiler"
 
-TRACE_FILE_SUFFIX = ".pt.trace.json"
-TRACE_GZIP_FILE_SUFFIX = ".pt.trace.json.gz"
+WORKER_PATTERN = re.compile(r"""^(.*?) # worker name
+        # TODO: uncomment the following line when we need supprort multiple steps
+        # (?:\.\d+)? # optional timestamp like 1619499959628
+        \.pt\.trace\.json # the ending suffix
+        (?:\.gz)?$""", re.X)  # optional .gz extension
 
 MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS = 10
 

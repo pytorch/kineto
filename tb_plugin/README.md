@@ -63,6 +63,30 @@ and give optimization recommendations.
 
   If the files under `--logdir` are too big or too many,
   please wait a while and refresh the browser to check latest loaded result.
+* AWS(S3://), Azure blob(https://\<account\>.blob.core.windows.net) and Google Cloud(GS://) supports
+  * S3: install boto3. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
+    For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
+    For example, the following command can be used to create minio storage after following guides: 
+    * Server: https://docs.min.io/docs/minio-quickstart-guide.html
+    * MC Client: https://docs.min.io/docs/minio-client-quickstart-guide.html
+
+  ```bash
+     ./mc alias set s3  http://10.150.148.189:9000 minioadmin  minioadmin
+     ./mc mb s3/profiler --region=us-east-1
+     ./mc cp ~/notebook/version_2 s3/profiler/ --recursive
+     export AWS_ACCESS_KEY_ID=minioadmin
+     export AWS_SECRET_ACCESS_KEY=minioadmin
+     export AWS_REGION=us-east-1
+     export S3_USE_HTTPS=0
+     export S3_VERIFY_SSL=0
+     export S3_ENDPOINT=http://localhost:9000
+     tensorboard --logdir=s3://profiler/version_2/ --bind_all
+  ```
+  * Azure Blob: install azure-storage-blob. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`
+  * Google Cloud: install google-cloud-storage.
+  ---
+  > **_NOTES:_** For AWS, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
+  ---
 
 ### Quick Usage Instructions
 

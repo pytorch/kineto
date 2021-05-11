@@ -1,11 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import setuptools
 
@@ -27,6 +22,12 @@ TESTS_REQUIRED = INSTALL_REQUIRED + [
     "torchvision >= 0.8"
 ]
 
+EXTRAS = {
+    "s3": ["boto3"],
+    "blob": ["azure-storage-blob"],
+    "gs": ["google-cloud-storage"]
+}
+
 setuptools.setup(
     name="torch_tb_profiler",
     version=get_version(),
@@ -45,7 +46,7 @@ setuptools.setup(
             "torch_profiler = torch_tb_profiler.plugin:TorchProfilerPlugin",
         ],
     },
-    python_requires=">= 2.7, != 3.0.*, != 3.1.*",
+    python_requires=">=3.6.2",
     install_requires=INSTALL_REQUIRED,
     tests_require=TESTS_REQUIRED,
     classifiers=[
@@ -63,4 +64,5 @@ setuptools.setup(
     ],
     license='BSD-3',
     keywords='pytorch tensorboard profile plugin',
+    extras_require=EXTRAS
 )

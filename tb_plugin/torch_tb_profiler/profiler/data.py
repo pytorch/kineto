@@ -1,18 +1,14 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import, division, print_function
-
 import gzip
-import io
+import io as sysio
 import json
-import os
 import re
 import tempfile
 from collections import OrderedDict
 
-from .. import consts, utils
+from .. import io, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
@@ -49,11 +45,10 @@ class RunProfileData(object):
         self.recommendations = []
 
     @staticmethod
-    def parse(run_dir, worker):
-        logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, worker)
+    def parse(run_dir, worker, path, caches):
+        logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
 
-        trace_path = os.path.join(run_dir, "{}{}".format(worker, consts.TRACE_FILE_SUFFIX))
-        trace_path, trace_json= RunProfileData._preprocess_file(trace_path)
+        trace_path, trace_json= RunProfileData._preprocess_file(caches, io.join(run_dir, path))
 
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path
@@ -72,32 +67,27 @@ class RunProfileData(object):
         return profile
 
     @staticmethod
-    def _preprocess_file(trace_path):
-        fopen = open
-        if not os.path.isfile(trace_path):
-            trace_path += ".gz"
-            fopen = gzip.open
-
-        if not os.path.isfile(trace_path):
+    def _preprocess_file(caches, trace_path):
+        if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
+        data = caches.read(trace_path)
+        if trace_path.endswith('.gz'):
+            data = gzip.decompress(data)
+
         try:
-            with fopen(trace_path, 'r') as f:
-                trace_json = json.load(f)
+            trace_json = json.loads(data)
         except json.decoder.JSONDecodeError as e:
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
-            # to handleJSONDecodeError, re-encode it and save to a temp file
-            with fopen(trace_path, 'rt') as f:
-                try:
-                    trace_json = json.load(f, strict=False)
-                except json.decoder.JSONDecodeError:
-                    # TODO: remove the workaround after the libkineto fix for N/A is merged into pytorch
-                    f.seek(0)
-                    with io.StringIO() as fout:
-                        for line in f:
-                            # only replace the N/A without surrounding double quote
-                            fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", line))
-                        trace_json = json.loads(fout.getvalue())
+            # to handle JSONDecodeError, re-encode it and save to a temp file
+            try:
+                trace_json = json.loads(data, strict=False)
+            except json.decoder.JSONDecodeError:
+                with sysio.StringIO() as fout:
+                    str_data = data.decode("utf-8")
+                    # only replace the N/A without surrounding double quote
+                    fout.write(re.sub(r'(?<!")N/A(?!")', "\"N/A\"", str_data))
+                    trace_json = json.loads(fout.getvalue())
 
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
             fp.close()
@@ -105,7 +95,8 @@ class RunProfileData(object):
                 fzip.write(json.dumps(trace_json))
             logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
             trace_path = fp.name
-        
+            caches.add_tempfile(fp.name)
+
         return trace_path, trace_json
 
     def process(self):

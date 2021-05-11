@@ -33,16 +33,19 @@ static constexpr int kSchemaVersion = 1;
 
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata) {
-  std::string cudaOccDeviceProps = "";
+  traceOf_ << fmt::format(R"JSON(
+{{
+  "schemaVersion": {},
+  )JSON", kSchemaVersion);
+
 #ifdef HAS_CUPTI
   const std::vector<cudaOccDeviceProp>& occProps = KINETO_NAMESPACE::occDeviceProps();
   if (occProps.size() > 0) {
     std::ostringstream oss;
     oss << "[";
-    bool first = true;
     for (size_t i = 0; i < occProps.size(); i += 1) {
       const cudaOccDeviceProp& occProp = occProps[i];
-      if (!first) {
+      if (i > 0) {
         oss << ", ";
       }
       oss << "{";
@@ -58,19 +61,15 @@ void ChromeTraceLogger::handleTraceStart(
       oss << "\"numSms\": " << occProp.numSms << ", ";
       oss << "\"sharedMemPerBlockOptin\": " << occProp.sharedMemPerBlockOptin;
       oss << "}";
-      first = false;
     }
     oss << "]";
-    cudaOccDeviceProps = oss.str();
+    traceOf_ << fmt::format(R"JSON(
+  "cudaOccDeviceProps": {},
+  )JSON", oss.str());
   }
 #endif // HAS_CUPTI
 
-  traceOf_ << fmt::format(R"JSON(
-{{
-  "schemaVersion": {},
-  )JSON", kSchemaVersion);
-
-  if (!metadata.empty() || !cudaOccDeviceProps.empty()) {
+  if (!metadata.empty()) {
     traceOf_ << R"JSON(
   "metadata": {
   )JSON";
@@ -82,14 +81,6 @@ void ChromeTraceLogger::handleTraceStart(
       traceOf_ << fmt::format(R"(    "{}": "{}")", kv.first, kv.second);
       first = false;
     }
-    if (!cudaOccDeviceProps.empty()) {
-      if (!first) {
-          traceOf_ << ",\n";
-      }
-      traceOf_ << fmt::format(R"(    "{}": {})", "cudaOccDeviceProps", cudaOccDeviceProps);
-      first = false;
-    }
-
     traceOf_ << R"JSON(
   },
   )JSON";

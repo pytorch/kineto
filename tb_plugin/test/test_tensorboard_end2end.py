@@ -10,15 +10,21 @@ from subprocess import Popen
 
 class TestEnd2End(unittest.TestCase):
 
+    def test_tensorboard_gs(self):
+        test_folder = 'gs://pe-tests-public/tb_samples/'
+        expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+
     def test_tensorboard_end2end(self):
-        print("starting fork mode testing")
-        self._test_tensorboard_with_env()
-        print("starting spawn mode testing...")
-        self._test_tensorboard_with_env({'TORCH_PROFILER_START_METHOD':'spawn'})
-
-    def _test_tensorboard_with_env(self, env=None):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
+        print("starting fork mode testing")
+        self._test_tensorboard_with_arguments(test_folder, expected_runs)
+        print("starting spawn mode testing...")
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+
+    def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None):
         host='localhost'
         port=6006
 
@@ -28,16 +34,15 @@ class TestEnd2End(unittest.TestCase):
                 env_copy.update(env)
                 env = env_copy
             tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
-            self._test_tensorboard(host, port)
+            self._test_tensorboard(host, port, expected_runs)
         finally:
             pid = tb.pid
             tb.terminate()
             print("tensorboard process {} is terminated.".format(pid))
 
-    def _test_tensorboard(self, host, port):
+    def _test_tensorboard(self, host, port, expected_runs):
         link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
         run_link = link_prefix + 'runs'
-        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         expected_links_format=[
             link_prefix + 'overview?run={}&worker=worker0&view=Overview',
@@ -65,10 +70,11 @@ class TestEnd2End(unittest.TestCase):
         while True:
             try:
                 response = urllib.request.urlopen(run_link)
-                if response.read()==expected_runs:
+                data = response.read()
+                if data == expected_runs:
                     break
                 if retry_times % 10 == 0:
-                    print("receive mismatched data, retrying", response.read())
+                    print("receive mismatched data, retrying", data)
                 time.sleep(2)
                 retry_times -= 1
                 if retry_times<0:

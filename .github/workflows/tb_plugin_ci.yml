@@ -37,6 +37,6 @@ jobs:
           set -e
           cd tb_plugin
           sh ./ci_scripts/install_env.sh
-          pip install .
+          pip install .[gs]
           cd test
           pytest

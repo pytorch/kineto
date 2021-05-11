@@ -7,6 +7,7 @@
 
 #include "CudaDeviceProperties.h"
 
+#include <fmt/format.h>
 #include <vector>
 
 #include <cuda_runtime.h>
@@ -41,6 +42,36 @@ std::vector<cudaOccDeviceProp> createOccDeviceProps() {
 const std::vector<cudaOccDeviceProp>& occDeviceProps() {
   static std::vector<cudaOccDeviceProp> occProps = createOccDeviceProps();
   return occProps;
+}
+
+static const std::string createComputePropertiesJson(
+    const cudaOccDeviceProp& props) {
+  return fmt::format(R"JSON(
+    {{
+      "computeMajor": {}, "computeMinor": {},
+      "maxThreadsPerBlock": {}, "maxThreadsPerMultiprocessor": {},
+      "regsPerBlock": {}, "regsPerMultiprocessor": {}, "warpSize": {},
+      "sharedMemPerBlock": {}, "sharedMemPerMultiprocessor": {},
+      "numSms": {}, "sharedMemPerBlockOptin": {}
+    }})JSON",
+      props.computeMajor, props.computeMinor,
+      props.maxThreadsPerBlock, props.maxThreadsPerMultiprocessor,
+      props.regsPerBlock, props.regsPerMultiprocessor, props.warpSize,
+      props.sharedMemPerBlock, props.sharedMemPerMultiprocessor,
+      props.numSms, props.sharedMemPerBlockOptin);
+}
+
+static const std::string createComputePropertiesJson() {
+  std::vector<std::string> computeProps;
+  for (const auto& props : occDeviceProps()) {
+    computeProps.push_back(createComputePropertiesJson(props));
+  }
+  return fmt::format("{}", fmt::join(computeProps, ",\n"));
+}
+
+const std::string& computePropertiesJson() {
+  static std::string computePropsJson = createComputePropertiesJson();
+  return computePropsJson;
 }
 
 float kernelOccupancy(

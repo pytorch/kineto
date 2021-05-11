@@ -39,21 +39,20 @@ void ChromeTraceLogger::handleTraceStart(
   )JSON", kSchemaVersion);
 
   if (!metadata.empty()) {
-    traceOf_ << R"JSON(
-  "metadata": {
-  )JSON";
-    bool first = true;
+    std::vector<std::string> vals;
     for (const auto& kv : metadata) {
-      if (!first) {
-        traceOf_ << ",\n";
-      }
-      traceOf_ << fmt::format(R"(    "{}": "{}")", kv.first, kv.second);
-      first = false;
+      vals.push_back(fmt::format(R"(    "{}": "{}")", kv.first, kv.second));
     }
-    traceOf_ << R"JSON(
-  },
-  )JSON";
+    traceOf_ << fmt::format(R"JSON(
+  "metadata": {{
+    {}
+  }},)JSON", fmt::join(vals, ",\n"));
   }
+
+  traceOf_ << fmt::format(R"JSON(
+  "computeProperties": [
+    {}
+  ],)JSON", computePropertiesJson());
 
   traceOf_ << R"JSON(
   "traceEvents": [

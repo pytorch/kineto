@@ -49,10 +49,12 @@ void ChromeTraceLogger::handleTraceStart(
   }},)JSON", fmt::join(vals, ",\n"));
   }
 
+#ifdef HAS_CUPTI
   traceOf_ << fmt::format(R"JSON(
   "computeProperties": [
     {}
   ],)JSON", computePropertiesJson());
+#endif // HAS_CUPTI
 
   traceOf_ << R"JSON(
   "traceEvents": [

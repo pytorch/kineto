@@ -17,23 +17,37 @@
 
 namespace KINETO_NAMESPACE {
 
-std::vector<cudaOccDeviceProp> createOccDeviceProps() {
-  std::vector<cudaOccDeviceProp> occProps;
+std::vector<cudaDeviceProp> createDeviceProps() {
+  std::vector<cudaDeviceProp> props;
   int device_count;
   cudaError_t error_id = cudaGetDeviceCount(&device_count);
   // Return empty vector if error.
   if (error_id != cudaSuccess) {
-    return occProps;
+    return props;
   }
-  for (int i = 0; i < device_count; ++i) {
+  for (size_t i = 0; i < device_count; ++i) {
     cudaDeviceProp prop;
     error_id = cudaGetDeviceProperties(&prop, i);
     // Return empty vector if any device property fail to get.
     if (error_id != cudaSuccess) {
-      return occProps;
+      return std::vector<cudaDeviceProp>();
     }
+    props.push_back(prop);
+  }
+  return props;
+}
+
+const std::vector<cudaDeviceProp>& deviceProps() {
+  static std::vector<cudaDeviceProp> props = createDeviceProps();
+  return props;
+}
+
+std::vector<cudaOccDeviceProp> createOccDeviceProps() {
+  std::vector<cudaOccDeviceProp> occProps;
+  const std::vector<cudaDeviceProp>& props = deviceProps();
+  for (size_t i = 0; i < props.size(); ++i) {
     cudaOccDeviceProp occProp;
-    occProp = prop;
+    occProp = props[i];
     occProps.push_back(occProp);
   }
   return occProps;
@@ -45,26 +59,29 @@ const std::vector<cudaOccDeviceProp>& occDeviceProps() {
 }
 
 static const std::string createComputePropertiesJson(
-    const cudaOccDeviceProp& props) {
+    size_t id, const cudaDeviceProp& props) {
   return fmt::format(R"JSON(
     {{
-      "computeMajor": {}, "computeMinor": {},
-      "maxThreadsPerBlock": {}, "maxThreadsPerMultiprocessor": {},
+      "id": {}, "name": "{}", "totalGlobalMem": {},
+      "major": {}, "minor": {},
+      "maxThreadsPerBlock": {}, "maxThreadsPerMultiProcessor": {},
       "regsPerBlock": {}, "regsPerMultiprocessor": {}, "warpSize": {},
       "sharedMemPerBlock": {}, "sharedMemPerMultiprocessor": {},
-      "numSms": {}, "sharedMemPerBlockOptin": {}
+      "multiProcessorCount": {}, "sharedMemPerBlockOptin": {}
     }})JSON",
-      props.computeMajor, props.computeMinor,
-      props.maxThreadsPerBlock, props.maxThreadsPerMultiprocessor,
+      id, props.name, props.totalGlobalMem,
+      props.major, props.minor,
+      props.maxThreadsPerBlock, props.maxThreadsPerMultiProcessor,
       props.regsPerBlock, props.regsPerMultiprocessor, props.warpSize,
       props.sharedMemPerBlock, props.sharedMemPerMultiprocessor,
-      props.numSms, props.sharedMemPerBlockOptin);
+      props.multiProcessorCount, props.sharedMemPerBlockOptin);
 }
 
 static const std::string createComputePropertiesJson() {
   std::vector<std::string> computeProps;
-  for (const auto& props : occDeviceProps()) {
-    computeProps.push_back(createComputePropertiesJson(props));
+  const std::vector<cudaDeviceProp>& props = deviceProps();
+  for (size_t i = 0; i < props.size(); ++i) {
+    computeProps.push_back(createComputePropertiesJson(i, props[i]));
   }
   return fmt::format("{}", fmt::join(computeProps, ",\n"));
 }

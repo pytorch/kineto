@@ -18,23 +18,45 @@ class Run(object):
     def workers(self):
         return list(self.profiles.keys())
 
-    @property
-    def views(self):
-        profile = self.get_profile()
+    def get_spans(self, worker):
+        profile = self.profiles.get(worker)
         if profile is None:
             return None
+
+        if isinstance(profile, list):
+            return [span for span, p in profile]
+        else:
+            return None
+
+    def get_views(self, worker, span):
+        profile = self.get_profile(worker, span)
+        if profile is None:
+            return None
+
         return profile.views
 
-    def add_profile(self, profile):
-        self.profiles[profile.worker] = profile
+    def add_profile(self, span, profile):
+        if span:
+            self.profiles.setdefault(profile.worker, []).append((span, profile))
+        else:
+            self.profiles[profile.worker] = profile
 
-    def get_profile(self, worker=None):
+    def get_profile(self, worker, span):
+        if not worker:
+            raise ValueError("the worker parameter is mandatory")
+
         if len(self.profiles) == 0:
             return None
-        if not worker:
-            return next(iter(self.profiles.values()))
-        return self.profiles.get(worker, None)
 
+        data = self.profiles.get(worker, None)
+        if isinstance(data, list):
+            for s, p in data:
+                if s == span:
+                    return p
+            else:
+                return None
+        else:
+            return data
 
 class RunProfile(object):
     """ Cooked profiling result for a worker. For visualization purpose only.

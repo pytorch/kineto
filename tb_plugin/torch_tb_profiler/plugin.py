@@ -95,6 +95,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/runs": self.runs_route,
             "/views": self.views_route,
             "/workers": self.workers_route,
+            "/spans": self.spans_route,
             "/overview": self.overview_route,
             "/operation": self.operation_pie_route,
             "/operation/table": self.operation_table_route,
@@ -117,7 +118,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def views_route(self, request):
         name = request.args.get("run")
         run = self._get_run(name)
-        views = sorted(run.views, key=lambda x: x.id)
+        worker = run.workers[0]
+        spans = run.get_spans(worker)
+        span = None
+        if spans:
+            span = spans[0]
+
+        views = sorted(run.get_views(worker, span), key=lambda x: x.id)
         views_list = []
         for view in views:
             views_list.append(view.display_name)
@@ -130,11 +137,17 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(run.workers)
 
     @wrappers.Request.application
-    def overview_route(self, request):
+    def spans_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
         run = self._get_run(name)
-        profile = run.get_profile(worker)
+        return self.respond_as_json(run.get_spans(worker))
+
+    @wrappers.Request.application
+    def overview_route(self, request):
+        name = request.args.get("run")
+        run = self._get_run(name)
+        profile = self._get_profile_for_request(request)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
@@ -143,11 +156,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_pie_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
         group_by = request.args.get("group_by")
-        run = self._get_run(name)
-        profile = run.get_profile(worker)
+        profile = self._get_profile_for_request(request)
         if group_by == "OperationAndInputShape":
             return self.respond_as_json(profile.operation_pie_by_name_input)
         else:
@@ -155,11 +165,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_table_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
+        profile = self._get_profile_for_request(request)
         group_by = request.args.get("group_by")
-        run = self._get_run(name)
-        profile = run.get_profile(worker)
         if group_by == "OperationAndInputShape":
             return self.respond_as_json(profile.operation_table_by_name_input)
         else:
@@ -167,13 +174,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_stack_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
         group_by = request.args.get("group_by")
         op_name = request.args.get("op_name")
         input_shape = request.args.get("input_shape")
-        run = self._get_run(name)
-        profile = run.get_profile(worker)
+        profile = self._get_profile_for_request(request)
         if group_by == "OperationAndInputShape":
             return self.respond_as_json(profile.operation_stack_by_name_input[str(op_name)+"###"+str(input_shape)])
         else:
@@ -181,19 +185,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def kernel_pie_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        run = self._get_run(name)
-        profile = run.get_profile(worker)
+        profile = self._get_profile_for_request(request)
         return self.respond_as_json(profile.kernel_pie)
 
     @wrappers.Request.application
     def kernel_table_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
+        profile = self._get_profile_for_request(request)
         group_by = request.args.get("group_by")
-        run = self._get_run(name)
-        profile = run.get_profile(worker)
         if group_by == "Kernel":
             return self.respond_as_json(profile.kernel_table)
         else:
@@ -201,11 +199,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def trace_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-
-        run = self._get_run(name)
-        profile = run.get_profile(worker)
+        profile = self._get_profile_for_request(request)
         raw_data = self._cache.read(profile.trace_file_path)
         if not profile.trace_file_path.endswith('.gz'):
             import gzip
@@ -334,3 +328,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         else:
             name = io.relpath(run_dir, logdir)
         return name
+
+    def _get_profile_for_request(self, request):
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        run = self._get_run(name)
+        if span is None:
+            # TODO: before we fully support the mutliple span, we get the first item in the list and pick the profile in tuple(1)
+            spans = run.get_spans(worker)
+            if spans:
+                span = spans[0]
+
+        return run.get_profile(worker, span)

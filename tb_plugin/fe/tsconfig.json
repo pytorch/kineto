@@ -4,6 +4,7 @@
         "strictPropertyInitialization": false,
         "module": "esnext",
         "moduleResolution": "node",
+        "forceConsistentCasingInFileNames": true,
         "rootDir": "src",
         "outDir": "dist",
         "jsx": "react"

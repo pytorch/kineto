@@ -11,7 +11,7 @@ import { transformTableData, TransformedCallStackDataInner } from './transform'
 import { attachId, getCommonOperationColumns } from './common'
 import { OperationGroupBy } from '../../constants/groupBy'
 import { makeExpandIcon } from './ExpandIcon'
-import { CallFrameList } from './CallframeList'
+import { CallFrameList } from './CallFrameList'
 
 export interface IProps {
   data: OperationTableDataInner

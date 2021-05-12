@@ -1,9 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import, division, print_function
-
 from collections import OrderedDict
 from .. import consts, utils
 from ..run import RunProfile, AllRunProfile

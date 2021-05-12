@@ -4,10 +4,12 @@
 
 from __future__ import absolute_import, division, print_function
 
-from .. import consts
-from ..run import RunProfile
+from collections import OrderedDict
+from .. import consts, utils
+from ..run import RunProfile, AllRunProfile
 from .overall_parser import ProfileRole
 
+logger = utils.get_logger()
 
 class RunGenerator(object):
     def __init__(self, worker, profile_data):
@@ -18,6 +20,7 @@ class RunGenerator(object):
         profile_run = RunProfile(self.worker)
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
+        profile_run.has_communication = self.profile_data.has_communication
         profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
@@ -291,3 +294,50 @@ class RunGenerator(object):
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
+
+class AllRunGenerator(object):
+    def __init__(self, all_profile_data):
+        self.all_profile_data = all_profile_data
+
+    def generate_all_run_profile(self):
+        all_profile_run = AllRunProfile()
+        all_profile_run.views.append(consts.DISTRIBUTED_VIEW)
+        all_profile_run.steps_to_overlap = self._generate_overlap_graph()
+        all_profile_run.steps_to_wait = self._generate_wait_graph()
+        all_profile_run.comm_ops = self._generate_ops_table()
+        return all_profile_run
+
+    def _generate_overlap_graph(self):
+        steps_to_overlap = OrderedDict()
+        for worker,data in self.all_profile_data.items():
+            for i in range(len(data.steps_names)):
+                step_name = data.steps_names[i]
+                if step_name not in steps_to_overlap:
+                    steps_to_overlap[step_name] = OrderedDict()
+                costs = data.comm_overlap_costs[i]
+                steps_to_overlap[step_name][worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
+        return steps_to_overlap
+
+    def _generate_wait_graph(self):
+        steps_to_wait = OrderedDict()
+        for worker,data in self.all_profile_data.items():
+            for step,comm_stats in data.step_comm_stats.items():
+                if step not in steps_to_wait:
+                    steps_to_wait[step] = OrderedDict()
+                steps_to_wait[step][worker] = [comm_stats[0]-comm_stats[1], comm_stats[1]]
+        return steps_to_wait
+
+    def _generate_ops_table(self):
+        workers_to_comm_ops = OrderedDict()
+        for worker,data in self.all_profile_data.items():
+            table = {}
+            table["columns"] = [{"type": "string", "name": "Name"}]
+            col_names = ["Calls", "Total Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
+            for column in col_names:
+                table["columns"].append({"type": "number", "name": column})
+            table["rows"] = []
+            for op,stats in data.total_comm_stats.items():
+                row = [op, stats[0], stats[1], round(stats[1]/stats[0]), stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
+                table["rows"].append(row)
+            workers_to_comm_ops[worker] = table
+        return workers_to_comm_ops

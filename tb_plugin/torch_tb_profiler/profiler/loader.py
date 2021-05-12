@@ -8,7 +8,7 @@ import os
 import sys
 
 from .data import RunData, RunProfileData
-from .run_generator import RunGenerator
+from .run_generator import RunGenerator, AllRunGenerator
 from .. import consts, utils
 from ..run import Run
 
@@ -81,8 +81,15 @@ class RunLoader(object):
 
     def _generate_run(self):
         run = Run(self.run.name, self.run.run_dir)
+        has_communication = False
         for worker, data in self.run.profiles.items():
             generator = RunGenerator(worker, data)
             profile = generator.generate_run_profile()
             run.add_profile(profile)
+            if profile.has_communication:
+                has_communication = True
+        if has_communication:
+            generator = AllRunGenerator(self.run.profiles)
+            all_profile = generator.generate_all_run_profile()
+            run.add_profile(all_profile)
         return run

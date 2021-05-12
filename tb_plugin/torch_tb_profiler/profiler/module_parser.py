@@ -10,7 +10,7 @@ from .. import utils
 
 logger = utils.get_logger()
 
-CommunicationOpNameSet = {'nccl:broadcast', 'nccl:all_reduce'}
+CommunicationOpNameSet = ['nccl:broadcast', 'nccl:all_reduce']
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, external_id):
@@ -43,7 +43,7 @@ class CommunicationNode(BaseNode):
         self.kernel_ranges = []
         self.total_time = 0
         self.real_time = 0
-        self.step_index = -1
+        self.step_name = None
 
     @classmethod
     def create(cls, event, input_shape, input_type):
@@ -184,9 +184,6 @@ class ModuleParser:
         self.op_list_groupby_name = []  # For Operator-view.
         self.op_list_groupby_name_input = []  # For Operator-view.
         self.kernel_list_groupby_name_op = {}  # For Kernel-view.
-        self.runtime_node_list = []  # For Overall-view.
-        self.device_node_list = []  # For Overall-view.
-        self.communication_data = dict()
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.
@@ -256,7 +253,7 @@ class ModuleParser:
         traverse_node(root_node)
         return root_node
 
-    def parse_events(self, events):
+    def parse_events(self, events, context_data):
 
         def parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
             corrid = event.args.get("correlation", None)
@@ -277,7 +274,7 @@ class ModuleParser:
                         logger.warning("Runtime and Device-op have same correlation id but with different external id!")
                 else:
                     corrid_to_device.setdefault(corrid, []).append(device_node)
-                self.device_node_list.append(device_node)
+                context_data.device_node_list.append(device_node)
             elif event.type == EventTypes.RUNTIME:
                 device_nodes = corrid_to_device.pop(corrid, None)
                 rt_node = RuntimeNode.create(event, device_nodes)
@@ -287,7 +284,7 @@ class ModuleParser:
                 # So get them and attach them to root node.
                 if rt_node.external_id == 0:
                     tid2zero_rt_list.setdefault(tid, []).append(rt_node)
-                self.runtime_node_list.append(rt_node)
+                context_data.runtime_node_list.append(rt_node)
 
                 # check the external_id
                 if device_nodes:
@@ -300,7 +297,7 @@ class ModuleParser:
                 else:
                     op_node = OperatorNode.create(event, input_shape, input_type, call_stack)
                 if event.name in CommunicationOpNameSet:
-                    self.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
+                    context_data.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
                 tid2list.setdefault(tid, []).append(op_node)
 
         def parse_ops(cpp_op_list):

@@ -285,15 +285,15 @@ class OverallParser(object):
                     self.steps_names = self.steps_names[:keep_steps]
 
 
-    def parse_events(self, events, runtime_node_list, device_node_list, communication_data):
+    def parse_events(self, events, context_data):
         logger.debug("Overall, parse events")
         for event in events:
-            self.parse_event(event, communication_data)
+            self.parse_event(event, context_data.communication_data)
 
         if len(self.steps) == 0:
             self.steps.append((self.min_ts, self.max_ts))
             self.steps_names.append("0")
-        self.update_steps_consider_device_side(runtime_node_list, device_node_list)
+        self.update_steps_consider_device_side(context_data.runtime_node_list, context_data.device_node_list)
 
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
@@ -316,13 +316,12 @@ class OverallParser(object):
             comm_costs.communication = get_ranges_sum(intersection_ranges_lists([self.steps[i]], self.role_ranges[ProfileRole.Communication]))
             comm_costs.other = self.steps_costs[i].costs[ProfileRole.Total] + comm_costs.overlap - comm_costs.computation - comm_costs.communication
             self.communication_overlap.append(comm_costs)
-            logger.info("communication overlap for step {}: real_computation {} real_communication {} overlap {} other {} ".format(i, comm_costs.computation-comm_costs.overlap, comm_costs.communication-comm_costs.overlap, comm_costs.overlap, comm_costs.other))
 
         for i in range(len(self.avg_costs.costs)):
             self.avg_costs.costs[i] /= valid_steps
 
         # Sort the communication node according the start time, this is for correlating communication node between workers
-        for comm_node in communication_data.values():
+        for comm_node in context_data.communication_data.values():
             comm_node.kernel_ranges.sort(key=lambda x: (x[0], -x[1]))
             self.comm_node_list.append(comm_node)
         self.comm_node_list.sort(key=lambda x: (x.start_time, -x.end_time))
@@ -332,7 +331,7 @@ class OverallParser(object):
         for comm_node in self.comm_node_list:
             while index < valid_steps:
                 if comm_node.start_time >= self.steps[index][0] and comm_node.end_time <= self.steps[index][1]:
-                    comm_node.step_index = index
+                    comm_node.step_name = self.steps_names[index]
                     break
                 elif comm_node.start_time >= self.steps[index][1]:
                     index += 1

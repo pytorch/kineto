@@ -28,6 +28,13 @@ class RunData(object):
         self.profiles = OrderedDict()
 
 
+class ProfileContextData(object):
+    def __init__(self):
+        self.communication_data = dict()
+        self.device_node_list = []
+        self.runtime_node_list = []
+
+
 class RunProfileData(object):
     def __init__(self, worker):
         self.worker = worker
@@ -36,6 +43,7 @@ class RunProfileData(object):
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
+        self.has_communication = False
         self.has_memcpy_or_memset = False
         self.steps_costs = None
         self.steps_names = None
@@ -48,6 +56,7 @@ class RunProfileData(object):
         self.kernel_stat = None
         self.recommendations = []
         self.comm_node_list = []
+        self.comm_overlap_costs = None
         self.total_comm_stats = dict()
         self.step_comm_stats = dict()
 
@@ -112,9 +121,11 @@ class RunProfileData(object):
         return trace_path, trace_json
 
     def process(self):
+        context_data = ProfileContextData()
+
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
-        module_parser.parse_events(self.events)
+        module_parser.parse_events(self.events, context_data)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
@@ -123,14 +134,16 @@ class RunProfileData(object):
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
-        overall_parser.parse_events(self.events, module_parser.runtime_node_list, module_parser.device_node_list, module_parser.communication_data)
+        overall_parser.parse_events(self.events, context_data)
         self.has_runtime = bool(overall_parser.role_ranges[ProfileRole.Runtime])
         self.has_kernel = bool(overall_parser.role_ranges[ProfileRole.Kernel])
+        self.has_communication = bool(overall_parser.role_ranges[ProfileRole.Communication])
         self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy] or overall_parser.role_ranges[ProfileRole.Memset])
         self.steps_costs = overall_parser.steps_costs
         self.steps_names = overall_parser.steps_names
         self.avg_costs = overall_parser.avg_costs
         self.comm_node_list = overall_parser.comm_node_list
+        self.comm_overlap_costs = overall_parser.communication_overlap
 
         if self.has_kernel:
             logger.debug("KernelParser")
@@ -140,10 +153,10 @@ class RunProfileData(object):
 
     def communication_parse(self):
         for comm_node in self.comm_node_list:
-            if comm_node.step_index not in self.step_comm_stats:
-                self.step_comm_stats[comm_node.step_index] = [0, 0]
-            self.step_comm_stats[comm_node.step_index][0] += comm_node.total_time
-            self.step_comm_stats[comm_node.step_index][1] += comm_node.real_time
+            if comm_node.step_name not in self.step_comm_stats:
+                self.step_comm_stats[comm_node.step_name] = [0, 0]
+            self.step_comm_stats[comm_node.step_name][0] += comm_node.total_time
+            self.step_comm_stats[comm_node.step_name][1] += comm_node.real_time
             if comm_node.name not in self.total_comm_stats:
                 self.total_comm_stats[comm_node.name] = [0, 0, 0, 0]
             self.total_comm_stats[comm_node.name][0] += 1
@@ -153,8 +166,10 @@ class RunProfileData(object):
                     bytes_one_value = 8
                 elif comm_node.input_type[i] == 'float':
                     bytes_one_value = 4
+                elif comm_node.input_type[i] == 'int':
+                    bytes_one_value = 4
                 else:
-                    logger.warning("Found an unknown tensor type:", comm_node.input_type[i])
+                    logger.warning("Found an unknown tensor type: {}".format(comm_node.input_type[i]))
                     bytes_one_value = 0
                 total_size = 1
                 for size in comm_node.input_shape[i]:
@@ -162,11 +177,6 @@ class RunProfileData(object):
                 self.total_comm_stats[comm_node.name][1] += total_size * bytes_one_value
             self.total_comm_stats[comm_node.name][2] += comm_node.total_time
             self.total_comm_stats[comm_node.name][3] += comm_node.real_time
-
-        for k,v in self.total_comm_stats.items():
-            print(k,v)
-        for k,v in self.step_comm_stats.items():
-            print(k,v)
 
     def analyze(self):
         self.recommendations = []

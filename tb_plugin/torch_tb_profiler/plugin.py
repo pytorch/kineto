@@ -73,7 +73,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/operation/stack": self.operation_stack_route,
             "/kernel": self.kernel_pie_route,
             "/kernel/table": self.kernel_table_route,
-            "/trace": self.trace_route
+            "/trace": self.trace_route,
+            "/distributed/overlap": self.comm_overlap_route,
+            "/distributed/waittime": self.comm_wait_route,
+            "/distributed/commops": self.comm_ops_rout
         }
 
     def frontend_metadata(self):
@@ -157,8 +160,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def views_route(self, request):
         name = request.args.get("run")
+        worker = request.args.get("worker")
         run = self.get_run(name)
-        views = sorted(run.views, key=lambda x: x.id)
+        profile = run.get_profile(worker)
+        views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
         for view in views:
             views_list.append(view.display_name)
@@ -257,6 +262,27 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
         else:
             return werkzeug.Response(raw_data, content_type="application/json", headers=TorchProfilerPlugin.headers)
+
+    @wrappers.Request.application
+    def comm_overlap_route(self, request):
+        name = request.args.get("run")
+        run = self.get_run(name)
+        profile = run.get_profile("All")
+        return self.respond_as_json(profile.steps_to_overlap)
+
+    @wrappers.Request.application
+    def comm_wait_route(self, request):
+        name = request.args.get("run")
+        run = self.get_run(name)
+        profile = run.get_profile("All")
+        return self.respond_as_json(profile.steps_to_wait)
+
+    @wrappers.Request.application
+    def comm_ops_rout(self, request):
+        name = request.args.get("run")
+        run = self.get_run(name)
+        profile = run.get_profile("All")
+        return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application
     def static_file_route(self, request):

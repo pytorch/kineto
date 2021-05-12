@@ -10,7 +10,7 @@ export function firstOrUndefined<T>(v: T[] | undefined | null): T | undefined {
 }
 
 export function sleep(delay: number) {
-  return new Promise(resolve => setTimeout(resolve, delay))
+  return new Promise((resolve) => setTimeout(resolve, delay))
 }
 
 export function isValueAndFormat(v: any): v is ValueAndFormat {

@@ -73,7 +73,7 @@ export const TableChart: React.FC<IProps> = (props) => {
      * if the height/width change to 0. Since we can't change the code of Google Charts, we temporarily lock the dims
      * of the parent container. */
     if (element.offsetHeight > 0) {
-      element.parentElement!.style.height = element.offsetHeight + "px"
+      element.parentElement!.style.height = element.offsetHeight + 'px'
     }
     chart.draw(data, options)
     element.parentElement!.style.height = ''

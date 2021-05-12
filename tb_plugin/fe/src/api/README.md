@@ -1,7 +1,13 @@
 # How to generate the api.ts
 
 ## Prerequisites
-1. wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.25/swagger-codegen-cli-3.0.25.jar -O swagger-codegen-cli.jar
-2. install java
-3. cd fe/src/api
-3. java -jar swagger-codegen-cli.jar generate -i openapi.yaml -l typescript-fetch -o ./generated/
+1. install java
+2. run command
+```bash
+  wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.25/swagger-codegen-cli-3.0.25.jar -O swagger-codegen-cli.jar
+  cd fe
+  java -jar swagger-codegen-cli.jar generate -i ./src/api/openapi.yaml -l typescript-fetch -o ./src/api/generated/
+  yarn prettier --end-of-line lf
+  python ./scripts/add_header.py ./src/api/generated/
+```
+

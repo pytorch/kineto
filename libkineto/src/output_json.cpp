@@ -35,29 +35,21 @@ void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata) {
   traceOf_ << fmt::format(R"JSON(
 {{
-  "schemaVersion": {},
-  )JSON", kSchemaVersion);
+  "schemaVersion": {},)JSON", kSchemaVersion);
 
-  if (!metadata.empty()) {
-    traceOf_ << R"JSON(
-  "metadata": {
-  )JSON";
-    bool first = true;
-    for (const auto& kv : metadata) {
-      if (!first) {
-        traceOf_ << ",\n";
-      }
-      traceOf_ << fmt::format(R"(    "{}": "{}")", kv.first, kv.second);
-      first = false;
-    }
-    traceOf_ << R"JSON(
-  },
-  )JSON";
+  for (const auto& kv : metadata) {
+    traceOf_ << fmt::format(R"JSON(
+  "{}": {},)JSON", kv.first, kv.second);
   }
 
+#ifdef HAS_CUPTI
+  traceOf_ << fmt::format(R"JSON(
+  "deviceProperties": [{}
+  ],)JSON", devicePropertiesJson());
+#endif
+
   traceOf_ << R"JSON(
-  "traceEvents": [
-  )JSON";
+  "traceEvents": [)JSON";
 }
 
 void ChromeTraceLogger::openTraceFile() {

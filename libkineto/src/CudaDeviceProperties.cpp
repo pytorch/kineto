@@ -7,6 +7,7 @@
 
 #include "CudaDeviceProperties.h"
 
+#include <fmt/format.h>
 #include <vector>
 
 #include <cuda_runtime.h>
@@ -16,31 +17,62 @@
 
 namespace KINETO_NAMESPACE {
 
-std::vector<cudaOccDeviceProp> createOccDeviceProps() {
-  std::vector<cudaOccDeviceProp> occProps;
+static const std::vector<cudaDeviceProp> createDeviceProps() {
+  std::vector<cudaDeviceProp> props;
   int device_count;
   cudaError_t error_id = cudaGetDeviceCount(&device_count);
   // Return empty vector if error.
   if (error_id != cudaSuccess) {
-    return occProps;
+    return {};
   }
-  for (int i = 0; i < device_count; ++i) {
+  for (size_t i = 0; i < device_count; ++i) {
     cudaDeviceProp prop;
     error_id = cudaGetDeviceProperties(&prop, i);
     // Return empty vector if any device property fail to get.
     if (error_id != cudaSuccess) {
-      return occProps;
+      return {};
     }
-    cudaOccDeviceProp occProp;
-    occProp = prop;
-    occProps.push_back(occProp);
+    props.push_back(prop);
   }
-  return occProps;
+  return props;
 }
 
-const std::vector<cudaOccDeviceProp>& occDeviceProps() {
-  static std::vector<cudaOccDeviceProp> occProps = createOccDeviceProps();
-  return occProps;
+static const std::vector<cudaDeviceProp>& deviceProps() {
+  static const std::vector<cudaDeviceProp> props = createDeviceProps();
+  return props;
+}
+
+static const std::string createDevicePropertiesJson(
+    size_t id, const cudaDeviceProp& props) {
+  return fmt::format(R"JSON(
+    {{
+      "id": {}, "name": "{}", "totalGlobalMem": {},
+      "computeMajor": {}, "computeMinor": {},
+      "maxThreadsPerBlock": {}, "maxThreadsPerMultiprocessor": {},
+      "regsPerBlock": {}, "regsPerMultiprocessor": {}, "warpSize": {},
+      "sharedMemPerBlock": {}, "sharedMemPerMultiprocessor": {},
+      "numSms": {}, "sharedMemPerBlockOptin": {}
+    }})JSON",
+      id, props.name, props.totalGlobalMem,
+      props.major, props.minor,
+      props.maxThreadsPerBlock, props.maxThreadsPerMultiProcessor,
+      props.regsPerBlock, props.regsPerMultiprocessor, props.warpSize,
+      props.sharedMemPerBlock, props.sharedMemPerMultiprocessor,
+      props.multiProcessorCount, props.sharedMemPerBlockOptin);
+}
+
+static const std::string createDevicePropertiesJson() {
+  std::vector<std::string> jsonProps;
+  const auto& props = deviceProps();
+  for (size_t i = 0; i < props.size(); i++) {
+    jsonProps.push_back(createDevicePropertiesJson(i, props[i]));
+  }
+  return fmt::format("{}", fmt::join(jsonProps, ","));
+}
+
+const std::string& devicePropertiesJson() {
+  static std::string devicePropsJson = createDevicePropertiesJson();
+  return devicePropsJson;
 }
 
 float kernelOccupancy(
@@ -54,8 +86,8 @@ float kernelOccupancy(
     float blocksPerSm) {
   // Calculate occupancy
   float occupancy = -1.0;
-  const std::vector<cudaOccDeviceProp> &occProps = occDeviceProps();
-  if (deviceId < occProps.size()) {
+  const std::vector<cudaDeviceProp> &props = deviceProps();
+  if (deviceId < props.size()) {
     cudaOccFuncAttributes occFuncAttr;
     occFuncAttr.maxThreadsPerBlock = INT_MAX;
     occFuncAttr.numRegs = registersPerThread;
@@ -67,15 +99,16 @@ float kernelOccupancy(
     int blockSize = blockX * blockY * blockZ;
     size_t dynamicSmemSize = dynamicSharedMemory;
     cudaOccResult occ_result;
+    cudaOccDeviceProp prop(props[deviceId]);
     cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
-          &occ_result, &occProps[deviceId], &occFuncAttr, &occDeviceState,
+          &occ_result, &prop, &occFuncAttr, &occDeviceState,
           blockSize, dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
       if (occ_result.activeBlocksPerMultiprocessor < blocksPerSm) {
         blocksPerSm = occ_result.activeBlocksPerMultiprocessor;
       }
       occupancy = blocksPerSm * blockSize /
-          (float) occProps[deviceId].maxThreadsPerMultiprocessor;
+          (float) props[deviceId].maxThreadsPerMultiProcessor;
     } else {
       LOG_EVERY_N(ERROR, 1000) << "Failed to calculate occupancy, status = "
                                << status;

@@ -61,8 +61,8 @@ Logger::~Logger() {
     buf_ << " : " << strerror_r(errnum_, buf, sizeof(buf));
   }
 #endif
-  buf_ << std::ends;
-  out_ << buf_.str() << std::endl;
+  buf_ << std::endl;
+  out_ << buf_.str();
 }
 
 void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {

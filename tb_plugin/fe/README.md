@@ -15,4 +15,3 @@
 3. shell `yarn`
 4. shell `yarn build`
 5. `./dist/index.html`
-

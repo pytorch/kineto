@@ -10,4 +10,3 @@
   yarn prettier --end-of-line lf
   python ./scripts/add_header.py ./src/api/generated/
 ```
-

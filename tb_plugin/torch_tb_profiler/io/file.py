@@ -1,11 +1,24 @@
+'''
+This file is forked from https://github.com/tensorflow/tensorboard/blob/master/tensorboard/compat/tensorflow_stub/io/gfile.py.
+The following functionalities are added after forking:
+* Check Azure Blob & Google Cloud available or not
+* get_filesystem changes to support Azure Blobs
+* add BaseFileSystem and PathBase abstracted class for the filesystem.
+* add download_file for each file system to cache the remote file to local temporary folder.
+* add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3 file system which is not supported by tensorboard.
+* add Azure blob file system
+* add Google Cloud file system
+* add specialized walk for Local file system, Azure Blob and Google Cloud to improve the walk performance.
+* add global wrapper for abspath, basename, join, download_file.
+* change the global walk wrapper to support specialized walk.
+'''
 import glob as py_glob
 import os
 import tempfile
-from abc import ABC, abstractmethod
-from collections import namedtuple
 
 from .. import utils
-from .utils import as_bytes, as_text
+from .base import BaseFileSystem, LocalPath, RemotePath, StatData
+from .utils import as_bytes, as_text, parse_blob_url
 
 logger = utils.get_logger()
 
@@ -67,116 +80,8 @@ def get_filesystem(filename):
         raise ValueError("No recognized filesystem for prefix %s" % prefix)
     return fs
 
-# Data returned from the Stat call.
-StatData = namedtuple("StatData", ["length"])
 
-def parse_blob_url(url):
-    from urllib import parse
-    url_path = parse.urlparse(url)
-
-    parts = url_path.path.lstrip('/').split('/', 1)
-    return url_path.netloc, tuple(parts)
-
-class BaseFileSystem(ABC):
-    def support_append(self):
-        return False
-
-    def append(self, filename, file_content, binary_mode=False):
-        pass
-
-    def download_file(self, filename):
-        return filename
-
-    @abstractmethod
-    def exists(self, filename):
-        raise NotImplementedError
-
-    @abstractmethod
-    def read(self, file, binary_mode=False, size=None, continue_from=None):
-        raise NotImplementedError
-
-    @abstractmethod
-    def write(self, filename, file_content, binary_mode=False):
-        raise NotImplementedError
-
-    @abstractmethod
-    def glob(self, filename):
-        raise NotImplementedError
-
-    @abstractmethod
-    def isdir(self, dirname):
-        raise NotImplementedError
-
-    @abstractmethod
-    def listdir(self, dirname):
-        raise NotImplementedError
-
-    @abstractmethod
-    def makedirs(self, path):
-        raise NotImplementedError
-
-    @abstractmethod
-    def stat(self, filename):
-        raise NotImplementedError
-
-class PathBase(ABC):
-    @abstractmethod
-    def join(self, path, *paths):
-        pass
-
-    @abstractmethod
-    def abspath(self, path):
-        pass
-
-    @abstractmethod
-    def basename(self, path):
-        pass
-
-    @abstractmethod
-    def relpath(self, path, start):
-        pass
-
-class _LocalPath(PathBase):
-    def abspath(self, path):
-        return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
-
-    def basename(self, path):
-        return os.path.basename(path)
-
-    def relpath(self, path, start):
-        return os.path.relpath(path, start)
-
-    def join(self, path, *paths):
-        return os.path.join(path, *paths)
-
-class _RemotePath(PathBase):
-    def split(self, path):
-        """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
-        everything after the final slash.  Either part may be empty."""
-        sep = '/'
-        i = path.rfind(sep) + 1
-        head, tail = path[:i], path[i:]
-        head = head.rstrip(sep)
-        return (head, tail)
-
-    def join(self, path, *paths):
-        """Join paths with a slash."""
-        return "/".join((path,) + paths)
-
-    def abspath(self, path):
-        return path
-
-    def basename(self, path):
-        return path.split('/')[-1]
-
-    def relpath(self, path, start):
-        if not path.startswith(start):
-            return path
-        start = start.rstrip('/')
-        begin = len(start) + 1 # include the ending slash '/'
-        return path[begin:]
-
-class LocalFileSystem(_LocalPath, BaseFileSystem):
+class LocalFileSystem(LocalPath, BaseFileSystem):
     def __init__(self):
         pass
 
@@ -256,7 +161,7 @@ class LocalFileSystem(_LocalPath, BaseFileSystem):
     def walk(self, top, topdown=True, onerror=None):
         yield from os.walk(top, topdown, onerror)
 
-class S3FileSystem(_RemotePath, BaseFileSystem):
+class S3FileSystem(RemotePath, BaseFileSystem):
     """Provides filesystem access to S3."""
 
     def __init__(self):
@@ -269,11 +174,20 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
             boto3.setup_default_session(
                 aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
+    def bucket_and_path(self, url):
+        """Split an S3-prefixed URL into bucket and path."""
+        if url.startswith("s3://"):
+            url = url[len("s3://"):]
+        idx = url.index("/")
+        bucket = url[:idx]
+        path = url[(idx + 1):]
+        return bucket, path
+
     def exists(self, filename):
         """Determines whether a path exists or not."""
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
-        r = client.list_objects(Bucket=bucket, Delimiter="/", Prefix=path)
+        r = client.list_objects(Bucket=bucket, Prefix=path, Delimiter="/")
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
         return False
@@ -282,6 +196,7 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         """Reads contents of a file to a string."""
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
+        args = {}
 
         # S3 use continuation tokens of the form: {byte_offset: number}
         offset = 0
@@ -292,7 +207,6 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         if size is not None:
             endpoint = offset + size
 
-        args = {}
         if offset != 0 or endpoint != "":
             args["Range"] = "bytes={}-{}".format(offset, endpoint)
 
@@ -327,16 +241,16 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         else:
             return (stream.decode("utf-8"), continuation_token)
 
-    def write(self, filename, content, binary_mode=False):
+    def write(self, filename, file_content, binary_mode=False):
         """Writes string file contents to a file."""
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
         if binary_mode:
-            if not isinstance(content, bytes):
-                raise TypeError("Content type must be bytes")
+            if not isinstance(file_content, bytes):
+                raise TypeError("File content type must be bytes")
         else:
-            content = as_bytes(content)
-        client.put_object(Body=content, Bucket=bucket, Key=path)
+            file_content = as_bytes(file_content)
+        client.put_object(Body=file_content, Bucket=bucket, Key=path)
 
     def download_file(self, filename):
         fp = tempfile.NamedTemporaryFile(
@@ -355,17 +269,17 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
                         (filename, fp.name))
         return fp.name
 
-    def glob(self, filepattern):
+    def glob(self, filename):
         """Returns a list of files that match the given pattern(s)."""
         # Only support prefix with * at the end and no ? in the string
-        star_i = filepattern.find("*")
-        quest_i = filepattern.find("?")
+        star_i = filename.find("*")
+        quest_i = filename.find("?")
         if quest_i >= 0:
-            raise NotImplementedError("{} not supported".format(filepattern))
-        if star_i != len(filepattern) - 1:
+            raise NotImplementedError("{} not supported".format(filename))
+        if star_i != len(filename) - 1:
             return []
 
-        filename = filepattern[:-1]
+        filename = filename[:-1]
         client = boto3.client("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(filename)
         p = client.get_paginator("list_objects")
@@ -383,7 +297,7 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         bucket, path = self.bucket_and_path(dirname)
         if not path.endswith("/"):
             path += "/"
-        r = client.list_objects(Bucket=bucket, Delimiter="/", Prefix=path)
+        r = client.list_objects(Bucket=bucket, Prefix=path, Delimiter="/")
         if r.get("Contents") or r.get("CommonPrefixes"):
             return True
         return False
@@ -396,7 +310,7 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         if not path.endswith("/"):
             path += "/"
         keys = []
-        for r in p.paginate(Bucket=bucket, Delimiter="/", Prefix=path):
+        for r in p.paginate(Bucket=bucket, Prefix=path, Delimiter="/"):
             keys.extend(
                 o["Prefix"][len(path): -1] for o in r.get("CommonPrefixes", [])
             )
@@ -408,14 +322,12 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
 
     def makedirs(self, dirname):
         """Creates a directory and all parent/intermediate directories."""
-        if self.exists(dirname):
-            return
-
-        client = boto3.client("s3", endpoint_url=self._s3_endpoint)
-        bucket, path = self.bucket_and_path(dirname)
-        if not path.endswith("/"):
-            path += "/"
-        client.put_object(Body="", Bucket=bucket, Key=path)
+        if not self.exists(dirname):
+            client = boto3.client("s3", endpoint_url=self._s3_endpoint)
+            bucket, path = self.bucket_and_path(dirname)
+            if not path.endswith("/"):
+                path += "/"
+            client.put_object(Body="", Bucket=bucket, Key=path)
 
     def stat(self, filename):
         """Returns file statistics for a given path."""
@@ -426,319 +338,17 @@ class S3FileSystem(_RemotePath, BaseFileSystem):
         obj = client.head_object(Bucket=bucket, Key=path)
         return StatData(obj["ContentLength"])
 
-    def bucket_and_path(self, url):
-        """Split an S3-prefixed URL into bucket and path."""
-        if url.startswith("s3://"):
-            url = url[len("s3://"):]
-        idx = url.index("/")
-        bucket = url[:idx]
-        path = url[(idx + 1):]
-        return bucket, path
-
-class AzureBlobSystem(_RemotePath, BaseFileSystem):
-    """Provides filesystem access to S3."""
-
-    def __init__(self):
-        if not ContainerClient:
-            raise ImportError("azure-storage-blob must be installed for Azure Blob support.")
-        self.connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", None)
-
-    def exists(self, dirname):
-        """Returns whether the path is a directory or not."""
-        basename, parts = self.split_blob_path(dirname)
-        if basename is None or parts is None:
-            return False
-        if basename == "":
-            # root container case
-            return True
-        else:
-            return basename == parts[0]
-
-    def read(self, filename, binary_mode=False, size=None, continue_from=None):
-        """Reads contents of a file to a string."""
-        logger.info("azure blob: starting reading file %s" % filename)
-        account, container, path = self.container_and_path(filename)
-        client = self.create_container_client(account, container)
-        blob_client = client.get_blob_client(path)
-        if not blob_client.exists():
-            raise FileNotFoundError("file %s doesn't exist!" % path)
-
-        downloader = blob_client.download_blob(offset=continue_from, length=size)
-        if continue_from is not None:
-            continuation_token = continue_from + downloader.size
-        else:
-            continuation_token = downloader.size
-
-        data = downloader.readall()
-        logger.info("azure blob: file %s download is done, size is %d" % (filename, len(data)))
-        if binary_mode:
-            return as_bytes(data), continuation_token
-        else:
-            return as_text(data), continuation_token
-
-    def write(self, filename, file_content, binary_mode=False):
-        """Writes string file contents to a file."""
-        account, container, path = self.container_and_path(filename)
-        client = self.create_container_client(account, container)
-
-        if binary_mode:
-            if not isinstance(file_content, bytes):
-                raise TypeError("File content type must be bytes")
-        else:
-            file_content = as_bytes(file_content)
-        client.upload_blob(path, file_content)
-
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-
-        logger.info("azure blob: starting downloading file %s as %s" % (filename, fp.name))
-        account, container, path = self.container_and_path(filename)
-        client = self.create_container_client(account, container)
-        blob_client = client.get_blob_client(path)
-        if not blob_client.exists():
-            raise FileNotFoundError("file %s doesn't exist!" % path)
-
-        downloader = blob_client.download_blob()
-        with open(fp.name, 'wb') as downloaded_file:
-            data = downloader.readall()
-            downloaded_file.write(data)
-            logger.info("azure blob: file %s is downloaded as %s, size is %d" % (filename, fp.name, len(data)))
-            return fp.name
-
-    def glob(self, filename):
-        """Returns a list of files that match the given pattern(s)."""
-        # Only support prefix with * at the end and no ? in the string
-        star_i = filename.find("*")
-        quest_i = filename.find("?")
-        if quest_i >= 0:
-            raise NotImplementedError(
-                "{} not supported by compat glob".format(filename)
-            )
-        if star_i != len(filename) - 1:
-            return []
-
-        filename = filename[:-1]
-
-        account, container, path = self.container_and_path(filename)
-        client = self.create_container_client(account, container)
-        blobs = client.list_blobs(name_starts_with=path)
-        return [blob.name for blob in blobs]
-
-    def isdir(self, dirname):
-        """Returns whether the path is a directory or not."""
-        basename, parts = self.split_blob_path(dirname)
-        if basename is None or parts is None:
-            return False
-        if basename == "":
-            # root container case
-            return True
-        else:
-            return basename == parts[0] and len(parts) > 1
-
-    def listdir(self, dirname):
-        """Returns a list of entries contained within a directory."""
-        account, container, path = self.container_and_path(dirname)
-        client = self.create_container_client(account, container)
-        blob_iter = client.list_blobs(name_starts_with=path)
-        items = []
-        for blob in blob_iter:
-            item = self.relpath(blob.name, path)
-            if items not in items:
-                items.append(item)
-        return items
-
-    def makedirs(self, dirname):
-        """No need create directory since the upload blob will automatically create"""
-        pass
-
-    def stat(self, filename):
-        """Returns file statistics for a given path."""
-        account, container, path = self.container_and_path(filename)
-        client = self.create_container_client(account, container)
-        blob_client = client.get_blob_client(path)
-        props = blob_client.get_blob_properties()
-        return StatData(props.size)
-
-    def walk(self, top, topdown=True, onerror=None):
-        account, container, path = self.container_and_path(top)
-        client = self.create_container_client(account, container)
-        blobs = client.list_blobs(name_starts_with=path)
-        results = {}
-        for blob in blobs:
-            dirname, basename = self.split(blob.name)
-            dirname = "https://{}/{}/{}".format(account, container, dirname)
-            results.setdefault(dirname, []).append(basename)
-        for key, value in results.items():
-            yield key, None, value
-
-    def split_blob_path(self, blob_path):
-        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
-        return (basename(blob_path), [relative splitted paths])
-        If blob_path doesn't exist, return (None, None)
-        For example,
-            For blob https://trainingdaemon.blob.core.windows.net/tests/test1/test2/test.txt
-            * If the blob_path is '', return ('', [test1, test2, test.txt])
-            * If the blob_path is test1, return (test1, [test2, test.txt])
-            * If the blob_path is test1/test2, return (test2, [test2, test.txt])
-            * If the blob_path is test1/test2/test.txt, return (test.txt, [test.txt])
-        """
-        account, container, path = self.container_and_path(blob_path)
-        client = self.create_container_client(account, container)
-        blobs = client.list_blobs(name_starts_with=path, maxresults=1)
-
-        for blob in blobs:
-            dir_path, basename = self.split(path)
-            if dir_path:
-                rel_path = blob.name[len(dir_path):]
-                parts = rel_path.lstrip('/').split('/')
-            else:
-                parts = blob.name.split('/')
-            return (basename, parts)
-        return (None, None)
-
-    def container_and_path(self, url):
-        """Split an Azure blob -prefixed URL into container and blob path."""
-        root, parts = parse_blob_url(url)
-        if len(parts) != 2:
-            raise ValueError("Invalid azure blob url %s" % url)
-        return root, parts[0], parts[1]
-
-    def create_container_client(self, account, container):
-        if self.connection_string:
-            client = ContainerClient.from_connection_string(self.connection_string, container)
-        else:
-            client = ContainerClient.from_container_url("https://{}/{}".format(account, container))
-        return client
-
-class GoogleBlobSystem(_RemotePath, BaseFileSystem):
-    """Provides filesystem access to S3."""
-
-    def __init__(self):
-        if not storage:
-            raise ImportError("google-cloud-storage must be installed for Google Cloud Blob support.")
-
-    def exists(self, dirname):
-        """Returns whether the path is a directory or not."""
-        bucket_name, path = self.bucket_and_path(dirname)
-        client = self.create_google_cloud_client()
-        bucket = client.bucket(bucket_name)
-        return bucket.blob(path).exists()
-
-    def read(self, filename, binary_mode=False, size=None, continue_from=None):
-        raise NotImplementedError
-
-    def write(self, filename, file_content, binary_mode=False):
-        raise NotImplementedError
-
-    def glob(self, filename):
-        raise NotImplementedError
-
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-        bucket_name, path = self.bucket_and_path(filename)
-        client = self.create_google_cloud_client()
-        bucket = client.bucket(bucket_name)
-        blob = bucket.blob(path)
-        blob.download_to_filename(fp.name)
-        return fp.name
-
-    def isdir(self, dirname):
-        """Returns whether the path is a directory or not."""
-        basename, parts = self.split_blob_path(dirname)
-        if basename is None or parts is None:
-            return False
-        if basename == "":
-            # root container case
-            return True
-        else:
-            return basename == parts[0] and len(parts) > 1
-
-    def listdir(self, dirname):
-        """Returns a list of entries contained within a directory."""
-        bucket_name, path = self.bucket_and_path(dirname)
-        client = self.create_google_cloud_client()
-        blobs = client.list_blobs(bucket_name, prefix=path)
-        items = []
-        for blob in blobs:
-            item = self.relpath(blob.name, path)
-            if items not in items:
-                items.append(item)
-        return items
-
-    def makedirs(self, dirname):
-        """No need create directory since the upload blob will automatically create"""
-        pass
-
-    def stat(self, filename):
-        """Returns file statistics for a given path."""
-        bucket_name, path = self.bucket_and_path(filename)
-        client = self.create_google_cloud_client()
-        bucket = client.bucket(bucket_name)
-        blob = bucket.get_blob(path)
-        return StatData(blob.size)
-
-    def walk(self, top, topdown=True, onerror=None):
-        bucket_name, path = self.bucket_and_path(top)
-        client = self.create_google_cloud_client()
-        blobs = client.list_blobs(bucket_name, prefix=path)
-        results = {}
-        for blob in blobs:
-            dirname, basename = self.split(blob.name)
-            dirname = "gs://{}/{}".format(bucket_name, dirname)
-            results.setdefault(dirname, []).append(basename)
-        for key, value in results.items():
-            yield key, None, value
-
-    def split_blob_path(self, blob_path):
-        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
-        return (basename(blob_path), [relative splitted paths])
-        If blob_path doesn't exist, return (None, None)
-        For example,
-            For blob gs://tests/test1/test2/test.txt
-            * If the blob_path is '', return ('', [test1, test2, test.txt])
-            * If the blob_path is test1, return (test1, [test2, test.txt])
-            * If the blob_path is test1/test2, return (test2, [test2, test.txt])
-            * If the blob_path is test1/test2/test.txt, return (test.txt, [test.txt])
-        """
-        bucket_name, path = self.bucket_and_path(blob_path)
-        client = self.create_google_cloud_client()
-        blobs = client.list_blobs(bucket_name, prefix=path, delimiter=None, max_results=1)
-
-        for blob in blobs:
-            dir_path, basename = self.split(path)
-            if dir_path:
-                rel_path = blob.name[len(dir_path):]
-                parts = rel_path.lstrip('/').split('/')
-            else:
-                parts = blob.name.split('/')
-            return (basename, parts)
-        return (None, None)
-
-    def bucket_and_path(self, url):
-        """Split an S3-prefixed URL into bucket and path."""
-        if url.startswith("gs://"):
-            url = url[len("gs://"):]
-        idx = url.index("/")
-        bucket = url[:idx]
-        path = url[(idx + 1):]
-        return bucket, path
-
-    def create_google_cloud_client(self):
-        # TODO: support client with credential?
-        client = storage.Client.create_anonymous_client()
-        return client
-
 
 register_filesystem("", LocalFileSystem())
 if S3_ENABLED:
     register_filesystem("s3", S3FileSystem())
 
 if BLOB_ENABLED:
+    from .azureblob import AzureBlobSystem
     register_filesystem("blob", AzureBlobSystem())
 
 if GS_ENABLED:
+    from .gs import GoogleBlobSystem
     register_filesystem("gs", GoogleBlobSystem())
 
 class File(object):
@@ -914,6 +524,7 @@ def join(path, *paths):
     return get_filesystem(path).join(path, *paths)
 
 def download_file(filename):
+    """Downloads the file, returning a temporary path to the file after finishing."""
     return get_filesystem(filename).download_file(filename)
 
 def glob(filename):

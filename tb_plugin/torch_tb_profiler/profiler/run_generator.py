@@ -6,7 +6,6 @@ from .. import consts, utils
 from ..run import RunProfile, AllRunProfile
 from .overall_parser import ProfileRole
 
-logger = utils.get_logger()
 
 class RunGenerator(object):
     def __init__(self, worker, profile_data):

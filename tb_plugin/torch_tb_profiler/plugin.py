@@ -120,7 +120,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def views_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        run = self.get_run(name)
+        run = self._get_run(name)
         profile = run.get_profile(worker)
         views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
@@ -224,21 +224,21 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def comm_overlap_route(self, request):
         name = request.args.get("run")
-        run = self.get_run(name)
+        run = self._get_run(name)
         profile = run.get_profile("All")
         return self.respond_as_json(profile.steps_to_overlap)
 
     @wrappers.Request.application
     def comm_wait_route(self, request):
         name = request.args.get("run")
-        run = self.get_run(name)
+        run = self._get_run(name)
         profile = run.get_profile("All")
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
     def comm_ops_rout(self, request):
         name = request.args.get("run")
-        run = self.get_run(name)
+        run = self._get_run(name)
         profile = run.get_profile("All")
         return self.respond_as_json(profile.comm_ops)
 

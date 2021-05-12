@@ -58,8 +58,8 @@ class RunLoader(object):
             logger.debug("Processing profile data finish")
 
         worker_num = len(comm_node_lists)
-        for i in range(len(comm_node_lists[0])):
-            for j in range(len(comm_node_lists[0][i].kernel_ranges)):
+        for i,_ in enumerate(comm_node_lists[0]):
+            for j,_ in enumerate(comm_node_lists[0][i].kernel_ranges):
                 min_range = sys.maxsize
                 for k in range(worker_num):
                     if comm_node_lists[k][i].kernel_ranges[j][1] - comm_node_lists[k][i].kernel_ranges[j][0] < min_range:

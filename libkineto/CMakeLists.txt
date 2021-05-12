@@ -42,7 +42,7 @@ endif()
 
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
 # Otherwise, CUPTI is disabled if not found
-IF (NOT CUDA_SOURCE_DIR AND NOT CUPTI_INCLUDE_DIR)
+IF (NOT CUDA_SOURCE_DIR OR NOT CUPTI_INCLUDE_DIR OR NOT CUDA_cupti_LIBRARY)
     set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
 endif()
 
@@ -144,7 +144,9 @@ else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
 
-target_link_libraries(kineto "${CUDA_cupti_LIBRARY}")
+if(NOT LIBKINETO_NOCUPTI)
+  target_link_libraries(kineto "${CUDA_cupti_LIBRARY}")
+endif()
 target_link_libraries(kineto $<BUILD_INTERFACE:fmt::fmt-header-only>)
 add_dependencies(kineto fmt::fmt-header-only)
 

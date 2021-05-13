@@ -158,7 +158,7 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
   config_.parse(readConfigFromConfigFile(configFileName_));
   SET_LOG_VERBOSITY_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
   setupSignalHandler(config_.sigUsr2Enabled());
-  if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
+  if (daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
     daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
   }

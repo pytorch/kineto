@@ -104,7 +104,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/trace": self.trace_route,
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
-            "/distributed/commops": self.comm_ops_rout
+            "/distributed/commops": self.comm_ops_route
         }
 
     def frontend_metadata(self):
@@ -236,7 +236,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
-    def comm_ops_rout(self, request):
+    def comm_ops_route(self, request):
         name = request.args.get("run")
         run = self._get_run(name)
         profile = run.get_profile("All")

@@ -57,7 +57,7 @@ class RunProfile(object):
         self.kernel_table = None
         self.trace_file_path = None
 
-class AllRunProfile(object):
+class DistributedRunProfile(object):
     """ Profiling all workers in a view.
     """
 

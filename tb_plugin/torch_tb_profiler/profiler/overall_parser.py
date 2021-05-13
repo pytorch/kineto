@@ -345,11 +345,7 @@ class OverallParser(object):
         ts = event.ts
         dur = event.duration
         evt_type = event.type
-        external_id = None
-        if "external id" in event.args:
-            external_id = event.args["external id"]
-        elif "External id" in event.args:
-            external_id = event.args["External id"]
+        external_id = event.external_id
         if evt_type == EventTypes.KERNEL:
             if external_id in communication_data:
                 self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))

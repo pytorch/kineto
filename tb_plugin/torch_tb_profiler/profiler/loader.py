@@ -6,7 +6,7 @@ import sys
 from .. import consts, io, utils
 from ..run import Run
 from .data import RunData, RunProfileData
-from .run_generator import RunGenerator, AllRunGenerator
+from .run_generator import RunGenerator, DistributedRunGenerator
 
 logger = utils.get_logger()
 
@@ -58,9 +58,11 @@ class RunLoader(object):
             logger.debug("Processing profile data finish")
 
         worker_num = len(comm_node_lists)
-        for i,_ in enumerate(comm_node_lists[0]):
-            for j,_ in enumerate(comm_node_lists[0][i].kernel_ranges):
+        for i, node in enumerate(comm_node_lists[0]):
+            # loop for all communication kernel ranges in order
+            for j in range(len(node.kernel_ranges)):
                 min_range = sys.maxsize
+                # For each kernel_range, find the minist between workers as the real communication time
                 for k in range(worker_num):
                     if comm_node_lists[k][i].kernel_ranges[j][1] - comm_node_lists[k][i].kernel_ranges[j][0] < min_range:
                         min_range = comm_node_lists[k][i].kernel_ranges[j][1] - comm_node_lists[k][i].kernel_ranges[j][0]
@@ -87,7 +89,7 @@ class RunLoader(object):
             if profile.has_communication:
                 has_communication = True
         if has_communication:
-            generator = AllRunGenerator(self.run.profiles)
-            all_profile = generator.generate_all_run_profile()
-            run.add_profile(all_profile)
+            generator = DistributedRunGenerator(self.run.profiles)
+            profile = generator.generate_distributed_run_profile()
+            run.add_profile(profile)
         return run

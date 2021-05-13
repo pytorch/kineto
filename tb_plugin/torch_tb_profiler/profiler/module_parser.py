@@ -4,8 +4,8 @@
 import sys
 from abc import ABC
 
-from .trace import EventTypes
 from .. import utils
+from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -27,10 +27,9 @@ class BaseNode(ABC):
         kwargs['end_time'] = event.ts + event.duration
         kwargs['type'] = event.type
 
-        if "external id" in event.args:
-            kwargs['external_id'] = event.args["external id"]
-        elif "External id" in event.args:
-            kwargs['external_id'] = event.args["External id"]
+        if event.external_id is not None:
+            kwargs['external_id'] = event.external_id
+
         return kwargs
 
 
@@ -256,9 +255,6 @@ class ModuleParser:
 
         def parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
             corrid = event.args.get("correlation", None)
-            input_shape = event.args.get("Input Dims", None)
-            input_type = event.args.get("Input type", None)
-            call_stack = event.args.get("Call stack", "")
             tid = event.tid
             if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
                 device_node = DeviceNode.create(event)
@@ -292,9 +288,9 @@ class ModuleParser:
                             logger.warning("Runtime and Device-op have same correlation id but with different external id!")
             elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
                 if event.type == EventTypes.PROFILER_STEP:
-                    op_node = ProfilerStepNode.create(event, input_shape, input_type, None)
+                    op_node = ProfilerStepNode.create(event, event.input_shape, event.input_type, None)
                 else:
-                    op_node = OperatorNode.create(event, input_shape, input_type, call_stack)
+                    op_node = OperatorNode.create(event, event.input_shape, event.input_type, event.callstack)
                 if event.name in CommunicationOpNameSet:
                     context_data.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
                 tid2list.setdefault(tid, []).append(op_node)

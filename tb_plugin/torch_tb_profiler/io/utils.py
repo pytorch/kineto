@@ -60,3 +60,10 @@ def as_bytes(bytes_or_text, encoding="utf-8"):
         raise TypeError(
             "Expected binary or unicode string, got %r" % (bytes_or_text,)
         )
+
+def parse_blob_url(url):
+    from urllib import parse
+    url_path = parse.urlparse(url)
+
+    parts = url_path.path.lstrip('/').split('/', 1)
+    return url_path.netloc, tuple(parts)

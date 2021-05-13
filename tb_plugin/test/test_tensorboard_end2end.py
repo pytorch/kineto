@@ -91,12 +91,11 @@ class TestEnd2End(unittest.TestCase):
                 retry_times -= 1
                 if retry_times<0:
                     self.fail("Load run timeout")
-            except Exception as e:
+            except Exception:
                 if retry_times > 0:
                     continue
                 else:
-                    print(e)
-                    self.fail("exception happens {}".format(e))
+                    raise
 
         links=[]
         for run in json.loads(expected_runs):

@@ -24,7 +24,7 @@
     "@types/react": "^16.9.51",
     "@types/react-dom": "^16.9.8",
     "cross-env": "^7.0.2",
-    "css-loader": "^5.0.0",
+    "css-loader": "^5.2.4",
     "html-webpack-plugin": "^5.3.1",
     "inline-chunk-html-plugin": "^1.1.1",
     "prettier": "^2.1.2",

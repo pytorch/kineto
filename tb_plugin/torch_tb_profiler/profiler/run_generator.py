@@ -7,12 +7,13 @@ from .overall_parser import ProfileRole
 
 
 class RunGenerator(object):
-    def __init__(self, worker, profile_data):
+    def __init__(self, worker, span, profile_data):
         self.worker = worker
+        self.span = span
         self.profile_data = profile_data
 
     def generate_run_profile(self):
-        profile_run = RunProfile(self.worker)
+        profile_run = RunProfile(self.worker, self.span)
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
         profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset

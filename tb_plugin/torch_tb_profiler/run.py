@@ -16,17 +16,17 @@ class Run(object):
 
     @property
     def workers(self):
-        return list(self.profiles.keys())
+        # get full worker list and remove the duplicated
+        worker_list, _ = zip(*self.profiles.keys())
+        worker_list = list(dict.fromkeys(worker_list))
+        return worker_list
 
     def get_spans(self, worker):
-        profile = self.profiles.get(worker)
-        if profile is None:
+        spans = [s for w, s in self.profiles.keys() if w == worker]
+        if len(spans) == 1 and spans[0] is None:
             return None
-
-        if isinstance(profile, list):
-            return [span for span, p in profile]
         else:
-            return None
+            return spans
 
     def get_views(self, worker, span):
         profile = self.get_profile(worker, span)
@@ -35,11 +35,8 @@ class Run(object):
 
         return profile.views
 
-    def add_profile(self, span, profile):
-        if span:
-            self.profiles.setdefault(profile.worker, []).append((span, profile))
-        else:
-            self.profiles[profile.worker] = profile
+    def add_profile(self, profile):
+        self.profiles[(profile.worker, profile.span)] = profile
 
     def get_profile(self, worker, span):
         if not worker:
@@ -48,22 +45,15 @@ class Run(object):
         if len(self.profiles) == 0:
             return None
 
-        data = self.profiles.get(worker, None)
-        if isinstance(data, list):
-            for s, p in data:
-                if s == span:
-                    return p
-            else:
-                return None
-        else:
-            return data
+        return self.profiles.get((worker, span), None)
 
 class RunProfile(object):
     """ Cooked profiling result for a worker. For visualization purpose only.
     """
 
-    def __init__(self, worker):
+    def __init__(self, worker, span):
         self.worker = worker
+        self.span = span
         self.views = []
         self.has_runtime = False
         self.has_kernel = False

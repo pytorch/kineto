@@ -46,11 +46,8 @@ class RunLoader(object):
 
         for worker, span, path in sorted(workers):
             try:
-                data = RunProfileData.parse(self.run.run_dir, worker, path, self.caches)
-                if not span:
-                    self.run.profiles[worker] = data
-                else:
-                    self.run.profiles.setdefault(worker, []).append((span, data))
+                data = RunProfileData.parse(self.run.run_dir, worker, span, path, self.caches)
+                self.run.profiles[(worker, span)] = data
             except Exception as ex:
                 logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)
@@ -58,33 +55,19 @@ class RunLoader(object):
     def _process(self):
         for data in self.run.profiles.values():
             logger.debug("Processing profile data")
-            if isinstance(data, list):
-                for span, span_data in data:
-                    span_data.process()
-            else:
-                data.process()
+            data.process()
             logger.debug("Processing profile data finish")
 
     def _analyze(self):
         for data in self.run.profiles.values():
             logger.debug("Analyzing profile data")
-            if isinstance(data, list):
-                for span, span_data in data:
-                    span_data.process()
-            else:
-                data.analyze()
+            data.analyze()
             logger.debug("Analyzing profile data finish")
 
     def _generate_run(self):
         run = Run(self.run.name, self.run.run_dir)
-        for worker, data in self.run.profiles.items():
-            if isinstance(data, list):
-                for span, span_data in data:
-                    generator = RunGenerator(worker, span_data)
-                    profile = generator.generate_run_profile()
-                    run.add_profile(span, profile)
-            else:
-                generator = RunGenerator(worker, data)
-                profile = generator.generate_run_profile()
-                run.add_profile(None, profile)
+        for (worker, span), data in self.run.profiles.items():
+            generator = RunGenerator(worker, span, data)
+            profile = generator.generate_run_profile()
+            run.add_profile(profile)
         return run

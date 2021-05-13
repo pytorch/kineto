@@ -25,8 +25,9 @@ class RunData(object):
 
 
 class RunProfileData(object):
-    def __init__(self, worker):
+    def __init__(self, worker, span=None):
         self.worker = worker
+        self.span = span
         self.data_schema_version = None
         self.events = None
         self.trace_file_path = None
@@ -45,12 +46,12 @@ class RunProfileData(object):
         self.recommendations = []
 
     @staticmethod
-    def parse(run_dir, worker, path, caches):
+    def parse(run_dir, worker, span, path, caches):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
 
         trace_path, trace_json= RunProfileData._preprocess_file(caches, io.join(run_dir, path))
 
-        profile = RunProfileData(worker)
+        profile = RunProfileData(worker, span)
         profile.trace_file_path = trace_path
         if type(trace_json) is dict:
             metadata = trace_json.get("profilerMetadata", None)

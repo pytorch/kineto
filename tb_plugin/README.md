@@ -5,6 +5,7 @@ It can parse, process and visualize the PyTorch Profiler's dumped result,
 and give optimization recommendations.
 
 ### Quick Installation Instructions
+
 * Install from pypi
 
   `pip install torch-tb-profiler`

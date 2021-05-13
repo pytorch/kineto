@@ -24,7 +24,12 @@ class TestEnd2End(unittest.TestCase):
         print("starting spawn mode testing...")
         self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
-    def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None):
+    def test_tensorboard_with_path_prefix(self):
+        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, path_prefix='/tensorboard/viewer/')
+
+    def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
         port=6006
 
@@ -33,15 +38,22 @@ class TestEnd2End(unittest.TestCase):
                 env_copy = os.environ.copy()
                 env_copy.update(env)
                 env = env_copy
-            tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
-            self._test_tensorboard(host, port, expected_runs)
+            if not path_prefix:
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
+            else:
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
+            self._test_tensorboard(host, port, expected_runs, path_prefix)
         finally:
             pid = tb.pid
             tb.terminate()
             print("tensorboard process {} is terminated.".format(pid))
 
-    def _test_tensorboard(self, host, port, expected_runs):
-        link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
+    def _test_tensorboard(self, host, port, expected_runs, path_prefix):
+        if not path_prefix:
+            link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
+        else:
+            path_prefix = path_prefix.strip('/')
+            link_prefix = 'http://{}:{}/{}/data/plugin/pytorch_profiler/'.format(host, port, path_prefix)
         run_link = link_prefix + 'runs'
 
         expected_links_format=[
@@ -79,12 +91,11 @@ class TestEnd2End(unittest.TestCase):
                 retry_times -= 1
                 if retry_times<0:
                     self.fail("Load run timeout")
-            except Exception as e:
+            except Exception:
                 if retry_times > 0:
                     continue
                 else:
-                    print(e)
-                    self.fail("exception happens {}".format(e))
+                    raise
 
         links=[]
         for run in json.loads(expected_runs):

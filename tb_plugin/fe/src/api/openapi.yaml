@@ -3,7 +3,7 @@ info:
   title: Pytorch profile API
   version: 1.0.0
 servers:
-  - url: /data/plugin/pytorch_profiler
+  - url: .
 paths:
   /runs:
     get:

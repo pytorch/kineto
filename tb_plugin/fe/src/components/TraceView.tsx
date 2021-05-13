@@ -75,7 +75,7 @@ export const TraceView: React.FC<IProps> = (props) => {
             <iframe
               className={classes.frame}
               ref={iframeRef}
-              src="/data/plugin/pytorch_profiler/trace_embedding.html"
+              src="./trace_embedding.html"
             ></iframe>
           </ClickAwayListener>
         ),

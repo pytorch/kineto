@@ -76,15 +76,26 @@ static constexpr const char* basename(const char* s, int off = 0) {
       ? s
       : s[off] == '/' ? basename(&s[off + 1]) : basename(s, off + 1);
 }
+#if defined(_MSC_VER)
+void *getKernel32Func(const char* procName) {
+  return GetProcAddress(GetModuleHandleA("KERNEL32.DLL"), procName);
+}
+#endif
 }
 
 bool setThreadName(const std::string& name) {
 #ifdef __APPLE__
   return 0 == pthread_setname_np(name.c_str());
 #elif defined _MSC_VER
+  // Per https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
+  // Use runtime linking to set thread description
+  static auto _SetThreadDescription = reinterpret_cast<decltype(&SetThreadDescription)>(getKernel32Func("SetThreadDescription"));
+  if (!_SetThreadDescription) {
+    return false;
+  }
   std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
   std::wstring wname = conv.from_bytes(name);
-  HRESULT hr = SetThreadDescription(GetCurrentThread(), wname.c_str());
+  HRESULT hr = _SetThreadDescription(GetCurrentThread(), wname.c_str());
   return SUCCEEDED(hr);
 #else
   return 0 == pthread_setname_np(pthread_self(), name.c_str());
@@ -105,16 +116,19 @@ std::string getThreadName() {
   }
   return buf;
 #else // _MSC_VER
+  static auto _GetThreadDescription = reinterpret_cast<decltype(&GetThreadDescription)>(getKernel32Func("GetThreadDescription"));
+  if (!_GetThreadDescription) {
+    return "Unknown";
+  }
   PWSTR data;
-  HRESULT hr = GetThreadDescription(GetCurrentThread(), &data);
-  if (SUCCEEDED(hr)) {
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
-    std::string name = conv.to_bytes(data);
-    LocalFree(data);
-    return name;
-  } else {
+  HRESULT hr = _GetThreadDescription(GetCurrentThread(), &data);
+  if (!SUCCEEDED(hr)) {
     return "";
   }
+  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+  std::string name = conv.to_bytes(data);
+  LocalFree(data);
+  return name;
 #endif
 }
 

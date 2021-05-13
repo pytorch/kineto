@@ -28,6 +28,11 @@ and give optimization recommendations.
 
   `pip install .`
 
+* Build the wheel
+  - `python setup.py build_fe sdist bdist_wheel` \
+   **_Note_**: the build_fe step need setup yarn and nodejs
+  - `python setup.py sdist bdist_wheel`
+
 ### Quick Start Instructions
 
 * Prepare profiling data

@@ -2,7 +2,9 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import os
+import pathlib
 import setuptools
+import subprocess
 
 def get_version():
     with open("version.txt", encoding="utf-8") as f:
@@ -28,6 +30,26 @@ EXTRAS = {
     "gs": ["google-cloud-storage"]
 }
 
+class build_fe(setuptools.Command):
+    """Build the frontend"""
+    description = "run yarn build on frontend directory"
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        cwd = pathlib.Path().absolute()
+        root = pathlib.Path(__file__).parent.absolute()
+        os.chdir(root / "fe")
+        subprocess.run(["yarn", "build:copy"], check=True)
+        # restore the working directory
+        os.chdir(cwd)
+
 setuptools.setup(
     name="torch_tb_profiler",
     version=get_version(),
@@ -37,6 +59,9 @@ setuptools.setup(
     url="https://github.com/pytorch/kineto/tree/master/tb_plugin",
     author="PyTorch Team",
     author_email="packages@pytorch.org",
+    cmdclass={
+        "build_fe": build_fe
+    },
     packages=setuptools.find_packages(),
     package_data={
         "torch_tb_profiler": ["static/**"],

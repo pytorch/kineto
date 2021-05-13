@@ -30,7 +30,7 @@ EXTRAS = {
     "gs": ["google-cloud-storage"]
 }
 
-class yarn(setuptools.Command):
+class build_fe(setuptools.Command):
     """Build the frontend"""
     description = "run yarn build on frontend directory"
 
@@ -60,7 +60,7 @@ setuptools.setup(
     author="PyTorch Team",
     author_email="packages@pytorch.org",
     cmdclass={
-        "yarn": yarn
+        "build_fe": build_fe
     },
     packages=setuptools.find_packages(),
     package_data={

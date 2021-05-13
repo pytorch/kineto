@@ -5,11 +5,6 @@ It can parse, process and visualize the PyTorch Profiler's dumped result,
 and give optimization recommendations.
 
 ### Quick Installation Instructions
-* Build the wheel
-  - `python setup.py yarn sdist bdist_wheel` \
-   **_Note_**: the yarn step need setup yarn and nodejs
-  - `python setup.py sdist bdist_wheel`
-
 * Install from pypi
 
   `pip install torch-tb-profiler`
@@ -31,6 +26,11 @@ and give optimization recommendations.
   Install the profiler:
 
   `pip install .`
+
+* Build the wheel
+  - `python setup.py build_fe sdist bdist_wheel` \
+   **_Note_**: the build_fe step need setup yarn and nodejs
+  - `python setup.py sdist bdist_wheel`
 
 ### Quick Start Instructions
 

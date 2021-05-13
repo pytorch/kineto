@@ -45,6 +45,7 @@ class RunProfile(object):
         self.views = []
         self.has_runtime = False
         self.has_kernel = False
+        self.has_communication = False
         self.has_memcpy_or_memset = False
         self.overview = None
         self.operation_pie_by_name = None
@@ -55,3 +56,14 @@ class RunProfile(object):
         self.kernel_pie = None
         self.kernel_table = None
         self.trace_file_path = None
+
+class DistributedRunProfile(object):
+    """ Profiling all workers in a view.
+    """
+
+    def __init__(self):
+        self.worker = 'All'
+        self.views = []
+        self.steps_to_overlap = None
+        self.steps_to_wait = None
+        self.comm_ops = None

@@ -116,7 +116,7 @@ def pop_list(range_list, index):
     return next_item, next_index
 
 
-ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
+ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Communication', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
 
 
 class OverallParser(object):
@@ -166,6 +166,13 @@ class OverallParser(object):
 
             return OverallParser.Statistics(cost_ranges)
 
+    class StepCommunicationCosts:
+        def __init__(self):
+            self.computation = 0
+            self.communication = 0
+            self.overlap = 0
+            self.other = 0
+
     def __init__(self):
         # we could not use [[]] * len here since they all point to same memory
         # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
@@ -178,6 +185,8 @@ class OverallParser(object):
         self.max_ts = -sys.maxsize - 1
         self.steps_costs = []
         self.avg_costs = OverallParser.Costs()
+        self.communication_overlap = []
+        self.comm_node_list = []
 
     # Update self.steps considering device side events launched by each host side step.
     # Update self.steps_names if some tail steps are removed.
@@ -275,21 +284,22 @@ class OverallParser(object):
                     self.steps_names = self.steps_names[:keep_steps]
 
 
-    def parse_events(self, events, runtime_node_list, device_node_list):
+    def parse_events(self, events, context_data):
         logger.debug("Overall, parse events")
         for event in events:
-            self.parse_event(event)
+            self.parse_event(event, context_data.communication_data)
 
         if len(self.steps) == 0:
             self.steps.append((self.min_ts, self.max_ts))
             self.steps_names.append("0")
-        self.update_steps_consider_device_side(runtime_node_list, device_node_list)
+        self.update_steps_consider_device_side(context_data.runtime_node_list, context_data.device_node_list)
 
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
 
         logger.debug("Overall, statistics")
         global_stats = OverallParser.Statistics.create_statistics(self.steps, self.role_ranges)
+        comm_kernel_overlap = intersection_ranges_lists(self.role_ranges[ProfileRole.Kernel], self.role_ranges[ProfileRole.Communication])
 
         logger.debug("Overall, aggregation")
         valid_steps = len(self.steps)
@@ -299,15 +309,50 @@ class OverallParser(object):
             for cost_index in range(len(self.avg_costs.costs)):
                 self.avg_costs.costs[cost_index] += self.steps_costs[i].costs[cost_index]
 
+            comm_costs = OverallParser.StepCommunicationCosts()
+            comm_costs.overlap = get_ranges_sum(intersection_ranges_lists([self.steps[i]], comm_kernel_overlap))
+            comm_costs.computation = get_ranges_sum(intersection_ranges_lists([self.steps[i]], self.role_ranges[ProfileRole.Kernel]))
+            comm_costs.communication = get_ranges_sum(intersection_ranges_lists([self.steps[i]], self.role_ranges[ProfileRole.Communication]))
+            comm_costs.other = self.steps_costs[i].costs[ProfileRole.Total] + comm_costs.overlap - comm_costs.computation - comm_costs.communication
+            self.communication_overlap.append(comm_costs)
+
         for i in range(len(self.avg_costs.costs)):
             self.avg_costs.costs[i] /= valid_steps
 
-    def parse_event(self, event):
+        # Sort the communication node according the start time, this is for correlating communication node between workers
+        for comm_node in context_data.communication_data.values():
+            comm_node.kernel_ranges.sort(key=lambda x: (x[0], -x[1]))
+            self.comm_node_list.append(comm_node)
+        self.comm_node_list.sort(key=lambda x: (x.start_time, -x.end_time))
+
+        # Find each communication node belong to which step
+        index = 0
+        for comm_node in self.comm_node_list:
+            while index < valid_steps:
+                if comm_node.start_time >= self.steps[index][0] and comm_node.end_time <= self.steps[index][1]:
+                    comm_node.step_name = self.steps_names[index]
+                    break
+                elif comm_node.start_time >= self.steps[index][1]:
+                    index += 1
+                else:
+                    logger.error("Found a communication op not belong to any step.")
+                    break
+            if index >= valid_steps:
+                logger.error("Found communication ops not belong to any step. ")
+                break
+
+    def parse_event(self, event, communication_data):
         ts = event.ts
         dur = event.duration
         evt_type = event.type
+        external_id = event.external_id
         if evt_type == EventTypes.KERNEL:
-            self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
+            if external_id in communication_data:
+                self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
+                communication_data[external_id].kernel_ranges.append((ts, ts + dur))
+                communication_data[external_id].total_time += dur
+            else:
+                self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
         elif evt_type == EventTypes.MEMCPY:
             self.role_ranges[ProfileRole.Memcpy].append((ts, ts + dur))
         elif evt_type == EventTypes.MEMSET:

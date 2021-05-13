@@ -31,6 +31,26 @@ class TraceEvent(object):
         self.tid = data.get("tid", None)
         self.args = data.get("args", {})
 
+    @property
+    def external_id(self):
+        if "external id" in self.args:
+            return self.args["external id"]
+        elif "External id" in self.args:
+            return self.args["External id"]
+        else:
+            return None
+
+    @property
+    def callstack(self):
+        return self.args.get("Call stack", "")
+
+    @property
+    def input_shape(self):
+        return self.args.get("Input Dims", None)
+
+    @property
+    def input_type(self):
+        return self.args.get("Input type", None)
 
 class ProfilerStepEvent(TraceEvent):
     def __init__(self, data):

@@ -33,12 +33,11 @@ class TraceEvent(object):
 
     @property
     def external_id(self):
-        if "external id" in self.args:
-            return self.args["external id"]
-        elif "External id" in self.args:
-            return self.args["External id"]
-        else:
-            return None
+        extern_id = self.args.get("external id")
+        if not extern_id:
+            extern_id = self.args.get("External id")
+
+        return extern_id
 
     @property
     def callstack(self):
@@ -46,7 +45,11 @@ class TraceEvent(object):
 
     @property
     def input_shape(self):
-        return self.args.get("Input Dims", None)
+        shape = self.args.get("Input Dims", None)
+        if not shape:
+            shape = self.args.get("Input dims", None)
+
+        return shape
 
     @property
     def input_type(self):

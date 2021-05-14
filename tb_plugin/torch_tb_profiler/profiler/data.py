@@ -12,7 +12,9 @@ from .. import io, utils
 from . import trace
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
-from .overall_parser import OverallParser, ProfileRole
+from .node_parser import NodeContext, NodeParser
+from .overall_parser import OverallParser
+from .step_parser import ProfileRole, StepParser
 
 logger = utils.get_logger()
 
@@ -22,14 +24,6 @@ class RunData(object):
         self.name = name
         self.run_dir = run_dir
         self.profiles = OrderedDict()
-
-
-class ProfileContextData(object):
-    def __init__(self):
-        self.communication_data = dict()
-        self.device_node_list = []
-        self.runtime_node_list = []
-
 
 class RunProfileData(object):
     def __init__(self, worker):
@@ -112,11 +106,17 @@ class RunProfileData(object):
         return trace_path, trace_json
 
     def process(self):
-        context_data = ProfileContextData()
 
+        node_parser = NodeParser()
+        node_context = NodeContext()
+        node_parser.parse_events(self.events, node_context)
+
+        step_parser = StepParser()
+        step_parser.parse_events(self.events, node_parser)
+        
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
-        module_parser.parse_events(self.events, context_data)
+        module_parser.aggregate(node_context)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
@@ -125,15 +125,15 @@ class RunProfileData(object):
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
-        overall_parser.parse_events(self.events, context_data)
-        self.has_runtime = bool(overall_parser.role_ranges[ProfileRole.Runtime])
-        self.has_kernel = bool(overall_parser.role_ranges[ProfileRole.Kernel])
-        self.has_communication = bool(overall_parser.role_ranges[ProfileRole.Communication])
-        self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy] or overall_parser.role_ranges[ProfileRole.Memset])
+        overall_parser.aggregate(node_parser, step_parser)
+        self.has_runtime = step_parser.has_runtime
+        self.has_kernel = step_parser.has_kernel
+        self.has_communication = step_parser.has_communication
+        self.has_memcpy_or_memset = step_parser.has_memcpy_or_memset
         self.steps_costs = overall_parser.steps_costs
-        self.steps_names = overall_parser.steps_names
+        self.steps_names = step_parser.steps_names
         self.avg_costs = overall_parser.avg_costs
-        self.comm_node_list = overall_parser.comm_node_list
+        self.comm_node_list = node_parser.comm_node_list
         self.comm_overlap_costs = overall_parser.communication_overlap
 
         if self.has_kernel:

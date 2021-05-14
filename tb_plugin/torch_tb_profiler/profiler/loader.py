@@ -64,8 +64,10 @@ class RunLoader(object):
                 min_range = sys.maxsize
                 # For each kernel_range, find the minist between workers as the real communication time
                 for k in range(worker_num):
-                    if comm_node_lists[k][i].kernel_ranges[j][1] - comm_node_lists[k][i].kernel_ranges[j][0] < min_range:
-                        min_range = comm_node_lists[k][i].kernel_ranges[j][1] - comm_node_lists[k][i].kernel_ranges[j][0]
+                    kernel_ranges = comm_node_lists[k][i].kernel_ranges
+                    if kernel_ranges:
+                        if kernel_ranges[j][1] - kernel_ranges[j][0] < min_range:
+                            min_range = kernel_ranges[j][1] - kernel_ranges[j][0]
                 for k in range(worker_num):
                     comm_node_lists[k][i].real_time += min_range
 

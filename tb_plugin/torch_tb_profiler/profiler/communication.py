@@ -65,4 +65,4 @@ class CommunicationAggregator:
             total_comm_stats[comm_node.name][2] += comm_node.total_time
             total_comm_stats[comm_node.name][3] += comm_node.real_time
 
-            return step_comm_stats, total_comm_stats
+        return step_comm_stats, total_comm_stats

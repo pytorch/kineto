@@ -2,9 +2,10 @@ import sys
 from enum import IntEnum
 
 from .. import utils
-from .communication import CommunicationParser
+from .communication import generate_communication_nodes
 from .node import (CommunicationNode, DeviceNode, OperatorNode,
                    ProfilerStepNode, RuntimeNode)
+from .range_utils import merge_ranges
 from .trace import EventTypes
 
 logger = utils.get_logger()
@@ -18,128 +19,6 @@ class NodeContext:
         self.tid2list = {} # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
         self.tid2zero_rt_list = {}  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
         self.corrid_to_device = {}  # value is a list of DeviceNode
-
-
-class StepParser:
-    def __init__(self):
-        # we could not use [[]] * len here since they all point to same memory
-        # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
-        # https://stackoverflow.com/questions/240178/list-of-lists-changes-reflected-across-sublists-unexpectedly
-        self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
-        self.steps = []
-        self.steps_names = []
-        self.min_ts = sys.maxsize
-        self.max_ts = -sys.maxsize - 1
-
-    def parse_steps(self, events, node_parser):
-        for event in events:
-            self._parse_step(event, node_parser)
-
-        if len(self.steps) == 0:
-            self.steps.append((self.min_ts, self.max_ts))
-            self.steps_names.append("0")
-        self._update_steps(node_parser)
-
-        for i in range(len(self.role_ranges)):
-            self.role_ranges[i] = merge_ranges(self.role_ranges[i])
-
-    @property
-    def has_runtime(self):
-        return bool(self.role_ranges[ProfileRole.Runtime])
-
-    @property
-    def has_kernel(self):
-        return bool(self.role_ranges[ProfileRole.Kernel])
-
-    @property
-    def has_communication(self):
-        return bool(self.role_ranges[ProfileRole.Communication])
-
-    @property
-    def has_memcpy_or_memset(self):
-        return bool(self.role_ranges[ProfileRole.Memcpy] or self.role_ranges[ProfileRole.Memset])
-
-    def _parse_step(self, event, node_parser):
-        ts = event.ts
-        dur = event.duration
-        evt_type = event.type
-        if evt_type == EventTypes.KERNEL:
-            if node_parser.update_communication_node(event):
-                self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
-            else:
-                self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
-        elif evt_type == EventTypes.MEMCPY:
-            self.role_ranges[ProfileRole.Memcpy].append((ts, ts + dur))
-        elif evt_type == EventTypes.MEMSET:
-            self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
-        elif evt_type == EventTypes.RUNTIME:
-            self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
-        elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
-                and event.name.endswith(".__next__"):
-            self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
-        elif event.type == EventTypes.PROFILER_STEP:
-            self.steps.append((ts, ts + dur))
-            self.steps_names.append(str(event.step))
-        elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
-            self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
-
-        # Record host side min and max time.
-        if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
-            if ts < self.min_ts:
-                self.min_ts = ts
-            if ts + dur > self.max_ts:
-                self.max_ts = ts + dur
-
-    def _update_steps(self, node_parser):
-        '''Update self.steps considering device side events launched by each host side step.
-        Update self.steps_names if some tail steps are removed.'''
-        steps_device, steps_matched_device_nodes, matched_device_nodes, = node_parser.find_device_node_timeline(self.steps)
-
-        # Change step time to device side on the condition that any step have device time.
-        is_use_gpu = (len(matched_device_nodes) > 0)
-        if is_use_gpu:
-            prev_step_end_time = self.steps[0][0]
-            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
-                for device_node in node_parser.device_node_list:
-                    if device_node not in matched_device_nodes:
-                        # Now this device_node is not launched inside any step span.
-                        if device_node.end_time < steps_device[0][0]:
-                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
-            for i_step in range(len(self.steps)):
-                step_start_time = max(prev_step_end_time, self.steps[i_step][0])
-                step_end_time = self.steps[i_step][1]
-                if steps_device[i_step][0] == sys.maxsize:  # When step i_step has no device event.
-                    # Assign to step_start_time when kernel is behind host step end.
-                    step_end_time = max(step_end_time, step_start_time)
-                else:
-                    step_end_time = max(step_end_time, steps_device[i_step][1])
-                    if step_end_time < step_start_time:
-                        logger.warning(
-                            "Abnormal step_end_time of step {}: [{}, {}]".format(
-                                i_step, step_start_time, step_end_time))
-                        step_end_time = step_start_time
-                self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
-                prev_step_end_time = step_end_time
-
-        is_remove_tail_steps = True  # TODO: Use tensorboard argument instead.
-        if is_use_gpu and len(self.steps) > 1 and is_remove_tail_steps:
-            i_step = len(self.steps) - 1
-            while i_step >= 0:
-                if steps_matched_device_nodes[i_step] > 0:
-                    break
-                i_step -= 1
-            if i_step >= 0:
-                keep_steps = i_step + 1
-                if i_step > 0 and steps_matched_device_nodes[i_step - 1] * 0.8 > steps_matched_device_nodes[i_step]:
-                    keep_steps = i_step
-                if keep_steps < len(self.steps):
-                    logger.warning(
-                        "Remove the last {} steps from overview. "
-                        "Because the profiler may fail to capture all the kernels launched by these steps.".format(
-                            len(self.steps) - keep_steps
-                        ))
-                    self.steps = self.steps[:keep_steps]
-                    self.steps_names = self.steps_names[:keep_steps]
 
 
 class NodeParserMixin:
@@ -291,6 +170,128 @@ class NodeParserMixin:
             tid2list.setdefault(tid, []).append(op_node)
 
 
+class StepParser:
+    def __init__(self):
+        # we could not use [[]] * len here since they all point to same memory
+        # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
+        # https://stackoverflow.com/questions/240178/list-of-lists-changes-reflected-across-sublists-unexpectedly
+        self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
+        self.steps = []
+        self.steps_names = []
+        self.min_ts = sys.maxsize
+        self.max_ts = -sys.maxsize - 1
+
+    def parse_steps(self, events, node_parser):
+        for event in events:
+            self._parse_step(event, node_parser)
+
+        if len(self.steps) == 0:
+            self.steps.append((self.min_ts, self.max_ts))
+            self.steps_names.append("0")
+        self._update_steps(node_parser)
+
+        for i in range(len(self.role_ranges)):
+            self.role_ranges[i] = merge_ranges(self.role_ranges[i])
+
+    @property
+    def has_runtime(self):
+        return bool(self.role_ranges[ProfileRole.Runtime])
+
+    @property
+    def has_kernel(self):
+        return bool(self.role_ranges[ProfileRole.Kernel])
+
+    @property
+    def has_communication(self):
+        return bool(self.role_ranges[ProfileRole.Communication])
+
+    @property
+    def has_memcpy_or_memset(self):
+        return bool(self.role_ranges[ProfileRole.Memcpy] or self.role_ranges[ProfileRole.Memset])
+
+    def _parse_step(self, event, node_parser):
+        ts = event.ts
+        dur = event.duration
+        evt_type = event.type
+        if evt_type == EventTypes.KERNEL:
+            if node_parser.update_communication_node(event):
+                self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
+            else:
+                self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
+        elif evt_type == EventTypes.MEMCPY:
+            self.role_ranges[ProfileRole.Memcpy].append((ts, ts + dur))
+        elif evt_type == EventTypes.MEMSET:
+            self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
+        elif evt_type == EventTypes.RUNTIME:
+            self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
+        elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
+                and event.name.endswith(".__next__"):
+            self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
+        elif event.type == EventTypes.PROFILER_STEP:
+            self.steps.append((ts, ts + dur))
+            self.steps_names.append(str(event.step))
+        elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
+            self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
+
+        # Record host side min and max time.
+        if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+            if ts < self.min_ts:
+                self.min_ts = ts
+            if ts + dur > self.max_ts:
+                self.max_ts = ts + dur
+
+    def _update_steps(self, node_parser):
+        '''Update self.steps considering device side events launched by each host side step.
+        Update self.steps_names if some tail steps are removed.'''
+        steps_device, steps_matched_device_nodes, matched_device_nodes, = node_parser.find_device_node_timeline(self.steps)
+
+        # Change step time to device side on the condition that any step have device time.
+        is_use_gpu = (len(matched_device_nodes) > 0)
+        if is_use_gpu:
+            prev_step_end_time = self.steps[0][0]
+            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
+                for device_node in node_parser.device_node_list:
+                    if device_node not in matched_device_nodes:
+                        # Now this device_node is not launched inside any step span.
+                        if device_node.end_time < steps_device[0][0]:
+                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
+            for i_step in range(len(self.steps)):
+                step_start_time = max(prev_step_end_time, self.steps[i_step][0])
+                step_end_time = self.steps[i_step][1]
+                if steps_device[i_step][0] == sys.maxsize:  # When step i_step has no device event.
+                    # Assign to step_start_time when kernel is behind host step end.
+                    step_end_time = max(step_end_time, step_start_time)
+                else:
+                    step_end_time = max(step_end_time, steps_device[i_step][1])
+                    if step_end_time < step_start_time:
+                        logger.warning(
+                            "Abnormal step_end_time of step {}: [{}, {}]".format(
+                                i_step, step_start_time, step_end_time))
+                        step_end_time = step_start_time
+                self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
+                prev_step_end_time = step_end_time
+
+        is_remove_tail_steps = True  # TODO: Use tensorboard argument instead.
+        if is_use_gpu and len(self.steps) > 1 and is_remove_tail_steps:
+            i_step = len(self.steps) - 1
+            while i_step >= 0:
+                if steps_matched_device_nodes[i_step] > 0:
+                    break
+                i_step -= 1
+            if i_step >= 0:
+                keep_steps = i_step + 1
+                if i_step > 0 and steps_matched_device_nodes[i_step - 1] * 0.8 > steps_matched_device_nodes[i_step]:
+                    keep_steps = i_step
+                if keep_steps < len(self.steps):
+                    logger.warning(
+                        "Remove the last {} steps from overview. "
+                        "Because the profiler may fail to capture all the kernels launched by these steps.".format(
+                            len(self.steps) - keep_steps
+                        ))
+                    self.steps = self.steps[:keep_steps]
+                    self.steps_names = self.steps_names[:keep_steps]
+
+
 class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
@@ -302,24 +303,5 @@ class EventParser(NodeParserMixin, StepParser):
         return node_context
 
     def generate_communication_nodes(self):
-        comm_parser = CommunicationParser()
-        return comm_parser.parse(self.communication_data, self.steps, self.steps_names)
+        return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
 
-
-def merge_ranges(src_ranges, is_sorted=False):
-    merged_ranges = []
-    if len(src_ranges) > 0:
-        if not is_sorted:
-            src_ranges.sort(key=lambda x: x[0])
-        src_id = 0
-        merged_ranges.append(
-            (src_ranges[src_id][0], src_ranges[src_id][1]))
-        for src_id in range(1, len(src_ranges)):
-            dst_id = len(merged_ranges) - 1
-            if src_ranges[src_id][1] > merged_ranges[dst_id][1]:
-                if src_ranges[src_id][0] <= merged_ranges[dst_id][1]:
-                    merged_ranges[dst_id] = (merged_ranges[dst_id][0], src_ranges[src_id][1])
-                else:
-                    merged_ranges.append(
-                        (src_ranges[src_id][0], src_ranges[src_id][1]))
-    return merged_ranges

@@ -92,6 +92,6 @@ class RunLoader(object):
                 has_communication = True
         if has_communication:
             generator = DistributedRunGenerator(self.run.profiles)
-            profile = generator.generate_distributed_run_profile()
+            profile = generator.generate_run_profile()
             run.add_profile(profile)
         return run

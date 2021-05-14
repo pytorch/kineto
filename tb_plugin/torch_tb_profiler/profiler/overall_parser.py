@@ -2,96 +2,11 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from .. import utils
-from .event_parser import ProfileRole, merge_ranges
+from .event_parser import ProfileRole
+from .range_utils import (get_ranges_sum, intersection_ranges_lists,
+                          merge_ranges, subtract_ranges_lists)
 
 logger = utils.get_logger()
-
-
-def subtract_ranges_lists(range_list1, range_list2):
-    range_list_dst = []
-    if len(range_list1) == 0:
-        return range_list_dst
-    if len(range_list2) == 0:
-        range_list_dst = list(range_list1)
-        return range_list_dst
-    r1 = range_list1[0]
-    r2 = range_list2[0]
-    i1 = i2 = 0
-    while i1 < len(range_list1):
-        if i2 == len(range_list2):
-            range_list_dst.append(r1)
-            r1, i1 = pop_list(range_list1, i1)
-        elif r2[1] <= r1[0]:
-            r2, i2 = pop_list(range_list2, i2)
-        elif r2[0] <= r1[0] and r2[1] < r1[1]:
-            r1 = (r2[1], r1[1])
-            r2, i2 = pop_list(range_list2, i2)
-        elif r2[0] <= r1[0]:
-            assert (r2[1] >= r1[1])
-            r2 = (r1[1], r2[1])
-            r1, i1 = pop_list(range_list1, i1)
-        elif r2[0] < r1[1]:
-            assert (r2[0] > r1[0])
-            range_list_dst.append((r1[0], r2[0]))
-            r1 = (r2[0], r1[1])
-        else:
-            assert (r2[0] >= r1[1])
-            range_list_dst.append(r1)
-            r1, i1 = pop_list(range_list1, i1)
-    return range_list_dst
-
-
-def intersection_ranges_lists(range_list1, range_list2):
-    range_list_dst = []
-    if len(range_list1) == 0 or len(range_list2) == 0:
-        return range_list_dst
-    r1 = range_list1[0]
-    r2 = range_list2[0]
-    i1 = i2 = 0
-    while i1 < len(range_list1):
-        if i2 == len(range_list2):
-            break
-        elif r2[1] <= r1[0]:
-            r2, i2 = pop_list(range_list2, i2)
-        elif r2[0] <= r1[0] and r2[1] < r1[1]:
-            assert (r2[1] > r1[0])
-            range_list_dst.append((r1[0], r2[1]))
-            r1 = (r2[1], r1[1])
-            r2, i2 = pop_list(range_list2, i2)
-        elif r2[0] <= r1[0]:
-            assert (r2[1] >= r1[1])
-            range_list_dst.append(r1)
-            r2 = (r1[1], r2[1])
-            r1, i1 = pop_list(range_list1, i1)
-        elif r2[1] < r1[1]:
-            assert (r2[0] > r1[0])
-            range_list_dst.append(r2)
-            r1 = (r2[1], r1[1])
-            r2, i2 = pop_list(range_list2, i2)
-        elif r2[0] < r1[1]:
-            assert (r2[1] >= r1[1])
-            range_list_dst.append((r2[0], r1[1]))
-            r2 = (r1[1], r2[1])
-            r1, i1 = pop_list(range_list1, i1)
-        else:
-            assert (r2[0] >= r1[1])
-            r1, i1 = pop_list(range_list1, i1)
-    return range_list_dst
-
-
-def get_ranges_sum(ranges):
-    sum = 0
-    for range in ranges:
-        sum += (range[1] - range[0])
-    return sum
-
-
-def pop_list(range_list, index):
-    next_index = index + 1
-    if next_index >= len(range_list):
-        return None, len(range_list)
-    next_item = range_list[next_index]
-    return next_item, next_index
 
 
 class OverallParser(object):

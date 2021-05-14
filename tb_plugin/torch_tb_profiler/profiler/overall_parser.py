@@ -153,7 +153,7 @@ class OverallParser(object):
         self.avg_costs = OverallParser.Costs()
         self.communication_overlap = []
 
-    def aggregate(self, node_parser, step_parser):
+    def aggregate(self, step_parser):
         logger.debug("Overall, statistics")
         global_stats = OverallParser.Statistics.create_statistics(step_parser.steps, step_parser.role_ranges)
         comm_kernel_overlap = intersection_ranges_lists(step_parser.role_ranges[ProfileRole.Kernel], step_parser.role_ranges[ProfileRole.Communication])
@@ -175,19 +175,3 @@ class OverallParser(object):
 
         for i in range(len(self.avg_costs.costs)):
             self.avg_costs.costs[i] /= valid_steps
-
-        # Find each communication node belong to which step
-        index = 0
-        for comm_node in node_parser.comm_node_list:
-            while index < valid_steps:
-                if comm_node.start_time >= step_parser.steps[index][0] and comm_node.end_time <= step_parser.steps[index][1]:
-                    comm_node.step_name = step_parser.steps_names[index]
-                    break
-                elif comm_node.start_time >= step_parser.steps[index][1]:
-                    index += 1
-                else:
-                    logger.error("Found a communication op not belong to any step.")
-                    break
-            if index >= valid_steps:
-                logger.error("Found communication ops not belong to any step. ")
-                break

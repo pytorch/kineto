@@ -15,12 +15,13 @@ class NodeContext:
         self.corrid_to_device = {}  # value is a list of DeviceNode
         self.corrid_to_runtime = {}  # value is a RuntimeNode
         self.externalid_to_runtime = {}  # value is a list of RuntimeNode
+
+
 class NodeParser:
     def __init__(self):
         self.communication_data = {}
         self.device_node_list = []
         self.runtime_node_list = []
-        self.comm_node_list = []
 
     def parse_events(self, events, context):
         # For OperatorNode and ProfilerStepNode:
@@ -49,12 +50,6 @@ class NodeParser:
             if ext_id != 0:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
-
-        # Sort the communication node according the start time, this is for correlating communication node between workers
-        for comm_node in self.communication_data.values():
-            comm_node.kernel_ranges.sort(key=lambda x: (x[0], -x[1]))
-            self.comm_node_list.append(comm_node)
-        self.comm_node_list.sort(key=lambda x: (x.start_time, -x.end_time))
 
     def _parse_event(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
         corrid = event.args.get("correlation", None)

@@ -10,7 +10,7 @@ from collections import OrderedDict
 
 from .. import io, utils
 from . import trace
-from .communication import CommunicationAggregator, CommunicationParser
+from .communication import CommunicationParser, aggregate_communication_nodes
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
 from .node_parser import NodeContext, NodeParser
@@ -149,8 +149,7 @@ class RunProfileData(object):
             self.kernel_stat = kernel_parser.kernel_stat
 
     def communication_parse(self):
-        comm_agg = CommunicationAggregator()
-        self.step_comm_stats, self.total_comm_stats = comm_agg.aggregate(self.comm_node_list)
+        self.step_comm_stats, self.total_comm_stats = aggregate_communication_nodes(self.comm_node_list)
 
     def analyze(self):
         self.recommendations = []

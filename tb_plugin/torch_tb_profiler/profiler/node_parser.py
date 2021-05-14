@@ -36,7 +36,7 @@ class NodeParser:
         corrid_to_device = context.corrid_to_device
         corrid_to_runtime = context.corrid_to_runtime
         externalid_to_runtime = context.externalid_to_runtime
-        
+
         for event in events:
             self._parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
 

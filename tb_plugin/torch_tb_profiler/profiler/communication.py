@@ -31,38 +31,35 @@ class CommunicationParser:
 
         return self.comm_node_list
 
-class CommunicationAggregator:
-    def __init__(self):
-        pass
 
-    def aggregate(self, comm_node_list):
-        step_comm_stats = {}
-        total_comm_stats = {}
+def aggregate_communication_nodes(comm_node_list):
+    step_comm_stats = {}
+    total_comm_stats = {}
 
-        for comm_node in comm_node_list:
-            if comm_node.step_name not in step_comm_stats:
-                step_comm_stats[comm_node.step_name] = [0, 0]
-            step_comm_stats[comm_node.step_name][0] += comm_node.total_time
-            step_comm_stats[comm_node.step_name][1] += comm_node.real_time
-            if comm_node.name not in total_comm_stats:
-                total_comm_stats[comm_node.name] = [0, 0, 0, 0]
-            total_comm_stats[comm_node.name][0] += 1
-            bytes_one_value = 0
-            for i in range(len(comm_node.input_shape)):
-                if comm_node.input_type[i] == 'long int':
-                    bytes_one_value = 8
-                elif comm_node.input_type[i] == 'float':
-                    bytes_one_value = 4
-                elif comm_node.input_type[i] == 'int':
-                    bytes_one_value = 4
-                else:
-                    logger.warning("Found an unknown tensor type: {}".format(comm_node.input_type[i]))
-                    bytes_one_value = 0
-                total_size = 1
-                for size in comm_node.input_shape[i]:
-                    total_size *= size
-                total_comm_stats[comm_node.name][1] += total_size * bytes_one_value
-            total_comm_stats[comm_node.name][2] += comm_node.total_time
-            total_comm_stats[comm_node.name][3] += comm_node.real_time
+    for comm_node in comm_node_list:
+        if comm_node.step_name not in step_comm_stats:
+            step_comm_stats[comm_node.step_name] = [0, 0]
+        step_comm_stats[comm_node.step_name][0] += comm_node.total_time
+        step_comm_stats[comm_node.step_name][1] += comm_node.real_time
+        if comm_node.name not in total_comm_stats:
+            total_comm_stats[comm_node.name] = [0, 0, 0, 0]
+        total_comm_stats[comm_node.name][0] += 1
+        bytes_one_value = 0
+        for i in range(len(comm_node.input_shape)):
+            if comm_node.input_type[i] == 'long int':
+                bytes_one_value = 8
+            elif comm_node.input_type[i] == 'float':
+                bytes_one_value = 4
+            elif comm_node.input_type[i] == 'int':
+                bytes_one_value = 4
+            else:
+                logger.warning("Found an unknown tensor type: {}".format(comm_node.input_type[i]))
+                bytes_one_value = 0
+            total_size = 1
+            for size in comm_node.input_shape[i]:
+                total_size *= size
+            total_comm_stats[comm_node.name][1] += total_size * bytes_one_value
+        total_comm_stats[comm_node.name][2] += comm_node.total_time
+        total_comm_stats[comm_node.name][3] += comm_node.real_time
 
-        return step_comm_stats, total_comm_stats
+    return step_comm_stats, total_comm_stats

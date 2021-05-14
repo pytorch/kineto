@@ -68,23 +68,23 @@ class OverallParser(object):
         self.avg_costs = OverallParser.Costs()
         self.communication_overlap = []
 
-    def aggregate(self, step_parser):
+    def aggregate(self, steps, role_ranges):
         logger.debug("Overall, statistics")
-        global_stats = OverallParser.Statistics.create_statistics(step_parser.steps, step_parser.role_ranges)
-        comm_kernel_overlap = intersection_ranges_lists(step_parser.role_ranges[ProfileRole.Kernel], step_parser.role_ranges[ProfileRole.Communication])
+        global_stats = OverallParser.Statistics.create_statistics(steps, role_ranges)
+        comm_kernel_overlap = intersection_ranges_lists(role_ranges[ProfileRole.Kernel], role_ranges[ProfileRole.Communication])
 
         logger.debug("Overall, aggregation")
-        valid_steps = len(step_parser.steps)
+        valid_steps = len(steps)
         for i in range(valid_steps):
-            steps_stat = global_stats.intersection_with_step(step_parser.steps[i])
-            self.steps_costs.append(OverallParser.Costs.calculate_costs(steps_stat, step_parser.steps[i]))
+            steps_stat = global_stats.intersection_with_step(steps[i])
+            self.steps_costs.append(OverallParser.Costs.calculate_costs(steps_stat, steps[i]))
             for cost_index in range(len(self.avg_costs.costs)):
                 self.avg_costs.costs[cost_index] += self.steps_costs[i].costs[cost_index]
 
             comm_costs = OverallParser.StepCommunicationCosts()
-            comm_costs.overlap = get_ranges_sum(intersection_ranges_lists([step_parser.steps[i]], comm_kernel_overlap))
-            comm_costs.computation = get_ranges_sum(intersection_ranges_lists([step_parser.steps[i]], step_parser.role_ranges[ProfileRole.Kernel]))
-            comm_costs.communication = get_ranges_sum(intersection_ranges_lists([step_parser.steps[i]], step_parser.role_ranges[ProfileRole.Communication]))
+            comm_costs.overlap = get_ranges_sum(intersection_ranges_lists([steps[i]], comm_kernel_overlap))
+            comm_costs.computation = get_ranges_sum(intersection_ranges_lists([steps[i]], role_ranges[ProfileRole.Kernel]))
+            comm_costs.communication = get_ranges_sum(intersection_ranges_lists([steps[i]], role_ranges[ProfileRole.Communication]))
             comm_costs.other = self.steps_costs[i].costs[ProfileRole.Total] + comm_costs.overlap - comm_costs.computation - comm_costs.communication
             self.communication_overlap.append(comm_costs)
 

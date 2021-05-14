@@ -50,6 +50,10 @@ class NodeParserMixin:
         for event in events:
             self._parse_node(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
 
+        for event in events:
+            if event.type == EventTypes.KERNEL:
+                self._update_communication_node(event)
+
         # associate CUDA Runtimes with CPU events
         for _, op_list in tid2list.items():
             for op in op_list:
@@ -61,7 +65,7 @@ class NodeParserMixin:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
 
-    def update_communication_node(self, event):
+    def _update_communication_node(self, event):
         '''Update the communication node by using the TraceEvent instance'''
         external_id = event.external_id
         comm_node = self.communication_data.get(external_id)
@@ -181,14 +185,13 @@ class StepParser:
         self.min_ts = sys.maxsize
         self.max_ts = -sys.maxsize - 1
 
-    def parse_steps(self, events, node_parser):
+    def parse_steps(self, events, comm_nodes):
         for event in events:
-            self._parse_step(event, node_parser)
+            self._parse_step(event, comm_nodes)
 
         if len(self.steps) == 0:
             self.steps.append((self.min_ts, self.max_ts))
             self.steps_names.append("0")
-        self._update_steps(node_parser)
 
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
@@ -209,12 +212,12 @@ class StepParser:
     def has_memcpy_or_memset(self):
         return bool(self.role_ranges[ProfileRole.Memcpy] or self.role_ranges[ProfileRole.Memset])
 
-    def _parse_step(self, event, node_parser):
+    def _parse_step(self, event, comm_nodes):
         ts = event.ts
         dur = event.duration
         evt_type = event.type
         if evt_type == EventTypes.KERNEL:
-            if node_parser.update_communication_node(event):
+            if event.external_id in comm_nodes:
                 self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
             else:
                 self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
@@ -240,17 +243,16 @@ class StepParser:
             if ts + dur > self.max_ts:
                 self.max_ts = ts + dur
 
-    def _update_steps(self, node_parser):
+    def update_steps(self, device_node_list, steps_device, steps_matched_device_nodes, matched_device_nodes):
         '''Update self.steps considering device side events launched by each host side step.
         Update self.steps_names if some tail steps are removed.'''
-        steps_device, steps_matched_device_nodes, matched_device_nodes, = node_parser.find_device_node_timeline(self.steps)
 
         # Change step time to device side on the condition that any step have device time.
         is_use_gpu = (len(matched_device_nodes) > 0)
         if is_use_gpu:
             prev_step_end_time = self.steps[0][0]
             if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
-                for device_node in node_parser.device_node_list:
+                for device_node in device_node_list:
                     if device_node not in matched_device_nodes:
                         # Now this device_node is not launched inside any step span.
                         if device_node.end_time < steps_device[0][0]:
@@ -291,7 +293,6 @@ class StepParser:
                     self.steps = self.steps[:keep_steps]
                     self.steps_names = self.steps_names[:keep_steps]
 
-
 class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
@@ -299,9 +300,12 @@ class EventParser(NodeParserMixin, StepParser):
     def parse(self, events):
         node_context = NodeContext()
         self.parse_nodes(events, node_context)
-        self.parse_steps(events, self)
+        self.parse_steps(events, self.communication_data)
+
+        # Move the interleaved logic out of each NodeParser and StepParser
+        steps_device, steps_matched_device_nodes, matched_device_nodes, = self.find_device_node_timeline(self.steps)
+        self.update_steps(self.device_node_list, steps_device, steps_matched_device_nodes, matched_device_nodes)
         return node_context
 
     def generate_communication_nodes(self):
         return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
-

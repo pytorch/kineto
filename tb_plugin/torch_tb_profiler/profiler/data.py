@@ -130,7 +130,7 @@ class RunProfileData(object):
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
-        overall_parser.aggregate(parser)
+        overall_parser.aggregate(parser.steps, parser.role_ranges)
         self.avg_costs = overall_parser.avg_costs
         self.steps_costs = overall_parser.steps_costs
         self.comm_overlap_costs = overall_parser.communication_overlap

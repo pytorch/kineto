@@ -13,8 +13,6 @@ class NodeContext:
         self.tid2list = {} # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
         self.tid2zero_rt_list = {}  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
         self.corrid_to_device = {}  # value is a list of DeviceNode
-        self.corrid_to_runtime = {}  # value is a RuntimeNode
-        self.externalid_to_runtime = {}  # value is a list of RuntimeNode
 
 
 class NodeParser:
@@ -34,8 +32,9 @@ class NodeParser:
         tid2list = context.tid2list
         tid2zero_rt_list = context.tid2zero_rt_list
         corrid_to_device = context.corrid_to_device
-        corrid_to_runtime = context.corrid_to_runtime
-        externalid_to_runtime = context.externalid_to_runtime
+
+        corrid_to_runtime = {}  # value is a RuntimeNode
+        externalid_to_runtime = {}  # value is a list of RuntimeNode
 
         for event in events:
             self._parse_event(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)

@@ -10,9 +10,11 @@ from collections import OrderedDict
 
 from .. import io, utils
 from . import trace
+from .communication import analyze_communication_nodes
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
-from .overall_parser import OverallParser, ProfileRole
+from .overall_parser import OverallParser
+from .event_parser import EventParser, ProfileRole
 
 logger = utils.get_logger()
 
@@ -22,14 +24,6 @@ class RunData(object):
         self.name = name
         self.run_dir = run_dir
         self.profiles = OrderedDict()
-
-
-class ProfileContextData(object):
-    def __init__(self):
-        self.communication_data = dict()
-        self.device_node_list = []
-        self.runtime_node_list = []
-
 
 class RunProfileData(object):
     def __init__(self, worker):
@@ -51,10 +45,10 @@ class RunProfileData(object):
         self.kernel_list_groupby_name_op = None
         self.kernel_stat = None
         self.recommendations = []
-        self.comm_node_list = []
+        self.comm_node_list = None
         self.comm_overlap_costs = None
-        self.total_comm_stats = dict()
-        self.step_comm_stats = dict()
+        self.total_comm_stats = None
+        self.step_comm_stats = None
 
     @staticmethod
     def parse(run_dir, worker, path, caches):
@@ -112,11 +106,22 @@ class RunProfileData(object):
         return trace_path, trace_json
 
     def process(self):
-        context_data = ProfileContextData()
+        parser = EventParser()
+        node_context = parser.parse(self.events)
 
+        self.has_runtime = parser.has_runtime
+        self.has_kernel = parser.has_kernel
+        self.has_communication = parser.has_communication
+        self.has_memcpy_or_memset = parser.has_memcpy_or_memset
+        self.steps_names = parser.steps_names
+
+        # Parse communications.
+        self.comm_node_list = parser.generate_communication_nodes()
+
+        # Starting aggregate
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
-        module_parser.parse_events(self.events, context_data)
+        module_parser.aggregate(node_context)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
@@ -125,15 +130,9 @@ class RunProfileData(object):
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
-        overall_parser.parse_events(self.events, context_data)
-        self.has_runtime = bool(overall_parser.role_ranges[ProfileRole.Runtime])
-        self.has_kernel = bool(overall_parser.role_ranges[ProfileRole.Kernel])
-        self.has_communication = bool(overall_parser.role_ranges[ProfileRole.Communication])
-        self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy] or overall_parser.role_ranges[ProfileRole.Memset])
-        self.steps_costs = overall_parser.steps_costs
-        self.steps_names = overall_parser.steps_names
+        overall_parser.aggregate(parser)
         self.avg_costs = overall_parser.avg_costs
-        self.comm_node_list = overall_parser.comm_node_list
+        self.steps_costs = overall_parser.steps_costs
         self.comm_overlap_costs = overall_parser.communication_overlap
 
         if self.has_kernel:
@@ -143,31 +142,7 @@ class RunProfileData(object):
             self.kernel_stat = kernel_parser.kernel_stat
 
     def communication_parse(self):
-        for comm_node in self.comm_node_list:
-            if comm_node.step_name not in self.step_comm_stats:
-                self.step_comm_stats[comm_node.step_name] = [0, 0]
-            self.step_comm_stats[comm_node.step_name][0] += comm_node.total_time
-            self.step_comm_stats[comm_node.step_name][1] += comm_node.real_time
-            if comm_node.name not in self.total_comm_stats:
-                self.total_comm_stats[comm_node.name] = [0, 0, 0, 0]
-            self.total_comm_stats[comm_node.name][0] += 1
-            bytes_one_value = 0
-            for i in range(len(comm_node.input_shape)):
-                if comm_node.input_type[i] == 'long int':
-                    bytes_one_value = 8
-                elif comm_node.input_type[i] == 'float':
-                    bytes_one_value = 4
-                elif comm_node.input_type[i] == 'int':
-                    bytes_one_value = 4
-                else:
-                    logger.warning("Found an unknown tensor type: {}".format(comm_node.input_type[i]))
-                    bytes_one_value = 0
-                total_size = 1
-                for size in comm_node.input_shape[i]:
-                    total_size *= size
-                self.total_comm_stats[comm_node.name][1] += total_size * bytes_one_value
-            self.total_comm_stats[comm_node.name][2] += comm_node.total_time
-            self.total_comm_stats[comm_node.name][3] += comm_node.real_time
+        self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)
 
     def analyze(self):
         self.recommendations = []

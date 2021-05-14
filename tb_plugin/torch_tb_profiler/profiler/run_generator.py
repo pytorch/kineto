@@ -296,7 +296,7 @@ class DistributedRunGenerator(object):
     def __init__(self, all_profile_data):
         self.all_profile_data = all_profile_data
 
-    def generate_distributed_run_profile(self):
+    def generate_run_profile(self):
         profile_run = DistributedRunProfile()
         profile_run.views.append(consts.DISTRIBUTED_VIEW)
         profile_run.steps_to_overlap = self._generate_overlap_graph()

@@ -220,7 +220,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
 
-
     @wrappers.Request.application
     def comm_overlap_route(self, request):
         name = request.args.get("run")

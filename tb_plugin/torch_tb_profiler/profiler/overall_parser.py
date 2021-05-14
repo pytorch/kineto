@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from .. import utils
-from .step_parser import ProfileRole, merge_ranges
+from .event_parser import ProfileRole, merge_ranges
 
 logger = utils.get_logger()
 

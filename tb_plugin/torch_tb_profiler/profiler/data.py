@@ -10,12 +10,11 @@ from collections import OrderedDict
 
 from .. import io, utils
 from . import trace
-from .communication import CommunicationParser, aggregate_communication_nodes
+from .communication import aggregate_communication_nodes
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
-from .node_parser import NodeContext, NodeParser
 from .overall_parser import OverallParser
-from .step_parser import ProfileRole, StepParser
+from .event_parser import EventParser, ProfileRole
 
 logger = utils.get_logger()
 
@@ -107,23 +106,17 @@ class RunProfileData(object):
         return trace_path, trace_json
 
     def process(self):
-        # Parse node
-        node_parser = NodeParser()
-        node_context = NodeContext()
-        node_parser.parse_events(self.events, node_context)
+        parser = EventParser()
+        node_context = parser.parse(self.events)
 
-        # Parse steps
-        step_parser = StepParser()
-        step_parser.parse_events(self.events, node_parser)
-        self.has_runtime = step_parser.has_runtime
-        self.has_kernel = step_parser.has_kernel
-        self.has_communication = step_parser.has_communication
-        self.has_memcpy_or_memset = step_parser.has_memcpy_or_memset
-        self.steps_names = step_parser.steps_names
+        self.has_runtime = parser.has_runtime
+        self.has_kernel = parser.has_kernel
+        self.has_communication = parser.has_communication
+        self.has_memcpy_or_memset = parser.has_memcpy_or_memset
+        self.steps_names = parser.steps_names
 
         # Parse communications.
-        comm_parser = CommunicationParser()
-        self.comm_node_list = comm_parser.parse(node_parser.communication_data, step_parser.steps, self.steps_names)
+        self.comm_node_list = parser.generate_communication_nodes()
 
         # Starting aggregate
         logger.debug("ModuleParser")
@@ -137,7 +130,7 @@ class RunProfileData(object):
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
-        overall_parser.aggregate(step_parser)
+        overall_parser.aggregate(parser)
         self.avg_costs = overall_parser.avg_costs
         self.steps_costs = overall_parser.steps_costs
         self.comm_overlap_costs = overall_parser.communication_overlap

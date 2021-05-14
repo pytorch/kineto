@@ -10,6 +10,7 @@ import torch.utils.data
 import torchvision
 import torchvision.transforms as T
 import torchvision.models as models
+import torch_tb_profiler.io as io
 from torch_tb_profiler.profiler import RunLoader
 
 def create_log_dir():
@@ -220,7 +221,8 @@ def get_output_fn(dir_name, profilers_dict):
 class TestCompareWithAutogradResult(unittest.TestCase):
 
     def compare_results(self, log_dir, profilers_dict, use_gpu=True, record_shapes=False, with_stack=False):
-        loader = RunLoader(os.path.split(log_dir)[-1], log_dir)
+        cache = io.Cache()
+        loader = RunLoader(os.path.split(log_dir)[-1], log_dir, cache)
         run = loader.load()
         plugin_result = get_plugin_result(run, record_shapes, with_stack)
         count = 0

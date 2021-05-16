@@ -77,7 +77,7 @@ class NodeParserMixin:
 
         return comm_node is not None
 
-    def find_device_node_timeline(self, steps):
+    def find_device_steps(self, steps):
         '''return steps associated with device nodes. 
         '''
         runtime_node_list = sorted(self.runtime_node_list, key=lambda x: x.start_time)
@@ -87,6 +87,7 @@ class NodeParserMixin:
         steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(steps)
         # where the steps associated with devcie node, if yes, the related array item is larger than 0.
         steps_matched_device_nodes = [0] * len(steps)
+
         i_step = 0
         i_runtime = 0
         step_device_min_ts = sys.maxsize
@@ -129,7 +130,18 @@ class NodeParserMixin:
             step_device_max_ts = -sys.maxsize - 1
             i_step += 1
 
-        return (steps_device, steps_matched_device_nodes, matched_device_nodes)
+        # If there are matched device, find the first step end time before steps_device[0][0]
+        prev_step_end_time = None
+        if len(matched_device_nodes) > 0:
+            prev_step_end_time = steps[0][0]
+            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
+                for device_node in self.device_node_list:
+                    if device_node not in matched_device_nodes:
+                        # Now this device_node is not launched inside any step span.
+                        if device_node.end_time < steps_device[0][0]:
+                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
+
+        return (prev_step_end_time, steps_device, steps_matched_device_nodes)
 
     def _parse_node(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
         corrid = event.args.get("correlation", None)
@@ -243,20 +255,13 @@ class StepParser:
             if ts + dur > self.max_ts:
                 self.max_ts = ts + dur
 
-    def update_steps(self, device_node_list, steps_device, steps_matched_device_nodes, matched_device_nodes):
+    def update_steps_duration(self, prev_step_end_time, steps_device, steps_matched_device_nodes):
         '''Update self.steps considering device side events launched by each host side step.
         Update self.steps_names if some tail steps are removed.'''
 
         # Change step time to device side on the condition that any step have device time.
-        is_use_gpu = (len(matched_device_nodes) > 0)
+        is_use_gpu = prev_step_end_time is not None
         if is_use_gpu:
-            prev_step_end_time = self.steps[0][0]
-            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
-                for device_node in device_node_list:
-                    if device_node not in matched_device_nodes:
-                        # Now this device_node is not launched inside any step span.
-                        if device_node.end_time < steps_device[0][0]:
-                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
             for i_step in range(len(self.steps)):
                 step_start_time = max(prev_step_end_time, self.steps[i_step][0])
                 step_end_time = self.steps[i_step][1]
@@ -303,8 +308,8 @@ class EventParser(NodeParserMixin, StepParser):
         self.parse_steps(events, self.communication_data)
 
         # Move the interleaved logic out of each NodeParser and StepParser
-        steps_device, steps_matched_device_nodes, matched_device_nodes, = self.find_device_node_timeline(self.steps)
-        self.update_steps(self.device_node_list, steps_device, steps_matched_device_nodes, matched_device_nodes)
+        prev_step_end_time, steps_device, steps_matched_device_nodes = self.find_device_steps(self.steps)
+        self.update_steps_duration(prev_step_end_time, steps_device, steps_matched_device_nodes)
         return node_context
 
     def generate_communication_nodes(self):

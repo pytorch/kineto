@@ -1,6 +1,46 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+from enum import IntEnum
+
+
+EndpointTypes = IntEnum('EndpointTypes', ['START', 'END'], start=0)
+
+
+class EndPoint(object):
+    def __init__(self, ep_time, ep_pt_type, ep_value):
+        self.time = ep_time
+        self.pt_type = ep_pt_type
+        self.value = ep_value
+
+
+# src_ranges: item of ((start_time, end_time), value)
+def merge_ranges_with_value(src_ranges):
+    merged_ranges = []
+    if len(src_ranges) > 0:
+        # Build tuple of (time, type, value)
+        endpoints = []
+        for r in src_ranges:
+            endpoints.append(EndPoint(r[0][0], EndpointTypes.START, r[1]))
+            endpoints.append(EndPoint(r[0][1], EndpointTypes.END, r[1]))
+        endpoints.sort(key=lambda x: [x.time, int(x.pt_type)])  # Make START in front of END if equal on time.
+
+        last_endpoint_time = endpoints[0].time
+        last_value = endpoints[0].value
+        for i in range(1, len(endpoints)):
+            ep = endpoints[i]
+            if ep.time > last_endpoint_time and last_value > 0.0:
+                approximated_sm_efficiency = min(last_value, 1.0)
+                merged_ranges.append(((last_endpoint_time, ep.time), approximated_sm_efficiency))
+            last_endpoint_time = ep.time
+            if ep.pt_type == EndpointTypes.START:
+                last_value += ep.value
+            else:
+                last_value -= ep.value
+
+    return merged_ranges
+
+
 def subtract_ranges_lists(range_list1, range_list2):
     range_list_dst = []
     if len(range_list1) == 0:

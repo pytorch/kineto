@@ -1,10 +1,12 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+import sys
+
 from .. import consts, io, utils
 from ..run import Run
 from .data import RunData, RunProfileData
-from .run_generator import RunGenerator
+from .run_generator import RunGenerator, DistributedRunGenerator
 
 logger = utils.get_logger()
 
@@ -53,10 +55,30 @@ class RunLoader(object):
                                self.run.name, worker, ex, exc_info=True)
 
     def _process(self):
+        comm_node_lists = []
         for data in self.run.profiles.values():
             logger.debug("Processing profile data")
             data.process()
+            comm_node_lists.append(data.comm_node_list)
             logger.debug("Processing profile data finish")
+
+        worker_num = len(comm_node_lists)
+        for i, node in enumerate(comm_node_lists[0]):
+            # loop for all communication kernel ranges in order
+            for j in range(len(node.kernel_ranges)):
+                min_range = sys.maxsize
+                # For each kernel_range, find the minist between workers as the real communication time
+                for k in range(worker_num):
+                    kernel_ranges = comm_node_lists[k][i].kernel_ranges
+                    if kernel_ranges:
+                        if kernel_ranges[j][1] - kernel_ranges[j][0] < min_range:
+                            min_range = kernel_ranges[j][1] - kernel_ranges[j][0]
+                for k in range(worker_num):
+                    comm_node_lists[k][i].real_time += min_range
+
+        for data in self.run.profiles.values():
+            data.communication_parse()
+
 
     def _analyze(self):
         for data in self.run.profiles.values():
@@ -66,8 +88,16 @@ class RunLoader(object):
 
     def _generate_run(self):
         run = Run(self.run.name, self.run.run_dir)
+        has_communication = False
+
         for (worker, span), data in self.run.profiles.items():
             generator = RunGenerator(worker, span, data)
+            profile = generator.generate_run_profile()
+            run.add_profile(profile)
+            if profile.has_communication:
+                has_communication = True
+        if has_communication:
+            generator = DistributedRunGenerator(self.run.profiles)
             profile = generator.generate_run_profile()
             run.add_profile(profile)
         return run

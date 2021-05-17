@@ -24,13 +24,36 @@ class TraceEvent(object):
     def __init__(self, type, data):
         self.type = type
         self.category = data.get("cat", "")
-        self.name = data.get("name", None)
-        self.ts = data.get("ts", None)
-        self.duration = data.get("dur", None)
-        self.pid = data.get("pid", None)
-        self.tid = data.get("tid", None)
+        self.name = data.get("name")
+        self.ts = data.get("ts")
+        self.duration = data.get("dur")
+        self.pid = data.get("pid")
+        self.tid = data.get("tid")
         self.args = data.get("args", {})
 
+    @property
+    def external_id(self):
+        extern_id = self.args.get("external id")
+        if extern_id is None:
+            extern_id = self.args.get("External id")
+
+        return extern_id
+
+    @property
+    def callstack(self):
+        return self.args.get("Call stack", "")
+
+    @property
+    def input_shape(self):
+        shape = self.args.get("Input Dims")
+        if shape is None:
+            shape = self.args.get("Input dims")
+
+        return shape
+
+    @property
+    def input_type(self):
+        return self.args.get("Input type")
 
 class ProfilerStepEvent(TraceEvent):
     def __init__(self, data):

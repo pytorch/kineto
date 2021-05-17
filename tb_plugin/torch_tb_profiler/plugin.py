@@ -102,7 +102,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/operation/stack": self.operation_stack_route,
             "/kernel": self.kernel_pie_route,
             "/kernel/table": self.kernel_table_route,
-            "/trace": self.trace_route
+            "/trace": self.trace_route,
+            "/distributed/overlap": self.comm_overlap_route,
+            "/distributed/waittime": self.comm_wait_route,
+            "/distributed/commops": self.comm_ops_route
         }
 
     def frontend_metadata(self):
@@ -117,6 +120,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def views_route(self, request):
         name = request.args.get("run")
+        worker = request.args.get("worker")
         run = self._get_run(name)
         worker = run.workers[0]
         spans = run.get_spans(worker)
@@ -209,6 +213,26 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
 
+    @wrappers.Request.application
+    def comm_overlap_route(self, request):
+        name = request.args.get("run")
+        run = self._get_run(name)
+        profile = run.get_profile("All")
+        return self.respond_as_json(profile.steps_to_overlap)
+
+    @wrappers.Request.application
+    def comm_wait_route(self, request):
+        name = request.args.get("run")
+        run = self._get_run(name)
+        profile = run.get_profile("All")
+        return self.respond_as_json(profile.steps_to_wait)
+
+    @wrappers.Request.application
+    def comm_ops_route(self, request):
+        name = request.args.get("run")
+        run = self._get_run(name)
+        profile = run.get_profile("All")
+        return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application
     def static_file_route(self, request):

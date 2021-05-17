@@ -36,25 +36,25 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 180,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
-            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::nll_loss_backward", "pid": 13721, "tid": "456",
             "ts": 340, "dur": 70,
-            "args": {"Input dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
+            "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 50, "dur": 400,
-            "args": {"Input dims": [], "External id": 1}
+            "args": {"Input Dims": [], "External id": 1}
           },
           {
             "ph": "X", "cat": "Memcpy", 
@@ -160,13 +160,13 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 70,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           },
           {
             "ph": "X", "cat": "Kernel", 
@@ -240,13 +240,13 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 70,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           }]
         """
         profile = parse_json_trace(json_content)
@@ -267,13 +267,13 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 130, "dur": 70,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           }]
         """
         profile = parse_json_trace(json_content)
@@ -298,19 +298,19 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 110, "dur": 80,
-            "args": {"Input dims": [], "External id": 3}
+            "args": {"Input Dims": [], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 60,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -340,7 +340,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 100,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -368,7 +368,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "ProfilerStep#1", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 300,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -405,7 +405,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "Broadcast", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 300,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -441,13 +441,13 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 60,
-            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::nll_loss_backward", "pid": 13721, "tid": "456",
             "ts": 300, "dur": 70,
-            "args": {"Input dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
+            "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
           },    
           {
             "ph": "X", "cat": "Kernel", 
@@ -529,25 +529,25 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 200,
-            "args": {"Input dims": [], "External id": 1}
+            "args": {"Input Dims": [], "External id": 1}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
-            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 350, "dur": 150,
-            "args": {"Input dims": [], "External id": 3}
+            "args": {"Input Dims": [], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 360, "dur": 50,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           },              
           {
             "ph": "X", "cat": "Memcpy", 
@@ -651,13 +651,13 @@ class TestProfiler(unittest.TestCase):
                 "ph": "X", "cat": "Operator", 
                 "name": "aten::mat_mul", "pid": 13721, "tid": "456",
                 "ts": 100, "dur": 100,
-                "args": {"Input dims": [], "External id": 2}
+                "args": {"Input Dims": [], "External id": 2}
               },
               {
                 "ph": "X", "cat": "Operator", 
                 "name": "aten::mm", "pid": 13721, "tid": "456",
                 "ts": 120, "dur": 40,
-                "args": {"Input dims": [], "External id": 4}
+                "args": {"Input Dims": [], "External id": 4}
               },
               {
                 "ph": "X", "cat": "Kernel", 
@@ -716,25 +716,25 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator", 
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 200,
-            "args": {"Input dims": [], "External id": 1}
+            "args": {"Input Dims": [], "External id": 1}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
-            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 350, "dur": 150,
-            "args": {"Input dims": [], "External id": 3}
+            "args": {"Input Dims": [], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator", 
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 360, "dur": 50,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           },
           {
             "ph": "X", "cat": "Kernel", 
@@ -800,25 +800,25 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 200,
-            "args": {"Input dims": [], "External id": 1}
+            "args": {"Input Dims": [], "External id": 1}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 120, "dur": 10,
-            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 300, "dur": 100,
-            "args": {"Input dims": [], "External id": 3}
+            "args": {"Input Dims": [], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#3", "pid": 13721, "tid": "123",
             "ts": 400, "dur": 50,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           },
           {
             "ph": "X", "cat": "Kernel",
@@ -852,25 +852,25 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 200,
-            "args": {"Input dims": [], "External id": 1}
+            "args": {"Input Dims": [], "External id": 1}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 120, "dur": 10,
-            "args": {"Input dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 300, "dur": 100,
-            "args": {"Input dims": [], "External id": 3}
+            "args": {"Input Dims": [], "External id": 3}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 350, "dur": 40,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           }]
         """
         profile = parse_json_trace(json_content)

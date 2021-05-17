@@ -1,3 +1,6 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 import os
 from abc import ABC, abstractmethod
 from collections import namedtuple

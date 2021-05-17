@@ -1,8 +1,10 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from collections import OrderedDict
+
 from .. import consts
-from ..run import RunProfile
+from ..run import DistributedRunProfile, RunProfile
 from .overall_parser import ProfileRole
 
 
@@ -16,6 +18,7 @@ class RunGenerator(object):
         profile_run = RunProfile(self.worker, self.span)
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
+        profile_run.has_communication = self.profile_data.has_communication
         profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
@@ -68,6 +71,8 @@ class RunGenerator(object):
                                              column_tootip,
                                              {"type": "number", "name": "Memcpy"},
                                              column_tootip,
+                                             {"type": "number", "name": "Communication"},
+                                             column_tootip,
                                              {"type": "number", "name": "Memset"},
                                              column_tootip,
                                              {"type": "number", "name": "Runtime"},
@@ -91,6 +96,8 @@ class RunGenerator(object):
                             build_part_time_str(costs.costs[ProfileRole.Memcpy], "Memcpy"),
                             costs.costs[ProfileRole.Memset],
                             build_part_time_str(costs.costs[ProfileRole.Memset], "Memset"),
+                            costs.costs[ProfileRole.Communication],
+                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication"),
                             costs.costs[ProfileRole.Runtime],
                             build_part_time_str(costs.costs[ProfileRole.Runtime], "Runtime")])
             row.extend([costs.costs[ProfileRole.DataLoader],
@@ -107,6 +114,7 @@ class RunGenerator(object):
                 build_avg_cost_dict("Kernel", self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
                 build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
                 build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset]),
+                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication]),
                 build_avg_cost_dict("Runtime", self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([
@@ -284,3 +292,56 @@ class RunGenerator(object):
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
+
+class DistributedRunGenerator(object):
+    def __init__(self, all_profile_data):
+        self.all_profile_data = all_profile_data
+
+    def generate_run_profile(self):
+        profile_run = DistributedRunProfile()
+        profile_run.views.append(consts.DISTRIBUTED_VIEW)
+        profile_run.steps_to_overlap = self._generate_overlap_graph()
+        profile_run.steps_to_wait = self._generate_wait_graph()
+        profile_run.comm_ops = self._generate_ops_table()
+        return profile_run
+
+    def _generate_overlap_graph(self):
+        result = dict()
+        result["metadata"] = {"title": "Computaion/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
+        steps_to_overlap = OrderedDict()
+        for worker,data in self.all_profile_data.items():
+            for i in range(len(data.steps_names)):
+                step_name = data.steps_names[i]
+                if step_name not in steps_to_overlap:
+                    steps_to_overlap[step_name] = OrderedDict()
+                costs = data.comm_overlap_costs[i]
+                steps_to_overlap[step_name][worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
+        result["data"] = steps_to_overlap
+        return result
+
+    def _generate_wait_graph(self):
+        result = dict()
+        result["metadata"] = {"title": "Communication/Waiting View", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
+        steps_to_wait = OrderedDict()
+        for worker,data in self.all_profile_data.items():
+            for step,comm_stats in data.step_comm_stats.items():
+                if step not in steps_to_wait:
+                    steps_to_wait[step] = OrderedDict()
+                steps_to_wait[step][worker] = [comm_stats[0]-comm_stats[1], comm_stats[1]]
+        result["data"] = steps_to_wait
+        return result
+
+    def _generate_ops_table(self):
+        workers_to_comm_ops = OrderedDict()
+        for worker,data in self.all_profile_data.items():
+            table = {}
+            table["columns"] = [{"type": "string", "name": "Name"}]
+            col_names = ["Calls", "Total Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
+            for column in col_names:
+                table["columns"].append({"type": "number", "name": column})
+            table["rows"] = []
+            for op,stats in data.total_comm_stats.items():
+                row = [op, stats[0], stats[1], stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
+                table["rows"].append(row)
+            workers_to_comm_ops[worker] = table
+        return workers_to_comm_ops

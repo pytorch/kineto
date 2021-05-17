@@ -10,9 +10,11 @@ from collections import OrderedDict
 
 from .. import io, utils
 from . import trace
+from .communication import analyze_communication_nodes
+from .event_parser import EventParser, ProfileRole
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
-from .overall_parser import OverallParser, ProfileRole
+from .overall_parser import OverallParser
 
 logger = utils.get_logger()
 
@@ -23,7 +25,6 @@ class RunData(object):
         self.run_dir = run_dir
         self.profiles = OrderedDict()
 
-
 class RunProfileData(object):
     def __init__(self, worker, span=None):
         self.worker = worker
@@ -33,6 +34,7 @@ class RunProfileData(object):
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
+        self.has_communication = False
         self.has_memcpy_or_memset = False
         self.steps_costs = None
         self.steps_names = None
@@ -44,6 +46,10 @@ class RunProfileData(object):
         self.kernel_list_groupby_name_op = None
         self.kernel_stat = None
         self.recommendations = []
+        self.comm_node_list = None
+        self.comm_overlap_costs = None
+        self.total_comm_stats = None
+        self.step_comm_stats = None
 
     @staticmethod
     def parse(run_dir, worker, span, path, caches):
@@ -101,9 +107,22 @@ class RunProfileData(object):
         return trace_path, trace_json
 
     def process(self):
+        parser = EventParser()
+        node_context = parser.parse(self.events)
+
+        self.has_runtime = parser.has_runtime
+        self.has_kernel = parser.has_kernel
+        self.has_communication = parser.has_communication
+        self.has_memcpy_or_memset = parser.has_memcpy_or_memset
+        self.steps_names = parser.steps_names
+
+        # Parse communications.
+        self.comm_node_list = parser.generate_communication_nodes()
+
+        # Starting aggregate
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
-        module_parser.parse_events(self.events)
+        module_parser.aggregate(node_context)
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
@@ -112,19 +131,19 @@ class RunProfileData(object):
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
-        overall_parser.parse_events(self.events, module_parser.runtime_node_list, module_parser.device_node_list)
-        self.has_runtime = bool(overall_parser.role_ranges[ProfileRole.Runtime])
-        self.has_kernel = bool(overall_parser.role_ranges[ProfileRole.Kernel])
-        self.has_memcpy_or_memset = bool(overall_parser.role_ranges[ProfileRole.Memcpy] or overall_parser.role_ranges[ProfileRole.Memset])
-        self.steps_costs = overall_parser.steps_costs
-        self.steps_names = overall_parser.steps_names
+        overall_parser.aggregate(parser.steps, parser.role_ranges)
         self.avg_costs = overall_parser.avg_costs
+        self.steps_costs = overall_parser.steps_costs
+        self.comm_overlap_costs = overall_parser.communication_overlap
 
         if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
+
+    def communication_parse(self):
+        self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)
 
     def analyze(self):
         self.recommendations = []

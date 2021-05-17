@@ -158,6 +158,6 @@ class GPUMetricsParser(object):
                         [[] for _ in range(gpu_id + 1 - len(self.gpu_ids))])
                     self.gpu_ids.add(gpu_id)
                 self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
-                self.blocks_per_sm_per_device[gpu_id].append(((ts, ts + dur), event.args.get("blocks per SM", 0.0)))
+                self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.args.get("blocks per SM", 0.0)))
                 self.occupancy_per_device[gpu_id].append(((ts, ts + dur),
                                                           event.args.get("theoretical occupancy %", 0.0)))

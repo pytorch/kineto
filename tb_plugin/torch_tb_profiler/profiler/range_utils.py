@@ -14,15 +14,15 @@ class EndPoint(object):
         self.value = ep_value
 
 
-# src_ranges: item of ((start_time, end_time), value)
+# src_ranges: item of (start_time, end_time, value)
 def merge_ranges_with_value(src_ranges):
     merged_ranges = []
     if len(src_ranges) > 0:
         # Build tuple of (time, type, value)
         endpoints = []
         for r in src_ranges:
-            endpoints.append(EndPoint(r[0][0], EndpointTypes.START, r[1]))
-            endpoints.append(EndPoint(r[0][1], EndpointTypes.END, r[1]))
+            endpoints.append(EndPoint(r[0], EndpointTypes.START, r[2]))
+            endpoints.append(EndPoint(r[1], EndpointTypes.END, r[2]))
         endpoints.sort(key=lambda x: [x.time, int(x.pt_type)])  # Make START in front of END if equal on time.
 
         last_endpoint_time = endpoints[0].time

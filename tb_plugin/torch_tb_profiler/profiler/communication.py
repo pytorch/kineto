@@ -1,4 +1,8 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 from .. import utils
+
 logger = utils.get_logger()
 
 

@@ -3,6 +3,8 @@
 # -------------------------------------------------------------------------
 import multiprocessing as mp
 import os
+import tempfile
+import gzip
 
 from .. import utils
 from .file import File, download_file
@@ -15,6 +17,7 @@ class Cache:
         self._manager = mp.Manager()
         self._cache_dict = self._manager.dict()
         self._tempfiles = self._manager.list()
+        self._gpu_metrics_cache_dict = self._manager.dict()
 
     def __getstate__(self):
         '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
@@ -37,17 +40,31 @@ class Cache:
         self.__dict__.update(state)
 
     def read(self, filename):
-        local_file = self._cache_dict.get(filename)
+        local_file = self._gpu_metrics_cache_dict.get(filename)
         if local_file is None:
-            local_file = download_file(filename)
-            # skip the cache for local files
-            if local_file != filename:
-                with self._lock:
-                    self._cache_dict[filename] = local_file
+            logger.debug("_gpu_metrics_cache_dict.get({}) is None".format(filename))
+            local_file = self._cache_dict.get(filename)
+            if local_file is None:
+                local_file = download_file(filename)
+                # skip the cache for local files
+                if local_file != filename:
+                    with self._lock:
+                        self._cache_dict[filename] = local_file
 
         logger.debug("reading local cache %s for file %s" % (local_file, filename))
         with File(local_file, 'rb') as f:
-            return f.read()
+            return f.read(), filename in self._gpu_metrics_cache_dict
+
+    def write_gpu_metrics(self, raw_data, filename):
+        fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
+        fp.close()
+        # Already compressed outside, no need to gzip.open
+        with open(fp.name, mode='wb') as file:
+            file.write(raw_data)
+        logger.debug("Write json with gpu metrics to temp file: %s", fp.name)
+        self.add_tempfile(fp.name)
+        with self._lock:
+            self._gpu_metrics_cache_dict[filename] = fp.name
 
     def add_tempfile(self, filename):
         self._tempfiles.append(filename)

@@ -88,7 +88,7 @@ class RunProfileData(object):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
-        data = caches.read(trace_path)
+        data, _ = caches.read(trace_path)
         if trace_path.endswith('.gz'):
             data = gzip.decompress(data)
 

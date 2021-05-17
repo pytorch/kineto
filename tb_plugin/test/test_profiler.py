@@ -906,13 +906,13 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Operator",
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
-            "args": {"Input dims": [], "External id": 2}
+            "args": {"Input Dims": [], "External id": 2}
           },
           {
             "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 70,
-            "args": {"Input dims": [], "External id": 4}
+            "args": {"Input Dims": [], "External id": 4}
           },
           {
             "ph": "X", "cat": "Kernel",

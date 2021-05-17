@@ -56,7 +56,7 @@ class Cache:
             return f.read(), filename in self._gpu_metrics_cache_dict
 
     def write_gpu_metrics(self, raw_data, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
+        fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
         fp.close()
         # Already compressed outside, no need to gzip.open
         with open(fp.name, mode='wb') as file:

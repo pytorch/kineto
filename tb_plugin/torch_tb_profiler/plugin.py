@@ -217,21 +217,21 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def comm_overlap_route(self, request):
         name = request.args.get("run")
         run = self._get_run(name)
-        profile = run.get_profile("All")
+        profile = run.get_profile("All", None)
         return self.respond_as_json(profile.steps_to_overlap)
 
     @wrappers.Request.application
     def comm_wait_route(self, request):
         name = request.args.get("run")
         run = self._get_run(name)
-        profile = run.get_profile("All")
+        profile = run.get_profile("All", None)
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
     def comm_ops_route(self, request):
         name = request.args.get("run")
         run = self._get_run(name)
-        profile = run.get_profile("All")
+        profile = run.get_profile("All", None)
         return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application

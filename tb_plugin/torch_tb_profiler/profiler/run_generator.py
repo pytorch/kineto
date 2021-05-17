@@ -309,7 +309,7 @@ class DistributedRunGenerator(object):
         result = dict()
         result["metadata"] = {"title": "Computaion/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
         steps_to_overlap = OrderedDict()
-        for worker,data in self.all_profile_data.items():
+        for (worker, span), data in self.all_profile_data.items():
             for i in range(len(data.steps_names)):
                 step_name = data.steps_names[i]
                 if step_name not in steps_to_overlap:
@@ -323,7 +323,7 @@ class DistributedRunGenerator(object):
         result = dict()
         result["metadata"] = {"title": "Communication/Waiting View", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
         steps_to_wait = OrderedDict()
-        for worker,data in self.all_profile_data.items():
+        for (worker, span), data in self.all_profile_data.items():
             for step,comm_stats in data.step_comm_stats.items():
                 if step not in steps_to_wait:
                     steps_to_wait[step] = OrderedDict()
@@ -333,7 +333,8 @@ class DistributedRunGenerator(object):
 
     def _generate_ops_table(self):
         workers_to_comm_ops = OrderedDict()
-        for worker,data in self.all_profile_data.items():
+        # Ignore the span for distributed view
+        for (worker, span), data in self.all_profile_data.items():
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
             col_names = ["Calls", "Total Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]

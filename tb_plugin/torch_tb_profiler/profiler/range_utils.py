@@ -1,3 +1,6 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 def subtract_ranges_lists(range_list1, range_list2):
     range_list_dst = []
     if len(range_list1) == 0:

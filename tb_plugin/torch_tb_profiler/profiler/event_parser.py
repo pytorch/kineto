@@ -1,3 +1,6 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 import sys
 from enum import IntEnum
 

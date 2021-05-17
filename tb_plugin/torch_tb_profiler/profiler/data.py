@@ -11,10 +11,10 @@ from collections import OrderedDict
 from .. import io, utils
 from . import trace
 from .communication import analyze_communication_nodes
+from .event_parser import EventParser, ProfileRole
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
 from .overall_parser import OverallParser
-from .event_parser import EventParser, ProfileRole
 
 logger = utils.get_logger()
 

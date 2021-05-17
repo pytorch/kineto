@@ -15,11 +15,16 @@ ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Communicati
 
 
 class NodeContext:
-    def __init__(self):
-        self.tid2list = {} # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
-        self.tid2zero_rt_list = {}  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
-        self.corrid_to_device = {}  # value is a list of DeviceNode
+    def __init__(self, tid2list, tid2zero_rt_list, corrid_to_device):
+        self.tid2list = tid2list
+        self.tid2zero_rt_list = tid2zero_rt_list
+        self.corrid_to_device = corrid_to_device
 
+class StepContext:
+    def __init__(self, prev_step_end_time, steps_device, steps_matched_device_nodes):
+        self.prev_step_end_time = prev_step_end_time
+        self.steps_device = steps_device
+        self.steps_matched_device_nodes = steps_matched_device_nodes
 
 class NodeParserMixin:
     def __init__(self, *args, **kwargs):
@@ -32,7 +37,7 @@ class NodeParserMixin:
         self.device_node_list = []
         self.runtime_node_list = []
 
-    def parse_nodes(self, events, context):
+    def parse_nodes(self, events):
         # For OperatorNode and ProfilerStepNode:
         #   Use time interval containing relationship to build father-child correlation,
         #   which is consistent with autograd profiler.
@@ -40,9 +45,9 @@ class NodeParserMixin:
         #   Use external_id to build correlation with its father OperatorNode or ProfilerStepNode.
         #   Because in the case when RuntimeNode has duration 0 and starts at same time as a OperatorNode,
         #   just use interval containing relationship can't tell it is child or brother of the OperatorNode.
-        tid2list = context.tid2list
-        tid2zero_rt_list = context.tid2zero_rt_list
-        corrid_to_device = context.corrid_to_device
+        tid2list = {} # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
+        tid2zero_rt_list = {}  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
+        corrid_to_device = {}  # value is a list of DeviceNode
 
         corrid_to_runtime = {}  # value is a RuntimeNode
         externalid_to_runtime = {}  # value is a list of RuntimeNode
@@ -64,6 +69,8 @@ class NodeParserMixin:
             if ext_id != 0:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
+
+        return NodeContext(tid2list, tid2zero_rt_list, corrid_to_device)
 
     def _update_communication_node(self, event):
         '''Update the communication node by using the TraceEvent instance'''
@@ -141,7 +148,7 @@ class NodeParserMixin:
                         if device_node.end_time < steps_device[0][0]:
                             prev_step_end_time = max(prev_step_end_time, device_node.end_time)
 
-        return (prev_step_end_time, steps_device, steps_matched_device_nodes)
+        return StepContext(prev_step_end_time, steps_device, steps_matched_device_nodes)
 
     def _parse_node(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
         corrid = event.args.get("correlation", None)
@@ -255,9 +262,13 @@ class StepParser:
             if ts + dur > self.max_ts:
                 self.max_ts = ts + dur
 
-    def update_steps_duration(self, prev_step_end_time, steps_device, steps_matched_device_nodes):
+    def update_steps_duration(self, context):
         '''Update self.steps considering device side events launched by each host side step.
         Update self.steps_names if some tail steps are removed.'''
+
+        prev_step_end_time = context.prev_step_end_time
+        steps_device = context.steps_device
+        steps_matched_device_nodes = context.steps_matched_device_nodes
 
         # Change step time to device side on the condition that any step have device time.
         is_use_gpu = prev_step_end_time is not None
@@ -303,13 +314,12 @@ class EventParser(NodeParserMixin, StepParser):
         super().__init__()
 
     def parse(self, events):
-        node_context = NodeContext()
-        self.parse_nodes(events, node_context)
+        node_context = self.parse_nodes(events)
         self.parse_steps(events, self.communication_data)
 
         # Move the interleaved logic out of each NodeParser and StepParser
-        prev_step_end_time, steps_device, steps_matched_device_nodes = self.find_device_steps(self.steps)
-        self.update_steps_duration(prev_step_end_time, steps_device, steps_matched_device_nodes)
+        steps_context = self.find_device_steps(self.steps)
+        self.update_steps_duration(steps_context)
         return node_context
 
     def generate_communication_nodes(self):

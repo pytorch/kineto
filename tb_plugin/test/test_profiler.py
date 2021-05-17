@@ -986,31 +986,18 @@ class TestProfiler(unittest.TestCase):
 
         gpu_util_expected = [(100, 0), (110, 0), (120, 0), (130, 1.0), (140, 1.0), (150, 1.0), (160, 1.0),
                              (170, 0), (180, 0), (190, 0), (200, 1.0), (210, 1.0), (220, 0)]
-        gpu_util_id = 0
-        str_offset = 0
-        ts_pattern_str = "ts\":"
-        util_pattern_str = "GPU Utilization\":"
-        gpu_util_json = profile.gpu_util_json.decode("utf-8")
-        while True:
-            begin_offset = gpu_util_json.find(ts_pattern_str, str_offset)
-            if begin_offset == -1:
-                break
-            end_offset = gpu_util_json.find(",", begin_offset)
-            ts = int(gpu_util_json[begin_offset + len(ts_pattern_str):end_offset])
-            self.assertAlmostEqual(ts, gpu_util_expected[gpu_util_id][0])
-
-            begin_offset = gpu_util_json.find(util_pattern_str, str_offset)
-            end_offset = gpu_util_json.find("}}", begin_offset)
-            gpu_util = float(gpu_util_json[begin_offset + len(util_pattern_str):end_offset])
-            self.assertAlmostEqual(gpu_util, gpu_util_expected[gpu_util_id][1])
-            gpu_util_id += 1
-            str_offset = end_offset + 1
-        self.assertEqual(gpu_util_id, len(gpu_util_expected))
+        for buckets in profile.gpu_util_buckets:
+            gpu_util_id = 0
+            for b in buckets:
+                self.assertEqual(b[0], gpu_util_expected[gpu_util_id][0])
+                self.assertAlmostEqual(b[1], gpu_util_expected[gpu_util_id][1])
+                gpu_util_id += 1
+            self.assertEqual(gpu_util_id, len(gpu_util_expected))
 
         sm_efficiency_expected = [(130, 0.5), (135, 0), (135, 1.0), (140, 0), (140, 0.6), (145, 0), (145, 0.9),
                                   (150, 0), (150, 0.3), (170, 0), (170, 0), (200, 0), (200, 1.0), (220, 0)]
-        sm_efficiency_id = 0
         for ranges in profile.approximated_sm_efficency_ranges:
+            sm_efficiency_id = 0
             for r in ranges:
                 self.assertEqual(r[0][0], sm_efficiency_expected[sm_efficiency_id][0])
                 self.assertAlmostEqual(r[1], sm_efficiency_expected[sm_efficiency_id][1])
@@ -1018,7 +1005,7 @@ class TestProfiler(unittest.TestCase):
                 self.assertEqual(r[0][1], sm_efficiency_expected[sm_efficiency_id][0])
                 self.assertAlmostEqual(0, sm_efficiency_expected[sm_efficiency_id][1])
                 sm_efficiency_id += 1
-        self.assertEqual(sm_efficiency_id, len(sm_efficiency_expected))
+            self.assertEqual(sm_efficiency_id, len(sm_efficiency_expected))
 
 
 if __name__ == '__main__':

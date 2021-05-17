@@ -216,13 +216,22 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def trace_route(self, request):
-        def build_trace_counter(gpu_id, start_time, counter_value):
+        def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
+            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", " \
+                        "\"pid\":{}, \"ts\":{}, " \
+                        "\"args\":{{\"GPU Utilization\":{}}}}}".format(
+                gpu_id, gpu_id, start_time, counter_value
+            )
+            return util_json
+
+        def build_trace_counter_sm_efficiency(gpu_id, start_time, counter_value):
             util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", " \
                         "\"pid\":{}, \"ts\":{}, " \
                         "\"args\":{{\"Est. SM Efficiency\":{}}}}}".format(
                 gpu_id, gpu_id, start_time, counter_value
             )
             return util_json
+
         name = request.args.get("run")
         worker = request.args.get("worker")
 
@@ -231,20 +240,25 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         raw_data, includes_gpu_metrics = self._cache.read(profile.trace_file_path)
 
         if not includes_gpu_metrics:
-            util_bytes = profile.gpu_util_json
-            if profile.trace_file_path.endswith('.gz'):
-                raw_data = gzip.decompress(raw_data)
-
             counter_json_str = ""
+
+            for gpu_id in range(len(profile.gpu_util_buckets)):
+                buckets = profile.gpu_util_buckets[gpu_id]
+                for b in buckets:
+                    json_str = build_trace_counter_gpu_util(gpu_id, b[0], b[1])
+                    counter_json_str += json_str
+
             for gpu_id in range(len(profile.approximated_sm_efficency_ranges)):
                 ranges = profile.approximated_sm_efficency_ranges[gpu_id]
                 for r in ranges:
-                    efficiency_json_start = build_trace_counter(gpu_id, r[0][0], r[1])
-                    efficiency_json_finish = build_trace_counter(gpu_id, r[0][1], 0)
+                    efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, r[0][0], r[1])
+                    efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, r[0][1], 0)
                     counter_json_str += (efficiency_json_start + efficiency_json_finish)
-            counter_json_bytes = bytes(counter_json_str, 'utf-8')
 
-            raw_data = b''.join([raw_data[:-2], util_bytes, counter_json_bytes, b']}'])
+            counter_json_bytes = bytes(counter_json_str, 'utf-8')
+            if profile.trace_file_path.endswith('.gz'):
+                raw_data = gzip.decompress(raw_data)
+            raw_data = b''.join([raw_data[:-2], counter_json_bytes, b']}'])
 
             raw_data = gzip.compress(raw_data, 1)
             self._cache.write_gpu_metrics(raw_data, profile.trace_file_path)

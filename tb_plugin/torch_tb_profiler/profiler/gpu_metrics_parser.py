@@ -15,7 +15,7 @@ class GPUMetricsParser(object):
         self.gpu_utilization = []
         self.gpu_util_timeline_unit_size = 0
         self.gpu_util_timeline_unit_name = ""
-        self.gpu_util_json = None
+        self.gpu_util_buckets = []
         # For calculating approximated SM efficiency.
         self.blocks_per_sm_per_device = []
         self.avg_approximated_sm_efficency_per_device = []
@@ -45,15 +45,6 @@ class GPUMetricsParser(object):
                     unit_str = "s"
             return int(bucket_size), int(buckets), int(unit), unit_str
 
-        def build_trace_counter(gpu_id, start_time, counter_value):
-            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"GPU Utilization\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
-            return util_json
-
-        counter_json = ""
         all_steps_range = (steps_start_time, steps_end_time)
         gpu_utilization_timeline = []
         for gpu_id in self.gpu_ids:
@@ -97,16 +88,11 @@ class GPUMetricsParser(object):
 
                 for i_bucket in range(buckets):
                     start_time = steps_start_time + i_bucket * bucket_size
-                    util_json = build_trace_counter(gpu_id, start_time, gpu_utilization_timeline[-1][i_bucket])
-                    counter_json += util_json
+                    self.gpu_util_buckets[gpu_id].append((start_time, gpu_utilization_timeline[-1][i_bucket]))
                 start_time = steps_start_time + buckets * bucket_size
-                util_json = build_trace_counter(gpu_id, start_time, 0)
-                counter_json += util_json
+                self.gpu_util_buckets[gpu_id].append((start_time, 0))
 
         self.kernel_ranges_per_device = None  # Release memory.
-
-        counter_json = bytes(counter_json, 'utf-8')
-        return counter_json
 
     def calculate_approximated_sm_efficency(self, steps_start_time, steps_end_time):
         def calculate_avg(approximated_sm_efficency_ranges, total_dur):
@@ -147,8 +133,8 @@ class GPUMetricsParser(object):
         for event in events:
             self.parse_event(event)
 
-        self.gpu_util_json = self.calculate_gpu_utilization(steps_start_time, steps_end_time)
-        self.gpu_sm_efficiency_json = self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
+        self.calculate_gpu_utilization(steps_start_time, steps_end_time)
+        self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
         self.calculate_occupancy()
 
     def parse_event(self, event):
@@ -166,6 +152,8 @@ class GPUMetricsParser(object):
                         [None] * (gpu_id + 1 - len(self.gpu_ids)))
                     self.avg_occupancy_per_device.extend(
                         [None] * (gpu_id + 1 - len(self.gpu_ids)))
+                    self.gpu_util_buckets.extend(
+                        [[] for _ in range(gpu_id + 1 - len(self.gpu_ids))])
                     self.approximated_sm_efficency_ranges.extend(
                         [[] for _ in range(gpu_id + 1 - len(self.gpu_ids))])
                     self.gpu_ids.add(gpu_id)

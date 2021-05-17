@@ -46,8 +46,8 @@ class RunProfileData(object):
         self.gpu_utilization = None
         self.sm_efficency = None
         self.occupancy = None
-        self.gpu_util_json = None  # Cached here. Will be inserted to trace when each trace view.
-        self.approximated_sm_efficency_ranges = None  # Cached here. Will be processed to json when each trace view.
+        self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
+        self.approximated_sm_efficency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
@@ -154,7 +154,7 @@ class RunProfileData(object):
         self.gpu_utilization = gpu_metrics_parser.gpu_utilization
         self.sm_efficency = gpu_metrics_parser.avg_approximated_sm_efficency_per_device
         self.occupancy = gpu_metrics_parser.avg_occupancy_per_device
-        self.gpu_util_json = gpu_metrics_parser.gpu_util_json
+        self.gpu_util_buckets = gpu_metrics_parser.gpu_util_buckets
         self.approximated_sm_efficency_ranges = gpu_metrics_parser.approximated_sm_efficency_ranges
 
         if self.has_kernel:
@@ -167,16 +167,6 @@ class RunProfileData(object):
         self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)
 
     def analyze(self):
-        def get_gpus_str(gpus):
-            gpu_list_str = str(gpus[0])
-            for i in range(1, len(gpus)):
-                if i == len(gpus) - 1:
-                    gpu_list_str += "and {}".format(gpus[i])
-                else:
-                    gpu_list_str += ", {}".format(gpus[i])
-            has_str = "has" if len(gpu_list_str) == 1 else "have"
-            return gpu_list_str, has_str
-
         self.recommendations = []
 
         dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
@@ -190,6 +180,19 @@ class RunProfileData(object):
                        "https://pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading"
                    )
             self.recommendations.append(text)
+
+        self.analyze_gpu_metrics()
+
+    def analyze_gpu_metrics(self):
+        def get_gpus_str(gpus):
+            gpu_list_str = str(gpus[0])
+            for i in range(1, len(gpus)):
+                if i == len(gpus) - 1:
+                    gpu_list_str += "and {}".format(gpus[i])
+                else:
+                    gpu_list_str += ", {}".format(gpus[i])
+            has_str = "has" if len(gpu_list_str) == 1 else "have"
+            return gpu_list_str, has_str
 
         low_util_gpus = []
         for gpu_id in self.gpu_ids:

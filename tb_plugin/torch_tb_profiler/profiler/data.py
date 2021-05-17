@@ -10,6 +10,7 @@ from collections import OrderedDict
 
 from .. import io, utils
 from . import trace
+from .trace import EventTypes
 from .gpu_metrics_parser import GPUMetricsParser
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
@@ -146,7 +147,7 @@ class RunProfileData(object):
         self.comm_overlap_costs = overall_parser.communication_overlap
 
         logger.debug("GPUMetricsParser")
-        self.runtime_node_list = module_parser.runtime_node_list
+        self.runtime_node_list = parser.runtime_node_list
         gpu_metrics_parser = GPUMetricsParser()
         gpu_metrics_parser.parse_events(self.events, parser.steps[0][0], parser.steps[-1][1])
         self.gpu_ids = gpu_metrics_parser.gpu_ids

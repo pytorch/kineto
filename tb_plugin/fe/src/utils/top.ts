@@ -32,9 +32,13 @@ export function useTopN(options?: IOptions) {
     ? React.useCallback(debounce(setActualTop, options.wait ?? 500), [])
     : setActualTop
   React.useEffect(() => {
-    setActualDebounce(
-      useTop === UseTop.Use && topIsValid(topText) ? Number(topText) : actualTop
-    )
+    if (useTop !== UseTop.Use) {
+      setActualDebounce(undefined)
+    } else if (topIsValid(topText)) {
+      setActualDebounce(Number(topText))
+    } else {
+      setActualDebounce(actualTop)
+    }
   }, [topText, useTop])
 
   return [topText, actualTop, useTop, setTopText, setUseTop] as const

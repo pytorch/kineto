@@ -33,7 +33,6 @@ class RunProfileData(object):
         self.data_schema_version = None
         self.events = None
         self.trace_file_path = None
-        self.trace_json = None
         self.has_runtime = False
         self.has_kernel = False
         self.has_communication = False
@@ -68,7 +67,6 @@ class RunProfileData(object):
 
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path
-        profile.trace_json = trace_json
         if type(trace_json) is dict:
             metadata = trace_json.get("profilerMetadata", None)
             version = metadata.get("DataSchemaVersion") if metadata else None

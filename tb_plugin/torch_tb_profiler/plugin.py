@@ -225,15 +225,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         file_with_gpu_metrics = profile.gpu_metrics_file_mapping.get(profile.trace_file_path)
         if file_with_gpu_metrics is None:
             raw_data = self._cache.read(profile.trace_file_path)
+            if profile.has_kernel:
+                raw_data = self._append_gpu_metrics(profile, raw_data)
+            else:  # Pure CPU.
+                if not profile.trace_file_path.endswith('.gz'):
+                    raw_data = gzip.compress(raw_data, 1)
         else:
             with open(file_with_gpu_metrics, 'rb') as f:
                 raw_data = f.read()
 
-        if not profile.has_kernel:  # Pure CPU.
-            if not profile.trace_file_path.endswith('.gz'):
-                raw_data = gzip.compress(raw_data, 1)
-        elif file_with_gpu_metrics is None:
-            raw_data = self._append_gpu_metrics(profile, raw_data)
         headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)

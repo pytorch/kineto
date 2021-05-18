@@ -8,6 +8,7 @@ import os
 import sys
 import threading
 import time
+import tempfile
 import gzip
 from collections import OrderedDict
 
@@ -264,7 +265,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             raw_data = b''.join([raw_data[:-2], counter_json_bytes, b']}'])
 
             raw_data = gzip.compress(raw_data, 1)
-            self._cache.write_gpu_metrics(raw_data, profile.trace_file_path)
+            fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
+            fp.close()
+            # Already compressed, no need to gzip.open
+            with open(fp.name, mode='wb') as file:
+                file.write(raw_data)
+            self._cache.add_local_cache(profile.trace_file_path, fp.name)
         headers = []
         headers.append(('Content-Encoding', 'gzip'))
         headers.extend(TorchProfilerPlugin.headers)

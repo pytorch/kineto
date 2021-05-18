@@ -222,15 +222,19 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         run = self._get_run(name)
         profile = run.get_profile(worker)
-        raw_data, includes_gpu_metrics = self._cache.read(profile.trace_file_path)
+        file_with_gpu_metrics = profile.gpu_metrics_file_mapping.get(profile.trace_file_path)
+        if file_with_gpu_metrics is None:
+            raw_data = self._cache.read(profile.trace_file_path)
+        else:
+            with open(file_with_gpu_metrics, 'rb') as f:
+                raw_data = f.read()
 
         if not profile.has_kernel:  # Pure CPU.
             if not profile.trace_file_path.endswith('.gz'):
                 raw_data = gzip.compress(raw_data, 1)
-        elif not includes_gpu_metrics:
+        elif file_with_gpu_metrics is None:
             raw_data = self._append_gpu_metrics(profile, raw_data)
-        headers = []
-        headers.append(('Content-Encoding', 'gzip'))
+        headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
 
@@ -275,7 +279,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         with open(fp.name, mode='wb') as file:
             file.write(raw_data)
 
-        self._cache.add_local_cache(profile.trace_file_path, fp.name)
+        self._cache.add_tempfile(fp.name)
+        profile.gpu_metrics_file_mapping[profile.trace_file_path] = fp.name
         return raw_data
 
     @wrappers.Request.application

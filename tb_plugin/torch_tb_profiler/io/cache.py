@@ -15,7 +15,6 @@ class Cache:
         self._manager = mp.Manager()
         self._cache_dict = self._manager.dict()
         self._tempfiles = self._manager.list()
-        self._local_cache = self._manager.dict()
 
     def __getstate__(self):
         '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
@@ -38,25 +37,17 @@ class Cache:
         self.__dict__.update(state)
 
     def read(self, filename):
-        local_file = self._local_cache.get(filename)
+        local_file = self._cache_dict.get(filename)
         if local_file is None:
-            logger.debug("_gpu_metrics_cache_dict.get({}) is None".format(filename))
-            local_file = self._cache_dict.get(filename)
-            if local_file is None:
-                local_file = download_file(filename)
-                # skip the cache for local files
-                if local_file != filename:
-                    with self._lock:
-                        self._cache_dict[filename] = local_file
+            local_file = download_file(filename)
+            # skip the cache for local files
+            if local_file != filename:
+                with self._lock:
+                    self._cache_dict[filename] = local_file
 
         logger.debug("reading local cache %s for file %s" % (local_file, filename))
         with File(local_file, 'rb') as f:
-            return f.read(), filename in self._local_cache
-
-    def add_local_cache(self, source_file, dest_file):
-        self.add_tempfile(dest_file)
-        with self._lock:
-            self._local_cache[source_file] = dest_file
+            return f.read()
 
     def add_tempfile(self, filename):
         self._tempfiles.append(filename)

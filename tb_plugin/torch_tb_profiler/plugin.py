@@ -239,7 +239,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = run.get_profile(worker)
         raw_data, includes_gpu_metrics = self._cache.read(profile.trace_file_path)
 
-        if not includes_gpu_metrics:
+        if not profile.has_kernel:  # Pure CPU.
+            if not profile.trace_file_path.endswith('.gz'):
+                raw_data = gzip.compress(raw_data, 1)
+        elif not includes_gpu_metrics:
             counter_json_str = ""
 
             for gpu_id in range(len(profile.gpu_util_buckets)):

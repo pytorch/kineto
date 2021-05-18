@@ -244,7 +244,7 @@ class RunProfileData(object):
                     "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
                     "#fuse-pointwise-operations"
                 )
-            self.recommendations.append(text)
+                self.recommendations.append(text)
 
         low_sm_efficiency_gpus = []
         for gpu_id in self.gpu_ids:

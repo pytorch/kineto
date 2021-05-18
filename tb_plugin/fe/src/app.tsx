@@ -23,6 +23,7 @@ import { firstOrUndefined, sleep } from './utils'
 import { setup } from './setup'
 import './styles.css'
 import { TraceView } from './components/TraceView'
+import { DistributedView } from './components/DistributedView'
 import { FullCircularProgress } from './components/FullCircularProgress'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -34,14 +35,16 @@ export enum Views {
   Overview = 'Overview',
   Operator = 'Operator',
   Kernel = 'Kernel',
-  Trace = 'Trace'
+  Trace = 'Trace',
+  Distributed = 'Distributed'
 }
 
 const ViewNames = {
   [Views.Overview]: Views.Overview,
   [Views.Operator]: Views.Operator,
-  [Views.Kernel]: 'GPU Kernel',
-  [Views.Trace]: Views.Trace
+  [Views.Kernel]: 'GPU Kernel v2',
+  [Views.Trace]: Views.Trace,
+  [Views.Distributed]: Views.Distributed
 }
 
 const drawerWidth = 340
@@ -144,7 +147,7 @@ export const App = () => {
       try {
         const runs = await api.defaultApi.runsGet()
         setRuns(runs)
-        await sleep(100)
+        await sleep(5000)
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
       }
@@ -174,15 +177,15 @@ export const App = () => {
   }, [workers])
 
   React.useEffect(() => {
-    if (run) {
-      api.defaultApi.viewsGet(run).then((rawViews) => {
+    if (run && worker) {
+      api.defaultApi.viewsGet(run, worker).then((rawViews) => {
         const views = rawViews
           .map((v) => Views[Views[v as Views]])
           .filter(Boolean)
         setViews(views)
       })
     }
-  }, [run])
+  }, [run, worker])
 
   React.useEffect(() => {
     setView(firstOrUndefined(views) ?? '')
@@ -239,6 +242,8 @@ export const App = () => {
             iframeRef={iframeRef}
           />
         )
+      case Views.Distributed:
+        return <DistributedView run={run} worker={worker} view={view} />
     }
   }
 

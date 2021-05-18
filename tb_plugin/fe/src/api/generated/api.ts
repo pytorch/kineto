@@ -149,6 +149,50 @@ export interface CallStackTableDataInner {
 /**
  *
  * @export
+ * @interface DistributedGraph
+ */
+export interface DistributedGraph {
+  /**
+   *
+   * @type {DistributedGraphMetadata}
+   * @memberof DistributedGraph
+   */
+  metadata: DistributedGraphMetadata
+  /**
+   *
+   * @type {any}
+   * @memberof DistributedGraph
+   */
+  data: any
+}
+/**
+ *
+ * @export
+ * @interface DistributedGraphMetadata
+ */
+export interface DistributedGraphMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof DistributedGraphMetadata
+   */
+  title: string
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof DistributedGraphMetadata
+   */
+  legends: Array<string>
+  /**
+   *
+   * @type {string}
+   * @memberof DistributedGraphMetadata
+   */
+  units: string
+}
+/**
+ *
+ * @export
  * @interface Environment
  */
 export interface Environment {
@@ -447,6 +491,222 @@ export const DefaultApiFetchParamCreator = function (
   configuration?: Configuration
 ) {
   return {
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedCommopsGet(
+      run: string,
+      worker: string,
+      view: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling distributedCommopsGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling distributedCommopsGet.'
+        )
+      }
+      // verify required parameter 'view' is not null or undefined
+      if (view === null || view === undefined) {
+        throw new RequiredError(
+          'view',
+          'Required parameter view was null or undefined when calling distributedCommopsGet.'
+        )
+      }
+      const localVarPath = `/distributed/commops`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (view !== undefined) {
+        localVarQueryParameter['view'] = view
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedOverlapGet(
+      run: string,
+      worker: string,
+      view: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling distributedOverlapGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling distributedOverlapGet.'
+        )
+      }
+      // verify required parameter 'view' is not null or undefined
+      if (view === null || view === undefined) {
+        throw new RequiredError(
+          'view',
+          'Required parameter view was null or undefined when calling distributedOverlapGet.'
+        )
+      }
+      const localVarPath = `/distributed/overlap`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (view !== undefined) {
+        localVarQueryParameter['view'] = view
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedWaittimeGet(
+      run: string,
+      worker: string,
+      view: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling distributedWaittimeGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling distributedWaittimeGet.'
+        )
+      }
+      // verify required parameter 'view' is not null or undefined
+      if (view === null || view === undefined) {
+        throw new RequiredError(
+          'view',
+          'Required parameter view was null or undefined when calling distributedWaittimeGet.'
+        )
+      }
+      const localVarPath = `/distributed/waittime`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (view !== undefined) {
+        localVarQueryParameter['view'] = view
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
     /**
      *
      * @param {string} run
@@ -1062,10 +1322,11 @@ export const DefaultApiFetchParamCreator = function (
     /**
      *
      * @param {string} run
+     * @param {string} [worker]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, options: any = {}): FetchArgs {
+    viewsGet(run: string, worker?: string, options: any = {}): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
@@ -1081,6 +1342,10 @@ export const DefaultApiFetchParamCreator = function (
 
       if (run !== undefined) {
         localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1154,6 +1419,105 @@ export const DefaultApiFetchParamCreator = function (
  */
 export const DefaultApiFp = function (configuration?: Configuration) {
   return {
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedCommopsGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<any> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).distributedCommopsGet(run, worker, view, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedOverlapGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<DistributedGraph> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).distributedOverlapGet(run, worker, view, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedWaittimeGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<DistributedGraph> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).distributedWaittimeGet(run, worker, view, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
     /**
      *
      * @param {string} run
@@ -1437,16 +1801,18 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} run
+     * @param {string} [worker]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     viewsGet(
       run: string,
+      worker?: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).viewsGet(run, options)
+      ).viewsGet(run, worker, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1505,6 +1871,69 @@ export const DefaultApiFactory = function (
   basePath?: string
 ) {
   return {
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedCommopsGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).distributedCommopsGet(
+        run,
+        worker,
+        view,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedOverlapGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).distributedOverlapGet(
+        run,
+        worker,
+        view,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedWaittimeGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).distributedWaittimeGet(
+        run,
+        worker,
+        view,
+        options
+      )(fetch, basePath)
+    },
     /**
      *
      * @param {string} run
@@ -1674,11 +2103,16 @@ export const DefaultApiFactory = function (
     /**
      *
      * @param {string} run
+     * @param {string} [worker]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, options?: any) {
-      return DefaultApiFp(configuration).viewsGet(run, options)(fetch, basePath)
+    viewsGet(run: string, worker?: string, options?: any) {
+      return DefaultApiFp(configuration).viewsGet(
+        run,
+        worker,
+        options
+      )(fetch, basePath)
     },
     /**
      *
@@ -1702,6 +2136,75 @@ export const DefaultApiFactory = function (
  * @extends {BaseAPI}
  */
 export class DefaultApi extends BaseAPI {
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} view
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public distributedCommopsGet(
+    run: string,
+    worker: string,
+    view: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).distributedCommopsGet(
+      run,
+      worker,
+      view,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} view
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public distributedOverlapGet(
+    run: string,
+    worker: string,
+    view: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).distributedOverlapGet(
+      run,
+      worker,
+      view,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} view
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public distributedWaittimeGet(
+    run: string,
+    worker: string,
+    view: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).distributedWaittimeGet(
+      run,
+      worker,
+      view,
+      options
+    )(this.fetch, this.basePath)
+  }
+
   /**
    *
    * @param {string} run
@@ -1890,15 +2393,17 @@ export class DefaultApi extends BaseAPI {
   /**
    *
    * @param {string} run
+   * @param {string} [worker]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public viewsGet(run: string, options?: any) {
-    return DefaultApiFp(this.configuration).viewsGet(run, options)(
-      this.fetch,
-      this.basePath
-    )
+  public viewsGet(run: string, worker?: string, options?: any) {
+    return DefaultApiFp(this.configuration).viewsGet(
+      run,
+      worker,
+      options
+    )(this.fetch, this.basePath)
   }
 
   /**

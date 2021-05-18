@@ -326,7 +326,7 @@ class DistributedRunGenerator(object):
             for step,comm_stats in data.step_comm_stats.items():
                 if step not in steps_to_wait:
                     steps_to_wait[step] = OrderedDict()
-                steps_to_wait[step][worker] = [comm_stats[0]-comm_stats[1], comm_stats[1]]
+                steps_to_wait[step][worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
         result["data"] = steps_to_wait
         return result
 

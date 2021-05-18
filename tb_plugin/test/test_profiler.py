@@ -970,9 +970,8 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertEqual(len(profile.gpu_utilization), 1)
+        self.assertEqual(len(profile.gpu_ids), 1)
         self.assertAlmostEqual(profile.gpu_utilization[0], (40 + 20) / 120)
-        self.assertEqual(len(profile.sm_efficency), 1)
         self.assertAlmostEqual(profile.sm_efficency[0],
                                (0.5 * (135 - 130)
                                 + 1.0 * (140 - 135)
@@ -980,13 +979,13 @@ class TestProfiler(unittest.TestCase):
                                 + 0.9 * (150 - 145)
                                 + 0.3 * (170 - 150)
                                 + 1.0 * (220 - 200)) / (220 - 100))
-        self.assertEqual(len(profile.occupancy), 1)
         self.assertAlmostEqual(profile.occupancy[0],
                                (0.6 * 10 + 0.1 * 15 + 1.0 * 25 + 0.3 * 20) / (10 + 15 + 25 + 20))
 
         gpu_util_expected = [(100, 0), (110, 0), (120, 0), (130, 1.0), (140, 1.0), (150, 1.0), (160, 1.0),
                              (170, 0), (180, 0), (190, 0), (200, 1.0), (210, 1.0), (220, 0)]
-        for buckets in profile.gpu_util_buckets:
+        for gpu_id in profile.gpu_ids:
+            buckets = profile.gpu_util_buckets[gpu_id]
             gpu_util_id = 0
             for b in buckets:
                 self.assertEqual(b[0], gpu_util_expected[gpu_util_id][0])
@@ -996,7 +995,8 @@ class TestProfiler(unittest.TestCase):
 
         sm_efficiency_expected = [(130, 0.5), (135, 0), (135, 1.0), (140, 0), (140, 0.6), (145, 0), (145, 0.9),
                                   (150, 0), (150, 0.3), (170, 0), (170, 0), (200, 0), (200, 1.0), (220, 0)]
-        for ranges in profile.approximated_sm_efficency_ranges:
+        for gpu_id in profile.gpu_ids:
+            ranges = profile.approximated_sm_efficency_ranges[gpu_id]
             sm_efficiency_id = 0
             for r in ranges:
                 self.assertEqual(r[0][0], sm_efficiency_expected[sm_efficiency_id][0])

@@ -232,7 +232,7 @@ class RunProfileData(object):
                             total_kernels += 1
                             if node.end_time - node.start_time < rt.end_time - rt.start_time:
                                 short_kernels += 1
-            if short_kernels / total_kernels > 0.5 and total_kernels > 100:
+            if total_kernels > 100 and short_kernels / total_kernels > 0.5:
                 text = "{} out of {} kernels are short in execution time. " \
                        "You could try to <a href =\"{}\" target=\"_blank\">optimize zero_grad</a>, " \
                        "or <a href =\"{}\" target=\"_blank\">fuse pointwise operations</a>.".format(

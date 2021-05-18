@@ -270,7 +270,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
         if profile.trace_file_path.endswith('.gz'):
             raw_data = gzip.decompress(raw_data)
-        raw_data = b''.join([raw_data[:-2], counter_json_bytes, b']}'])
+        raw_data_without_tail = raw_data[: raw_data.rfind(b']')]
+        raw_data = b''.join([raw_data_without_tail, counter_json_bytes, b']}'])
 
         raw_data = gzip.compress(raw_data, 1)
         fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)

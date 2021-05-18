@@ -211,7 +211,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         run = self._get_run(name)
         profile = run.get_profile(worker)
-        raw_data = self._cache.read(profile.trace_file_path)
+        local_file = self._cache.download_file(profile.trace_file_path)
+        raw_data = io.read(local_file)
         if not profile.trace_file_path.endswith('.gz'):
             import gzip
             raw_data = gzip.compress(raw_data, 1)

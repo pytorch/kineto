@@ -5,7 +5,7 @@ import multiprocessing as mp
 import os
 
 from .. import utils
-from .file import File, download_file
+from .file import download_file
 
 logger = utils.get_logger()
 
@@ -14,7 +14,6 @@ class Cache:
         self._lock = mp.Lock()
         self._manager = mp.Manager()
         self._cache_dict = self._manager.dict()
-        self._tempfiles = self._manager.list()
 
     def __getstate__(self):
         '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
@@ -36,26 +35,26 @@ class Cache:
             logger.debug("Cache.__setstate__ %s " % state)
         self.__dict__.update(state)
 
-    def read(self, filename):
-        local_file = self._cache_dict.get(filename)
+    def download_file(self, filename):
+        '''Try to get the local file in the cache. download it to local if it cannot be found in cache.'''
+        local_file = self.get_file(filename)
         if local_file is None:
             local_file = download_file(filename)
             # skip the cache for local files
             if local_file != filename:
-                with self._lock:
-                    self._cache_dict[filename] = local_file
+                self.add_file(filename, local_file)
 
-        logger.debug("reading local cache %s for file %s" % (local_file, filename))
-        with File(local_file, 'rb') as f:
-            return f.read()
+        return local_file
 
-    def add_tempfile(self, filename):
-        self._tempfiles.append(filename)
+    def get_file(self, filename):
+        return self._cache_dict.get(filename)
+
+    def add_file(self, source_file, local_file):
+        with self._lock:
+            logger.debug("add local cache %s for file %s" % (local_file, source_file))
+            self._cache_dict[source_file] = local_file
 
     def close(self):
-        for file in self._tempfiles:
-            logger.info("remove tempfile %s" % file)
-            os.remove(file)
         for key, value in self._cache_dict.items():
             if key != value:
                 logger.info("remove temporary file %s" % value)
@@ -67,3 +66,4 @@ class Cache:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
         self._manager.__exit__(exc_type, exc_value, traceback)
+

@@ -130,14 +130,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get("run")
         worker = request.args.get("worker")
         span = request.args.get("span")
-
-        # TODO: remove it
-        run = self._get_run(name)
-        worker = run.workers[0]
-
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker, span)
-        self._check_normal_profile(profile, name, worker)
         views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
         for view in views:

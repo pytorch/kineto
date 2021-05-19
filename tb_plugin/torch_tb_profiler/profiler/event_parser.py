@@ -166,7 +166,7 @@ class NodeParserMixin:
 
                 # Check the external_id
                 if rt_node.external_id != device_node.external_id:
-                    logger.warning("Runtime and Device-op have same correlation id but with different external id!")
+                    logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (runtime external_id, device external_id): (%s, %s)" % (corrid, rt_node.external_id, device_node.external_id))
             else:
                 corrid_to_device.setdefault(corrid, []).append(device_node)
             self.device_node_list.append(device_node)
@@ -185,7 +185,7 @@ class NodeParserMixin:
             if device_nodes:
                 for device_node in device_nodes:
                     if rt_node.external_id != device_node.external_id:
-                        logger.warning("Runtime and Device-op have same correlation id but with different external id!")
+                        logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (rt external_id, device external_id): (%s, %s)" % (corrid, rt_node.external_id, device_node.external_id))
         elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event, event.input_shape, event.input_type, None)

@@ -39,9 +39,9 @@ class RunData(object):
         else:
             return spans
 
-    def get_profiles(self, worker=None, span=None):
+    def get_profiles(self, *, worker=None, span=None):
         if worker and span:
-            return self.get_profile(worker, span)
+            return self.profiles.get((worker, span), None)
         elif worker:
             return [p for (w, s), p in self.profiles.items() if worker == w]
         elif span:

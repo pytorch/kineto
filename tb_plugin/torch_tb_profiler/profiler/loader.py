@@ -70,7 +70,7 @@ class RunLoader(object):
         else:
             self.has_communication = {}
             for span in spans:
-                profiles = self.run.get_profiles(span)
+                profiles = self.run.get_profiles(span=span)
                 self.has_communication[span] = self._process_profiles(profiles)
 
     def _process_profiles(self, profiles):
@@ -142,3 +142,4 @@ class RunLoader(object):
                 profile = generator.generate_run_profile()
                 run.add_profile(profile)
         return run
+

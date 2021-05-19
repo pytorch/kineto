@@ -38,6 +38,13 @@ class RunGenerator(object):
 
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
+        profile_run.gpu_util_buckets = self.profile_data.gpu_util_buckets
+        profile_run.approximated_sm_efficency_ranges = self.profile_data.approximated_sm_efficency_ranges
+
+        profile_run.gpu_ids = self.profile_data.gpu_ids
+        profile_run.gpu_utilization = self.profile_data.gpu_utilization
+        profile_run.sm_efficency = self.profile_data.sm_efficency
+        profile_run.occupancy = self.profile_data.occupancy
 
         return profile_run
 
@@ -326,7 +333,7 @@ class DistributedRunGenerator(object):
             for step,comm_stats in data.step_comm_stats.items():
                 if step not in steps_to_wait:
                     steps_to_wait[step] = OrderedDict()
-                steps_to_wait[step][worker] = [comm_stats[0]-comm_stats[1], comm_stats[1]]
+                steps_to_wait[step][worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
         result["data"] = steps_to_wait
         return result
 

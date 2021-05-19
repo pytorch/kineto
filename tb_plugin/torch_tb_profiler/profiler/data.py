@@ -10,6 +10,8 @@ from collections import OrderedDict
 
 from .. import io, utils
 from . import trace
+from .trace import EventTypes
+from .gpu_metrics_parser import GPUMetricsParser
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
 from .kernel_parser import KernelParser
@@ -38,6 +40,13 @@ class RunProfileData(object):
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
+        self.runtime_node_list = None
+        self.gpu_ids = None
+        self.gpu_utilization = None
+        self.sm_efficency = None
+        self.occupancy = None
+        self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
+        self.approximated_sm_efficency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
@@ -54,7 +63,7 @@ class RunProfileData(object):
     def parse(run_dir, worker, path, caches):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
 
-        trace_path, trace_json= RunProfileData._preprocess_file(caches, io.join(run_dir, path))
+        trace_path, trace_json = RunProfileData._preprocess_file(caches, io.join(run_dir, path))
 
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path
@@ -136,6 +145,17 @@ class RunProfileData(object):
         self.steps_costs = overall_parser.steps_costs
         self.comm_overlap_costs = overall_parser.communication_overlap
 
+        logger.debug("GPUMetricsParser")
+        self.runtime_node_list = parser.runtime_node_list
+        gpu_metrics_parser = GPUMetricsParser()
+        gpu_metrics_parser.parse_events(self.events, parser.steps[0][0], parser.steps[-1][1])
+        self.gpu_ids = gpu_metrics_parser.gpu_ids
+        self.gpu_utilization = gpu_metrics_parser.gpu_utilization
+        self.sm_efficency = gpu_metrics_parser.avg_approximated_sm_efficency_per_device
+        self.occupancy = gpu_metrics_parser.avg_occupancy_per_device
+        self.gpu_util_buckets = gpu_metrics_parser.gpu_util_buckets
+        self.approximated_sm_efficency_ranges = gpu_metrics_parser.approximated_sm_efficency_ranges
+
         if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
@@ -147,6 +167,7 @@ class RunProfileData(object):
 
     def analyze(self):
         self.recommendations = []
+
         dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
         if dataloader_ratio > 0.05:
             text = "This run has high time cost on input data loading. " \
@@ -157,4 +178,97 @@ class RunProfileData(object):
                        round(dataloader_ratio * 100, 1),
                        "https://pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading"
                    )
+            self.recommendations.append(text)
+
+        self.analyze_gpu_metrics()
+
+    def analyze_gpu_metrics(self):
+        def get_gpus_str(gpus):
+            gpu_list_str = str(gpus[0])
+            for i in range(1, len(gpus)):
+                if i == len(gpus) - 1:
+                    gpu_list_str += "and {}".format(gpus[i])
+                else:
+                    gpu_list_str += ", {}".format(gpus[i])
+            has_str = "has" if len(gpu_list_str) == 1 else "have"
+            return gpu_list_str, has_str
+
+        low_util_gpus = []
+        for gpu_id in self.gpu_ids:
+            if self.gpu_utilization[gpu_id] < 0.5:
+                low_util_gpus.append(gpu_id)
+        if len(low_util_gpus) > 0:
+            gpu_list_str, has_str = get_gpus_str(low_util_gpus)
+            text = "GPU {} {} low utilization. You could try to " \
+                   "<a href =\"{}\" target=\"_blank\">enable async data loading and augmentation</a>, " \
+                   "<a href =\"{}\" target=\"_blank\">optimize zero_grad</a>, " \
+                   "<a href =\"{}\" target=\"_blank\">fuse pointwise operations</a>, " \
+                   "increase batch-size by <a href =\"{}\" target=\"_blank\">checkpointing intermediate buffers</a>, " \
+                   "<a href =\"{}\" target=\"_blank\">avoid unnecessary CPU-GPU synchronization</a>, " \
+                   "<a href =\"{}\" target=\"_blank\">create tensors directly on the target device</a>, " \
+                   "and so on.".format(
+                gpu_list_str, has_str,
+                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                "#enable-async-data-loading-and-augmentation",
+                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                "#use-parameter-grad-none-instead-of-model-zero-grad-or-optimizer-zero-grad",
+                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                "#fuse-pointwise-operations",
+                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                "#checkpoint-intermediate-buffers",
+                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                "#avoid-unnecessary-cpu-gpu-synchronization",
+                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                "#create-tensors-directly-on-the-target-device"
+            )
+            self.recommendations.append(text)
+
+        if self.runtime_node_list is not None and len(self.runtime_node_list) > 0:
+            total_kernels = 0
+            short_kernels = 0
+            for rt in self.runtime_node_list:
+                if rt.device_nodes is not None:
+                    for node in rt.device_nodes:
+                        if node.type == EventTypes.KERNEL:
+                            total_kernels += 1
+                            if node.end_time - node.start_time < rt.end_time - rt.start_time:
+                                short_kernels += 1
+            if total_kernels > 100 and short_kernels / total_kernels > 0.5:
+                text = "{} out of {} kernels are short in execution time. " \
+                       "You could try to <a href =\"{}\" target=\"_blank\">optimize zero_grad</a>, " \
+                       "or <a href =\"{}\" target=\"_blank\">fuse pointwise operations</a>.".format(
+                    short_kernels, total_kernels,
+                    "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                    "#use-parameter-grad-none-instead-of-model-zero-grad-or-optimizer-zero-grad",
+                    "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+                    "#fuse-pointwise-operations"
+                )
+                self.recommendations.append(text)
+
+        low_sm_efficiency_gpus = []
+        for gpu_id in self.gpu_ids:
+            if self.sm_efficency[gpu_id] > 0 and self.sm_efficency[gpu_id] < 0.8 * self.gpu_utilization[gpu_id]:
+                low_sm_efficiency_gpus.append(gpu_id)
+        if len(low_sm_efficiency_gpus) > 0:
+            gpu_list_str, has_str = get_gpus_str(low_sm_efficiency_gpus)
+            text = "GPU {} {} low estimated SM efficiency. " \
+                   "Many kernels' launched blocks are too few that they can't fully utilize all multiprocessors." \
+                   "You could try to increase the blocks number of these kernels.".format(
+                gpu_list_str, has_str)
+            self.recommendations.append(text)
+
+        low_occupancy_gpus = []
+        for gpu_id in self.gpu_ids:
+            if self.occupancy[gpu_id] > 0 and self.occupancy[gpu_id] < 50:
+                low_occupancy_gpus.append(gpu_id)
+        if len(low_occupancy_gpus) > 0:
+            gpu_list_str, has_str = get_gpus_str(low_occupancy_gpus)
+            text = "GPU {} {} low estimated achieved occupancy. " \
+                   "The kernels may occupy too much hardware resource such as registers or shared memory, " \
+                   "or their launched threads are not many enough to fully utilize the multiprocessor." \
+                   "Reference: <a href =\"{}\" target=\"_blank\">Achieved Occupancy</a>".format(
+                gpu_list_str, has_str,
+                "https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/"
+                "report/cudaexperiments/kernellevel/achievedoccupancy.htm"
+            )
             self.recommendations.append(text)

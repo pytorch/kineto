@@ -12,6 +12,7 @@ WORKER_PATTERN = re.compile(r"""^(.*?) # worker name
         (?:\.gz)?$""", re.X)  # optional .gz extension
 
 MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS = 10
+MAX_GPU_PER_NODE = 64
 
 View = namedtuple("View", "id, name, display_name")
 OVERALL_VIEW = View(1, "overall", "Overview")

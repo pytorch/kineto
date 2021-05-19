@@ -2,21 +2,24 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import atexit
+import gzip
 import json
 import multiprocessing as mp
 import os
 import sys
+import tempfile
 import threading
 import time
 from collections import OrderedDict
 
 import werkzeug
+from tensorboard import errors
 from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
 
 from . import consts, io, utils
 from .profiler import RunLoader
-from .run import Run
+from .run import DistributedRunProfile, Run, RunProfile
 
 logger = utils.get_logger()
 
@@ -46,6 +49,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         self._cache = io.Cache()
         self._queue = mp.Queue()
+        self._gpu_metrics_file_dict = {}
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
@@ -55,6 +59,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         def clean():
             logger.debug("starting cleanup...")
             self._cache.__exit__(*sys.exc_info())
+            for temp_file in self._gpu_metrics_file_dict.values():
+                logger.info("remove temporary file %s with gpu metrics" % temp_file)
+                os.remove(temp_file)
+
         atexit.register(clean)
 
     def __getstate__(self):
@@ -121,14 +129,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def views_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
+        span = request.args.get("span")
+
+        # TODO: remove it
         run = self._get_run(name)
         worker = run.workers[0]
-        spans = run.get_spans(worker)
-        span = None
-        if spans:
-            span = spans[0]
 
-        views = sorted(run.get_views(worker, span), key=lambda x: x.id)
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+        views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
         for view in views:
             views_list.append(view.display_name)
@@ -137,6 +147,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def workers_route(self, request):
         name = request.args.get("run")
+        self._validate(name=name)
         run = self._get_run(name)
         return self.respond_as_json(run.workers)
 
@@ -144,24 +155,43 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def spans_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
+        self._validate(name=name, worker=worker)
         run = self._get_run(name)
         return self.respond_as_json(run.get_spans(worker))
 
     @wrappers.Request.application
     def overview_route(self, request):
         name = request.args.get("run")
-        run = self._get_run(name)
-        profile = self._get_profile_for_request(request)
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
+        for gpu_id in profile.gpu_ids:
+            data["environments"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
+                                         "value": "{} %".format(round(profile.gpu_utilization[gpu_id] * 100, 2))})
+            if profile.sm_efficency[gpu_id] > 0.0:
+                data["environments"].append({"title": "Est. SM Efficiency of GPU{}".format(gpu_id),
+                                             "value": "{} %".format(round(profile.sm_efficency[gpu_id] * 100, 2))})
+            if profile.occupancy[gpu_id] > 0.0:
+                data["environments"].append({"title": "Est. Achieved Occupancy of GPU{}".format(gpu_id),
+                                             "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
         return self.respond_as_json(data)
 
     @wrappers.Request.application
     def operation_pie_route(self, request):
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+
         group_by = request.args.get("group_by")
-        profile = self._get_profile_for_request(request)
         if group_by == "OperationAndInputShape":
             return self.respond_as_json(profile.operation_pie_by_name_input)
         else:
@@ -169,7 +199,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_table_route(self, request):
-        profile = self._get_profile_for_request(request)
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+
         group_by = request.args.get("group_by")
         if group_by == "OperationAndInputShape":
             return self.respond_as_json(profile.operation_table_by_name_input)
@@ -178,10 +214,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_stack_route(self, request):
-        group_by = request.args.get("group_by")
+        name = request.args.get("run")
+        worker = request.args.get("worker")
         op_name = request.args.get("op_name")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker, op_name=op_name)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+
+        group_by = request.args.get("group_by")
         input_shape = request.args.get("input_shape")
-        profile = self._get_profile_for_request(request)
         if group_by == "OperationAndInputShape":
             return self.respond_as_json(profile.operation_stack_by_name_input[str(op_name)+"###"+str(input_shape)])
         else:
@@ -189,12 +231,24 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def kernel_pie_route(self, request):
-        profile = self._get_profile_for_request(request)
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+
         return self.respond_as_json(profile.kernel_pie)
 
     @wrappers.Request.application
     def kernel_table_route(self, request):
-        profile = self._get_profile_for_request(request)
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+
         group_by = request.args.get("group_by")
         if group_by == "Kernel":
             return self.respond_as_json(profile.kernel_table)
@@ -203,35 +257,61 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def trace_route(self, request):
-        profile = self._get_profile_for_request(request)
-        raw_data = self._cache.read(profile.trace_file_path)
-        if not profile.trace_file_path.endswith('.gz'):
-            import gzip
-            raw_data = gzip.compress(raw_data, 1)
-        headers = []
-        headers.append(('Content-Encoding', 'gzip'))
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        span = request.args.get("span")
+        self._validate(name=name, worker=worker)
+        profile = self._get_profile(name, worker, span)
+        self._check_normal_profile(profile, name, worker)
+
+        if not profile.has_kernel:# Pure CPU.
+            raw_data = self._cache.read(profile.trace_file_path)
+            if not profile.trace_file_path.endswith('.gz'):
+                raw_data = gzip.compress(raw_data, 1)
+        else:
+            file_with_gpu_metrics = self._gpu_metrics_file_dict.get(profile.trace_file_path)
+            if file_with_gpu_metrics:
+                raw_data = io.read(file_with_gpu_metrics)
+            else:
+                raw_data = self._cache.read(profile.trace_file_path)
+                if profile.trace_file_path.endswith('.gz'):
+                    raw_data = gzip.decompress(raw_data)
+                raw_data = profile.append_gpu_metrics(raw_data)
+
+                # write the data to temp file
+                fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
+                fp.close()
+                # Already compressed, no need to gzip.open
+                with open(fp.name, mode='wb') as file:
+                    file.write(raw_data)
+                self._gpu_metrics_file_dict[profile.trace_file_path] = fp.name
+
+        headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
 
     @wrappers.Request.application
     def comm_overlap_route(self, request):
         name = request.args.get("run")
-        run = self._get_run(name)
-        profile = run.get_profile("All", None)
+        self._validate(name=name)
+        profile = self._get_profile(name, 'All', None)
+        self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.steps_to_overlap)
 
     @wrappers.Request.application
     def comm_wait_route(self, request):
         name = request.args.get("run")
-        run = self._get_run(name)
-        profile = run.get_profile("All", None)
+        self._validate(name=name)
+        profile = self._get_profile(name, 'All', None)
+        self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
     def comm_ops_route(self, request):
         name = request.args.get("run")
-        run = self._get_run(name)
-        profile = run.get_profile("All", None)
+        self._validate(name=name)
+        profile = self._get_profile(name, 'All')
+        self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application
@@ -251,7 +331,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            return werkzeug.Response('404 Not Found', 'text/plain', code=404, headers=TorchProfilerPlugin.headers)
+            e = errors.NotFoundError("404 Not Found")
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
@@ -353,15 +435,37 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             name = io.relpath(run_dir, logdir)
         return name
 
-    def _get_profile_for_request(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        span = request.args.get("span")
+    def _get_profile(self, name, worker, span):
         run = self._get_run(name)
+
         if span is None:
             # TODO: before we fully support the mutliple span, we get the first item in the list and pick the profile in tuple(1)
             spans = run.get_spans(worker)
             if spans:
                 span = spans[0]
 
-        return run.get_profile(worker, span)
+        profile = run.get_profile(worker, span)
+        if profile is None:
+            e = errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
+        return profile
+
+    def _check_normal_profile(self, profile, name, worker):
+        if not isinstance(profile, RunProfile):
+            e = errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
+
+    def _check_distributed_profile(self, profile, name):
+        if not isinstance(profile, DistributedRunProfile):
+            e = errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
+
+    def _validate(self, **kwargs):
+        for name,v in kwargs.items():
+            if v is None:
+                e = errors.InvalidArgumentError("Must specify %s" %(name))
+                e.headers.extend(TorchProfilerPlugin.headers)
+                raise e

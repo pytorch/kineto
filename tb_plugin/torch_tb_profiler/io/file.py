@@ -596,3 +596,7 @@ def walk(top, topdown=True, onerror=None):
 def stat(filename):
     """Returns file statistics for a given path."""
     return get_filesystem(filename).stat(filename)
+
+def read(file):
+    with File(file, 'rb') as f:
+        return f.read()

@@ -56,6 +56,14 @@ class RunProfile(object):
         self.kernel_pie = None
         self.kernel_table = None
         self.trace_file_path = None
+        self.gpu_ids = None
+        self.gpu_utilization = None
+        self.sm_efficency = None
+        self.occupancy = None
+        self.gpu_util_buckets = None
+        self.approximated_sm_efficency_ranges = None
+        self.gpu_metrics_file_mapping = {}
+
 
 class DistributedRunProfile(object):
     """ Profiling all workers in a view.

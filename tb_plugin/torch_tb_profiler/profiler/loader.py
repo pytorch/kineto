@@ -64,7 +64,7 @@ class RunLoader(object):
     def _process(self):
         spans = self.run.get_spans()
         if spans is None:
-            self.has_communication = self._process_profiles(self.run.profiles)
+            self.has_communication = self._process_profiles(self.run.profiles.values())
         else:
             self.has_communication = {}
             for span in spans:

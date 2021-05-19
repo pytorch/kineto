@@ -158,6 +158,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
                     </CardContent>
                     <ColumnChart
                       title={overlapGraph?.metadata?.title}
+                      units={overlapGraph?.metadata?.units}
                       chartData={chartData}
                     />
                   </Card>
@@ -189,6 +190,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
                     </CardContent>
                     <ColumnChart
                       title={waittimeGraph?.metadata?.title}
+                      units={waittimeGraph?.metadata?.units}
                       chartData={chartData}
                     />
                   </Card>

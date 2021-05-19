@@ -9,6 +9,7 @@ import { useResizeEventDependency } from '../../utils/resize'
 
 interface IProps {
   title?: string
+  units?: string
   chartData: ColumnChartData
 }
 
@@ -25,7 +26,7 @@ export interface ColumnChartData {
 }
 
 export const ColumnChart: React.FC<IProps> = (props) => {
-  const { title, chartData } = props
+  const { title, units, chartData } = props
   const { legends, barLabels, barHeights } = chartData
   const classes = useStyles()
   const graphRef = React.useRef<HTMLDivElement>(null)
@@ -56,6 +57,10 @@ export const ColumnChart: React.FC<IProps> = (props) => {
       title,
       isStacked: true,
       legend: { position: 'bottom' },
+      vAxis: {
+        title: units
+      },
+      tooltip: { isHtml: true },
       chartArea: { left: '15%', width: '80%', top: '10%' }
     }
 

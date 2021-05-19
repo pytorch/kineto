@@ -5,7 +5,7 @@ import multiprocessing as mp
 import os
 
 from .. import utils
-from .file import download_file
+from .file import download_file, read
 
 logger = utils.get_logger()
 
@@ -34,6 +34,10 @@ class Cache:
         with utils.mp_logging() as logger:
             logger.debug("Cache.__setstate__ %s " % state)
         self.__dict__.update(state)
+
+    def read(self, filename):
+        local_file = self.get_remote_cache(filename)
+        return read(local_file)
 
     def get_remote_cache(self, filename):
         '''Try to get the local file in the cache. download it to local if it cannot be found in cache.'''

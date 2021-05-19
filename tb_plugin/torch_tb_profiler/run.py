@@ -98,17 +98,13 @@ class RunProfile(object):
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
         return counter_json_bytes
 
-    def read_file_and_append_gpu_metrics(self, local_file):
+    def append_gpu_metrics(self, raw_data):
         counter_json_bytes = self.get_gpu_metrics()
 
-        import gzip
-
-        raw_data = io.read(local_file)
-        if local_file.endswith('.gz'):
-            raw_data = gzip.decompress(raw_data)
         raw_data_without_tail = raw_data[: raw_data.rfind(b']')]
         raw_data = b''.join([raw_data_without_tail, counter_json_bytes, b']}'])
 
+        import gzip
         raw_data = gzip.compress(raw_data, 1)
         return raw_data
 

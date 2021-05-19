@@ -49,6 +49,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         self._cache = io.Cache()
         self._queue = mp.Queue()
+        self._gpu_metrics_file_dict = {}
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
@@ -58,6 +59,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         def clean():
             logger.debug("starting cleanup...")
             self._cache.__exit__(*sys.exc_info())
+            for temp_file in self._gpu_metrics_file_dict.values():
+                logger.info("remove temporary file %s with gpu metrics" % temp_file)
+                os.remove(temp_file)
+
         atexit.register(clean)
 
     def __getstate__(self):
@@ -238,24 +243,27 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
-        # get the local file from the remote url
-        local_file = self._cache.get_remote_cache(profile.trace_file_path)
         if not profile.has_kernel:# Pure CPU.
-            raw_data = io.read(local_file)
+            raw_data = self._cache.read(profile.trace_file_path)
             if not profile.trace_file_path.endswith('.gz'):
                 raw_data = gzip.compress(raw_data, 1)
         else:
-            file_with_gpu_metrics = self._cache.get_file(local_file)
+            file_with_gpu_metrics = self._gpu_metrics_file_dict.get(profile.trace_file_path)
             if file_with_gpu_metrics:
                 raw_data = io.read(file_with_gpu_metrics)
             else:
-                raw_data = profile.read_file_and_append_gpu_metrics(local_file)
+                raw_data = self._cache.read(profile.trace_file_path)
+                if profile.trace_file_path.endswith('.gz'):
+                    raw_data = gzip.decompress(raw_data)
+                raw_data = profile.append_gpu_metrics(raw_data)
+
+                # write the data to temp file
                 fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
                 fp.close()
                 # Already compressed, no need to gzip.open
                 with open(fp.name, mode='wb') as file:
                     file.write(raw_data)
-                self._cache.add_file(local_file, fp.name)
+                self._gpu_metrics_file_dict[profile.trace_file_path] = fp.name
 
         headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)

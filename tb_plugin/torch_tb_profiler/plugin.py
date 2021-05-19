@@ -239,7 +239,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._check_normal_profile(profile, name, worker)
 
         # get the local file from the remote url
-        local_file = self._cache.download_file(profile.trace_file_path)
+        local_file = self._cache.get_remote_cache(profile.trace_file_path)
         if not profile.has_kernel:# Pure CPU.
             raw_data = io.read(local_file)
             if not profile.trace_file_path.endswith('.gz'):

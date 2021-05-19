@@ -35,7 +35,7 @@ class Cache:
             logger.debug("Cache.__setstate__ %s " % state)
         self.__dict__.update(state)
 
-    def download_file(self, filename):
+    def get_remote_cache(self, filename):
         '''Try to get the local file in the cache. download it to local if it cannot be found in cache.'''
         local_file = self.get_file(filename)
         if local_file is None:

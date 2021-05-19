@@ -130,7 +130,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
         views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
         for view in views:

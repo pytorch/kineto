@@ -32,7 +32,7 @@ class RunLoader(object):
 
     def _parse(self):
         workers = []
-        spans = []
+        spans_by_workers = {}
         for path in io.listdir(self.run.run_dir):
             if io.isdir(io.join(self.run.run_dir, path)):
                 continue
@@ -45,18 +45,20 @@ class RunLoader(object):
             if span:
                 # remove the starting dot (.)
                 span = span[1:]
-                spans.append(span)
+                spans_by_workers.setdefault(worker, []).append(span)
 
             workers.append((worker, span, path))
 
-        spans.sort()
+        for s in spans_by_workers.values():
+            s.sort()
 
         for worker, span, path in sorted(workers):
             try:
                 # convert the span timestamp to the index.
-                span_index = None if span is None else spans.index(span)
+                s = spans_by_workers.get(worker)
+                span_index = None if span is None else s.index(span)
                 data = RunProfileData.parse(self.run.run_dir, worker, span_index, path, self.caches)
-                self.run.profiles[(worker, span)] = data
+                self.run.profiles[(worker, span_index)] = data
             except Exception as ex:
                 logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)

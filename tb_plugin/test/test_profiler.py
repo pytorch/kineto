@@ -87,7 +87,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 430, "dur": 15,
-            "args": {"correlation": 40348, "external id": 4}
+            "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -175,7 +175,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 5,
-            "args": {"correlation": 334, "external id": 4}
+            "args": {"correlation": 334, "external id": 4, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -187,7 +187,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 6,
-            "args": {"correlation": 335, "external id": 2}
+            "args": {"correlation": 335, "external id": 2, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -199,7 +199,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 7,
-            "args": {"correlation": 336, "external id": 4}
+            "args": {"correlation": 336, "external id": 4, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -211,7 +211,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 8,
-            "args": {"correlation": 337, "external id": 2}
+            "args": {"correlation": 337, "external id": 2, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -325,7 +325,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void gemmSN_TN_kernel_64addr", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 8,
-            "args": {"correlation": 335, "external id": 4}
+            "args": {"correlation": 335, "external id": 4, "device": 0}
           }]
         """
         profile = parse_json_trace(json_content)
@@ -355,7 +355,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void gemmSN_TN_kernel_64addr", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 8,
-            "args": {"correlation": 335, "external id": 0}
+            "args": {"correlation": 335, "external id": 0, "device": 0}
           }]
         """
         profile = parse_json_trace(json_content)
@@ -383,7 +383,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void gemmSN_TN_kernel_64addr", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 8,
-            "args": {"correlation": 335, "external id": 2}
+            "args": {"correlation": 335, "external id": 2, "device": 0}
           }]
         """
         profile = parse_json_trace(json_content)
@@ -421,13 +421,13 @@ class TestProfiler(unittest.TestCase):
             "name": "ncclBroadcastRingLLKernel_copy_i8(ncclColl)", "pid": 0, "tid": "stream 13",
             "ts": 160, "dur": 120318,
             "args": {"device": 0, "context": 1, "stream": 13,
-                     "correlation": 335, "external id": 2}
+                     "correlation": 335, "external id": 2, "device": 0}
           },
           {
             "ph": "X", "cat": "Kernel", 
             "name": "ncclBroadcastRingLLKernel_copy_i8(ncclColl)", "pid": 0, "tid": "stream 22",
             "ts": 170, "dur": 132800,
-            "args": {"device": 1, "context": 2, "stream": 22,
+            "args": {"device": 0, "context": 2, "stream": 22,
                      "correlation": 335, "external id": 2}
           }]
         """
@@ -456,7 +456,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 320, "dur": 100,
-            "args": {"correlation": 40348, "external id": 4}
+            "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -568,7 +568,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 410, "dur": 200,
-            "args": {"correlation": 40348, "external id": 4}
+            "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -666,7 +666,7 @@ class TestProfiler(unittest.TestCase):
                 "ph": "X", "cat": "Kernel", 
                 "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
                 "ts": 155, "dur": 20,
-                "args": {"correlation": 334, "external id": 4}
+                "args": {"correlation": 334, "external id": 4, "device": 0}
               },
               {
                 "ph": "X", "cat": "Runtime", 
@@ -678,7 +678,7 @@ class TestProfiler(unittest.TestCase):
                 "ph": "X", "cat": "Kernel", 
                 "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
                 "ts": 210, "dur": 16,
-                "args": {"correlation": 335, "external id": 2}
+                "args": {"correlation": 335, "external id": 2, "device": 0}
               },
               {
                 "ph": "X", "cat": "Runtime", 
@@ -743,7 +743,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 150, "dur": 90,
-            "args": {"correlation": 123, "external id": 0}
+            "args": {"correlation": 123, "external id": 0, "device": 0}
           },              
           {
             "ph": "X", "cat": "Memcpy", 
@@ -761,7 +761,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel", 
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 410, "dur": 200,
-            "args": {"correlation": 40348, "external id": 4}
+            "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime", 
@@ -827,7 +827,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 90, "dur": 20,
-            "args": {"correlation": 123, "external id": 0}
+            "args": {"correlation": 123, "external id": 0, "device": 0}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -839,7 +839,7 @@ class TestProfiler(unittest.TestCase):
             "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 150, "dur": 180,
-            "args": {"correlation": 334, "external id": 2}
+            "args": {"correlation": 334, "external id": 2, "device": 0}
           }]
         """
         profile = parse_json_trace(json_content)
@@ -916,9 +916,9 @@ class TestProfiler(unittest.TestCase):
           },
           {
             "ph": "X", "cat": "Kernel",
-            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 130, "dur": 10,
-            "args": {"correlation": 334, "external id": 4, "device": 0,
+            "args": {"correlation": 334, "external id": 4, "device": 1,
                      "blocks per SM": 0.5, "theoretical occupancy %": 0.6}
           },
           {
@@ -929,9 +929,9 @@ class TestProfiler(unittest.TestCase):
           },
           {
             "ph": "X", "cat": "Kernel",
-            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 8",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 8",
             "ts": 135, "dur": 15,
-            "args": {"correlation": 335, "external id": 2, "device": 0,
+            "args": {"correlation": 335, "external id": 2, "device": 1,
                      "blocks per SM": 0.6, "theoretical occupancy %": 0.1}
           },
           {
@@ -942,9 +942,9 @@ class TestProfiler(unittest.TestCase):
           },
           {
             "ph": "X", "cat": "Kernel",
-            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 145, "dur": 25,
-            "args": {"correlation": 336, "external id": 4, "device": 0,
+            "args": {"correlation": 336, "external id": 4, "device": 1,
                      "blocks per SM": 0.3, "theoretical occupancy %": 1.0}
           },
           {
@@ -955,9 +955,9 @@ class TestProfiler(unittest.TestCase):
           },
           {
             "ph": "X", "cat": "Kernel",
-            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 200, "dur": 20,
-            "args": {"correlation": 337, "external id": 2, "device": 0,
+            "args": {"correlation": 337, "external id": 2, "device": 1,
                      "blocks per SM": 10.5, "theoretical occupancy %": 0.3}
           },
           {
@@ -971,15 +971,15 @@ class TestProfiler(unittest.TestCase):
         profile.process()
 
         self.assertEqual(len(profile.gpu_ids), 1)
-        self.assertAlmostEqual(profile.gpu_utilization[0], (40 + 20) / 120)
-        self.assertAlmostEqual(profile.sm_efficency[0],
+        self.assertAlmostEqual(profile.gpu_utilization[1], (40 + 20) / 120)
+        self.assertAlmostEqual(profile.sm_efficency[1],
                                (0.5 * (135 - 130)
                                 + 1.0 * (140 - 135)
                                 + 0.6 * (145 - 140)
                                 + 0.9 * (150 - 145)
                                 + 0.3 * (170 - 150)
                                 + 1.0 * (220 - 200)) / (220 - 100))
-        self.assertAlmostEqual(profile.occupancy[0],
+        self.assertAlmostEqual(profile.occupancy[1],
                                (0.6 * 10 + 0.1 * 15 + 1.0 * 25 + 0.3 * 20) / (10 + 15 + 25 + 20))
 
         gpu_util_expected = [(100, 0), (110, 0), (120, 0), (130, 1.0), (140, 1.0), (150, 1.0), (160, 1.0),

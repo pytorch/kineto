@@ -311,7 +311,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def comm_ops_route(self, request):
         name = request.args.get("run")
         self._validate(name=name)
-        profile = self._get_profile(name, 'All')
+        profile = self._get_profile(name, 'All', None)
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.comm_ops)
 

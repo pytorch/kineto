@@ -5,6 +5,7 @@ import unittest
 import torch_tb_profiler.profiler.trace as trace
 from torch_tb_profiler.profiler.data import RunProfileData
 from torch_tb_profiler.profiler.overall_parser import ProfileRole
+from torch_tb_profiler.run import RunProfile
 
 SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
@@ -1006,6 +1007,41 @@ class TestProfiler(unittest.TestCase):
                 self.assertAlmostEqual(0, sm_efficiency_expected[sm_efficiency_id][1])
                 sm_efficiency_id += 1
             self.assertEqual(sm_efficiency_id, len(sm_efficiency_expected))
+
+    def test_dump_gpu_metrics(self):
+        profile = RunProfile("test_dump_gpu_metrics")
+        profile.gpu_util_buckets = [[(1621401187223358, 0.0), (1621401187224358, 0.003), (1621401187225358, 0.005),
+                                     (1621401187226358, 0.005), (1621401187227358, 0.005), (1621401187228358, 0.003),
+                                     (1621401187229358, 0.005), (1621401187230358, 0.003), (1621401187231358, 0.002),
+                                     (1621401187232358, 0.003), (1621401187233358, 0.005), (1621401187234358, 0.004),
+                                     (1621401187235358, 0.003), (1621401187236358, 0)]]
+        profile.approximated_sm_efficency_ranges = \
+            [[((1621401187225275, 1621401187225278), 0.025), ((1621401187225530, 1621401187225532), 0.0125),
+              ((1621401187225820, 1621401187225821), 0.0125), ((1621401187226325, 1621401187226327), 0.025),
+              ((1621401187226575, 1621401187226577), 0.0125), ((1621401187226912, 1621401187226913), 0.0125),
+              ((1621401187227092, 1621401187227094), 0.0125), ((1621401187227619, 1621401187227620), 0.0125),
+              ((1621401187227745, 1621401187227746), 0.0125), ((1621401187227859, 1621401187227860), 0.0125),
+              ((1621401187227973, 1621401187227974), 0.0125), ((1621401187228279, 1621401187228280), 0.0125),
+              ((1621401187228962, 1621401187228963), 0.0125), ((1621401187229153, 1621401187229155), 0.0125),
+              ((1621401187229711, 1621401187229715), 0.0125), ((1621401187230162, 1621401187230163), 0.0125),
+              ((1621401187231100, 1621401187231103), 0.0125), ((1621401187231692, 1621401187231694), 0.05),
+              ((1621401187232603, 1621401187232604), 0.0125), ((1621401187232921, 1621401187232922), 0.0125),
+              ((1621401187233342, 1621401187233343), 0.0125), ((1621401187233770, 1621401187233772), 0.0125),
+              ((1621401187234156, 1621401187234159), 0.0125), ((1621401187234445, 1621401187234446), 0.0125),
+              ((1621401187235025, 1621401187235028), 0.0125), ((1621401187235555, 1621401187235556), 0.0125),
+              ((1621401187236158, 1621401187236159), 0.0125), ((1621401187236278, 1621401187236279), 0.0125),
+              ((1621401187236390, 1621401187236391), 0.0125), ((1621401187236501, 1621401187236502), 0.0125)]]
+
+        trace_json_flat_path = "gpu_metrics_input.json"
+        with open(trace_json_flat_path, "rb") as file:
+            raw_data = file.read()
+        data_with_gpu_metrics_compressed = profile.append_gpu_metrics(raw_data)
+        data_with_gpu_metrics_flat = gzip.decompress(data_with_gpu_metrics_compressed)
+
+        trace_json_expected_path = "gpu_metrics_expected.json"
+        with open(trace_json_expected_path, "rb") as file:
+            data_expected = file.read()
+        self.assertEqual(data_with_gpu_metrics_flat, data_expected)
 
 
 if __name__ == '__main__':

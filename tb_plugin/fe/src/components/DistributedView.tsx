@@ -117,8 +117,10 @@ export const DistributedView: React.FC<IProps> = (props) => {
       barHeights: barLabels.map((label) => distributedGraph.data[step][label])
     }
   }
-  const overlapData = getColumnChartData(overlapGraph, overlapStep)
-  const waittimeData = getColumnChartData(waittimeGraph, waittimeStep)
+  const overlapData = React.useMemo(() => getColumnChartData(overlapGraph, overlapStep), [overlapGraph, overlapStep])
+  const waittimeData = React.useMemo(
+    () => getColumnChartData(waittimeGraph, waittimeStep), [waittimeGraph, waittimeStep]
+  )
 
   const getTableData = (tableData?: any, worker?: string) => {
     if (!tableData || !worker) return undefined

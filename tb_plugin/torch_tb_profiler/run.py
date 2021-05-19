@@ -25,6 +25,7 @@ class Run(object):
 
     def get_spans(self, worker):
         spans = [s for w, s in self.profiles.keys() if w == worker]
+        spans = list(set(spans))
         if len(spans) == 1 and spans[0] is None:
             return None
         else:

@@ -33,6 +33,7 @@ class RunData(object):
         else:
             spans = [s for _, s in self.profiles.keys()]
 
+        spans = list(set(spans))
         if len(spans) == 1 and spans[0] is None:
             return None
         else:

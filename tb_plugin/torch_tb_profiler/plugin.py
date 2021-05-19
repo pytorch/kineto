@@ -165,6 +165,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         span = request.args.get("span")
         self._validate(name=name, worker=worker)
+        run = self._get_run(name)
         profile = self._get_profile(name, worker, span)
         self._check_normal_profile(profile, name, worker)
         data = profile.overview

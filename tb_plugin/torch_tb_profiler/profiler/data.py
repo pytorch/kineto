@@ -27,6 +27,28 @@ class RunData(object):
         self.run_dir = run_dir
         self.profiles = OrderedDict()
 
+    def get_spans(self, worker=None):
+        if worker:
+            spans = [s for w, s in self.profiles.keys() if w == worker]
+        else:
+            spans = [s for _, s in self.profiles.keys()]
+
+        if len(spans) == 1 and spans[0] is None:
+            return None
+        else:
+            return spans
+
+    def get_profiles(self, worker=None, span=None):
+        if worker and span:
+            return self.get_profile(worker, span)
+        elif worker:
+            return [p for (w, s), p in self.profiles.items() if worker == w]
+        elif span:
+            return [p for (w, s), p in self.profiles.items() if span == s]
+        else:
+            return self.profiles.values()
+
+
 class RunProfileData(object):
     def __init__(self, worker, span=None):
         self.worker = worker

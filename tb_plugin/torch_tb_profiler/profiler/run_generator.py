@@ -301,11 +301,12 @@ class RunGenerator(object):
         return data
 
 class DistributedRunGenerator(object):
-    def __init__(self, all_profile_data):
+    def __init__(self, all_profile_data, span):
         self.all_profile_data = all_profile_data
+        self.span = span
 
     def generate_run_profile(self):
-        profile_run = DistributedRunProfile()
+        profile_run = DistributedRunProfile(self.span)
         profile_run.views.append(consts.DISTRIBUTED_VIEW)
         profile_run.steps_to_overlap = self._generate_overlap_graph()
         profile_run.steps_to_wait = self._generate_wait_graph()
@@ -316,13 +317,13 @@ class DistributedRunGenerator(object):
         result = dict()
         result["metadata"] = {"title": "Computaion/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
         steps_to_overlap = OrderedDict()
-        for (worker, span), data in self.all_profile_data.items():
+        for data in self.all_profile_data:
             for i in range(len(data.steps_names)):
                 step_name = data.steps_names[i]
                 if step_name not in steps_to_overlap:
                     steps_to_overlap[step_name] = OrderedDict()
                 costs = data.comm_overlap_costs[i]
-                steps_to_overlap[step_name][worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
+                steps_to_overlap[step_name][data.worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
         result["data"] = steps_to_overlap
         return result
 
@@ -330,18 +331,18 @@ class DistributedRunGenerator(object):
         result = dict()
         result["metadata"] = {"title": "Communication/Waiting View", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
         steps_to_wait = OrderedDict()
-        for (worker, span), data in self.all_profile_data.items():
+        for data in self.all_profile_data:
             for step,comm_stats in data.step_comm_stats.items():
                 if step not in steps_to_wait:
                     steps_to_wait[step] = OrderedDict()
-                steps_to_wait[step][worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
+                steps_to_wait[step][data.worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
         result["data"] = steps_to_wait
         return result
 
     def _generate_ops_table(self):
         workers_to_comm_ops = OrderedDict()
         # Ignore the span for distributed view
-        for (worker, span), data in self.all_profile_data.items():
+        for data in self.all_profile_data:
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
             col_names = ["Calls", "Total Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
@@ -351,5 +352,5 @@ class DistributedRunGenerator(object):
             for op,stats in data.total_comm_stats.items():
                 row = [op, stats[0], stats[1], stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
                 table["rows"].append(row)
-            workers_to_comm_ops[worker] = table
+            workers_to_comm_ops[data.worker] = table
         return workers_to_comm_ops

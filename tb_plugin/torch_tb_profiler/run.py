@@ -30,13 +30,6 @@ class Run(object):
         else:
             return spans
 
-    def get_views(self, worker, span):
-        profile = self.get_profile(worker, span)
-        if profile is None:
-            return None
-
-        return profile.views
-
     def add_profile(self, profile):
         self.profiles[(profile.worker, profile.span)] = profile
 
@@ -124,9 +117,9 @@ class DistributedRunProfile(object):
     """ Profiling all workers in a view.
     """
 
-    def __init__(self):
+    def __init__(self, span):
         self.worker = 'All'
-        self.span = None
+        self.span = span
         self.views = []
         self.steps_to_overlap = None
         self.steps_to_wait = None

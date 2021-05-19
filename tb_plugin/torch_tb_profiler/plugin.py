@@ -412,7 +412,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if profile is None:
             e = errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
             e.headers.extend(TorchProfilerPlugin.headers)
-            print("_get_profile", e)
             raise e
         return profile
 

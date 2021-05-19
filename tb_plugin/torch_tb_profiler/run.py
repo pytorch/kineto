@@ -83,13 +83,11 @@ class RunProfile(object):
             return util_json
 
         counter_json_list = []
-        for gpu_id in range(len(self.gpu_util_buckets)):
-            buckets = self.gpu_util_buckets[gpu_id]
+        for gpu_id, buckets in enumerate(self.gpu_util_buckets):
             for b in buckets:
                 json_str = build_trace_counter_gpu_util(gpu_id, b[0], b[1])
                 counter_json_list.append(json_str)
-        for gpu_id in range(len(self.approximated_sm_efficency_ranges)):
-            ranges = self.approximated_sm_efficency_ranges[gpu_id]
+        for gpu_id, ranges in enumerate(self.approximated_sm_efficency_ranges):
             for r in ranges:
                 efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, r[0][0], r[1])
                 efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, r[0][1], 0)

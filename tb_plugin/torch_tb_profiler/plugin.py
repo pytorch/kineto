@@ -240,65 +240,26 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         # get the local file from the remote url
         local_file = self._cache.download_file(profile.trace_file_path)
-        file_with_gpu_metrics = self._cache.get_file(local_file)
-        if file_with_gpu_metrics is None:
+        if not profile.has_kernel:# Pure CPU.
             raw_data = io.read(local_file)
-            if profile.has_kernel:
-                raw_data = self._append_gpu_metrics(profile, raw_data)
+            if not profile.trace_file_path.endswith('.gz'):
+                raw_data = gzip.compress(raw_data, 1)
+        else:
+            file_with_gpu_metrics = self._cache.get_file(local_file)
+            if file_with_gpu_metrics:
+                raw_data = io.read(file_with_gpu_metrics)
+            else:
+                raw_data = profile.read_file_and_append_gpu_metrics(local_file)
                 fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
                 fp.close()
                 # Already compressed, no need to gzip.open
                 with open(fp.name, mode='wb') as file:
                     file.write(raw_data)
                 self._cache.add_file(local_file, fp.name)
-            else:  # Pure CPU.
-                if not profile.trace_file_path.endswith('.gz'):
-                    raw_data = gzip.compress(raw_data, 1)
-        else:
-            with open(file_with_gpu_metrics, 'rb') as f:
-                raw_data = f.read()
 
         headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
-
-    def _append_gpu_metrics(self, profile, raw_data):
-        def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
-            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"GPU Utilization\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
-            return util_json
-
-        def build_trace_counter_sm_efficiency(gpu_id, start_time, counter_value):
-            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"Est. SM Efficiency\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
-            return util_json
-
-        counter_json_str = ""
-        for gpu_id in range(len(profile.gpu_util_buckets)):
-            buckets = profile.gpu_util_buckets[gpu_id]
-            for b in buckets:
-                json_str = build_trace_counter_gpu_util(gpu_id, b[0], b[1])
-                counter_json_str += json_str
-        for gpu_id in range(len(profile.approximated_sm_efficency_ranges)):
-            ranges = profile.approximated_sm_efficency_ranges[gpu_id]
-            for r in ranges:
-                efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, r[0][0], r[1])
-                efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, r[0][1], 0)
-                counter_json_str += (efficiency_json_start + efficiency_json_finish)
-        counter_json_bytes = bytes(counter_json_str, 'utf-8')
-        if profile.trace_file_path.endswith('.gz'):
-            raw_data = gzip.decompress(raw_data)
-        raw_data_without_tail = raw_data[: raw_data.rfind(b']')]
-        raw_data = b''.join([raw_data_without_tail, counter_json_bytes, b']}'])
-
-        raw_data = gzip.compress(raw_data, 1)
-        return raw_data
 
     @wrappers.Request.application
     def comm_overlap_route(self, request):

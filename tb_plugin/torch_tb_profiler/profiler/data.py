@@ -86,7 +86,8 @@ class RunProfileData(object):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
-        data = caches.read(trace_path)
+        local_file = caches.get_remote_cache(trace_path)
+        data = io.read(local_file)
         if trace_path.endswith('.gz'):
             data = gzip.decompress(data)
 
@@ -109,8 +110,8 @@ class RunProfileData(object):
             with gzip.open(fp.name, mode='wt') as fzip:
                 fzip.write(json.dumps(trace_json))
             logger.warning("Get JSONDecodeError: %s, Re-encode it to temp file: %s", e.msg, fp.name)
+            caches.add_file(local_file, fp.name)
             trace_path = fp.name
-            caches.add_tempfile(fp.name)
 
         return trace_path, trace_json
 

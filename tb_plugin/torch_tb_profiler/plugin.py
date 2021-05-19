@@ -2,20 +2,20 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import atexit
+import gzip
 import json
 import multiprocessing as mp
 import os
 import sys
+import tempfile
 import threading
 import time
-import tempfile
-import gzip
 from collections import OrderedDict
 
 import werkzeug
+from tensorboard import errors
 from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
-from werkzeug.exceptions import BadRequest
 
 from . import consts, io, utils
 from .profiler import RunLoader
@@ -49,6 +49,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         self._cache = io.Cache()
         self._queue = mp.Queue()
+        self._gpu_metrics_file_dict = {}
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
@@ -58,6 +59,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         def clean():
             logger.debug("starting cleanup...")
             self._cache.__exit__(*sys.exc_info())
+            for temp_file in self._gpu_metrics_file_dict.values():
+                logger.info("remove temporary file %s with gpu metrics" % temp_file)
+                os.remove(temp_file)
+
         atexit.register(clean)
 
     def __getstate__(self):
@@ -125,8 +130,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
+        self._check_normal_profile(profile, name, worker)
         views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
         for view in views:
@@ -147,11 +151,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._validate(name=name, worker=worker)
         run = self._get_run(name)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
-
+        self._check_normal_profile(profile, name, worker)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
@@ -173,10 +173,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
+        self._check_normal_profile(profile, name, worker)
 
         group_by = request.args.get("group_by")
         if group_by == "OperationAndInputShape":
@@ -190,10 +187,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
+        self._check_normal_profile(profile, name, worker)
 
         group_by = request.args.get("group_by")
         if group_by == "OperationAndInputShape":
@@ -208,10 +202,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         op_name = request.args.get("op_name")
         self._validate(name=name, worker=worker, op_name=op_name)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
+        self._check_normal_profile(profile, name, worker)
+
         group_by = request.args.get("group_by")
         input_shape = request.args.get("input_shape")
         if group_by == "OperationAndInputShape":
@@ -225,10 +217,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
+        self._check_normal_profile(profile, name, worker)
+
         return self.respond_as_json(profile.kernel_pie)
 
     @wrappers.Request.application
@@ -237,10 +227,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
+        self._check_normal_profile(profile, name, worker)
+
         group_by = request.args.get("group_by")
         if group_by == "Kernel":
             return self.respond_as_json(profile.kernel_table)
@@ -253,81 +241,40 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         profile = self._get_profile(name, worker)
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name, worker), 404)
-        if not isinstance(profile, RunProfile):
-            return self.respond_as_error("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker), 404)
-        file_with_gpu_metrics = profile.gpu_metrics_file_mapping.get(profile.trace_file_path)
-        if file_with_gpu_metrics is None:
+        self._check_normal_profile(profile, name, worker)
+
+        if not profile.has_kernel:# Pure CPU.
             raw_data = self._cache.read(profile.trace_file_path)
-            if profile.has_kernel:
-                raw_data = self._append_gpu_metrics(profile, raw_data)
-            else:  # Pure CPU.
-                if not profile.trace_file_path.endswith('.gz'):
-                    raw_data = gzip.compress(raw_data, 1)
+            if not profile.trace_file_path.endswith('.gz'):
+                raw_data = gzip.compress(raw_data, 1)
         else:
-            with open(file_with_gpu_metrics, 'rb') as f:
-                raw_data = f.read()
+            file_with_gpu_metrics = self._gpu_metrics_file_dict.get(profile.trace_file_path)
+            if file_with_gpu_metrics:
+                raw_data = io.read(file_with_gpu_metrics)
+            else:
+                raw_data = self._cache.read(profile.trace_file_path)
+                if profile.trace_file_path.endswith('.gz'):
+                    raw_data = gzip.decompress(raw_data)
+                raw_data = profile.append_gpu_metrics(raw_data)
+
+                # write the data to temp file
+                fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
+                fp.close()
+                # Already compressed, no need to gzip.open
+                with open(fp.name, mode='wb') as file:
+                    file.write(raw_data)
+                self._gpu_metrics_file_dict[profile.trace_file_path] = fp.name
 
         headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
-
-    def _append_gpu_metrics(self, profile, raw_data):
-        def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
-            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"GPU Utilization\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
-            return util_json
-
-        def build_trace_counter_sm_efficiency(gpu_id, start_time, counter_value):
-            util_json = ", {{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"Est. SM Efficiency\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
-            return util_json
-
-        counter_json_str = ""
-        for gpu_id in range(len(profile.gpu_util_buckets)):
-            buckets = profile.gpu_util_buckets[gpu_id]
-            for b in buckets:
-                json_str = build_trace_counter_gpu_util(gpu_id, b[0], b[1])
-                counter_json_str += json_str
-        for gpu_id in range(len(profile.approximated_sm_efficency_ranges)):
-            ranges = profile.approximated_sm_efficency_ranges[gpu_id]
-            for r in ranges:
-                efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, r[0][0], r[1])
-                efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, r[0][1], 0)
-                counter_json_str += (efficiency_json_start + efficiency_json_finish)
-        counter_json_bytes = bytes(counter_json_str, 'utf-8')
-        if profile.trace_file_path.endswith('.gz'):
-            raw_data = gzip.decompress(raw_data)
-        raw_data_without_tail = raw_data[: raw_data.rfind(b']')]
-        raw_data = b''.join([raw_data_without_tail, counter_json_bytes, b']}'])
-
-        raw_data = gzip.compress(raw_data, 1)
-        fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
-        fp.close()
-        # Already compressed, no need to gzip.open
-        with open(fp.name, mode='wb') as file:
-            file.write(raw_data)
-
-        self._cache.add_tempfile(fp.name)
-        profile.gpu_metrics_file_mapping[profile.trace_file_path] = fp.name
-        return raw_data
 
     @wrappers.Request.application
     def comm_overlap_route(self, request):
         name = request.args.get("run")
         self._validate(name=name)
         profile = self._get_profile(name, 'All')
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name), 404)
-        if not isinstance(profile, DistributedRunProfile):
-            return self.respond_as_error("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name), 404)
+        self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.steps_to_overlap)
 
     @wrappers.Request.application
@@ -335,10 +282,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get("run")
         self._validate(name=name)
         profile = self._get_profile(name, 'All')
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name), 404)
-        if not isinstance(profile, DistributedRunProfile):
-            return self.respond_as_error("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name), 404)
+        self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
@@ -346,11 +290,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get("run")
         self._validate(name=name)
         profile = self._get_profile(name, 'All')
-        if profile is None:
-            return self.respond_as_error("could not find the profile for %s/%s " %(name), 404)
-        if not isinstance(profile, DistributedRunProfile):
-            return self.respond_as_error("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name), 404)
-
+        self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application
@@ -370,7 +310,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            return werkzeug.Response('404 Not Found', 'text/plain', code=404, headers=TorchProfilerPlugin.headers)
+            e = errors.NotFoundError("404 Not Found")
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
@@ -379,10 +321,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def respond_as_json(obj):
         content = json.dumps(obj)
         return werkzeug.Response(content, content_type="application/json", headers=TorchProfilerPlugin.headers)
-
-    @staticmethod
-    def respond_as_error(message, code):
-        return werkzeug.Response(message, status=code, headers=TorchProfilerPlugin.headers, content_type="text/plain")
 
     def _monitor_runs(self):
         logger.info("Monitor runs begin")
@@ -479,10 +417,27 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def _get_profile(self, name, worker):
         run = self._get_run(name)
         profile = run.get_profile(worker)
+        if profile is None:
+            e = errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
         return profile
+
+    def _check_normal_profile(self, profile, name, worker):
+        if not isinstance(profile, RunProfile):
+            e = errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
+
+    def _check_distributed_profile(self, profile, name):
+        if not isinstance(profile, DistributedRunProfile):
+            e = errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
 
     def _validate(self, **kwargs):
         for name,v in kwargs.items():
             if v is None:
-                raise BadRequest("Must specify %s" %(name))
-
+                e = errors.InvalidArgumentError("Must specify %s" %(name))
+                e.headers.extend(TorchProfilerPlugin.headers)
+                raise e

@@ -448,6 +448,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             raise errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
         return profile
 
+    def _check_run(self, run, name):
+        if run is None:
+            raise errors.NotFoundError("could not find the run for %s" %(name))
+
     def _check_normal_profile(self, profile, name, worker):
         if not isinstance(profile, RunProfile):
             raise errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
@@ -455,10 +459,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def _check_distributed_profile(self, profile, name):
         if not isinstance(profile, DistributedRunProfile):
             raise errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
-
-    def _check_run(self, run, name):
-        if run is None:
-            raise errors.NotFoundError("could not find the run for %s" %(name))
 
     def _validate(self, **kwargs):
         for name,v in kwargs.items():

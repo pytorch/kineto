@@ -128,7 +128,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def views_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         views = sorted(profile.views, key=lambda x: x.id)
         views_list = []
@@ -139,18 +139,19 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def workers_route(self, request):
         name = request.args.get("run")
-        self._validate(name=name)
+        self._validate(run=name)
         run = self._get_run(name)
+        self._check_run(run, name)
         return self.respond_as_json(run.workers)
 
     @wrappers.Request.application
     def overview_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
-        run = self._get_run(name)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
+        run = self._get_run(name)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
@@ -170,7 +171,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def operation_pie_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
@@ -184,7 +185,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def operation_table_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
@@ -199,7 +200,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get("run")
         worker = request.args.get("worker")
         op_name = request.args.get("op_name")
-        self._validate(name=name, worker=worker, op_name=op_name)
+        self._validate(run=name, worker=worker, op_name=op_name)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
@@ -214,7 +215,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def kernel_pie_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
@@ -224,7 +225,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def kernel_table_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
@@ -238,7 +239,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def trace_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
-        self._validate(name=name, worker=worker)
+        self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker)
         self._check_normal_profile(profile, name, worker)
 
@@ -271,7 +272,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def comm_overlap_route(self, request):
         name = request.args.get("run")
-        self._validate(name=name)
+        self._validate(run=name)
         profile = self._get_profile(name, 'All')
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.steps_to_overlap)
@@ -279,7 +280,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def comm_wait_route(self, request):
         name = request.args.get("run")
-        self._validate(name=name)
+        self._validate(run=name)
         profile = self._get_profile(name, 'All')
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.steps_to_wait)
@@ -287,7 +288,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def comm_ops_route(self, request):
         name = request.args.get("run")
-        self._validate(name=name)
+        self._validate(run=name)
         profile = self._get_profile(name, 'All')
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.comm_ops)
@@ -309,9 +310,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            e = errors.NotFoundError("404 Not Found")
-            e.headers.extend(TorchProfilerPlugin.headers)
-            raise e
+            raise errors.NotFoundError("404 Not Found")
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
@@ -415,28 +414,26 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def _get_profile(self, name, worker):
         run = self._get_run(name)
+        self._check_run(run, name)
         profile = run.get_profile(worker)
         if profile is None:
-            e = errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
-            e.headers.extend(TorchProfilerPlugin.headers)
-            raise e
+            raise errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
         return profile
+
+    def _check_run(self, run, name):
+        if run is None:
+            raise errors.NotFoundError("could not find the run for %s" %(name))
 
     def _check_normal_profile(self, profile, name, worker):
         if not isinstance(profile, RunProfile):
-            e = errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
-            e.headers.extend(TorchProfilerPlugin.headers)
-            raise e
+            raise errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
 
     def _check_distributed_profile(self, profile, name):
         if not isinstance(profile, DistributedRunProfile):
-            e = errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
-            e.headers.extend(TorchProfilerPlugin.headers)
-            raise e
+            raise errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
 
     def _validate(self, **kwargs):
         for name,v in kwargs.items():
             if v is None:
-                e = errors.InvalidArgumentError("Must specify %s" %(name))
-                e.headers.extend(TorchProfilerPlugin.headers)
-                raise e
+                raise errors.InvalidArgumentError("Must specify %s" %(name))
+

@@ -61,7 +61,11 @@ export const ColumnChart: React.FC<IProps> = (props) => {
         title: units
       },
       tooltip: { isHtml: true },
-      chartArea: { left: '15%', width: '80%', top: '10%' }
+      chartArea: {
+        left: '15%',
+        width: '80%',
+        top: title ? '10%' : '5%'
+      }
     }
 
     const chart = new google.visualization.ColumnChart(element)

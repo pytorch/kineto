@@ -18,6 +18,8 @@ import { DistributedGraph } from '../api'
 import { firstOrUndefined } from '../utils'
 import { DataLoading } from './DataLoading'
 import { ColumnChart } from './charts/ColumnChart'
+import { DistributedOverlapGraphTooltip, DistributedWaittimeGraphTooltip } from './TooltipDescriptions'
+import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
 export interface IProps {
   run: string
@@ -46,6 +48,12 @@ const useStyles = makeStyles((theme) => ({
 }))
 
 export const DistributedView: React.FC<IProps> = (props) => {
+  const tooltipCommonClasses = useTooltipCommonStyles()
+  const chartHeaderRenderer = React.useMemo(
+    () => makeChartHeaderRenderer(tooltipCommonClasses),
+    [tooltipCommonClasses]
+  )
+
   let { run, worker, view } = props
   worker = 'worker1'
   const classes = useStyles()
@@ -67,11 +75,21 @@ export const DistributedView: React.FC<IProps> = (props) => {
   const [commopsWorker, setCommopsWorker] = React.useState('')
 
   React.useEffect(() => {
-    setWaittimeStep(firstOrUndefined(waittimeSteps) ?? '')
+    if (waittimeSteps.includes('all')) {
+      setWaittimeStep('all')
+    }
+    else {
+      setWaittimeStep(firstOrUndefined(waittimeSteps) ?? '')
+    }
   }, [waittimeSteps])
 
   React.useEffect(() => {
-    setOverlapStep(firstOrUndefined(overlapSteps) ?? '')
+    if (overlapSteps.includes('all')) {
+      setOverlapStep('all')
+    }
+    else {
+      setOverlapStep(firstOrUndefined(overlapSteps) ?? '')
+    }
   }, [overlapSteps])
 
   React.useEffect(() => {
@@ -156,8 +174,12 @@ export const DistributedView: React.FC<IProps> = (props) => {
                         </Grid>
                       </Grid>
                     </CardContent>
+                    {overlapGraph?.metadata?.title && (
+                      <CardHeader
+                        title={chartHeaderRenderer(overlapGraph?.metadata?.title, DistributedOverlapGraphTooltip)}
+                      />
+                    )}
                     <ColumnChart
-                      title={overlapGraph?.metadata?.title}
                       units={overlapGraph?.metadata?.units}
                       chartData={chartData}
                     />
@@ -188,8 +210,12 @@ export const DistributedView: React.FC<IProps> = (props) => {
                         </Grid>
                       </Grid>
                     </CardContent>
+                    {waittimeGraph?.metadata?.title && (
+                      <CardHeader
+                        title={chartHeaderRenderer(waittimeGraph?.metadata?.title, DistributedWaittimeGraphTooltip)}
+                      />
+                    )}
                     <ColumnChart
-                      title={waittimeGraph?.metadata?.title}
                       units={waittimeGraph?.metadata?.units}
                       chartData={chartData}
                     />

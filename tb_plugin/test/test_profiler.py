@@ -1009,7 +1009,7 @@ class TestProfiler(unittest.TestCase):
             self.assertEqual(sm_efficiency_id, len(sm_efficiency_expected))
 
     def test_dump_gpu_metrics(self):
-        profile = RunProfile("test_dump_gpu_metrics")
+        profile = RunProfile("test_dump_gpu_metrics", None)
         profile.gpu_util_buckets = [[(1621401187223358, 0.0), (1621401187224358, 0.003), (1621401187225358, 0.005),
                                      (1621401187226358, 0.005), (1621401187227358, 0.005), (1621401187228358, 0.003),
                                      (1621401187229358, 0.005), (1621401187230358, 0.003), (1621401187231358, 0.002),

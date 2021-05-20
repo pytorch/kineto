@@ -435,5 +435,5 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def _validate(self, **kwargs):
         for name,v in kwargs.items():
             if v is None:
-                raise errors.InvalidArgumentError("Must specify %s" %(name))
+                raise errors.InvalidArgumentError("Must specify %s in request url" %(name))
 

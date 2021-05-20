@@ -143,6 +143,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get("run")
         self._validate(name=name)
         run = self._get_run(name)
+        self._check_run(run, name)
         return self.respond_as_json(run.workers)
 
     @wrappers.Request.application
@@ -151,6 +152,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         self._validate(name=name, worker=worker)
         run = self._get_run(name)
+        self._check_run(run, name)
         return self.respond_as_json(run.get_spans(worker))
 
     @wrappers.Request.application
@@ -159,9 +161,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         worker = request.args.get("worker")
         span = request.args.get("span")
         self._validate(name=name, worker=worker)
-        run = self._get_run(name)
         profile = self._get_profile(name, worker, span)
         self._check_normal_profile(profile, name, worker)
+        run = self._get_run(name)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
@@ -435,6 +437,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def _get_profile(self, name, worker, span):
         run = self._get_run(name)
+        self._check_run(run, name)
 
         if span is None:
             # TODO: before we fully support the mutliple span, we get the first item in the list and pick the profile in tuple(1)
@@ -458,6 +461,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def _check_distributed_profile(self, profile, name):
         if not isinstance(profile, DistributedRunProfile):
             e = errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
+            e.headers.extend(TorchProfilerPlugin.headers)
+            raise e
+
+    def _check_run(self, run, name):
+        if run is None:
+            e = errors.NotFoundError("could not find the run for %s" %(name))
             e.headers.extend(TorchProfilerPlugin.headers)
             raise e
 

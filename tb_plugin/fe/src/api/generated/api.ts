@@ -212,6 +212,38 @@ export interface Environment {
 /**
  *
  * @export
+ * @interface GpuInfo
+ */
+export interface GpuInfo {
+  /**
+   *
+   * @type {GpuInfoMetadata}
+   * @memberof GpuInfo
+   */
+  metadata: GpuInfoMetadata
+  /**
+   *
+   * @type {any}
+   * @memberof GpuInfo
+   */
+  data: any
+}
+/**
+ *
+ * @export
+ * @interface GpuInfoMetadata
+ */
+export interface GpuInfoMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof GpuInfoMetadata
+   */
+  title: string
+}
+/**
+ *
+ * @export
  * @interface Graph
  */
 export interface Graph {
@@ -277,6 +309,25 @@ export interface GraphColumnP {
    * @memberof GraphColumnP
    */
   html?: boolean
+}
+/**
+ *
+ * @export
+ * @interface InlineResponse200
+ */
+export interface InlineResponse200 {
+  /**
+   *
+   * @type {GpuInfoMetadata}
+   * @memberof InlineResponse200
+   */
+  metadata: GpuInfoMetadata
+  /**
+   *
+   * @type {any}
+   * @memberof InlineResponse200
+   */
+  data: any
 }
 /**
  *
@@ -527,6 +578,78 @@ export const DefaultApiFetchParamCreator = function (
         )
       }
       const localVarPath = `/distributed/commops`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (view !== undefined) {
+        localVarQueryParameter['view'] = view
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedGpuinfoGet(
+      run: string,
+      worker: string,
+      view: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling distributedGpuinfoGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling distributedGpuinfoGet.'
+        )
+      }
+      // verify required parameter 'view' is not null or undefined
+      if (view === null || view === undefined) {
+        throw new RequiredError(
+          'view',
+          'Required parameter view was null or undefined when calling distributedGpuinfoGet.'
+        )
+      }
+      const localVarPath = `/distributed/gpuinfo`
       const localVarUrlObj = url.parse(localVarPath, true)
       const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
       const localVarHeaderParameter = {} as any
@@ -1432,10 +1555,43 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       worker: string,
       view: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<any> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse200> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).distributedCommopsGet(run, worker, view, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    distributedGpuinfoGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<GpuInfo> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).distributedGpuinfoGet(run, worker, view, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1900,6 +2056,27 @@ export const DefaultApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
+    distributedGpuinfoGet(
+      run: string,
+      worker: string,
+      view: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).distributedGpuinfoGet(
+        run,
+        worker,
+        view,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} view
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
     distributedOverlapGet(
       run: string,
       worker: string,
@@ -2152,6 +2329,29 @@ export class DefaultApi extends BaseAPI {
     options?: any
   ) {
     return DefaultApiFp(this.configuration).distributedCommopsGet(
+      run,
+      worker,
+      view,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} view
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public distributedGpuinfoGet(
+    run: string,
+    worker: string,
+    view: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).distributedGpuinfoGet(
       run,
       worker,
       view,

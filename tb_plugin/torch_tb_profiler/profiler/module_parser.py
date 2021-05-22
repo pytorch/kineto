@@ -48,11 +48,11 @@ class KernelAggByNameOp:
 
     @property
     def avg_blocks_per_sm(self):
-        return round(self.blocks_per_SM / self.total_duration, 2) if self.total_duration > 0 else 0
+        return self.blocks_per_SM / self.total_duration if self.total_duration > 0 else 0
 
     @property
     def avg_occupancy(self):
-        return round(self.occupancy / self.total_duration, 2) if self.total_duration > 0 else 0
+        return self.occupancy / self.total_duration if self.total_duration > 0 else 0
 
 
 class ModuleParser:

@@ -278,9 +278,9 @@ class RunGenerator(object):
                              agg_by_name_op.total_duration, agg_by_name_op.avg_duration,
                              agg_by_name_op.min_duration, agg_by_name_op.max_duration]
             if self.profile_data.blocks_per_sm_count > 0:
-                kernel_op_row.append(agg_by_name_op.avg_blocks_per_sm)
+                kernel_op_row.append(round(agg_by_name_op.avg_blocks_per_sm, 2))
             if self.profile_data.occupancy_count > 0:
-                kernel_op_row.append(agg_by_name_op.avg_occupancy)
+                kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
         data = {"data": table}
         return data

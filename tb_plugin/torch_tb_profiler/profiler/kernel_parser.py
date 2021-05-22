@@ -1,8 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 class KernelParser:
@@ -21,10 +21,12 @@ class KernelParser:
         events = events.astype({"type": "category", "category": "category", "name": "string"}, copy=False)
         kernels = events[events["category"] == "Kernel"]
         weighted_avg = lambda x: np.average(x, weights=kernels.loc[x.index, "duration"])
-        self.kernel_stat = kernels.groupby("name").agg(count=('duration', "count"),
-                                                       sum=('duration', "sum"),
-                                                       mean=('duration', "mean"),
-                                                       max=('duration', "max"),
-                                                       min=('duration', "min"),
-                                                       blocks_per_SM=('blocks_per_SM', weighted_avg),
-                                                       occupancy=('occupancy', weighted_avg))
+        # remove 0 duration kernels in case of divided by zero.
+        self.kernel_stat = kernels.loc[kernels["duration"] > 0].groupby("name").agg(
+            count=('duration', "count"),
+            sum=('duration', "sum"),
+            mean=('duration', "mean"),
+            max=('duration', "max"),
+            min=('duration', "min"),
+            blocks_per_SM=('blocks_per_SM', weighted_avg),
+            occupancy=('occupancy', weighted_avg))

@@ -920,7 +920,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 130, "dur": 10,
             "args": {"correlation": 334, "external id": 4, "device": 1,
-                     "blocks per SM": 0.5, "theoretical occupancy %": 0.6}
+                     "blocks per SM": 0.5, "est. achieved occupancy %": 0.6}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -933,7 +933,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 8",
             "ts": 135, "dur": 15,
             "args": {"correlation": 335, "external id": 2, "device": 1,
-                     "blocks per SM": 0.6, "theoretical occupancy %": 0.1}
+                     "blocks per SM": 0.6, "est. achieved occupancy %": 0.1}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -946,7 +946,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 145, "dur": 25,
             "args": {"correlation": 336, "external id": 4, "device": 1,
-                     "blocks per SM": 0.3, "theoretical occupancy %": 1.0}
+                     "blocks per SM": 0.3, "est. achieved occupancy %": 1.0}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -959,7 +959,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 200, "dur": 20,
             "args": {"correlation": 337, "external id": 2, "device": 1,
-                     "blocks per SM": 10.5, "theoretical occupancy %": 0.3}
+                     "blocks per SM": 10.5, "est. achieved occupancy %": 0.3}
           },
           {
             "ph": "X", "cat": "Runtime",

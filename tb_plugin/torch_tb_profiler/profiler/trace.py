@@ -9,7 +9,7 @@ logger = utils.get_logger()
 
 
 class EventTypes(object):
-    NET = "Net"
+    TRACE = "Trace"
     OPERATOR = "Operator"
     PROFILER_STEP = "ProfilerStep"
     RUNTIME = "Runtime"

@@ -28,7 +28,7 @@ class GPUMetricsParser(object):
         self.avg_occupancy_per_device = [None] * consts.MAX_GPU_PER_NODE
         self.occupancy_count = 0
 
-    def calculate_gpu_utilization(self, steps_start_time, steps_end_time):
+    def calculate_gpu_utilization(self, global_start_time, global_end_time, steps_start_time, steps_end_time):
         # Make bucket_size to 10-power's of us, and number of buckets to (10, 100].
         # 10-power's of us, in order to straight forward for user to understand.
         # If number of buckets are too many, the value of gpu utilization will be either 0 or 1.
@@ -51,24 +51,33 @@ class GPUMetricsParser(object):
         gpu_utilization_timeline = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         for gpu_id in self.gpu_ids:
             self.kernel_ranges_per_device[gpu_id] = merge_ranges(self.kernel_ranges_per_device[gpu_id])
-            self.kernel_ranges_per_device[gpu_id] = intersection_ranges_lists(
+
+            # Top-level number still consider steps, to be consistent with overview's breakdown.
+            kernel_ranges_all_steps = intersection_ranges_lists(
                 self.kernel_ranges_per_device[gpu_id], [(steps_start_time, steps_end_time)])
-            ranges_sum = get_ranges_sum(self.kernel_ranges_per_device[gpu_id])
+            ranges_sum = get_ranges_sum(kernel_ranges_all_steps)
             self.gpu_utilization[gpu_id] = ranges_sum / (steps_end_time - steps_start_time)
 
+            # The timeline will use "PyTorch Profiler (0)" as start,
+            # in order to draw previous step's kernels' gpu utilization.
             bucket_size, buckets, self.gpu_util_timeline_unit_size, self.gpu_util_timeline_unit_name = \
-                get_bucket_info(steps_end_time - steps_start_time)
+                get_bucket_info(global_end_time - global_start_time)
+            buckets_ranges = []
+            for i in range(buckets):
+                buckets_ranges.append((global_start_time + i * bucket_size,
+                                       global_start_time + (i + 1) * bucket_size if i < buckets - 1
+                                       else global_end_time))  # The last bucket may be longer.
             gpu_utilization_timeline[gpu_id] = [0] * buckets
             if len(self.kernel_ranges_per_device[gpu_id]) > 0:
                 current_range_index = 0
                 current_range = self.kernel_ranges_per_device[gpu_id][current_range_index]
                 current_bucket_index = 0
-                current_bucket = (steps_start_time, steps_start_time + bucket_size)
+                current_bucket = buckets_ranges[0]
                 while current_range_index < len(self.kernel_ranges_per_device[gpu_id]) and current_bucket_index < buckets:
                     if current_bucket[1] <= current_range[0]:
                         current_bucket_index += 1
-                        current_bucket = (steps_start_time + current_bucket_index * bucket_size,
-                                          steps_start_time + (current_bucket_index + 1) * bucket_size)
+                        current_bucket = buckets_ranges[current_bucket_index] if current_bucket_index < buckets \
+                            else None
                     elif current_bucket[0] >= current_range[1]:
                         current_range_index += 1
                         if current_range_index < len(self.kernel_ranges_per_device[gpu_id]):
@@ -79,19 +88,20 @@ class GPUMetricsParser(object):
                         gpu_utilization_timeline[gpu_id][current_bucket_index] += (right_bound - left_bound)
                         if current_bucket[1] < current_range[1]:
                             current_bucket_index += 1
-                            current_bucket = (steps_start_time + current_bucket_index * bucket_size,
-                                              steps_start_time + (current_bucket_index + 1) * bucket_size)
+                            current_bucket = buckets_ranges[current_bucket_index] if current_bucket_index < buckets \
+                                else None
                         else:
                             current_range_index += 1
                             if current_range_index < len(self.kernel_ranges_per_device[gpu_id]):
                                 current_range = self.kernel_ranges_per_device[gpu_id][current_range_index]
                 for i_bucket in range(buckets):
+                    bucket_size = buckets_ranges[i_bucket][1] - buckets_ranges[i_bucket][0]
                     gpu_utilization_timeline[gpu_id][i_bucket] /= bucket_size
 
                 for i_bucket in range(buckets):
-                    start_time = steps_start_time + i_bucket * bucket_size
+                    start_time = buckets_ranges[i_bucket][0]
                     self.gpu_util_buckets[gpu_id].append((start_time, gpu_utilization_timeline[gpu_id][i_bucket]))
-                start_time = steps_start_time + buckets * bucket_size
+                start_time = buckets_ranges[-1][1]
                 self.gpu_util_buckets[gpu_id].append((start_time, 0))
 
         self.kernel_ranges_per_device = None  # Release memory.
@@ -130,12 +140,12 @@ class GPUMetricsParser(object):
             avg_occupancy = total_occupancy / total_time
             self.avg_occupancy_per_device[gpu_id] = avg_occupancy
 
-    def parse_events(self, events, steps_start_time, steps_end_time):
+    def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
         logger.debug("GPU Metrics, parse events")
         for event in events:
             self.parse_event(event)
 
-        self.calculate_gpu_utilization(steps_start_time, steps_end_time)
+        self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)
         self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
         self.calculate_occupancy()
 

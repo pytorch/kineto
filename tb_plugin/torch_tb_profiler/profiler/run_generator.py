@@ -2,12 +2,12 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import OrderedDict
-import enum
 
-from .. import consts
+from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .overall_parser import ProfileRole
 
+logger = utils.get_logger()
 
 class RunGenerator(object):
     def __init__(self, worker, profile_data):
@@ -317,12 +317,29 @@ class DistributedRunGenerator(object):
         result = OrderedDict()
         result["metadata"] = {"title": "Device Info"}
         result["data"] = dict()
-        result["data"]["Process id 123"] = dict()
-        result["data"]["Process id 456"] = dict()
-        result["data"]["Process id 123"]["GPU0"] = {"name": "Tesla V100", "Global Memory": "34G", "Compute Compability": "7.0"}
-        result["data"]["Process id 123"]["GPU1"] = {"name": "Tesla V100", "Global Memory": "34G", "Compute Compability": "7.0"}
-        result["data"]["Process id 456"]["GPU2"] = {"name": "Tesla V100", "Global Memory": "34G", "Compute Compability": "7.0"}
-        result["data"]["Process id 456"]["GPU3"] = {"name": "Tesla V100", "Global Memory": "34G", "Compute Compability": "7.0"}
+        index = 0
+        for worker,data in self.all_profile_data.items():
+            match = consts.NODE_PROCESS_PATTERN.match(worker)
+            if match:
+                node = match.group(1)
+                process_id = match.group(2)
+            else:
+                logger.warning("cannot parse node name from worker name {}".format(worker))
+                node = worker
+                process_id = index
+                index += 1
+            if node not in result["data"]:
+                result["data"][node] = dict()
+            result["data"][node]["Process " + str(process_id)] = dict()
+            for used_device in data.used_devices:
+                result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)] = \
+                    {
+                        "Name": data.device_props[used_device].get("name", None),
+                        "Memory": data.device_props[used_device].get("totalGlobalMem", None),
+                        "Compute Compability": "{}.{}".format(
+                            data.device_props[used_device].get("computeMajor", None),
+                            data.device_props[used_device].get("computeMinor", None))
+                    }
         return result
 
     def _generate_overlap_graph(self):
@@ -333,8 +350,7 @@ class DistributedRunGenerator(object):
         for worker,data in self.all_profile_data.items():
             steps_to_overlap['all'][worker] = [0, 0, 0, 0]
             step_number = len(data.steps_names)
-            for i in range(step_number):
-                step_name = data.steps_names[i]
+            for i,step_name in enumerate(data.steps_names):
                 steps_to_overlap.setdefault(step_name, OrderedDict())
                 costs = data.comm_overlap_costs[i]
                 steps_to_overlap[step_name][worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]

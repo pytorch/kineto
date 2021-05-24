@@ -276,7 +276,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get("run")
         self._validate(run=name)
         profile = self._get_profile(name, 'All')
-        print("get dist gpu info for ",name)
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.gpu_info)
 

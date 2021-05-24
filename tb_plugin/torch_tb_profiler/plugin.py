@@ -342,7 +342,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                             logger.info("Find run directory %s", run_dir)
                             # Use multiprocessing to avoid UI stall and reduce data parsing time
                             process = mp.Process(target=self._load_run, args=(run_dir,))
-                            process.daemon = True
+                            #process.daemon = True
                             process.start()
                 except Exception as ex:
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)

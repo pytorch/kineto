@@ -56,8 +56,7 @@ class RunProfileData(object):
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
-        self.total_comm_stats = None
-        self.step_comm_stats = None
+
 
     @staticmethod
     def parse(run_dir, worker, path, caches):
@@ -161,9 +160,6 @@ class RunProfileData(object):
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
-
-    def communication_parse(self):
-        self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)
 
     def analyze(self):
         self.recommendations = []
@@ -272,3 +268,16 @@ class RunProfileData(object):
                 "report/cudaexperiments/kernellevel/achievedoccupancy.htm"
             )
             self.recommendations.append(text)
+
+class DistributedProfileData:
+    def __init__(self, worker, steps_names, has_communication, comm_node_list, comm_overlap_costs):
+        self.worker = worker
+        self.steps_names = steps_names
+        self.has_communication = has_communication
+        self.comm_node_list = comm_node_list
+        self.comm_overlap_costs = comm_overlap_costs
+        self.total_comm_stats = None
+        self.step_comm_stats = None
+
+    def communication_parse(self):
+        self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)

@@ -331,15 +331,16 @@ class DistributedRunGenerator(object):
             if node not in result["data"]:
                 result["data"][node] = dict()
             result["data"][node]["Process " + str(process_id)] = dict()
-            for used_device in data.used_devices:
-                result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)] = \
-                    {
-                        "Name": data.device_props[used_device].get("name", None),
-                        "Memory": data.device_props[used_device].get("totalGlobalMem", None),
-                        "Compute Compability": "{}.{}".format(
-                            data.device_props[used_device].get("computeMajor", None),
-                            data.device_props[used_device].get("computeMinor", None))
-                    }
+            if data.device_props:
+                for used_device in data.used_devices:
+                    result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)] = \
+                        {
+                            "Name": data.device_props[used_device].get("name", None),
+                            "Memory": data.device_props[used_device].get("totalGlobalMem", None),
+                            "Compute Compability": "{}.{}".format(
+                                data.device_props[used_device].get("computeMajor", None),
+                                data.device_props[used_device].get("computeMinor", None))
+                        }
         return result
 
     def _generate_overlap_graph(self):

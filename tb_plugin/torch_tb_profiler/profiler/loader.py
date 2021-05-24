@@ -63,7 +63,7 @@ class RunLoader(object):
 
     def _process_data(self, worker, path, barrier, event):
         try:
-            logger.debug("starting _process_data")
+            logger.debug("starting process_data")
             data = RunProfileData.parse(self.run.run_dir, worker, path, self.caches)
             data.process()
             data.analyze()
@@ -71,7 +71,7 @@ class RunLoader(object):
             profile = generator.generate_run_profile()
             self.queue.put(profile)
 
-            dist_profile = DistributedProfileData(worker, data.steps_names, data.has_communication, data.comm_node_list, data.comm_overlap_costs)
+            dist_profile = DistributedProfileData(worker, data.steps_names, data.has_communication, data.comm_node_list, data.comm_overlap_costs, data.used_devices, data.device_props, data.distributed_info)
             self.distributed_queue.put(dist_profile)
 
         except Exception as ex:

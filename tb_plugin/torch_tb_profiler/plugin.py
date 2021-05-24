@@ -162,15 +162,51 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         normal_workers = [worker for worker in run.workers if worker != 'All']
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(normal_workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
-        for gpu_id in profile.gpu_ids:
-            data["environments"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
-                                         "value": "{} %".format(round(profile.gpu_utilization[gpu_id] * 100, 2))})
-            if profile.sm_efficency[gpu_id] > 0.0:
-                data["environments"].append({"title": "Est. SM Efficiency of GPU{}".format(gpu_id),
-                                             "value": "{} %".format(round(profile.sm_efficency[gpu_id] * 100, 2))})
-            if profile.occupancy[gpu_id] > 0.0:
-                data["environments"].append({"title": "Est. Achieved Occupancy of GPU{}".format(gpu_id),
-                                             "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
+        if len(profile.gpu_ids) > 0:
+            data["gpu_metrics"] = {"data": [], "tooltip": ""}
+            has_sm_efficiency = False
+            has_occupancy = False
+            for gpu_id in profile.gpu_ids:
+                data["gpu_metrics"]["data"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
+                                                    "value": "{} %".format(
+                                                        round(profile.gpu_utilization[gpu_id] * 100, 2))})
+                if profile.sm_efficency[gpu_id] > 0.0:
+                    data["gpu_metrics"]["data"].append({"title": "Est. SM Efficiency of GPU{}".format(gpu_id),
+                                                        "value": "{} %".format(
+                                                            round(profile.sm_efficency[gpu_id] * 100, 2))})
+                    has_sm_efficiency = True
+                if profile.occupancy[gpu_id] > 0.0:
+                    data["gpu_metrics"]["data"].append({"title": "Est. Achieved Occupancy of GPU{}".format(gpu_id),
+                                                        "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
+                    has_occupancy = True
+            data["gpu_metrics"]["tooltip"] = \
+                "The GPU usage metrics:\n"\
+                "GPU Utilization:\n" \
+                "GPU busy time / All steps time. " \
+                "GPU busy time is the time during which there is at least one GPU kernel running on it. " \
+                "All steps time is the total time of all profiler steps(or called as iterations).\n"
+            tooltip_sm_efficiency = \
+                "Est. SM Efficiency:\n" \
+                "Estimated Stream Multiprocessor Efficiency. " \
+                "Est. SM Efficiency of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%). " \
+                "This overall number is the sum of all kernels' SM_Eff_K weighted by kernel's execution duration, " \
+                "divided by all steps time.\n"
+            tooltip_occupancy =\
+                "Est. Achieved Occupancy:\n" \
+                "Occupancy is the ratio of active threads on an SM " \
+                "to the maximum number of active threads supported by the SM. " \
+                "The theoretical occupancy of a kernel is upper limit occupancy of this kernel, " \
+                "limited by multiple factors such as kernel shape, kernel used resource, " \
+                "and the GPU compute capability." \
+                "Est. Achieved Occupancy of a kernel, OCC_K = " \
+                "min(threads of the kernel / SM number / max threads per SM, theoretical occupancy of the kernel). " \
+                "This overall number is the weighted sum of all kernels OCC_K " \
+                "using kernel's execution duration as weight."
+            if has_sm_efficiency:
+                data["gpu_metrics"]["tooltip"] += tooltip_sm_efficiency
+            if has_occupancy:
+                data["gpu_metrics"]["tooltip"] += tooltip_occupancy
+
         return self.respond_as_json(data)
 
     @wrappers.Request.application

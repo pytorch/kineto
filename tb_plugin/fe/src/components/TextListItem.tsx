@@ -37,15 +37,15 @@ export const TextListItem: React.FC<IProps> = (props) => {
 
   const getSizes = () => {
     if (props.value && props.extra) {
-      return ([4, 4, 4] as const)
+      return [4, 4, 4] as const
     }
     if (props.value) {
       if (props.value.length > props.name.length) {
-        return ([4, 8, undefined] as const)
+        return [4, 8, undefined] as const
       }
-      return ([8, 4, undefined] as const)
+      return [8, 4, undefined] as const
     }
-    return ([12, undefined, undefined] as const)
+    return [12, undefined, undefined] as const
   }
 
   const sizes = getSizes()

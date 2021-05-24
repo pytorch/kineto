@@ -173,39 +173,63 @@ export const DistributedView: React.FC<IProps> = (props) => {
                   <CardContent>
                     <Grid container spacing={3}>
                       {Object.keys(gpuInfo.data).map((node_name) => (
-                        <Grid item sm={12}><Card variant="outlined"><CardContent>
-                          <Grid container direction="column" spacing={3}>
-                            <Grid item><Typography style={{ fontWeight: "bold" }}>{node_name}</Typography></Grid>
-                            {Object.keys(gpuInfo.data[node_name]).map((pid) => (
-                              <Grid item container direction="column" spacing={1}>
-                                <Grid item><Typography>{pid}</Typography></Grid>
-                                <Grid item container spacing={1}>
-                                  {Object.keys(gpuInfo.data[node_name][pid]).map((gpu_name) => (
-                                    <Grid item sm={4} xs={6}>
-                                      <Card variant="outlined">
-                                        <CardHeader title={gpu_name} />
-                                        <CardContent>
-                                          {Object.keys(
-                                            gpuInfo.data[node_name][pid][gpu_name]
-                                          ).map((key_name) => (
-                                            <TextListItem
-                                              name={key_name}
-                                              value={
-                                                gpuInfo.data[node_name][pid][gpu_name][key_name]
-                                              }
-                                            />
-                                          ))}
-                                        </CardContent>
-                                      </Card>
-                                    </Grid>
-                                  ))}
+                        <Grid item sm={12}>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Grid container direction="column" spacing={3}>
+                                <Grid item>
+                                  <Typography style={{ fontWeight: 'bold' }}>
+                                    {node_name}
+                                  </Typography>
                                 </Grid>
+                                {Object.keys(gpuInfo.data[node_name]).map(
+                                  (pid) => (
+                                    <Grid
+                                      item
+                                      container
+                                      direction="column"
+                                      spacing={1}
+                                    >
+                                      <Grid item>
+                                        <Typography>{pid}</Typography>
+                                      </Grid>
+                                      <Grid item container spacing={1}>
+                                        {Object.keys(
+                                          gpuInfo.data[node_name][pid]
+                                        ).map((gpu_name) => (
+                                          <Grid item sm={4} xs={6}>
+                                            <Card variant="outlined">
+                                              <CardHeader title={gpu_name} />
+                                              <CardContent>
+                                                {Object.keys(
+                                                  gpuInfo.data[node_name][pid][
+                                                    gpu_name
+                                                  ]
+                                                ).map((key_name) => (
+                                                  <TextListItem
+                                                    name={key_name}
+                                                    value={
+                                                      gpuInfo.data[node_name][
+                                                        pid
+                                                      ][gpu_name][key_name]
+                                                    }
+                                                  />
+                                                ))}
+                                              </CardContent>
+                                            </Card>
+                                          </Grid>
+                                        ))}
+                                      </Grid>
+                                    </Grid>
+                                  )
+                                )}
                               </Grid>
-                            ))}
-                          </Grid>
-                        </CardContent></Card></Grid>
+                            </CardContent>
+                          </Card>
+                        </Grid>
                       ))}
-                    </Grid></CardContent>
+                    </Grid>
+                  </CardContent>
                 </Card>
               </Grid>
             )}
@@ -288,7 +312,12 @@ export const DistributedView: React.FC<IProps> = (props) => {
             </Grid>
             <Grid item sm={12}>
               <Grid container direction="column" spacing={0}>
-                <CardHeader title={chartHeaderRenderer(commopsTableTitle, DistributedCommopsTableTooltip)} />
+                <CardHeader
+                  title={chartHeaderRenderer(
+                    commopsTableTitle,
+                    DistributedCommopsTableTooltip
+                  )}
+                />
                 <Card elevation={0}>
                   <CardContent>
                     <Grid item container spacing={1} alignItems="center">

@@ -115,6 +115,7 @@ class DistributedRunProfile(object):
     def __init__(self):
         self.worker = 'All'
         self.views = []
+        self.gpu_info = None
         self.steps_to_overlap = None
         self.steps_to_wait = None
         self.comm_ops = None

@@ -39,6 +39,7 @@ class NodeParserMixin:
         self.communication_data = {}
         self.device_node_list = []
         self.runtime_node_list = []
+        self.used_devices = set()
 
     def parse_nodes(self, events):
         # For OperatorNode and ProfilerStepNode:
@@ -157,6 +158,7 @@ class NodeParserMixin:
         corrid = event.args.get("correlation", None)
         tid = event.tid
         if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
+            self.used_devices.add(event.pid)
             device_node = DeviceNode.create(event)
             if corrid in corrid_to_runtime:
                 rt_node = corrid_to_runtime[corrid]  # Don't pop it because it may be used by next kernel.

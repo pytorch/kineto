@@ -12,6 +12,7 @@ WORKER_PATTERN = re.compile(r"""^(.*?) # worker name
         \.pt\.trace\.json # the ending suffix
         (?:\.gz)?$""", re.X)  # optional .gz extension
 
+NODE_PROCESS_PATTERN = re.compile(r"""^(.*)_(\d+)""")
 MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS = 10
 MAX_GPU_PER_NODE = 64
 

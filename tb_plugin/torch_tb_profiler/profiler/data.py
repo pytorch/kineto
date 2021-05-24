@@ -31,6 +31,9 @@ class RunProfileData(object):
     def __init__(self, worker):
         self.worker = worker
         self.data_schema_version = None
+        self.distributed_info = None
+        self.device_props = None
+        self.used_devices = []
         self.events = None
         self.trace_file_path = None
         self.has_runtime = False
@@ -67,9 +70,9 @@ class RunProfileData(object):
         profile = RunProfileData(worker)
         profile.trace_file_path = trace_path
         if type(trace_json) is dict:
-            metadata = trace_json.get("profilerMetadata", None)
-            version = metadata.get("DataSchemaVersion") if metadata else None
-            profile.data_schema_version = version
+            profile.data_schema_version = trace_json.get("schemaVersion", None)
+            profile.distributed_info = trace_json.get("distributedInfo", None)
+            profile.device_props = trace_json.get("deviceProperties", None)
             trace_json = trace_json["traceEvents"]
 
         profile.events = []
@@ -123,6 +126,7 @@ class RunProfileData(object):
         self.has_communication = parser.has_communication
         self.has_memcpy_or_memset = parser.has_memcpy_or_memset
         self.steps_names = parser.steps_names
+        self.used_devices = list(parser.used_devices)
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()

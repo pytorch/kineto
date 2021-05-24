@@ -110,6 +110,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/kernel": self.kernel_pie_route,
             "/kernel/table": self.kernel_table_route,
             "/trace": self.trace_route,
+            "/distributed/gpuinfo": self.dist_gpu_info_route,
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
             "/distributed/commops": self.comm_ops_route
@@ -154,7 +155,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
-        data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
+        normal_workers = [worker for worker in run.workers if worker != 'All']
+        data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(normal_workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
         for gpu_id in profile.gpu_ids:
             data["environments"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
@@ -268,6 +270,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         headers = [('Content-Encoding', 'gzip')]
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
+
+    @wrappers.Request.application
+    def dist_gpu_info_route(self, request):
+        name = request.args.get("run")
+        self._validate(run=name)
+        profile = self._get_profile(name, 'All')
+        self._check_distributed_profile(profile, name)
+        return self.respond_as_json(profile.gpu_info)
 
     @wrappers.Request.application
     def comm_overlap_route(self, request):

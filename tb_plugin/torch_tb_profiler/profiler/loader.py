@@ -2,8 +2,8 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import sys
+from collections import OrderedDict
 from multiprocessing import Barrier, Event, Process, Queue
-from typing import OrderedDict
 
 from .. import consts, io, utils
 from ..run import Run

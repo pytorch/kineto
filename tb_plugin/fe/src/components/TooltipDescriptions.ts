@@ -24,3 +24,5 @@ export const GPUKernelTotalTimeTooltip = `The accumulated time of all calls of t
 export const DistributedOverlapGraphTooltip = `The time spent on computation vs communication.`
 
 export const DistributedWaittimeGraphTooltip = `The time spent waiting vs communicating between devices.`
+
+export const DistributedCommopsTableTooltip = `Statistics for operations managing communications between nodes.`

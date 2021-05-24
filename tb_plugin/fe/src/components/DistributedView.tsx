@@ -10,6 +10,7 @@ import { TextListItem } from './TextListItem'
 import { makeStyles } from '@material-ui/core/styles'
 import MenuItem from '@material-ui/core/MenuItem'
 import InputLabel from '@material-ui/core/InputLabel'
+import Typography from '@material-ui/core/Typography'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import * as React from 'react'
 import { TableChart } from './charts/TableChart'
@@ -21,7 +22,8 @@ import { DataLoading } from './DataLoading'
 import { ColumnChart } from './charts/ColumnChart'
 import {
   DistributedOverlapGraphTooltip,
-  DistributedWaittimeGraphTooltip
+  DistributedWaittimeGraphTooltip,
+  DistributedCommopsTableTooltip
 } from './TooltipDescriptions'
 import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
@@ -169,35 +171,41 @@ export const DistributedView: React.FC<IProps> = (props) => {
                 <Card elevation={0}>
                   <CardHeader title={gpuInfo.metadata.title} />
                   <CardContent>
-                    <Grid container direction="column" spacing={3}>
-                      {Object.keys(gpuInfo.data).map((pid) => (
-                        <Grid item container direction="column" spacing={1}>
-                          <Grid item>{pid}</Grid>
-                          <Grid item container spacing={1}>
-                            {Object.keys(gpuInfo.data[pid]).map((gpu_name) => (
-                              <Grid item sm={3}>
-                                <Card variant="outlined">
-                                  <CardHeader title={gpu_name} />
-                                  <CardContent>
-                                    {Object.keys(
-                                      gpuInfo.data[pid][gpu_name]
-                                    ).map((key_name) => (
-                                      <TextListItem
-                                        name={key_name}
-                                        value={
-                                          gpuInfo.data[pid][gpu_name][key_name]
-                                        }
-                                      />
-                                    ))}
-                                  </CardContent>
-                                </Card>
+                    <Grid container spacing={3}>
+                      {Object.keys(gpuInfo.data).map((node_name) => (
+                        <Grid item sm={12}><Card variant="outlined"><CardContent>
+                          <Grid container direction="column" spacing={3}>
+                            <Grid item><Typography style={{ fontWeight: "bold" }}>{node_name}</Typography></Grid>
+                            {Object.keys(gpuInfo.data[node_name]).map((pid) => (
+                              <Grid item container direction="column" spacing={1}>
+                                <Grid item><Typography>{pid}</Typography></Grid>
+                                <Grid item container spacing={1}>
+                                  {Object.keys(gpuInfo.data[node_name][pid]).map((gpu_name) => (
+                                    <Grid item sm={4} xs={6}>
+                                      <Card variant="outlined">
+                                        <CardHeader title={gpu_name} />
+                                        <CardContent>
+                                          {Object.keys(
+                                            gpuInfo.data[node_name][pid][gpu_name]
+                                          ).map((key_name) => (
+                                            <TextListItem
+                                              name={key_name}
+                                              value={
+                                                gpuInfo.data[node_name][pid][gpu_name][key_name]
+                                              }
+                                            />
+                                          ))}
+                                        </CardContent>
+                                      </Card>
+                                    </Grid>
+                                  ))}
+                                </Grid>
                               </Grid>
                             ))}
                           </Grid>
-                        </Grid>
+                        </CardContent></Card></Grid>
                       ))}
-                    </Grid>
-                  </CardContent>
+                    </Grid></CardContent>
                 </Card>
               </Grid>
             )}
@@ -206,7 +214,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
                 {(chartData) => (
                   <Card elevation={0}>
                     <CardContent>
-                      <Grid item container spacing={1} alignItems="center">
+                      <Grid container spacing={1} alignItems="center">
                         <Grid item>
                           <InputLabel id="overlap-step">Step</InputLabel>
                         </Grid>
@@ -245,7 +253,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
                 {(chartData) => (
                   <Card elevation={0}>
                     <CardContent>
-                      <Grid item container spacing={1} alignItems="center">
+                      <Grid container spacing={1} alignItems="center">
                         <Grid item>
                           <InputLabel id="waittime-step">Step</InputLabel>
                         </Grid>
@@ -280,7 +288,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
             </Grid>
             <Grid item sm={12}>
               <Grid container direction="column" spacing={0}>
-                <CardHeader title={commopsTableTitle} />
+                <CardHeader title={chartHeaderRenderer(commopsTableTitle, DistributedCommopsTableTooltip)} />
                 <Card elevation={0}>
                   <CardContent>
                     <Grid item container spacing={1} alignItems="center">

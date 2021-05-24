@@ -35,12 +35,20 @@ const useStyles = makeStyles((theme) => ({
 export const TextListItem: React.FC<IProps> = (props) => {
   const classes = useStyles()
 
-  const sizes =
-    props.value && props.extra
-      ? ([4, 4, 4] as const)
-      : props.value
-      ? ([8, 4, undefined] as const)
-      : ([12, undefined, undefined] as const)
+  const getSizes = () => {
+    if (props.value && props.extra) {
+      return ([4, 4, 4] as const)
+    }
+    if (props.value) {
+      if (props.value.length > props.name.length) {
+        return ([4, 8, undefined] as const)
+      }
+      return ([8, 4, undefined] as const)
+    }
+    return ([12, undefined, undefined] as const)
+  }
+
+  const sizes = getSizes()
 
   return (
     <Grid container className={props.classes?.root}>

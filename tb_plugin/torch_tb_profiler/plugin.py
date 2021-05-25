@@ -13,6 +13,7 @@ import time
 from collections import OrderedDict
 
 import werkzeug
+from absl import logging as absllogging
 from tensorboard import errors
 from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
@@ -81,11 +82,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def __setstate__(self, d):
         '''The default logging level in new process is warning. 
-        As the result, the logger.info will be ignored. We have to leverage the multiprocessing.get_logger() which will be used by the 
-        python multiprocessing.
+        As the result, the logger.info will be ignored. 
+        We have to leverage the multiprocessing.get_logger() which will be used by the python multiprocessing.
+        Alternatively, we need call use_absl_handler or manually add the logging.StreamHandler
         '''
-        with utils.mp_logging() as logger:
-            logger.debug("TorchProfilerPlugin.__setstate__ with %s " % d)
+        # need 1), call use_absl_handler, 2), manually add the logging.StreamHandler, or 3), use multiprocessing.logging
+        # so that the logger information can be see.
+        absllogging.use_absl_handler()
+        logger.debug("TorchProfilerPlugin.__setstate__ with %s " % d)
         self.__dict__.update(d)
 
     def is_active(self):
@@ -396,8 +400,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     break
 
     def _load_run(self, run_dir):
-        import absl.logging
-        absl.logging.use_absl_handler()
+        absllogging.use_absl_handler()
 
         try:
             name = self._get_run_name(run_dir)

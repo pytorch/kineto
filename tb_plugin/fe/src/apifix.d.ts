@@ -29,4 +29,8 @@ declare module './api/generated/api' {
     host_total_duration: CallStackTableDataInner['hostTotalDuration']
     call_stack: CallStackTableDataInner['callStack']
   }
+
+  export interface Overview {
+    gpu_metrics: Overview['gpuMetrics']
+  }
 }

@@ -122,6 +122,7 @@ class DistributedRunProfile(object):
         self.worker = 'All'
         self.span = span
         self.views = []
+        self.gpu_info = None
         self.steps_to_overlap = None
         self.steps_to_wait = None
         self.comm_ops = None

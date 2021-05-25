@@ -168,6 +168,44 @@ export interface Environment {
 /**
  *
  * @export
+ * @interface GpuMetric
+ */
+export interface GpuMetric {
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetric
+   */
+  title: string
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetric
+   */
+  value: string
+}
+/**
+ *
+ * @export
+ * @interface GpuMetrics
+ */
+export interface GpuMetrics {
+  /**
+   *
+   * @type {Array<GpuMetric>}
+   * @memberof GpuMetrics
+   */
+  data: Array<GpuMetric>
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetrics
+   */
+  tooltip: string
+}
+/**
+ *
+ * @export
  * @interface Graph
  */
 export interface Graph {
@@ -369,6 +407,12 @@ export interface Overview {
    * @memberof Overview
    */
   recommendations: string
+  /**
+   *
+   * @type {GpuMetrics}
+   * @memberof Overview
+   */
+  gpuMetrics?: GpuMetrics
 }
 /**
  *
@@ -1062,10 +1106,11 @@ export const DefaultApiFetchParamCreator = function (
     /**
      *
      * @param {string} run
+     * @param {string} [worker]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, options: any = {}): FetchArgs {
+    viewsGet(run: string, worker?: string, options: any = {}): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
@@ -1081,6 +1126,10 @@ export const DefaultApiFetchParamCreator = function (
 
       if (run !== undefined) {
         localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1437,16 +1486,18 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} run
+     * @param {string} [worker]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     viewsGet(
       run: string,
+      worker?: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).viewsGet(run, options)
+      ).viewsGet(run, worker, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1674,11 +1725,16 @@ export const DefaultApiFactory = function (
     /**
      *
      * @param {string} run
+     * @param {string} [worker]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, options?: any) {
-      return DefaultApiFp(configuration).viewsGet(run, options)(fetch, basePath)
+    viewsGet(run: string, worker?: string, options?: any) {
+      return DefaultApiFp(configuration).viewsGet(
+        run,
+        worker,
+        options
+      )(fetch, basePath)
     },
     /**
      *
@@ -1890,15 +1946,17 @@ export class DefaultApi extends BaseAPI {
   /**
    *
    * @param {string} run
+   * @param {string} [worker]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public viewsGet(run: string, options?: any) {
-    return DefaultApiFp(this.configuration).viewsGet(run, options)(
-      this.fetch,
-      this.basePath
-    )
+  public viewsGet(run: string, worker?: string, options?: any) {
+    return DefaultApiFp(this.configuration).viewsGet(
+      run,
+      worker,
+      options
+    )(this.fetch, this.basePath)
   }
 
   /**

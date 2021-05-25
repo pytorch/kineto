@@ -4,7 +4,7 @@
 
 import * as React from 'react'
 import { makeStyles } from '@material-ui/core/styles'
-import Grid from '@material-ui/core/Grid'
+import Grid, { GridSize } from '@material-ui/core/Grid'
 import Card from '@material-ui/core/Card'
 import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
@@ -73,6 +73,9 @@ export const Overview: React.FC<IProps> = (props) => {
   const [steps, setSteps] = React.useState<api.Graph | undefined>(undefined)
   const [performances, setPerformances] = React.useState<api.Performance[]>([])
   const [environments, setEnvironments] = React.useState<api.Environment[]>([])
+  const [gpuMetrics, setGpuMetrics] = React.useState<
+    api.GpuMetrics | undefined
+  >(undefined)
   const [recommendations, setRecommendations] = React.useState('')
 
   const synthesizedTableGraph = React.useMemo(() => {
@@ -89,6 +92,8 @@ export const Overview: React.FC<IProps> = (props) => {
       setEnvironments(resp.environments)
       setSteps(resp.steps)
       setRecommendations(resp.recommendations)
+      setGpuMetrics(resp.gpu_metrics)
+      console.log(resp.gpu_metrics)
     })
   }, [run, worker, view])
 
@@ -104,11 +109,15 @@ export const Overview: React.FC<IProps> = (props) => {
     [tooltipCommonClasses, chartHeaderRenderer]
   )
 
+  const cardSizes = gpuMetrics
+    ? ([2, 3, 7] as const)
+    : ([4, undefined, 8] as const)
+
   return (
     <div className={classes.root}>
       <Grid container spacing={1}>
         <Grid container item spacing={1}>
-          <Grid item sm={4}>
+          <Grid item sm={cardSizes[0]}>
             {React.useMemo(
               () => (
                 <Card variant="outlined">
@@ -126,7 +135,24 @@ export const Overview: React.FC<IProps> = (props) => {
               [environments]
             )}
           </Grid>
-          <Grid item sm={8}>
+          {gpuMetrics && (
+            <Grid item sm={cardSizes[1]}>
+              <Card variant="outlined">
+                <CardHeader
+                  title={chartHeaderRenderer('GPU Metrics', gpuMetrics.tooltip)}
+                />
+                <CardContent
+                  className={classes.topGraph}
+                  style={{ overflow: 'auto' }}
+                >
+                  {gpuMetrics.data.map((metric) => (
+                    <TextListItem name={metric.title} value={metric.value} />
+                  ))}
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+          <Grid item sm={cardSizes[2]}>
             <Card variant="outlined">
               <CardHeader title="Execution Summary" />
               <CardContent>

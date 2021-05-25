@@ -13,6 +13,7 @@ import time
 from collections import OrderedDict
 
 import werkzeug
+from absl import logging as absllogging
 from tensorboard import errors
 from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
@@ -81,11 +82,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def __setstate__(self, d):
         '''The default logging level in new process is warning. 
-        As the result, the logger.info will be ignored. We have to leverage the multiprocessing.get_logger() which will be used by the 
-        python multiprocessing.
+        As the result, the logger.info will be ignored. 
+        We have to leverage the multiprocessing.get_logger() which will be used by the python multiprocessing.
+        Alternatively, we need call use_absl_handler or manually add the logging.StreamHandler
         '''
-        with utils.mp_logging() as logger:
-            logger.debug("TorchProfilerPlugin.__setstate__ with %s " % d)
+        # need 1), call use_absl_handler, 2), manually add the logging.StreamHandler, or 3), use multiprocessing.logging
+        # so that the logger information can be see.
+        absllogging.use_absl_handler()
+        logger.info("TorchProfilerPlugin.__setstate__ with %s " % d)
         self.__dict__.update(d)
 
     def is_active(self):
@@ -111,6 +115,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/kernel": self.kernel_pie_route,
             "/kernel/table": self.kernel_table_route,
             "/trace": self.trace_route,
+            "/distributed/gpuinfo": self.dist_gpu_info_route,
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
             "/distributed/commops": self.comm_ops_route
@@ -166,7 +171,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
-        data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(run.workers))},
+        normal_workers = [worker for worker in run.workers if worker != 'All']
+        data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(normal_workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
         for gpu_id in profile.gpu_ids:
             data["environments"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
@@ -288,6 +294,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
 
     @wrappers.Request.application
+    def dist_gpu_info_route(self, request):
+        name = request.args.get("run")
+        self._validate(run=name)
+        profile = self._get_profile(name, 'All')
+        self._check_distributed_profile(profile, name)
+        return self.respond_as_json(profile.gpu_info)
+
+    @wrappers.Request.application
     def comm_overlap_route(self, request):
         name = request.args.get("run")
         span = request.args.get("span")
@@ -363,7 +377,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                             logger.info("Find run directory %s", run_dir)
                             # Use multiprocessing to avoid UI stall and reduce data parsing time
                             process = mp.Process(target=self._load_run, args=(run_dir,))
-                            process.daemon = True
+                            #process.daemon = True
                             process.start()
                 except Exception as ex:
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
@@ -407,8 +421,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     break
 
     def _load_run(self, run_dir):
-        import absl.logging
-        absl.logging.use_absl_handler()
+        absllogging.use_absl_handler()
 
         try:
             name = self._get_run_name(run_dir)

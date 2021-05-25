@@ -3,10 +3,11 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
-from .. import consts
+from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .overall_parser import ProfileRole
 
+logger = utils.get_logger()
 
 class RunGenerator(object):
     def __init__(self, worker, span, profile_data):
@@ -78,9 +79,9 @@ class RunGenerator(object):
                                              column_tootip,
                                              {"type": "number", "name": "Memcpy"},
                                              column_tootip,
-                                             {"type": "number", "name": "Communication"},
-                                             column_tootip,
                                              {"type": "number", "name": "Memset"},
+                                             column_tootip,
+                                             {"type": "number", "name": "Communication"},
                                              column_tootip,
                                              {"type": "number", "name": "Runtime"},
                                              column_tootip])
@@ -308,49 +309,113 @@ class DistributedRunGenerator(object):
     def generate_run_profile(self):
         profile_run = DistributedRunProfile(self.span)
         profile_run.views.append(consts.DISTRIBUTED_VIEW)
+        profile_run.gpu_info = self._generate_gpu_info()
         profile_run.steps_to_overlap = self._generate_overlap_graph()
         profile_run.steps_to_wait = self._generate_wait_graph()
         profile_run.comm_ops = self._generate_ops_table()
         return profile_run
 
+    def _generate_gpu_info(self):
+        result = OrderedDict()
+        index = 0
+        for data in self.all_profile_data:
+            if not data.device_props:
+               continue
+
+            match = consts.NODE_PROCESS_PATTERN.match(data.worker)
+            if match:
+                node = match.group(1)
+                process_id = match.group(2)
+            else:
+                logger.warning("cannot parse node name from worker name {}".format(data.worker))
+                node = data.worker
+                process_id = index
+                index += 1
+            if node not in result:
+                result[node] = OrderedDict()
+
+            process_id = "Process " + str(process_id)
+            result[node][process_id] = OrderedDict()
+            for used_device in data.used_devices:
+                try:
+                    device_prop = data.device_props[used_device]
+                except IndexError:
+                    continue
+
+                gpu_info = {}
+                name = device_prop.get("name")
+                if name:
+                    gpu_info["Name"] = name
+
+                mem = device_prop.get("totalGlobalMem")
+                if mem is not None:
+                    gpu_info["Memory"] = mem
+
+                major = device_prop.get("computeMajor")
+                minor = device_prop.get("computeMinor")
+                if major is not None and minor is not None:
+                    gpu_info["Compute Compability"] = "{}.{}".format(major, minor)
+
+                if gpu_info:
+                    result[node][process_id]['GPU'+str(used_device)] = gpu_info
+
+        if result:
+            return {
+                "metadata": {"title": "Device Info"},
+                "data": result
+            }
+        else:
+            return None
+
     def _generate_overlap_graph(self):
         result = dict()
         result["metadata"] = {"title": "Computaion/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
         steps_to_overlap = OrderedDict()
+        steps_to_overlap['all'] = OrderedDict()
         for data in self.all_profile_data:
-            for i in range(len(data.steps_names)):
-                step_name = data.steps_names[i]
-                if step_name not in steps_to_overlap:
-                    steps_to_overlap[step_name] = OrderedDict()
+            steps_to_overlap['all'][data.worker] = [0, 0, 0, 0]
+            step_number = len(data.steps_names)
+            for i,step_name in enumerate(data.steps_names):
+                steps_to_overlap.setdefault(step_name, OrderedDict())
                 costs = data.comm_overlap_costs[i]
                 steps_to_overlap[step_name][data.worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
+                steps_to_overlap['all'][data.worker] = [sum(x) for x in zip(steps_to_overlap['all'][data.worker], steps_to_overlap[step_name][data.worker])]
+            steps_to_overlap['all'][data.worker] = [x/step_number for x in steps_to_overlap['all'][data.worker]]
         result["data"] = steps_to_overlap
         return result
 
     def _generate_wait_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Communication/Waiting View", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
+        result["metadata"] = {"title": "Collective Communication Overview", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
         steps_to_wait = OrderedDict()
+
+        steps_to_wait['all'] = OrderedDict()
         for data in self.all_profile_data:
+            steps_to_wait['all'][data.worker] = [0, 0]
+            step_number = len(data.step_comm_stats.values())
             for step,comm_stats in data.step_comm_stats.items():
-                if step not in steps_to_wait:
-                    steps_to_wait[step] = OrderedDict()
-                steps_to_wait[step][data.worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
+                steps_to_wait.setdefault(step, OrderedDict())[data.worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
+                steps_to_wait['all'][data.worker] = [sum(x) for x in zip(steps_to_wait['all'][data.worker], steps_to_wait[step][data.worker])]
+            steps_to_wait['all'][data.worker] = [x/step_number for x in steps_to_wait['all'][data.worker]]
+
         result["data"] = steps_to_wait
         return result
 
     def _generate_ops_table(self):
+        result = dict()
+        result["metadata"] = {"title": "Communication Operations Stats"}
         workers_to_comm_ops = OrderedDict()
         # Ignore the span for distributed view
         for data in self.all_profile_data:
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
-            col_names = ["Calls", "Total Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
+            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
             for column in col_names:
                 table["columns"].append({"type": "number", "name": column})
             table["rows"] = []
             for op,stats in data.total_comm_stats.items():
-                row = [op, stats[0], stats[1], stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
+                row = [op, stats[0], stats[1], round(stats[1]/stats[0]), stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
                 table["rows"].append(row)
             workers_to_comm_ops[data.worker] = table
-        return workers_to_comm_ops
+        result["data"] = workers_to_comm_ops
+        return result

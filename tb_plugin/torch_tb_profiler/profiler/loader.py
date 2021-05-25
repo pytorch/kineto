@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------------
 import sys
 from collections import OrderedDict
-from multiprocessing import Barrier, Event, Process, Queue
+from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
 from ..run import Run
@@ -19,7 +19,6 @@ class RunLoader(object):
         self.caches = caches
         self.has_communication = True
         self.queue = Queue()
-        self.distributed_queue = Queue()
 
     def load(self):
         workers = []
@@ -33,25 +32,21 @@ class RunLoader(object):
             worker = match.group(1)
             workers.append((worker, path))
 
-        barrier = Barrier(len(workers))
-        event = Event()
+        barrier = Barrier(len(workers) + 1)
         for worker, path in sorted(workers):
-            p = Process(target=self._process_data, args=(worker, path, barrier, event))
+            p = Process(target=self._process_data, args=(worker, path, barrier))
             p.start()
 
         logger.info("starting all processing")
         # since there is one queue, its data must be read before join.
         # https://stackoverflow.com/questions/31665328/python-3-multiprocessing-queue-deadlock-when-calling-join-before-the-queue-is-em
-        event.wait()
-
-        run = Run(self.run.name, self.run.run_dir)
-        while self.queue.qsize() > 0:
-            r = self.queue.get()
-            run.add_profile(r)
+        barrier.wait()
 
         distributed_data = OrderedDict()
-        while self.distributed_queue.qsize() > 0:
-            d = self.distributed_queue.get()
+        run = Run(self.run.name, self.run.run_dir)
+        while self.queue.qsize() > 0:
+            r, d = self.queue.get()
+            run.add_profile(r)
             distributed_data[d.worker] = d
 
         distributed_profile = self._process_communication(distributed_data)
@@ -61,7 +56,7 @@ class RunLoader(object):
         # for no daemon process, no need to join them since it will automatically join
         return run
 
-    def _process_data(self, worker, path, barrier, event):
+    def _process_data(self, worker, path, barrier):
         import absl.logging
         absl.logging.use_absl_handler()
 
@@ -72,16 +67,22 @@ class RunLoader(object):
             data.analyze()
             generator = RunGenerator(worker, data)
             profile = generator.generate_run_profile()
-            self.queue.put(profile)
 
-            dist_profile = DistributedProfileData(worker, data.steps_names, data.has_communication, data.comm_node_list, data.comm_overlap_costs, data.used_devices, data.device_props, data.distributed_info)
-            self.distributed_queue.put(dist_profile)
+            dist_data = DistributedProfileData(
+                worker,
+                data.steps_names,
+                data.has_communication,
+                data.comm_node_list,
+                data.comm_overlap_costs,
+                data.used_devices,
+                data.device_props,
+                data.distributed_info)
 
+            self.queue.put((profile, dist_data))
         except Exception as ex:
                 logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)
         barrier.wait()
-        event.set()
         logger.debug("finishing process data")
 
     def _process_communication(self, profiles):

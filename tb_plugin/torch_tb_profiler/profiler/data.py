@@ -51,6 +51,8 @@ class RunProfileData(object):
         self.occupancy = None
         self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
         self.approximated_sm_efficency_ranges = None  # Cached here. Will be processed to json on first trace view.
+        self.blocks_per_sm_count = 0
+        self.occupancy_count = 0
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
@@ -159,6 +161,8 @@ class RunProfileData(object):
         self.occupancy = gpu_metrics_parser.avg_occupancy_per_device
         self.gpu_util_buckets = gpu_metrics_parser.gpu_util_buckets
         self.approximated_sm_efficency_ranges = gpu_metrics_parser.approximated_sm_efficency_ranges
+        self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
+        self.occupancy_count = gpu_metrics_parser.occupancy_count
 
         if self.has_kernel:
             logger.debug("KernelParser")

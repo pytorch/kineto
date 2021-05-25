@@ -42,7 +42,7 @@ export enum Views {
 const ViewNames = {
   [Views.Overview]: Views.Overview,
   [Views.Operator]: Views.Operator,
-  [Views.Kernel]: 'GPU Kernel v2',
+  [Views.Kernel]: 'GPU Kernel',
   [Views.Trace]: Views.Trace,
   [Views.Distributed]: Views.Distributed
 }

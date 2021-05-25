@@ -110,7 +110,7 @@ export const Overview: React.FC<IProps> = (props) => {
   )
 
   const cardSizes = gpuMetrics
-    ? ([2, 2, 8] as const)
+    ? ([2, 3, 7] as const)
     : ([4, undefined, 8] as const)
 
   return (

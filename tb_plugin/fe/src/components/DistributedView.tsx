@@ -19,8 +19,10 @@ import { Graph } from '../api'
 import { DistributedGraph, GpuInfo } from '../api'
 import { firstOrUndefined } from '../utils'
 import { DataLoading } from './DataLoading'
+import { GpuInfoTable } from './GpuInfoTable'
 import { ColumnChart } from './charts/ColumnChart'
 import {
+  DistributedGpuInfoTableTooltip,
   DistributedOverlapGraphTooltip,
   DistributedWaittimeGraphTooltip,
   DistributedCommopsTableTooltip
@@ -169,66 +171,14 @@ export const DistributedView: React.FC<IProps> = (props) => {
             {gpuInfo && (
               <Grid item sm={12}>
                 <Card elevation={0}>
-                  <CardHeader title={gpuInfo.metadata.title} />
+                  <CardHeader
+                    title={chartHeaderRenderer(
+                      gpuInfo.metadata.title,
+                      DistributedGpuInfoTableTooltip
+                    )}
+                  />
                   <CardContent>
-                    <Grid container spacing={3}>
-                      {Object.keys(gpuInfo.data).map((node_name) => (
-                        <Grid item sm={12}>
-                          <Card variant="outlined">
-                            <CardContent>
-                              <Grid container direction="column" spacing={3}>
-                                <Grid item>
-                                  <Typography style={{ fontWeight: 'bold' }}>
-                                    {node_name}
-                                  </Typography>
-                                </Grid>
-                                {Object.keys(gpuInfo.data[node_name]).map(
-                                  (pid) => (
-                                    <Grid
-                                      item
-                                      container
-                                      direction="column"
-                                      spacing={1}
-                                    >
-                                      <Grid item>
-                                        <Typography>{pid}</Typography>
-                                      </Grid>
-                                      <Grid item container spacing={1}>
-                                        {Object.keys(
-                                          gpuInfo.data[node_name][pid]
-                                        ).map((gpu_name) => (
-                                          <Grid item sm={4} xs={6}>
-                                            <Card variant="outlined">
-                                              <CardHeader title={gpu_name} />
-                                              <CardContent>
-                                                {Object.keys(
-                                                  gpuInfo.data[node_name][pid][
-                                                    gpu_name
-                                                  ]
-                                                ).map((key_name) => (
-                                                  <TextListItem
-                                                    name={key_name}
-                                                    value={
-                                                      gpuInfo.data[node_name][
-                                                        pid
-                                                      ][gpu_name][key_name]
-                                                    }
-                                                  />
-                                                ))}
-                                              </CardContent>
-                                            </Card>
-                                          </Grid>
-                                        ))}
-                                      </Grid>
-                                    </Grid>
-                                  )
-                                )}
-                              </Grid>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
+                    <GpuInfoTable gpuInfo={gpuInfo} />
                   </CardContent>
                 </Card>
               </Grid>

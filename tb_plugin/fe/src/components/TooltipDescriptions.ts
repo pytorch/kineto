@@ -21,6 +21,8 @@ export const HostTotalTimeTooltip = `The accumulated time spent on Host, includi
 
 export const GPUKernelTotalTimeTooltip = `The accumulated time of all calls of this kernel.`
 
+export const DistributedGpuInfoTableTooltip = `Information about GPU hardware used during the run.`
+
 export const DistributedOverlapGraphTooltip = `The time spent on computation vs communication.`
 
 export const DistributedWaittimeGraphTooltip = `The time spent waiting vs communicating between devices.`

@@ -340,6 +340,8 @@ class DistributedRunGenerator(object):
                             data.device_props[used_device].get("computeMajor", None),
                             data.device_props[used_device].get("computeMinor", None))
                     }
+                result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device) + "_2"] = result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)]
+            result["data"][node + "_2"] = result["data"][node]
         return result
 
     def _generate_overlap_graph(self):

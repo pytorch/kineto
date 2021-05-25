@@ -151,64 +151,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def overview_route(self, request):
-        def get_gpu_metrics_data(profile):
-            gpu_metrics_data = []
-            has_sm_efficiency = False
-            has_occupancy = False
-            is_first = True
-            for gpu_id in profile.gpu_ids:
-                if not is_first:
-                    # Append separator line for beautiful to see.
-                    gpu_metrics_data.append({"title": "--------",
-                                             "value": ""})
-                gpu_metrics_data.append({"title": "GPU {}:".format(gpu_id),
-                                         "value": ""})
-                gpu_metrics_data.append({"title": "GPU Utilization",
-                                         "value": "{} %".format(
-                                             round(profile.gpu_utilization[gpu_id] * 100, 2))})
-                if profile.sm_efficency[gpu_id] > 0.0:
-                    gpu_metrics_data.append({"title": "Est. SM Efficiency",
-                                             "value": "{} %".format(
-                                                 round(profile.sm_efficency[gpu_id] * 100, 2))})
-                    has_sm_efficiency = True
-                if profile.occupancy[gpu_id] > 0.0:
-                    gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
-                                             "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
-                    has_occupancy = True
-                is_first = False
-            return gpu_metrics_data, has_occupancy, has_sm_efficiency
-
-        def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy):
-            tooltip_summary = "The GPU usage metrics:\n"
-            tooltip_gpu_util = \
-                "GPU Utilization:\n" \
-                "GPU busy time / All steps time. " \
-                "GPU busy time is the time during which there is at least one GPU kernel running on it. " \
-                "All steps time is the total time of all profiler steps(or called as iterations).\n"
-            tooltip_sm_efficiency = \
-                "Est. SM Efficiency:\n" \
-                "Estimated Stream Multiprocessor Efficiency. " \
-                "Est. SM Efficiency of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%). " \
-                "This overall number is the sum of all kernels' SM_Eff_K weighted by kernel's execution duration, " \
-                "divided by all steps time.\n"
-            tooltip_occupancy = \
-                "Est. Achieved Occupancy:\n" \
-                "Occupancy is the ratio of active threads on an SM " \
-                "to the maximum number of active threads supported by the SM. " \
-                "The theoretical occupancy of a kernel is upper limit occupancy of this kernel, " \
-                "limited by multiple factors such as kernel shape, kernel used resource, " \
-                "and the GPU compute capability." \
-                "Est. Achieved Occupancy of a kernel, OCC_K = " \
-                "min(threads of the kernel / SM number / max threads per SM, theoretical occupancy of the kernel). " \
-                "This overall number is the weighted sum of all kernels OCC_K " \
-                "using kernel's execution duration as weight."
-            tooltip = "{}\n{}".format(tooltip_summary, tooltip_gpu_util)
-            if has_sm_efficiency:
-                tooltip += "\n" + tooltip_sm_efficiency
-            if has_occupancy:
-                tooltip += "\n" + tooltip_occupancy
-            return tooltip
-
         name = request.args.get("run")
         worker = request.args.get("worker")
         self._validate(run=name, worker=worker)
@@ -223,10 +165,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if len(profile.gpu_ids) > 0:
             data["gpu_metrics"] = {}
 
-            gpu_metrics_data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(profile)
+            gpu_metrics_data, has_occupancy, has_sm_efficiency = profile.get_gpu_metrics_data()
             data["gpu_metrics"]["data"] = gpu_metrics_data
 
-            data["gpu_metrics"]["tooltip"] = get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy)
+            data["gpu_metrics"]["tooltip"] = RunProfile.get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy)
 
         return self.respond_as_json(data)
 

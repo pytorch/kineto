@@ -315,10 +315,11 @@ class DistributedRunGenerator(object):
 
     def _generate_gpu_info(self):
         result = OrderedDict()
-        result["metadata"] = {"title": "Device Info"}
-        result["data"] = dict()
         index = 0
         for worker,data in self.all_profile_data.items():
+            if not data.device_props:
+               continue
+
             match = consts.NODE_PROCESS_PATTERN.match(worker)
             if match:
                 node = match.group(1)
@@ -328,19 +329,41 @@ class DistributedRunGenerator(object):
                 node = worker
                 process_id = index
                 index += 1
-            if node not in result["data"]:
-                result["data"][node] = dict()
-            result["data"][node]["Process " + str(process_id)] = dict()
+            if node not in result:
+                result[node] = OrderedDict()
+
+            process_id = "Process " + str(process_id)
+            result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
-                result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)] = \
-                    {
-                        "Name": data.device_props[used_device].get("name", None),
-                        "Memory": data.device_props[used_device].get("totalGlobalMem", None),
-                        "Compute Compability": "{}.{}".format(
-                            data.device_props[used_device].get("computeMajor", None),
-                            data.device_props[used_device].get("computeMinor", None))
-                    }
-        return result
+                try:
+                    device_prop = data.device_props[used_device]
+                except IndexError:
+                    continue
+
+                gpu_info = {}
+                name = device_prop.get("name")
+                if name:
+                    gpu_info["Name"] = name
+
+                mem = device_prop.get("totalGlobalMem")
+                if mem is not None:
+                    gpu_info["Memory"] = mem
+
+                major = device_prop.get("computeMajor")
+                minor = device_prop.get("computeMinor")
+                if major is not None and minor is not None:
+                    gpu_info["Compute Compability"] = "{}.{}".format(major, minor)
+
+                if gpu_info:
+                    result[node][process_id]['GPU'+str(used_device)] = gpu_info
+
+        if result:
+            return {
+                "metadata": {"title": "Device Info"},
+                "data": result
+            }
+        else:
+            return None
 
     def _generate_overlap_graph(self):
         result = dict()

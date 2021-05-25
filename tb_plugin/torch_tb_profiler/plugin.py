@@ -296,8 +296,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def dist_gpu_info_route(self, request):
         name = request.args.get("run")
+        span = request.args.get("span")
         self._validate(run=name)
-        profile = self._get_profile(name, 'All')
+        profile = self._get_profile(name, 'All', span)
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.gpu_info)
 

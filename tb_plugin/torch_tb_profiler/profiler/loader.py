@@ -100,7 +100,7 @@ class RunLoader(object):
             span_profiles = []
             for span in spans:
                 profiles = self.run.get_profiles(span=span)
-                p = self._process_profiles(profiles)
+                p = self._process_profiles(profiles, span)
                 if p is not None:
                     span_profiles.append(p)
             return span_profiles

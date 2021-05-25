@@ -314,7 +314,7 @@ class DistributedRunGenerator(object):
         return profile_run
 
     def _generate_gpu_info(self):
-        result = dict()
+        result = OrderedDict()
         index = 0
         for worker,data in self.all_profile_data.items():
             if not data.device_props:
@@ -330,18 +330,31 @@ class DistributedRunGenerator(object):
                 process_id = index
                 index += 1
             if node not in data:
-                result[node] = dict()
+                result[node] = OrderedDict()
 
-            result[node]["Process " + str(process_id)] = dict()
+            process_id = "Process " + str(process_id)
+            result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
-                result[node]["Process " + str(process_id)]['GPU'+str(used_device)] = \
-                    {
-                        "Name": data.device_props[used_device].get("name", None),
-                        "Memory": data.device_props[used_device].get("totalGlobalMem", None),
-                        "Compute Compability": "{}.{}".format(
-                            data.device_props[used_device].get("computeMajor", None),
-                            data.device_props[used_device].get("computeMinor", None))
-                    }
+                device_prop = data.device_props.get(used_device)
+                if not device_prop:
+                    continue
+
+                gpu_info = {}
+                name = device_prop.get("name")
+                if name:
+                    gpu_info["Name"] = name
+
+                mem = device_prop.get("totalGlobalMem")
+                if mem is not None:
+                    gpu_info["Memory"] = mem
+
+                major = device_prop.get("computeMajor")
+                minor = device_prop.get("computeMinor")
+                if major is not None and minor is not None:
+                    gpu_info["Compute Compability"] = "{}.{}".format(major, minor)
+
+                if gpu_info:
+                    result[node][process_id]['GPU'+str(used_device)] = gpu_info
 
         if result:
             return {

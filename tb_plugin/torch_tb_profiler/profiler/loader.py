@@ -7,7 +7,7 @@ from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
 from ..run import Run
-from .data import DistributedProfileData, RunData, RunProfileData
+from .data import DistributedRunProfileData, RunData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
 
 logger = utils.get_logger()
@@ -65,18 +65,10 @@ class RunLoader(object):
             data = RunProfileData.parse(self.run.run_dir, worker, path, self.caches)
             data.process()
             data.analyze()
+
             generator = RunGenerator(worker, data)
             profile = generator.generate_run_profile()
-
-            dist_data = DistributedProfileData(
-                worker,
-                data.steps_names,
-                data.has_communication,
-                data.comm_node_list,
-                data.comm_overlap_costs,
-                data.used_devices,
-                data.device_props,
-                data.distributed_info)
+            dist_data = DistributedRunProfileData(data)
 
             self.queue.put((profile, dist_data))
         except Exception as ex:

@@ -274,16 +274,16 @@ class RunProfileData(object):
             )
             self.recommendations.append(text)
 
-class DistributedProfileData:
-    def __init__(self, worker, steps_names, has_communication, comm_node_list, comm_overlap_costs, used_devices, device_props, distributed_info):
-        self.worker = worker
-        self.steps_names = steps_names
-        self.has_communication = has_communication
-        self.comm_node_list = comm_node_list
-        self.comm_overlap_costs = comm_overlap_costs
-        self.used_devices = used_devices
-        self.device_props = device_props
-        self.distributed_info = distributed_info
+class DistributedRunProfileData:
+    def __init__(self, run_profile_data):
+        self.worker = run_profile_data.worker
+        self.steps_names = run_profile_data.steps_names
+        self.has_communication = run_profile_data.has_communication
+        self.comm_node_list = run_profile_data.comm_node_list
+        self.comm_overlap_costs = run_profile_data.comm_overlap_costs
+        self.used_devices = run_profile_data.used_devices
+        self.device_props = run_profile_data.device_props
+        self.distributed_info = run_profile_data.distributed_info
 
         self.total_comm_stats = None
         self.step_comm_stats = None

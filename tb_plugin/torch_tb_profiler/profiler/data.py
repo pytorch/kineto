@@ -7,16 +7,17 @@ import json
 import re
 import tempfile
 from collections import OrderedDict
+from json.decoder import JSONDecodeError
 
 from .. import io, utils
 from . import trace
-from .trace import EventTypes
-from .gpu_metrics_parser import GPUMetricsParser
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
+from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
 from .overall_parser import OverallParser
+from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -95,12 +96,12 @@ class RunProfileData(object):
 
         try:
             trace_json = json.loads(data)
-        except json.decoder.JSONDecodeError as e:
+        except JSONDecodeError as e:
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
             # to handle JSONDecodeError, re-encode it and save to a temp file
             try:
                 trace_json = json.loads(data, strict=False)
-            except json.decoder.JSONDecodeError:
+            except JSONDecodeError:
                 with sysio.StringIO() as fout:
                     str_data = data.decode("utf-8")
                     # only replace the N/A without surrounding double quote

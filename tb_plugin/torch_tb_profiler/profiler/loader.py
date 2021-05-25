@@ -19,7 +19,7 @@ class RunLoader(object):
         self.caches = caches
         self.queue = Queue()
 
-def load(self):
+    def load(self):
         workers = []
         spans_by_workers = {}
         for path in io.listdir(self.run.run_dir):

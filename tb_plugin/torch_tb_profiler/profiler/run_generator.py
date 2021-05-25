@@ -329,14 +329,15 @@ class DistributedRunGenerator(object):
                 node = worker
                 process_id = index
                 index += 1
-            if node not in data:
+            if node not in result:
                 result[node] = OrderedDict()
 
             process_id = "Process " + str(process_id)
             result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
-                device_prop = data.device_props.get(used_device)
-                if not device_prop:
+                try:
+                    device_prop = data.device_props[used_device]
+                except IndexError:
                     continue
 
                 gpu_info = {}

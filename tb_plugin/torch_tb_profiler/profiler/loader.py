@@ -62,6 +62,9 @@ class RunLoader(object):
         return run
 
     def _process_data(self, worker, path, barrier, event):
+        import absl.logging
+        absl.logging.use_absl_handler()
+
         try:
             logger.debug("starting process_data")
             data = RunProfileData.parse(self.run.run_dir, worker, path, self.caches)

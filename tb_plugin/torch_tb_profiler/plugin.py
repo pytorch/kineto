@@ -166,19 +166,28 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             data["gpu_metrics"] = {"data": [], "tooltip": ""}
             has_sm_efficiency = False
             has_occupancy = False
+            is_first = True
             for gpu_id in profile.gpu_ids:
-                data["gpu_metrics"]["data"].append({"title": "GPU Utilization of GPU{}".format(gpu_id),
+                if not is_first:
+                    # Append separator line for beautiful to see.
+                    data["gpu_metrics"]["data"].append({"title": "--------",
+                                                        "value": ""})
+                data["gpu_metrics"]["data"].append({"title": "GPU {}:".format(gpu_id),
+                                                    "value": ""})
+                data["gpu_metrics"]["data"].append({"title": "GPU Utilization",
                                                     "value": "{} %".format(
                                                         round(profile.gpu_utilization[gpu_id] * 100, 2))})
                 if profile.sm_efficency[gpu_id] > 0.0:
-                    data["gpu_metrics"]["data"].append({"title": "Est. SM Efficiency of GPU{}".format(gpu_id),
+                    data["gpu_metrics"]["data"].append({"title": "Est. SM Efficiency",
                                                         "value": "{} %".format(
                                                             round(profile.sm_efficency[gpu_id] * 100, 2))})
                     has_sm_efficiency = True
                 if profile.occupancy[gpu_id] > 0.0:
-                    data["gpu_metrics"]["data"].append({"title": "Est. Achieved Occupancy of GPU{}".format(gpu_id),
+                    data["gpu_metrics"]["data"].append({"title": "Est. Achieved Occupancy",
                                                         "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True
+                is_first = False
+
             data["gpu_metrics"]["tooltip"] = \
                 "The GPU usage metrics:\n"\
                 "GPU Utilization:\n" \

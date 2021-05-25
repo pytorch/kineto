@@ -17,7 +17,6 @@ class RunLoader(object):
     def __init__(self, name, run_dir, caches):
         self.run = RunData(name, run_dir)
         self.caches = caches
-        self.has_communication = None
         self.queue = Queue()
 
     def load(self):
@@ -149,26 +148,3 @@ class RunLoader(object):
         generator = DistributedRunGenerator(profiles, span)
         profile = generator.generate_run_profile()
         return profile
-
-    def _generate_run(self):
-        run = Run(self.run.name, self.run.run_dir)
-        for (worker, span), data in self.run.profiles.items():
-            generator = RunGenerator(worker, span, data)
-            profile = generator.generate_run_profile()
-            run.add_profile(profile)
-
-        if isinstance(self.has_communication, dict):
-            for span, has_communication in self.has_communication.items():
-                if has_communication:
-                    generator = DistributedRunGenerator(self.run.get_profiles(span=span), span)
-                    # profile has (All, span) as the worker/span pair
-                    profile = generator.generate_run_profile()
-                    run.add_profile(profile)
-        else:
-            if self.has_communication:
-                generator = DistributedRunGenerator(self.run.profiles.values(), None)
-                profile = generator.generate_run_profile()
-                run.add_profile(profile)
-        return run
-
-

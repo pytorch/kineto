@@ -89,7 +89,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         # need 1), call use_absl_handler, 2), manually add the logging.StreamHandler, or 3), use multiprocessing.logging
         # so that the logger information can be see.
         absllogging.use_absl_handler()
-        logger.debug("TorchProfilerPlugin.__setstate__ with %s " % d)
+        logger.info("TorchProfilerPlugin.__setstate__ with %s " % d)
         self.__dict__.update(d)
 
     def is_active(self):

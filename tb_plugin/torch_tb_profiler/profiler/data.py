@@ -7,16 +7,17 @@ import json
 import re
 import tempfile
 from collections import OrderedDict
+from json.decoder import JSONDecodeError
 
 from .. import io, utils
 from . import trace
-from .trace import EventTypes
-from .gpu_metrics_parser import GPUMetricsParser
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
+from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .module_parser import ModuleParser
 from .overall_parser import OverallParser
+from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -55,6 +56,9 @@ class RunProfileData(object):
         self.worker = worker
         self.span = span
         self.data_schema_version = None
+        self.distributed_info = None
+        self.device_props = None
+        self.used_devices = []
         self.events = None
         self.trace_file_path = None
         self.has_runtime = False
@@ -80,8 +84,7 @@ class RunProfileData(object):
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
-        self.total_comm_stats = None
-        self.step_comm_stats = None
+
 
     @staticmethod
     def parse(run_dir, worker, span, path, caches):
@@ -92,9 +95,9 @@ class RunProfileData(object):
         profile = RunProfileData(worker, span)
         profile.trace_file_path = trace_path
         if type(trace_json) is dict:
-            metadata = trace_json.get("profilerMetadata", None)
-            version = metadata.get("DataSchemaVersion") if metadata else None
-            profile.data_schema_version = version
+            profile.data_schema_version = trace_json.get("schemaVersion", None)
+            profile.distributed_info = trace_json.get("distributedInfo", None)
+            profile.device_props = trace_json.get("deviceProperties", None)
             trace_json = trace_json["traceEvents"]
 
         profile.events = []
@@ -117,12 +120,12 @@ class RunProfileData(object):
 
         try:
             trace_json = json.loads(data)
-        except json.decoder.JSONDecodeError as e:
+        except JSONDecodeError as e:
             # Kineto may export json file with non-ascii code. before this is fixed, use a workaround
             # to handle JSONDecodeError, re-encode it and save to a temp file
             try:
                 trace_json = json.loads(data, strict=False)
-            except json.decoder.JSONDecodeError:
+            except JSONDecodeError:
                 with sysio.StringIO() as fout:
                     str_data = data.decode("utf-8")
                     # only replace the N/A without surrounding double quote
@@ -148,6 +151,7 @@ class RunProfileData(object):
         self.has_communication = parser.has_communication
         self.has_memcpy_or_memset = parser.has_memcpy_or_memset
         self.steps_names = parser.steps_names
+        self.used_devices = list(parser.used_devices)
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()
@@ -185,9 +189,6 @@ class RunProfileData(object):
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
-
-    def communication_parse(self):
-        self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)
 
     def analyze(self):
         self.recommendations = []
@@ -296,3 +297,20 @@ class RunProfileData(object):
                 "report/cudaexperiments/kernellevel/achievedoccupancy.htm"
             )
             self.recommendations.append(text)
+
+class DistributedRunProfileData:
+    def __init__(self, run_profile_data):
+        self.worker = run_profile_data.worker
+        self.steps_names = run_profile_data.steps_names
+        self.has_communication = run_profile_data.has_communication
+        self.comm_node_list = run_profile_data.comm_node_list
+        self.comm_overlap_costs = run_profile_data.comm_overlap_costs
+        self.used_devices = run_profile_data.used_devices
+        self.device_props = run_profile_data.device_props
+        self.distributed_info = run_profile_data.distributed_info
+
+        self.total_comm_stats = None
+        self.step_comm_stats = None
+
+    def communication_parse(self):
+        self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)

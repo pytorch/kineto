@@ -41,6 +41,11 @@ paths:
           required: true
           schema:
             type: string
+        - in: query
+          name: worker
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: successful views
@@ -384,6 +389,8 @@ components:
           $ref: '#/components/schemas/Graph'
         recommendations:
           type: string
+        gpu_metrics:
+          $ref: '#/components/schemas/GpuMetrics'
     OperatorGraph:
       type: object
       required:
@@ -467,3 +474,25 @@ components:
             type: number
           call_stack:
             type: string
+    GpuMetrics:
+      type: object
+      required:
+        - data
+        - tooltip
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GpuMetric'
+        tooltip:
+          type: string
+    GpuMetric:
+      type: object
+      required:
+        - title
+        - value
+      properties:
+        title:
+          type: string
+        value:
+          type: string

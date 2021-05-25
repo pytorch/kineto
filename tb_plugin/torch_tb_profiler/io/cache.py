@@ -23,16 +23,19 @@ class Cache:
         data = self.__dict__.copy()
         # remove the _manager to bypass the following pickle error
         # TypeError: cannot pickle 'weakref' object
-        del data['_manager']
+        if hasattr(self, '_manager'):
+            del data['_manager']
         logger.debug("Cache.__getstate__: %s " % data)
         return data
 
     def __setstate__(self, state):
         '''The default logging level in new process is warning. Only warning and error log can be written to 
-        streams.
+        streams. 
+        So, we need call use_absl_handler in the new process.
         '''
-        with utils.mp_logging() as logger:
-            logger.debug("Cache.__setstate__ %s " % state)
+        from absl import logging
+        logging.use_absl_handler()
+        logger.debug("Cache.__setstate__ %s " % state)
         self.__dict__.update(state)
 
     def read(self, filename):

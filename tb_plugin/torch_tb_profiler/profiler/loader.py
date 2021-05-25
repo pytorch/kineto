@@ -2,11 +2,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import sys
+from collections import OrderedDict
+from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
 from ..run import Run
-from .data import RunData, RunProfileData
-from .run_generator import RunGenerator, DistributedRunGenerator
+from .data import DistributedRunProfileData, RunData, RunProfileData
+from .run_generator import DistributedRunGenerator, RunGenerator
 
 logger = utils.get_logger()
 
@@ -15,22 +17,9 @@ class RunLoader(object):
     def __init__(self, name, run_dir, caches):
         self.run = RunData(name, run_dir)
         self.caches = caches
-        self.has_communication = None
+        self.queue = Queue()
 
-    def load(self):
-        self._parse()
-        if len(self.run.profiles) == 0:
-            logger.warning("No profile data found.")
-            return None
-
-        self._process()
-
-        self._analyze()
-
-        run = self._generate_run()
-        return run
-
-    def _parse(self):
+def load(self):
         workers = []
         spans_by_workers = {}
         for path in io.listdir(self.run.run_dir):
@@ -52,33 +41,75 @@ class RunLoader(object):
         for s in spans_by_workers.values():
             s.sort()
 
+        barrier = Barrier(len(workers) + 1)
         for worker, span, path in sorted(workers):
-            try:
-                # convert the span timestamp to the index.
-                s = spans_by_workers.get(worker)
-                span_index = None if span is None else s.index(span)
-                data = RunProfileData.parse(self.run.run_dir, worker, span_index, path, self.caches)
-                self.run.profiles[(worker, span_index)] = data
-            except Exception as ex:
+            # convert the span timestamp to the index.
+            s = spans_by_workers.get(worker)
+            span_index = None if span is None else s.index(span)
+            p = Process(target=self._process_data, args=(worker, span_index, path, barrier))
+            p.start()
+
+        logger.info("starting all processing")
+        # since there is one queue, its data must be read before join.
+        # https://stackoverflow.com/questions/31665328/python-3-multiprocessing-queue-deadlock-when-calling-join-before-the-queue-is-em
+        barrier.wait()
+
+        run = Run(self.run.name, self.run.run_dir)
+        while self.queue.qsize() > 0:
+            r, d = self.queue.get()
+            run.add_profile(r)
+            self.run.add_profile(d)
+
+        distributed_profiles = self._process_spans()
+        if distributed_profiles is not None:
+            if isinstance(distributed_profiles, list):
+                for d in distributed_profiles:
+                    run.add_profile(d)
+            else:
+                run.add_profile(distributed_profiles)
+
+        # for no daemon process, no need to join them since it will automatically join
+        return run
+
+    def _process_data(self, worker, span, path, barrier):
+        import absl.logging
+        absl.logging.use_absl_handler()
+
+        try:
+            logger.debug("starting process_data")
+            data = RunProfileData.parse(self.run.run_dir, worker, span, path, self.caches)
+            data.process()
+            data.analyze()
+
+            generator = RunGenerator(worker, span, data)
+            profile = generator.generate_run_profile()
+            dist_data = DistributedRunProfileData(data)
+
+            self.queue.put((profile, dist_data))
+        except Exception as ex:
                 logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)
+        barrier.wait()
+        logger.debug("finishing process data")
 
-    def _process(self):
+    def _process_spans(self):
         spans = self.run.get_spans()
         if spans is None:
-            self.has_communication = self._process_profiles(self.run.profiles.values())
+            return self._process_profiles(self.run.distributed_profiles.values(), None)
         else:
-            self.has_communication = {}
+            span_profiles = []
             for span in spans:
                 profiles = self.run.get_profiles(span=span)
-                self.has_communication[span] = self._process_profiles(profiles)
+                p = self._process_profiles(profiles)
+                if p is not None:
+                    span_profiles.append(p)
+            return span_profiles
 
-    def _process_profiles(self, profiles):
+    def _process_profiles(self, profiles, span):
         has_communication = True
         comm_node_lists = []
         for data in profiles:
             logger.debug("Processing profile data")
-            data.process()
             # Set has_communication to False and disable distributed view if any one worker has no communication
             if not data.has_communication:
                 has_communication = False
@@ -90,7 +121,7 @@ class RunLoader(object):
             logger.debug("Processing profile data finish")
 
         if not has_communication:
-            return has_communication
+            return None
 
         worker_num = len(comm_node_lists)
         for i, node in enumerate(comm_node_lists[0]):
@@ -104,7 +135,7 @@ class RunLoader(object):
                     if len(kernel_ranges) != kernel_range_size:
                         logger.error("Number of communication kernels don't match between workers in run:", self.run.name)
                         has_communication = False
-                        return has_communication
+                        return None
                     if kernel_ranges:
                         if kernel_ranges[j][1] - kernel_ranges[j][0] < min_range:
                             min_range = kernel_ranges[j][1] - kernel_ranges[j][0]
@@ -114,32 +145,6 @@ class RunLoader(object):
         for data in profiles:
             data.communication_parse()
 
-        return has_communication
-
-    def _analyze(self):
-        for data in self.run.profiles.values():
-            logger.debug("Analyzing profile data")
-            data.analyze()
-            logger.debug("Analyzing profile data finish")
-
-    def _generate_run(self):
-        run = Run(self.run.name, self.run.run_dir)
-        for (worker, span), data in self.run.profiles.items():
-            generator = RunGenerator(worker, span, data)
-            profile = generator.generate_run_profile()
-            run.add_profile(profile)
-
-        if isinstance(self.has_communication, dict):
-            for span, has_communication in self.has_communication.items():
-                if has_communication:
-                    generator = DistributedRunGenerator(self.run.get_profiles(span=span), span)
-                    # profile has (All, span) as the worker/span pair
-                    profile = generator.generate_run_profile()
-                    run.add_profile(profile)
-        else:
-            if self.has_communication:
-                generator = DistributedRunGenerator(self.run.profiles.values(), None)
-                profile = generator.generate_run_profile()
-                run.add_profile(profile)
-        return run
-
+        generator = DistributedRunGenerator(profiles, span)
+        profile = generator.generate_run_profile()
+        return profile

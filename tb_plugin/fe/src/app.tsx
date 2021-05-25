@@ -174,15 +174,15 @@ export const App = () => {
   }, [workers])
 
   React.useEffect(() => {
-    if (run) {
-      api.defaultApi.viewsGet(run).then((rawViews) => {
+    if (run && worker) {
+      api.defaultApi.viewsGet(run, worker).then((rawViews) => {
         const views = rawViews
           .map((v) => Views[Views[v as Views]])
           .filter(Boolean)
         setViews(views)
       })
     }
-  }, [run])
+  }, [run, worker])
 
   React.useEffect(() => {
     setView(firstOrUndefined(views) ?? '')

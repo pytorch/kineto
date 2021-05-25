@@ -1084,7 +1084,14 @@ class TestProfiler(unittest.TestCase):
         trace_json_expected_path = "gpu_metrics_expected.json"
         with open(trace_json_expected_path, "rb") as file:
             data_expected = file.read()
-        self.assertEqual(data_with_gpu_metrics_flat, data_expected)
+
+        # Parse to json in order to ignore text format difference.
+        data_with_gpu_metrics_json = json.loads(data_with_gpu_metrics_flat.decode("utf8"))
+        data_expected_json = json.loads(data_expected.decode("utf8"))
+        data_with_gpu_metrics_str = json.dumps(data_with_gpu_metrics_json, sort_keys=True)
+        data_expected_str = json.dumps(data_expected_json, sort_keys=True)
+
+        self.assertEqual(data_with_gpu_metrics_str, data_expected_str)
 
         try:
             data = json.loads(data_with_gpu_metrics_flat.decode("utf8"))

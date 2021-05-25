@@ -122,23 +122,21 @@ class RuntimeNode(HostNode):
 
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, external_id=None,
-            op_node=None, blocks_per_SM=None, occupancy=None):
+            op_node=None, blocks_per_sm=None, occupancy=None):
         super().__init__(name, start_time, end_time, type, external_id)
         self.op_node = op_node  # The cpu operator that launched it.
-        self.blocks_per_SM = blocks_per_SM
+        self.blocks_per_sm = blocks_per_sm
         self.occupancy = occupancy
 
     @classmethod
     def create(cls, event):
-        kwargs = BaseNode.get_node_argument(event)
-        gpu_kwargs = DeviceNode.get_node_argument(event)
-        kwargs = {**kwargs, **gpu_kwargs}
+        kwargs = DeviceNode.get_node_argument(event)
         return cls(**kwargs)
 
     @staticmethod
     def get_node_argument(event):
-        kwargs = {}
+        kwargs = BaseNode.get_node_argument(event)
         if event.type == EventTypes.KERNEL:
-            kwargs["blocks_per_SM"] = event.args.get("blocks per SM", 0)
+            kwargs["blocks_per_sm"] = event.args.get("blocks per SM", 0)
             kwargs["occupancy"] = event.args.get("est. achieved occupancy %", 0)
         return kwargs

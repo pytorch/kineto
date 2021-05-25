@@ -298,7 +298,7 @@ class RunGenerator(object):
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
         if self.profile_data.blocks_per_sm_count > 0:
-            columns.append("blocks_per_SM")
+            columns.append("blocks_per_sm")
             round_digits.append(2)
         if self.profile_data.occupancy_count > 0:
             columns.append("occupancy")

@@ -14,7 +14,7 @@ class KernelParser:
         for event in events:
             events_dict.append(vars(event))
             if event.category == "Kernel":
-                events_dict[-1]["blocks_per_SM"] = event.args.get("blocks per SM", 0)
+                events_dict[-1]["blocks_per_sm"] = event.args.get("blocks per SM", 0)
                 events_dict[-1]["occupancy"] = event.args.get("est. achieved occupancy %", 0)
         events = events_dict
         events = pd.DataFrame(events)
@@ -28,5 +28,5 @@ class KernelParser:
             mean=('duration', "mean"),
             max=('duration', "max"),
             min=('duration', "min"),
-            blocks_per_SM=('blocks_per_SM', weighted_avg),
+            blocks_per_sm=('blocks_per_sm', weighted_avg),
             occupancy=('occupancy', weighted_avg))

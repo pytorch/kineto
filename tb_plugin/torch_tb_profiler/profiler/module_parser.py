@@ -39,7 +39,7 @@ class KernelAggByNameOp:
         self.total_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
-        self.blocks_per_SM = 0
+        self.blocks_per_sm = 0
         self.occupancy = 0
 
     @property
@@ -48,7 +48,7 @@ class KernelAggByNameOp:
 
     @property
     def avg_blocks_per_sm(self):
-        return self.blocks_per_SM / self.total_duration if self.total_duration > 0 else 0
+        return self.blocks_per_sm / self.total_duration if self.total_duration > 0 else 0
 
     @property
     def avg_occupancy(self):
@@ -192,7 +192,7 @@ class ModuleParser:
                     agg.total_duration += dur
                     agg.min_duration = min(agg.min_duration, dur)
                     agg.max_duration = max(agg.max_duration, dur)
-                    agg.blocks_per_SM += kernel.blocks_per_SM * dur
+                    agg.blocks_per_sm += kernel.blocks_per_sm * dur
                     agg.occupancy += kernel.occupancy * dur
 
             kernel_list_groupby_name_op = list(name_op_to_agg.values())

@@ -35,6 +35,9 @@ class RunProfileData(object):
         self.distributed_info = None
         self.device_props = None
         self.used_devices = []
+        self.use_dp = False
+        self.use_ddp =False
+        self.use_nccl = False
         self.events = None
         self.trace_file_path = None
         self.has_runtime = False
@@ -128,6 +131,9 @@ class RunProfileData(object):
         self.has_memcpy_or_memset = parser.has_memcpy_or_memset
         self.steps_names = parser.steps_names
         self.used_devices = list(parser.used_devices)
+        self.use_dp = parser.use_dp
+        self.use_ddp = parser.use_ddp
+        self.use_nccl = parser.use_nccl
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()
@@ -181,9 +187,30 @@ class RunProfileData(object):
                    )
             self.recommendations.append(text)
 
-        self.analyze_gpu_metrics()
+        self._analyze_distributed_metrics()
+        self._analyze_gpu_metrics()
 
-    def analyze_gpu_metrics(self):
+    def _analyze_distributed_metrics(self):
+        if self.use_dp and len(self.used_devices) > 1:
+            text = "It is recommended to use DistributedDataParallel, instead of DataParallel to do multi-GPU training." \
+                   "Reference: <a href = \"{}\" target=\"_blank\">Use DistributedDataParallel instead of DataParallel</a>".format(
+                       "https://pytorch.org/docs/stable/notes/cuda.html#cuda-nn-ddp-instead"
+                   )
+            self.recommendations.append(text)
+
+        if self.use_ddp and not self.use_nccl and self.device_props:
+            for device_prop in self.device_props:
+                major = device_prop.get("computeMajor")
+                minor = device_prop.get("computeMinor")
+                if major is None or minor is None:
+                    continue
+                compute_capability = "{}.{}".format(major, minor)
+                if float(compute_capability) >= 3.5:
+                    text = "Nccl backend is currently the fastest and highly recommended backend when using DDP for training."
+                    self.recommendations.append(text)
+                    break
+
+    def _analyze_gpu_metrics(self):
         def get_gpus_str(gpus):
             gpu_list_str = str(gpus[0])
             for i in range(1, len(gpus)):

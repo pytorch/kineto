@@ -264,6 +264,10 @@ class RunGenerator(object):
         table = {}
         table["columns"] = [{"type": "string", "name": "Name"}, {"type": "string", "name": "Operator"}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
+        if self.profile_data.blocks_per_sm_count > 0:
+            col_names.append("Mean Blocks Per SM")
+        if self.profile_data.occupancy_count > 0:
+            col_names.append("Mean Est. Achieved Occupancy (%)")
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
         table["rows"] = []
@@ -273,6 +277,10 @@ class RunGenerator(object):
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name, agg_by_name_op.calls,
                              agg_by_name_op.total_duration, agg_by_name_op.avg_duration,
                              agg_by_name_op.min_duration, agg_by_name_op.max_duration]
+            if self.profile_data.blocks_per_sm_count > 0:
+                kernel_op_row.append(round(agg_by_name_op.avg_blocks_per_sm, 2))
+            if self.profile_data.occupancy_count > 0:
+                kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
         data = {"data": table}
         return data
@@ -288,14 +296,26 @@ class RunGenerator(object):
         table = {}
         table["columns"] = [{"type": "string", "name": "Name"}]
         columns = ["count", "sum", "mean", "max", "min"]
+        round_digits = [0, 0, 0, 0, 0]
+        if self.profile_data.blocks_per_sm_count > 0:
+            columns.append("blocks_per_sm")
+            round_digits.append(2)
+        if self.profile_data.occupancy_count > 0:
+            columns.append("occupancy")
+            round_digits.append(2)
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
+        if self.profile_data.blocks_per_sm_count > 0:
+            col_names.append("Mean Blocks Per SM")
+        if self.profile_data.occupancy_count > 0:
+            col_names.append("Mean Est. Achieved Occupancy (%)")
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
         table["rows"] = []
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
             kernel_row = [name]
-            for column in columns:
-                kernel_row.append(round(row[column]))
+            for i, column in enumerate(columns):
+                kernel_row.append(round(row[column]) if round_digits[i] == 0
+                                  else round(row[column], round_digits[i]))
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
@@ -315,10 +335,11 @@ class DistributedRunGenerator(object):
 
     def _generate_gpu_info(self):
         result = OrderedDict()
-        result["metadata"] = {"title": "Device Info"}
-        result["data"] = dict()
         index = 0
         for worker,data in self.all_profile_data.items():
+            if not data.device_props:
+               continue
+
             match = consts.NODE_PROCESS_PATTERN.match(worker)
             if match:
                 node = match.group(1)
@@ -328,21 +349,41 @@ class DistributedRunGenerator(object):
                 node = worker
                 process_id = index
                 index += 1
-            if node not in result["data"]:
-                result["data"][node] = dict()
-            result["data"][node]["Process " + str(process_id)] = dict()
+            if node not in result:
+                result[node] = OrderedDict()
+
+            process_id = "Process " + str(process_id)
+            result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
-                result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)] = \
-                    {
-                        "Name": data.device_props[used_device].get("name", None),
-                        "Memory": data.device_props[used_device].get("totalGlobalMem", None),
-                        "Compute Compability": "{}.{}".format(
-                            data.device_props[used_device].get("computeMajor", None),
-                            data.device_props[used_device].get("computeMinor", None))
-                    }
-                result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device) + "_2"] = result["data"][node]["Process " + str(process_id)]['GPU'+str(used_device)]
-            result["data"][node + "_2"] = result["data"][node]
-        return result
+                try:
+                    device_prop = data.device_props[used_device]
+                except IndexError:
+                    continue
+
+                gpu_info = {}
+                name = device_prop.get("name")
+                if name:
+                    gpu_info["Name"] = name
+
+                mem = device_prop.get("totalGlobalMem")
+                if mem is not None:
+                    gpu_info["Memory"] = mem
+
+                major = device_prop.get("computeMajor")
+                minor = device_prop.get("computeMinor")
+                if major is not None and minor is not None:
+                    gpu_info["Compute Compability"] = "{}.{}".format(major, minor)
+
+                if gpu_info:
+                    result[node][process_id]['GPU'+str(used_device)] = gpu_info
+
+        if result:
+            return {
+                "metadata": {"title": "Device Info"},
+                "data": result
+            }
+        else:
+            return None
 
     def _generate_overlap_graph(self):
         result = dict()

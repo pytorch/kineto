@@ -244,6 +244,44 @@ export interface GpuInfoMetadata {
 /**
  *
  * @export
+ * @interface GpuMetric
+ */
+export interface GpuMetric {
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetric
+   */
+  title: string
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetric
+   */
+  value: string
+}
+/**
+ *
+ * @export
+ * @interface GpuMetrics
+ */
+export interface GpuMetrics {
+  /**
+   *
+   * @type {Array<GpuMetric>}
+   * @memberof GpuMetrics
+   */
+  data: Array<GpuMetric>
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetrics
+   */
+  tooltip: string
+}
+/**
+ *
+ * @export
  * @interface Graph
  */
 export interface Graph {
@@ -464,6 +502,12 @@ export interface Overview {
    * @memberof Overview
    */
   recommendations: string
+  /**
+   *
+   * @type {GpuMetrics}
+   * @memberof Overview
+   */
+  gpuMetrics?: GpuMetrics
 }
 /**
  *

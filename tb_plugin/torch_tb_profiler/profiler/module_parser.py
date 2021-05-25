@@ -39,10 +39,20 @@ class KernelAggByNameOp:
         self.total_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
+        self.blocks_per_sm = 0
+        self.occupancy = 0
 
     @property
     def avg_duration(self):
         return self.total_duration / self.calls
+
+    @property
+    def avg_blocks_per_sm(self):
+        return self.blocks_per_sm / self.total_duration if self.total_duration > 0 else 0
+
+    @property
+    def avg_occupancy(self):
+        return self.occupancy / self.total_duration if self.total_duration > 0 else 0
 
 
 class ModuleParser:
@@ -168,18 +178,22 @@ class ModuleParser:
         def parse_kernels(kernel_list):
             name_op_to_agg = {}
             for kernel in kernel_list:
-                op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
-                key = kernel.name + "###" + op_name
-                if key not in name_op_to_agg:
-                    name_op_to_agg[key] = KernelAggByNameOp()
-                agg = name_op_to_agg[key]
-                agg.name = kernel.name
-                agg.op_name = op_name
-                agg.calls += 1
                 dur = kernel.end_time - kernel.start_time
-                agg.total_duration += dur
-                agg.min_duration = min(agg.min_duration, dur)
-                agg.max_duration = max(agg.max_duration, dur)
+                # remove 0 duration kernels in case of divided by zero.
+                if dur > 0:
+                    op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
+                    key = kernel.name + "###" + op_name
+                    if key not in name_op_to_agg:
+                        name_op_to_agg[key] = KernelAggByNameOp()
+                    agg = name_op_to_agg[key]
+                    agg.name = kernel.name
+                    agg.op_name = op_name
+                    agg.calls += 1
+                    agg.total_duration += dur
+                    agg.min_duration = min(agg.min_duration, dur)
+                    agg.max_duration = max(agg.max_duration, dur)
+                    agg.blocks_per_sm += kernel.blocks_per_sm * dur
+                    agg.occupancy += kernel.occupancy * dur
 
             kernel_list_groupby_name_op = list(name_op_to_agg.values())
             return kernel_list_groupby_name_op

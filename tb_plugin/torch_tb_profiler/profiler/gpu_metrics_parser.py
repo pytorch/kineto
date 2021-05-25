@@ -22,9 +22,11 @@ class GPUMetricsParser(object):
         self.avg_approximated_sm_efficency_per_device = [None] * consts.MAX_GPU_PER_NODE
         self.approximated_sm_efficency_ranges = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.gpu_sm_efficiency_json = None
+        self.blocks_per_sm_count = 0
         # For calculating averaged occupancy.
         self.occupancy_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.avg_occupancy_per_device = [None] * consts.MAX_GPU_PER_NODE
+        self.occupancy_count = 0
 
     def calculate_gpu_utilization(self, steps_start_time, steps_end_time):
         # Make bucket_size to 10-power's of us, and number of buckets to (10, 100].
@@ -152,4 +154,8 @@ class GPUMetricsParser(object):
                 self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
                 self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.args.get("blocks per SM", 0.0)))
                 self.occupancy_per_device[gpu_id].append((ts, ts + dur,
-                                                          event.args.get("theoretical occupancy %", 0.0)))
+                                                          event.args.get("est. achieved occupancy %", 0.0)))
+                if "blocks per SM" in event.args:
+                    self.blocks_per_sm_count += 1
+                if "est. achieved occupancy %" in event.args:
+                    self.occupancy_count += 1

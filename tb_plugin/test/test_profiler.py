@@ -920,7 +920,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 130, "dur": 10,
             "args": {"correlation": 334, "external id": 4, "device": 1,
-                     "blocks per SM": 0.5, "theoretical occupancy %": 0.6}
+                     "blocks per SM": 0.5, "est. achieved occupancy %": 0.6}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -930,10 +930,17 @@ class TestProfiler(unittest.TestCase):
           },
           {
             "ph": "X", "cat": "Kernel",
-            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 8",
+            "name": "void gemmSN_TN_kernel_64addr", "pid": 1, "tid": "stream 8",
             "ts": 135, "dur": 15,
             "args": {"correlation": 335, "external id": 2, "device": 1,
-                     "blocks per SM": 0.6, "theoretical occupancy %": 0.1}
+                     "blocks per SM": 0.6, "est. achieved occupancy %": 0.1}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "void gemmSN_TN_kernel_64addr", "pid": 1, "tid": "stream 8",
+            "ts": 150, "dur": 0,
+            "args": {"correlation": 335, "external id": 2, "device": 1,
+                     "blocks per SM": 0.3, "est. achieved occupancy %": 0.2}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -946,7 +953,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 145, "dur": 25,
             "args": {"correlation": 336, "external id": 4, "device": 1,
-                     "blocks per SM": 0.3, "theoretical occupancy %": 1.0}
+                     "blocks per SM": 0.3, "est. achieved occupancy %": 1.0}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -959,7 +966,7 @@ class TestProfiler(unittest.TestCase):
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
             "ts": 200, "dur": 20,
             "args": {"correlation": 337, "external id": 2, "device": 1,
-                     "blocks per SM": 10.5, "theoretical occupancy %": 0.3}
+                     "blocks per SM": 10.5, "est. achieved occupancy %": 0.3}
           },
           {
             "ph": "X", "cat": "Runtime",
@@ -1007,6 +1014,37 @@ class TestProfiler(unittest.TestCase):
                 self.assertAlmostEqual(0, sm_efficiency_expected[sm_efficiency_id][1])
                 sm_efficiency_id += 1
             self.assertEqual(sm_efficiency_id, len(sm_efficiency_expected))
+
+        count = 0
+        for agg_by_op in profile.kernel_list_groupby_name_op:
+            if agg_by_op.name == "void gemmSN_TN_kernel_64addr" and agg_by_op.op_name == "aten::mat_mul":
+                self.assertAlmostEqual(agg_by_op.avg_blocks_per_sm, 0.6)
+                self.assertAlmostEqual(agg_by_op.avg_occupancy, 0.1)
+                count += 1
+            if agg_by_op.name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>" and \
+                    agg_by_op.op_name == "aten::mm":
+                self.assertAlmostEqual(agg_by_op.avg_blocks_per_sm, (0.5 * 10 + 0.3 * 25) / (10 + 25))
+                self.assertAlmostEqual(agg_by_op.avg_occupancy, (0.6 * 10 + 1.0 * 25) / (10 + 25))
+                count += 1
+            if agg_by_op.name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>" and \
+                    agg_by_op.op_name == "aten::mat_mul":
+                self.assertAlmostEqual(agg_by_op.avg_blocks_per_sm, 10.5)
+                self.assertAlmostEqual(agg_by_op.avg_occupancy, 0.3)
+                count += 1
+        self.assertEqual(count, 3)
+
+        count = 0
+        for _id, (name, row) in enumerate(profile.kernel_stat.iterrows()):
+            # The kernel with zero "dur" should be ignored.
+            if name == "void gemmSN_TN_kernel_64addr":
+                self.assertAlmostEqual(row["blocks_per_sm"], 0.6)
+                self.assertAlmostEqual(row["occupancy"], 0.1)
+                count += 1
+            if name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>":
+                self.assertAlmostEqual(row["blocks_per_sm"], (0.5 * 10 + 0.3 * 25 + 10.5 * 20) / (10 + 25 + 20))
+                self.assertAlmostEqual(row["occupancy"], (0.6 * 10 + 1.0 * 25 + 0.3 * 20) / (10 + 25 + 20))
+                count += 1
+        self.assertEqual(count, 2)
 
     def test_dump_gpu_metrics(self):
         profile = RunProfile("test_dump_gpu_metrics")

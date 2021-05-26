@@ -40,6 +40,9 @@ class NodeParserMixin:
         self.device_node_list = []
         self.runtime_node_list = []
         self.used_devices = set()
+        self.use_dp = False
+        self.use_ddp = False
+        self.use_nccl = False
 
     def parse_nodes(self, events):
         # For OperatorNode and ProfilerStepNode:
@@ -195,6 +198,11 @@ class NodeParserMixin:
                 op_node = OperatorNode.create(event, event.input_shape, event.input_type, event.callstack)
             if event.name in CommunicationOpNameSet:
                 self.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
+                self.use_nccl = True
+            if event.name == "DataParallel.forward":
+                self.use_dp = True
+            if event.name == "DistributedDataParallel.forward":
+                self.use_ddp = True
             tid2list.setdefault(tid, []).append(op_node)
 
 

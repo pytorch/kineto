@@ -372,14 +372,14 @@ class DistributedRunGenerator(object):
                 major = device_prop.get("computeMajor")
                 minor = device_prop.get("computeMinor")
                 if major is not None and minor is not None:
-                    gpu_info["Compute Compability"] = "{}.{}".format(major, minor)
+                    gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
 
                 if gpu_info:
                     result[node][process_id]['GPU'+str(used_device)] = gpu_info
 
         if result:
             return {
-                "metadata": {"title": "Device Info"},
+                "metadata": {"title": "Device Information"},
                 "data": result
             }
         else:
@@ -404,7 +404,7 @@ class DistributedRunGenerator(object):
 
     def _generate_wait_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Collective Communication Overview", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
+        result["metadata"] = {"title": "Waiting/Communication Overview", "legends": ["Communication Time", "Waiting Time"], "units": "us"}
         steps_to_wait = OrderedDict()
         steps_to_wait['all'] = OrderedDict()
         for worker,data in self.all_profile_data.items():
@@ -426,7 +426,7 @@ class DistributedRunGenerator(object):
         for worker,data in self.all_profile_data.items():
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
-            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
+            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real Time (us)"]
             for column in col_names:
                 table["columns"].append({"type": "number", "name": column})
             table["rows"] = []

@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+import os
 import sys
 from multiprocessing import Barrier, Process, Queue
 
@@ -90,6 +91,9 @@ class RunLoader(object):
             dist_data = DistributedRunProfileData(data)
 
             self.queue.put((profile, dist_data))
+        except KeyboardInterrupt:
+            logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))
+            sys.exit(1)
         except Exception as ex:
                 logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)

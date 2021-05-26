@@ -233,77 +233,9 @@ class RunProfileData(object):
         if len(low_util_gpus) > 0:
             gpu_list_str, has_str = get_gpus_str(low_util_gpus)
             text = "GPU {} {} low utilization. You could try to " \
-                   "<a href =\"{}\" target=\"_blank\">enable async data loading and augmentation</a>, " \
-                   "<a href =\"{}\" target=\"_blank\">optimize zero_grad</a>, " \
-                   "<a href =\"{}\" target=\"_blank\">fuse pointwise operations</a>, " \
-                   "increase batch-size by <a href =\"{}\" target=\"_blank\">checkpointing intermediate buffers</a>, " \
-                   "<a href =\"{}\" target=\"_blank\">avoid unnecessary CPU-GPU synchronization</a>, " \
-                   "<a href =\"{}\" target=\"_blank\">create tensors directly on the target device</a>, " \
-                   "and so on.".format(
-                gpu_list_str, has_str,
-                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                "#enable-async-data-loading-and-augmentation",
-                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                "#use-parameter-grad-none-instead-of-model-zero-grad-or-optimizer-zero-grad",
-                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                "#fuse-pointwise-operations",
-                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                "#checkpoint-intermediate-buffers",
-                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                "#avoid-unnecessary-cpu-gpu-synchronization",
-                "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                "#create-tensors-directly-on-the-target-device"
-            )
-            self.recommendations.append(text)
-
-        if self.runtime_node_list is not None and len(self.runtime_node_list) > 0:
-            total_kernels = 0
-            short_kernels = 0
-            for rt in self.runtime_node_list:
-                if rt.device_nodes is not None:
-                    for node in rt.device_nodes:
-                        if node.type == EventTypes.KERNEL:
-                            total_kernels += 1
-                            if node.end_time - node.start_time < rt.end_time - rt.start_time:
-                                short_kernels += 1
-            if total_kernels > 100 and short_kernels / total_kernels > 0.5:
-                text = "{} out of {} kernels are short in execution time. " \
-                       "You could try to <a href =\"{}\" target=\"_blank\">optimize zero_grad</a>, " \
-                       "or <a href =\"{}\" target=\"_blank\">fuse pointwise operations</a>.".format(
-                    short_kernels, total_kernels,
-                    "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                    "#use-parameter-grad-none-instead-of-model-zero-grad-or-optimizer-zero-grad",
-                    "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
-                    "#fuse-pointwise-operations"
-                )
-                self.recommendations.append(text)
-
-        low_sm_efficiency_gpus = []
-        for gpu_id in self.gpu_ids:
-            if self.sm_efficency[gpu_id] > 0 and self.sm_efficency[gpu_id] < 0.8 * self.gpu_utilization[gpu_id]:
-                low_sm_efficiency_gpus.append(gpu_id)
-        if len(low_sm_efficiency_gpus) > 0:
-            gpu_list_str, has_str = get_gpus_str(low_sm_efficiency_gpus)
-            text = "GPU {} {} low estimated SM efficiency. " \
-                   "Many kernels' launched blocks are too few that they can't fully utilize all multiprocessors." \
-                   "You could try to increase the blocks number of these kernels.".format(
+                   "increase batch size to improve. Note: Increasing batch size " \
+                   "may affect the speed and stability of model convergence.".format(
                 gpu_list_str, has_str)
-            self.recommendations.append(text)
-
-        low_occupancy_gpus = []
-        for gpu_id in self.gpu_ids:
-            if self.occupancy[gpu_id] > 0 and self.occupancy[gpu_id] < 50:
-                low_occupancy_gpus.append(gpu_id)
-        if len(low_occupancy_gpus) > 0:
-            gpu_list_str, has_str = get_gpus_str(low_occupancy_gpus)
-            text = "GPU {} {} low estimated achieved occupancy. " \
-                   "The kernels may occupy too much hardware resource such as registers or shared memory, " \
-                   "or their launched threads are not many enough to fully utilize the multiprocessor." \
-                   "Reference: <a href =\"{}\" target=\"_blank\">Achieved Occupancy</a>".format(
-                gpu_list_str, has_str,
-                "https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/"
-                "report/cudaexperiments/kernellevel/achievedoccupancy.htm"
-            )
             self.recommendations.append(text)
 
 class DistributedRunProfileData:

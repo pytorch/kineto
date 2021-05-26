@@ -364,8 +364,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
             logger.info("Add run %s", run.name)
             with self._runs_lock:
+                is_new = run.name not in self._runs
                 self._runs[run.name] = run
-                if run.name not in self._runs:
+                if is_new:
                     self._runs = OrderedDict(sorted(self._runs.items()))
 
                 # Update is_active

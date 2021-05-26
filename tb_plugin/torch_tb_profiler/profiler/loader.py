@@ -2,7 +2,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import sys
-from collections import OrderedDict
 from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
@@ -52,6 +51,11 @@ class RunLoader(object):
         logger.info("starting all processing")
         # since there is one queue, its data must be read before join.
         # https://stackoverflow.com/questions/31665328/python-3-multiprocessing-queue-deadlock-when-calling-join-before-the-queue-is-em
+        #   The queue implementation in multiprocessing that allows data to be transferred between processes relies on standard OS pipes.
+        #   OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the put()
+        #   operation until some other process uses get() to retrieve data from the queue.
+        # During my testing, I found that the maximum buffer length is 65532 in my test machine.
+        # If I increase the message size to 65533, the join would hang the process.
         barrier.wait()
 
         run = Run(self.run.name, self.run.run_dir)
@@ -95,17 +99,17 @@ class RunLoader(object):
     def _process_spans(self):
         spans = self.run.get_spans()
         if spans is None:
-            return self._process_profiles(self.run.distributed_profiles.values(), None)
+            return self._process_distributed_profiles(self.run.get_profiles(), None)
         else:
             span_profiles = []
             for span in spans:
                 profiles = self.run.get_profiles(span=span)
-                p = self._process_profiles(profiles, span)
+                p = self._process_distributed_profiles(profiles, span)
                 if p is not None:
                     span_profiles.append(p)
             return span_profiles
 
-    def _process_profiles(self, profiles, span):
+    def _process_distributed_profiles(self, profiles, span):
         has_communication = True
         comm_node_lists = []
         for data in profiles:

@@ -419,4 +419,3 @@ class DistributedRunGenerator(object):
             workers_to_comm_ops[data.worker] = table
         result["data"] = workers_to_comm_ops
         return result
-

@@ -23,6 +23,7 @@ import { firstOrUndefined, sleep } from './utils'
 import { setup } from './setup'
 import './styles.css'
 import { TraceView } from './components/TraceView'
+import { DistributedView } from './components/DistributedView'
 import { FullCircularProgress } from './components/FullCircularProgress'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -34,14 +35,16 @@ export enum Views {
   Overview = 'Overview',
   Operator = 'Operator',
   Kernel = 'Kernel',
-  Trace = 'Trace'
+  Trace = 'Trace',
+  Distributed = 'Distributed'
 }
 
 const ViewNames = {
   [Views.Overview]: Views.Overview,
   [Views.Operator]: Views.Operator,
   [Views.Kernel]: 'GPU Kernel',
-  [Views.Trace]: Views.Trace
+  [Views.Trace]: Views.Trace,
+  [Views.Distributed]: Views.Distributed
 }
 
 const drawerWidth = 340
@@ -239,6 +242,8 @@ export const App = () => {
             iframeRef={iframeRef}
           />
         )
+      case Views.Distributed:
+        return <DistributedView run={run} worker={worker} view={view} />
     }
   }
 

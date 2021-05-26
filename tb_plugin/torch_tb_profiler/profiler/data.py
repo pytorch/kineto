@@ -54,8 +54,8 @@ class RunProfileData(object):
         self.occupancy = None
         self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
         self.approximated_sm_efficency_ranges = None  # Cached here. Will be processed to json on first trace view.
-        self.blocks_per_sm_count = 0
-        self.occupancy_count = 0
+        self.blocks_per_sm_count = None
+        self.occupancy_count = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None

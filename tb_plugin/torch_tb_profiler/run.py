@@ -18,7 +18,7 @@ class Run(object):
 
     @property
     def workers(self):
-        return list(self.profiles.keys())
+        return sorted(list(self.profiles.keys()))
 
     @property
     def views(self):

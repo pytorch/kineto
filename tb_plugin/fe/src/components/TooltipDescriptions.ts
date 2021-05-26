@@ -20,3 +20,11 @@ export const HostSelfTimeTooltip = `The accumulated time spent on Host, not incl
 export const HostTotalTimeTooltip = `The accumulated time spent on Host, including this operator’s child operators.`
 
 export const GPUKernelTotalTimeTooltip = `The accumulated time of all calls of this kernel.`
+
+export const DistributedGpuInfoTableTooltip = `Information about GPU hardware used during the run.`
+
+export const DistributedOverlapGraphTooltip = `The time spent on computation vs communication.`
+
+export const DistributedWaittimeGraphTooltip = `The time spent waiting vs communicating between devices.`
+
+export const DistributedCommopsTableTooltip = `Statistics for operations managing communications between nodes.`

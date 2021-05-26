@@ -163,12 +163,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(normal_workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
         if len(profile.gpu_ids) > 0:
-            data["gpu_metrics"] = {}
-
-            gpu_metrics_data, has_occupancy, has_sm_efficiency = profile.get_gpu_metrics_data()
-            data["gpu_metrics"]["data"] = gpu_metrics_data
-
-            data["gpu_metrics"]["tooltip"] = RunProfile.get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy)
+            gpu_metrics_data, gpu_metrics_tooltip = profile.get_gpu_metrics_data_tooltip()
+            data["gpu_metrics"] = {"data": gpu_metrics_data,
+                                   "tooltip": gpu_metrics_tooltip}
 
         return self.respond_as_json(data)
 

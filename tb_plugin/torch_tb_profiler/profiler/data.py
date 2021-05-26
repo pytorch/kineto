@@ -132,7 +132,7 @@ class RunProfileData(object):
         self.has_communication = parser.has_communication
         self.has_memcpy_or_memset = parser.has_memcpy_or_memset
         self.steps_names = parser.steps_names
-        self.used_devices = list(parser.used_devices)
+        self.used_devices = sorted(list(parser.used_devices))
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
         self.use_nccl = parser.use_nccl

@@ -79,10 +79,12 @@ class RunGenerator(object):
                                              {"type": "number", "name": "Memcpy"},
                                              column_tootip,
                                              {"type": "number", "name": "Memset"},
-                                             column_tootip,
-                                             {"type": "number", "name": "Communication"},
-                                             column_tootip,
-                                             {"type": "number", "name": "Runtime"},
+                                             column_tootip])
+        if self.profile_data.has_communication:
+            data["steps"]["columns"].extend([{"type": "number", "name": "Communication"},
+                                             column_tootip])
+        if show_gpu:
+            data["steps"]["columns"].extend([{"type": "number", "name": "Runtime"},
                                              column_tootip])
         data["steps"]["columns"].extend([{"type": "number", "name": "DataLoader"},
                                          column_tootip,
@@ -102,10 +104,12 @@ class RunGenerator(object):
                             costs.costs[ProfileRole.Memcpy],
                             build_part_time_str(costs.costs[ProfileRole.Memcpy], "Memcpy"),
                             costs.costs[ProfileRole.Memset],
-                            build_part_time_str(costs.costs[ProfileRole.Memset], "Memset"),
-                            costs.costs[ProfileRole.Communication],
-                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication"),
-                            costs.costs[ProfileRole.Runtime],
+                            build_part_time_str(costs.costs[ProfileRole.Memset], "Memset")])
+            if self.profile_data.has_communication:
+                row.extend([costs.costs[ProfileRole.Communication],
+                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication")])
+            if show_gpu:
+                row.extend([costs.costs[ProfileRole.Runtime],
                             build_part_time_str(costs.costs[ProfileRole.Runtime], "Runtime")])
             row.extend([costs.costs[ProfileRole.DataLoader],
                         build_part_time_str(costs.costs[ProfileRole.DataLoader], "DataLoader"),
@@ -120,8 +124,14 @@ class RunGenerator(object):
             avg_costs.extend([
                 build_avg_cost_dict("Kernel", self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
                 build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
-                build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset]),
-                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication]),
+                build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset])
+            ])
+        if self.profile_data.has_communication:
+            avg_costs.extend([
+                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication])
+            ])
+        if show_gpu:
+            avg_costs.extend([
                 build_avg_cost_dict("Runtime", self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([
@@ -367,7 +377,7 @@ class DistributedRunGenerator(object):
 
                 mem = device_prop.get("totalGlobalMem")
                 if mem is not None:
-                    gpu_info["Memory"] = mem
+                    gpu_info['Memory'] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
 
                 major = device_prop.get("computeMajor")
                 minor = device_prop.get("computeMinor")
@@ -378,6 +388,8 @@ class DistributedRunGenerator(object):
                     result[node][process_id]['GPU'+str(used_device)] = gpu_info
 
         if result:
+            for k,v in result.items():
+                result[k] = OrderedDict(sorted(v.items()))
             return {
                 "metadata": {"title": "Device Information"},
                 "data": result
@@ -399,12 +411,14 @@ class DistributedRunGenerator(object):
                 steps_to_overlap[step_name][worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
                 steps_to_overlap['all'][worker] = [sum(x) for x in zip(steps_to_overlap['all'][worker], steps_to_overlap[step_name][worker])]
             steps_to_overlap['all'][worker] = [x/step_number for x in steps_to_overlap['all'][worker]]
+        for k,v in steps_to_overlap.items():
+            steps_to_overlap[k] = OrderedDict(sorted(v.items()))
         result["data"] = steps_to_overlap
         return result
 
     def _generate_wait_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Waiting/Communication Overview", "legends": ["Communication Time", "Waiting Time"], "units": "us"}
+        result["metadata"] = {"title": "Synchronizing/Communication Overview", "legends": ["Data Transfer Time", "Synchronizing Time"], "units": "us"}
         steps_to_wait = OrderedDict()
         steps_to_wait['all'] = OrderedDict()
         for worker,data in self.all_profile_data.items():
@@ -415,6 +429,8 @@ class DistributedRunGenerator(object):
                 steps_to_wait['all'][worker] = [sum(x) for x in zip(steps_to_wait['all'][worker], steps_to_wait[step][worker])]
             steps_to_wait['all'][worker] = [x/step_number for x in steps_to_wait['all'][worker]]
 
+        for k,v in steps_to_wait.items():
+            steps_to_wait[k] = OrderedDict(sorted(v.items()))
         result["data"] = steps_to_wait
 
         return result

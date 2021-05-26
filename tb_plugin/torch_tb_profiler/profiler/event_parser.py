@@ -206,15 +206,29 @@ class StepParser:
         self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
         self.steps = []
         self.steps_names = []
-        self.min_ts = sys.maxsize
-        self.max_ts = -sys.maxsize - 1
+        self.cpu_min_ts = sys.maxsize  # Min time of CPU side events.
+        self.cpu_max_ts = -sys.maxsize - 1  # Max time of CPU side events.
+        self.global_min_ts = sys.maxsize  # Min time of all events.
+        self.global_max_ts = -sys.maxsize - 1  # Max time of all events.
+        # The below two form time range for adding gpu utilization to trace view.
+        # Use "PyTorch Profiler (0)" as them.
+        # If not exists, assign global_min_ts and global_max_ts to them.
+        self.global_start_ts = sys.maxsize
+        self.global_end_ts = -sys.maxsize - 1
 
     def parse_steps(self, events, comm_nodes):
         for event in events:
             self._parse_step(event, comm_nodes)
+            if event.type == EventTypes.TRACE and event.name == "PyTorch Profiler (0)":
+                self.global_start_ts = event.ts
+                self.global_end_ts = event.ts + event.duration
+        if self.global_start_ts == sys.maxsize:
+            self.global_start_ts = self.global_min_ts
+        if self.global_end_ts == -sys.maxsize - 1:
+            self.global_end_ts = self.global_max_ts
 
         if len(self.steps) == 0:
-            self.steps.append((self.min_ts, self.max_ts))
+            self.steps.append((self.cpu_min_ts, self.cpu_max_ts))
             self.steps_names.append("0")
 
         for i in range(len(self.role_ranges)):
@@ -262,10 +276,11 @@ class StepParser:
 
         # Record host side min and max time.
         if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
-            if ts < self.min_ts:
-                self.min_ts = ts
-            if ts + dur > self.max_ts:
-                self.max_ts = ts + dur
+            self.cpu_min_ts = min(self.cpu_min_ts, ts)
+            self.cpu_max_ts = max(self.cpu_max_ts, ts + dur)
+        # Record global wise min and max time.
+        self.global_min_ts = min(self.global_min_ts, ts)
+        self.global_max_ts = max(self.global_max_ts, ts + dur)
 
     def update_steps_duration(self, context):
         '''Update self.steps considering device side events launched by each host side step.

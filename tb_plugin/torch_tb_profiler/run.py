@@ -82,17 +82,31 @@ class RunProfile(object):
             )
             return util_json
 
+        def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list):
+            json_str = build_trace_counter_gpu_util(gpu_id, start_time, counter_value)
+            counter_json_list.append(json_str)
+
+        def add_trace_counter_sm_efficiency(gpu_id, start_time, end_time, value, counter_json_list):
+            efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, start_time, value)
+            efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, end_time, 0)
+            counter_json_list.append(efficiency_json_start)
+            counter_json_list.append(efficiency_json_finish)
+
         counter_json_list = []
         for gpu_id, buckets in enumerate(self.gpu_util_buckets):
+            if len(buckets) > 0:
+                # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
+                add_trace_counter_gpu_util(gpu_id, buckets[0][0], 1, counter_json_list)
+                add_trace_counter_gpu_util(gpu_id, buckets[0][0], 0, counter_json_list)
             for b in buckets:
-                json_str = build_trace_counter_gpu_util(gpu_id, b[0], b[1])
-                counter_json_list.append(json_str)
+                add_trace_counter_gpu_util(gpu_id, b[0], b[1], counter_json_list)
         for gpu_id, ranges in enumerate(self.approximated_sm_efficency_ranges):
+            buckets = self.gpu_util_buckets[gpu_id]
+            if len(ranges) > 0 and len(buckets) > 0:
+                # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
+                add_trace_counter_sm_efficiency(gpu_id, buckets[0][0], buckets[0][0], 1, counter_json_list)
             for r in ranges:
-                efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, r[0][0], r[1])
-                efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, r[0][1], 0)
-                counter_json_list.append(efficiency_json_start)
-                counter_json_list.append(efficiency_json_finish)
+                add_trace_counter_sm_efficiency(gpu_id, r[0][0], r[0][1], r[1], counter_json_list)
 
         counter_json_str = ", {}".format(", ".join(counter_json_list))
         counter_json_bytes = bytes(counter_json_str, 'utf-8')

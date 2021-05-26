@@ -154,7 +154,8 @@ class RunProfileData(object):
         logger.debug("GPUMetricsParser")
         self.runtime_node_list = parser.runtime_node_list
         gpu_metrics_parser = GPUMetricsParser()
-        gpu_metrics_parser.parse_events(self.events, parser.steps[0][0], parser.steps[-1][1])
+        gpu_metrics_parser.parse_events(self.events, parser.global_start_ts, parser.global_end_ts,
+                                        parser.steps[0][0], parser.steps[-1][1])
         self.gpu_ids = gpu_metrics_parser.gpu_ids
         self.gpu_utilization = gpu_metrics_parser.gpu_utilization
         self.sm_efficency = gpu_metrics_parser.avg_approximated_sm_efficency_per_device

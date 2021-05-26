@@ -97,8 +97,6 @@ class GPUMetricsParser(object):
                 for i_bucket in range(buckets):
                     bucket_size = buckets_ranges[i_bucket][1] - buckets_ranges[i_bucket][0]
                     gpu_utilization_timeline[gpu_id][i_bucket] /= bucket_size
-
-                for i_bucket in range(buckets):
                     start_time = buckets_ranges[i_bucket][0]
                     self.gpu_util_buckets[gpu_id].append((start_time, gpu_utilization_timeline[gpu_id][i_bucket]))
                 start_time = buckets_ranges[-1][1]

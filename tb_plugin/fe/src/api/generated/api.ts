@@ -383,6 +383,56 @@ export interface KernelGraph {
 /**
  *
  * @export
+ * @interface MemoryData
+ */
+export interface MemoryData {
+  /**
+   *
+   * @type {MemoryTableMetadata}
+   * @memberof MemoryData
+   */
+  metadata: MemoryTableMetadata
+  /**
+   *
+   * @type {any}
+   * @memberof MemoryData
+   */
+  data: any
+}
+/**
+ *
+ * @export
+ * @interface MemoryTableMetadata
+ */
+export interface MemoryTableMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryTableMetadata
+   */
+  title: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryTableMetadata
+   */
+  defaultDevice: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryTableMetadata
+   */
+  search: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryTableMetadata
+   */
+  sort: string
+}
+/**
+ *
+ * @export
  * @interface OperationTableData
  */
 export interface OperationTableData extends Array<OperationTableDataInner> {}
@@ -1016,6 +1066,61 @@ export const DefaultApiFetchParamCreator = function (
 
       if (groupBy !== undefined) {
         localVarQueryParameter['group_by'] = groupBy
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryGet(run: string, worker: string, options: any = {}): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling memoryGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling memoryGet.'
+        )
+      }
+      const localVarPath = `/memory`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1792,6 +1897,37 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryGet(
+      run: string,
+      worker: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryData> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).memoryGet(run, worker, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
      * @param {string} view
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
@@ -2207,6 +2343,20 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryGet(run: string, worker: string, options?: any) {
+      return DefaultApiFp(configuration).memoryGet(
+        run,
+        worker,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
      * @param {string} view
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
@@ -2497,6 +2647,22 @@ export class DefaultApi extends BaseAPI {
       worker,
       view,
       groupBy,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public memoryGet(run: string, worker: string, options?: any) {
+    return DefaultApiFp(this.configuration).memoryGet(
+      run,
+      worker,
       options
     )(this.fetch, this.basePath)
   }

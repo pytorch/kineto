@@ -16,7 +16,7 @@ import InputLabel from '@material-ui/core/InputLabel'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import * as React from 'react'
 import { PieChart } from './charts/PieChart'
-import { TableChart } from './charts/TableChart'
+import { AntTableChart } from './charts/AntTableChart'
 import * as api from '../api'
 import { Graph } from '../api'
 import { DataLoading } from './DataLoading'
@@ -189,56 +189,54 @@ export const Kernel: React.FC<IProps> = (props) => {
                 )}
               </DataLoading>
             </Grid>
-            <Grid item sm={12}>
-              <Grid container direction="column" spacing={1}>
-                <Grid item container>
-                  <Grid sm={6} item container justify="space-around">
-                    <Grid item>
-                      <InputLabel id="kernel-group-by">Group By</InputLabel>
-                      <Select
-                        labelId="kernel-group-by"
-                        value={groupBy}
-                        onChange={onGroupByChanged}
-                      >
-                        <MenuItem value={KernelGroupBy.KernelNameAndOpName}>
-                          Kernel Name + Op Name
-                        </MenuItem>
-                        <MenuItem value={KernelGroupBy.Kernel}>
-                          Kernel Name
-                        </MenuItem>
-                      </Select>
-                    </Grid>
+            <Grid item container direction="column" spacing={1} sm={12}>
+              <Grid item container>
+                <Grid sm={6} item container justify="space-around">
+                  <Grid item>
+                    <InputLabel id="kernel-group-by">Group By</InputLabel>
+                    <Select
+                      labelId="kernel-group-by"
+                      value={groupBy}
+                      onChange={onGroupByChanged}
+                    >
+                      <MenuItem value={KernelGroupBy.KernelNameAndOpName}>
+                        Kernel Name + Op Name
+                      </MenuItem>
+                      <MenuItem value={KernelGroupBy.Kernel}>
+                        Kernel Name
+                      </MenuItem>
+                    </Select>
                   </Grid>
-                  <Grid sm={6} item container spacing={1}>
+                </Grid>
+                <Grid sm={6} item container spacing={1}>
+                  <Grid item>
+                    <TextField
+                      classes={{ root: classes.inputWidthOverflow }}
+                      value={searchKernelName}
+                      onChange={onSearchKernelChanged}
+                      type="search"
+                      label="Search by Kernel Name"
+                    />
+                  </Grid>
+                  {groupBy === KernelGroupBy.KernelNameAndOpName && (
                     <Grid item>
                       <TextField
                         classes={{ root: classes.inputWidthOverflow }}
-                        value={searchKernelName}
-                        onChange={onSearchKernelChanged}
+                        value={searchOpName}
+                        onChange={onSearchOpChanged}
                         type="search"
-                        label="Search by Kernel Name"
+                        label="Search by Operator Name"
                       />
                     </Grid>
-                    {groupBy === KernelGroupBy.KernelNameAndOpName && (
-                      <Grid item>
-                        <TextField
-                          classes={{ root: classes.inputWidthOverflow }}
-                          value={searchOpName}
-                          onChange={onSearchOpChanged}
-                          type="search"
-                          label="Search by Operator Name"
-                        />
-                      </Grid>
-                    )}
-                  </Grid>
+                  )}
                 </Grid>
-                <Grid item>
-                  <DataLoading value={searchedOpTable}>
-                    {(graph) => (
-                      <TableChart graph={graph} sortColumn={sortColumn} />
-                    )}
-                  </DataLoading>
-                </Grid>
+              </Grid>
+              <Grid item>
+                <DataLoading value={searchedOpTable}>
+                  {(graph) => (
+                    <AntTableChart graph={graph} sortColumn={sortColumn} />
+                  )}
+                </DataLoading>
               </Grid>
             </Grid>
           </Grid>

@@ -68,6 +68,10 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       std::unique_ptr<ActivityBuffers> buffers,
       int64_t endTime) override;
 
+  std::string traceFileName() const {
+    return fileName_;
+  }
+
  private:
 
 #ifdef HAS_CUPTI

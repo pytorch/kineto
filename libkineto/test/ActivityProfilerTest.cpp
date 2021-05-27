@@ -164,11 +164,15 @@ class ActivityProfilerTest : public ::testing::Test {
     profiler_ = std::make_unique<ActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
+    loggerFactory.addProtocol("file", [](const std::string& url) {
+        return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+    });
   }
 
   std::unique_ptr<Config> cfg_;
   MockCuptiActivities cuptiActivities_;
   std::unique_ptr<ActivityProfiler> profiler_;
+  ActivityLoggerFactory loggerFactory;
 };
 
 
@@ -282,7 +286,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   profiler_->reset();
 
   // Wrapper that allows iterating over the activities
-  ActivityTrace trace(std::move(logger));
+  ActivityTrace trace(std::move(logger), loggerFactory);
   EXPECT_EQ(trace.activities()->size(), 9);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
@@ -362,7 +366,7 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler.processTrace(*logger);
 
-  ActivityTrace trace(std::move(logger));
+  ActivityTrace trace(std::move(logger), loggerFactory);
   std::map<std::string, int> counts;
   for (auto& activity : *trace.activities()) {
     counts[activity->name()]++;

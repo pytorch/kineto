@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+#include "ActivityLoggerFactory.h"
 #include "ActivityTraceInterface.h"
 #include "output_json.h"
 #include "output_membuf.h"
@@ -18,20 +19,32 @@ namespace libkineto {
 
 class ActivityTrace : public ActivityTraceInterface {
  public:
-  explicit ActivityTrace(std::unique_ptr<MemoryTraceLogger> logger)
-    : logger_(std::move(logger)) {}
+  ActivityTrace(
+      std::unique_ptr<MemoryTraceLogger> tmpLogger,
+      const ActivityLoggerFactory& factory)
+    : memLogger_(std::move(tmpLogger)),
+      loggerFactory_(factory) {
+  }
 
   const std::vector<std::unique_ptr<TraceActivity>>* activities() override {
-    return logger_->traceActivities();
+    return memLogger_->traceActivities();
   };
 
-  void save(const std::string& path) override {
-    ChromeTraceLogger chrome_logger(path);
-    logger_->log(chrome_logger);
+  void save(const std::string& url) override {
+    std::string prefix;
+    // if no protocol is specified, default to file
+    if (url.find("://") == url.npos) {
+      prefix = "file://";
+    }
+    memLogger_->log(*loggerFactory_.makeLogger(prefix + url));
   };
 
  private:
-  std::unique_ptr<MemoryTraceLogger> logger_;
+  // Activities are logged into a buffer
+  std::unique_ptr<MemoryTraceLogger> memLogger_;
+
+  // Alternative logger used by save() if protocol prefix is specified
+  const ActivityLoggerFactory& loggerFactory_;
 };
 
 } // namespace libkineto

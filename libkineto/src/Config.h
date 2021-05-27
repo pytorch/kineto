@@ -53,6 +53,15 @@ class Config : public AbstractConfig {
     return activitiesLogFile_;
   }
 
+  // Log activitiy trace to this url
+  const std::string& activitiesLogUrl() const {
+    return activitiesLogUrl_;
+  }
+
+  void setActivitiesLogUrl(const std::string& url) {
+    activitiesLogUrl_ = url;
+  }
+
   bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
   }
@@ -272,7 +281,7 @@ class Config : public AbstractConfig {
 
   static void addConfigFactory(
       std::string name,
-      std::function<AbstractConfig*(const Config&)> factory);
+      std::function<AbstractConfig*(Config&)> factory);
 
   void print(std::ostream& s) const;
 
@@ -337,6 +346,8 @@ class Config : public AbstractConfig {
 
   // The activity profiler settings are all on-demand
   std::string activitiesLogFile_;
+
+  std::string activitiesLogUrl_;
 
   // Log activities to memory buffer
   bool activitiesLogToMemory_{false};

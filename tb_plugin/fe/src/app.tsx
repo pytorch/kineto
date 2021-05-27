@@ -143,11 +143,17 @@ export const App = () => {
   }, [])
 
   const continuouslyFetchRuns = async () => {
+    const startTime = Date.now()
     while (true) {
       try {
         const runs = await api.defaultApi.runsGet()
         setRuns(runs)
-        await sleep(100)
+        // Check runs every 0.1 secs for the first 5 secs, then once every 5 secs.
+        if (Date.now() - startTime < 5000) {
+          await sleep(100)
+        } else {
+          await sleep(5000)
+        }
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
       }

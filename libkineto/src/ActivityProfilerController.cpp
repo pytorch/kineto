@@ -57,8 +57,7 @@ static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
     return loggerFactory()(config);
   }
   return std::make_unique<ChromeTraceLogger>(
-      config.activitiesLogFile(),
-      CuptiActivityInterface::singleton().smCount());
+      config.activitiesLogFile());
 }
 
 void ActivityProfilerController::profilerLoop() {
@@ -138,7 +137,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger), CuptiActivityInterface::singleton());
+  return std::make_unique<ActivityTrace>(std::move(logger));
 }
 
 void ActivityProfilerController::addMetadata(

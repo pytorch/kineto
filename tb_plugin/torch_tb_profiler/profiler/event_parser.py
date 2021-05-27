@@ -205,7 +205,7 @@ class NodeParserMixin:
                 self.use_dp = True
             if event.name == "DistributedDataParallel.forward":
                 self.use_ddp = True
-            tid2list.setdefault(tid, []).append(op_node)
+            tid2list.setdefault(int(tid), []).append(op_node)
 
 
 class StepParser:

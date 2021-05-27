@@ -23,13 +23,16 @@ static const std::vector<cudaDeviceProp> createDeviceProps() {
   cudaError_t error_id = cudaGetDeviceCount(&device_count);
   // Return empty vector if error.
   if (error_id != cudaSuccess) {
+    LOG(ERROR) << "cudaGetDeviceCount failed with code " << error_id;
     return {};
   }
+  VLOG(0) << "Device count is " << device_count;
   for (size_t i = 0; i < device_count; ++i) {
     cudaDeviceProp prop;
     error_id = cudaGetDeviceProperties(&prop, i);
     // Return empty vector if any device property fail to get.
     if (error_id != cudaSuccess) {
+      LOG(ERROR) << "cudaGetDeviceProperties failed with " << error_id;
       return {};
     }
     props.push_back(prop);
@@ -73,6 +76,12 @@ static const std::string createDevicePropertiesJson() {
 const std::string& devicePropertiesJson() {
   static std::string devicePropsJson = createDevicePropertiesJson();
   return devicePropsJson;
+}
+
+int smCount(uint32_t deviceId) {
+  const std::vector<cudaDeviceProp> &props = deviceProps();
+  return deviceId >= props.size() ? 0 :
+     props[deviceId].multiProcessorCount;
 }
 
 float kernelOccupancy(

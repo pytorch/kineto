@@ -11,7 +11,6 @@
 #include <string>
 
 #include "ActivityTraceInterface.h"
-#include "CuptiActivityInterface.h"
 #include "output_json.h"
 #include "output_membuf.h"
 
@@ -19,23 +18,20 @@ namespace libkineto {
 
 class ActivityTrace : public ActivityTraceInterface {
  public:
-  ActivityTrace(
-      std::unique_ptr<MemoryTraceLogger> logger,
-      CuptiActivityInterface& cuptiActivities)
-    : logger_(std::move(logger)), cuptiActivities_(cuptiActivities) {}
+  explicit ActivityTrace(std::unique_ptr<MemoryTraceLogger> logger)
+    : logger_(std::move(logger)) {}
 
   const std::vector<std::unique_ptr<TraceActivity>>* activities() override {
     return logger_->traceActivities();
   };
 
   void save(const std::string& path) override {
-    ChromeTraceLogger chrome_logger(path, cuptiActivities_.smCount());
+    ChromeTraceLogger chrome_logger(path);
     logger_->log(chrome_logger);
   };
 
  private:
   std::unique_ptr<MemoryTraceLogger> logger_;
-  CuptiActivityInterface& cuptiActivities_;
 };
 
 } // namespace libkineto

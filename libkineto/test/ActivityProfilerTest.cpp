@@ -193,7 +193,7 @@ TEST(ActivityProfiler, AsyncTrace) {
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());
 
-  auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile(), 10);
+  auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
   auto now = system_clock::now();
   profiler.configure(cfg, now);
   profiler.setLogger(logger.get());
@@ -282,7 +282,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   profiler_->reset();
 
   // Wrapper that allows iterating over the activities
-  ActivityTrace trace(std::move(logger), cuptiActivities_);
+  ActivityTrace trace(std::move(logger));
   EXPECT_EQ(trace.activities()->size(), 9);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
@@ -362,7 +362,7 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler.processTrace(*logger);
 
-  ActivityTrace trace(std::move(logger), cuptiActivities_);
+  ActivityTrace trace(std::move(logger));
   std::map<std::string, int> counts;
   for (auto& activity : *trace.activities()) {
     counts[activity->name()]++;

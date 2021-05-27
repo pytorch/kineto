@@ -29,7 +29,7 @@ class Config;
 
 class ChromeTraceLogger : public libkineto::ActivityLogger {
  public:
-  explicit ChromeTraceLogger(const std::string& traceFileName, int smCount);
+  explicit ChromeTraceLogger(const std::string& traceFileName);
 
   // Note: the caller of these functions should handle concurrency
   // i.e., we these functions are not thread-safe
@@ -82,11 +82,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   std::string fileName_;
   std::ofstream traceOf_;
-
-#ifdef HAS_CUPTI
-  // Number of SMs on current device
-  int smCount_{0};
-#endif
 };
 
 } // namespace KINETO_NAMESPACE

@@ -61,13 +61,10 @@ void ChromeTraceLogger::openTraceFile() {
   }
 }
 
-ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
+ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName)
     : fileName_(traceFileName) {
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile();
-#ifdef HAS_CUPTI
-  smCount_ = CuptiActivityInterface::singleton().smCount();
-#endif
 }
 
 static int64_t us(int64_t timestamp) {
@@ -332,9 +329,10 @@ void ChromeTraceLogger::handleGpuActivity(
   constexpr int threads_per_warp = 32;
   float blocks_per_sm = -1.0;
   float warps_per_sm = -1.0;
-  if (smCount_) {
+  int sm_count = smCount(kernel->deviceId);
+  if (sm_count) {
     blocks_per_sm =
-        (kernel->gridX * kernel->gridY * kernel->gridZ) / (float) smCount_;
+        (kernel->gridX * kernel->gridY * kernel->gridZ) / (float) sm_count;
     warps_per_sm =
         blocks_per_sm * (kernel->blockX * kernel->blockY * kernel->blockZ)
         / threads_per_warp;

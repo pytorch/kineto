@@ -86,7 +86,7 @@ class RunLoader(object):
             else:
                 comm_node_lists.append(data.comm_node_list)
                 if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
-                    logger.error("Number of communication operation nodes don't match between workers in run:", self.run.name)
+                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run.name)
                     self.has_communication = False
             logger.debug("Processing profile data finish")
 
@@ -103,7 +103,7 @@ class RunLoader(object):
                 for k in range(worker_num):
                     kernel_ranges = comm_node_lists[k][i].kernel_ranges
                     if len(kernel_ranges) != kernel_range_size:
-                        logger.error("Number of communication kernels don't match between workers in run:", self.run.name)
+                        logger.error("Number of communication kernels don't match between workers in run: %s" % self.run.name)
                         self.has_communication = False
                         return None
                     if kernel_ranges:

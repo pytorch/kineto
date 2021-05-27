@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 
+from .trace import EventTypes
+
 
 class KernelParser:
     def __init__(self):
@@ -12,6 +14,9 @@ class KernelParser:
     def parse_events(self, events):
         events_dict = []
         for event in events:
+            if event.type == EventTypes.MEMORY:
+                continue
+
             events_dict.append(vars(event))
             if event.category == "Kernel":
                 events_dict[-1]["blocks_per_sm"] = event.args.get("blocks per SM", 0)

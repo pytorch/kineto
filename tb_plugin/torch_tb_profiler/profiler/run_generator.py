@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
+from .node import MemoryMetrics
 from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
@@ -46,6 +47,11 @@ class RunGenerator(object):
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
         profile_run.sm_efficency = self.profile_data.sm_efficency
         profile_run.occupancy = self.profile_data.occupancy
+
+        # add memory stats
+        if self.profile_data.has_memory_data:
+            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_state_cpu, self.profile_data.memory_state_cuda)
+            profile_run.views.append(consts.MEMORY_VIEW)
 
         return profile_run
 
@@ -329,6 +335,64 @@ class RunGenerator(object):
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
+
+    def _generate_memory_view(self, memory_cpu, memory_cudas):
+
+        data = OrderedDict()
+        result = {
+            "metadata": {
+                "title": "Memory View",
+                "default_device": "CPU",
+                "search": "Operator Name",
+                "sort": "Self Size Increase (KB)"
+            },
+            "data": data
+        }
+
+        raw_data = []
+        if memory_cpu:
+            raw_data.append(("CPU", memory_cpu)) 
+
+        if memory_cudas:
+            for gpu_id, memory in memory_cudas.items():
+                raw_data.append(("GPU{}".format(gpu_id), memory))
+
+        columns_names = [
+            ("Operator Name", "string"),
+            ("Calls", "number"),
+            ("Size Increase (KB)", "number"),
+            ("Self Size Increase (KB)", "number"),
+            ("Allocation Count", "number"),
+            ("Self Allocation Count", "number"),
+            ("Allocation Size (KB)", "number"),
+            ("Self Allocation Size (KB)", "number")
+        ]
+        for name, memory in raw_data:
+            table = {}
+
+            # Process columns
+            columns = []
+            for col_name, col_type in columns_names:
+                columns.append({"type": col_type, "name": col_name})
+            table["columns"] = columns
+
+            # Process rows
+            rows = []
+            for op_name, stat in memory.items():
+                rows.append([
+                    op_name,
+                    stat[6],
+                    stat[MemoryMetrics.IncreaseSize] / 1024,
+                    stat[MemoryMetrics.SelfIncreaseSize] / 1024,
+                    stat[MemoryMetrics.AllocationCount],
+                    stat[MemoryMetrics.SelfAllocationCount],
+                    stat[MemoryMetrics.AllocationSize] / 1024,
+                    stat[MemoryMetrics.SelfAllocationSize] / 1024
+                    ])
+            table["rows"] = rows
+
+            data[name] = table
+        return result
 
 class DistributedRunGenerator(object):
     def __init__(self, all_profile_data):

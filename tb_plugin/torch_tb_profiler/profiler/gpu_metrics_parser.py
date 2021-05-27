@@ -141,6 +141,9 @@ class GPUMetricsParser(object):
     def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
         logger.debug("GPU Metrics, parse events")
         for event in events:
+            if event.type == EventTypes.MEMORY:
+                continue
+
             self.parse_event(event)
 
         self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)

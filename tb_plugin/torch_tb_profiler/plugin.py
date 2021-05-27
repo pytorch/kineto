@@ -117,7 +117,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/distributed/gpuinfo": self.dist_gpu_info_route,
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
-            "/distributed/commops": self.comm_ops_route
+            "/distributed/commops": self.comm_ops_route,
+            "/memory_view": self.memory_view,
         }
 
     def frontend_metadata(self):
@@ -302,6 +303,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = self._get_profile(name, 'All')
         self._check_distributed_profile(profile, name)
         return self.respond_as_json(profile.comm_ops)
+
+    @wrappers.Request.application
+    def memory_view(self, request):
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        self._validate(run=name, worker=worker)
+        profile = self._get_profile(name, worker)
+        self._check_normal_profile(profile, name, worker)
+        return self.respond_as_json(profile.memory_view)
 
     @wrappers.Request.application
     def static_file_route(self, request):

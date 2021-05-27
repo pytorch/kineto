@@ -6,7 +6,7 @@ import io as sysio
 import json
 import re
 import tempfile
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from json.decoder import JSONDecodeError
 
 from .. import io, utils
@@ -17,7 +17,6 @@ from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser
 from .module_parser import ModuleParser
-from .node import MemoryMetrics, is_operator_node
 from .overall_parser import OverallParser
 from .trace import DeviceType
 
@@ -180,50 +179,19 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
-        memory_parser = MemoryParser()
+        memory_parser = MemoryParser(module_parser.tid2tree)
         memory_parser.parse_events(self.events)
-        memory_parser.update_node(module_parser.tid2tree)
-        self.memory_state_cpu = self.get_memory_stats(module_parser.tid2tree, DeviceType.CPU, -1)
+        self.memory_state_cpu = memory_parser.get_memory_stats(DeviceType.CPU, -1)
         if self.gpu_ids:
             self.memory_state_cuda = {}
             for gpu_id in self.gpu_ids:
-                self.memory_state_cuda[gpu_id] = self.get_memory_stats(module_parser.tid2tree, DeviceType.CUDA, gpu_id)
+                self.memory_state_cuda[gpu_id] = memory_parser.get_memory_stats(DeviceType.CUDA, gpu_id)
 
         if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
-
-    def get_memory_stats(self, roots, device_type, device_id):
-        memory_metrics_keyed_by_node = defaultdict(lambda: [0] * MemoryMetrics.Total)
-        memory_metrics_keyed_by_nodename = defaultdict(lambda: [0] * MemoryMetrics.Total)
-        op_calls = defaultdict(int)
-
-        def traverse_node_memory(node, device_type):
-            memory_metric = node.get_memroy_metrics(device_type, device_id)
-            self_metric_length =  len(memory_metric)
-            if is_operator_node(node):
-                op_calls[node.name] += 1
-                for i, metric in enumerate(memory_metric):
-                    memory_metrics_keyed_by_node[node][i] = metric # self metric
-                    memory_metrics_keyed_by_node[node][i + self_metric_length] += metric # metrics include child
-
-            for child in node.children:
-                traverse_node_memory(child, device_type)
-                # sum up the child metrics
-                if is_operator_node(node):
-                    for i in range(self_metric_length, MemoryMetrics.Total):
-                        memory_metrics_keyed_by_node[node][i] += memory_metrics_keyed_by_node[child][i]
-
-        for root in roots.values():
-            for child in root.children:
-                traverse_node_memory(child, device_type)
-
-        for node, metrics in memory_metrics_keyed_by_node.items():
-            for i, metric in enumerate(metrics):
-                memory_metrics_keyed_by_nodename[node.name][i] += metric
-        return {k: v + [op_calls[k]] for k, v in memory_metrics_keyed_by_nodename.items() if any(v)}
 
     def analyze(self):
         self.recommendations = []

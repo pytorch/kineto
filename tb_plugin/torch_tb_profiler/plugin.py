@@ -118,7 +118,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
             "/distributed/commops": self.comm_ops_route,
-            "/memory_view": self.memory_route,
+            "/memory": self.memory_route,
         }
 
     def frontend_metadata(self):

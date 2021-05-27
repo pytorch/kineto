@@ -118,7 +118,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
             "/distributed/commops": self.comm_ops_route,
-            "/memory_view": self.memory_view,
+            "/memory_view": self.memory_route,
         }
 
     def frontend_metadata(self):
@@ -305,7 +305,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application
-    def memory_view(self, request):
+    def memory_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
         self._validate(run=name, worker=worker)

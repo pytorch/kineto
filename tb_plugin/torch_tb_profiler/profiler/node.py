@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 from abc import ABC
+from collections import defaultdict
 from enum import IntEnum
 
 MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount', 'Total'], start=0)
@@ -68,38 +69,32 @@ class OperatorNode(HostNode):
         self.self_host_duration = self_host_duration
         self.self_device_duration = self_device_duration
         self.memory_records = []
+        self.parent_node = None
+
+    @property
+    def parent(self):
+        if self.parent_node is None:
+            return None
+        else:
+            return self.parent_node()
 
     def add_memory_record(self, record):
         self.memory_records.append(record)
 
-    def get_memroy_metrics(self, device_type, device_id):
-        memory_metrics = [
-            self.get_memory_increase(device_type, device_id),
-            self.get_memory_allocation_size(device_type, device_id),
-            self.get_memory_allocation_count(device_type, device_id)
-        ]
+    def get_memory_metrics(self):
+        metrics_count = MemoryMetrics.SelfAllocationCount + 1
+        memory_metrics = defaultdict(lambda: [0] * metrics_count)
+        for record in self.memory_records:
+            name = record.device_name
+            if name is None:
+                continue
+
+            memory_metrics[name][MemoryMetrics.SelfIncreaseSize] += record.bytes
+            if record.bytes > 0:
+                memory_metrics[name][MemoryMetrics.SelfAllocationSize] += record.bytes
+                memory_metrics[name][MemoryMetrics.SelfAllocationCount] += 1
+
         return memory_metrics
-
-    def get_memory_allocation_count(self, device_type, device_id):
-        count = 0
-        for record in self.memory_records:
-            if record.device_type == device_type and record.device_id == device_id and record.bytes > 0:
-                count += 1
-        return count
-
-    def get_memory_allocation_size(self, device_type, device_id):
-        return self.get_memory_stats(device_type, device_id, False)
-
-    def get_memory_increase(self, device_type, device_id):
-        return self.get_memory_stats(device_type, device_id, True)
-
-    def get_memory_stats(self, device_type, device_id, include_negative):
-        size = 0
-        for record in self.memory_records:
-            if record.device_type == device_type and record.device_id == device_id:
-                if record.bytes > 0 or include_negative:
-                    size += record.bytes
-        return size
 
     def fill_stats(self):
         # TODO: Replace recursive by using a stack, in case of too deep callstack.

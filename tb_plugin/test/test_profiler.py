@@ -1515,8 +1515,8 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertEqual(len(profile.memory_state_cuda), 1)
-        self.assertEqual(0 in profile.memory_state_cuda, True)
+        self.assertEqual(len(profile.memory_stats), 2)
+        self.assertEqual("GPU0" in profile.memory_stats, True)
 
         # validation
         gpu_expected_data = {
@@ -1540,8 +1540,8 @@ class TestProfiler(unittest.TestCase):
         }
 
         validate_data = [
-            (profile.memory_state_cpu, cpu_expected_data),
-            (profile.memory_state_cuda[0], gpu_expected_data)
+            (profile.memory_stats["CPU"], cpu_expected_data),
+            (profile.memory_stats["GPU0"], gpu_expected_data)
         ]
         for (mem_stat, expected_data) in validate_data:
             for name, values in expected_data.items():
@@ -1558,7 +1558,6 @@ class TestProfiler(unittest.TestCase):
                 self.assertEqual(mem_stat[name][5], values[5])
                 # op calls
                 self.assertEqual(mem_stat[name][6], values[6])
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
-from .trace import EventTypes
+from .trace import DeviceType, EventTypes
 
 logger = utils.get_logger()
 
@@ -15,6 +15,16 @@ class MemoryRecord:
         self.device_type = device_type
         self.device_id = device_id
         self.bytes = bytes
+
+    @property
+    def device_name(self):
+        if self.device_type == DeviceType.CPU:
+            return "CPU"
+        elif self.device_type == DeviceType.CUDA:
+            return "GPU{}".format(self.device_id)
+        else:
+            return None
+
 
 class MemoryParser:
     def __init__(self, tid2tree):
@@ -30,37 +40,61 @@ class MemoryParser:
                 record = MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.bytes)
                 self.records.append(record)
 
+        self.records.sort(key=lambda x: x.ts)
         self.update_node()
 
-    def get_memory_stats(self, device_type, device_id):
-        memory_metrics_keyed_by_node = defaultdict(lambda: [0] * MemoryMetrics.Total)
-        memory_metrics_keyed_by_nodename = defaultdict(lambda: [0] * MemoryMetrics.Total)
+    def get_memory_statistics(self):
+        SELF_METRICS_COUNT = MemoryMetrics.IncreaseSize
+
+        def dict_factory():
+            return defaultdict(lambda: [0] * MemoryMetrics.Total)
+
+        # two level keys dictionary
+        # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
+        memory_metrics_keyed_by_node = defaultdict(dict_factory)
+
         op_calls = defaultdict(int)
 
-        def traverse_node_memory(node, device_type):
-            memory_metric = node.get_memroy_metrics(device_type, device_id)
-            self_metric_length =  len(memory_metric)
+        def traverse_node_memory(node):
+            node_memory_metrics = node.get_memory_metrics()
             if is_operator_node(node):
                 op_calls[node.name] += 1
-                for i, metric in enumerate(memory_metric):
-                    memory_metrics_keyed_by_node[node][i] = metric # self metric
-                    memory_metrics_keyed_by_node[node][i + self_metric_length] += metric # metrics include child
+                for device, metrics in node_memory_metrics.items():
+                    # device is name of device like: CPU/GPU0
+                    # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]
+                    for i, value in enumerate(metrics):
+                        memory_metrics_keyed_by_node[node][device][i] = value
+                        memory_metrics_keyed_by_node[node][device][i + SELF_METRICS_COUNT] += value
 
             for child in node.children:
-                traverse_node_memory(child, device_type)
+                traverse_node_memory(child)
                 # sum up the child metrics
                 if is_operator_node(node):
-                    for i in range(self_metric_length, MemoryMetrics.Total):
-                        memory_metrics_keyed_by_node[node][i] += memory_metrics_keyed_by_node[child][i]
+                    for device, metrics in memory_metrics_keyed_by_node[child].items():
+                        for i in range(SELF_METRICS_COUNT, MemoryMetrics.Total):
+                            memory_metrics_keyed_by_node[node][device][i] += metrics[i]
 
         for root in self.tid2tree.values():
             for child in root.children:
-                traverse_node_memory(child, device_type)
+                traverse_node_memory(child)
 
-        for node, metrics in memory_metrics_keyed_by_node.items():
-            for i, metric in enumerate(metrics):
-                memory_metrics_keyed_by_nodename[node.name][i] += metric
-        return {k: v + [op_calls[k]] for k, v in memory_metrics_keyed_by_nodename.items() if any(v)}
+        # keyed first by device name like CPU/GPU0 etc, then keyed by operator name.
+        # the value is array [items indexed by MemoryMetrics] 
+        memory_metrics_keyed_by_nodename = defaultdict(dict_factory) 
+        # node is the instance
+        # device_keyed_metrics is dictionary keyed by device name like CPU/GPU0
+        for node, device_keyed_metrics in memory_metrics_keyed_by_node.items():
+            for device, metrics in device_keyed_metrics.items():
+                for i, metric in enumerate(metrics):
+                    memory_metrics_keyed_by_nodename[device][node.name][i] += metric
+
+        result = defaultdict(defaultdict)
+        for device, node_metrics in memory_metrics_keyed_by_nodename.items():
+            for node, values in node_metrics.items():
+                if any(values):
+                    result[device][node] = values + [op_calls[node]]
+
+        return result
 
     def update_node(self):
         for mem_record in self.records:
@@ -81,6 +115,11 @@ class MemoryParser:
                 child_found = child
                 break
         if child_found is None:
+            # We use left close and right open deliberately here [start time, end time) 
+            # to avoid one memory be calculated twice in case of it is equal to previous operator's end time
+            # and next operator's start time. 
+            # the result might be different with PyTorch one.
+            # https://github.com/pytorch/pytorch/blob/26c1f0f72e71c096648a16993484234399da307c/torch/autograd/profiler.py#L1147-L1152
             if is_operator_node(node) and record.ts >= node.start_time and record.ts < node.end_time:
                 node.add_memory_record(record)
                 self.processed_record.append(record)

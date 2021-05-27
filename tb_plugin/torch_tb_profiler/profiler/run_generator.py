@@ -50,7 +50,7 @@ class RunGenerator(object):
 
         # add memory stats
         if self.profile_data.has_memory_data:
-            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_state_cpu, self.profile_data.memory_state_cuda)
+            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_stats)
             profile_run.views.append(consts.MEMORY_VIEW)
 
         return profile_run
@@ -336,7 +336,7 @@ class RunGenerator(object):
         data = {"data": table}
         return data
 
-    def _generate_memory_view(self, memory_cpu, memory_cudas):
+    def _generate_memory_view(self, memory_stats):
 
         data = OrderedDict()
         result = {
@@ -349,14 +349,6 @@ class RunGenerator(object):
             "data": data
         }
 
-        raw_data = []
-        if memory_cpu:
-            raw_data.append(("CPU", memory_cpu)) 
-
-        if memory_cudas:
-            for gpu_id, memory in memory_cudas.items():
-                raw_data.append(("GPU{}".format(gpu_id), memory))
-
         columns_names = [
             ("Operator Name", "string"),
             ("Calls", "number"),
@@ -367,7 +359,7 @@ class RunGenerator(object):
             ("Allocation Size (KB)", "number"),
             ("Self Allocation Size (KB)", "number")
         ]
-        for name, memory in raw_data:
+        for name, memory in sorted(memory_stats.items()):
             table = {}
 
             # Process columns
@@ -378,7 +370,7 @@ class RunGenerator(object):
 
             # Process rows
             rows = []
-            for op_name, stat in memory.items():
+            for op_name, stat in sorted(memory.items()):
                 rows.append([
                     op_name,
                     stat[6],

@@ -68,12 +68,16 @@ class RunProfileData(object):
         self.comm_overlap_costs = None
 
         # Memory stats
-        self.memory_state_cpu = None
-        self.memory_state_cuda = None
+        self.memory_stats = None
 
     @property
     def has_memory_data(self):
-        return any(self.memory_state_cuda.values()) if self.memory_state_cuda else bool(self.memory_state_cpu)
+        for node_metrics in self.memory_stats.values():
+            for metrics_values in node_metrics.values():
+                if any(metrics_values):
+                    return True
+
+        return False
 
     @staticmethod
     def parse(run_dir, worker, path, caches):
@@ -181,11 +185,7 @@ class RunProfileData(object):
 
         memory_parser = MemoryParser(module_parser.tid2tree)
         memory_parser.parse_events(self.events)
-        self.memory_state_cpu = memory_parser.get_memory_stats(DeviceType.CPU, -1)
-        if self.gpu_ids:
-            self.memory_state_cuda = {}
-            for gpu_id in self.gpu_ids:
-                self.memory_state_cuda[gpu_id] = memory_parser.get_memory_stats(DeviceType.CUDA, gpu_id)
+        self.memory_stats = memory_parser.get_memory_statistics()
 
         if self.has_kernel:
             logger.debug("KernelParser")

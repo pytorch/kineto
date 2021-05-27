@@ -30,6 +30,8 @@ using namespace libkineto;
 namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
+static const std::string kDefaultLogFileFmt =
+    "/tmp/libkineto_activities_{}.json";
 
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata) {
@@ -52,6 +54,10 @@ void ChromeTraceLogger::handleTraceStart(
   "traceEvents": [)JSON";
 }
 
+static std::string defaultFileName() {
+  return fmt::format(kDefaultLogFileFmt, processId());
+}
+
 void ChromeTraceLogger::openTraceFile() {
   traceOf_.open(fileName_, std::ofstream::out | std::ofstream::trunc);
   if (!traceOf_) {
@@ -61,8 +67,8 @@ void ChromeTraceLogger::openTraceFile() {
   }
 }
 
-ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName)
-    : fileName_(traceFileName) {
+ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
+  fileName_ = traceFileName.empty() ? defaultFileName() : traceFileName;
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile();
 }

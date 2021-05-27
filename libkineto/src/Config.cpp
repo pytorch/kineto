@@ -61,6 +61,7 @@ const string kHeartbeatMonitorPeriodKey =
 const string kActivitiesEnabledKey = "ACTIVITIES_ENABLED";
 const string kActivityTypesKey = "ACTIVITY_TYPES";
 const string kActivitiesLogFileKey = "ACTIVITIES_LOG_FILE";
+const string kActivitiesLogUrlKey = "ACTIVITIES_LOG_URL";
 const string kActivitiesDurationKey = "ACTIVITIES_DURATION_SECS";
 const string kActivitiesDurationMsecsKey = "ACTIVITIES_DURATION_MSECS";
 const string kActivitiesIterationsKey = "ACTIVITIES_ITERATIONS";
@@ -118,16 +119,16 @@ const string kConfigFile = "/etc/libkineto.conf";
 // Max devices supported on any system
 constexpr uint8_t kMaxDevices = 8;
 
-static std::map<std::string, std::function<AbstractConfig*(const Config&)>>&
+static std::map<std::string, std::function<AbstractConfig*(Config&)>>&
 configFactories() {
-  static std::map<std::string, std::function<AbstractConfig*(const Config&)>>
+  static std::map<std::string, std::function<AbstractConfig*(Config&)>>
       factories;
   return factories;
 }
 
 void Config::addConfigFactory(
     std::string name,
-    std::function<AbstractConfig*(const Config&)> factory) {
+    std::function<AbstractConfig*(Config&)> factory) {
   configFactories()[name] = factory;
 }
 
@@ -286,6 +287,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activityProfilerEnabled_ = toBool(val);
   } else if (name == kActivitiesLogFileKey) {
     activitiesLogFile_ = val;
+    activitiesLogUrl_ = fmt::format("file://{}", val);
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (name == kActivitiesMaxGpuBufferSizeKey) {
     activitiesMaxGpuBufferSize_ = toInt32(val) * 1024 * 1024;

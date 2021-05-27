@@ -4,6 +4,7 @@
 from collections import OrderedDict
 
 from . import io
+from . import consts
 
 
 class Run(object):
@@ -153,33 +154,11 @@ class RunProfile(object):
 
         def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy):
             tooltip_summary = "The GPU usage metrics:\n"
-            tooltip_gpu_util = \
-                "GPU Utilization:\n" \
-                "GPU busy time / All steps time. " \
-                "GPU busy time is the time during which there is at least one GPU kernel running on it. " \
-                "All steps time is the total time of all profiler steps(or called as iterations).\n"
-            tooltip_sm_efficiency = \
-                "Est. SM Efficiency:\n" \
-                "Estimated Stream Multiprocessor Efficiency. " \
-                "Est. SM Efficiency of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%). " \
-                "This overall number is the sum of all kernels' SM_Eff_K weighted by kernel's execution duration, " \
-                "divided by all steps time.\n"
-            tooltip_occupancy = \
-                "Est. Achieved Occupancy:\n" \
-                "Occupancy is the ratio of active threads on an SM " \
-                "to the maximum number of active threads supported by the SM. " \
-                "The theoretical occupancy of a kernel is upper limit occupancy of this kernel, " \
-                "limited by multiple factors such as kernel shape, kernel used resource, " \
-                "and the GPU compute capability." \
-                "Est. Achieved Occupancy of a kernel, OCC_K = " \
-                "min(threads of the kernel / SM number / max threads per SM, theoretical occupancy of the kernel). " \
-                "This overall number is the weighted sum of all kernels OCC_K " \
-                "using kernel's execution duration as weight."
-            tooltip = "{}\n{}".format(tooltip_summary, tooltip_gpu_util)
+            tooltip = "{}\n{}".format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
             if has_sm_efficiency:
-                tooltip += "\n" + tooltip_sm_efficiency
+                tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
             if has_occupancy:
-                tooltip += "\n" + tooltip_occupancy
+                tooltip += "\n" + consts.TOOLTIP_OCCUPANCY
             return tooltip
 
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)

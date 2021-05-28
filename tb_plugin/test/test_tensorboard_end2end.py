@@ -6,6 +6,7 @@ import urllib
 import urllib.request
 import unittest
 from subprocess import Popen
+from threading import Event
 
 
 class TestEnd2End(unittest.TestCase):
@@ -47,13 +48,15 @@ class TestEnd2End(unittest.TestCase):
                 tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
             else:
                 tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
-            self._test_tensorboard(host, port, expected_runs, path_prefix)
+            event = Event()
+            self._test_tensorboard(host, port, expected_runs, path_prefix, event)
+            event.wait()
         finally:
             pid = tb.pid
             tb.terminate()
             print("tensorboard process {} is terminated.".format(pid))
 
-    def _test_tensorboard(self, host, port, expected_runs, path_prefix):
+    def _test_tensorboard(self, host, port, expected_runs, path_prefix, event):
         if not path_prefix:
             link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
         else:
@@ -117,3 +120,5 @@ class TestEnd2End(unittest.TestCase):
                 i = i + 1
         self.assertEqual(i, 10)
         print("ending testing...")
+        event.set()
+

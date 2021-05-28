@@ -147,10 +147,10 @@ export const App = () => {
       try {
         const runs = await api.defaultApi.runsGet()
         setRuns(runs)
-        await sleep(100)
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
       }
+      await sleep(5000)
     }
   }
 

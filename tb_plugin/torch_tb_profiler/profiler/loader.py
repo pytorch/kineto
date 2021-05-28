@@ -47,7 +47,7 @@ class RunLoader(object):
         run = Run(self.run.name, self.run.run_dir)
         while not self.queue.empty():
             try:
-                r, d = self.queue.get()
+                r, d = self.queue.get_nowait()
                 run.add_profile(r)
                 distributed_data[d.worker] = d
             except Empty:

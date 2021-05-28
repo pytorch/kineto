@@ -278,6 +278,12 @@ export interface GpuMetrics {
    * @memberof GpuMetrics
    */
   tooltip: string
+  /**
+   *
+   * @type {string}
+   * @memberof GpuMetrics
+   */
+  title?: string
 }
 /**
  *

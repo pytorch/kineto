@@ -254,6 +254,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
                     )}
                     <ColumnChart
                       units={waittimeGraph?.metadata?.units}
+                      colors={['#0099C6', '#DD4477', '#66AA00', '#B82E2E']}
                       chartData={chartData}
                     />
                   </Card>

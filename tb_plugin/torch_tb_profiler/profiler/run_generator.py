@@ -9,6 +9,29 @@ from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
 
+
+@staticmethod
+def _get_gpu_info(device_props, gpu_id):
+    if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
+        return None
+
+    device_prop = device_props[gpu_id]
+    gpu_info = {}
+    name = device_prop.get("name")
+    if name is not None:
+        gpu_info["Name"] = name
+
+    mem = device_prop.get("totalGlobalMem")
+    if mem is not None:
+        gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
+
+    major = device_prop.get("computeMajor")
+    minor = device_prop.get("computeMinor")
+    if major is not None and minor is not None:
+        gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
+
+    return gpu_info
+
 class RunGenerator(object):
     def __init__(self, worker, profile_data):
         self.worker = worker
@@ -43,6 +66,7 @@ class RunGenerator(object):
         profile_run.approximated_sm_efficency_ranges = self.profile_data.approximated_sm_efficency_ranges
 
         profile_run.gpu_ids = self.profile_data.gpu_ids
+        profile_run.device_props = self.profile_data.device_props
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
         profile_run.sm_efficency = self.profile_data.sm_efficency
         profile_run.occupancy = self.profile_data.occupancy
@@ -342,6 +366,7 @@ class RunGenerator(object):
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
+
 
 class DistributedRunGenerator(object):
     def __init__(self, all_profile_data):

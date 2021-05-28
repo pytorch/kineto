@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 
+from .trace import EventTypes
+
 
 class KernelParser:
     def __init__(self):
@@ -12,23 +14,22 @@ class KernelParser:
     def parse_events(self, events):
         events_dict = []
         for event in events:
-            events_dict.append(vars(event))
-            if event.category == "Kernel":
+            if event.type == EventTypes.KERNEL:
+                events_dict.append(vars(event))
                 events_dict[-1]["blocks_per_sm"] = event.args.get("blocks per SM", 0)
                 events_dict[-1]["occupancy"] = event.args.get("est. achieved occupancy %", 0)
         events = events_dict
         events = pd.DataFrame(events)
         events = events.astype({"type": "category", "category": "category", "name": "string"}, copy=False)
-        kernels = events[events["category"] == "Kernel"]
 
         def weighted_avg(x):
             try:
-                return np.average(x, weights=kernels.loc[x.index, "duration"])
+                return np.average(x, weights=events.loc[x.index, "duration"])
             except ZeroDivisionError:
                 return 0
 
         # remove 0 duration kernels in case of divided by zero.
-        self.kernel_stat = kernels.groupby("name").agg(
+        self.kernel_stat = events.groupby("name").agg(
             count=('duration', "count"),
             sum=('duration', "sum"),
             mean=('duration', "mean"),

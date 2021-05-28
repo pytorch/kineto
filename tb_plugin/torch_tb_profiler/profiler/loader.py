@@ -4,7 +4,6 @@
 import sys
 from collections import OrderedDict
 from multiprocessing import Barrier, Process, Queue
-from queue import Empty
 
 from .. import consts, io, utils
 from ..run import Run
@@ -41,6 +40,11 @@ class RunLoader(object):
         logger.info("starting all processing")
         # since there is one queue, its data must be read before join.
         # https://stackoverflow.com/questions/31665328/python-3-multiprocessing-queue-deadlock-when-calling-join-before-the-queue-is-em
+        #   The queue implementation in multiprocessing that allows data to be transferred between processes relies on standard OS pipes.
+        #   OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the put()
+        #   operation until some other process uses get() to retrieve data from the queue.
+        # During my testing, I found that the maximum buffer length is 65532 in my test machine.
+        # If I increase the message size to 65533, the join would hang the process.
         barrier.wait()
 
         distributed_data = OrderedDict()

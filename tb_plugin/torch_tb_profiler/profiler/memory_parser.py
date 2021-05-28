@@ -175,6 +175,7 @@ class MemoryParser:
             self._update_memory_event(record, child_found)
 
     def update_node_loop(self):
+        tree_height = 0
         for tid, records in self.records_by_tid.items():
             if not records:
                 return
@@ -183,7 +184,6 @@ class MemoryParser:
             traverse_dict = {}
             child_index = 0
 
-            tree_height = 0
             record_index = 0
             current_node = self.tid2tree.get(tid)
             while record_index < len(records):

@@ -388,12 +388,12 @@ class RunGenerator(object):
                 rows.append([
                     op_name,
                     stat[6],
-                    stat[MemoryMetrics.IncreaseSize] / 1024,
-                    stat[MemoryMetrics.SelfIncreaseSize] / 1024,
+                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
                     stat[MemoryMetrics.AllocationCount],
                     stat[MemoryMetrics.SelfAllocationCount],
-                    stat[MemoryMetrics.AllocationSize] / 1024,
-                    stat[MemoryMetrics.SelfAllocationSize] / 1024
+                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
                     ])
             table["rows"] = rows
 

@@ -18,7 +18,6 @@ from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser
 from .module_parser import ModuleParser
 from .overall_parser import OverallParser
-from .trace import DeviceType
 
 logger = utils.get_logger()
 

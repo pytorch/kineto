@@ -28,7 +28,6 @@ class KernelParser:
             except ZeroDivisionError:
                 return 0
 
-        # remove 0 duration kernels in case of divided by zero.
         self.kernel_stat = events.groupby("name").agg(
             count=('duration', "count"),
             sum=('duration', "sum"),

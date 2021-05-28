@@ -45,13 +45,10 @@ class RunLoader(object):
 
         distributed_data = OrderedDict()
         run = Run(self.run.name, self.run.run_dir)
-        while True:
-            try:
-                r, d = self.queue.get(block=True, timeout=0)
-                run.add_profile(r)
-                distributed_data[d.worker] = d
-            except Empty:
-                break
+        while self.queue.qsize() > 0:
+            r, d = self.queue.get()
+            run.add_profile(r)
+            distributed_data[d.worker] = d
 
         distributed_profile = self._process_communication(distributed_data)
         if distributed_profile is not None:

@@ -361,22 +361,25 @@ class RunGenerator(object):
         }
 
         columns_names = [
-            ("Operator Name", "string"),
-            ("Calls", "number"),
-            ("Size Increase (KB)", "number"),
-            ("Self Size Increase (KB)", "number"),
-            ("Allocation Count", "number"),
-            ("Self Allocation Count", "number"),
-            ("Allocation Size (KB)", "number"),
-            ("Self Allocation Size (KB)", "number")
+            ("Operator Name", "string", ""),
+            ("Calls", "number", "# of calls of the operator."),
+            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
+            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
+            ("Allocation Count", "number", "The allocation count including all chidren operators."),
+            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
+            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
+            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
         ]
         for name, memory in sorted(memory_stats.items()):
             table = {}
 
             # Process columns
             columns = []
-            for col_name, col_type in columns_names:
-                columns.append({"type": col_type, "name": col_name})
+            for col_name, col_type, tool_tip in columns_names:
+                if tool_tip:
+                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
+                else:
+                    columns.append({"type": col_type, "name": col_name})
             table["columns"] = columns
 
             # Process rows

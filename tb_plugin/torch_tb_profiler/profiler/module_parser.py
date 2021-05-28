@@ -179,21 +179,19 @@ class ModuleParser:
             name_op_to_agg = {}
             for kernel in kernel_list:
                 dur = kernel.end_time - kernel.start_time
-                # remove 0 duration kernels in case of divided by zero.
-                if dur > 0:
-                    op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
-                    key = kernel.name + "###" + op_name
-                    if key not in name_op_to_agg:
-                        name_op_to_agg[key] = KernelAggByNameOp()
-                    agg = name_op_to_agg[key]
-                    agg.name = kernel.name
-                    agg.op_name = op_name
-                    agg.calls += 1
-                    agg.total_duration += dur
-                    agg.min_duration = min(agg.min_duration, dur)
-                    agg.max_duration = max(agg.max_duration, dur)
-                    agg.blocks_per_sm += kernel.blocks_per_sm * dur
-                    agg.occupancy += kernel.occupancy * dur
+                op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
+                key = kernel.name + "###" + op_name
+                if key not in name_op_to_agg:
+                    name_op_to_agg[key] = KernelAggByNameOp()
+                agg = name_op_to_agg[key]
+                agg.name = kernel.name
+                agg.op_name = op_name
+                agg.calls += 1
+                agg.total_duration += dur
+                agg.min_duration = min(agg.min_duration, dur)
+                agg.max_duration = max(agg.max_duration, dur)
+                agg.blocks_per_sm += kernel.blocks_per_sm * dur
+                agg.occupancy += kernel.occupancy * dur
 
             kernel_list_groupby_name_op = list(name_op_to_agg.values())
             return kernel_list_groupby_name_op

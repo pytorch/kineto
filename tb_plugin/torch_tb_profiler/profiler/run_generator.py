@@ -270,16 +270,27 @@ class RunGenerator(object):
             result[k] = self._generate_op_table(v, group_by_input_shape, True)
         return result
 
+    @staticmethod
+    def _get_gpu_metrics_columns(blocks_per_sm_count, occupancy_count):
+        columns = []
+        if blocks_per_sm_count > 0:
+            columns.append({"type": "number", "name": "Mean Blocks Per SM",
+                            "tooltip": consts.TOOLTIP_BLOCKS_PER_SM})
+        if occupancy_count > 0:
+            columns.append({"type": "number", "name": "Mean Est. Achieved Occupancy (%)",
+                            "tooltip": consts.TOOLTIP_OCCUPANCY})
+        return columns
+
     def _generate_kernel_op_table(self):
         table = {}
         table["columns"] = [{"type": "string", "name": "Name"}, {"type": "string", "name": "Operator"}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
-        if self.profile_data.blocks_per_sm_count > 0:
-            col_names.append("Mean Blocks Per SM")
-        if self.profile_data.occupancy_count > 0:
-            col_names.append("Mean Est. Achieved Occupancy (%)")
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
+        gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
+            self.profile_data.blocks_per_sm_count, self.profile_data.occupancy_count)
+        table["columns"].extend(gpu_metrics_columns)
+
         table["rows"] = []
         kernel_list = sorted(self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration,
                              reverse=True)
@@ -314,12 +325,12 @@ class RunGenerator(object):
             columns.append("occupancy")
             round_digits.append(2)
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
-        if self.profile_data.blocks_per_sm_count > 0:
-            col_names.append("Mean Blocks Per SM")
-        if self.profile_data.occupancy_count > 0:
-            col_names.append("Mean Est. Achieved Occupancy (%)")
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
+        gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
+            self.profile_data.blocks_per_sm_count, self.profile_data.occupancy_count)
+        table["columns"].extend(gpu_metrics_columns)
+
         table["rows"] = []
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
             kernel_row = [name]

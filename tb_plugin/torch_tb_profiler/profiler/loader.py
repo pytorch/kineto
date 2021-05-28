@@ -78,6 +78,10 @@ class RunLoader(object):
         logger.debug("finishing process data")
 
     def _process_communication(self, profiles):
+        if not profiles:
+            self.has_communication = False
+            return None
+
         comm_node_lists = []
         for data in profiles.values():
             # Set has_communication to False and disable distributed view if any one worker has no communication

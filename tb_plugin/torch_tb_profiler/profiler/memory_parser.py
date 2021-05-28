@@ -194,12 +194,19 @@ class MemoryParser:
 
                 if current_node is None:
                     if not BENCHMARK_MEMORY:
-                        logger.warning("could not find the node for tid %d " % record.tid)
+                        logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (record.tid, record.ts, record_index, len(records)))
                         self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
 
-                if record.ts < current_node.start_time or record.ts >= current_node.end_time:
+                if record.ts < current_node.start_time:
+                    if not BENCHMARK_MEMORY:
+                        logger.debug("record timestamp %d is less that the start time of %s" % (record.ts, current_node.name))
+                        # This record has no chance to be appended to following tree node.
+                        self.staled_records.append(record)
+                    record_index += 1
+                    continue
+                elif record.ts >= current_node.end_time:
                     current_node = current_node.parent
                     # next child
                     if current_node is not None:
@@ -245,6 +252,6 @@ class MemoryParser:
 
         if not BENCHMARK_MEMORY:
             if len(self.staled_records) > 0 and self.record_length > 0:
-                logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
+                logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
         else:
             logger.info("max tree size is {}".format(tree_height))

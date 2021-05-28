@@ -10,28 +10,6 @@ from .overall_parser import ProfileRole
 logger = utils.get_logger()
 
 
-@staticmethod
-def _get_gpu_info(device_props, gpu_id):
-    if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
-        return None
-
-    device_prop = device_props[gpu_id]
-    gpu_info = {}
-    name = device_prop.get("name")
-    if name is not None:
-        gpu_info["Name"] = name
-
-    mem = device_prop.get("totalGlobalMem")
-    if mem is not None:
-        gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
-
-    major = device_prop.get("computeMajor")
-    minor = device_prop.get("computeMinor")
-    if major is not None and minor is not None:
-        gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
-
-    return gpu_info
-
 class RunGenerator(object):
     def __init__(self, worker, profile_data):
         self.worker = worker

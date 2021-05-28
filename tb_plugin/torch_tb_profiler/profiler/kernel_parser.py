@@ -20,9 +20,15 @@ class KernelParser:
         events = pd.DataFrame(events)
         events = events.astype({"type": "category", "category": "category", "name": "string"}, copy=False)
         kernels = events[events["category"] == "Kernel"]
-        weighted_avg = lambda x: np.average(x, weights=kernels.loc[x.index, "duration"])
+
+        def weighted_avg(x):
+            try:
+                return np.average(x, weights=kernels.loc[x.index, "duration"])
+            except ZeroDivisionError:
+                return 0
+
         # remove 0 duration kernels in case of divided by zero.
-        self.kernel_stat = kernels.loc[kernels["duration"] > 0].groupby("name").agg(
+        self.kernel_stat = kernels.groupby("name").agg(
             count=('duration', "count"),
             sum=('duration', "sum"),
             mean=('duration', "mean"),

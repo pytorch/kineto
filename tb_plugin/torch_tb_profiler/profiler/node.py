@@ -5,10 +5,9 @@ from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
 
-MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount', 'Total'], start=0)
-
 from .trace import EventTypes
 
+MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount', 'Total'], start=0)
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, tid, external_id):

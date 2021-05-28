@@ -1,3 +1,6 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# --------------------------------------------------------------------------
 import os
 from collections import defaultdict
 
@@ -107,8 +110,9 @@ class MemoryParser:
                 #     logger.debug("node {},{}:{} doesn't reached".format(node.tid, node.name, node.start_time))
 
             for node, times in self.processed_node.items():
-                if times > 1:
-                    logger.info("node {} is processed {} times".format(node.start_time, times))
+                assert times == 1
+                # if times > 1:
+                #     logger.info("node {} is processed {} times".format(node.start_time, times))
 
             return result
 
@@ -222,32 +226,42 @@ class MemoryParser:
 
             # the traverse stack which key is the instance of node, value is the child index last visted.
             traverse_dict = {}
-            child_index = 0
 
+            child_index = 0
             record_index = 0
             current_node = self.tid2tree.get(tid)
+
             if BENCHMARK_MEMORY:
                 self.processed_node[current_node] += 1
 
             while record_index < len(records):
+                '''In the loop, one pass will process one record. The basic logic is:
+                It will search from the node that last visited since both the records and tree is ordered already
+                1. it current node contains the records, then find the exactly child which just embrace it.
+                2. otherwise, find the parent node and set the child_index, so that the parent node could continue from previous visited node.
+                3. if there is not any node contains the records, then all remaining records will be ignored.
+                '''
                 record = records[record_index]
 
                 if BENCHMARK_MEMORY and len(traverse_dict) > tree_height:
                     tree_height = len(traverse_dict)
 
                 if current_node is None:
+                    # 3. Ignore all remaining records.
                     logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (record.tid, record.ts, record_index, len(records)))
                     self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
 
                 if record.ts < current_node.start_time:
+                    # this should only happens for root node.
                     logger.debug("record timestamp %d is less that the start time of %s" % (record.ts, current_node.name))
                     # This record has no chance to be appended to following tree node.
                     self.staled_records.append(record)
                     record_index += 1
                     continue
                 elif record.ts >= current_node.end_time:
+                    # 2. pop parent node and update the child_index accordingly.
                     current_node = current_node.parent
                     # next child
                     if current_node is not None:
@@ -256,38 +270,45 @@ class MemoryParser:
                         child_index = traverse_dict.pop(current_node) + 1
                     continue
 
-                child_find = None
-                child_find_index = None
-                for i in range(child_index, len(current_node.children)):
-                    if record.ts < current_node.children[i].start_time:
-                        # if current record timestamp is less than the current child's startime,
-                        # we will break the search and keep the child_index not change. So that next time 
-                        # we can continue from here.
-                        break
+                # 1. find the real node embrace the record.
+                # Find the node which contains the records from top to downmost.
+                # simulate the do while loop as described
+                # https://stackoverflow.com/questions/743164/how-to-emulate-a-do-while-loop
+                while True:
+                    child_find = None
+                    for i in range(child_index, len(current_node.children)):
+                        if record.ts < current_node.children[i].start_time:
+                            # if current record timestamp is less than the current child's startime,
+                            # we will break the search and keep the child_index not change. So that next time 
+                            # we can continue from here.
+                            # there is no any child contains the record.timestamp
+                            break
+                        elif record.ts < current_node.children[i].end_time:
+                            if BENCHMARK_MEMORY:
+                                self.processed_node[current_node.children[i]] += 1
 
-                    if record.ts >= current_node.children[i].start_time and record.ts < current_node.children[i].end_time:
-                        if BENCHMARK_MEMORY:
-                            self.processed_node[current_node.children[i]] += 1
-                        child_find = current_node.children[i]
-                        child_find_index = i
-                        break
+                            traverse_dict[current_node] = i
+                            current_node = current_node.children[i]
+                            child_index = 0
 
-                if child_find:
-                    traverse_dict[current_node] = child_find_index
-                    current_node = child_find
-                    child_index = 0
-                    continue
+                            # remember the child found for do-while loop
+                            child_find = current_node
+                            break
+
+                    if child_find is None:
+                        # the record belongs to current_node since there is no child contains it.
+                        break
 
                 # could not find the child
                 if is_operator_node(current_node):
                     if not BENCHMARK_MEMORY or record not in current_node.memory_records:
                         current_node.add_memory_record(record)
                     self.processed_records.append(record)
-                    record_index += 1
-                    continue
                 else:
                     self.staled_records.append(record)
-                    record_index += 1
+
+                # the record is processed done, increment the index to process next one.
+                record_index += 1
 
         if len(self.staled_records) > 0 and self.record_length > 0:
             logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))

@@ -3,7 +3,6 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
-from . import io
 from . import consts
 
 

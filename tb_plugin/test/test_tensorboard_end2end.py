@@ -2,11 +2,11 @@ import json
 import os
 import socket
 import time
+import unittest
 import urllib
 import urllib.request
-import unittest
 from subprocess import Popen
-from threading import Event
+from urllib.error import HTTPError
 
 
 class TestEnd2End(unittest.TestCase):
@@ -48,15 +48,13 @@ class TestEnd2End(unittest.TestCase):
                 tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
             else:
                 tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
-            event = Event()
-            self._test_tensorboard(host, port, expected_runs, path_prefix, event)
-            event.wait()
+            self._test_tensorboard(host, port, expected_runs, path_prefix)
         finally:
             pid = tb.pid
+            print("tensorboard process {} is terminating.".format(pid))
             tb.terminate()
-            print("tensorboard process {} is terminated.".format(pid))
 
-    def _test_tensorboard(self, host, port, expected_runs, path_prefix, event):
+    def _test_tensorboard(self, host, port, expected_runs, path_prefix):
         if not path_prefix:
             link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
         else:
@@ -105,7 +103,6 @@ class TestEnd2End(unittest.TestCase):
                 else:
                     raise
 
-        print("starting testing...")
         links=[]
         for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
@@ -114,11 +111,14 @@ class TestEnd2End(unittest.TestCase):
         with open('result_check_file.txt', 'r') as f:
             lines=f.readlines()
             i = 0
+            print("starting testing...")
             for link in links:
-                response = urllib.request.urlopen(link)
-                self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
-                i = i + 1
+                try:
+                    response = urllib.request.urlopen(link)
+                    self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
+                    i = i + 1
+                except HTTPError as e:
+                    self.fail(e)
         self.assertEqual(i, 10)
         print("ending testing...")
-        event.set()
 

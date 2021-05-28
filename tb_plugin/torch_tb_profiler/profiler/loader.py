@@ -4,6 +4,7 @@
 import sys
 from collections import OrderedDict
 from multiprocessing import Barrier, Process, Queue
+from queue import Empty
 
 from .. import consts, io, utils
 from ..run import Run
@@ -44,10 +45,12 @@ class RunLoader(object):
 
         distributed_data = OrderedDict()
         run = Run(self.run.name, self.run.run_dir)
-        while self.queue.qsize() > 0:
+        for _ in range(len(workers)):
             r, d = self.queue.get()
-            run.add_profile(r)
-            distributed_data[d.worker] = d
+            if r is not None:
+                run.add_profile(r)
+            if d is not None:
+                distributed_data[d.worker] = d
 
         distributed_profile = self._process_communication(distributed_data)
         if distributed_profile is not None:
@@ -72,12 +75,17 @@ class RunLoader(object):
 
             self.queue.put((profile, dist_data))
         except Exception as ex:
-                logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
+            logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)
+            self.queue.put((None, None))
         barrier.wait()
         logger.debug("finishing process data")
 
     def _process_communication(self, profiles):
+        if not profiles:
+            self.has_communication = False
+            return None
+
         comm_node_lists = []
         for data in profiles.values():
             # Set has_communication to False and disable distributed view if any one worker has no communication

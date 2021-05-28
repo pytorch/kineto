@@ -36,6 +36,7 @@
     "webpack-dev-server": "^3.11.2"
   },
   "resolutions": {
-    "portable-fetch/**/node-fetch": "^2.6.1"
+    "portable-fetch/**/node-fetch": "^2.6.1",
+    "webpack/**/browserslist": "^4.16.5"
   }
 }

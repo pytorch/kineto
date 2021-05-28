@@ -39,9 +39,25 @@ class MemoryParser:
 
         self.records_by_tid = defaultdict(list)
 
+        # key is tid, value is the count of node belongs to the thread.
+        self.total_node_count = defaultdict(int)
+
         # statistics purpose
         self.staled_records = []
         self.processed_records = []
+
+        # the visited node time from parent to child
+        # troubleshooting issue purpose.
+        self.processed_node = defaultdict(int)
+        self.unreached_node = defaultdict(list)
+
+        # normal search
+        self.staled_records_normal = []
+        self.processed_records_normal = []
+
+        # for troubleshooting issues.
+        self.processed_node_normal = set()
+        self.unreached_node_normal = defaultdict(list)
 
     def parse_events(self, events):
         for event in events:
@@ -75,6 +91,25 @@ class MemoryParser:
             result = self.get_memory_statistics_internal()
             end = time.time_ns()
             logger.info("{} get_memory_statistics takes {}".format(os.getpid(), (end - start) / 1000000000))
+
+            for tid, nodes in self.unreached_node.items():
+                if nodes:
+                    logger.info("LOOP: tid-{}: total {} node doesn't get reached in node number {}".format(tid, len(nodes), self.total_node_count[tid]))
+                else:
+                    logger.info("LOOP: tid-{}: all nodes are covered".format(tid, self.total_node_count[tid]))
+            for tid, nodes in self.unreached_node_normal.items():
+                if nodes:
+                    logger.info("RECURSIVE: tid-{}: total {} node doesn't get reached in node number {}".format(tid, len(nodes), self.total_node_count[tid]))
+                else:
+                    logger.info("RECURSIVE: tid-{}: all nodes are covered".format(tid, self.total_node_count[tid]))
+
+                # for node in nodes:
+                #     logger.debug("node {},{}:{} doesn't reached".format(node.tid, node.name, node.start_time))
+
+            for node, times in self.processed_node.items():
+                if times > 1:
+                    logger.info("node {} is processed {} times".format(node.start_time, times))
+
             return result
 
     def get_memory_statistics_internal(self):
@@ -90,8 +125,15 @@ class MemoryParser:
         op_calls = defaultdict(int)
 
         def traverse_node_memory(node):
-            node_memory_metrics = node.get_memory_metrics()
+            if BENCHMARK_MEMORY:
+                self.total_node_count[tid] += 1
+                if node not in self.processed_node:
+                    self.unreached_node[tid].append(node)
+                if node not in self.processed_node_normal:
+                    self.unreached_node_normal[tid].append(node)
+
             if is_operator_node(node):
+                node_memory_metrics = node.get_memory_metrics()
                 op_calls[node.name] += 1
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
@@ -108,7 +150,8 @@ class MemoryParser:
                         for i in range(SELF_METRICS_COUNT, MemoryMetrics.Total):
                             memory_metrics_keyed_by_node[node][device][i] += metrics[i]
 
-        for root in self.tid2tree.values():
+        for tid, root in self.tid2tree.items():
+            self.total_node_count[tid] += 1 # root node
             for child in root.children:
                 traverse_node_memory(child)
 
@@ -137,19 +180,20 @@ class MemoryParser:
     def update_node(self):
         for tid, records in self.records_by_tid.items():
             root_node = self.tid2tree.get(tid)
-            if not BENCHMARK_MEMORY:
-                if root_node is None:
-                    logger.warning("could not find the root node for tid %d " % tid)
-                    self.staled_records.extend(records)
+            if root_node is None:
+                logger.warning("could not find the root node for tid %d " % tid)
+                self.staled_records_normal.extend(records)
 
             for mem_record in records:
                 self._update_memory_event(mem_record, root_node)
 
-        if not BENCHMARK_MEMORY:
-            if len(self.staled_records) > 0 and self.record_length > 0:
-                logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
+        if len(self.staled_records_normal) > 0 and self.record_length > 0:
+            logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))
 
     def _update_memory_event(self, record, node):
+        if BENCHMARK_MEMORY:
+            self.processed_node_normal.add(node)
+
         child_found = None
         for child in node.children:
             if record.ts >= child.start_time and record.ts < child.end_time:
@@ -162,15 +206,11 @@ class MemoryParser:
             # the result might be different with PyTorch one.
             # https://github.com/pytorch/pytorch/blob/26c1f0f72e71c096648a16993484234399da307c/torch/autograd/profiler.py#L1147-L1152
             if is_operator_node(node) and record.ts >= node.start_time and record.ts < node.end_time:
-                if not BENCHMARK_MEMORY:
+                if not BENCHMARK_MEMORY or record not in node.memory_records:
                     node.add_memory_record(record)
-                    self.processed_records.append(record)
-                else:
-                    if record not in node.memory_records:
-                        node.add_memory_record(record)
+                self.processed_records_normal.append(record)
             else:
-                if not BENCHMARK_MEMORY:
-                    self.staled_records.append(record)
+                self.staled_records_normal.append(record)
         else:
             self._update_memory_event(record, child_found)
 
@@ -186,6 +226,9 @@ class MemoryParser:
 
             record_index = 0
             current_node = self.tid2tree.get(tid)
+            if BENCHMARK_MEMORY:
+                self.processed_node[current_node] += 1
+
             while record_index < len(records):
                 record = records[record_index]
 
@@ -193,17 +236,15 @@ class MemoryParser:
                     tree_height = len(traverse_dict)
 
                 if current_node is None:
-                    if not BENCHMARK_MEMORY:
-                        logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (record.tid, record.ts, record_index, len(records)))
-                        self.staled_records.append(records[record_index])
+                    logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (record.tid, record.ts, record_index, len(records)))
+                    self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
 
                 if record.ts < current_node.start_time:
-                    if not BENCHMARK_MEMORY:
-                        logger.debug("record timestamp %d is less that the start time of %s" % (record.ts, current_node.name))
-                        # This record has no chance to be appended to following tree node.
-                        self.staled_records.append(record)
+                    logger.debug("record timestamp %d is less that the start time of %s" % (record.ts, current_node.name))
+                    # This record has no chance to be appended to following tree node.
+                    self.staled_records.append(record)
                     record_index += 1
                     continue
                 elif record.ts >= current_node.end_time:
@@ -225,6 +266,8 @@ class MemoryParser:
                         break
 
                     if record.ts >= current_node.children[i].start_time and record.ts < current_node.children[i].end_time:
+                        if BENCHMARK_MEMORY:
+                            self.processed_node[current_node.children[i]] += 1
                         child_find = current_node.children[i]
                         child_find_index = i
                         break
@@ -237,21 +280,17 @@ class MemoryParser:
 
                 # could not find the child
                 if is_operator_node(current_node):
-                    if not BENCHMARK_MEMORY:
+                    if not BENCHMARK_MEMORY or record not in current_node.memory_records:
                         current_node.add_memory_record(record)
-                        self.processed_records.append(record)
-                    else:
-                        if record not in current_node.memory_records:
-                            current_node.add_memory_record(record)
+                    self.processed_records.append(record)
                     record_index += 1
                     continue
                 else:
-                    if not BENCHMARK_MEMORY:
-                        self.staled_records.append(record)
+                    self.staled_records.append(record)
                     record_index += 1
 
-        if not BENCHMARK_MEMORY:
-            if len(self.staled_records) > 0 and self.record_length > 0:
-                logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
-        else:
-            logger.info("max tree size is {}".format(tree_height))
+        if len(self.staled_records) > 0 and self.record_length > 0:
+            logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
+
+        if BENCHMARK_MEMORY:
+            logger.info("max tree height is {}".format(tree_height))

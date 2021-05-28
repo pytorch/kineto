@@ -11,11 +11,12 @@ from .trace import EventTypes
 
 
 class BaseNode(ABC):
-    def __init__(self, name, start_time, end_time, type, external_id):
+    def __init__(self, name, start_time, end_time, type, tid, external_id):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
         self.type = type
+        self.tid = tid
         self.external_id = external_id  # For consistency check.
 
     @staticmethod
@@ -25,6 +26,7 @@ class BaseNode(ABC):
         kwargs['start_time'] = event.ts
         kwargs['end_time'] = event.ts + event.duration
         kwargs['type'] = event.type
+        kwargs['tid'] = event.tid
 
         if event.external_id is not None:
             kwargs['external_id'] = event.external_id
@@ -33,8 +35,8 @@ class BaseNode(ABC):
 
 
 class CommunicationNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, external_id, input_shape, input_type):
-        super().__init__(name, start_time, end_time, type, external_id)
+    def __init__(self, name, start_time, end_time, type, tid, external_id, input_shape, input_type):
+        super().__init__(name, start_time, end_time, type, tid, external_id)
         self.input_shape = input_shape
         self.input_type = input_type
         self.kernel_ranges = []
@@ -49,8 +51,8 @@ class CommunicationNode(BaseNode):
 
 
 class HostNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, external_id, device_duration=0):
-        super().__init__(name, start_time, end_time, type, external_id)
+    def __init__(self, name, start_time, end_time, type, tid, external_id, device_duration=0):
+        super().__init__(name, start_time, end_time, type, tid, external_id)
         self.device_duration = device_duration  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream?
 
 
@@ -58,9 +60,9 @@ class OperatorNode(HostNode):
     # Don't use [] as default parameters
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
-    def __init__(self, name, start_time, end_time, type, external_id=None, device_duration=0,
+    def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
             children=None, runtimes=None, input_shape=None, input_type=None, call_stack=None, self_host_duration=0, self_device_duration=0):
-        super().__init__(name, start_time, end_time, type, external_id, device_duration)
+        super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
         self.children = [] if children is None else children # OperatorNode and ProfilerStepNode.
         self.runtimes = [] if runtimes is None else runtimes # RuntimeNode
         self.input_shape = input_shape
@@ -131,9 +133,9 @@ class ProfilerStepNode(OperatorNode):
 
 
 class RuntimeNode(HostNode):
-    def __init__(self, name, start_time, end_time, type, external_id=None, device_duration=0,
+    def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
             device_nodes=None):
-        super().__init__(name, start_time, end_time, type, external_id, device_duration)
+        super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = device_nodes
 
@@ -154,9 +156,9 @@ class RuntimeNode(HostNode):
 
 
 class DeviceNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, external_id=None,
+    def __init__(self, name, start_time, end_time, type, tid, external_id=None,
             op_node=None, blocks_per_sm=None, occupancy=None):
-        super().__init__(name, start_time, end_time, type, external_id)
+        super().__init__(name, start_time, end_time, type, tid, external_id)
         self.op_node = op_node  # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm
         self.occupancy = occupancy

@@ -67,7 +67,7 @@ class ModuleParser:
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.
-    def _build_tree(self, host_node_list, zero_rt_list):
+    def _build_tree(self, host_node_list, zero_rt_list, tid):
 
         def build_tree_relationship(host_node_list, zero_rt_list):
             node_stack = []
@@ -76,6 +76,7 @@ class ModuleParser:
                 start_time=-sys.maxsize - 1,
                 end_time=sys.maxsize,
                 type=EventTypes.PYTHON,
+                tid=tid,
                 runtimes=zero_rt_list) # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
@@ -211,7 +212,7 @@ class ModuleParser:
             zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
             # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
             op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            root_node = self._build_tree(op_list, zero_rt_list)
+            root_node = self._build_tree(op_list, zero_rt_list, tid)
             self.tid2tree[int(tid)] = root_node
         self.op_list_groupby_name, self.op_list_groupby_name_input, self.stack_lists_group_by_name, self.stack_lists_group_by_name_input = parse_ops(self.cpp_op_list)
         self.kernel_list_groupby_name_op = parse_kernels(self.kernel_list)

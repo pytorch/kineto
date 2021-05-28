@@ -4,6 +4,7 @@
 import sys
 from collections import OrderedDict
 from multiprocessing import Barrier, Process, Queue
+from queue import Empty
 
 from .. import consts, io, utils
 from ..run import Run
@@ -44,10 +45,13 @@ class RunLoader(object):
 
         distributed_data = OrderedDict()
         run = Run(self.run.name, self.run.run_dir)
-        while not self.queue.empty():
-            r, d = self.queue.get()
-            run.add_profile(r)
-            distributed_data[d.worker] = d
+        while True:
+            try:
+                r, d = self.queue.get(block=True, timeout=0)
+                run.add_profile(r)
+                distributed_data[d.worker] = d
+            except Empty:
+                break
 
         distributed_profile = self._process_communication(distributed_data)
         if distributed_profile is not None:

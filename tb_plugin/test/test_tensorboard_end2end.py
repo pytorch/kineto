@@ -18,11 +18,16 @@ class TestEnd2End(unittest.TestCase):
     def test_tensorboard_end2end(self):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
+        
+        print("starting spawn mode testing...")
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+
+    def test_tensorboard_fork(self):
+        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         print("starting fork mode testing")
         self._test_tensorboard_with_arguments(test_folder, expected_runs)
-        print("starting spawn mode testing...")
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
     def test_tensorboard_with_path_prefix(self):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
@@ -97,6 +102,7 @@ class TestEnd2End(unittest.TestCase):
                 else:
                     raise
 
+        print("starting testing...")
         links=[]
         for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
@@ -110,3 +116,4 @@ class TestEnd2End(unittest.TestCase):
                 self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
                 i = i + 1
         self.assertEqual(i, 10)
+        print("ending testing...")

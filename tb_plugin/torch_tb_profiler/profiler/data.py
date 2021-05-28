@@ -72,10 +72,11 @@ class RunProfileData(object):
 
     @property
     def has_memory_data(self):
-        for node_metrics in self.memory_stats.values():
-            for metrics_values in node_metrics.values():
-                if any(metrics_values):
-                    return True
+        if self.memory_stats:
+            for node_metrics in self.memory_stats.values():
+                for metrics_values in node_metrics.values():
+                    if any(metrics_values):
+                        return True
 
         return False
 

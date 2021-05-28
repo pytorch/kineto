@@ -57,16 +57,27 @@ class MemoryParser:
             start = time.time_ns()
             self.update_node()
             end = time.time_ns()
-            print("{}: update node takes: {}".format(os.getpid(), end - start))
+            logger.info("{}: update node takes: {}".format(os.getpid(), (end - start) / 1000000000))
 
             start = time.time_ns()
             self.update_node_loop()
             end = time.time_ns()
-            print("{}: update node using loops takes: {}".format(os.getpid(), end - start))
+            logger.info("{}: update node using loops takes: {}".format(os.getpid(), (end - start) / 1000000000))
         else:
-            self.update_node()
+            self.update_node_loop()
 
     def get_memory_statistics(self):
+        if not BENCHMARK_MEMORY:
+            return self.get_memory_statistics_internal()
+        else:
+            import time
+            start = time.time_ns()
+            result = self.get_memory_statistics_internal()
+            end = time.time_ns()
+            logger.info("{} get_memory_statistics takes {}".format(os.getpid(), (end - start) / 1000000000))
+            return result
+
+    def get_memory_statistics_internal(self):
         SELF_METRICS_COUNT = MemoryMetrics.IncreaseSize
 
         def dict_factory():
@@ -156,7 +167,7 @@ class MemoryParser:
                     self.processed_records.append(record)
                 else:
                     if record not in node.memory_records:
-                        self.processed_records.append(record)
+                        node.add_memory_record(record)
             else:
                 if not BENCHMARK_MEMORY:
                     self.staled_records.append(record)
@@ -168,29 +179,53 @@ class MemoryParser:
             if not records:
                 return
 
+            # the traverse stack which key is the instance of node, value is the child index last visted.
+            traverse_dict = {}
+            child_index = 0
+
+            tree_height = 0
             record_index = 0
             current_node = self.tid2tree.get(tid)
             while record_index < len(records):
                 record = records[record_index]
 
+                if BENCHMARK_MEMORY and len(traverse_dict) > tree_height:
+                    tree_height = len(traverse_dict)
+
                 if current_node is None:
-                    # logger.warning("could not find the node for tid %d " % record.tid)
-                    # self.staled_records.append(records[record_index])
+                    if not BENCHMARK_MEMORY:
+                        logger.warning("could not find the node for tid %d " % record.tid)
+                        self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
 
                 if record.ts < current_node.start_time or record.ts >= current_node.end_time:
                     current_node = current_node.parent
+                    # next child
+                    if current_node is not None:
+                        # pop out the index of parent children. It is current node's index and plus 1 
+                        # So we can continue next node.
+                        child_index = traverse_dict.pop(current_node) + 1
                     continue
 
                 child_find = None
-                for child in current_node.children:
-                    if record.ts >= child.start_time and record.ts < child.end_time:
-                        child_find = child
+                child_find_index = None
+                for i in range(child_index, len(current_node.children)):
+                    if record.ts < current_node.children[i].start_time:
+                        # if current record timestamp is less than the current child's startime,
+                        # we will break the search and keep the child_index not change. So that next time 
+                        # we can continue from here.
+                        break
+
+                    if record.ts >= current_node.children[i].start_time and record.ts < current_node.children[i].end_time:
+                        child_find = current_node.children[i]
+                        child_find_index = i
                         break
 
                 if child_find:
+                    traverse_dict[current_node] = child_find_index
                     current_node = child_find
+                    child_index = 0
                     continue
 
                 # could not find the child
@@ -204,9 +239,12 @@ class MemoryParser:
                     record_index += 1
                     continue
                 else:
-                    self.staled_records.append(record)
+                    if not BENCHMARK_MEMORY:
+                        self.staled_records.append(record)
                     record_index += 1
 
         if not BENCHMARK_MEMORY:
             if len(self.staled_records) > 0 and self.record_length > 0:
                 logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
+        else:
+            logger.info("max tree size is {}".format(tree_height))

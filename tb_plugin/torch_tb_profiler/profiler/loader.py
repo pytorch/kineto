@@ -44,7 +44,7 @@ class RunLoader(object):
 
         distributed_data = OrderedDict()
         run = Run(self.run.name, self.run.run_dir)
-        while self.queue.qsize() > 0:
+        while not self.queue.empty():
             r, d = self.queue.get()
             run.add_profile(r)
             distributed_data[d.worker] = d

@@ -45,14 +45,12 @@ class RunLoader(object):
 
         distributed_data = OrderedDict()
         run = Run(self.run.name, self.run.run_dir)
-        while not self.queue.empty():
-            try:
-                r, d = self.queue.get_nowait()
+        for _ in range(len(workers)):
+            r, d = self.queue.get_nowait()
+            if r is not None:
                 run.add_profile(r)
+            if d is not None:
                 distributed_data[d.worker] = d
-            except Empty:
-                logger.warning("already get %d data in queue" % len(distributed_data))
-                break
 
         distributed_profile = self._process_communication(distributed_data)
         if distributed_profile is not None:
@@ -77,8 +75,9 @@ class RunLoader(object):
 
             self.queue.put((profile, dist_data))
         except Exception as ex:
-                logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
+            logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)
+            self.queue.put((None, None))
         barrier.wait()
         logger.debug("finishing process data")
 

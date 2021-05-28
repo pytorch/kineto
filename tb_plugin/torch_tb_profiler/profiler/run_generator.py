@@ -46,6 +46,8 @@ class RunGenerator(object):
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
         profile_run.sm_efficency = self.profile_data.sm_efficency
         profile_run.occupancy = self.profile_data.occupancy
+        profile_run.blocks_per_sm_count = self.profile_data.blocks_per_sm_count
+        profile_run.occupancy_count = self.profile_data.occupancy_count
 
         return profile_run
 
@@ -288,7 +290,7 @@ class RunGenerator(object):
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
         gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
-            self.profile_data.blocks_per_sm_count, self.profile_data.occupancy_count)
+            sum(self.profile_data.blocks_per_sm_count), sum(self.profile_data.occupancy_count))
         table["columns"].extend(gpu_metrics_columns)
 
         table["rows"] = []
@@ -298,9 +300,9 @@ class RunGenerator(object):
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name, agg_by_name_op.calls,
                              agg_by_name_op.total_duration, agg_by_name_op.avg_duration,
                              agg_by_name_op.min_duration, agg_by_name_op.max_duration]
-            if self.profile_data.blocks_per_sm_count > 0:
+            if sum(self.profile_data.blocks_per_sm_count) > 0:
                 kernel_op_row.append(round(agg_by_name_op.avg_blocks_per_sm, 2))
-            if self.profile_data.occupancy_count > 0:
+            if sum(self.profile_data.occupancy_count) > 0:
                 kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
         data = {"data": table}
@@ -318,17 +320,17 @@ class RunGenerator(object):
         table["columns"] = [{"type": "string", "name": "Name"}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
-        if self.profile_data.blocks_per_sm_count > 0:
+        if sum(self.profile_data.blocks_per_sm_count) > 0:
             columns.append("blocks_per_sm")
             round_digits.append(2)
-        if self.profile_data.occupancy_count > 0:
+        if sum(self.profile_data.occupancy_count) > 0:
             columns.append("occupancy")
             round_digits.append(2)
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
         gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
-            self.profile_data.blocks_per_sm_count, self.profile_data.occupancy_count)
+            sum(self.profile_data.blocks_per_sm_count), sum(self.profile_data.occupancy_count))
         table["columns"].extend(gpu_metrics_columns)
 
         table["rows"] = []

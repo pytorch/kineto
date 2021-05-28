@@ -3,9 +3,9 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
-from .overall_parser import ProfileRole
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
+from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
 

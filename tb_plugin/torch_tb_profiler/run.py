@@ -110,7 +110,7 @@ class RunProfile(object):
                 # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
                 add_trace_counter_sm_efficiency(gpu_id, buckets[0][0], buckets[0][0], 1, counter_json_list)
             for r in ranges:
-                add_trace_counter_sm_efficiency(gpu_id, r[0][0], r[0][1], r[1], counter_json_list)
+                add_trace_counter_sm_efficiency(gpu_id, r[0], r[1], r[2], counter_json_list)
 
         counter_json_str = ", {}".format(", ".join(counter_json_list))
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
@@ -143,12 +143,12 @@ class RunProfile(object):
                 gpu_metrics_data.append({"title": "GPU Utilization",
                                          "value": "{} %".format(
                                              round(profile.gpu_utilization[gpu_id] * 100, 2))})
-                if profile.sm_efficency[gpu_id] > 0.0:
+                if profile.blocks_per_sm_count[gpu_id] > 0:
                     gpu_metrics_data.append({"title": "Est. SM Efficiency",
                                              "value": "{} %".format(
                                                  round(profile.sm_efficency[gpu_id] * 100, 2))})
                     has_sm_efficiency = True
-                if profile.occupancy[gpu_id] > 0.0:
+                if profile.occupancy_count[gpu_id] > 0:
                     gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True

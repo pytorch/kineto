@@ -356,7 +356,6 @@ class RunGenerator(object):
         data = {"data": table}
         return data
 
-<<<<<<< HEAD
     def _generate_memory_view(self, memory_stats):
 
         data = OrderedDict()

@@ -183,7 +183,7 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
-        memory_parser = MemoryParser(module_parser.tid2tree)
+        memory_parser = MemoryParser(module_parser.tid2tree, module_parser.op_list_groupby_name)
         memory_parser.parse_events(self.events)
         self.memory_stats = memory_parser.get_memory_statistics()
 

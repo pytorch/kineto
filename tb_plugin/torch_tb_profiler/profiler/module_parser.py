@@ -2,7 +2,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import sys
-import weakref
 
 from .. import utils
 from .node import OperatorNode, is_operator_node
@@ -85,7 +84,7 @@ class ModuleParser:
                     if node.start_time < tail_node.end_time:
                         if node.end_time <= tail_node.end_time:
                             tail_node.children.append(node)
-                            node.parent_node = weakref.ref(tail_node)
+                            # node.parent_node = weakref.ref(tail_node)
                             node_stack.append(node)
                         else:
                             logger.error("Error in input data: ranges on the same thread should not intersect!"

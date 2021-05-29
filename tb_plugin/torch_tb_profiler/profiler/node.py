@@ -70,7 +70,7 @@ class OperatorNode(HostNode):
         self.self_host_duration = self_host_duration
         self.self_device_duration = self_device_duration
         self.memory_records = []
-        self.parent_node = None
+        # self.parent_node = None
 
     @property
     def parent(self):

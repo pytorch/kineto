@@ -37,13 +37,11 @@ class MemoryRecord:
 
 
 class MemoryParser:
-    def __init__(self, tid2tree):
+    def __init__(self, tid2tree, op_list):
         self.tid2tree = tid2tree
+        self.op_list = op_list
 
         self.records_by_tid = defaultdict(list)
-
-        # key is tid, value is the count of node belongs to the thread.
-        self.total_node_count = defaultdict(int)
 
         # statistics purpose
         self.staled_records = []
@@ -97,14 +95,14 @@ class MemoryParser:
 
             for tid, nodes in self.unreached_node.items():
                 if nodes:
-                    logger.info("LOOP: tid-{}: total {} node doesn't get reached in node number {}".format(tid, len(nodes), self.total_node_count[tid]))
+                    logger.info("LOOP: tid-{}: total {} node doesn't get reached.".format(tid, len(nodes)))
                 else:
-                    logger.info("LOOP: tid-{}: all nodes are covered".format(tid, self.total_node_count[tid]))
+                    logger.info("LOOP: tid-{}: all nodes are covered".format(tid))
             for tid, nodes in self.unreached_node_normal.items():
                 if nodes:
-                    logger.info("RECURSIVE: tid-{}: total {} node doesn't get reached in node number {}".format(tid, len(nodes), self.total_node_count[tid]))
+                    logger.info("RECURSIVE: tid-{}: total {} node doesn't get reached.".format(tid, len(nodes)))
                 else:
-                    logger.info("RECURSIVE: tid-{}: all nodes are covered".format(tid, self.total_node_count[tid]))
+                    logger.info("RECURSIVE: tid-{}: all nodes are covered".format(tid))
 
                 # for node in nodes:
                 #     logger.debug("node {},{}:{} doesn't reached".format(node.tid, node.name, node.start_time))
@@ -126,19 +124,17 @@ class MemoryParser:
         # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
         memory_metrics_keyed_by_node = defaultdict(dict_factory)
 
-        op_calls = defaultdict(int)
-
         def traverse_node_memory(node):
             if BENCHMARK_MEMORY:
-                self.total_node_count[tid] += 1
-                if node not in self.processed_node:
-                    self.unreached_node[tid].append(node)
                 if node not in self.processed_node_normal:
                     self.unreached_node_normal[tid].append(node)
 
-            if is_operator_node(node):
+            if node not in self.processed_node:
+                self.unreached_node[tid].append(node)
+                # since the node has not been visited for insert memory records, just ignore all childrens
+                return
+            elif is_operator_node(node):
                 node_memory_metrics = node.get_memory_metrics()
-                op_calls[node.name] += 1
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
                     # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]
@@ -146,6 +142,7 @@ class MemoryParser:
                         memory_metrics_keyed_by_node[node][device][i] = value
                         memory_metrics_keyed_by_node[node][device][i + SELF_METRICS_COUNT] += value
 
+            # recursive the children nodes
             for child in node.children:
                 traverse_node_memory(child)
                 # sum up the child metrics
@@ -155,7 +152,6 @@ class MemoryParser:
                             memory_metrics_keyed_by_node[node][device][i] += metrics[i]
 
         for tid, root in self.tid2tree.items():
-            self.total_node_count[tid] += 1 # root node
             for child in root.children:
                 traverse_node_memory(child)
 
@@ -168,6 +164,11 @@ class MemoryParser:
             for device, metrics in device_keyed_metrics.items():
                 for i, metric in enumerate(metrics):
                     memory_metrics_keyed_by_nodename[device][node.name][i] += metric
+
+        # get the op_calls dictionary from module parser result.
+        op_calls = defaultdict(int)
+        for op in self.op_list:
+            op_calls[op.name] += op.calls
 
         result = defaultdict(defaultdict)
         for device, node_metrics in memory_metrics_keyed_by_nodename.items():
@@ -222,17 +223,16 @@ class MemoryParser:
         tree_height = 0
         for tid, records in self.records_by_tid.items():
             if not records:
-                return
+                continue
 
-            # the traverse stack which key is the instance of node, value is the child index last visted.
-            traverse_dict = {}
+            # each item is (parent_node, child_index) that it is visiting.
+            node_stack = []  
 
             child_index = 0
             record_index = 0
             current_node = self.tid2tree.get(tid)
 
-            if BENCHMARK_MEMORY:
-                self.processed_node[current_node] += 1
+            self.processed_node[current_node] += 1
 
             while record_index < len(records):
                 '''In the loop, one pass will process one record. The basic logic is:
@@ -243,8 +243,8 @@ class MemoryParser:
                 '''
                 record = records[record_index]
 
-                if BENCHMARK_MEMORY and len(traverse_dict) > tree_height:
-                    tree_height = len(traverse_dict)
+                if BENCHMARK_MEMORY and len(node_stack) > tree_height:
+                    tree_height = len(node_stack)
 
                 if current_node is None:
                     # 3. Ignore all remaining records.
@@ -262,44 +262,38 @@ class MemoryParser:
                     continue
                 elif record.ts >= current_node.end_time:
                     # 2. pop parent node and update the child_index accordingly.
-                    current_node = current_node.parent
-                    # next child
-                    if current_node is not None:
-                        # pop out the index of parent children. It is current node's index and plus 1 
-                        # So we can continue next node.
-                        child_index = traverse_dict.pop(current_node) + 1
+                    if len(node_stack) > 0:
+                        current_node, child_index = node_stack.pop()
+                        child_index += 1
+                    else:
+                        # if there is not item in stack, set it to None
+                        current_node = None
                     continue
 
                 # 1. find the real node embrace the record.
                 # Find the node which contains the records from top to downmost.
-                # simulate the do while loop as described
-                # https://stackoverflow.com/questions/743164/how-to-emulate-a-do-while-loop
-                while True:
-                    child_find = None
-                    for i in range(child_index, len(current_node.children)):
-                        if record.ts < current_node.children[i].start_time:
-                            # if current record timestamp is less than the current child's startime,
-                            # we will break the search and keep the child_index not change. So that next time 
-                            # we can continue from here.
-                            # there is no any child contains the record.timestamp
-                            break
-                        elif record.ts < current_node.children[i].end_time:
-                            if BENCHMARK_MEMORY:
-                                self.processed_node[current_node.children[i]] += 1
-
-                            traverse_dict[current_node] = i
-                            current_node = current_node.children[i]
-                            child_index = 0
-
-                            # remember the child found for do-while loop
-                            child_find = current_node
-                            break
-
-                    if child_find is None:
-                        # the record belongs to current_node since there is no child contains it.
+                while child_index < len(current_node.children):
+                    if record.ts < current_node.children[child_index].start_time:
+                        # if current record timestamp is less than the current child's startime,
+                        # we will break the search and keep the child_index not change. So that next time 
+                        # we can continue from here.
+                        # there is no any child contains the record.timestamp
+                        # child_find is False at this case.
                         break
+                    elif record.ts >= current_node.children[child_index].end_time:
+                        # if the record timestamp is greater than the children end time, increment to next child
+                        # untile find one contains the records
+                        child_index += 1
+                    else:
+                        # current children contains the record
+                        self.processed_node[current_node.children[child_index]] += 1
 
-                # could not find the child
+                        # push child index which will be visited, then continue the loop
+                        node_stack.append((current_node, child_index))
+                        current_node = current_node.children[child_index]
+                        child_index = 0
+
+                # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
                     if not BENCHMARK_MEMORY or record not in current_node.memory_records:
                         current_node.add_memory_record(record)

@@ -60,12 +60,12 @@ class RunProfile(object):
         self.kernel_table = None
         self.trace_file_path = None
         self.gpu_ids = None
-        self.device_props = None
         self.gpu_utilization = None
         self.sm_efficency = None
         self.occupancy = None
         self.gpu_util_buckets = None
         self.approximated_sm_efficency_ranges = None
+        self.gpu_infos = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -125,28 +125,6 @@ class RunProfile(object):
         return raw_data
 
 
-    def get_gpu_info(self, gpu_id):
-        if (self.device_props is None) or (gpu_id >= len(self.device_props)) or (gpu_id < 0):
-            return None
-
-        device_prop = self.device_props[gpu_id]
-        gpu_info = {}
-        name = device_prop.get("name")
-        if name is not None:
-            gpu_info["Name"] = name
-
-        mem = device_prop.get("totalGlobalMem")
-        if mem is not None:
-            gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
-
-        major = device_prop.get("computeMajor")
-        minor = device_prop.get("computeMinor")
-        if major is not None and minor is not None:
-            gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
-
-        return gpu_info
-
-
     def get_gpu_metrics_data_tooltip(self):
         def get_gpu_metrics_data(profile):
             gpu_metrics_data = []
@@ -155,7 +133,6 @@ class RunProfile(object):
             is_first = True
             gpu_info_columns = ["Name", "Memory", "Compute Capability"]
             for gpu_id in profile.gpu_ids:
-                gpu_info = self.get_gpu_info(gpu_id)
                 if not is_first:
                     # Append separator line for beautiful to see.
                     gpu_metrics_data.append({"title": "<hr/>",
@@ -163,6 +140,7 @@ class RunProfile(object):
 
                 gpu_metrics_data.append({"title": "GPU {}:".format(gpu_id),
                                          "value": ""})
+                gpu_info = profile.gpu_infos.get(gpu_id, None)
                 if gpu_info is not None:
                     for key in gpu_info_columns:
                         if key in gpu_info:

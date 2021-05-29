@@ -64,6 +64,7 @@ class RunProfile(object):
         self.occupancy = None
         self.gpu_util_buckets = None
         self.approximated_sm_efficency_ranges = None
+        self.gpu_infos = None
 
         # memory stats
         self.memory_view = None
@@ -132,13 +133,22 @@ class RunProfile(object):
             has_sm_efficiency = False
             has_occupancy = False
             is_first = True
+            gpu_info_columns = ["Name", "Memory", "Compute Capability"]
             for gpu_id in profile.gpu_ids:
                 if not is_first:
                     # Append separator line for beautiful to see.
-                    gpu_metrics_data.append({"title": "--------",
+                    gpu_metrics_data.append({"title": "<hr/>",
                                              "value": ""})
+
                 gpu_metrics_data.append({"title": "GPU {}:".format(gpu_id),
                                          "value": ""})
+                gpu_info = profile.gpu_infos.get(gpu_id, None)
+                if gpu_info is not None:
+                    for key in gpu_info_columns:
+                        if key in gpu_info:
+                            gpu_metrics_data.append({"title": key,
+                                                     "value": gpu_info[key]})
+
                 gpu_metrics_data.append({"title": "GPU Utilization",
                                          "value": "{} %".format(
                                              round(profile.gpu_utilization[gpu_id] * 100, 2))})

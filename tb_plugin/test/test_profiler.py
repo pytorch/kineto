@@ -1218,6 +1218,12 @@ class TestProfiler(unittest.TestCase):
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 900, "dur": 100,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
             "ph": "X", "cat": "Memcpy", 
             "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
             "ts": 405, "dur": 10,
@@ -1505,7 +1511,7 @@ class TestProfiler(unittest.TestCase):
         # validation
         gpu_expected_data = {
             # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count,
-            'aten::to': [104, 104, 2, 104, 204, 3, 2],
+            'aten::to': [104, 104, 2, 104, 204, 3, 3],
             'aten::nll_loss_backward': [0, 10, 1, 0, 10, 1 ,1],
             'aten::copy_': [0, 100, 1, 0, 100, 1, 1],
             'aten::addmm': [0, 30, 1, 0, 30, 1, 1],
@@ -1516,7 +1522,7 @@ class TestProfiler(unittest.TestCase):
         }
 
         cpu_expected_data = {
-            'aten::to': [4, 4, 1, 4, 4, 1, 2],
+            'aten::to': [4, 4, 1, 4, 4, 1, 3],
             'aten::liner': [0, 100, 1, 50, 150, 2, 1],
             'aten::tranas_stride': [50, 50, 1, 50, 50, 1, 1],
             'aten::transpose': [0, 0, 0, 50, 50, 1, 1],

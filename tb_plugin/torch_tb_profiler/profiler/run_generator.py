@@ -9,6 +9,7 @@ from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
 
+
 class RunGenerator(object):
     def __init__(self, worker, profile_data):
         self.worker = worker
@@ -48,6 +49,12 @@ class RunGenerator(object):
         profile_run.occupancy = self.profile_data.occupancy
         profile_run.blocks_per_sm_count = self.profile_data.blocks_per_sm_count
         profile_run.occupancy_count = self.profile_data.occupancy_count
+
+        profile_run.gpu_infos = {}
+        for gpu_id in profile_run.gpu_ids:
+            gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
+            if gpu_info is not None:
+                profile_run.gpu_infos[gpu_id] = gpu_info
 
         return profile_run
 
@@ -343,6 +350,29 @@ class RunGenerator(object):
         data = {"data": table}
         return data
 
+    @staticmethod
+    def _get_gpu_info(device_props, gpu_id):
+        if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
+            return None
+
+        device_prop = device_props[gpu_id]
+        gpu_info = {}
+        name = device_prop.get("name")
+        if name is not None:
+            gpu_info["Name"] = name
+
+        mem = device_prop.get("totalGlobalMem")
+        if mem is not None:
+            gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
+
+        major = device_prop.get("computeMajor")
+        minor = device_prop.get("computeMinor")
+        if major is not None and minor is not None:
+            gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
+
+        return gpu_info
+
+
 class DistributedRunGenerator(object):
     def __init__(self, all_profile_data):
         self.all_profile_data = all_profile_data
@@ -378,26 +408,8 @@ class DistributedRunGenerator(object):
             process_id = "Process " + str(process_id)
             result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
-                try:
-                    device_prop = data.device_props[used_device]
-                except IndexError:
-                    continue
-
-                gpu_info = {}
-                name = device_prop.get("name")
-                if name:
-                    gpu_info["Name"] = name
-
-                mem = device_prop.get("totalGlobalMem")
-                if mem is not None:
-                    gpu_info['Memory'] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
-
-                major = device_prop.get("computeMajor")
-                minor = device_prop.get("computeMinor")
-                if major is not None and minor is not None:
-                    gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
-
-                if gpu_info:
+                gpu_info = RunGenerator._get_gpu_info(data.device_props, used_device)
+                if gpu_info is not None:
                     result[node][process_id]['GPU'+str(used_device)] = gpu_info
 
         if result:

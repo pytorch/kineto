@@ -164,7 +164,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
         if len(profile.gpu_ids) > 0:
             gpu_metrics_data, gpu_metrics_tooltip = profile.get_gpu_metrics_data_tooltip()
-            data["gpu_metrics"] = {"data": gpu_metrics_data,
+            data["gpu_metrics"] = {"title": "GPU Summary",
+                                   "data": gpu_metrics_data,
                                    "tooltip": gpu_metrics_tooltip}
 
         return self.respond_as_json(data)

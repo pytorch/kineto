@@ -272,7 +272,8 @@ class MemoryParser:
         # show summary information
         if len(self.staled_records) > 0 and self.record_length > 0:
             logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
-        logger.debug("max tree height is {}".format(tree_height))
+        if tree_height > 0:
+            logger.debug("max tree height is {}".format(tree_height))
 
     @benchmark
     def update_node_recursive(self):

@@ -33,4 +33,8 @@ declare module './api/generated/api' {
   export interface Overview {
     gpu_metrics: Overview['gpuMetrics']
   }
+
+  export interface MemoryTableMetadata {
+    default_device: MemoryTableMetadata['defaultDevice']
+  }
 }

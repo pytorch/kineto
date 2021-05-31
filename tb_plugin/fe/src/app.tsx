@@ -30,13 +30,15 @@ import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
 import 'antd/es/button/style/css'
+import { MemoryView } from './components/MemoryView'
 
 export enum Views {
   Overview = 'Overview',
   Operator = 'Operator',
   Kernel = 'Kernel',
   Trace = 'Trace',
-  Distributed = 'Distributed'
+  Distributed = 'Distributed',
+  Memory = 'Memory'
 }
 
 const ViewNames = {
@@ -44,7 +46,8 @@ const ViewNames = {
   [Views.Operator]: Views.Operator,
   [Views.Kernel]: 'GPU Kernel',
   [Views.Trace]: Views.Trace,
-  [Views.Distributed]: Views.Distributed
+  [Views.Distributed]: Views.Distributed,
+  [Views.Memory]: Views.Memory
 }
 
 const drawerWidth = 340
@@ -244,6 +247,8 @@ export const App = () => {
         )
       case Views.Distributed:
         return <DistributedView run={run} worker={worker} view={view} />
+      case Views.Memory:
+        return <MemoryView run={run} worker={worker} view={view} />
     }
   }
 

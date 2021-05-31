@@ -308,6 +308,26 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/GpuInfo'
+  /memory:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/MemoryData'
   /kernel:
     get:
       parameters:
@@ -646,4 +666,31 @@ components:
         title:
           type: string
         value:
+          type: string
+    MemoryData:
+      type: object
+      required:
+        - metadata
+        - data
+      properties:
+        metadata:
+          $ref: '#/components/schemas/MemoryTableMetadata'
+        data:
+          type: object
+    MemoryTableMetadata:
+      type: object
+      required:
+        - title
+        - default_device
+        - search
+        - sort
+        - value
+      properties:
+        title:
+          type: string
+        default_device:
+          type: string
+        search:
+          type: string
+        sort:
           type: string

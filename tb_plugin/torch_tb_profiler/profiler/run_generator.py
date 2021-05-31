@@ -5,9 +5,11 @@ from collections import OrderedDict
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
+from .node import MemoryMetrics
 from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
+
 
 class RunGenerator(object):
     def __init__(self, worker, span, profile_data):
@@ -47,6 +49,19 @@ class RunGenerator(object):
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
         profile_run.sm_efficency = self.profile_data.sm_efficency
         profile_run.occupancy = self.profile_data.occupancy
+        profile_run.blocks_per_sm_count = self.profile_data.blocks_per_sm_count
+        profile_run.occupancy_count = self.profile_data.occupancy_count
+
+        # add memory stats
+        if self.profile_data.has_memory_data:
+            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_stats)
+            profile_run.views.append(consts.MEMORY_VIEW)
+
+        profile_run.gpu_infos = {}
+        for gpu_id in profile_run.gpu_ids:
+            gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
+            if gpu_info is not None:
+                profile_run.gpu_infos[gpu_id] = gpu_info
 
         return profile_run
 
@@ -80,10 +95,12 @@ class RunGenerator(object):
                                              {"type": "number", "name": "Memcpy"},
                                              column_tootip,
                                              {"type": "number", "name": "Memset"},
-                                             column_tootip,
-                                             {"type": "number", "name": "Communication"},
-                                             column_tootip,
-                                             {"type": "number", "name": "Runtime"},
+                                             column_tootip])
+        if self.profile_data.has_communication:
+            data["steps"]["columns"].extend([{"type": "number", "name": "Communication"},
+                                             column_tootip])
+        if show_gpu:
+            data["steps"]["columns"].extend([{"type": "number", "name": "Runtime"},
                                              column_tootip])
         data["steps"]["columns"].extend([{"type": "number", "name": "DataLoader"},
                                          column_tootip,
@@ -103,10 +120,12 @@ class RunGenerator(object):
                             costs.costs[ProfileRole.Memcpy],
                             build_part_time_str(costs.costs[ProfileRole.Memcpy], "Memcpy"),
                             costs.costs[ProfileRole.Memset],
-                            build_part_time_str(costs.costs[ProfileRole.Memset], "Memset"),
-                            costs.costs[ProfileRole.Communication],
-                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication"),
-                            costs.costs[ProfileRole.Runtime],
+                            build_part_time_str(costs.costs[ProfileRole.Memset], "Memset")])
+            if self.profile_data.has_communication:
+                row.extend([costs.costs[ProfileRole.Communication],
+                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication")])
+            if show_gpu:
+                row.extend([costs.costs[ProfileRole.Runtime],
                             build_part_time_str(costs.costs[ProfileRole.Runtime], "Runtime")])
             row.extend([costs.costs[ProfileRole.DataLoader],
                         build_part_time_str(costs.costs[ProfileRole.DataLoader], "DataLoader"),
@@ -121,8 +140,14 @@ class RunGenerator(object):
             avg_costs.extend([
                 build_avg_cost_dict("Kernel", self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
                 build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
-                build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset]),
-                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication]),
+                build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset])
+            ])
+        if self.profile_data.has_communication:
+            avg_costs.extend([
+                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication])
+            ])
+        if show_gpu:
+            avg_costs.extend([
                 build_avg_cost_dict("Runtime", self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([
@@ -261,16 +286,27 @@ class RunGenerator(object):
             result[k] = self._generate_op_table(v, group_by_input_shape, True)
         return result
 
+    @staticmethod
+    def _get_gpu_metrics_columns(blocks_per_sm_count, occupancy_count):
+        columns = []
+        if blocks_per_sm_count > 0:
+            columns.append({"type": "number", "name": "Mean Blocks Per SM",
+                            "tooltip": consts.TOOLTIP_BLOCKS_PER_SM})
+        if occupancy_count > 0:
+            columns.append({"type": "number", "name": "Mean Est. Achieved Occupancy (%)",
+                            "tooltip": consts.TOOLTIP_OCCUPANCY})
+        return columns
+
     def _generate_kernel_op_table(self):
         table = {}
         table["columns"] = [{"type": "string", "name": "Name"}, {"type": "string", "name": "Operator"}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
-        if self.profile_data.blocks_per_sm_count > 0:
-            col_names.append("Mean Blocks Per SM")
-        if self.profile_data.occupancy_count > 0:
-            col_names.append("Mean Est. Achieved Occupancy (%)")
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
+        gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
+            sum(self.profile_data.blocks_per_sm_count), sum(self.profile_data.occupancy_count))
+        table["columns"].extend(gpu_metrics_columns)
+
         table["rows"] = []
         kernel_list = sorted(self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration,
                              reverse=True)
@@ -278,9 +314,9 @@ class RunGenerator(object):
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name, agg_by_name_op.calls,
                              agg_by_name_op.total_duration, agg_by_name_op.avg_duration,
                              agg_by_name_op.min_duration, agg_by_name_op.max_duration]
-            if self.profile_data.blocks_per_sm_count > 0:
+            if sum(self.profile_data.blocks_per_sm_count) > 0:
                 kernel_op_row.append(round(agg_by_name_op.avg_blocks_per_sm, 2))
-            if self.profile_data.occupancy_count > 0:
+            if sum(self.profile_data.occupancy_count) > 0:
                 kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
         data = {"data": table}
@@ -298,19 +334,19 @@ class RunGenerator(object):
         table["columns"] = [{"type": "string", "name": "Name"}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
-        if self.profile_data.blocks_per_sm_count > 0:
+        if sum(self.profile_data.blocks_per_sm_count) > 0:
             columns.append("blocks_per_sm")
             round_digits.append(2)
-        if self.profile_data.occupancy_count > 0:
+        if sum(self.profile_data.occupancy_count) > 0:
             columns.append("occupancy")
             round_digits.append(2)
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
-        if self.profile_data.blocks_per_sm_count > 0:
-            col_names.append("Mean Blocks Per SM")
-        if self.profile_data.occupancy_count > 0:
-            col_names.append("Mean Est. Achieved Occupancy (%)")
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
+        gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
+            sum(self.profile_data.blocks_per_sm_count), sum(self.profile_data.occupancy_count))
+        table["columns"].extend(gpu_metrics_columns)
+
         table["rows"] = []
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
             kernel_row = [name]
@@ -320,6 +356,82 @@ class RunGenerator(object):
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
+
+    def _generate_memory_view(self, memory_stats):
+
+        data = OrderedDict()
+        result = {
+            "metadata": {
+                "title": "Memory View",
+                "default_device": "CPU",
+                "search": "Operator Name",
+                "sort": "Self Size Increase (KB)"
+            },
+            "data": data
+        }
+
+        columns_names = [
+            ("Operator Name", "string", ""),
+            ("Calls", "number", "# of calls of the operator."),
+            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
+            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
+            ("Allocation Count", "number", "The allocation count including all chidren operators."),
+            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
+            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
+            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
+        ]
+        for name, memory in sorted(memory_stats.items()):
+            table = {}
+
+            # Process columns
+            columns = []
+            for col_name, col_type, tool_tip in columns_names:
+                if tool_tip:
+                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
+                else:
+                    columns.append({"type": col_type, "name": col_name})
+            table["columns"] = columns
+
+            # Process rows
+            rows = []
+            for op_name, stat in sorted(memory.items()):
+                rows.append([
+                    op_name,
+                    stat[6],
+                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
+                    stat[MemoryMetrics.AllocationCount],
+                    stat[MemoryMetrics.SelfAllocationCount],
+                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
+                    ])
+            table["rows"] = rows
+
+            data[name] = table
+        return result
+
+    @staticmethod
+    def _get_gpu_info(device_props, gpu_id):
+        if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
+            return None
+
+        device_prop = device_props[gpu_id]
+        gpu_info = {}
+        name = device_prop.get("name")
+        if name is not None:
+            gpu_info["Name"] = name
+
+        mem = device_prop.get("totalGlobalMem")
+        if mem is not None:
+            gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
+
+        major = device_prop.get("computeMajor")
+        minor = device_prop.get("computeMinor")
+        if major is not None and minor is not None:
+            gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
+
+        return gpu_info
+
 
 class DistributedRunGenerator(object):
     def __init__(self, all_profile_data, span):
@@ -357,31 +469,15 @@ class DistributedRunGenerator(object):
             process_id = "Process " + str(process_id)
             result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
-                try:
-                    device_prop = data.device_props[used_device]
-                except IndexError:
-                    continue
-
-                gpu_info = {}
-                name = device_prop.get("name")
-                if name:
-                    gpu_info["Name"] = name
-
-                mem = device_prop.get("totalGlobalMem")
-                if mem is not None:
-                    gpu_info["Memory"] = mem
-
-                major = device_prop.get("computeMajor")
-                minor = device_prop.get("computeMinor")
-                if major is not None and minor is not None:
-                    gpu_info["Compute Compability"] = "{}.{}".format(major, minor)
-
-                if gpu_info:
+                gpu_info = RunGenerator._get_gpu_info(data.device_props, used_device)
+                if gpu_info is not None:
                     result[node][process_id]['GPU'+str(used_device)] = gpu_info
 
         if result:
+            for k,v in result.items():
+                result[k] = OrderedDict(sorted(v.items()))
             return {
-                "metadata": {"title": "Device Info"},
+                "metadata": {"title": "Device Information"},
                 "data": result
             }
         else:
@@ -401,12 +497,14 @@ class DistributedRunGenerator(object):
                 steps_to_overlap[step_name][data.worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
                 steps_to_overlap['all'][data.worker] = [sum(x) for x in zip(steps_to_overlap['all'][data.worker], steps_to_overlap[step_name][data.worker])]
             steps_to_overlap['all'][data.worker] = [x/step_number for x in steps_to_overlap['all'][data.worker]]
+        for k,v in steps_to_overlap.items():
+            steps_to_overlap[k] = OrderedDict(sorted(v.items()))
         result["data"] = steps_to_overlap
         return result
 
     def _generate_wait_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Collective Communication Overview", "legends": ["Real Communication time", "Waiting Time"], "units": "us"}
+        result["metadata"] = {"title": "Synchronizing/Communication Overview", "legends": ["Data Transfer Time", "Synchronizing Time"], "units": "us"}
         steps_to_wait = OrderedDict()
 
         steps_to_wait['all'] = OrderedDict()
@@ -418,6 +516,8 @@ class DistributedRunGenerator(object):
                 steps_to_wait['all'][data.worker] = [sum(x) for x in zip(steps_to_wait['all'][data.worker], steps_to_wait[step][data.worker])]
             steps_to_wait['all'][data.worker] = [x/step_number for x in steps_to_wait['all'][data.worker]]
 
+        for k,v in steps_to_wait.items():
+            steps_to_wait[k] = OrderedDict(sorted(v.items()))
         result["data"] = steps_to_wait
         return result
 
@@ -429,7 +529,7 @@ class DistributedRunGenerator(object):
         for data in self.all_profile_data:
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
-            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real time (us)"]
+            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real Time (us)"]
             for column in col_names:
                 table["columns"].append({"type": "number", "name": column})
             table["rows"] = []

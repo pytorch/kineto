@@ -120,7 +120,8 @@ class TestProfiler(unittest.TestCase):
             for op_agg in op_list:
                 if op_agg.name == "aten::to":
                     op_count += 1
-                    self.assertEqual(op_agg.input_shape, "[[2, 8, 5], [], [], [], [], [], [], []]")
+                    self.assertEqual(op_agg.input_shape,
+                                     "[[2, 8, 5], [], [], [], [], [], [], []]")
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 60)
                     self.assertEqual(op_agg.device_duration, 0)
@@ -128,11 +129,13 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.self_device_duration, 0)
                 if op_agg.name == "aten::nll_loss_backward":
                     op_count += 1
-                    self.assertEqual(op_agg.input_shape, "[[], [32, 1000], [32], [], [], [], []]")
+                    self.assertEqual(op_agg.input_shape,
+                                     "[[], [32, 1000], [32], [], [], [], []]")
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 70)
                     self.assertEqual(op_agg.device_duration, 30)
-                    self.assertEqual(op_agg.self_host_duration, 70 - 20 - 10 - 5)
+                    self.assertEqual(
+                        op_agg.self_host_duration, 70 - 20 - 10 - 5)
                     self.assertEqual(op_agg.self_device_duration, 30)
             self.assertEqual(op_count, 2)
 
@@ -143,11 +146,15 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(profile.kernel_stat.shape[0], 1)
         self.assertEqual(profile.kernel_list_groupby_name_op[0].name,
                          "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>")
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].op_name, "aten::nll_loss_backward")
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].op_name, "aten::nll_loss_backward")
         self.assertEqual(profile.kernel_list_groupby_name_op[0].calls, 1)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].total_duration, 15)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].min_duration, 15)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].max_duration, 15)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].total_duration, 15)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].min_duration, 15)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].max_duration, 15)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
         self.assertEqual(profile.kernel_stat.iloc[0]["sum"], 15)
         self.assertEqual(profile.kernel_stat.iloc[0]["mean"], 15)
@@ -332,7 +339,8 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
         self.assertEqual(len(profile.op_list_groupby_name), 1)
-        self.assertEqual(profile.op_list_groupby_name[0].self_device_duration, 8)
+        self.assertEqual(
+            profile.op_list_groupby_name[0].self_device_duration, 8)
 
     # Test Runtime with "external id" 0.
     # This kind of Runtime should not be attached to any operator,
@@ -362,7 +370,8 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
         self.assertEqual(profile.op_list_groupby_name[0].device_duration, 0)
-        self.assertEqual(profile.op_list_groupby_name[0].self_device_duration, 0)
+        self.assertEqual(
+            profile.op_list_groupby_name[0].self_device_duration, 0)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
 
     # Test Runtime directly called in ProfilerStep, not inside any operator.
@@ -394,7 +403,8 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.Runtime], 20)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 0)
         self.assertEqual(step.costs[ProfileRole.Other], 300 - 8 - 20)
-        self.assertEqual(len(profile.op_list_groupby_name), 0)  # ProfilerStep is not regarded as an operator.
+        # ProfilerStep is not regarded as an operator.
+        self.assertEqual(len(profile.op_list_groupby_name), 0)
         self.assertEqual(len(profile.op_list_groupby_name_input), 0)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
         self.assertEqual(len(profile.kernel_list_groupby_name_op), 1)
@@ -434,7 +444,8 @@ class TestProfiler(unittest.TestCase):
         """
         profile = parse_json_trace(json_content)
         profile.process()
-        self.assertEqual(profile.op_list_groupby_name[0].device_duration, 120318 + 132800)
+        self.assertEqual(
+            profile.op_list_groupby_name[0].device_duration, 120318 + 132800)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 2)
         self.assertEqual(len(profile.kernel_list_groupby_name_op), 1)
 
@@ -494,7 +505,8 @@ class TestProfiler(unittest.TestCase):
             for op_agg in op_list:
                 if op_agg.name == "aten::to":
                     op_count += 1
-                    self.assertEqual(op_agg.input_shape, "[[2, 8, 5], [], [], [], [], [], [], []]")
+                    self.assertEqual(op_agg.input_shape,
+                                     "[[2, 8, 5], [], [], [], [], [], [], []]")
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 60)
                     self.assertEqual(op_agg.device_duration, 0)
@@ -502,7 +514,8 @@ class TestProfiler(unittest.TestCase):
                     self.assertEqual(op_agg.self_device_duration, 0)
                 if op_agg.name == "aten::nll_loss_backward":
                     op_count += 1
-                    self.assertEqual(op_agg.input_shape, "[[], [32, 1000], [32], [], [], [], []]")
+                    self.assertEqual(op_agg.input_shape,
+                                     "[[], [32, 1000], [32], [], [], [], []]")
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 70)
                     self.assertEqual(op_agg.device_duration, 100)
@@ -515,11 +528,15 @@ class TestProfiler(unittest.TestCase):
 
         self.assertEqual(profile.kernel_list_groupby_name_op[0].name,
                          "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>")
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].op_name, "aten::nll_loss_backward")
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].op_name, "aten::nll_loss_backward")
         self.assertEqual(profile.kernel_list_groupby_name_op[0].calls, 1)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].total_duration, 100)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].min_duration, 100)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].max_duration, 100)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].total_duration, 100)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].min_duration, 100)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].max_duration, 100)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
         self.assertEqual(profile.kernel_stat.iloc[0]["sum"], 100)
         self.assertEqual(profile.kernel_stat.iloc[0]["mean"], 100)
@@ -593,7 +610,8 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 60 - 5)
         self.assertEqual(step.costs[ProfileRole.Other], 200 - 60 - 20)
-        self.assertEqual(step.costs[ProfileRole.Total], 320 - 100)  # Device side takes effect.
+        # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total], 320 - 100)
         step = profile.steps_costs[1]
         self.assertEqual(step.costs[ProfileRole.Kernel], 200)
         self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
@@ -602,8 +620,10 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
         self.assertEqual(step.costs[ProfileRole.CpuOp], 50 - 5)
         self.assertEqual(step.costs[ProfileRole.Other], 360 - 350)
-        self.assertEqual(step.costs[ProfileRole.Total], 610 - 350)  # Device side takes effect.
-        self.assertEqual(profile.avg_costs.costs[ProfileRole.Total], ((320 - 100) + (610 - 350)) / 2)
+        # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total], 610 - 350)
+        self.assertEqual(
+            profile.avg_costs.costs[ProfileRole.Total], ((320 - 100) + (610 - 350)) / 2)
 
         self.assertEqual(len(profile.op_list_groupby_name), 2)
         self.assertEqual(len(profile.op_list_groupby_name_input), 2)
@@ -613,7 +633,8 @@ class TestProfiler(unittest.TestCase):
             for op_agg in op_list:
                 if op_agg.name == "aten::to":
                     op_count += 1
-                    self.assertEqual(op_agg.input_shape, "[[2, 8, 5], [], [], [], [], [], [], []]")
+                    self.assertEqual(op_agg.input_shape,
+                                     "[[2, 8, 5], [], [], [], [], [], [], []]")
                     self.assertEqual(op_agg.calls, 1)
                     self.assertEqual(op_agg.host_duration, 60)
                     self.assertEqual(op_agg.device_duration, 40)
@@ -636,11 +657,15 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(profile.kernel_stat.shape[0], 1)
         self.assertEqual(profile.kernel_list_groupby_name_op[0].name,
                          "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>")
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].op_name, "aten::mm")
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].op_name, "aten::mm")
         self.assertEqual(profile.kernel_list_groupby_name_op[0].calls, 1)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].total_duration, 200)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].min_duration, 200)
-        self.assertEqual(profile.kernel_list_groupby_name_op[0].max_duration, 200)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].total_duration, 200)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].min_duration, 200)
+        self.assertEqual(
+            profile.kernel_list_groupby_name_op[0].max_duration, 200)
         self.assertEqual(profile.kernel_stat.iloc[0]["count"], 1)
         self.assertEqual(profile.kernel_stat.iloc[0]["sum"], 200)
         self.assertEqual(profile.kernel_stat.iloc[0]["mean"], 200)
@@ -784,18 +809,23 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(step.costs[ProfileRole.Memset], 0)
         self.assertEqual(step.costs[ProfileRole.Runtime], 5)
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
-        self.assertEqual(step.costs[ProfileRole.CpuOp], (200 + 60) - (150 + 90) - 5)
+        self.assertEqual(step.costs[ProfileRole.CpuOp],
+                         (200 + 60) - (150 + 90) - 5)
         self.assertEqual(step.costs[ProfileRole.Other], 280 - (200 + 60))
-        self.assertEqual(step.costs[ProfileRole.Total], (280 + 100) - (150 + 90))  # Device side takes effect.
+        # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total],
+                         (280 + 100) - (150 + 90))
         step = profile.steps_costs[1]
         self.assertEqual(step.costs[ProfileRole.Kernel], 200)
         self.assertEqual(step.costs[ProfileRole.Memcpy], 0)
         self.assertEqual(step.costs[ProfileRole.Memset], 0)
         self.assertEqual(step.costs[ProfileRole.Runtime], 5)
         self.assertEqual(step.costs[ProfileRole.DataLoader], 0)
-        self.assertEqual(step.costs[ProfileRole.CpuOp], (280 + 100) - 360 + (410 - 405))
+        self.assertEqual(step.costs[ProfileRole.CpuOp],
+                         (280 + 100) - 360 + (410 - 405))
         self.assertEqual(step.costs[ProfileRole.Other], 0)
-        self.assertEqual(step.costs[ProfileRole.Total], 610 - (280 + 100))  # Device side takes effect.
+        # Device side takes effect.
+        self.assertEqual(step.costs[ProfileRole.Total], 610 - (280 + 100))
 
     # Test whether step time is calculated correctly when the last 2 steps have no kernels launched.
     def test_last_steps_no_kernel(self):
@@ -846,9 +876,11 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertEqual(len(profile.steps_costs), 1)  # The last 2 steps without kernels are removed from overall view.
+        # The last 2 steps without kernels are removed from overall view.
+        self.assertEqual(len(profile.steps_costs), 1)
         step = profile.steps_costs[0]
-        self.assertEqual(step.costs[ProfileRole.Total], (150 + 180) - (90 + 20))
+        self.assertEqual(
+            step.costs[ProfileRole.Total], (150 + 180) - (90 + 20))
 
     def test_pure_cpu(self):
         json_content = """
@@ -1007,11 +1039,15 @@ class TestProfiler(unittest.TestCase):
             ranges = profile.approximated_sm_efficency_ranges[gpu_id]
             sm_efficiency_id = 0
             for r in ranges:
-                self.assertEqual(r[0][0], sm_efficiency_expected[sm_efficiency_id][0])
-                self.assertAlmostEqual(r[1], sm_efficiency_expected[sm_efficiency_id][1])
+                self.assertEqual(
+                    r[0], sm_efficiency_expected[sm_efficiency_id][0])
+                self.assertAlmostEqual(
+                    r[2], sm_efficiency_expected[sm_efficiency_id][1])
                 sm_efficiency_id += 1
-                self.assertEqual(r[0][1], sm_efficiency_expected[sm_efficiency_id][0])
-                self.assertAlmostEqual(0, sm_efficiency_expected[sm_efficiency_id][1])
+                self.assertEqual(
+                    r[1], sm_efficiency_expected[sm_efficiency_id][0])
+                self.assertAlmostEqual(
+                    0, sm_efficiency_expected[sm_efficiency_id][1])
                 sm_efficiency_id += 1
             self.assertEqual(sm_efficiency_id, len(sm_efficiency_expected))
 
@@ -1023,8 +1059,10 @@ class TestProfiler(unittest.TestCase):
                 count += 1
             if agg_by_op.name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>" and \
                     agg_by_op.op_name == "aten::mm":
-                self.assertAlmostEqual(agg_by_op.avg_blocks_per_sm, (0.5 * 10 + 0.3 * 25) / (10 + 25))
-                self.assertAlmostEqual(agg_by_op.avg_occupancy, (0.6 * 10 + 1.0 * 25) / (10 + 25))
+                self.assertAlmostEqual(
+                    agg_by_op.avg_blocks_per_sm, (0.5 * 10 + 0.3 * 25) / (10 + 25))
+                self.assertAlmostEqual(
+                    agg_by_op.avg_occupancy, (0.6 * 10 + 1.0 * 25) / (10 + 25))
                 count += 1
             if agg_by_op.name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>" and \
                     agg_by_op.op_name == "aten::mat_mul":
@@ -1041,8 +1079,10 @@ class TestProfiler(unittest.TestCase):
                 self.assertAlmostEqual(row["occupancy"], 0.1)
                 count += 1
             if name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>":
-                self.assertAlmostEqual(row["blocks_per_sm"], (0.5 * 10 + 0.3 * 25 + 10.5 * 20) / (10 + 25 + 20))
-                self.assertAlmostEqual(row["occupancy"], (0.6 * 10 + 1.0 * 25 + 0.3 * 20) / (10 + 25 + 20))
+                self.assertAlmostEqual(
+                    row["blocks_per_sm"], (0.5 * 10 + 0.3 * 25 + 10.5 * 20) / (10 + 25 + 20))
+                self.assertAlmostEqual(
+                    row["occupancy"], (0.6 * 10 + 1.0 * 25 + 0.3 * 20) / (10 + 25 + 20))
                 count += 1
         self.assertEqual(count, 2)
 
@@ -1059,36 +1099,39 @@ class TestProfiler(unittest.TestCase):
                                      (1621401187236901, 0)]]
         # Faked data for easy to see in UI. Real data values are 1/10 of these.
         profile.approximated_sm_efficency_ranges = \
-            [[((1621401187225275, 1621401187225278), 0.25), ((1621401187225530, 1621401187225532), 0.125),
-              ((1621401187225820, 1621401187225821), 0.125), ((1621401187226325, 1621401187226327), 0.25),
-              ((1621401187226575, 1621401187226577), 0.125), ((1621401187226912, 1621401187226913), 0.125),
-              ((1621401187227092, 1621401187227094), 0.125), ((1621401187227619, 1621401187227620), 0.125),
-              ((1621401187227745, 1621401187227746), 0.125), ((1621401187227859, 1621401187227860), 0.125),
-              ((1621401187227973, 1621401187227974), 0.125), ((1621401187228279, 1621401187228280), 0.125),
-              ((1621401187228962, 1621401187228963), 0.125), ((1621401187229153, 1621401187229155), 0.125),
-              ((1621401187229711, 1621401187229715), 0.125), ((1621401187230162, 1621401187230163), 0.125),
-              ((1621401187231100, 1621401187231103), 0.125), ((1621401187231692, 1621401187231694), 0.5),
-              ((1621401187232603, 1621401187232604), 0.125), ((1621401187232921, 1621401187232922), 0.125),
-              ((1621401187233342, 1621401187233343), 0.125), ((1621401187233770, 1621401187233772), 0.125),
-              ((1621401187234156, 1621401187234159), 0.125), ((1621401187234445, 1621401187234446), 0.125),
-              ((1621401187235025, 1621401187235028), 0.125), ((1621401187235555, 1621401187235556), 0.125),
-              ((1621401187236158, 1621401187236159), 0.125), ((1621401187236278, 1621401187236279), 0.125),
-              ((1621401187236390, 1621401187236391), 0.125), ((1621401187236501, 1621401187236502), 0.125)]]
+            [[(1621401187225275, 1621401187225278, 0.25), (1621401187225530, 1621401187225532, 0.125),
+              (1621401187225820, 1621401187225821, 0.125), (1621401187226325, 1621401187226327, 0.25),
+              (1621401187226575, 1621401187226577, 0.125), (1621401187226912, 1621401187226913, 0.125),
+              (1621401187227092, 1621401187227094, 0.125), (1621401187227619, 1621401187227620, 0.125),
+              (1621401187227745, 1621401187227746, 0.125), (1621401187227859, 1621401187227860, 0.125),
+              (1621401187227973, 1621401187227974, 0.125), (1621401187228279, 1621401187228280, 0.125),
+              (1621401187228962, 1621401187228963, 0.125), (1621401187229153, 1621401187229155, 0.125),
+              (1621401187229711, 1621401187229715, 0.125), (1621401187230162, 1621401187230163, 0.125),
+              (1621401187231100, 1621401187231103, 0.125), (1621401187231692, 1621401187231694, 0.5),
+              (1621401187232603, 1621401187232604, 0.125), (1621401187232921, 1621401187232922, 0.125),
+              (1621401187233342, 1621401187233343, 0.125), (1621401187233770, 1621401187233772, 0.125),
+              (1621401187234156, 1621401187234159, 0.125), (1621401187234445, 1621401187234446, 0.125),
+              (1621401187235025, 1621401187235028, 0.125), (1621401187235555, 1621401187235556, 0.125),
+              (1621401187236158, 1621401187236159, 0.125), (1621401187236278, 1621401187236279, 0.125),
+              (1621401187236390, 1621401187236391, 0.125), (1621401187236501, 1621401187236502, 0.125)]]
 
         trace_json_flat_path = "gpu_metrics_input.json"
         with open(trace_json_flat_path, "rb") as file:
             raw_data = file.read()
         data_with_gpu_metrics_compressed = profile.append_gpu_metrics(raw_data)
-        data_with_gpu_metrics_flat = gzip.decompress(data_with_gpu_metrics_compressed)
+        data_with_gpu_metrics_flat = gzip.decompress(
+            data_with_gpu_metrics_compressed)
 
         trace_json_expected_path = "gpu_metrics_expected.json"
         with open(trace_json_expected_path, "rb") as file:
             data_expected = file.read()
 
         # Parse to json in order to ignore text format difference.
-        data_with_gpu_metrics_json = json.loads(data_with_gpu_metrics_flat.decode("utf8"))
+        data_with_gpu_metrics_json = json.loads(
+            data_with_gpu_metrics_flat.decode("utf8"))
         data_expected_json = json.loads(data_expected.decode("utf8"))
-        data_with_gpu_metrics_str = json.dumps(data_with_gpu_metrics_json, sort_keys=True)
+        data_with_gpu_metrics_str = json.dumps(
+            data_with_gpu_metrics_json, sort_keys=True)
         data_expected_str = json.dumps(data_expected_json, sort_keys=True)
 
         self.assertEqual(data_with_gpu_metrics_str, data_expected_str)
@@ -1096,8 +1139,421 @@ class TestProfiler(unittest.TestCase):
         try:
             data = json.loads(data_with_gpu_metrics_flat.decode("utf8"))
         except:
-            self.assertTrue(False, "The string fails to be parsed by json after appending gpu metrics.")
+            self.assertTrue(
+                False, "The string fails to be parsed by json after appending gpu metrics.")
 
+    def test_memory_view(self):
+        json_content = """[
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 10, "dur": 10,
+            "args": {"Input Dims": [], "External id": 2}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__", "pid": 13721, "tid": "123",
+            "ts": 100, "dur": 180,
+            "args": {"Input Dims": [], "External id": 2}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 60,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::nll_loss_backward", "pid": 13721, "tid": "123",
+            "ts": 340, "dur": 70,
+            "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
+            "ts": 50, "dur": 400,
+            "args": {"Input Dims": [], "External id": 1}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
+            "ts": 500, "dur": 500,
+            "args": {"Input Dims": [], "External id": 1}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 510, "dur": 150,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::copy_", "pid": 13721, "tid": "123",
+            "ts": 520, "dur": 100,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::liner", "pid": 13721, "tid": "123",
+            "ts": 700, "dur": 100,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::t", "pid": 13721, "tid": "123",
+            "ts": 705, "dur": 40,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::transpose", "pid": 13721, "tid": "123",
+            "ts": 710, "dur": 30,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::tranas_stride", "pid": 13721, "tid": "123",
+            "ts": 720, "dur": 10,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::addmm", "pid": 13721, "tid": "123",
+            "ts": 750, "dur": 40,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::to", "pid": 13721, "tid": "123",
+            "ts": 900, "dur": 100,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Memcpy", 
+            "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
+            "ts": 405, "dur": 10,
+            "args": {"stream": 7, "correlation": 334, "external id": 4}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaMemcpyAsync", "pid": 13721, "tid": "456",
+            "ts": 360, "dur": 20,
+            "args": {"correlation": 334, "external id": 4}
+          },
+          {
+            "ph": "X", "cat": "Memset", 
+            "name": "Memset (Device)", "pid": 0, "tid": "stream 7",
+            "ts": 420, "dur": 5,
+            "args": {"stream": 7, "correlation": 40344, "external id": 4}
+          },         
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaMemsetAsync", "pid": 13721, "tid": "456",
+            "ts": 390, "dur": 10,
+            "args": {"correlation": 40344, "external id": 4}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
+            "ts": 430, "dur": 15,
+            "args": {"correlation": 40348, "external id": 4, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 405, "dur": 5,
+            "args": {"correlation": 40348, "external id": 4}
+          },
+          
+          
+          {
+            "ph": "i", "s": "t", "name": "[memory] ignored by test before start time",
+            "pid": 13721, "tid": 123,
+            "ts": 90,
+            "args": {
+            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory] ignored in ProfilerStep",
+            "pid": 13721, "tid": 123,
+            "ts": 150,
+            "args": {
+            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory] belongs to aten::to",
+            "pid": 13721, "tid": 123,
+            "ts": 200,
+            "args": {
+            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory] aten::to",
+            "pid": 13721, "tid": 123,
+            "ts": 210,
+            "args": {
+            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory] ignored since beyond aten::to and before nll_loss_backward",
+            "pid": 13721, "tid": 123,
+            "ts": 265,
+            "args": {
+            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory] ignored",
+            "pid": 13721, "tid": 123,
+            "ts": 300,
+            "args": {
+            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 350,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 10
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 360,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -10
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory] ignored",
+            "pid": 13721, "tid": 123,
+            "ts": 450,
+            "args": {
+                "Device Type": 0, "Device Id": -1, "Bytes": 1000000
+            }
+          },
+
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 515,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 520,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 600,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]ignored",
+            "pid": 13721, "tid": 123,
+            "ts": 690,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 701,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 795,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -100
+            }
+          },
+
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 708,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 742,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 715,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 50
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 735,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -50
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 725,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 50
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 728,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -50
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 729,
+            "args": {
+                "Device Type": 0, "Device Id": -1, "Bytes": 50
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 746,
+            "args": {
+                "Device Type": 0, "Device Id": -1, "Bytes": 100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 747,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 20
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 749,
+            "args": {
+                "Device Type": 0, "Device Id": -1, "Bytes": -100
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 760,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 30
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 780,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -30
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 795,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": 10
+            }
+          },
+          {
+            "ph": "i", "s": "t", "name": "[memory]",
+            "pid": 13721, "tid": 123,
+            "ts": 799,
+            "args": {
+                "Device Type": 1, "Device Id": 0, "Bytes": -10
+            }
+          }
+        ]
+        """
+        import logging
+        from torch_tb_profiler.utils import get_logger
+        logger = get_logger()
+        logger.addHandler(logging.StreamHandler())
+
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        self.assertEqual(len(profile.memory_stats), 2)
+        self.assertEqual("GPU0" in profile.memory_stats, True)
+
+        # validation
+        gpu_expected_data = {
+            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count,
+            'aten::to': [104, 104, 2, 104, 204, 3, 4],
+            'aten::nll_loss_backward': [0, 10, 1, 0, 10, 1 ,1],
+            'aten::copy_': [0, 100, 1, 0, 100, 1, 1],
+            'aten::addmm': [0, 30, 1, 0, 30, 1, 1],
+            'aten::tranas_stride': [0, 50, 1, 0, 50, 1, 1],
+            'aten::transpose': [0, 50, 1, 0, 100, 2, 1],
+            'aten::t': [0, 100, 1, 0, 200, 3, 1],
+            'aten::liner': [20, 130, 3, 20, 360, 7, 1]
+        }
+
+        cpu_expected_data = {
+            'aten::to': [4, 4, 1, 4, 4, 1, 4],
+            'aten::liner': [0, 100, 1, 50, 150, 2, 1],
+            'aten::tranas_stride': [50, 50, 1, 50, 50, 1, 1],
+            'aten::transpose': [0, 0, 0, 50, 50, 1, 1],
+            'aten::t': [0, 0, 0, 50, 50, 1, 1]
+        }
+
+        validate_data = [
+            (profile.memory_stats["CPU"], cpu_expected_data),
+            (profile.memory_stats["GPU0"], gpu_expected_data)
+        ]
+        for (mem_stat, expected_data) in validate_data:
+            for name, values in expected_data.items():
+                # self increase size
+                self.assertEqual(mem_stat[name][0], values[0])
+                # self allocation size
+                self.assertEqual(mem_stat[name][1], values[1])
+                # self allocation count
+                self.assertEqual(mem_stat[name][2], values[2])
+                self.assertEqual(mem_stat[name][3], values[3])  # increase size
+                # allocation size
+                self.assertEqual(mem_stat[name][4], values[4])
+                # allocation count
+                self.assertEqual(mem_stat[name][5], values[5])
+                # op calls
+                self.assertEqual(mem_stat[name][6], values[6])
 
 if __name__ == '__main__':
     unittest.main()

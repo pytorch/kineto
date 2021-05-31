@@ -139,14 +139,21 @@ export const Overview: React.FC<IProps> = (props) => {
             <Grid item sm={cardSizes[1]}>
               <Card variant="outlined">
                 <CardHeader
-                  title={chartHeaderRenderer('GPU Metrics', gpuMetrics.tooltip)}
+                  title={chartHeaderRenderer(
+                    gpuMetrics.title ?? 'GPU Summary',
+                    gpuMetrics.tooltip
+                  )}
                 />
                 <CardContent
                   className={classes.topGraph}
                   style={{ overflow: 'auto' }}
                 >
                   {gpuMetrics.data.map((metric) => (
-                    <TextListItem name={metric.title} value={metric.value} />
+                    <TextListItem
+                      name={metric.title}
+                      value={metric.value}
+                      dangerouslyAllowHtml
+                    />
                   ))}
                 </CardContent>
               </Card>

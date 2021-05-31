@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
-from . import io
+from . import consts
 
 
 class Run(object):
@@ -70,6 +70,10 @@ class RunProfile(object):
         self.occupancy = None
         self.gpu_util_buckets = None
         self.approximated_sm_efficency_ranges = None
+        self.gpu_infos = None
+
+        # memory stats
+        self.memory_view = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -112,7 +116,7 @@ class RunProfile(object):
                 # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
                 add_trace_counter_sm_efficiency(gpu_id, buckets[0][0], buckets[0][0], 1, counter_json_list)
             for r in ranges:
-                add_trace_counter_sm_efficiency(gpu_id, r[0][0], r[0][1], r[1], counter_json_list)
+                add_trace_counter_sm_efficiency(gpu_id, r[0], r[1], r[2], counter_json_list)
 
         counter_json_str = ", {}".format(", ".join(counter_json_list))
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
@@ -135,22 +139,31 @@ class RunProfile(object):
             has_sm_efficiency = False
             has_occupancy = False
             is_first = True
+            gpu_info_columns = ["Name", "Memory", "Compute Capability"]
             for gpu_id in profile.gpu_ids:
                 if not is_first:
                     # Append separator line for beautiful to see.
-                    gpu_metrics_data.append({"title": "--------",
+                    gpu_metrics_data.append({"title": "<hr/>",
                                              "value": ""})
+
                 gpu_metrics_data.append({"title": "GPU {}:".format(gpu_id),
                                          "value": ""})
+                gpu_info = profile.gpu_infos.get(gpu_id, None)
+                if gpu_info is not None:
+                    for key in gpu_info_columns:
+                        if key in gpu_info:
+                            gpu_metrics_data.append({"title": key,
+                                                     "value": gpu_info[key]})
+
                 gpu_metrics_data.append({"title": "GPU Utilization",
                                          "value": "{} %".format(
                                              round(profile.gpu_utilization[gpu_id] * 100, 2))})
-                if profile.sm_efficency[gpu_id] > 0.0:
+                if profile.blocks_per_sm_count[gpu_id] > 0:
                     gpu_metrics_data.append({"title": "Est. SM Efficiency",
                                              "value": "{} %".format(
                                                  round(profile.sm_efficency[gpu_id] * 100, 2))})
                     has_sm_efficiency = True
-                if profile.occupancy[gpu_id] > 0.0:
+                if profile.occupancy_count[gpu_id] > 0:
                     gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True
@@ -159,33 +172,11 @@ class RunProfile(object):
 
         def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy):
             tooltip_summary = "The GPU usage metrics:\n"
-            tooltip_gpu_util = \
-                "GPU Utilization:\n" \
-                "GPU busy time / All steps time. " \
-                "GPU busy time is the time during which there is at least one GPU kernel running on it. " \
-                "All steps time is the total time of all profiler steps(or called as iterations).\n"
-            tooltip_sm_efficiency = \
-                "Est. SM Efficiency:\n" \
-                "Estimated Stream Multiprocessor Efficiency. " \
-                "Est. SM Efficiency of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%). " \
-                "This overall number is the sum of all kernels' SM_Eff_K weighted by kernel's execution duration, " \
-                "divided by all steps time.\n"
-            tooltip_occupancy = \
-                "Est. Achieved Occupancy:\n" \
-                "Occupancy is the ratio of active threads on an SM " \
-                "to the maximum number of active threads supported by the SM. " \
-                "The theoretical occupancy of a kernel is upper limit occupancy of this kernel, " \
-                "limited by multiple factors such as kernel shape, kernel used resource, " \
-                "and the GPU compute capability." \
-                "Est. Achieved Occupancy of a kernel, OCC_K = " \
-                "min(threads of the kernel / SM number / max threads per SM, theoretical occupancy of the kernel). " \
-                "This overall number is the weighted sum of all kernels OCC_K " \
-                "using kernel's execution duration as weight."
-            tooltip = "{}\n{}".format(tooltip_summary, tooltip_gpu_util)
+            tooltip = "{}\n{}".format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
             if has_sm_efficiency:
-                tooltip += "\n" + tooltip_sm_efficiency
+                tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
             if has_occupancy:
-                tooltip += "\n" + tooltip_occupancy
+                tooltip += "\n" + consts.TOOLTIP_OCCUPANCY
             return tooltip
 
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)

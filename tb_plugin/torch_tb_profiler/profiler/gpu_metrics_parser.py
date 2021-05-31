@@ -1,7 +1,11 @@
-from .range_utils import *
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# --------------------------------------------------------------------------
+from .. import consts, utils
+from .range_utils import (get_ranges_sum, intersection_ranges_lists,
+                          intersection_ranges_lists_with_value, merge_ranges,
+                          merge_ranges_with_value)
 from .trace import EventTypes
-from .. import utils
-from .. import consts
 
 logger = utils.get_logger()
 
@@ -22,11 +26,11 @@ class GPUMetricsParser(object):
         self.avg_approximated_sm_efficency_per_device = [None] * consts.MAX_GPU_PER_NODE
         self.approximated_sm_efficency_ranges = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.gpu_sm_efficiency_json = None
-        self.blocks_per_sm_count = 0
+        self.blocks_per_sm_count = [0] * consts.MAX_GPU_PER_NODE
         # For calculating averaged occupancy.
         self.occupancy_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.avg_occupancy_per_device = [None] * consts.MAX_GPU_PER_NODE
-        self.occupancy_count = 0
+        self.occupancy_count = [0] * consts.MAX_GPU_PER_NODE
 
     def calculate_gpu_utilization(self, global_start_time, global_end_time, steps_start_time, steps_end_time):
         # Make bucket_size to 10-power's of us, and number of buckets to (10, 100].
@@ -108,8 +112,8 @@ class GPUMetricsParser(object):
         def calculate_avg(approximated_sm_efficency_ranges, total_dur):
             total_weighted_sm_efficiency = 0.0
             for r in approximated_sm_efficency_ranges:
-                dur = r[0][1] - r[0][0]
-                total_weighted_sm_efficiency += r[1] * dur
+                dur = r[1] - r[0]
+                total_weighted_sm_efficiency += r[2] * dur
             avg_approximated_sm_efficency = total_weighted_sm_efficiency / total_dur
             return avg_approximated_sm_efficency
 
@@ -117,10 +121,16 @@ class GPUMetricsParser(object):
         for gpu_id in self.gpu_ids:
             blocks_per_sm_ranges = self.blocks_per_sm_per_device[gpu_id]
             approximated_sm_efficency_ranges = merge_ranges_with_value(blocks_per_sm_ranges)
-            avg_approximated_sm_efficency = calculate_avg(approximated_sm_efficency_ranges, total_dur)
-            self.avg_approximated_sm_efficency_per_device[gpu_id] = avg_approximated_sm_efficency
+            # To be consistent with GPU utilization, here it must also intersect with all steps,
+            # in order to remove the kernels out of steps range.
+            approximated_sm_efficency_ranges_all_steps = intersection_ranges_lists_with_value(
+                approximated_sm_efficency_ranges, [(steps_start_time, steps_end_time)])
+            if len(approximated_sm_efficency_ranges_all_steps) > 0:
+                avg_approximated_sm_efficency = calculate_avg(approximated_sm_efficency_ranges_all_steps, total_dur)
+                self.avg_approximated_sm_efficency_per_device[gpu_id] = avg_approximated_sm_efficency
 
-            if avg_approximated_sm_efficency > 0.0:
+            # The timeline still uses all kernels including out of steps scope's.
+            if len(approximated_sm_efficency_ranges) > 0:
                 self.approximated_sm_efficency_ranges[gpu_id] = approximated_sm_efficency_ranges
 
         self.blocks_per_sm_per_device = None  # Release memory.
@@ -141,7 +151,8 @@ class GPUMetricsParser(object):
     def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
         logger.debug("GPU Metrics, parse events")
         for event in events:
-            self.parse_event(event)
+            if event.type == EventTypes.KERNEL:
+                self.parse_event(event)
 
         self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)
         self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
@@ -150,20 +161,18 @@ class GPUMetricsParser(object):
     def parse_event(self, event):
         ts = event.ts
         dur = event.duration
-        evt_type = event.type
-        if evt_type == EventTypes.KERNEL:
-            gpu_id = event.args.get("device", None)
-            if gpu_id != event.pid:
-                logger.warning("pid '{}' is not equal to args.device '{}' on event with ts '{}'".format(
-                    event.pid, gpu_id, event.ts))
-            if gpu_id is not None:
-                if gpu_id not in self.gpu_ids:
-                    self.gpu_ids.add(gpu_id)
-                self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
-                self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.args.get("blocks per SM", 0.0)))
-                self.occupancy_per_device[gpu_id].append((ts, ts + dur,
-                                                          event.args.get("est. achieved occupancy %", 0.0)))
-                if "blocks per SM" in event.args:
-                    self.blocks_per_sm_count += 1
-                if "est. achieved occupancy %" in event.args:
-                    self.occupancy_count += 1
+        gpu_id = event.args.get("device", None)
+        if gpu_id != event.pid:
+            logger.warning("pid '{}' is not equal to args.device '{}' on event with ts '{}'".format(
+                event.pid, gpu_id, event.ts))
+        if gpu_id is not None:
+            if gpu_id not in self.gpu_ids:
+                self.gpu_ids.add(gpu_id)
+            self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
+            self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.args.get("blocks per SM", 0.0)))
+            self.occupancy_per_device[gpu_id].append((ts, ts + dur,
+                                                        event.args.get("est. achieved occupancy %", 0.0)))
+            if "blocks per SM" in event.args:
+                self.blocks_per_sm_count[gpu_id] += 1
+            if "est. achieved occupancy %" in event.args:
+                self.occupancy_count[gpu_id] += 1

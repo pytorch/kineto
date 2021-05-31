@@ -60,10 +60,12 @@ class RunLoader(object):
         barrier.wait()
 
         run = Run(self.run.name, self.run.run_dir)
-        while self.queue.qsize() > 0:
+        for _ in range(len(workers)):
             r, d = self.queue.get()
-            run.add_profile(r)
-            self.run.add_profile(d)
+            if r is not None:
+                run.add_profile(r)
+            if d is not None:
+                distributed_data[d.worker] = d
 
         distributed_profiles = self._process_spans()
         if distributed_profiles is not None:
@@ -95,8 +97,9 @@ class RunLoader(object):
             logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))
             sys.exit(1)
         except Exception as ex:
-                logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
+            logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run.name, worker, ex, exc_info=True)
+            self.queue.put((None, None))
         barrier.wait()
         logger.debug("finishing process data")
 
@@ -124,7 +127,7 @@ class RunLoader(object):
             else:
                 comm_node_lists.append(data.comm_node_list)
                 if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
-                    logger.error("Number of communication operation nodes don't match between workers in run:", self.run.name)
+                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run.name)
                     has_communication = False
             logger.debug("Processing profile data finish")
 
@@ -141,7 +144,7 @@ class RunLoader(object):
                 for k in range(worker_num):
                     kernel_ranges = comm_node_lists[k][i].kernel_ranges
                     if len(kernel_ranges) != kernel_range_size:
-                        logger.error("Number of communication kernels don't match between workers in run:", self.run.name)
+                        logger.error("Number of communication kernels don't match between workers in run: %s" % self.run.name)
                         has_communication = False
                         return None
                     if kernel_ranges:

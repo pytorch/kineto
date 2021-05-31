@@ -59,7 +59,7 @@ export function useSearchDirectly<T>(
     }
 
     return table.filter((row) => {
-      return field(row).toLowerCase().includes(searchNameDebounce)
+      return field(row).toLowerCase().includes(searchNameDebounce.toLowerCase())
     })
   }, [table, field, searchNameDebounce])
   console.log(result)

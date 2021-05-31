@@ -23,8 +23,12 @@ class Run(object):
         worker_list = list(dict.fromkeys(worker_list))
         return worker_list
 
-    def get_spans(self, worker):
-        spans = [s for w, s in self.profiles.keys() if w == worker]
+    def get_spans(self, worker=None):
+        if worker:
+            spans = [s for w, s in self.profiles.keys() if w == worker]
+        else:
+            spans = [s for _, s in self.profiles.keys()]
+
         spans = list(set(spans))
         if len(spans) == 1 and spans[0] is None:
             return None
@@ -42,6 +46,16 @@ class Run(object):
             return None
 
         return self.profiles.get((worker, span), None)
+
+    def get_profiles(self, *, worker=None, span=None):
+        if worker and span:
+            return self.profiles.get((worker, span), None)
+        elif worker:
+            return [p for (w, s), p in self.profiles.items() if worker == w]
+        elif span:
+            return [p for (w, s), p in self.profiles.items() if span == s]
+        else:
+            return self.profiles.values()
 
 class RunProfile(object):
     """ Cooked profiling result for a worker. For visualization purpose only.

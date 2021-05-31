@@ -7,7 +7,7 @@ from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
 from ..run import Run
-from .data import DistributedRunProfileData, RunData, RunProfileData
+from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
 
 logger = utils.get_logger()
@@ -15,15 +15,16 @@ logger = utils.get_logger()
 
 class RunLoader(object):
     def __init__(self, name, run_dir, caches):
-        self.run = RunData(name, run_dir)
+        self.run_name = name
+        self.run_dir = run_dir
         self.caches = caches
         self.queue = Queue()
 
     def load(self):
         workers = []
         spans_by_workers = {}
-        for path in io.listdir(self.run.run_dir):
-            if io.isdir(io.join(self.run.run_dir, path)):
+        for path in io.listdir(self.run_dir):
+            if io.isdir(io.join(self.run_dir, path)):
                 continue
             match = consts.WORKER_PATTERN.match(path)
             if not match:
@@ -59,15 +60,16 @@ class RunLoader(object):
         # If I increase the message size to 65533, the join would hang the process.
         barrier.wait()
 
-        run = Run(self.run.name, self.run.run_dir)
+        distributed_run = Run(self.run_name, self.run_dir)
+        run = Run(self.run_name, self.run_dir)
         for _ in range(len(workers)):
             r, d = self.queue.get()
             if r is not None:
                 run.add_profile(r)
             if d is not None:
-                self.run.add_profile(d)
+                distributed_run.add_profile(d)
 
-        distributed_profiles = self._process_spans()
+        distributed_profiles = self._process_spans(distributed_run)
         if distributed_profiles is not None:
             if isinstance(distributed_profiles, list):
                 for d in distributed_profiles:
@@ -84,7 +86,7 @@ class RunLoader(object):
 
         try:
             logger.debug("starting process_data")
-            data = RunProfileData.parse(self.run.run_dir, worker, span, path, self.caches)
+            data = RunProfileData.parse(self.run_dir, worker, span, path, self.caches)
             data.process()
             data.analyze()
 
@@ -98,19 +100,19 @@ class RunLoader(object):
             sys.exit(1)
         except Exception as ex:
             logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
-                               self.run.name, worker, ex, exc_info=True)
+                               self.run_name, worker, ex, exc_info=True)
             self.queue.put((None, None))
         barrier.wait()
         logger.debug("finishing process data")
 
-    def _process_spans(self):
-        spans = self.run.get_spans()
+    def _process_spans(self, distributed_run):
+        spans = distributed_run.get_spans()
         if spans is None:
-            return self._process_distributed_profiles(self.run.get_profiles(), None)
+            return self._process_distributed_profiles(distributed_run.get_profiles(), None)
         else:
             span_profiles = []
             for span in spans:
-                profiles = self.run.get_profiles(span=span)
+                profiles = distributed_run.get_profiles(span=span)
                 p = self._process_distributed_profiles(profiles, span)
                 if p is not None:
                     span_profiles.append(p)
@@ -127,11 +129,12 @@ class RunLoader(object):
             else:
                 comm_node_lists.append(data.comm_node_list)
                 if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
-                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run.name)
+                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
                     has_communication = False
             logger.debug("Processing profile data finish")
 
         if not has_communication:
+            logger.debug("There is no communication profile in this run.")
             return None
 
         worker_num = len(comm_node_lists)
@@ -144,7 +147,7 @@ class RunLoader(object):
                 for k in range(worker_num):
                     kernel_ranges = comm_node_lists[k][i].kernel_ranges
                     if len(kernel_ranges) != kernel_range_size:
-                        logger.error("Number of communication kernels don't match between workers in run: %s" % self.run.name)
+                        logger.error("Number of communication kernels don't match between workers in run: %s" % self.run_name)
                         has_communication = False
                         return None
                     if kernel_ranges:

@@ -21,39 +21,6 @@ from .overall_parser import OverallParser
 
 logger = utils.get_logger()
 
-
-class RunData(object):
-    def __init__(self, name, run_dir):
-        self.name = name
-        self.run_dir = run_dir
-        self.distributed_profiles = OrderedDict()
-
-    def get_spans(self, worker=None):
-        if worker:
-            spans = [s for w, s in self.distributed_profiles.keys() if w == worker]
-        else:
-            spans = [s for _, s in self.distributed_profiles.keys()]
-
-        spans = list(set(spans))
-        if len(spans) == 1 and spans[0] is None:
-            return None
-        else:
-            return spans
-
-    def add_profile(self, profile):
-        self.distributed_profiles[(profile.worker, profile.span)] = profile
-
-    def get_profiles(self, *, worker=None, span=None):
-        if worker and span:
-            return self.distributed_profiles.get((worker, span), None)
-        elif worker:
-            return [p for (w, s), p in self.distributed_profiles.items() if worker == w]
-        elif span:
-            return [p for (w, s), p in self.distributed_profiles.items() if span == s]
-        else:
-            return self.distributed_profiles.values()
-
-
 class RunProfileData(object):
     def __init__(self, worker, span=None):
         self.worker = worker

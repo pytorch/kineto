@@ -65,7 +65,7 @@ class RunLoader(object):
             if r is not None:
                 run.add_profile(r)
             if d is not None:
-                distributed_data[d.worker] = d
+                self.run.add_profile(d)
 
         distributed_profiles = self._process_spans()
         if distributed_profiles is not None:

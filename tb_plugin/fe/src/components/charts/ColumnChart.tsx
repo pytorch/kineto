@@ -10,6 +10,7 @@ import { useResizeEventDependency } from '../../utils/resize'
 interface IProps {
   title?: string
   units?: string
+  colors?: Array<string>
   chartData: ColumnChartData
 }
 
@@ -26,7 +27,7 @@ export interface ColumnChartData {
 }
 
 export const ColumnChart: React.FC<IProps> = (props) => {
-  const { title, units, chartData } = props
+  const { title, units, colors, chartData } = props
   const { legends, barLabels, barHeights } = chartData
   const classes = useStyles()
   const graphRef = React.useRef<HTMLDivElement>(null)
@@ -65,7 +66,8 @@ export const ColumnChart: React.FC<IProps> = (props) => {
         left: '15%',
         width: '80%',
         top: title ? '10%' : '5%'
-      }
+      },
+      colors
     }
 
     const chart = new google.visualization.ColumnChart(element)

@@ -141,26 +141,30 @@ class MemoryParser:
                     for i, value in enumerate(metrics):
                         memory_metrics_keyed_by_node[node][device][i] = value
                         memory_metrics_keyed_by_node[node][device][i + SELF_METRICS_COUNT] += value
+            else:
+                logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(node.name, node.start_time))
 
             # recursive the children nodes
             for child in node.children:
                 traverse_node_memory(child)
                 # sum up the child metrics
-                if is_operator_node(node):
-                    for device, metrics in memory_metrics_keyed_by_node[child].items():
-                        for i in range(SELF_METRICS_COUNT, MemoryMetrics.Total):
-                            memory_metrics_keyed_by_node[node][device][i] += metrics[i]
+                for device, metrics in memory_metrics_keyed_by_node[child].items():
+                    for i in range(SELF_METRICS_COUNT, MemoryMetrics.Total):
+                        memory_metrics_keyed_by_node[node][device][i] += metrics[i]
 
         for tid, root in self.tid2tree.items():
             for child in root.children:
                 traverse_node_memory(child)
 
         # keyed first by device name like CPU/GPU0 etc, then keyed by operator name.
-        # the value is array [items indexed by MemoryMetrics] 
-        memory_metrics_keyed_by_nodename = defaultdict(dict_factory) 
-        # node is the instance
-        # device_keyed_metrics is dictionary keyed by device name like CPU/GPU0
+        # the value is array [items indexed by MemoryMetrics]
+        memory_metrics_keyed_by_nodename = defaultdict(dict_factory)
+        # node: the instance, device_keyed_metrics: dictionary keyed by device name like CPU/GPU0
         for node, device_keyed_metrics in memory_metrics_keyed_by_node.items():
+            if not is_operator_node(node):
+                # skip the node like Optimizer.step, DataLoader, ProfilerStep#1 etc.
+                continue
+
             for device, metrics in device_keyed_metrics.items():
                 for i, metric in enumerate(metrics):
                     memory_metrics_keyed_by_nodename[device][node.name][i] += metric
@@ -190,7 +194,7 @@ class MemoryParser:
                 self.staled_records_normal.extend(records)
 
             for mem_record in records:
-                self._update_memory_event(mem_record, root_node)
+                    self._update_memory_event(mem_record, root_node)
 
         if len(self.staled_records_normal) > 0 and self.record_length > 0:
             logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))
@@ -205,9 +209,9 @@ class MemoryParser:
                 child_found = child
                 break
         if child_found is None:
-            # We use left close and right open deliberately here [start time, end time) 
+            # We use left close and right open deliberately here [start time, end time)
             # to avoid one memory be calculated twice in case of it is equal to previous operator's end time
-            # and next operator's start time. 
+            # and next operator's start time.
             # the result might be different with PyTorch one.
             # https://github.com/pytorch/pytorch/blob/26c1f0f72e71c096648a16993484234399da307c/torch/autograd/profiler.py#L1147-L1152
             if is_operator_node(node) and record.ts >= node.start_time and record.ts < node.end_time:
@@ -226,7 +230,7 @@ class MemoryParser:
                 continue
 
             # each item is (parent_node, child_index) that it is visiting.
-            node_stack = []  
+            node_stack = []
 
             child_index = 0
             record_index = 0
@@ -275,7 +279,7 @@ class MemoryParser:
                 while child_index < len(current_node.children):
                     if record.ts < current_node.children[child_index].start_time:
                         # if current record timestamp is less than the current child's startime,
-                        # we will break the search and keep the child_index not change. So that next time 
+                        # we will break the search and keep the child_index not change. So that next time
                         # we can continue from here.
                         # there is no any child contains the record.timestamp
                         # child_find is False at this case.

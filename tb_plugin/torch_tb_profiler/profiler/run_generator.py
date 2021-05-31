@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
+from .node import MemoryMetrics
 from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
@@ -49,6 +50,11 @@ class RunGenerator(object):
         profile_run.occupancy = self.profile_data.occupancy
         profile_run.blocks_per_sm_count = self.profile_data.blocks_per_sm_count
         profile_run.occupancy_count = self.profile_data.occupancy_count
+
+        # add memory stats
+        if self.profile_data.has_memory_data:
+            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_stats)
+            profile_run.views.append(consts.MEMORY_VIEW)
 
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:
@@ -349,6 +355,59 @@ class RunGenerator(object):
             table["rows"].append(kernel_row)
         data = {"data": table}
         return data
+
+    def _generate_memory_view(self, memory_stats):
+
+        data = OrderedDict()
+        result = {
+            "metadata": {
+                "title": "Memory View",
+                "default_device": "CPU",
+                "search": "Operator Name",
+                "sort": "Self Size Increase (KB)"
+            },
+            "data": data
+        }
+
+        columns_names = [
+            ("Operator Name", "string", ""),
+            ("Calls", "number", "# of calls of the operator."),
+            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
+            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
+            ("Allocation Count", "number", "The allocation count including all chidren operators."),
+            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
+            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
+            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
+        ]
+        for name, memory in sorted(memory_stats.items()):
+            table = {}
+
+            # Process columns
+            columns = []
+            for col_name, col_type, tool_tip in columns_names:
+                if tool_tip:
+                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
+                else:
+                    columns.append({"type": col_type, "name": col_name})
+            table["columns"] = columns
+
+            # Process rows
+            rows = []
+            for op_name, stat in sorted(memory.items()):
+                rows.append([
+                    op_name,
+                    stat[6],
+                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
+                    stat[MemoryMetrics.AllocationCount],
+                    stat[MemoryMetrics.SelfAllocationCount],
+                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
+                    ])
+            table["rows"] = rows
+
+            data[name] = table
+        return result
 
     @staticmethod
     def _get_gpu_info(device_props, gpu_id):

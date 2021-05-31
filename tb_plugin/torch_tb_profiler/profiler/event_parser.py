@@ -60,6 +60,8 @@ class NodeParserMixin:
         externalid_to_runtime = {}  # value is a list of RuntimeNode
 
         for event in events:
+            if event.type == EventTypes.MEMORY:
+                continue
             self._parse_node(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
 
         for event in events:
@@ -203,7 +205,7 @@ class NodeParserMixin:
                 self.use_dp = True
             if event.name == "DistributedDataParallel.forward":
                 self.use_ddp = True
-            tid2list.setdefault(tid, []).append(op_node)
+            tid2list.setdefault(int(tid), []).append(op_node)
 
 
 class StepParser:
@@ -226,6 +228,9 @@ class StepParser:
 
     def parse_steps(self, events, comm_nodes):
         for event in events:
+            if event.type == EventTypes.MEMORY:
+                continue
+
             self._parse_step(event, comm_nodes)
             if event.type == EventTypes.TRACE and event.name == "PyTorch Profiler (0)":
                 self.global_start_ts = event.ts

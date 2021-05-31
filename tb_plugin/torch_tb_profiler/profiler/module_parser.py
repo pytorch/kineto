@@ -4,7 +4,7 @@
 import sys
 
 from .. import utils
-from .node import OperatorNode
+from .node import OperatorNode, is_operator_node
 from .trace import EventTypes
 
 logger = utils.get_logger()
@@ -66,7 +66,7 @@ class ModuleParser:
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.
-    def _build_tree(self, host_node_list, zero_rt_list):
+    def _build_tree(self, host_node_list, zero_rt_list, tid):
 
         def build_tree_relationship(host_node_list, zero_rt_list):
             node_stack = []
@@ -75,6 +75,7 @@ class ModuleParser:
                 start_time=-sys.maxsize - 1,
                 end_time=sys.maxsize,
                 type=EventTypes.PYTHON,
+                tid=tid,
                 runtimes=zero_rt_list) # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
@@ -83,6 +84,7 @@ class ModuleParser:
                     if node.start_time < tail_node.end_time:
                         if node.end_time <= tail_node.end_time:
                             tail_node.children.append(node)
+                            # node.parent_node = weakref.ref(tail_node)
                             node_stack.append(node)
                         else:
                             logger.error("Error in input data: ranges on the same thread should not intersect!"
@@ -118,9 +120,7 @@ class ModuleParser:
                 for rt in node.runtimes:
                     traverse_node(rt)
 
-            if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \
-                    and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__")) \
-                    and not node.name.startswith("Optimizer."):
+            if is_operator_node(node):
                 self.cpp_op_list.append(node)
             if node.type == EventTypes.RUNTIME and node.device_nodes is not None:
                 self.kernel_list.extend([n for n in node.device_nodes if n.type == EventTypes.KERNEL])
@@ -209,7 +209,7 @@ class ModuleParser:
             zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
             # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
             op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            root_node = self._build_tree(op_list, zero_rt_list)
-            self.tid2tree[tid] = root_node
+            root_node = self._build_tree(op_list, zero_rt_list, tid)
+            self.tid2tree[int(tid)] = root_node
         self.op_list_groupby_name, self.op_list_groupby_name_input, self.stack_lists_group_by_name, self.stack_lists_group_by_name_input = parse_ops(self.cpp_op_list)
         self.kernel_list_groupby_name_op = parse_kernels(self.kernel_list)

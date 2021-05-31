@@ -3,7 +3,6 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
-from . import io
 from . import consts
 
 
@@ -66,6 +65,9 @@ class RunProfile(object):
         self.gpu_util_buckets = None
         self.approximated_sm_efficency_ranges = None
         self.gpu_infos = None
+
+        # memory stats
+        self.memory_view = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):

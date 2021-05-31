@@ -15,9 +15,9 @@ from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
+from .memory_parser import MemoryParser
 from .module_parser import ModuleParser
 from .overall_parser import OverallParser
-from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -66,6 +66,18 @@ class RunProfileData(object):
         self.comm_node_list = None
         self.comm_overlap_costs = None
 
+        # Memory stats
+        self.memory_stats = None
+
+    @property
+    def has_memory_data(self):
+        if self.memory_stats:
+            for node_metrics in self.memory_stats.values():
+                for metrics_values in node_metrics.values():
+                    if any(metrics_values):
+                        return True
+
+        return False
 
     @staticmethod
     def parse(run_dir, worker, path, caches):
@@ -170,6 +182,10 @@ class RunProfileData(object):
         self.approximated_sm_efficency_ranges = gpu_metrics_parser.approximated_sm_efficency_ranges
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
+
+        memory_parser = MemoryParser(module_parser.tid2tree, module_parser.op_list_groupby_name)
+        memory_parser.parse_events(self.events)
+        self.memory_stats = memory_parser.get_memory_statistics()
 
         if self.has_kernel:
             logger.debug("KernelParser")

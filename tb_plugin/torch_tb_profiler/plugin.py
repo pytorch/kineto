@@ -117,7 +117,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/distributed/gpuinfo": self.dist_gpu_info_route,
             "/distributed/overlap": self.comm_overlap_route,
             "/distributed/waittime": self.comm_wait_route,
-            "/distributed/commops": self.comm_ops_route
+            "/distributed/commops": self.comm_ops_route,
+            "/memory": self.memory_route,
         }
 
     def frontend_metadata(self):
@@ -172,11 +173,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_pie_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
+        profile = self._get_profile_for_request(request)
 
         group_by = request.args.get("group_by")
         if group_by == "OperationAndInputShape":
@@ -186,11 +183,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_table_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
+        profile = self._get_profile_for_request(request)
 
         group_by = request.args.get("group_by")
         if group_by == "OperationAndInputShape":
@@ -200,13 +193,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def operation_stack_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        op_name = request.args.get("op_name")
-        self._validate(run=name, worker=worker, op_name=op_name)
-        profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
+        profile = self._get_profile_for_request(request)
 
+        op_name = request.args.get("op_name")
+        self._validate(op_name=op_name)
         group_by = request.args.get("group_by")
         input_shape = request.args.get("input_shape")
         if group_by == "OperationAndInputShape":
@@ -216,21 +206,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def kernel_pie_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
+        profile = self._get_profile_for_request(request)
 
         return self.respond_as_json(profile.kernel_pie)
 
     @wrappers.Request.application
     def kernel_table_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
+        profile = self._get_profile_for_request(request)
 
         group_by = request.args.get("group_by")
         if group_by == "Kernel":
@@ -240,11 +222,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def trace_route(self, request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
-        self._check_normal_profile(profile, name, worker)
+        profile = self._get_profile_for_request(request)
 
         if not profile.has_kernel:# Pure CPU.
             raw_data = self._cache.read(profile.trace_file_path)
@@ -274,35 +252,28 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def dist_gpu_info_route(self, request):
-        name = request.args.get("run")
-        self._validate(run=name)
-        profile = self._get_profile(name, 'All')
-        self._check_distributed_profile(profile, name)
+        profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.gpu_info)
 
     @wrappers.Request.application
     def comm_overlap_route(self, request):
-        name = request.args.get("run")
-        self._validate(run=name)
-        profile = self._get_profile(name, 'All')
-        self._check_distributed_profile(profile, name)
+        profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.steps_to_overlap)
 
     @wrappers.Request.application
     def comm_wait_route(self, request):
-        name = request.args.get("run")
-        self._validate(run=name)
-        profile = self._get_profile(name, 'All')
-        self._check_distributed_profile(profile, name)
+        profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
     def comm_ops_route(self, request):
-        name = request.args.get("run")
-        self._validate(run=name)
-        profile = self._get_profile(name, 'All')
-        self._check_distributed_profile(profile, name)
+        profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.comm_ops)
+
+    @wrappers.Request.application
+    def memory_route(self, request):
+        profile = self._get_profile_for_request(request)
+        return self.respond_as_json(profile.memory_view)
 
     @wrappers.Request.application
     def static_file_route(self, request):
@@ -421,6 +392,20 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         else:
             name = io.relpath(run_dir, logdir)
         return name
+
+    def _get_profile_for_request(self, request, distributed=False):
+        name = request.args.get("run")
+        if distributed:
+            self._validate(run=name)
+            profile = self._get_profile(name, 'All')
+            self._check_distributed_profile(profile, name)
+        else:
+            worker = request.args.get("worker")
+            self._validate(run=name, worker=worker)
+            profile = self._get_profile(name, worker)
+            self._check_normal_profile(profile, name, worker)
+
+        return profile
 
     def _get_profile(self, name, worker):
         run = self._get_run(name)

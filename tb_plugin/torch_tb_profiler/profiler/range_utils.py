@@ -3,7 +3,6 @@
 # -------------------------------------------------------------------------
 from enum import IntEnum
 
-
 EndpointTypes = IntEnum('EndpointTypes', ['START', 'END'], start=0)
 
 

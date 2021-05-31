@@ -1,7 +1,11 @@
-from .range_utils import *
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# --------------------------------------------------------------------------
+from .. import consts, utils
+from .range_utils import (get_ranges_sum, intersection_ranges_lists,
+                          intersection_ranges_lists_with_value, merge_ranges,
+                          merge_ranges_with_value)
 from .trace import EventTypes
-from .. import utils
-from .. import consts
 
 logger = utils.get_logger()
 
@@ -147,7 +151,8 @@ class GPUMetricsParser(object):
     def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
         logger.debug("GPU Metrics, parse events")
         for event in events:
-            self.parse_event(event)
+            if event.type == EventTypes.KERNEL:
+                self.parse_event(event)
 
         self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)
         self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
@@ -156,20 +161,18 @@ class GPUMetricsParser(object):
     def parse_event(self, event):
         ts = event.ts
         dur = event.duration
-        evt_type = event.type
-        if evt_type == EventTypes.KERNEL:
-            gpu_id = event.args.get("device", None)
-            if gpu_id != event.pid:
-                logger.warning("pid '{}' is not equal to args.device '{}' on event with ts '{}'".format(
-                    event.pid, gpu_id, event.ts))
-            if gpu_id is not None:
-                if gpu_id not in self.gpu_ids:
-                    self.gpu_ids.add(gpu_id)
-                self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
-                self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.args.get("blocks per SM", 0.0)))
-                self.occupancy_per_device[gpu_id].append((ts, ts + dur,
-                                                          event.args.get("est. achieved occupancy %", 0.0)))
-                if "blocks per SM" in event.args:
-                    self.blocks_per_sm_count[gpu_id] += 1
-                if "est. achieved occupancy %" in event.args:
-                    self.occupancy_count[gpu_id] += 1
+        gpu_id = event.args.get("device", None)
+        if gpu_id != event.pid:
+            logger.warning("pid '{}' is not equal to args.device '{}' on event with ts '{}'".format(
+                event.pid, gpu_id, event.ts))
+        if gpu_id is not None:
+            if gpu_id not in self.gpu_ids:
+                self.gpu_ids.add(gpu_id)
+            self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
+            self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.args.get("blocks per SM", 0.0)))
+            self.occupancy_per_device[gpu_id].append((ts, ts + dur,
+                                                        event.args.get("est. achieved occupancy %", 0.0)))
+            if "blocks per SM" in event.args:
+                self.blocks_per_sm_count[gpu_id] += 1
+            if "est. achieved occupancy %" in event.args:
+                self.occupancy_count[gpu_id] += 1

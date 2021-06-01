@@ -22,7 +22,7 @@ class Run(object):
         return worker_list
 
     def get_spans(self, worker=None):
-        if worker:
+        if worker is not None:
             spans = [s for w, s in self.profiles.keys() if w == worker]
         else:
             spans = [s for _, s in self.profiles.keys()]
@@ -37,7 +37,7 @@ class Run(object):
         self.profiles[(profile.worker, profile.span)] = profile
 
     def get_profile(self, worker, span):
-        if not worker:
+        if worker is None:
             raise ValueError("the worker parameter is mandatory")
 
         if len(self.profiles) == 0:

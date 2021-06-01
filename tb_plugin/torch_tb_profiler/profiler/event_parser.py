@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 import sys
+from collections import defaultdict
 from enum import IntEnum
 
 from .. import utils
@@ -52,12 +53,12 @@ class NodeParserMixin:
         #   Use external_id to build correlation with its father OperatorNode or ProfilerStepNode.
         #   Because in the case when RuntimeNode has duration 0 and starts at same time as a OperatorNode,
         #   just use interval containing relationship can't tell it is child or brother of the OperatorNode.
-        tid2list = {} # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
-        tid2zero_rt_list = {}  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
-        corrid_to_device = {}  # value is a list of DeviceNode
+        tid2list = defaultdict(list) # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
+        tid2zero_rt_list = defaultdict(list)  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
+        corrid_to_device = defaultdict(list)  # value is a list of DeviceNode
 
         corrid_to_runtime = {}  # value is a RuntimeNode
-        externalid_to_runtime = {}  # value is a list of RuntimeNode
+        externalid_to_runtime = defaultdict(list)  # value is a list of RuntimeNode
 
         for event in events:
             if event.type == EventTypes.MEMORY:
@@ -176,17 +177,17 @@ class NodeParserMixin:
                     logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (runtime external_id, device external_id): (%s, %s)" % 
                         (corrid, rt_node.external_id, device_node.external_id))
             else:
-                corrid_to_device.setdefault(corrid, []).append(device_node)
+                corrid_to_device[corrid].append(device_node)
             self.device_node_list.append(device_node)
         elif event.type == EventTypes.RUNTIME:
             device_nodes = corrid_to_device.pop(corrid, None)
             rt_node = RuntimeNode.create(event, device_nodes)
             corrid_to_runtime[corrid] = rt_node
-            externalid_to_runtime.setdefault(rt_node.external_id, []).append(rt_node)
+            externalid_to_runtime[rt_node.external_id].append(rt_node)
             # Some runtimes has external_id 0, which will not be correlated to any operator.
             # So get them and attach them to root node.
             if rt_node.external_id == 0:
-                tid2zero_rt_list.setdefault(tid, []).append(rt_node)
+                tid2zero_rt_list[tid].append(rt_node)
             self.runtime_node_list.append(rt_node)
 
             # check the external_id
@@ -207,7 +208,7 @@ class NodeParserMixin:
                 self.use_dp = True
             if event.name == "DistributedDataParallel.forward":
                 self.use_ddp = True
-            tid2list.setdefault(int(tid), []).append(op_node)
+            tid2list[int(tid)].append(op_node)
 
 
 class StepParser:

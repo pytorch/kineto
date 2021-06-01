@@ -1,8 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from collections import OrderedDict
-
 from . import consts
 
 
@@ -14,13 +12,13 @@ class Run(object):
     def __init__(self, name, run_dir):
         self.name = name
         self.run_dir = run_dir
-        self.profiles = OrderedDict()
+        self.profiles = {}
 
     @property
     def workers(self):
         # get full worker list and remove the duplicated
         worker_list, _ = zip(*self.profiles.keys())
-        worker_list = list(dict.fromkeys(worker_list))
+        worker_list = sorted(list(dict.fromkeys(worker_list)))
         return worker_list
 
     def get_spans(self, worker=None):
@@ -33,7 +31,7 @@ class Run(object):
         if len(spans) == 1 and spans[0] is None:
             return None
         else:
-            return spans
+            return sorted(spans)
 
     def add_profile(self, profile):
         self.profiles[(profile.worker, profile.span)] = profile

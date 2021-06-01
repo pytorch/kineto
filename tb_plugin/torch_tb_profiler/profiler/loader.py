@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+import bisect
 import os
 import sys
 from collections import defaultdict
@@ -36,18 +37,19 @@ class RunLoader(object):
             if span:
                 # remove the starting dot (.)
                 span = span[1:]
-                spans_by_workers[worker].append(span)
+                bisect.insort(spans_by_workers[worker], span)
 
             workers.append((worker, span, path))
 
-        for s in spans_by_workers.values():
-            s.sort()
+        span_index_map = {}
+        for worker, span_array in spans_by_workers.items():
+            for i, span in enumerate(span_array):
+                span_index_map[(worker, span)] = i
 
         barrier = Barrier(len(workers) + 1)
-        for worker, span, path in sorted(workers):
+        for worker, span, path in workers:
             # convert the span timestamp to the index.
-            s = spans_by_workers.get(worker)
-            span_index = None if span is None else s.index(span)
+            span_index = None if span is None else span_index_map[(worker, span)]
             p = Process(target=self._process_data, args=(worker, span_index, path, barrier))
             p.start()
 

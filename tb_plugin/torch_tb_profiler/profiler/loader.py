@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 import os
 import sys
+from collections import defaultdict
 from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
@@ -22,7 +23,7 @@ class RunLoader(object):
 
     def load(self):
         workers = []
-        spans_by_workers = {}
+        spans_by_workers = defaultdict(list)
         for path in io.listdir(self.run_dir):
             if io.isdir(io.join(self.run_dir, path)):
                 continue
@@ -35,7 +36,7 @@ class RunLoader(object):
             if span:
                 # remove the starting dot (.)
                 span = span[1:]
-                spans_by_workers.setdefault(worker, []).append(span)
+                spans_by_workers[worker].append(span)
 
             workers.append((worker, span, path))
 

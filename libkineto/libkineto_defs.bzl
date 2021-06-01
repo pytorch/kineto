@@ -3,7 +3,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-def get_libkineto_srcs():
+def get_libkineto_cupti_srcs():
     return [
         "src/AbstractConfig.cpp",
         "src/ActivityProfiler.cpp",
@@ -23,6 +23,27 @@ def get_libkineto_srcs():
         "src/ThreadName.cpp",
         "src/WeakSymbols.cpp",
         "src/cupti_strings.cpp",
+        "src/init.cpp",
+        "src/libkineto_api.cpp",
+        "src/output_csv.cpp",
+        "src/output_json.cpp",
+    ]
+
+def get_libkineto_roctracer_srcs():
+    return [
+        "src/AbstractConfig.cpp",
+        "src/ActivityProfiler.cpp",
+        "src/ActivityProfilerController.cpp",
+        "src/ActivityProfilerProxy.cpp",
+        "src/Config.cpp",
+        "src/ConfigLoader.cpp",
+        "src/CuptiActivityInterface.cpp",
+        "src/Demangle.cpp",
+        "src/GenericTraceActivity.cpp",
+        "src/Logger.cpp",
+        "src/ProcessInfo.cpp",
+        "src/RoctracerActivityInterface.cpp",
+        "src/ThreadName.cpp",
         "src/init.cpp",
         "src/libkineto_api.cpp",
         "src/output_csv.cpp",

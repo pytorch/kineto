@@ -29,6 +29,11 @@
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
 #endif // HAS_CUPTI
+#ifdef HAS_ROCTRACER
+// FIXME
+// FIXME
+#include "RoctracerActivityInterface.h"
+#endif
 #include "output_base.h"
 
 #include "Logger.h"
@@ -113,8 +118,11 @@ bool ActivityProfiler::applyNetFilterInternal(const std::string& name) {
   }
   return false;
 }
-
+#ifdef HAS_ROCTRACER
+ActivityProfiler::ActivityProfiler(RoctracerActivityInterface& cupti, bool cpuOnly)
+#else
 ActivityProfiler::ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
+#endif
     : cupti_(cupti),
       flushOverhead_{0, 0},
       setupOverhead_{0, 0},
@@ -158,7 +166,15 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     }
   }
 #endif // HAS_CUPTI
-
+#ifdef HAS_ROCTRACER
+  printf("FIXME: processActivities\n");
+  if (!cpuOnly_) {
+    VLOG(0) << "Retrieving GPU activity buffers";
+    const int count = cupti_.processActivities(logger);
+    LOG(INFO) << "Processed " << count
+              << " GPU records";
+  }
+#endif // HAS_ROCTRACER
   finalizeTrace(*config_, logger);
 }
 
@@ -226,6 +242,7 @@ inline void ActivityProfiler::handleCorrelationActivity(
           << ": CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION";
 }
 #endif // HAS_CUPTI
+// FIXME: rocprofiler
 
 const libkineto::ClientTraceActivity&
 ActivityProfiler::ExternalEventMap::getClientTraceActivity(
@@ -510,6 +527,14 @@ void ActivityProfiler::configure(
     }
   }
 #endif // HAS_CUPTI
+#ifdef HAS_ROCTRACER
+  if (!cpuOnly_) {
+    LOG(INFO) << "Enabling GPU tracing";
+    cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
+    cupti_.enableActivities(config_->selectedActivityTypes());
+    // FIXME: overhead sample?
+  }
+#endif // HAS_ROCTRACER
 
   profileStartTime_ = (config_->requestTimestamp() + config_->maxRequestAge()) +
       config_->activitiesWarmupDuration();
@@ -551,6 +576,13 @@ void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
     }
   }
 #endif // HAS_CUPTI
+#ifdef HAS_ROCTRACER
+  if (!cpuOnly_) {
+    cupti_.disableActivities(config_->selectedActivityTypes());
+    // FIXME: overhead sample?
+  }
+#endif // HAS_ROCTRACER
+
   if (currentRunloopState_ == RunloopState::CollectTrace) {
     VLOG(0) << "CollectTrace -> ProcessTrace";
   } else {
@@ -722,6 +754,11 @@ void ActivityProfiler::resetTraceData() {
     cupti_.clearActivities();
   }
 #endif // HAS_CUPTI
+#ifdef HAS_ROCTRACER
+  if (!cpuOnly_) {
+    cupti_.clearActivities();
+  }
+#endif // HAS_ROCTRACER
   externalEvents_.clear();
   gpuUserEventMap_.clear();
   traceSpans_.clear();

@@ -12,6 +12,7 @@
 
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
+#include "RoctracerActivityInterface.h"
 #include "ThreadName.h"
 #include "output_json.h"
 #include "output_membuf.h"
@@ -26,7 +27,13 @@ constexpr milliseconds kDefaultInactiveProfilerIntervalMsecs(1000);
 constexpr milliseconds kDefaultActiveProfilerIntervalMsecs(200);
 
 ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
+#ifdef HAS_ROCTRACER
+  printf("\tHAS_ROCTRACER\n");
+  profiler_ = std::make_unique<ActivityProfiler>(RoctracerActivityInterface::singleton(), cpuOnly);
+#else
+  printf("\tHAS_CUPTI\n");
   profiler_ = std::make_unique<ActivityProfiler>(CuptiActivityInterface::singleton(), cpuOnly);
+#endif
 }
 
 ActivityProfilerController::~ActivityProfilerController() {

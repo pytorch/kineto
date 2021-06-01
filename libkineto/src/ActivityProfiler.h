@@ -32,10 +32,12 @@ namespace KINETO_NAMESPACE {
 
 class Config;
 class CuptiActivityInterface;
+class RoctracerActivityInterface;
 
 class ActivityProfiler {
  public:
   ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly);
+  ActivityProfiler(RoctracerActivityInterface& rai, bool cpuOnly);
   ActivityProfiler(const ActivityProfiler&) = delete;
   ActivityProfiler& operator=(const ActivityProfiler&) = delete;
 
@@ -285,7 +287,11 @@ class ActivityProfiler {
   ActivityLogger* logger_;
 
   // Calls to CUPTI is encapsulated behind this interface
+#ifdef HAS_ROCTRACER
+  RoctracerActivityInterface& cupti_;		// Design failure here
+#else
   CuptiActivityInterface& cupti_;
+#endif
 
   enum class RunloopState {
     WaitForRequest,

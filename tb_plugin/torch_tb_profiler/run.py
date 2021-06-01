@@ -46,11 +46,13 @@ class Run(object):
         return self.profiles.get((worker, span), None)
 
     def get_profiles(self, *, worker=None, span=None):
-        if worker and span:
+        # Note: we could not use if span to check it is None or not
+        # since the span 0 will be skipped at this case.
+        if worker is not None and span is not None:
             return self.profiles.get((worker, span), None)
-        elif worker:
+        elif worker is not None:
             return [p for (w, s), p in self.profiles.items() if worker == w]
-        elif span:
+        elif span is not None:
             return [p for (w, s), p in self.profiles.items() if span == s]
         else:
             return self.profiles.values()

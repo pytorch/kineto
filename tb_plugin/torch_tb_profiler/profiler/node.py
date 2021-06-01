@@ -72,13 +72,6 @@ class OperatorNode(HostNode):
         self.memory_records = []
         # self.parent_node = None
 
-    @property
-    def parent(self):
-        if self.parent_node is None:
-            return None
-        else:
-            return self.parent_node()
-
     def add_memory_record(self, record):
         self.memory_records.append(record)
 

@@ -6,13 +6,23 @@ import pathlib
 import setuptools
 import subprocess
 
-def get_version():
-    with open("version.txt", encoding="utf-8") as f:
-        version = f.read().strip()
+
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(here, rel_path)) as fp:
+        return fp.read()
+
+
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith("__version__"):
+            delim = '"' if '"' in line else "'"
+            version = line.split(delim)[1]
 
     if os.getenv('TORCH_TB_PROFILER_BUILD_VERSION'):
         version = os.getenv('TORCH_TB_PROFILER_BUILD_VERSION')
     return version
+
 
 INSTALL_REQUIRED = [
     "pandas >= 1.0.0",
@@ -29,6 +39,7 @@ EXTRAS = {
     "blob": ["azure-storage-blob"],
     "gs": ["google-cloud-storage"]
 }
+
 
 class build_fe(setuptools.Command):
     """Build the frontend"""
@@ -50,9 +61,10 @@ class build_fe(setuptools.Command):
         # restore the working directory
         os.chdir(cwd)
 
+
 setuptools.setup(
     name="torch_tb_profiler",
-    version=get_version(),
+    version=get_version(os.path.join('torch_tb_profiler', '__init__.py')),
     description="PyTorch Profiler TensorBoard Plugin",
     long_description="PyTorch Profiler TensorBoard Plugin : \
         https://github.com/pytorch/kineto/tree/master/tb_plugin",

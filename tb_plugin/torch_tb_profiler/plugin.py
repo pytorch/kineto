@@ -394,13 +394,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def _get_profile(self, name, worker, span):
         run = self._get_run(name)
         self._check_run(run, name)
-
-        if span is None:
-            # TODO: before we fully support the mutliple span, we get the first item in the list and pick the profile in tuple(1)
-            spans = run.get_spans(worker)
-            if spans:
-                span = spans[0]
-
         profile = run.get_profile(worker, span)
         if profile is None:
             raise errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))

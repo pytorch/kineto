@@ -63,11 +63,11 @@ class TestEnd2End(unittest.TestCase):
         run_link = link_prefix + 'runs'
 
         expected_links_format=[
-            link_prefix + 'overview?run={}&worker=worker0&view=Overview',
-            link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation',
-            link_prefix + 'operation/table?run={}&worker=worker0&view=Operator&group_by=Operation',
-            link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel',
-            link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel'
+            link_prefix + 'overview?run={}&worker=worker0&span=default&view=Overview',
+            link_prefix + 'operation?run={}&worker=worker0&span=default&view=Operator&group_by=Operation',
+            link_prefix + 'operation/table?run={}&worker=worker0&span=default&view=Operator&group_by=Operation',
+            link_prefix + 'kernel/table?run={}&worker=worker0&span=default&view=Kernel&group_by=Kernel',
+            link_prefix + 'kernel?run={}&worker=worker0&span=default&view=Kernel&group_by=Kernel'
         ]
 
         retry_times = 60

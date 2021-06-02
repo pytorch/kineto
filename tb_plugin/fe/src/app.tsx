@@ -272,6 +272,32 @@ export const App = () => {
     }
   }
 
+  const spanComponent = () => {
+    const spanFragment = <React.Fragment>
+        <ListSubheader>Spans</ListSubheader>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={span} onChange={handleSpanChange}>
+              {spans.map((span) => (
+                <MenuItem value={span}>{span}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
+      </React.Fragment>
+
+    if (!spans || spans.length <= 1) {
+      return (
+        <div className={classes.hide}>
+          {spanFragment}
+        </div>
+      )
+    }
+    else {
+      return spanFragment
+    }
+  }
+
   return (
     <div className={classes.root}>
       <CssBaseline />
@@ -319,16 +345,7 @@ export const App = () => {
             </Select>
           </FormControl>
         </ClickAwayListener>
-        <ListSubheader>Spans</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={span} onChange={handleSpanChange}>
-              {spans.map((span) => (
-                <MenuItem value={span}>{span}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
+        {spanComponent()}
         <ListSubheader>Views</ListSubheader>
         <ClickAwayListener onClickAway={SetIframeActive}>
           <FormControl variant="outlined" className={classes.formControl}>

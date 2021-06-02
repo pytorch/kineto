@@ -134,6 +134,9 @@ export const App = () => {
   const [workers, setWorkers] = React.useState<string[]>([])
   const [worker, setWorker] = React.useState<string>('')
 
+  const [spans, setSpans] = React.useState<string[]>([])
+  const [span, setSpan] = React.useState<string | ''>('')
+
   const [views, setViews] = React.useState<Views[]>([])
   const [view, setView] = React.useState<Views | ''>('')
   const [loaded, setLoaded] = React.useState(false)
@@ -181,14 +184,26 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run && worker) {
-      api.defaultApi.viewsGet(run, worker).then((rawViews) => {
+      api.defaultApi.spansGet(run, worker).then((spans) => {
+        setSpans(spans)
+      })
+    }
+  }, [run, worker])
+
+  React.useEffect(() => {
+    setSpan(firstOrUndefined(spans) ?? '')
+  }, [spans])
+
+  React.useEffect(() => {
+    if (run && worker) {
+      api.defaultApi.viewsGet(run, worker, String(span)).then((rawViews) => {
         const views = rawViews
           .map((v) => Views[Views[v as Views]])
           .filter(Boolean)
         setViews(views)
       })
     }
-  }, [run, worker])
+  }, [run, worker, span])
 
   React.useEffect(() => {
     setView(firstOrUndefined(views) ?? '')
@@ -202,6 +217,11 @@ export const App = () => {
 
   const handleWorkerChange: SelectProps['onChange'] = (event) => {
     setWorker(event.target.value as string)
+  }
+
+  const handleSpanChange: SelectProps['onChange'] = (event) => {
+    setSpan(event.target.value as string)
+    setView('')
   }
 
   const handleViewChange: SelectProps['onChange'] = (event) => {
@@ -231,24 +251,24 @@ export const App = () => {
 
     switch (view) {
       case Views.Overview:
-        return <Overview run={run} worker={worker} view={view} />
+        return <Overview run={run} worker={worker} span={span} />
       case Views.Operator:
-        return <Operator run={run} worker={worker} view={view} />
+        return <Operator run={run} worker={worker} span={span} />
       case Views.Kernel:
-        return <Kernel run={run} worker={worker} view={view} />
+        return <Kernel run={run} worker={worker} span={span} />
       case Views.Trace:
         return (
           <TraceView
             run={run}
             worker={worker}
-            view={view}
+            span={span}
             iframeRef={iframeRef}
           />
         )
       case Views.Distributed:
-        return <DistributedView run={run} worker={worker} view={view} />
+        return <DistributedView run={run} worker={worker} span={span} />
       case Views.Memory:
-        return <MemoryView run={run} worker={worker} view={view} />
+        return <MemoryView run={run} worker={worker} span={span} />
     }
   }
 
@@ -295,6 +315,16 @@ export const App = () => {
             <Select value={worker} onChange={handleWorkerChange}>
               {workers.map((worker) => (
                 <MenuItem value={worker}>{worker}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
+        <ListSubheader>Spans</ListSubheader>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={span} onChange={handleSpanChange}>
+              {spans.map((span) => (
+                <MenuItem value={span}>{span}</MenuItem>
               ))}
             </Select>
           </FormControl>

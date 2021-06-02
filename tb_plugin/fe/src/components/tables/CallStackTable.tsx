@@ -17,7 +17,7 @@ export interface IProps {
   data: OperationTableDataInner
   run: string
   worker: string
-  view: string
+  span: string
   groupBy: OperationGroupBy
 }
 
@@ -33,7 +33,7 @@ const expandedRowRender = (record: TransformedCallStackDataInner) => (
 )
 
 export const CallStackTable = (props: IProps) => {
-  const { data, run, worker, view, groupBy } = props
+  const { data, run, worker, span, groupBy } = props
   const { name, input_shape } = data
 
   const [stackData, setStackData] = React.useState<
@@ -42,11 +42,11 @@ export const CallStackTable = (props: IProps) => {
 
   React.useEffect(() => {
     api.defaultApi
-      .operationStackGet(run, worker, view, groupBy, name, input_shape)
+      .operationStackGet(run, worker, span, groupBy, name, input_shape)
       .then((resp) => {
         setStackData(resp)
       })
-  }, [name, input_shape, run, worker, view, groupBy])
+  }, [name, input_shape, run, worker, span, groupBy])
 
   const transformedData = React.useMemo(
     () => stackData && transformTableData(attachId(stackData)),

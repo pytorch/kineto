@@ -67,11 +67,11 @@ const useStyles = makeStyles((theme) => ({
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 export const Operator: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
   const chartHeaderRenderer = React.useMemo(
@@ -120,19 +120,19 @@ export const Operator: React.FC<IProps> = (props) => {
 
   React.useEffect(() => {
     api.defaultApi
-      .operationTableGet(run, worker, view, groupBy)
+      .operationTableGet(run, worker, span, groupBy)
       .then((resp) => {
         setOperatorTable(resp)
       })
-  }, [run, worker, view, groupBy])
+  }, [run, worker, span, groupBy])
 
   React.useEffect(() => {
     api.defaultApi
-      .operationGet(run, worker, view, OperationGroupBy.Operation)
+      .operationGet(run, worker, span, OperationGroupBy.Operation)
       .then((resp) => {
         setOperatorGraph(resp)
       })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
     setGroupBy(event.target.value as OperationGroupBy)
@@ -286,7 +286,7 @@ export const Operator: React.FC<IProps> = (props) => {
                       data={table}
                       groupBy={groupBy}
                       run={run}
-                      view={view}
+                      span={span}
                       worker={worker}
                     />
                   )}

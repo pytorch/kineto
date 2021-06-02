@@ -14,7 +14,7 @@ export interface IProps {
   data: OperationTableData
   run: string
   worker: string
-  view: string
+  span: string
   groupBy: OperationGroupBy
 }
 const rowExpandable = (record: OperationTableDataInner) => record.has_call_stack
@@ -26,7 +26,7 @@ const pagination: TablePaginationConfig = {
   pageSize: 30
 }
 export const OperationTable = (props: IProps) => {
-  const { data, run, worker, view, groupBy } = props
+  const { data, run, worker, span, groupBy } = props
 
   const rows = React.useMemo(() => attachId(data), [data])
 
@@ -39,11 +39,11 @@ export const OperationTable = (props: IProps) => {
         data={record}
         run={run}
         worker={worker}
-        view={view}
+        span={span}
         groupBy={groupBy}
       />
     ),
-    [run, worker, view, groupBy]
+    [run, worker, span, groupBy]
   )
 
   const expandable: TableProps<OperationTableDataInner>['expandable'] = React.useMemo(

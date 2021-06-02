@@ -43,7 +43,7 @@ class RunLoader(object):
 
         span_index_map = {}
         for worker, span_array in spans_by_workers.items():
-            for i, span in enumerate(span_array):
+            for i, span in enumerate(span_array, 1):
                 span_index_map[(worker, span)] = i
 
         barrier = Barrier(len(workers) + 1)

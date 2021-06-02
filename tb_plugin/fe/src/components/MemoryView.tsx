@@ -45,11 +45,11 @@ const useStyles = makeStyles((theme) => ({
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 export const MemoryView: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
 
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
@@ -88,12 +88,12 @@ export const MemoryView: React.FC<IProps> = (props) => {
   }
 
   React.useEffect(() => {
-    api.defaultApi.memoryGet(run, worker).then((resp) => {
+    api.defaultApi.memoryGet(run, worker, span).then((resp) => {
       setMemoryData(resp)
       setDevices(Object.keys(resp.data))
       setDevice(resp.metadata.default_device)
     })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)

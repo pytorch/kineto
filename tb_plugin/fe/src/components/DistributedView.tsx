@@ -32,7 +32,7 @@ import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -62,8 +62,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
     [tooltipCommonClasses]
   )
 
-  let { run, worker, view } = props
-  worker = 'worker1'
+  let { run, worker, span } = props
   const classes = useStyles()
 
   const [overlapGraph, setOverlapGraph] = React.useState<
@@ -105,23 +104,23 @@ export const DistributedView: React.FC<IProps> = (props) => {
   }, [commopsWorkers])
 
   React.useEffect(() => {
-    api.defaultApi.distributedOverlapGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedOverlapGet(run, 'All', span).then((resp) => {
       setOverlapGraph(resp)
       setOverlapSteps(Object.keys(resp.data))
     })
-    api.defaultApi.distributedWaittimeGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedWaittimeGet(run, 'All', span).then((resp) => {
       setWaittimeGraph(resp)
       setWaittimeSteps(Object.keys(resp.data))
     })
-    api.defaultApi.distributedCommopsGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedCommopsGet(run, 'All', span).then((resp) => {
       setCommopsTableData(resp.data)
       setCommopsWorkers(Object.keys(resp.data))
       setCommopsTableTitle(resp.metadata.title)
     })
-    api.defaultApi.distributedGpuinfoGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedGpuinfoGet(run, 'All', span).then((resp) => {
       setGpuInfo(resp)
     })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const onCommopsWorkerChanged: SelectProps['onChange'] = (event) => {
     setCommopsWorker(event.target.value as string)

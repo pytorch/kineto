@@ -34,7 +34,12 @@ class Run(object):
             return sorted(spans)
 
     def add_profile(self, profile):
-        self.profiles[(profile.worker, profile.span)] = profile
+        span = profile.span
+        if span is None:
+            span = "default"
+        else:
+            span = str(span)
+        self.profiles[(profile.worker, span)] = profile
 
     def get_profile(self, worker, span):
         if worker is None:

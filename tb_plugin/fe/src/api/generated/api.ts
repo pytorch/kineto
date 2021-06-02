@@ -278,12 +278,6 @@ export interface GpuMetrics {
    * @memberof GpuMetrics
    */
   tooltip: string
-  /**
-   *
-   * @type {string}
-   * @memberof GpuMetrics
-   */
-  title?: string
 }
 /**
  *
@@ -646,14 +640,14 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedCommopsGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -670,11 +664,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling distributedCommopsGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling distributedCommopsGet.'
+          'span',
+          'Required parameter span was null or undefined when calling distributedCommopsGet.'
         )
       }
       const localVarPath = `/distributed/commops`
@@ -691,8 +685,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -718,14 +712,14 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedGpuinfoGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -742,11 +736,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling distributedGpuinfoGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling distributedGpuinfoGet.'
+          'span',
+          'Required parameter span was null or undefined when calling distributedGpuinfoGet.'
         )
       }
       const localVarPath = `/distributed/gpuinfo`
@@ -763,8 +757,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -790,14 +784,14 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedOverlapGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -814,11 +808,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling distributedOverlapGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling distributedOverlapGet.'
+          'span',
+          'Required parameter span was null or undefined when calling distributedOverlapGet.'
         )
       }
       const localVarPath = `/distributed/overlap`
@@ -835,8 +829,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -862,14 +856,14 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedWaittimeGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -886,11 +880,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling distributedWaittimeGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling distributedWaittimeGet.'
+          'span',
+          'Required parameter span was null or undefined when calling distributedWaittimeGet.'
         )
       }
       const localVarPath = `/distributed/waittime`
@@ -907,8 +901,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -934,7 +928,7 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -942,7 +936,7 @@ export const DefaultApiFetchParamCreator = function (
     kernelGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options: any = {}
     ): FetchArgs {
@@ -960,11 +954,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling kernelGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling kernelGet.'
+          'span',
+          'Required parameter span was null or undefined when calling kernelGet.'
         )
       }
       // verify required parameter 'groupBy' is not null or undefined
@@ -988,8 +982,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       if (groupBy !== undefined) {
@@ -1019,7 +1013,7 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} [groupBy] Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1027,7 +1021,7 @@ export const DefaultApiFetchParamCreator = function (
     kernelTableGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy?: string,
       options: any = {}
     ): FetchArgs {
@@ -1045,11 +1039,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling kernelTableGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling kernelTableGet.'
+          'span',
+          'Required parameter span was null or undefined when calling kernelTableGet.'
         )
       }
       const localVarPath = `/kernel/table`
@@ -1066,8 +1060,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       if (groupBy !== undefined) {
@@ -1097,10 +1091,16 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    memoryGet(run: string, worker: string, options: any = {}): FetchArgs {
+    memoryGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
@@ -1115,6 +1115,13 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling memoryGet.'
         )
       }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling memoryGet.'
+        )
+      }
       const localVarPath = `/memory`
       const localVarUrlObj = url.parse(localVarPath, true)
       const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
@@ -1127,6 +1134,10 @@ export const DefaultApiFetchParamCreator = function (
 
       if (worker !== undefined) {
         localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1152,7 +1163,7 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1160,7 +1171,7 @@ export const DefaultApiFetchParamCreator = function (
     operationGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options: any = {}
     ): FetchArgs {
@@ -1178,11 +1189,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling operationGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling operationGet.'
+          'span',
+          'Required parameter span was null or undefined when calling operationGet.'
         )
       }
       // verify required parameter 'groupBy' is not null or undefined
@@ -1206,8 +1217,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       if (groupBy !== undefined) {
@@ -1237,7 +1248,7 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {string} opName
      * @param {string} [inputShape]
@@ -1247,7 +1258,7 @@ export const DefaultApiFetchParamCreator = function (
     operationStackGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       opName: string,
       inputShape?: string,
@@ -1267,11 +1278,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling operationStackGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling operationStackGet.'
+          'span',
+          'Required parameter span was null or undefined when calling operationStackGet.'
         )
       }
       // verify required parameter 'groupBy' is not null or undefined
@@ -1302,8 +1313,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       if (groupBy !== undefined) {
@@ -1341,7 +1352,7 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1349,7 +1360,7 @@ export const DefaultApiFetchParamCreator = function (
     operationTableGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options: any = {}
     ): FetchArgs {
@@ -1367,11 +1378,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling operationTableGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling operationTableGet.'
+          'span',
+          'Required parameter span was null or undefined when calling operationTableGet.'
         )
       }
       // verify required parameter 'groupBy' is not null or undefined
@@ -1395,8 +1406,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       if (groupBy !== undefined) {
@@ -1426,14 +1437,14 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     overviewGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1450,11 +1461,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter worker was null or undefined when calling overviewGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
         throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling overviewGet.'
+          'span',
+          'Required parameter span was null or undefined when calling overviewGet.'
         )
       }
       const localVarPath = `/overview`
@@ -1471,8 +1482,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['worker'] = worker
       }
 
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1529,38 +1540,25 @@ export const DefaultApiFetchParamCreator = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    traceGet(
-      run: string,
-      worker: string,
-      view: string,
-      options: any = {}
-    ): FetchArgs {
+    spansGet(run: string, worker: string, options: any = {}): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
           'run',
-          'Required parameter run was null or undefined when calling traceGet.'
+          'Required parameter run was null or undefined when calling spansGet.'
         )
       }
       // verify required parameter 'worker' is not null or undefined
       if (worker === null || worker === undefined) {
         throw new RequiredError(
           'worker',
-          'Required parameter worker was null or undefined when calling traceGet.'
+          'Required parameter worker was null or undefined when calling spansGet.'
         )
       }
-      // verify required parameter 'view' is not null or undefined
-      if (view === null || view === undefined) {
-        throw new RequiredError(
-          'view',
-          'Required parameter view was null or undefined when calling traceGet.'
-        )
-      }
-      const localVarPath = `/trace`
+      const localVarPath = `/spans`
       const localVarUrlObj = url.parse(localVarPath, true)
       const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
       const localVarHeaderParameter = {} as any
@@ -1572,10 +1570,6 @@ export const DefaultApiFetchParamCreator = function (
 
       if (worker !== undefined) {
         localVarQueryParameter['worker'] = worker
-      }
-
-      if (view !== undefined) {
-        localVarQueryParameter['view'] = view
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1600,16 +1594,108 @@ export const DefaultApiFetchParamCreator = function (
     /**
      *
      * @param {string} run
-     * @param {string} [worker]
+     * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, worker?: string, options: any = {}): FetchArgs {
+    traceGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling traceGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling traceGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling traceGet.'
+        )
+      }
+      const localVarPath = `/trace`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    viewsGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
           'run',
           'Required parameter run was null or undefined when calling viewsGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling viewsGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling viewsGet.'
         )
       }
       const localVarPath = `/views`
@@ -1624,6 +1710,10 @@ export const DefaultApiFetchParamCreator = function (
 
       if (worker !== undefined) {
         localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1701,19 +1791,19 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedCommopsGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse200> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).distributedCommopsGet(run, worker, view, options)
+      ).distributedCommopsGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1734,19 +1824,19 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedGpuinfoGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<GpuInfo> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).distributedGpuinfoGet(run, worker, view, options)
+      ).distributedGpuinfoGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1767,19 +1857,19 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedOverlapGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<DistributedGraph> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).distributedOverlapGet(run, worker, view, options)
+      ).distributedOverlapGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1800,19 +1890,19 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedWaittimeGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<DistributedGraph> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).distributedWaittimeGet(run, worker, view, options)
+      ).distributedWaittimeGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1833,7 +1923,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1841,13 +1931,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     kernelGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<KernelGraph> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).kernelGet(run, worker, view, groupBy, options)
+      ).kernelGet(run, worker, span, groupBy, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1868,7 +1958,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} [groupBy] Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1876,13 +1966,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     kernelTableGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy?: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<TableData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).kernelTableGet(run, worker, view, groupBy, options)
+      ).kernelTableGet(run, worker, span, groupBy, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1903,17 +1993,19 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     memoryGet(
       run: string,
       worker: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).memoryGet(run, worker, options)
+      ).memoryGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1934,7 +2026,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -1942,13 +2034,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     operationGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<OperatorGraph> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).operationGet(run, worker, view, groupBy, options)
+      ).operationGet(run, worker, span, groupBy, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -1969,7 +2061,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {string} opName
      * @param {string} [inputShape]
@@ -1979,7 +2071,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     operationStackGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       opName: string,
       inputShape?: string,
@@ -1990,7 +2082,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       ).operationStackGet(
         run,
         worker,
-        view,
+        span,
         groupBy,
         opName,
         inputShape,
@@ -2016,7 +2108,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2024,13 +2116,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     operationTableGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<OperationTableData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).operationTableGet(run, worker, view, groupBy, options)
+      ).operationTableGet(run, worker, span, groupBy, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2051,19 +2143,19 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     overviewGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Overview> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).overviewGet(run, worker, view, options)
+      ).overviewGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2111,19 +2203,17 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    traceGet(
+    spansGet(
       run: string,
       worker: string,
-      view: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<any> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).traceGet(run, worker, view, options)
+      ).spansGet(run, worker, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2143,18 +2233,53 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} run
-     * @param {string} [worker]
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    traceGet(
+      run: string,
+      worker: string,
+      span: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<any> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).traceGet(run, worker, span, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     viewsGet(
       run: string,
-      worker?: string,
+      worker: string,
+      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).viewsGet(run, worker, options)
+      ).viewsGet(run, worker, span, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2217,20 +2342,20 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedCommopsGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).distributedCommopsGet(
         run,
         worker,
-        view,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2238,20 +2363,20 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedGpuinfoGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).distributedGpuinfoGet(
         run,
         worker,
-        view,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2259,20 +2384,20 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedOverlapGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).distributedOverlapGet(
         run,
         worker,
-        view,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2280,20 +2405,20 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     distributedWaittimeGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).distributedWaittimeGet(
         run,
         worker,
-        view,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2301,7 +2426,7 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2309,14 +2434,14 @@ export const DefaultApiFactory = function (
     kernelGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).kernelGet(
         run,
         worker,
-        view,
+        span,
         groupBy,
         options
       )(fetch, basePath)
@@ -2325,7 +2450,7 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} [groupBy] Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2333,14 +2458,14 @@ export const DefaultApiFactory = function (
     kernelTableGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy?: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).kernelTableGet(
         run,
         worker,
-        view,
+        span,
         groupBy,
         options
       )(fetch, basePath)
@@ -2349,13 +2474,15 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    memoryGet(run: string, worker: string, options?: any) {
+    memoryGet(run: string, worker: string, span: string, options?: any) {
       return DefaultApiFp(configuration).memoryGet(
         run,
         worker,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2363,7 +2490,7 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2371,14 +2498,14 @@ export const DefaultApiFactory = function (
     operationGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).operationGet(
         run,
         worker,
-        view,
+        span,
         groupBy,
         options
       )(fetch, basePath)
@@ -2387,7 +2514,7 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {string} opName
      * @param {string} [inputShape]
@@ -2397,7 +2524,7 @@ export const DefaultApiFactory = function (
     operationStackGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       opName: string,
       inputShape?: string,
@@ -2406,7 +2533,7 @@ export const DefaultApiFactory = function (
       return DefaultApiFp(configuration).operationStackGet(
         run,
         worker,
-        view,
+        span,
         groupBy,
         opName,
         inputShape,
@@ -2417,7 +2544,7 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {string} groupBy Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2425,14 +2552,14 @@ export const DefaultApiFactory = function (
     operationTableGet(
       run: string,
       worker: string,
-      view: string,
+      span: string,
       groupBy: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).operationTableGet(
         run,
         worker,
-        view,
+        span,
         groupBy,
         options
       )(fetch, basePath)
@@ -2441,15 +2568,15 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    overviewGet(run: string, worker: string, view: string, options?: any) {
+    overviewGet(run: string, worker: string, span: string, options?: any) {
       return DefaultApiFp(configuration).overviewGet(
         run,
         worker,
-        view,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2465,29 +2592,45 @@ export const DefaultApiFactory = function (
      *
      * @param {string} run
      * @param {string} worker
-     * @param {string} view
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    traceGet(run: string, worker: string, view: string, options?: any) {
-      return DefaultApiFp(configuration).traceGet(
+    spansGet(run: string, worker: string, options?: any) {
+      return DefaultApiFp(configuration).spansGet(
         run,
         worker,
-        view,
         options
       )(fetch, basePath)
     },
     /**
      *
      * @param {string} run
-     * @param {string} [worker]
+     * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, worker?: string, options?: any) {
+    traceGet(run: string, worker: string, span: string, options?: any) {
+      return DefaultApiFp(configuration).traceGet(
+        run,
+        worker,
+        span,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    viewsGet(run: string, worker: string, span: string, options?: any) {
       return DefaultApiFp(configuration).viewsGet(
         run,
         worker,
+        span,
         options
       )(fetch, basePath)
     },
@@ -2517,7 +2660,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -2525,13 +2668,13 @@ export class DefaultApi extends BaseAPI {
   public distributedCommopsGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).distributedCommopsGet(
       run,
       worker,
-      view,
+      span,
       options
     )(this.fetch, this.basePath)
   }
@@ -2540,7 +2683,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -2548,13 +2691,13 @@ export class DefaultApi extends BaseAPI {
   public distributedGpuinfoGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).distributedGpuinfoGet(
       run,
       worker,
-      view,
+      span,
       options
     )(this.fetch, this.basePath)
   }
@@ -2563,7 +2706,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -2571,13 +2714,13 @@ export class DefaultApi extends BaseAPI {
   public distributedOverlapGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).distributedOverlapGet(
       run,
       worker,
-      view,
+      span,
       options
     )(this.fetch, this.basePath)
   }
@@ -2586,7 +2729,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -2594,13 +2737,13 @@ export class DefaultApi extends BaseAPI {
   public distributedWaittimeGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).distributedWaittimeGet(
       run,
       worker,
-      view,
+      span,
       options
     )(this.fetch, this.basePath)
   }
@@ -2609,7 +2752,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {string} groupBy Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
@@ -2618,14 +2761,14 @@ export class DefaultApi extends BaseAPI {
   public kernelGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     groupBy: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).kernelGet(
       run,
       worker,
-      view,
+      span,
       groupBy,
       options
     )(this.fetch, this.basePath)
@@ -2635,7 +2778,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {string} [groupBy] Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
@@ -2644,14 +2787,14 @@ export class DefaultApi extends BaseAPI {
   public kernelTableGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     groupBy?: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).kernelTableGet(
       run,
       worker,
-      view,
+      span,
       groupBy,
       options
     )(this.fetch, this.basePath)
@@ -2661,14 +2804,16 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public memoryGet(run: string, worker: string, options?: any) {
+  public memoryGet(run: string, worker: string, span: string, options?: any) {
     return DefaultApiFp(this.configuration).memoryGet(
       run,
       worker,
+      span,
       options
     )(this.fetch, this.basePath)
   }
@@ -2677,7 +2822,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {string} groupBy Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
@@ -2686,14 +2831,14 @@ export class DefaultApi extends BaseAPI {
   public operationGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     groupBy: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).operationGet(
       run,
       worker,
-      view,
+      span,
       groupBy,
       options
     )(this.fetch, this.basePath)
@@ -2703,7 +2848,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {string} groupBy Group By
    * @param {string} opName
    * @param {string} [inputShape]
@@ -2714,7 +2859,7 @@ export class DefaultApi extends BaseAPI {
   public operationStackGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     groupBy: string,
     opName: string,
     inputShape?: string,
@@ -2723,7 +2868,7 @@ export class DefaultApi extends BaseAPI {
     return DefaultApiFp(this.configuration).operationStackGet(
       run,
       worker,
-      view,
+      span,
       groupBy,
       opName,
       inputShape,
@@ -2735,7 +2880,7 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {string} groupBy Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
@@ -2744,14 +2889,14 @@ export class DefaultApi extends BaseAPI {
   public operationTableGet(
     run: string,
     worker: string,
-    view: string,
+    span: string,
     groupBy: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).operationTableGet(
       run,
       worker,
-      view,
+      span,
       groupBy,
       options
     )(this.fetch, this.basePath)
@@ -2761,16 +2906,16 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public overviewGet(run: string, worker: string, view: string, options?: any) {
+  public overviewGet(run: string, worker: string, span: string, options?: any) {
     return DefaultApiFp(this.configuration).overviewGet(
       run,
       worker,
-      view,
+      span,
       options
     )(this.fetch, this.basePath)
   }
@@ -2792,16 +2937,14 @@ export class DefaultApi extends BaseAPI {
    *
    * @param {string} run
    * @param {string} worker
-   * @param {string} view
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public traceGet(run: string, worker: string, view: string, options?: any) {
-    return DefaultApiFp(this.configuration).traceGet(
+  public spansGet(run: string, worker: string, options?: any) {
+    return DefaultApiFp(this.configuration).spansGet(
       run,
       worker,
-      view,
       options
     )(this.fetch, this.basePath)
   }
@@ -2809,15 +2952,35 @@ export class DefaultApi extends BaseAPI {
   /**
    *
    * @param {string} run
-   * @param {string} [worker]
+   * @param {string} worker
+   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public viewsGet(run: string, worker?: string, options?: any) {
+  public traceGet(run: string, worker: string, span: string, options?: any) {
+    return DefaultApiFp(this.configuration).traceGet(
+      run,
+      worker,
+      span,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public viewsGet(run: string, worker: string, span: string, options?: any) {
     return DefaultApiFp(this.configuration).viewsGet(
       run,
       worker,
+      span,
       options
     )(this.fetch, this.basePath)
   }

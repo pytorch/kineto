@@ -32,7 +32,7 @@ import { KernelGroupBy } from '../constants/groupBy'
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -56,7 +56,7 @@ const useStyles = makeStyles((theme) => ({
 }))
 
 export const Kernel: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
   const chartHeaderRenderer = React.useMemo(
@@ -91,18 +91,18 @@ export const Kernel: React.FC<IProps> = (props) => {
   }, [kernelGraph])
 
   React.useEffect(() => {
-    api.defaultApi.kernelTableGet(run, worker, view, groupBy).then((resp) => {
+    api.defaultApi.kernelTableGet(run, worker, span, groupBy).then((resp) => {
       setKernelTable(resp.data)
     })
-  }, [run, worker, view, groupBy])
+  }, [run, worker, span, groupBy])
 
   React.useEffect(() => {
     api.defaultApi
-      .kernelGet(run, worker, view, KernelGroupBy.Kernel)
+      .kernelGet(run, worker, span, KernelGroupBy.Kernel)
       .then((resp) => {
         setKernelGraph(resp.total)
       })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const [searchedKernelTable] = useSearch(searchKernelName, 'name', kernelTable)
   const [searchedOpTable] = useSearch(

@@ -3,31 +3,28 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
-import Grid from '@material-ui/core/Grid'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { TextListItem } from './TextListItem'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
 import InputLabel from '@material-ui/core/InputLabel'
-import Typography from '@material-ui/core/Typography'
+import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
+import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
-import { TableChart } from './charts/TableChart'
 import * as api from '../api'
-import { Graph } from '../api'
-import { DistributedGraph, GpuInfo } from '../api'
+import { DistributedGraph, GpuInfo, Graph } from '../api'
 import { firstOrUndefined } from '../utils'
+import { ColumnChart } from './charts/ColumnChart'
+import { TableChart } from './charts/TableChart'
 import { DataLoading } from './DataLoading'
 import { GpuInfoTable } from './GpuInfoTable'
-import { ColumnChart } from './charts/ColumnChart'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
 import {
+  DistributedCommopsTableTooltip,
   DistributedGpuInfoTableTooltip,
   DistributedOverlapGraphTooltip,
-  DistributedWaittimeGraphTooltip,
-  DistributedCommopsTableTooltip
+  DistributedWaittimeGraphTooltip
 } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
 export interface IProps {
   run: string

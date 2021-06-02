@@ -3,20 +3,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
-import Grid from '@material-ui/core/Grid'
-import TextField, { TextFieldProps } from '@material-ui/core/TextField'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
 import InputLabel from '@material-ui/core/InputLabel'
+import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
-
+import { makeStyles } from '@material-ui/core/styles'
+import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
 import { MemoryData } from '../api'
-import { DataLoading } from './DataLoading'
 import { useSearchDirectly } from '../utils/search'
+import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
 
 const useStyles = makeStyles((theme) => ({

@@ -2,35 +2,35 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import CssBaseline from '@material-ui/core/CssBaseline'
+import Divider from '@material-ui/core/Divider'
 import Drawer from '@material-ui/core/Drawer'
+import Fab from '@material-ui/core/Fab'
 import FormControl from '@material-ui/core/FormControl'
 import IconButton from '@material-ui/core/IconButton'
 import ListSubheader from '@material-ui/core/ListSubheader'
-import { makeStyles } from '@material-ui/core/styles'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
-import { Overview } from './components/Overview'
-import Divider from '@material-ui/core/Divider'
-import Fab from '@material-ui/core/Fab'
-import ClickAwayListener from '@material-ui/core/ClickAwayListener'
-import * as React from 'react'
-import clsx from 'clsx'
-import { Operator } from './components/Operator'
-import { Kernel } from './components/Kernel'
-import * as api from './api'
-import { firstOrUndefined, sleep } from './utils'
-import { setup } from './setup'
-import './styles.css'
-import { TraceView } from './components/TraceView'
-import { DistributedView } from './components/DistributedView'
-import { FullCircularProgress } from './components/FullCircularProgress'
-import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import { makeStyles } from '@material-ui/core/styles'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
+import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
-import 'antd/es/button/style/css'
+import clsx from 'clsx'
+import * as React from 'react'
+import * as api from './api'
+import { DistributedView } from './components/DistributedView'
+import { FullCircularProgress } from './components/FullCircularProgress'
+import { Kernel } from './components/Kernel'
 import { MemoryView } from './components/MemoryView'
+import { Operator } from './components/Operator'
+import { Overview } from './components/Overview'
+import { TraceView } from './components/TraceView'
+import { setup } from './setup'
+import './styles.css'
+import { firstOrUndefined, sleep } from './utils'
 
 export enum Views {
   Overview = 'Overview',
@@ -273,7 +273,8 @@ export const App = () => {
   }
 
   const spanComponent = () => {
-    const spanFragment = <React.Fragment>
+    const spanFragment = (
+      <React.Fragment>
         <ListSubheader>Spans</ListSubheader>
         <ClickAwayListener onClickAway={SetIframeActive}>
           <FormControl variant="outlined" className={classes.formControl}>
@@ -285,15 +286,11 @@ export const App = () => {
           </FormControl>
         </ClickAwayListener>
       </React.Fragment>
+    )
 
     if (!spans || spans.length <= 1) {
-      return (
-        <div className={classes.hide}>
-          {spanFragment}
-        </div>
-      )
-    }
-    else {
+      return <div className={classes.hide}>{spanFragment}</div>
+    } else {
       return spanFragment
     }
   }

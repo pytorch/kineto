@@ -2,10 +2,10 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import * as api from '../api'
-import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 
 export interface IProps {
   run: string

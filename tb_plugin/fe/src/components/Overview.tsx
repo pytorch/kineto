@@ -2,24 +2,24 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react'
-import { makeStyles } from '@material-ui/core/styles'
-import Grid, { GridSize } from '@material-ui/core/Grid'
 import Card from '@material-ui/core/Card'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { TextListItem } from './TextListItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
+import { makeStyles } from '@material-ui/core/styles'
+import * as React from 'react'
 import * as api from '../api'
-import { DataLoading } from './DataLoading'
-import { SteppedAreaChart } from './charts/SteppedAreaChart'
-import {
-  transformPerformanceIntoTable,
-  transformPerformanceIntoPie
-} from './transform'
-import { TableChart } from './charts/TableChart'
 import { PieChart } from './charts/PieChart'
+import { SteppedAreaChart } from './charts/SteppedAreaChart'
+import { TableChart } from './charts/TableChart'
+import { DataLoading } from './DataLoading'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
+import { TextListItem } from './TextListItem'
 import { StepTimeBreakDownTooltip } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
+import {
+  transformPerformanceIntoPie,
+  transformPerformanceIntoTable
+} from './transform'
 
 const topGraphHeight = 230
 

@@ -2,11 +2,11 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react'
-import HelpOutline from '@material-ui/icons/HelpOutline'
-import Tooltip from '@material-ui/core/Tooltip'
 import { makeStyles } from '@material-ui/core/styles'
+import Tooltip from '@material-ui/core/Tooltip'
+import HelpOutline from '@material-ui/icons/HelpOutline'
 import clsx from 'clsx'
+import * as React from 'react'
 
 export const useTooltipCommonStyles = makeStyles((theme) => ({
   tooltip: {

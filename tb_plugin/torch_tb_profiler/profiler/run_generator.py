@@ -450,7 +450,7 @@ class DistributedRunGenerator(object):
     def _generate_gpu_info(self):
         result = OrderedDict()
         index = 0
-        for data in self.all_profile_data:
+        for data in sorted(self.all_profile_data, key=lambda x: x.worker):
             if not data.device_props:
                continue
 

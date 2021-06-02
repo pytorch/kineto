@@ -195,7 +195,7 @@ export const App = () => {
   }, [spans])
 
   React.useEffect(() => {
-    if (run && worker) {
+    if (run && worker && span) {
       api.defaultApi.viewsGet(run, worker, String(span)).then((rawViews) => {
         const views = rawViews
           .map((v) => Views[Views[v as Views]])

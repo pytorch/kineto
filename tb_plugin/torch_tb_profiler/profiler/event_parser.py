@@ -13,7 +13,7 @@ from .trace import EventTypes
 
 logger = utils.get_logger()
 
-CommunicationOpNameSet = ['nccl:broadcast', 'nccl:all_reduce']
+CommunicationOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
 ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Communication', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
 
 

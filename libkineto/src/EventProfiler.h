@@ -19,7 +19,6 @@
 #include <cupti.h>
 
 #include "Config.h"
-#include "ConfigLoader.h"
 #include "CuptiEventInterface.h"
 #include "CuptiMetricInterface.h"
 #include "SampleListener.h"
@@ -208,7 +207,11 @@ class EventProfiler {
   EventProfiler& operator=(const EventProfiler&) = delete;
   ~EventProfiler();
 
-  void configure(Config& config, Config& onDemandConfig);
+  void configure(Config& config, Config* onDemandConfig);
+
+  bool isOnDemandActive() {
+    return !!onDemandConfig_;
+  }
 
   // Print the counter sets. Multiple sets will be multiplexed.
   void printSets(std::ostream& s) const;
@@ -261,7 +264,8 @@ class EventProfiler {
 
   void eraseReportedSamples() {
     int erase_count = baseSamples_;
-    if (onDemandConfig_->eventProfilerOnDemandDuration().count() > 0) {
+    if (onDemandConfig_ &&
+        onDemandConfig_->eventProfilerOnDemandDuration().count() > 0) {
       erase_count = std::min(baseSamples_, onDemandSamples_);
     }
     eraseSamples(erase_count);
@@ -306,7 +310,7 @@ class EventProfiler {
     }
   }
 
-  void updateLoggers(Config& config, Config& on_demand_config);
+  void updateLoggers(Config& config, Config* on_demand_config);
 
   // Print all collected samples since last clear.
   void printAllSamples(std::ostream& s, CUdevice device) const;

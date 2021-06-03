@@ -343,8 +343,8 @@ TEST_F(EventProfilerTest, ConfigureFailure) {
 
   // Default config has no counters enabled.
   // Check that profiler remains disabled.
-  Config cfg, on_demand_cfg;
-  profiler_->configure(cfg, on_demand_cfg);
+  Config cfg;
+  profiler_->configure(cfg, nullptr);
 
   EXPECT_FALSE(profiler_->enabled());
 
@@ -364,7 +364,7 @@ TEST_F(EventProfilerTest, ConfigureFailure) {
       .Times(2)
       .WillRepeatedly(Throw(
           std::system_error(EINVAL, std::generic_category(), "Event ID")));
-  profiler_->configure(cfg, on_demand_cfg);
+  profiler_->configure(cfg, nullptr);
 
   EXPECT_FALSE(profiler_->enabled());
 }
@@ -373,7 +373,7 @@ TEST_F(EventProfilerTest, ConfigureBase) {
   using namespace testing;
 
   // Test normal path, simple base config
-  Config cfg, on_demand_cfg;
+  Config cfg;
   bool parsed = cfg.parse("EVENTS = elapsed_cycles_sm");
   EXPECT_TRUE(parsed);
 
@@ -394,7 +394,7 @@ TEST_F(EventProfilerTest, ConfigureBase) {
       .WillOnce(Return(ids));
   EXPECT_CALL(*cuptiEvents_, enableGroupSet(_)).Times(1);
 
-  profiler_->configure(cfg, on_demand_cfg);
+  profiler_->configure(cfg, nullptr);
 
   EXPECT_TRUE(profiler_->enabled());
 }
@@ -461,7 +461,7 @@ TEST_F(EventProfilerTest, ConfigureOnDemand) {
       .WillOnce(Return(ids_g3));
   EXPECT_CALL(*cuptiEvents_, enableGroupSet(_)).Times(1);
 
-  profiler_->configure(cfg, on_demand_cfg);
+  profiler_->configure(cfg, &on_demand_cfg);
 
   EXPECT_TRUE(profiler_->enabled());
   EXPECT_EQ(profiler_->samplePeriod().count(), 250);
@@ -523,7 +523,7 @@ TEST_F(EventProfilerTest, ReportSample) {
       .WillRepeatedly(Return(ids_g3));
   EXPECT_CALL(*cuptiEvents_, enableGroupSet(_)).Times(1);
 
-  profiler_->configure(cfg, on_demand_cfg);
+  profiler_->configure(cfg, &on_demand_cfg);
 
   EXPECT_TRUE(profiler_->enabled());
 

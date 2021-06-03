@@ -181,11 +181,11 @@ void reportLateSample(
 }
 
 void configureHeartbeatMonitor(
-    detail::HeartbeatMonitor& monitor, const Config& base, const Config& onDemand) {
+    detail::HeartbeatMonitor& monitor, const Config& base, const Config* onDemand) {
   seconds base_period =
       base.eventProfilerHeartbeatMonitorPeriod();
-  seconds on_demand_period =
-      onDemand.eventProfilerHeartbeatMonitorPeriod();
+  seconds on_demand_period = !onDemand ? seconds(0) :
+      onDemand->eventProfilerHeartbeatMonitorPeriod();
   monitor.setPeriod(
       on_demand_period > seconds(0) ? on_demand_period : base_period);
 }
@@ -216,6 +216,8 @@ EventProfilerController::EventProfilerController(
       std::move(cupti_metrics),
       loggers(*config),
       onDemandLoggers(*config));
+  configLoader_.addHandler(
+      ConfigLoader::ConfigKind::EventProfiler, this);
   profilerThread_ = std::make_unique<std::thread>(
       &EventProfilerController::profilerLoop, this);
 }
@@ -226,6 +228,8 @@ EventProfilerController::~EventProfilerController() {
     stopRunloop_ = true;
     profilerThread_->join();
   }
+  configLoader_.removeHandler(
+      ConfigLoader::ConfigKind::EventProfiler, this);
   VLOG(0) << "Stopped event profiler";
 }
 
@@ -239,6 +243,25 @@ void EventProfilerController::start(CUcontext ctx) {
 // Must be called under lock
 void EventProfilerController::stop(CUcontext ctx) {
   profilerMap()[ctx] = nullptr;
+}
+
+bool EventProfilerController::canAcceptConfig() {
+  std::lock_guard<std::mutex> guard(mutex_);
+  return !newOnDemandConfig_;
+}
+
+void EventProfilerController::acceptConfig(const Config& config) {
+  if (config.eventProfilerOnDemandDuration().count() == 0) {
+    // Ignore - not for this profiler
+    return;
+  }
+  std::lock_guard<std::mutex> guard(mutex_);
+  if (newOnDemandConfig_) {
+    LOG(ERROR) << "On demand request already queued - ignoring new request";
+    return;
+  }
+  newOnDemandConfig_ = config.clone();
+  LOG(INFO) << "Received new on-demand config";
 }
 
 bool EventProfilerController::enableForDevice(Config& cfg) {
@@ -271,12 +294,11 @@ void EventProfilerController::profilerLoop() {
   VLOG(0) << "Starting Event Profiler for GPU " << profiler_->device();
   setThreadName("CUPTI Event Profiler");
 
-  auto on_demand_config = std::make_unique<Config>();
-
   time_point<system_clock> next_sample_time;
   time_point<system_clock> next_report_time;
   time_point<system_clock> next_on_demand_report_time;
   time_point<system_clock> next_multiplex_time;
+  std::unique_ptr<Config> on_demand_config = nullptr;
   bool reconfigure = true;
   bool restart = true;
   int report_count = 0;
@@ -289,25 +311,29 @@ void EventProfilerController::profilerLoop() {
       report_count = 0;
       reconfigure = true;
     }
-    if (configLoader_.hasNewEventProfilerOnDemandConfig(*on_demand_config)) {
-      on_demand_config = configLoader_.getEventProfilerOnDemandConfigCopy();
-      LOG(INFO) << "Received new on-demand config";
-      on_demand_report_count = 0;
-      reconfigure = true;
-    }
 
     auto now = system_clock::now();
-    if (on_demand_config->eventProfilerOnDemandDuration().count() > 0 &&
+    if (on_demand_config &&
         now > (on_demand_config->eventProfilerOnDemandStartTime() +
                on_demand_config->eventProfilerOnDemandDuration())) {
-      on_demand_config->setEventProfilerOnDemandDuration(seconds(0));
+      on_demand_config = nullptr;
       LOG(INFO) << "On-demand profiling complete";
       reconfigure = true;
     }
 
+    if (!profiler_->isOnDemandActive()) {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (newOnDemandConfig_) {
+        VLOG(0) << "Received on-demand config, reconfiguring";
+        on_demand_config = std::move(newOnDemandConfig_);
+        reconfigure = true;
+        on_demand_report_count = 0;
+      }
+    }
+
     if (reconfigure) {
       try {
-        profiler_->configure(*config, *on_demand_config);
+        profiler_->configure(*config, on_demand_config.get());
       } catch (const std::exception& ex) {
         LOG(ERROR) << "Encountered error while configuring event profiler: "
             << ex.what();
@@ -315,7 +341,8 @@ void EventProfilerController::profilerLoop() {
         // as it indicates a serious problem or bug.
         break;
       }
-      configureHeartbeatMonitor(heartbeatMonitor_, *config, *on_demand_config);
+      configureHeartbeatMonitor(
+          heartbeatMonitor_, *config, on_demand_config.get());
       reconfigure = false;
       restart = true;
     }
@@ -359,8 +386,7 @@ void EventProfilerController::profilerLoop() {
       profiler_->reportSamples();
       next_report_time += profiler_->reportPeriod();
     }
-    if (on_demand_config->eventProfilerOnDemandDuration().count() > 0 &&
-        now > next_on_demand_report_time) {
+    if (on_demand_report_count && now > next_on_demand_report_time) {
       VLOG(1) << "OnDemand Report #" << on_demand_report_count++;
       profiler_->reportOnDemandSamples();
       next_on_demand_report_time += profiler_->onDemandReportPeriod();

@@ -172,11 +172,26 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run) {
-      api.defaultApi.workersGet(run).then((workers) => {
-        setWorkers(workers)
+      api.defaultApi.viewsGet(run).then((rawViews) => {
+        const views = rawViews
+          .map((v) => Views[Views[v as Views]])
+          .filter(Boolean)
+        setViews(views)
       })
     }
   }, [run])
+
+  React.useEffect(() => {
+    setView(firstOrUndefined(views) ?? '')
+  }, [views])
+
+  React.useEffect(() => {
+    if (run && view) {
+      api.defaultApi.workersGet(run, view).then((workers) => {
+        setWorkers(workers)
+      })
+    }
+  }, [run, view])
 
   React.useEffect(() => {
     setWorker(firstOrUndefined(workers) ?? '')
@@ -194,38 +209,26 @@ export const App = () => {
     setSpan(firstOrUndefined(spans) ?? '')
   }, [spans])
 
-  React.useEffect(() => {
-    if (run && worker && span) {
-      api.defaultApi.viewsGet(run, worker, String(span)).then((rawViews) => {
-        const views = rawViews
-          .map((v) => Views[Views[v as Views]])
-          .filter(Boolean)
-        setViews(views)
-      })
-    }
-  }, [run, worker, span])
-
-  React.useEffect(() => {
-    setView(firstOrUndefined(views) ?? '')
-  }, [views])
-
   const handleRunChange: SelectProps['onChange'] = (event) => {
     setRun(event.target.value as string)
+    setView('')
     setWorker('')
-    setView('')
-  }
-
-  const handleWorkerChange: SelectProps['onChange'] = (event) => {
-    setWorker(event.target.value as string)
-  }
-
-  const handleSpanChange: SelectProps['onChange'] = (event) => {
-    setSpan(event.target.value as string)
-    setView('')
+    setSpan('')
   }
 
   const handleViewChange: SelectProps['onChange'] = (event) => {
     setView(event.target.value as Views)
+    setWorker('')
+    setSpan('')
+  }
+
+  const handleWorkerChange: SelectProps['onChange'] = (event) => {
+    setWorker(event.target.value as string)
+    setSpan('')
+  }
+
+  const handleSpanChange: SelectProps['onChange'] = (event) => {
+    setSpan(event.target.value as string)
   }
 
   const [open, setOpen] = React.useState(true)
@@ -332,6 +335,16 @@ export const App = () => {
             </Select>
           </FormControl>
         </ClickAwayListener>
+        <ListSubheader>Views</ListSubheader>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={view} onChange={handleViewChange}>
+              {views.map((view) => (
+                <MenuItem value={view}>{ViewNames[view]}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
         <ListSubheader>Workers</ListSubheader>
         <ClickAwayListener onClickAway={SetIframeActive}>
           <FormControl variant="outlined" className={classes.formControl}>
@@ -343,16 +356,6 @@ export const App = () => {
           </FormControl>
         </ClickAwayListener>
         {spanComponent()}
-        <ListSubheader>Views</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={view} onChange={handleViewChange}>
-              {views.map((view) => (
-                <MenuItem value={view}>{ViewNames[view]}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
       </Drawer>
       {!open && (
         <Fab

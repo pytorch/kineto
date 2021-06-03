@@ -108,11 +108,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def views_route(self, request):
         name = request.args.get("run")
-        worker = request.args.get("worker")
-        span = request.args.get("span")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker, span)
-        views = sorted(profile.views, key=lambda x: x.id)
+        self._validate(run=name)
+        run = self._get_run(name)
+        views = run.views
         views_list = []
         for view in views:
             views_list.append(view.display_name)
@@ -121,10 +119,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def workers_route(self, request):
         name = request.args.get("run")
-        self._validate(run=name)
+        view = request.args.get("view")
+        self._validate(run=name, view=view)
         run = self._get_run(name)
         self._check_run(run, name)
-        return self.respond_as_json(run.workers)
+        workers = run.get_workers(view)
+        return self.respond_as_json(run.get_workers(view))
 
     @wrappers.Request.application
     def spans_route(self, request):

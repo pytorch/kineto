@@ -16,11 +16,40 @@ paths:
                 type: array
                 items:
                   type: string
+  /views:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful views
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: string
+                  enum:
+                    - Overview
+                    - Operator
+                    - Kernel
+                    - Trace
+                    - Distributed
+                    - Memory
   /workers:
     get:
       parameters:
         - in: query
           name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: view
           required: true
           schema:
             type: string
@@ -55,37 +84,6 @@ paths:
                 type: array
                 items:
                   type: string
-  /views:
-    get:
-      parameters:
-        - in: query
-          name: run
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: worker
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: span
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: successful views
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  type: string
-                  enum:
-                    - Overview
-                    - Operator
-                    - Kernel
   /overview:
     get:
       parameters:

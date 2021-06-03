@@ -1666,36 +1666,15 @@ export const DefaultApiFetchParamCreator = function (
     /**
      *
      * @param {string} run
-     * @param {string} worker
-     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(
-      run: string,
-      worker: string,
-      span: string,
-      options: any = {}
-    ): FetchArgs {
+    viewsGet(run: string, options: any = {}): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
           'run',
           'Required parameter run was null or undefined when calling viewsGet.'
-        )
-      }
-      // verify required parameter 'worker' is not null or undefined
-      if (worker === null || worker === undefined) {
-        throw new RequiredError(
-          'worker',
-          'Required parameter worker was null or undefined when calling viewsGet.'
-        )
-      }
-      // verify required parameter 'span' is not null or undefined
-      if (span === null || span === undefined) {
-        throw new RequiredError(
-          'span',
-          'Required parameter span was null or undefined when calling viewsGet.'
         )
       }
       const localVarPath = `/views`
@@ -1706,14 +1685,6 @@ export const DefaultApiFetchParamCreator = function (
 
       if (run !== undefined) {
         localVarQueryParameter['run'] = run
-      }
-
-      if (worker !== undefined) {
-        localVarQueryParameter['worker'] = worker
-      }
-
-      if (span !== undefined) {
-        localVarQueryParameter['span'] = span
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1738,15 +1709,23 @@ export const DefaultApiFetchParamCreator = function (
     /**
      *
      * @param {string} run
+     * @param {string} view
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    workersGet(run: string, options: any = {}): FetchArgs {
+    workersGet(run: string, view: string, options: any = {}): FetchArgs {
       // verify required parameter 'run' is not null or undefined
       if (run === null || run === undefined) {
         throw new RequiredError(
           'run',
           'Required parameter run was null or undefined when calling workersGet.'
+        )
+      }
+      // verify required parameter 'view' is not null or undefined
+      if (view === null || view === undefined) {
+        throw new RequiredError(
+          'view',
+          'Required parameter view was null or undefined when calling workersGet.'
         )
       }
       const localVarPath = `/workers`
@@ -1757,6 +1736,10 @@ export const DefaultApiFetchParamCreator = function (
 
       if (run !== undefined) {
         localVarQueryParameter['run'] = run
+      }
+
+      if (view !== undefined) {
+        localVarQueryParameter['view'] = view
       }
 
       localVarUrlObj.query = Object.assign(
@@ -2266,20 +2249,16 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} run
-     * @param {string} worker
-     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     viewsGet(
       run: string,
-      worker: string,
-      span: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).viewsGet(run, worker, span, options)
+      ).viewsGet(run, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2299,16 +2278,18 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} run
+     * @param {string} view
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     workersGet(
       run: string,
+      view: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).workersGet(run, options)
+      ).workersGet(run, view, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2621,30 +2602,25 @@ export const DefaultApiFactory = function (
     /**
      *
      * @param {string} run
-     * @param {string} worker
-     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    viewsGet(run: string, worker: string, span: string, options?: any) {
-      return DefaultApiFp(configuration).viewsGet(
-        run,
-        worker,
-        span,
-        options
-      )(fetch, basePath)
+    viewsGet(run: string, options?: any) {
+      return DefaultApiFp(configuration).viewsGet(run, options)(fetch, basePath)
     },
     /**
      *
      * @param {string} run
+     * @param {string} view
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    workersGet(run: string, options?: any) {
-      return DefaultApiFp(configuration).workersGet(run, options)(
-        fetch,
-        basePath
-      )
+    workersGet(run: string, view: string, options?: any) {
+      return DefaultApiFp(configuration).workersGet(
+        run,
+        view,
+        options
+      )(fetch, basePath)
     }
   }
 }
@@ -2970,32 +2946,30 @@ export class DefaultApi extends BaseAPI {
   /**
    *
    * @param {string} run
-   * @param {string} worker
-   * @param {string} span
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public viewsGet(run: string, worker: string, span: string, options?: any) {
-    return DefaultApiFp(this.configuration).viewsGet(
-      run,
-      worker,
-      span,
-      options
-    )(this.fetch, this.basePath)
+  public viewsGet(run: string, options?: any) {
+    return DefaultApiFp(this.configuration).viewsGet(run, options)(
+      this.fetch,
+      this.basePath
+    )
   }
 
   /**
    *
    * @param {string} run
+   * @param {string} view
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public workersGet(run: string, options?: any) {
-    return DefaultApiFp(this.configuration).workersGet(run, options)(
-      this.fetch,
-      this.basePath
-    )
+  public workersGet(run: string, view: string, options?: any) {
+    return DefaultApiFp(this.configuration).workersGet(
+      run,
+      view,
+      options
+    )(this.fetch, this.basePath)
   }
 }

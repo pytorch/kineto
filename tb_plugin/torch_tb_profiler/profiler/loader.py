@@ -34,7 +34,7 @@ class RunLoader(object):
 
             worker = match.group(1)
             span = match.group(2)
-            if span:
+            if span is not None:
                 # remove the starting dot (.)
                 span = span[1:]
                 bisect.insort(spans_by_workers[worker], span)

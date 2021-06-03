@@ -21,6 +21,22 @@ class Run(object):
         worker_list = sorted(list(dict.fromkeys(worker_list)))
         return worker_list
 
+    @property
+    def views(self):
+        view_set = set()
+        for profile in self.profiles.values():
+            view_set.update(profile.views)
+        return sorted(list(view_set), key=lambda x: x.id)
+
+    def get_workers(self, view):
+        worker_set = set()
+        for profile in self.profiles.values():
+            for v in profile.views:
+                if v.display_name == view:
+                    worker_set.add(profile.worker)
+                    break
+        return sorted(list(worker_set))
+
     def get_spans(self, worker=None):
         if worker is not None:
             spans = [s for w, s in self.profiles.keys() if w == worker]

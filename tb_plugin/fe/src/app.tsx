@@ -248,7 +248,7 @@ export const App = () => {
   }
 
   const renderContent = () => {
-    if (!loaded || !run || !worker || !view) {
+    if (!loaded || !run || !worker || !view || !span) {
       return <FullCircularProgress />
     }
 

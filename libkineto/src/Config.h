@@ -45,7 +45,8 @@ class Config : public AbstractConfig {
   }
 
   bool activityProfilerEnabled() const {
-    return activityProfilerEnabled_;
+    return activityProfilerEnabled_ ||
+      activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
   }
 
   // Log activitiy trace to this file

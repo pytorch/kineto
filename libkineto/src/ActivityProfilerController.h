@@ -9,19 +9,21 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 #include "ActivityLoggerFactory.h"
 #include "ActivityProfiler.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
+#include "ConfigLoader.h"
 #include "CuptiActivityInterface.h"
 
 namespace KINETO_NAMESPACE {
 
 class Config;
 
-class ActivityProfilerController {
+class ActivityProfilerController : public ConfigLoader::ConfigHandler {
  public:
   explicit ActivityProfilerController(bool cpuOnly);
   ActivityProfilerController(const ActivityProfilerController&) = delete;
@@ -33,6 +35,9 @@ class ActivityProfilerController {
   static void addLoggerFactory(
       const std::string& protocol,
       ActivityLoggerFactory::FactoryFunc factory);
+
+  bool canAcceptConfig() override;
+  void acceptConfig(const Config& config) override;
 
   void scheduleTrace(const Config& config);
 

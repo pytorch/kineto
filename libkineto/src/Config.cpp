@@ -156,6 +156,7 @@ Config::Config()
           kDefaultActivitiesExternalAPINetSizeThreshold),
       activitiesExternalAPIGpuOpCountThreshold_(
           kDefaultActivitiesExternalAPIGpuOpCountThreshold),
+      activitiesOnDemandTimestamp_(milliseconds(0)),
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(true),
       enableIpcFabric_(false) {

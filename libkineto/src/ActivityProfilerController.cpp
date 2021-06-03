@@ -26,10 +26,15 @@ namespace KINETO_NAMESPACE {
 constexpr milliseconds kProfilerIntervalMsecs(1000);
 
 ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
-  profiler_ = std::make_unique<ActivityProfiler>(CuptiActivityInterface::singleton(), cpuOnly);
+  profiler_ = std::make_unique<ActivityProfiler>(
+      CuptiActivityInterface::singleton(), cpuOnly);
+  ConfigLoader::instance().addHandler(
+      ConfigLoader::ConfigKind::ActivityProfiler, this);
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
+  ConfigLoader::instance().removeHandler(
+      ConfigLoader::ConfigKind::ActivityProfiler, this);
   if (profilerThread_) {
     // signaling termination of the profiler loop
     stopRunloop_ = true;
@@ -63,6 +68,17 @@ static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
     return std::make_unique<MemoryTraceLogger>(config);
   }
   return loggerFactory().makeLogger(config.activitiesLogUrl());
+}
+
+bool ActivityProfilerController::canAcceptConfig() {
+  return !profiler_->isActive();
+}
+
+void ActivityProfilerController::acceptConfig(const Config& config) {
+  VLOG(1) << "acceptConfig";
+  if (config.activityProfilerEnabled()) {
+    scheduleTrace(config);
+  }
 }
 
 void ActivityProfilerController::profilerLoop() {
@@ -107,6 +123,11 @@ void ActivityProfilerController::profilerLoop() {
 }
 
 void ActivityProfilerController::scheduleTrace(const Config& config) {
+  VLOG(1) << "scheduleTrace";
+  if (profiler_->isActive()) {
+    LOG(ERROR) << "Ignored request - profiler busy";
+    return;
+  }
   std::lock_guard<std::mutex> lock(asyncConfigLock_);
   asyncRequestConfig_ = config.clone();
   // start a profilerLoop() thread to handle request

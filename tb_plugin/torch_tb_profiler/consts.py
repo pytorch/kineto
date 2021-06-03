@@ -7,8 +7,7 @@ from collections import namedtuple
 PLUGIN_NAME = "pytorch_profiler"
 
 WORKER_PATTERN = re.compile(r"""^(.*?) # worker name
-        # TODO: uncomment the following line when we need supprort multiple steps
-        # (?:\.\d+)? # optional timestamp like 1619499959628
+        (\.\d+)? # optional timestamp like 1619499959628 used as step name
         \.pt\.trace\.json # the ending suffix
         (?:\.gz)?$""", re.X)  # optional .gz extension
 

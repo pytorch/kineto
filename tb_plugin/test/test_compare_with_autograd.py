@@ -128,7 +128,7 @@ def generate_plugin_result_row(data):
 
 def get_plugin_result(run, record_shapes=False, with_stack=False):
     result_dict =  dict()
-    for worker_name, profile in run.profiles.items():
+    for (worker_name, span), profile in run.profiles.items():
         worker_name = worker_name.split('.')[0]
         assert profile.operation_table_by_name is not None
         result_dict[worker_name + "#operator"] = list()

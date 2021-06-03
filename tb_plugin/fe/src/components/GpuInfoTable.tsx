@@ -2,9 +2,8 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react'
-
 import { makeStyles } from '@material-ui/core/styles'
+import * as React from 'react'
 
 export interface IProps {
   gpuInfo: any

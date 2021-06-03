@@ -3,43 +3,42 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
+import CardContent from '@material-ui/core/CardContent'
+import CardHeader from '@material-ui/core/CardHeader'
+import FormControlLabel from '@material-ui/core/FormControlLabel'
 import Grid from '@material-ui/core/Grid'
+import GridList from '@material-ui/core/GridList'
+import GridListTile from '@material-ui/core/GridListTile'
+import InputLabel from '@material-ui/core/InputLabel'
+import MenuItem from '@material-ui/core/MenuItem'
+import Radio from '@material-ui/core/Radio'
+import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
+import Select, { SelectProps } from '@material-ui/core/Select'
+import { makeStyles } from '@material-ui/core/styles'
 import TextField, {
   StandardTextFieldProps,
   TextFieldProps
 } from '@material-ui/core/TextField'
-import CardHeader from '@material-ui/core/CardHeader'
-import CardContent from '@material-ui/core/CardContent'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
-import InputLabel from '@material-ui/core/InputLabel'
-import GridList from '@material-ui/core/GridList'
-import GridListTile from '@material-ui/core/GridListTile'
-import Select, { SelectProps } from '@material-ui/core/Select'
-
 import * as React from 'react'
-import { PieChart } from './charts/PieChart'
 import * as api from '../api'
 import {
   OperationTableData,
   OperationTableDataInner,
   OperatorGraph
 } from '../api'
-import { DataLoading } from './DataLoading'
-import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
-import Radio from '@material-ui/core/Radio'
-import FormControlLabel from '@material-ui/core/FormControlLabel'
+import { OperationGroupBy } from '../constants/groupBy'
 import { useSearchDirectly } from '../utils/search'
 import { topIsValid, UseTop, useTopN } from '../utils/top'
+import { PieChart } from './charts/PieChart'
+import { DataLoading } from './DataLoading'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
+import { OperationTable } from './tables/OperationTable'
 import {
   DeviceSelfTimeTooltip,
   DeviceTotalTimeTooltip,
   HostSelfTimeTooltip,
   HostTotalTimeTooltip
 } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
-import { OperationGroupBy } from '../constants/groupBy'
-import { OperationTable } from './tables/OperationTable'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -67,11 +66,11 @@ const useStyles = makeStyles((theme) => ({
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 export const Operator: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
   const chartHeaderRenderer = React.useMemo(
@@ -120,19 +119,19 @@ export const Operator: React.FC<IProps> = (props) => {
 
   React.useEffect(() => {
     api.defaultApi
-      .operationTableGet(run, worker, view, groupBy)
+      .operationTableGet(run, worker, span, groupBy)
       .then((resp) => {
         setOperatorTable(resp)
       })
-  }, [run, worker, view, groupBy])
+  }, [run, worker, span, groupBy])
 
   React.useEffect(() => {
     api.defaultApi
-      .operationGet(run, worker, view, OperationGroupBy.Operation)
+      .operationGet(run, worker, span, OperationGroupBy.Operation)
       .then((resp) => {
         setOperatorGraph(resp)
       })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
     setGroupBy(event.target.value as OperationGroupBy)
@@ -286,7 +285,7 @@ export const Operator: React.FC<IProps> = (props) => {
                       data={table}
                       groupBy={groupBy}
                       run={run}
-                      view={view}
+                      span={span}
                       worker={worker}
                     />
                   )}

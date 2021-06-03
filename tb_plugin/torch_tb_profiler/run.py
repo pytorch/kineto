@@ -1,8 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from collections import OrderedDict
-
 from . import consts
 
 
@@ -14,36 +12,79 @@ class Run(object):
     def __init__(self, name, run_dir):
         self.name = name
         self.run_dir = run_dir
-        self.profiles = OrderedDict()
+        self.profiles = {}
 
     @property
     def workers(self):
-        return sorted(list(self.profiles.keys()))
+        # get full worker list and remove the duplicated
+        worker_list, _ = zip(*self.profiles.keys())
+        worker_list = sorted(list(dict.fromkeys(worker_list)))
+        return worker_list
 
     @property
     def views(self):
-        profile = self.get_profile()
-        if profile is None:
+        view_set = set()
+        for profile in self.profiles.values():
+            view_set.update(profile.views)
+        return sorted(list(view_set), key=lambda x: x.id)
+
+    def get_workers(self, view):
+        worker_set = set()
+        for profile in self.profiles.values():
+            for v in profile.views:
+                if v.display_name == view:
+                    worker_set.add(profile.worker)
+                    break
+        return sorted(list(worker_set))
+
+    def get_spans(self, worker=None):
+        if worker is not None:
+            spans = [s for w, s in self.profiles.keys() if w == worker]
+        else:
+            spans = [s for _, s in self.profiles.keys()]
+
+        spans = list(set(spans))
+        if len(spans) == 1 and spans[0] is None:
             return None
-        return profile.views
+        else:
+            return sorted(spans)
 
     def add_profile(self, profile):
-        self.profiles[profile.worker] = profile
+        span = profile.span
+        if span is None:
+            span = "default"
+        else:
+            span = str(span)
+        self.profiles[(profile.worker, span)] = profile
 
-    def get_profile(self, worker=None):
+    def get_profile(self, worker, span):
+        if worker is None:
+            raise ValueError("the worker parameter is mandatory")
+
         if len(self.profiles) == 0:
             return None
-        if not worker:
-            return next(iter(self.profiles.values()))
-        return self.profiles.get(worker, None)
 
+        return self.profiles.get((worker, span), None)
+
+    def get_profiles(self, *, worker=None, span=None):
+        # Note: we could not use if span to check it is None or not
+        # since the span 0 will be skipped at this case.
+        if worker is not None and span is not None:
+            return self.profiles.get((worker, span), None)
+        elif worker is not None:
+            return [p for (w, s), p in self.profiles.items() if worker == w]
+        elif span is not None:
+            return [p for (w, s), p in self.profiles.items() if span == s]
+        else:
+            return self.profiles.values()
 
 class RunProfile(object):
     """ Cooked profiling result for a worker. For visualization purpose only.
     """
 
-    def __init__(self, worker):
+    def __init__(self, worker, span):
         self.worker = worker
+        self.span = span
         self.views = []
         self.has_runtime = False
         self.has_kernel = False
@@ -182,8 +223,9 @@ class DistributedRunProfile(object):
     """ Profiling all workers in a view.
     """
 
-    def __init__(self):
+    def __init__(self, span):
         self.worker = 'All'
+        self.span = span
         self.views = []
         self.gpu_info = None
         self.steps_to_overlap = None

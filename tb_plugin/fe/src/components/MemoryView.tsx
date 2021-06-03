@@ -3,20 +3,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
-import Grid from '@material-ui/core/Grid'
-import TextField, { TextFieldProps } from '@material-ui/core/TextField'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
 import InputLabel from '@material-ui/core/InputLabel'
+import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
-
+import { makeStyles } from '@material-ui/core/styles'
+import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
 import { MemoryData } from '../api'
-import { DataLoading } from './DataLoading'
 import { useSearchDirectly } from '../utils/search'
+import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
 
 const useStyles = makeStyles((theme) => ({
@@ -45,11 +44,11 @@ const useStyles = makeStyles((theme) => ({
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 export const MemoryView: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
 
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
@@ -88,12 +87,12 @@ export const MemoryView: React.FC<IProps> = (props) => {
   }
 
   React.useEffect(() => {
-    api.defaultApi.memoryGet(run, worker).then((resp) => {
+    api.defaultApi.memoryGet(run, worker, span).then((resp) => {
       setMemoryData(resp)
       setDevices(Object.keys(resp.data))
       setDevice(resp.metadata.default_device)
     })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)

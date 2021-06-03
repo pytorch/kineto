@@ -1087,7 +1087,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(count, 2)
 
     def test_dump_gpu_metrics(self):
-        profile = RunProfile("test_dump_gpu_metrics")
+        profile = RunProfile("test_dump_gpu_metrics", None)
         # Faked data for easy to see in UI. Real data values are 1/100 of these.
         profile.gpu_util_buckets = [[(1621401187223005, 0.0), (1621401187224005, 0.0),
                                      (1621401187225005, 0.6), (1621401187226005, 0.5),

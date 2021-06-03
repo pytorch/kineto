@@ -16,34 +16,12 @@ paths:
                 type: array
                 items:
                   type: string
-  /workers:
-    get:
-      parameters:
-        - in: query
-          name: run
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: successful workers
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  type: string
   /views:
     get:
       parameters:
         - in: query
           name: run
           required: true
-          schema:
-            type: string
-        - in: query
-          name: worker
-          required: false
           schema:
             type: string
       responses:
@@ -59,6 +37,53 @@ paths:
                     - Overview
                     - Operator
                     - Kernel
+                    - Trace
+                    - Distributed
+                    - Memory
+  /workers:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: view
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful workers
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: string
+  /spans:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful spans
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: string
   /overview:
     get:
       parameters:
@@ -73,7 +98,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -98,7 +123,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -132,7 +157,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -166,7 +191,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -209,7 +234,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -234,7 +259,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -259,7 +284,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -297,7 +322,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -318,6 +343,11 @@ paths:
             type: string
         - in: query
           name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
           required: true
           schema:
             type: string
@@ -342,7 +372,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -376,7 +406,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string
@@ -410,7 +440,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: view
+          name: span
           required: true
           schema:
             type: string

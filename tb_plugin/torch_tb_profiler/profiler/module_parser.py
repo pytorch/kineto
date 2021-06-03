@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import sys
+from collections import defaultdict
 
 from .. import utils
 from .node import OperatorNode, is_operator_node
@@ -161,17 +162,17 @@ class ModuleParser:
 
             op_list_groupby_name = list(name_to_agg.values())
             op_list_groupby_name_input = list(name_input_to_agg.values())
-            stack_lists_group_by_name = dict()
-            stack_lists_group_by_name_input = dict()
+            stack_lists_group_by_name = defaultdict(list)
+            stack_lists_group_by_name_input = defaultdict(list)
             for agg in name_stack_to_agg.values():
                 assert (len(agg.call_stacks) == 1)
                 if list(agg.call_stacks)[0]:
-                    stack_lists_group_by_name.setdefault(agg.name, []).append(agg)
+                    stack_lists_group_by_name[agg.name].append(agg)
             for agg in name_input_stack_to_agg.values():
                 assert (len(agg.call_stacks) == 1)
                 if list(agg.call_stacks)[0]:
                     key = agg.name + "###" + str(agg.input_shape)
-                    stack_lists_group_by_name_input.setdefault(key, []).append(agg)
+                    stack_lists_group_by_name_input[key].append(agg)
 
             return op_list_groupby_name, op_list_groupby_name_input, stack_lists_group_by_name, stack_lists_group_by_name_input
 

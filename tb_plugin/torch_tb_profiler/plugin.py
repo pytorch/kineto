@@ -11,9 +11,9 @@ import tempfile
 import threading
 import time
 from collections import OrderedDict
+from queue import Queue
 
 import werkzeug
-from absl import logging as absllogging
 from tensorboard import errors
 from tensorboard.plugins import base_plugin
 from werkzeug import wrappers
@@ -49,7 +49,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._runs_lock = threading.Lock()
 
         self._cache = io.Cache()
-        self._queue = mp.Queue()
+        self._queue = Queue()
         self._gpu_metrics_file_dict = {}
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
@@ -66,32 +66,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         atexit.register(clean)
 
-    def __getstate__(self):
-        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
-        The default mode is fork in Unix and spawn on Windows and macOS.
-        Therefore, the __getstate__ and __setstate__ are used to pickle/unpickle the state in spawn mode.
-        '''
-        data = self.__dict__.copy()
-        # remove self._runs_lock and self._is_active_initialized_event since they are threading stuff to
-        # make sure the plugin instance could be pickled to the data parsing process
-        # otherwise, 'TypeError: cannot pickle '_thread.lock' object' will be raised.
-        del data['_runs_lock']
-        del data['_is_active_initialized_event']
-        logger.debug("TorchProfilerPlugin.__getstate__: %s " % data)
-        return data
-
-    def __setstate__(self, d):
-        '''The default logging level in new process is warning. 
-        As the result, the logger.info will be ignored. 
-        We have to leverage the multiprocessing.get_logger() which will be used by the python multiprocessing.
-        Alternatively, we need call use_absl_handler or manually add the logging.StreamHandler
-        '''
-        # need 1), call use_absl_handler, 2), manually add the logging.StreamHandler, or 3), use multiprocessing.logging
-        # so that the logger information can be see.
-        absllogging.use_absl_handler()
-        logger.info("TorchProfilerPlugin.__setstate__ with %s " % d)
-        self.__dict__.update(d)
-
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
         """
@@ -107,6 +81,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/runs": self.runs_route,
             "/views": self.views_route,
             "/workers": self.workers_route,
+            "/spans": self.spans_route,
             "/overview": self.overview_route,
             "/operation": self.operation_pie_route,
             "/operation/table": self.operation_table_route,
@@ -133,10 +108,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def views_route(self, request):
         name = request.args.get("run")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
-        views = sorted(profile.views, key=lambda x: x.id)
+        self._validate(run=name)
+        run = self._get_run(name)
+        views = run.views
         views_list = []
         for view in views:
             views_list.append(view.display_name)
@@ -145,17 +119,29 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def workers_route(self, request):
         name = request.args.get("run")
-        self._validate(run=name)
+        view = request.args.get("view")
+        self._validate(run=name, view=view)
         run = self._get_run(name)
         self._check_run(run, name)
-        return self.respond_as_json(run.workers)
+        workers = run.get_workers(view)
+        return self.respond_as_json(run.get_workers(view))
+
+    @wrappers.Request.application
+    def spans_route(self, request):
+        name = request.args.get("run")
+        worker = request.args.get("worker")
+        self._validate(run=name, worker=worker)
+        run = self._get_run(name)
+        self._check_run(run, name)
+        return self.respond_as_json(run.get_spans(worker))
 
     @wrappers.Request.application
     def overview_route(self, request):
         name = request.args.get("run")
         worker = request.args.get("worker")
+        span = request.args.get("span")
         self._validate(run=name, worker=worker)
-        profile = self._get_profile(name, worker)
+        profile = self._get_profile(name, worker, span)
         self._check_normal_profile(profile, name, worker)
         run = self._get_run(name)
         data = profile.overview
@@ -322,10 +308,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                         if run_dir not in touched:
                             touched.add(run_dir)
                             logger.info("Find run directory %s", run_dir)
-                            # Use multiprocessing to avoid UI stall and reduce data parsing time
-                            process = mp.Process(target=self._load_run, args=(run_dir,))
-                            #process.daemon = True
-                            process.start()
+                            # Use threading to avoid UI stall and reduce data parsing time
+                            t = threading.Thread(target=self._load_run, args=(run_dir,))
+                            t.start()
                 except Exception as ex:
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 
@@ -368,8 +353,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     break
 
     def _load_run(self, run_dir):
-        absllogging.use_absl_handler()
-
         try:
             name = self._get_run_name(run_dir)
             logger.info("Load run %s", name)
@@ -395,22 +378,23 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def _get_profile_for_request(self, request, distributed=False):
         name = request.args.get("run")
+        span = request.args.get("span")
         if distributed:
             self._validate(run=name)
-            profile = self._get_profile(name, 'All')
+            profile = self._get_profile(name, 'All', span)
             self._check_distributed_profile(profile, name)
         else:
             worker = request.args.get("worker")
             self._validate(run=name, worker=worker)
-            profile = self._get_profile(name, worker)
+            profile = self._get_profile(name, worker, span)
             self._check_normal_profile(profile, name, worker)
 
         return profile
 
-    def _get_profile(self, name, worker):
+    def _get_profile(self, name, worker, span):
         run = self._get_run(name)
         self._check_run(run, name)
-        profile = run.get_profile(worker)
+        profile = run.get_profile(worker, span)
         if profile is None:
             raise errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
         return profile

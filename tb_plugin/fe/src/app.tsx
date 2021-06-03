@@ -2,35 +2,35 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import CssBaseline from '@material-ui/core/CssBaseline'
+import Divider from '@material-ui/core/Divider'
 import Drawer from '@material-ui/core/Drawer'
+import Fab from '@material-ui/core/Fab'
 import FormControl from '@material-ui/core/FormControl'
 import IconButton from '@material-ui/core/IconButton'
 import ListSubheader from '@material-ui/core/ListSubheader'
-import { makeStyles } from '@material-ui/core/styles'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
-import { Overview } from './components/Overview'
-import Divider from '@material-ui/core/Divider'
-import Fab from '@material-ui/core/Fab'
-import ClickAwayListener from '@material-ui/core/ClickAwayListener'
-import * as React from 'react'
-import clsx from 'clsx'
-import { Operator } from './components/Operator'
-import { Kernel } from './components/Kernel'
-import * as api from './api'
-import { firstOrUndefined, sleep } from './utils'
-import { setup } from './setup'
-import './styles.css'
-import { TraceView } from './components/TraceView'
-import { DistributedView } from './components/DistributedView'
-import { FullCircularProgress } from './components/FullCircularProgress'
-import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import { makeStyles } from '@material-ui/core/styles'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
+import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
-import 'antd/es/button/style/css'
+import clsx from 'clsx'
+import * as React from 'react'
+import * as api from './api'
+import { DistributedView } from './components/DistributedView'
+import { FullCircularProgress } from './components/FullCircularProgress'
+import { Kernel } from './components/Kernel'
 import { MemoryView } from './components/MemoryView'
+import { Operator } from './components/Operator'
+import { Overview } from './components/Overview'
+import { TraceView } from './components/TraceView'
+import { setup } from './setup'
+import './styles.css'
+import { firstOrUndefined, sleep } from './utils'
 
 export enum Views {
   Overview = 'Overview',
@@ -134,6 +134,9 @@ export const App = () => {
   const [workers, setWorkers] = React.useState<string[]>([])
   const [worker, setWorker] = React.useState<string>('')
 
+  const [spans, setSpans] = React.useState<string[]>([])
+  const [span, setSpan] = React.useState<string | ''>('')
+
   const [views, setViews] = React.useState<Views[]>([])
   const [view, setView] = React.useState<Views | ''>('')
   const [loaded, setLoaded] = React.useState(false)
@@ -169,11 +172,26 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run) {
-      api.defaultApi.workersGet(run).then((workers) => {
-        setWorkers(workers)
+      api.defaultApi.viewsGet(run).then((rawViews) => {
+        const views = rawViews
+          .map((v) => Views[Views[v as Views]])
+          .filter(Boolean)
+        setViews(views)
       })
     }
   }, [run])
+
+  React.useEffect(() => {
+    setView(firstOrUndefined(views) ?? '')
+  }, [views])
+
+  React.useEffect(() => {
+    if (run && view) {
+      api.defaultApi.workersGet(run, view).then((workers) => {
+        setWorkers(workers)
+      })
+    }
+  }, [run, view])
 
   React.useEffect(() => {
     setWorker(firstOrUndefined(workers) ?? '')
@@ -181,31 +199,36 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run && worker) {
-      api.defaultApi.viewsGet(run, worker).then((rawViews) => {
-        const views = rawViews
-          .map((v) => Views[Views[v as Views]])
-          .filter(Boolean)
-        setViews(views)
+      api.defaultApi.spansGet(run, worker).then((spans) => {
+        setSpans(spans)
       })
     }
   }, [run, worker])
 
   React.useEffect(() => {
-    setView(firstOrUndefined(views) ?? '')
-  }, [views])
+    setSpan(firstOrUndefined(spans) ?? '')
+  }, [spans])
 
   const handleRunChange: SelectProps['onChange'] = (event) => {
     setRun(event.target.value as string)
-    setWorker('')
     setView('')
-  }
-
-  const handleWorkerChange: SelectProps['onChange'] = (event) => {
-    setWorker(event.target.value as string)
+    setWorker('')
+    setSpan('')
   }
 
   const handleViewChange: SelectProps['onChange'] = (event) => {
     setView(event.target.value as Views)
+    setWorker('')
+    setSpan('')
+  }
+
+  const handleWorkerChange: SelectProps['onChange'] = (event) => {
+    setWorker(event.target.value as string)
+    setSpan('')
+  }
+
+  const handleSpanChange: SelectProps['onChange'] = (event) => {
+    setSpan(event.target.value as string)
   }
 
   const [open, setOpen] = React.useState(true)
@@ -231,24 +254,47 @@ export const App = () => {
 
     switch (view) {
       case Views.Overview:
-        return <Overview run={run} worker={worker} view={view} />
+        return <Overview run={run} worker={worker} span={span} />
       case Views.Operator:
-        return <Operator run={run} worker={worker} view={view} />
+        return <Operator run={run} worker={worker} span={span} />
       case Views.Kernel:
-        return <Kernel run={run} worker={worker} view={view} />
+        return <Kernel run={run} worker={worker} span={span} />
       case Views.Trace:
         return (
           <TraceView
             run={run}
             worker={worker}
-            view={view}
+            span={span}
             iframeRef={iframeRef}
           />
         )
       case Views.Distributed:
-        return <DistributedView run={run} worker={worker} view={view} />
+        return <DistributedView run={run} worker={worker} span={span} />
       case Views.Memory:
-        return <MemoryView run={run} worker={worker} view={view} />
+        return <MemoryView run={run} worker={worker} span={span} />
+    }
+  }
+
+  const spanComponent = () => {
+    const spanFragment = (
+      <React.Fragment>
+        <ListSubheader>Spans</ListSubheader>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={span} onChange={handleSpanChange}>
+              {spans.map((span) => (
+                <MenuItem value={span}>{span}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
+      </React.Fragment>
+    )
+
+    if (!spans || spans.length <= 1) {
+      return <div className={classes.hide}>{spanFragment}</div>
+    } else {
+      return spanFragment
     }
   }
 
@@ -289,16 +335,6 @@ export const App = () => {
             </Select>
           </FormControl>
         </ClickAwayListener>
-        <ListSubheader>Workers</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={worker} onChange={handleWorkerChange}>
-              {workers.map((worker) => (
-                <MenuItem value={worker}>{worker}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
         <ListSubheader>Views</ListSubheader>
         <ClickAwayListener onClickAway={SetIframeActive}>
           <FormControl variant="outlined" className={classes.formControl}>
@@ -309,6 +345,17 @@ export const App = () => {
             </Select>
           </FormControl>
         </ClickAwayListener>
+        <ListSubheader>Workers</ListSubheader>
+        <ClickAwayListener onClickAway={SetIframeActive}>
+          <FormControl variant="outlined" className={classes.formControl}>
+            <Select value={worker} onChange={handleWorkerChange}>
+              {workers.map((worker) => (
+                <MenuItem value={worker}>{worker}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </ClickAwayListener>
+        {spanComponent()}
       </Drawer>
       {!open && (
         <Fab

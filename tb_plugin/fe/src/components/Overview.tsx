@@ -2,24 +2,24 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react'
-import { makeStyles } from '@material-ui/core/styles'
-import Grid, { GridSize } from '@material-ui/core/Grid'
 import Card from '@material-ui/core/Card'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { TextListItem } from './TextListItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
+import { makeStyles } from '@material-ui/core/styles'
+import * as React from 'react'
 import * as api from '../api'
-import { DataLoading } from './DataLoading'
-import { SteppedAreaChart } from './charts/SteppedAreaChart'
-import {
-  transformPerformanceIntoTable,
-  transformPerformanceIntoPie
-} from './transform'
-import { TableChart } from './charts/TableChart'
 import { PieChart } from './charts/PieChart'
+import { SteppedAreaChart } from './charts/SteppedAreaChart'
+import { TableChart } from './charts/TableChart'
+import { DataLoading } from './DataLoading'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
+import { TextListItem } from './TextListItem'
 import { StepTimeBreakDownTooltip } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
+import {
+  transformPerformanceIntoPie,
+  transformPerformanceIntoTable
+} from './transform'
 
 const topGraphHeight = 230
 
@@ -64,11 +64,11 @@ const highlightNoTopLevel = (
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 export const Overview: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
 
   const [steps, setSteps] = React.useState<api.Graph | undefined>(undefined)
   const [performances, setPerformances] = React.useState<api.Performance[]>([])
@@ -87,7 +87,7 @@ export const Overview: React.FC<IProps> = (props) => {
   }, [performances])
 
   React.useEffect(() => {
-    api.defaultApi.overviewGet(run, worker, view).then((resp) => {
+    api.defaultApi.overviewGet(run, worker, span).then((resp) => {
       setPerformances(resp.performance)
       setEnvironments(resp.environments)
       setSteps(resp.steps)
@@ -95,7 +95,7 @@ export const Overview: React.FC<IProps> = (props) => {
       setGpuMetrics(resp.gpu_metrics)
       console.log(resp.gpu_metrics)
     })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
@@ -139,10 +139,7 @@ export const Overview: React.FC<IProps> = (props) => {
             <Grid item sm={cardSizes[1]}>
               <Card variant="outlined">
                 <CardHeader
-                  title={chartHeaderRenderer(
-                    gpuMetrics.title ?? 'GPU Summary',
-                    gpuMetrics.tooltip
-                  )}
+                  title={chartHeaderRenderer('GPU Summary', gpuMetrics.tooltip)}
                 />
                 <CardContent
                   className={classes.topGraph}

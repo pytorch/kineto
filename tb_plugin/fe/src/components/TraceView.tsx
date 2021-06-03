@@ -2,15 +2,15 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import * as api from '../api'
-import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
   iframeRef: React.RefObject<HTMLIFrameElement>
 }
 
@@ -26,7 +26,7 @@ const useStyles = makeStyles(() => ({
 }))
 
 export const TraceView: React.FC<IProps> = (props) => {
-  const { run, worker, view, iframeRef } = props
+  const { run, worker, span, iframeRef } = props
   const classes = useStyles()
 
   const [traceData, setTraceData] = React.useState<Promise<string> | null>(null)
@@ -34,11 +34,11 @@ export const TraceView: React.FC<IProps> = (props) => {
 
   React.useEffect(() => {
     setTraceData(
-      api.defaultApi.traceGet(run, worker, view).then((resp) => {
+      api.defaultApi.traceGet(run, worker, span).then((resp) => {
         return JSON.stringify(resp)
       })
     )
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   React.useEffect(() => {
     function callback(event: MessageEvent) {

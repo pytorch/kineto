@@ -21,16 +21,10 @@ from .overall_parser import OverallParser
 
 logger = utils.get_logger()
 
-
-class RunData(object):
-    def __init__(self, name, run_dir):
-        self.name = name
-        self.run_dir = run_dir
-        self.profiles = OrderedDict()
-
 class RunProfileData(object):
-    def __init__(self, worker):
+    def __init__(self, worker, span=None):
         self.worker = worker
+        self.span = span
         self.data_schema_version = None
         self.distributed_info = None
         self.device_props = None
@@ -80,12 +74,12 @@ class RunProfileData(object):
         return False
 
     @staticmethod
-    def parse(run_dir, worker, path, caches):
+    def parse(run_dir, worker, span, path, caches):
         logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
 
         trace_path, trace_json = RunProfileData._preprocess_file(caches, io.join(run_dir, path))
 
-        profile = RunProfileData(worker)
+        profile = RunProfileData(worker, span)
         profile.trace_file_path = trace_path
         if type(trace_json) is dict:
             profile.data_schema_version = trace_json.get("schemaVersion", None)
@@ -257,6 +251,7 @@ class RunProfileData(object):
 class DistributedRunProfileData:
     def __init__(self, run_profile_data):
         self.worker = run_profile_data.worker
+        self.span = run_profile_data.span
         self.steps_names = run_profile_data.steps_names
         self.has_communication = run_profile_data.has_communication
         self.comm_node_list = run_profile_data.comm_node_list

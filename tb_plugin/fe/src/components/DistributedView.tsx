@@ -3,36 +3,33 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
-import Grid from '@material-ui/core/Grid'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { TextListItem } from './TextListItem'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
 import InputLabel from '@material-ui/core/InputLabel'
-import Typography from '@material-ui/core/Typography'
+import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
+import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
-import { TableChart } from './charts/TableChart'
 import * as api from '../api'
-import { Graph } from '../api'
-import { DistributedGraph, GpuInfo } from '../api'
+import { DistributedGraph, GpuInfo, Graph } from '../api'
 import { firstOrUndefined } from '../utils'
+import { ColumnChart } from './charts/ColumnChart'
+import { TableChart } from './charts/TableChart'
 import { DataLoading } from './DataLoading'
 import { GpuInfoTable } from './GpuInfoTable'
-import { ColumnChart } from './charts/ColumnChart'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
 import {
+  DistributedCommopsTableTooltip,
   DistributedGpuInfoTableTooltip,
   DistributedOverlapGraphTooltip,
-  DistributedWaittimeGraphTooltip,
-  DistributedCommopsTableTooltip
+  DistributedWaittimeGraphTooltip
 } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -62,8 +59,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
     [tooltipCommonClasses]
   )
 
-  let { run, worker, view } = props
-  worker = 'worker1'
+  let { run, worker, span } = props
   const classes = useStyles()
 
   const [overlapGraph, setOverlapGraph] = React.useState<
@@ -105,23 +101,23 @@ export const DistributedView: React.FC<IProps> = (props) => {
   }, [commopsWorkers])
 
   React.useEffect(() => {
-    api.defaultApi.distributedOverlapGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedOverlapGet(run, 'All', span).then((resp) => {
       setOverlapGraph(resp)
       setOverlapSteps(Object.keys(resp.data))
     })
-    api.defaultApi.distributedWaittimeGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedWaittimeGet(run, 'All', span).then((resp) => {
       setWaittimeGraph(resp)
       setWaittimeSteps(Object.keys(resp.data))
     })
-    api.defaultApi.distributedCommopsGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedCommopsGet(run, 'All', span).then((resp) => {
       setCommopsTableData(resp.data)
       setCommopsWorkers(Object.keys(resp.data))
       setCommopsTableTitle(resp.metadata.title)
     })
-    api.defaultApi.distributedGpuinfoGet(run, 'All', view).then((resp) => {
+    api.defaultApi.distributedGpuinfoGet(run, 'All', span).then((resp) => {
       setGpuInfo(resp)
     })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const onCommopsWorkerChanged: SelectProps['onChange'] = (event) => {
     setCommopsWorker(event.target.value as string)

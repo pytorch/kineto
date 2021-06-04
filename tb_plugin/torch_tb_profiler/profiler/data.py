@@ -225,6 +225,13 @@ class RunProfileData(object):
                     self.recommendations.append(text)
                     break
 
+        communication_ratio = self.avg_costs.costs[ProfileRole.Communication] / self.avg_costs.costs[ProfileRole.Total]
+        if communication_ratio > 0.1:
+            text = "This run has high time cost on communication. " \
+                   "{}% of the step time is in communication. You could " \
+                   "try Gradient Accumulation or increase the batch size.".format(round(communication_ratio * 100, 1))
+            self.recommendations.append(text)
+
     def _analyze_gpu_metrics(self):
         def get_gpus_str(gpus):
             gpu_list_str = str(gpus[0])

@@ -485,7 +485,7 @@ class DistributedRunGenerator(object):
 
     def _generate_overlap_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Computaion/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
+        result["metadata"] = {"title": "Computation/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
         steps_to_overlap = OrderedDict()
         steps_to_overlap['all'] = OrderedDict()
         for data in self.all_profile_data:

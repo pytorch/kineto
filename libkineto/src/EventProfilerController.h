@@ -10,12 +10,9 @@
 #include <atomic>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <thread>
 
 #include <cupti.h>
-
-#include "ConfigLoader.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -28,7 +25,7 @@ namespace detail {
 class HeartbeatMonitor;
 }
 
-class EventProfilerController : public ConfigLoader::ConfigHandler {
+class EventProfilerController {
  public:
   EventProfilerController(const EventProfilerController&) = delete;
   EventProfilerController& operator=(const EventProfilerController&) = delete;
@@ -44,10 +41,6 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
   static void addOnDemandLoggerFactory(
       std::function<std::unique_ptr<SampleListener>(const Config&)> factory);
 
-  bool canAcceptConfig() override;
-
-  void acceptConfig(const Config& config) override;
-
  private:
   explicit EventProfilerController(
       CUcontext context,
@@ -57,12 +50,10 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
   void profilerLoop();
 
   ConfigLoader& configLoader_;
-  std::unique_ptr<Config> newOnDemandConfig_;
   detail::HeartbeatMonitor& heartbeatMonitor_;
   std::unique_ptr<EventProfiler> profiler_;
   std::unique_ptr<std::thread> profilerThread_;
   std::atomic_bool stopRunloop_{false};
-  std::mutex mutex_;
 };
 
 } // namespace KINETO_NAMESPACE

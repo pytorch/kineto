@@ -15,7 +15,6 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <mutex>
 #include <numeric>
 #include <thread>
 #include <vector>
@@ -319,27 +318,27 @@ bool EventProfiler::initEventGroups() {
 
 static unique_ptr<Config> alignAndValidateConfigs(
     Config& base,
-    Config* onDemand) {
-  if (!onDemand ||
+    Config& onDemand) {
+  if (onDemand.eventProfilerOnDemandDuration().count() == 0 ||
       system_clock::now() >
-          (onDemand->eventProfilerOnDemandStartTime() +
-           onDemand->eventProfilerOnDemandDuration())) {
+          (onDemand.eventProfilerOnDemandStartTime() +
+           onDemand.eventProfilerOnDemandDuration())) {
     base.validate();
     return base.clone();
   }
 
   auto res = base.clone();
-  res->addEvents(onDemand->eventNames());
-  res->addMetrics(onDemand->metricNames());
+  res->addEvents(onDemand.eventNames());
+  res->addMetrics(onDemand.metricNames());
 
   int sample_period =
-      std::min(base.samplePeriod().count(), onDemand->samplePeriod().count());
+      std::min(base.samplePeriod().count(), onDemand.samplePeriod().count());
   if (sample_period < base.samplePeriod().count() &&
       (base.samplePeriod().count() % sample_period) != 0) {
     sample_period = nearestFactor(sample_period, base.samplePeriod().count());
     LOG(WARNING)
         << "On-demand sample period must be a factor of base sample period. "
-        << "Adjusting from " << onDemand->samplePeriod().count() << "ms to "
+        << "Adjusting from " << onDemand.samplePeriod().count() << "ms to "
         << sample_period << "ms.";
   }
   base.setSamplePeriod(milliseconds(sample_period));
@@ -347,9 +346,9 @@ static unique_ptr<Config> alignAndValidateConfigs(
   res->setSamplePeriod(base.samplePeriod());
   res->setMultiplexPeriod(base.multiplexPeriod());
   res->validate();
-  onDemand->setSamplePeriod(base.samplePeriod());
-  onDemand->setMultiplexPeriod(base.multiplexPeriod());
-  onDemand->validate();
+  onDemand.setSamplePeriod(base.samplePeriod());
+  onDemand.setMultiplexPeriod(base.multiplexPeriod());
+  onDemand.validate();
 
   return res;
 }
@@ -460,18 +459,18 @@ EventProfiler::~EventProfiler() {
   VLOG(0) << "Stopped event profiler for device " << device();
 }
 
-void EventProfiler::updateLoggers(Config& config, Config* on_demand_config) {
+void EventProfiler::updateLoggers(Config& config, Config& on_demand_config) {
   // Update loggers.
   for (auto& logger : loggers_) {
     std::lock_guard<std::mutex> lock(logMutex());
     logger->update(config);
   }
 
-  if (on_demand_config) {
+  if (on_demand_config.eventProfilerOnDemandDuration().count()) {
     // Update onDemand loggers.
     for (auto& logger : onDemandLoggers_) {
       std::lock_guard<std::mutex> lock(logMutex());
-      logger->update(*on_demand_config);
+      logger->update(on_demand_config);
     }
   }
 }
@@ -589,15 +588,15 @@ void EventProfiler::dispatchSamples(
   }
 }
 
-void EventProfiler::configure(Config& config, Config* onDemandConfig) {
+void EventProfiler::configure(Config& config, Config& onDemandConfig) {
   if (!sets_.empty()) {
     sets_[curEnabledSet_].setEnabled(false);
     clearSamples();
   }
 
   config_ = config.clone();
-  onDemandConfig_ = onDemandConfig ? onDemandConfig->clone() : nullptr;
-  mergedConfig_ = alignAndValidateConfigs(*config_, onDemandConfig_.get());
+  onDemandConfig_ = onDemandConfig.clone();
+  mergedConfig_ = alignAndValidateConfigs(*config_, *onDemandConfig_);
   if (!applyConfig(*mergedConfig_)) {
     LOG(WARNING) << "Failed to apply config!";
     mergedConfig_ = config_->clone();
@@ -606,13 +605,13 @@ void EventProfiler::configure(Config& config, Config* onDemandConfig) {
   if (!sets_.empty()) {
     // Make timing adjustments based on multiplexing requirements.
     adjustConfig(*config_, sets_.size());
-    if (onDemandConfig_) {
-      int duration = onDemandConfig_->eventProfilerOnDemandDuration().count();
+    int duration = onDemandConfig_->eventProfilerOnDemandDuration().count();
+    if (duration > 0) {
       LOG(INFO) << "On demand profiler activated for " << duration << " secs";
       adjustConfig(*onDemandConfig_, sets_.size());
     }
     // If events or metrics were added or removed, need to tell loggers
-    updateLoggers(*config_, onDemandConfig_.get());
+    updateLoggers(*config_, *onDemandConfig_);
   }
 
   curEnabledSet_ = 0;

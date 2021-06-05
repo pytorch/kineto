@@ -146,8 +146,7 @@ int InitializeInjection(void) {
 }
 
 void suppressLibkinetoLogMessages() {
-  //SET_LOG_SEVERITY_LEVEL(ERROR);
-  SET_LOG_VERBOSITY_LEVEL(2, {});
+  SET_LOG_SEVERITY_LEVEL(ERROR);
 }
 
 } // extern C

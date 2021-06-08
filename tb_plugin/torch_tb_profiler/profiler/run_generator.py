@@ -529,7 +529,7 @@ class DistributedRunGenerator(object):
         for data in self.all_profile_data:
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
-            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Real Time (us)", "Avg Real Time (us)"]
+            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Data Transfer Time (us)", "Avg Data Transfer Time (us)"]
             for column in col_names:
                 table["columns"].append({"type": "number", "name": column})
             table["rows"] = []

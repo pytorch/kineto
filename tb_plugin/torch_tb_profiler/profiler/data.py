@@ -229,7 +229,10 @@ class RunProfileData(object):
         if communication_ratio > 0.1:
             text = "This run has high time cost on communication. " \
                    "{}% of the step time is in communication. You could " \
-                   "try Gradient Accumulation or increase the batch size.".format(round(communication_ratio * 100, 1))
+                   "try Gradient Accumulation or increase the batch size. " \
+                   "Note: Gradient accumulation will increase global effective batch size, which may hurt model convergence and accuracy. " \
+                   "For such case, you may want to evaluate <a href = \"{}\" target=\"_blank\">LAMB optimizer</a>".format(
+                       round(communication_ratio * 100, 1), "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
             self.recommendations.append(text)
 
     def _analyze_gpu_metrics(self):

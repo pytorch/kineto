@@ -14,6 +14,7 @@
 namespace libkineto {
 
 class ActivityLogger;
+struct TraceSpan;
 
 // Generic activity interface is borrowed from tensorboard protobuf format.
 struct TraceActivity {
@@ -33,6 +34,8 @@ struct TraceActivity {
   virtual const std::string name() const = 0;
   // Optional linked activity
   virtual const TraceActivity* linkedActivity() const = 0;
+  // Optional containing trace object
+  virtual const TraceSpan* traceSpan() const = 0;
   // Log activity
   virtual void log(ActivityLogger& logger) const = 0;
 

@@ -303,12 +303,9 @@ class Config : public AbstractConfig {
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
-    selectedActivityTypes_.insert(ActivityType::CPU_OP);
-    selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
-    selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
-    selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
-    selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
-    selectedActivityTypes_.insert(ActivityType::CUDA_RUNTIME);
+    for (ActivityType t : activityTypes()) {
+      selectedActivityTypes_.insert(t);
+    }
   }
 
   int verboseLogLevel_;

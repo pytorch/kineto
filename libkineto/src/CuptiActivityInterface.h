@@ -84,6 +84,7 @@ class CuptiActivityInterface {
   CuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
+  bool externalCorrelationEnabled_{false};
 
  protected:
 #ifdef HAS_CUPTI

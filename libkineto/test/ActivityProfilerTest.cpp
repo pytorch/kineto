@@ -38,19 +38,16 @@ using namespace KINETO_NAMESPACE;
 // Provides ability to easily create a few test CPU-side ops
 struct MockCpuActivityBuffer : public CpuTraceBuffer {
   MockCpuActivityBuffer(int64_t startTime, int64_t endTime) {
-    span = {startTime, endTime, 0, 1, "Test trace", ""};
+    span = TraceSpan(startTime, endTime,"Test trace");
     gpuOpCount = 0;
   }
 
   void addOp(std::string name, int64_t startTime, int64_t endTime, int64_t correlation) {
-    GenericTraceActivity op;
-    op.activityName = name;
-    op.activityType = ActivityType::CPU_OP;
+    GenericTraceActivity op(span, ActivityType::CPU_OP, name);
     op.startTime = startTime;
     op.endTime = endTime;
-    op.device = 0;
-    op.sysThreadId = systemThreadId();
-    op.correlation = correlation;
+    op.resource = systemThreadId();
+    op.id = correlation;
     activities.push_back(std::move(op));
     span.opCount++;
   }
@@ -164,6 +161,7 @@ class ActivityProfilerTest : public ::testing::Test {
     profiler_ = std::make_unique<ActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
+    cfg_->validate();
     loggerFactory.addProtocol("file", [](const std::string& url) {
         return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
     });

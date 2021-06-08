@@ -10,11 +10,6 @@
 
 namespace libkineto {
   void GenericTraceActivity::log(ActivityLogger& logger) const {
-    // TODO(T89833634): Merge handleGenericTraceActivity and handleCpuActivity
-    if (activityType == ActivityType::CPU_OP) {
-      return;
-    }
-
     logger.handleGenericActivity(*this);
   }
 } // namespace libkineto

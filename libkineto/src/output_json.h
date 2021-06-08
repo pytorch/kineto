@@ -41,14 +41,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleTraceSpan(const TraceSpan& span) override;
 
-  void handleIterationStart(const TraceSpan& span) override;
-
-  void handleCpuActivity(
-      const libkineto::GenericTraceActivity& activity,
-      const TraceSpan& span) override;
-
-  void handleGenericActivity(
-      const GenericTraceActivity& activity) override;
+  void handleGenericActivity(const GenericTraceActivity& activity) override;
 
 #ifdef HAS_CUPTI
   void handleRuntimeActivity(
@@ -79,6 +72,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleLinkStart(const RuntimeActivity& s);
   void handleLinkEnd(const TraceActivity& e);
 #endif // HAS_CUPTI
+
+  void addIterationMarker(const TraceSpan& span);
 
   void openTraceFile();
 

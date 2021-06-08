@@ -73,14 +73,6 @@ const string kActivitiesWarmupDurationSecsKey = "ACTIVITIES_WARMUP_PERIOD_SECS";
 const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
-// Valid configuration file entries for activity types
-const string kActivityCpuOp = "cpu_op";
-const string kActivityMemcpy = "gpu_memcpy";
-const string kActivityMemset = "gpu_memset";
-const string kActivityConcurrentKernel = "concurrent_kernel";
-const string kActivityExternalCorrelation = "external_correlation";
-const string kActivityRuntime = "cuda_runtime";
-
 const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
 
 // Common
@@ -206,24 +198,8 @@ void Config::setActivityTypes(
     for (const auto& activity : selected_activities) {
       if (activity == "") {
         continue;
-      } else if (activity == kActivityCpuOp) {
-        selectedActivityTypes_.insert(ActivityType::CPU_OP);
-      } else if (activity == kActivityMemcpy) {
-        selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
-      } else if (activity == kActivityMemset) {
-        selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
-      } else if (activity == kActivityConcurrentKernel) {
-        selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
-      } else if (activity == kActivityExternalCorrelation) {
-        selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
-      } else if (activity == kActivityRuntime) {
-        selectedActivityTypes_.insert(ActivityType::CUDA_RUNTIME);
-      } else {
-        throw std::invalid_argument(fmt::format(
-          "Invalid activity type selected: {}",
-          activity
-        ));
       }
+      selectedActivityTypes_.insert(toActivityType(activity));
     }
   }
 }
@@ -236,9 +212,6 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (name == kMetricsKey) {
     vector<string> metric_names = splitAndTrim(val, ',');
     metricNames_.insert(metric_names.begin(), metric_names.end());
-  } else if (name == kActivityTypesKey) {
-    vector<string> activity_types = splitAndTrim(toLower(val), ',');
-    setActivityTypes(activity_types);
   } else if (name == kSamplePeriodKey) {
     samplePeriod_ = milliseconds(toInt32(val));
   } else if (name == kMultiplexPeriodKey) {
@@ -265,6 +238,9 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesOnDemandDuration_ =
         duration_cast<milliseconds>(seconds(toInt32(val)));
     activitiesOnDemandTimestamp_ = timestamp();
+  } else if (name == kActivityTypesKey) {
+    vector<string> activity_types = splitAndTrim(toLower(val), ',');
+    setActivityTypes(activity_types);
   } else if (name == kActivitiesDurationMsecsKey) {
     activitiesOnDemandDuration_ = milliseconds(toInt32(val));
     activitiesOnDemandTimestamp_ = timestamp();
@@ -404,33 +380,12 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
     << "MB" << std::endl;
 
-  s << "Enabled activities: ";
+  std::vector<const char*> activities;
   for (const auto& activity : selectedActivityTypes_) {
-    switch(activity){
-      case ActivityType::CPU_OP:
-        s << kActivityCpuOp << " ";
-        break;
-      case ActivityType::GPU_MEMCPY:
-        s << kActivityMemcpy << " ";
-        break;
-      case ActivityType::GPU_MEMSET:
-        s << kActivityMemset << " ";
-        break;
-      case ActivityType::CONCURRENT_KERNEL:
-        s << kActivityConcurrentKernel << " ";
-        break;
-      case ActivityType::EXTERNAL_CORRELATION:
-        s << kActivityExternalCorrelation << " ";
-        break;
-      case ActivityType::CUDA_RUNTIME:
-        s << kActivityRuntime << " ";
-        break;
-      default:
-        s << "UNKNOWN_ACTIVITY_NAME" << " ";
-        break;
-    }
+    activities.push_back(toString(activity));
   }
-  s << std::endl;
+  s << "Enabled activities: "
+    << fmt::format("{}", fmt::join(activities, ",")) << std::endl;
 
   AbstractConfig::printActivityProfilerConfig(s);
 }

@@ -1,7 +1,7 @@
 # PyTorch Profiler TensorBoard Plugin
 
-This is a plugin that provides visualization of PyTorch profiling.
-It can parse, process and visualize the PyTorch Profiler's dumped result,
+This is a Tensoboard Plugin that provides visualization of PyTorch profiling.
+It can parse, process and visualize the PyTorch Profiler's dumped profiling result,
 and give optimization recommendations.
 
 ### Quick Installation Instructions
@@ -9,12 +9,6 @@ and give optimization recommendations.
 * Install from pypi
 
   `pip install torch-tb-profiler`
-
-* Verify installation is complete
-
-  `pip list | grep torch-tb-profiler`
-
-  Should display "torch-tb-profiler"
 
 * Or you can install from source
 
@@ -24,7 +18,7 @@ and give optimization recommendations.
 
   Navigate to the kineto/tb_plugin directory.
 
-  Install the profiler:
+  Install with cmd:
 
   `pip install .`
 
@@ -37,11 +31,11 @@ and give optimization recommendations.
 
 * Prepare profiling data
 
-  You can download [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/master/tb_plugin/samples)
-  to your local and specify it as an example.
-  These profiling samples are produced by
+  We have prepared some sample profiling data at [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/master/tb_plugin/samples)
+  You can download it directly.
+  Or you can generate these profiling samples yourself by running
   [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
-  You can learn how to profile your model from this example code
+  Also you can learn how to profile your model and generate profiling data from this example code
   or learn from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
 
   Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
@@ -49,7 +43,7 @@ and give optimization recommendations.
 
 * Start TensorBoard
 
-  Specify your profiling data folder to "logdir". If you use the above samples data, start TensorBoard with:
+  Specify the profiling data folder to "logdir" in Tensorboard. If you use the above samples data, start TensorBoard with:
 
   `tensorboard --logdir=./samples`
 
@@ -68,7 +62,7 @@ and give optimization recommendations.
 
   If the files under `--logdir` are too big or too many,
   please wait a while and refresh the browser to check latest loaded result.
-* AWS(S3://), Azure blob(https://\<account\>.blob.core.windows.net) and Google Cloud(GS://) supports
+* Also support loading profiling data stored in AWS(S3://), Azure blob(https://\<account\>.blob.core.windows.net) and Google Cloud(GS://)
   * S3: install boto3. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
     For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
     For example, the following command can be used to create minio storage after following guides: 
@@ -107,9 +101,9 @@ You can select the run and worker on the left control panel.
 
 ![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/control_panel.PNG)
 
-Runs: Select a run. Each run is a PyTorch workload with profiling enabled.
+Runs: Select a run. Each run is one execution of a PyTorch application with profiling enabled.
 
-Worker: Select a worker. Each worker is a process. There could be multiple workers when DPP is used.
+Worker: Select a worker. Each worker is a process. There could be multiple workers when DDP is used.
 
 Views: We organize the profiling result into multiple views,
 from coarse-grained (overview-level) to fine-grained (kernel-level).
@@ -119,6 +113,8 @@ Currently we have the following performance diagnosis views:
 - Operator View
 - Kernel View
 - Trace View
+- Memory View
+- Distributed View
 
 We describe each of these views below.
 
@@ -131,6 +127,11 @@ You can select the current worker in the left panel's "Workers" dropdown menu.
 An example of overall view:
 ![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/overall_view.PNG)
 
+The GPU Summary pane shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
+The 'GPU Utilization', 'Est. SM Efficiency' and 'Est. Achieved Occupancy' shows GPU usage efficiency of this run at different levels.
+The detailed information about these three metrics can be found at <??>.
+
+
 Step Time Breakdown: This shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
 The time spent on each step is broken down into multiple categories as follows:
 
@@ -140,14 +141,16 @@ The time spent on each step is broken down into multiple categories as follows:
 
 3. Memset: GPU involved memory set time;
 
-4. Runtime: CUDA runtime execution time on host side;
+4. Communication: Communication time only appear in DDP case;
+
+5. Runtime: CUDA runtime execution time on host side;
 Such as cudaLaunchKernel, cudaMemcpyAsync, cudaStreamSynchronize, ...
 
-5. DataLoader: The data loading time spent in PyTorch DataLoader object;
+6. DataLoader: The data loading time spent in PyTorch DataLoader object;
 
-6. CPU Exec: Host compute time, including every PyTorch operator running time;
+7. CPU Exec: Host compute time, including every PyTorch operator running time;
 
-7. Other: The time not included in any of the above.
+8. Other: The time not included in any of the above.
 
 Note: The summary of all the above categories is end-to-end wall-clock time.
 
@@ -174,7 +177,7 @@ This view displays the performance of every PyTorch operator that is executed ei
 Each table row is a PyTorch operator, which is a computation operator implemented by C++,
 such as “aten::relu_”, “aten::convolution”.
 
-Calls: The operator's number of calls.
+Calls: How many times the operator is called in this run.
 
 Device Self Duration: The accumulated time spent on GPU, not including this operator’s child operators.
 
@@ -183,6 +186,8 @@ Device Total Duration: The accumulated time spent on GPU, including this operato
 Host Self Duration: The accumulated time spent on Host, not including this operator’s child operators.
 
 Host Total Duration: The accumulated time spent on Host, including this operator’s child operators.
+
+CallStack: All call stacks of this operator. The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code.
 
 Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
 
@@ -266,3 +271,29 @@ are high-level python side functions.
 When you select the top-right corner's “Flow events” to ”async”,
 you can see the relationship between an operator and its launched kernels.
 ![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_launch.PNG)
+
+* Memory View
+
+Pytorch profiler records all memory allocation/release events during profiling. The plugin aggregates all these events
+by the operator.
+
+The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs. 
+
+Calls: # of calls of the operator. 
+
+Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
+
+Self Size Increase: The memory increase size associated with the operator itself. It sums up all allocation bytes and minus all the memory release bytes. 
+
+Allocation Count: The allocation count including all children operators. 
+
+Self Allocation Count: The allocation count belonging to the operator itself. 
+
+Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+
+Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
+
+* Distributed View
+
+Definition: 
+

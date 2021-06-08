@@ -20,6 +20,7 @@ namespace libkineto {
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
+struct TraceSpan;
 
 // These classes wrap the various CUPTI activity types
 // into subclasses of TraceActivity so that they can all be accessed
@@ -39,6 +40,7 @@ struct CuptiActivity : public TraceActivity {
   int64_t correlationId() const override {return activity_.correlationId;}
   const T& raw() const {return activity_;}
   const TraceActivity* linkedActivity() const override {return &linked_;}
+  const TraceSpan* traceSpan() const override {return nullptr;}
 
  protected:
   const T& activity_;

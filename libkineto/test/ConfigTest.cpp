@@ -72,13 +72,9 @@ TEST(ParseTest, Format) {
 TEST(ParseTest, DefaultActivityTypes) {
   Config cfg;
   cfg.validate();
+  auto all_activities = activityTypes();
   EXPECT_EQ(cfg.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::CPU_OP,
-                            ActivityType::GPU_MEMCPY,
-                            ActivityType::GPU_MEMSET,
-                            ActivityType::CONCURRENT_KERNEL,
-                            ActivityType::EXTERNAL_CORRELATION,
-                            ActivityType::CUDA_RUNTIME}));
+    std::set<ActivityType>(all_activities.begin(), all_activities.end()));
 }
 
 TEST(ParseTest, ActivityTypes) {
@@ -89,6 +85,9 @@ TEST(ParseTest, ActivityTypes) {
 
   EXPECT_EQ(cfg.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::CPU_OP,
+                            ActivityType::CPU_INSTANT_EVENT,
+                            ActivityType::USER_ANNOTATION,
+                            ActivityType::GPU_USER_ANNOTATION,
                             ActivityType::GPU_MEMCPY,
                             ActivityType::GPU_MEMSET,
                             ActivityType::CONCURRENT_KERNEL,
@@ -96,7 +95,7 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::CUDA_RUNTIME}));
 
   Config cfg2;
-  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,concurrent_kernel"));
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,kernel"));
   EXPECT_EQ(cfg2.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::GPU_MEMCPY,
                             ActivityType::GPU_MEMSET,

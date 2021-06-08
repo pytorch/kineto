@@ -44,14 +44,8 @@ class ActivityLogger {
 
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
-  virtual void handleIterationStart(const TraceSpan& span) = 0;
-
-  virtual void handleCpuActivity(
-      const libkineto::GenericTraceActivity& activity,
-      const TraceSpan& span) = 0;
-
   virtual void handleGenericActivity(
-      const GenericTraceActivity& activity) = 0;
+      const libkineto::GenericTraceActivity& activity) = 0;
 
 #ifdef HAS_CUPTI
   virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;

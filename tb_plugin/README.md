@@ -35,8 +35,7 @@ and give optimization recommendations.
   You can download it directly.
   Or you can generate these profiling samples yourself by running
   [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
-  Also you can learn how to profile your model and generate profiling data from this example code
-  or learn from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
+  Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
 
   Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
   to "on_trace_ready" on creation of "torch.profiler.schedule".
@@ -87,6 +86,12 @@ and give optimization recommendations.
   > **_NOTES:_** For AWS, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
   ---
 
+  We prepared some sample data in blob, you can also access it using cmd 
+  
+      `tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all`
+  
+  and open tensorboard in browser to see all the views described below.
+  
 ### Quick Usage Instructions
 
 We regard each running with profiler enabled as a "run".
@@ -99,7 +104,7 @@ The kineto/tb_plugin/samples is an example of how the files are organized.
 
 You can select the run and worker on the left control panel.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/control_panel.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/control_panel.PNG)
 
 Runs: Select a run. Each run is one execution of a PyTorch application with profiling enabled.
 
@@ -129,7 +134,7 @@ An example of overall view:
 
 The GPU Summary pane shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
 The 'GPU Utilization', 'Est. SM Efficiency' and 'Est. Achieved Occupancy' shows GPU usage efficiency of this run at different levels.
-The detailed information about these three metrics can be found at <??>.
+The detailed information about these three metrics can be found at [gpu_utilization](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/gpu_utilization.md).
 
 
 Step Time Breakdown: This shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
@@ -164,7 +169,7 @@ Then "CPU Exec" is counted as 2-1=1 seconds, because the [2,3] interval is hidde
 In this way, summarization of all the 7 categories' counted time in a step
 will be the same with this step's total wall clock time.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/time_breakdown_priority.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/time_breakdown_priority.PNG)
 
 Performance Recommendation: Leverage the profiling result to automatically highlight likely bottlenecks,
 and give users actionable optimization suggestions.
@@ -173,7 +178,7 @@ and give users actionable optimization suggestions.
 
 This view displays the performance of every PyTorch operator that is executed either on the host or device.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/operator_view.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/operator_view.PNG)
 Each table row is a PyTorch operator, which is a computation operator implemented by C++,
 such as “aten::relu_”, “aten::convolution”.
 
@@ -206,24 +211,28 @@ means this operator has 9 input arguments,
 2nd is a tensor of size 1024\*256\*1\*1,
 the following 7 ones are scalar variables.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
 
 * Kernel View
 
-This view shows all kernels’ time spent on GPU.
-The time is calculated by subtracting the kernel's start time from the end time.
+    This view shows all kernels’ time spent on GPU.
+    The time is calculated by subtracting the kernel's start time from the end time.
 
-Note: This view does not include cudaMemcpy or cudaMemset. Because they are not kernels.
+    Note: This view does not include cudaMemcpy or cudaMemset. Because they are not kernels.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/kernel_view.PNG)
+    ![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/kernel_view.PNG)
 
-Total Duration: The accumulated time of all calls of this kernel.
+    * Total Duration: The accumulated time of all calls of this kernel.
 
-Mean Duration: The average time duration of all calls. That's "Total Duration" divided by "Calls".
+    * Mean Duration: The average time duration of all calls. That's "Total Duration" divided by "Calls".
 
-Max Duration: The maximum time duration among all calls.
+    * Max Duration: The maximum time duration among all calls.
 
-Min Duration: The minimum time duration among all calls.
+    * Min Duration: The minimum time duration among all calls.
+
+    * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. “Mean Blocks per SM” is weighted average of all runs of this kernel name, using each run’s duration as weight.
+
+    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
 
 Note: This duration only includes a kernel's elapsed time on GPU device.
 It does not mean the GPU is fully busy executing instructions during this time interval.
@@ -247,7 +256,7 @@ This view shows timeline using the chrome tracing plugin. Each horizontal area r
 Each colored rectangle represents an operator, or a CUDA runtime, or a GPU op which executes on GPU
 (such as a kernel, a CUDA memory copy, a CUDA memory set, ...)
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/trace_view.PNG)
 
 In the above example:
 
@@ -263,37 +272,76 @@ The suspended toolbar has functionalities to help view the trace line.
 For example, when the up-down arrow is enabled,
 you can zoom in by dragging the mouse up and keeping mouse's left button pushed down.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_one_step.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/trace_view_one_step.PNG)
 
 The “Optimizer.step#SGD.step” and ”enumerate(DataLoader)#_SingleProcessDataLoaderIter.\__next\__”
 are high-level python side functions.
 
 When you select the top-right corner's “Flow events” to ”async”,
 you can see the relationship between an operator and its launched kernels.
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_launch.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/trace_view_launch.PNG)
+
+You can also view the gpu utilization and Est. SM Efficiency in the trace view. They are drawn alongside the timeline:
+
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/trace_view_gpu_utilization.PNG)
 
 * Memory View
 
-Pytorch profiler records all memory allocation/release events during profiling. The plugin aggregates all these events
-by the operator.
+    Pytorch profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
+    inside its life span.
 
-The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs. 
+    ![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/memory_view.PNG)
 
-Calls: # of calls of the operator. 
+    The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs. 
 
-Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
+    Definition of each field in the table:
 
-Self Size Increase: The memory increase size associated with the operator itself. It sums up all allocation bytes and minus all the memory release bytes. 
 
-Allocation Count: The allocation count including all children operators. 
+    * Calls: How many times this operator is called. 
 
-Self Allocation Count: The allocation count belonging to the operator itself. 
+    * Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
 
-Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+    * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes. 
 
-Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
+    * Allocation Count: The allocation count including all children operators. 
+
+    * Self Allocation Count: The allocation count belonging to the operator itself excluding its chilren. 
+
+    * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+
+    * Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
+
 
 * Distributed View
 
-Definition: 
+    This view will appear automatically only for DDP jobs that use nccl for communication.
+    There are four panes in this view: 
 
+    ![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/distributed_view.PNG)
+
+    *   The top pane shows the information about nodes/processes/GPU hierarchy of this job.
+    
+    *   The left pane in the middle is 'Computation/Communication Overview'. Definition of each legend:
+        * Computation: the sum of kernel time on GPU minus the overlapping time
+        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the computation and communication totally overlap with each other. 
+        * Communication: the total communication time minus the overlapping time 
+        * Other: step time minus computation and communication time. Maybe includes initialization, data loader, CPU computation, and so on. 
+   
+        From this view, you can know computation-to-communication ratio of each worker and load balance between workers. For example, if the computation + overlapping time of 
+one worker is much larger than others, there may be a problem of loading balance or this worker may be a straggler.
+
+    *   The right pane in the middle is 'Synchronizing/Communication Overview'. Definition of each legend:
+        * Data Transfer Time: part in the total communication time for actual data exchanging 
+        * Synchronizing Time: part in the total communication time for waiting and synchronizing with other workers. 
+        
+        From this view, you can know the efficiency of communication (how much ratio of total communication time is really used for exchanging data and how much is just waiting for data from other workers) 
+
+    *   The 'Communication Operations Stats' summarizes the detailed statistics of all communication ops in each worker. Definition of each field:
+        * Calls: How many times this operator is called in this run.
+        * Total Size (bytes): Total data size transfered in operators of this type.
+        * Avg Size (bytes): Average data size transfered in each operator of this type.
+        * Total Latency (us): Total latency of all operators of this type.
+        * Avg Latency (us): Average latency of each operator of this type.
+        * Data Transfer Time (us): Total time actually used for data transfer in operator of this type.
+        * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
+        

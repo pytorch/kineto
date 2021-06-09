@@ -26,6 +26,7 @@
 #include "libkineto.h"
 #include "output_base.h"
 #include "GenericTraceActivity.h"
+#include "IActivityProfiler.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -117,12 +118,19 @@ class ActivityProfiler {
     metadata_[key] = value;
   }
 
+  void addActivityProfiler(
+      std::shared_ptr<IActivityProfiler> profiler) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    profilers_.push_back(profiler);
+  }
+
  protected:
 
   using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
   static const CpuGpuSpanPair& defaultTraceSpan();
 
  private:
+
   class ExternalEventMap {
    public:
 
@@ -202,6 +210,8 @@ class ActivityProfiler {
   void resetInternal();
 
   void finalizeTrace(const Config& config, ActivityLogger& logger);
+
+  void configureChildProfilers();
 
   // Process a single CPU trace
   void processCpuTrace(
@@ -357,6 +367,11 @@ class ActivityProfiler {
   // Trace metadata
   std::unordered_map<std::string, std::string> metadata_;
 
+  // child activity profilers
+  std::vector<std::shared_ptr<IActivityProfiler>> profilers_;
+
+  // a vector of active profiler plugin sessions
+  std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
 };
 
 } // namespace KINETO_NAMESPACE

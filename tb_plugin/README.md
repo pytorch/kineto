@@ -1,7 +1,7 @@
 # PyTorch Profiler TensorBoard Plugin
 
-This is a plugin that provides visualization of PyTorch profiling.
-It can parse, process and visualize the PyTorch Profiler's dumped result,
+This is a Tensoboard Plugin that provides visualization of PyTorch profiling.
+It can parse, process and visualize the PyTorch Profiler's dumped profiling result,
 and give optimization recommendations.
 
 ### Quick Installation Instructions
@@ -9,12 +9,6 @@ and give optimization recommendations.
 * Install from pypi
 
   `pip install torch-tb-profiler`
-
-* Verify installation is complete
-
-  `pip list | grep torch-tb-profiler`
-
-  Should display "torch-tb-profiler"
 
 * Or you can install from source
 
@@ -24,7 +18,7 @@ and give optimization recommendations.
 
   Navigate to the kineto/tb_plugin directory.
 
-  Install the profiler:
+  Install with cmd:
 
   `pip install .`
 
@@ -37,19 +31,18 @@ and give optimization recommendations.
 
 * Prepare profiling data
 
-  You can download [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/master/tb_plugin/samples)
-  to your local and specify it as an example.
-  These profiling samples are produced by
+  We have prepared some sample profiling data at [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/master/tb_plugin/samples)
+  You can download it directly.
+  Or you can generate these profiling samples yourself by running
   [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
-  You can learn how to profile your model from this example code
-  or learn from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
+  Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
 
   Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
   to "on_trace_ready" on creation of "torch.profiler.schedule".
 
 * Start TensorBoard
 
-  Specify your profiling data folder to "logdir". If you use the above samples data, start TensorBoard with:
+  Specify the profiling data folder to "logdir" in Tensorboard. If you use the above samples data, start TensorBoard with:
 
   `tensorboard --logdir=./samples`
 
@@ -63,12 +56,13 @@ and give optimization recommendations.
 * Open TensorBoard in Chrome browser
 
   Open URL `http://localhost:6006` in the browser.
+  If you use '--bind_all' in tensorboard start cmd, the hostname may not be 'localhost'. You may find it in the log printed after the cmd.
 
 * Navigate to PYTORCH_PROFILER tab
 
   If the files under `--logdir` are too big or too many,
   please wait a while and refresh the browser to check latest loaded result.
-* AWS(S3://), Azure blob(https://\<account\>.blob.core.windows.net) and Google Cloud(GS://) supports
+* Also support loading profiling data stored in AWS(S3://), Azure blob(https://\<account\>.blob.core.windows.net) and Google Cloud(GS://)
   * S3: install boto3. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
     For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
     For example, the following command can be used to create minio storage after following guides: 
@@ -93,6 +87,14 @@ and give optimization recommendations.
   > **_NOTES:_** For AWS, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
   ---
 
+  We prepared some sample data in blob, you can also access it using cmd 
+  
+      `tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all`
+  
+  and open tensorboard in browser to see all the views described below.
+ 
+  Note: for accessing data in azure blob, you need to install torch-tb-profiler with cmd: `pip install torch-tb-profiler[blob]`
+  
 ### Quick Usage Instructions
 
 We regard each running with profiler enabled as a "run".
@@ -105,20 +107,25 @@ The kineto/tb_plugin/samples is an example of how the files are organized.
 
 You can select the run and worker on the left control panel.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/control_panel.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/control_panel.PNG)
 
-Runs: Select a run. Each run is a PyTorch workload with profiling enabled.
-
-Worker: Select a worker. Each worker is a process. There could be multiple workers when DPP is used.
+Runs: Select a run. Each run is one execution of a PyTorch application with profiling enabled.
 
 Views: We organize the profiling result into multiple views,
 from coarse-grained (overview-level) to fine-grained (kernel-level).
+
+Workers: Select a worker. Each worker is a process. There could be multiple workers when DDP is used.
+
+Span: There may be multiple profiling trace files of different spans to be generated when using [torch.profiler.schedule](https://github.com/pytorch/pytorch/blob/master/torch/profiler/profiler.py#L24) as schedule of torch.profiler.
+You can select them with this selection box.
 
 Currently we have the following performance diagnosis views:
 - Overall View
 - Operator View
 - Kernel View
 - Trace View
+- Memory View
+- Distributed View
 
 We describe each of these views below.
 
@@ -129,9 +136,14 @@ It shows an overview of time cost, including both host and GPU devices.
 You can select the current worker in the left panel's "Workers" dropdown menu.
 
 An example of overall view:
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/overall_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/overall_view.PNG)
 
-Step Time Breakdown: This shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
+The 'GPU Summary' panel shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
+The 'GPU Utilization', 'Est. SM Efficiency' and 'Est. Achieved Occupancy' shows GPU usage efficiency of this run at different levels.
+The detailed information about these three metrics can be found at [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md).
+
+
+The 'Step Time Breakdown' panel shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
 The time spent on each step is broken down into multiple categories as follows:
 
 1. Kernel: Kernels execution time on GPU device;
@@ -140,14 +152,16 @@ The time spent on each step is broken down into multiple categories as follows:
 
 3. Memset: GPU involved memory set time;
 
-4. Runtime: CUDA runtime execution time on host side;
+4. Communication: Communication time only appear in DDP case;
+
+5. Runtime: CUDA runtime execution time on host side;
 Such as cudaLaunchKernel, cudaMemcpyAsync, cudaStreamSynchronize, ...
 
-5. DataLoader: The data loading time spent in PyTorch DataLoader object;
+6. DataLoader: The data loading time spent in PyTorch DataLoader object;
 
-6. CPU Exec: Host compute time, including every PyTorch operator running time;
+7. CPU Exec: Host compute time, including every PyTorch operator running time;
 
-7. Other: The time not included in any of the above.
+8. Other: The time not included in any of the above.
 
 Note: The summary of all the above categories is end-to-end wall-clock time.
 
@@ -161,7 +175,7 @@ Then "CPU Exec" is counted as 2-1=1 seconds, because the [2,3] interval is hidde
 In this way, summarization of all the 7 categories' counted time in a step
 will be the same with this step's total wall clock time.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/time_breakdown_priority.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/time_breakdown_priority.PNG)
 
 Performance Recommendation: Leverage the profiling result to automatically highlight likely bottlenecks,
 and give users actionable optimization suggestions.
@@ -170,11 +184,11 @@ and give users actionable optimization suggestions.
 
 This view displays the performance of every PyTorch operator that is executed either on the host or device.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/operator_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/operator_view.PNG)
 Each table row is a PyTorch operator, which is a computation operator implemented by C++,
 such as “aten::relu_”, “aten::convolution”.
 
-Calls: The operator's number of calls.
+Calls: How many times the operator is called in this run.
 
 Device Self Duration: The accumulated time spent on GPU, not including this operator’s child operators.
 
@@ -183,6 +197,12 @@ Device Total Duration: The accumulated time spent on GPU, including this operato
 Host Self Duration: The accumulated time spent on Host, not including this operator’s child operators.
 
 Host Total Duration: The accumulated time spent on Host, including this operator’s child operators.
+
+CallStack: All call stacks of this operator if it has been recorded in profiling trace file.
+           To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API. 
+           The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code as below:
+           
+   ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/vscode_stack.PNG)
 
 Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
 
@@ -201,31 +221,38 @@ means this operator has 9 input arguments,
 2nd is a tensor of size 1024\*256\*1\*1,
 the following 7 ones are scalar variables.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/operator_view_group_by_inputshape.PNG)
 
 * Kernel View
 
-This view shows all kernels’ time spent on GPU.
-The time is calculated by subtracting the kernel's start time from the end time.
+    This view shows all kernels’ time spent on GPU.
+    The time is calculated by subtracting the kernel's start time from the end time.
 
-Note: This view does not include cudaMemcpy or cudaMemset. Because they are not kernels.
+    Note: This view does not include cudaMemcpy or cudaMemset. Because they are not kernels.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/kernel_view.PNG)
+    ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/kernel_view.PNG)
 
-Total Duration: The accumulated time of all calls of this kernel.
+    * Total Duration: The accumulated time of all calls of this kernel.
 
-Mean Duration: The average time duration of all calls. That's "Total Duration" divided by "Calls".
+    * Mean Duration: The average time duration of all calls. That's "Total Duration" divided by "Calls".
 
-Max Duration: The maximum time duration among all calls.
+    * Max Duration: The maximum time duration among all calls.
 
-Min Duration: The minimum time duration among all calls.
+    * Min Duration: The minimum time duration among all calls.
 
-Note: This duration only includes a kernel's elapsed time on GPU device.
-It does not mean the GPU is fully busy executing instructions during this time interval.
-Some of the GPU cores may be idle due to reasons such as memory access latency or insufficient parallelism.
-For example, there may be insufficient number of available warps per SM for the GPU to effectively
-hide memory access latencies, or some SMs may be entirely idle due to an insufficient number of blocks.
-Please refer to [Nvidia's best-practices guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html).
+      Note: These duration only includes a kernel's elapsed time on GPU device.
+      It does not mean the GPU is fully busy executing instructions during this time interval.
+      Some of the GPU cores may be idle due to reasons such as memory access latency or insufficient parallelism.
+      For example, there may be insufficient number of available warps per SM for the GPU to effectively
+      hide memory access latencies, or some SMs may be entirely idle due to an insufficient number of blocks.
+      Please refer to [Nvidia's best-practices guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html).
+      To investigate efficiency for each kernel, we calculate and show the 'Mean Blocks Per SM' and 'Mean Est. Achieved Occupancy' in the last two column.
+
+    * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. “Mean Blocks per SM” is weighted average of all runs of this kernel name, using each run’s duration as weight.
+
+    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
+
+
 
 The top pie chart is a visualization of "Total Duration" column.
 It makes the breakdowns visible at a glance.
@@ -242,13 +269,13 @@ This view shows timeline using the chrome tracing plugin. Each horizontal area r
 Each colored rectangle represents an operator, or a CUDA runtime, or a GPU op which executes on GPU
 (such as a kernel, a CUDA memory copy, a CUDA memory set, ...)
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/trace_view.PNG)
 
 In the above example:
 
-The “thread 0” is the CPU thread that do “backward” of neural network.
+The “thread 25772” is the CPU thread that do “backward” of neural network.
 
-The “thread 1” is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
+The “thread 25738” is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
 
 The “stream 7” is a CUDA stream, which shows all kernels of this stream.
 
@@ -258,11 +285,76 @@ The suspended toolbar has functionalities to help view the trace line.
 For example, when the up-down arrow is enabled,
 you can zoom in by dragging the mouse up and keeping mouse's left button pushed down.
 
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_one_step.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/trace_view_one_step.PNG)
 
 The “Optimizer.step#SGD.step” and ”enumerate(DataLoader)#_SingleProcessDataLoaderIter.\__next\__”
 are high-level python side functions.
 
 When you select the top-right corner's “Flow events” to ”async”,
 you can see the relationship between an operator and its launched kernels.
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/trace_view_launch.PNG)
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/trace_view_launch.PNG)
+
+You can also view the gpu utilization and Est. SM Efficiency in the trace view. They are drawn alongside the timeline:
+
+![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/trace_view_gpu_utilization.PNG)
+
+* Memory View
+
+    Pytorch profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
+    inside its life span.
+
+    ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/memory_view.PNG)
+
+    The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs. 
+
+    Definition of each field in the table:
+
+
+    * Calls: How many times this operator is called. 
+
+    * Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
+
+    * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes. 
+
+    * Allocation Count: The allocation count including all children operators. 
+
+    * Self Allocation Count: The allocation count belonging to the operator itself excluding its chilren. 
+
+    * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+
+    * Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
+
+
+* Distributed View
+
+    This view will appear automatically only for DDP jobs that use nccl for communication.
+    There are four panels in this view: 
+
+    ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/distributed_view.PNG)
+
+    *   The top panel shows the information about nodes/processes/GPU hierarchy of this job.
+    
+    *   The left panel in the middle is 'Computation/Communication Overview'. Definition of each legend:
+        * Computation: the sum of kernel time on GPU minus the overlapping time
+        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the communication could be totally overlapped with computation. 
+        * Communication: the total communication time minus the overlapping time 
+        * Other: step time minus computation and communication time. Maybe includes initialization, data loader, CPU computation, and so on. 
+   
+        From this view, you can know computation-to-communication ratio of each worker and load balance between workers. For example, if the computation + overlapping time of 
+one worker is much larger than others, there may be a problem of loading balance or this worker may be a straggler.
+
+    *   The right panel in the middle is 'Synchronizing/Communication Overview'. Definition of each legend:
+        * Data Transfer Time: part in the total communication time for actual data exchanging 
+        * Synchronizing Time: part in the total communication time for waiting and synchronizing with other workers. 
+        
+        From this view, you can know the efficiency of communication (how much ratio of total communication time is really used for exchanging data and how much is just waiting for data from other workers) 
+
+    *   The 'Communication Operations Stats' summarizes the detailed statistics of all communication ops in each worker. Definition of each field:
+        * Calls: How many times this operator is called in this run.
+        * Total Size (bytes): Total data size transfered in operators of this type.
+        * Avg Size (bytes): Average data size transfered in each operator of this type.
+        * Total Latency (us): Total latency of all operators of this type.
+        * Avg Latency (us): Average latency of each operator of this type.
+        * Data Transfer Time (us): Total time actually used for data transfer in operator of this type.
+        * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
+        

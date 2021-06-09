@@ -11,10 +11,10 @@ from urllib.error import HTTPError
 
 class TestEnd2End(unittest.TestCase):
 
-    def test_tensorboard_gs(self):
-        test_folder = 'gs://pe-tests-public/tb_samples/'
-        expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+    #def test_tensorboard_gs(self):
+    #    test_folder = 'gs://pe-tests-public/tb_samples/'
+    #    expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
+    #    self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
     def test_tensorboard_end2end(self):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
@@ -37,7 +37,7 @@ class TestEnd2End(unittest.TestCase):
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
-        port=6006
+        port=7007
 
         try:
             if env:
@@ -63,11 +63,11 @@ class TestEnd2End(unittest.TestCase):
         run_link = link_prefix + 'runs'
 
         expected_links_format=[
-            link_prefix + 'overview?run={}&worker=worker0&span=default&view=Overview',
-            link_prefix + 'operation?run={}&worker=worker0&span=default&view=Operator&group_by=Operation',
-            link_prefix + 'operation/table?run={}&worker=worker0&span=default&view=Operator&group_by=Operation',
-            link_prefix + 'kernel/table?run={}&worker=worker0&span=default&view=Kernel&group_by=Kernel',
-            link_prefix + 'kernel?run={}&worker=worker0&span=default&view=Kernel&group_by=Kernel'
+            link_prefix + 'overview?run={}&worker=worker0&span=1&view=Overview',
+            link_prefix + 'operation?run={}&worker=worker0&span=1&view=Operator&group_by=Operation',
+            link_prefix + 'operation/table?run={}&worker=worker0&span=1&view=Operator&group_by=Operation',
+            link_prefix + 'kernel/table?run={}&worker=worker0&span=1&view=Kernel&group_by=Kernel',
+            link_prefix + 'kernel?run={}&worker=worker0&span=1&view=Kernel&group_by=Kernel'
         ]
 
         retry_times = 60

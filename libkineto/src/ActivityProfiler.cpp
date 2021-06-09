@@ -159,6 +159,11 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
 #endif // HAS_CUPTI
 
+  for (const auto& session : sessions_){
+    LOG(INFO) << "Processing child profiler trace";
+    session->processTrace(logger);
+  }
+
   finalizeTrace(*config_, logger);
 }
 
@@ -440,6 +445,24 @@ void ActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Activit
 }
 #endif // HAS_CUPTI
 
+void ActivityProfiler::configureChildProfilers() {
+  // If child profilers are enabled create profiler sessions
+  for (auto& profiler: profilers_) {
+    int64_t start_time_ms = duration_cast<milliseconds>(
+        profileStartTime_.time_since_epoch()).count();
+    LOG(INFO) << "Running child profiler " << profiler->name() << " for "
+            << config_->activitiesOnDemandDuration().count() << " ms";
+    auto session = profiler->configure(
+        start_time_ms,
+        config_->activitiesOnDemandDuration().count(),
+        std::set<ActivityType>{ActivityType::CPU_OP} // TODO make configurable
+    );
+    if (session) {
+      sessions_.push_back(std::move(session));
+    }
+  }
+}
+
 void ActivityProfiler::configure(
     const Config& config,
     const time_point<system_clock>& now) {
@@ -503,6 +526,11 @@ void ActivityProfiler::configure(
   if (profileStartTime_ < now) {
     profileStartTime_ = now + config_->activitiesWarmupDuration();
   }
+
+  if (profilers_.size() > 0) {
+    configureChildProfilers();
+  }
+
   LOG(INFO) << "Tracing starting in "
             << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
 
@@ -517,6 +545,10 @@ void ActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {
     libkineto::api().client()->start();
   }
   VLOG(0) << "Warmup -> CollectTrace";
+  for (auto& session: sessions_){
+    LOG(INFO) << "Starting child profiler session";
+    session->start();
+  }
   currentRunloopState_ = RunloopState::CollectTrace;
 }
 
@@ -544,6 +576,10 @@ void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
     LOG(WARNING) << "Called stopTrace with state == " <<
         static_cast<std::underlying_type<RunloopState>::type>(
             currentRunloopState_.load());
+  }
+  for (auto& session: sessions_){
+    LOG(INFO) << "Stopping child profiler session";
+    session->stop();
   }
   currentRunloopState_ = RunloopState::ProcessTrace;
 }
@@ -701,6 +737,7 @@ void ActivityProfiler::resetTraceData() {
   disabledTraceSpans_.clear();
   traceBuffers_ = nullptr;
   metadata_.clear();
+  sessions_.clear();
 }
 
 

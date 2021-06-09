@@ -57,6 +57,8 @@ def get_libkineto_public_headers():
         "include/ClientInterface.h",
         "include/GenericTraceActivity.h",
         "include/TraceActivity.h",
+        "include/GenericTraceActivity.h",
+        "include/IActivityProfiler.h",
         "include/TraceSpan.h",
         "include/ThreadUtil.h",
         "include/libkineto.h",

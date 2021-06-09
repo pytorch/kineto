@@ -35,7 +35,7 @@ and give optimization recommendations.
   You can download it directly.
   Or you can generate these profiling samples yourself by running
   [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
-  Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html).
+  Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
 
   Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
   to "on_trace_ready" on creation of "torch.profiler.schedule".
@@ -56,6 +56,7 @@ and give optimization recommendations.
 * Open TensorBoard in Chrome browser
 
   Open URL `http://localhost:6006` in the browser.
+  If you use '--bind_all' in tensorboard start cmd, the hostname may not be 'localhost'. You may find it in the log printed after the cmd.
 
 * Navigate to PYTORCH_PROFILER tab
 
@@ -91,6 +92,8 @@ and give optimization recommendations.
       `tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all`
   
   and open tensorboard in browser to see all the views described below.
+ 
+  Note: for accessing data in azure blob, you need to install torch-tb-profiler with cmd: `pip install torch-tb-profiler[blob]`
   
 ### Quick Usage Instructions
 
@@ -111,7 +114,10 @@ Runs: Select a run. Each run is one execution of a PyTorch application with prof
 Views: We organize the profiling result into multiple views,
 from coarse-grained (overview-level) to fine-grained (kernel-level).
 
-Worker: Select a worker. Each worker is a process. There could be multiple workers when DDP is used.
+Workers: Select a worker. Each worker is a process. There could be multiple workers when DDP is used.
+
+Span: There may be multiple profiling trace files of different spans to be generated when using [torch.profiler.schedule](https://github.com/pytorch/pytorch/blob/master/torch/profiler/profiler.py#L24) as schedule of torch.profiler.
+You can select them with this selection box.
 
 Currently we have the following performance diagnosis views:
 - Overall View
@@ -132,12 +138,12 @@ You can select the current worker in the left panel's "Workers" dropdown menu.
 An example of overall view:
 ![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/overall_view.PNG)
 
-The GPU Summary pane shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
+The 'GPU Summary' panel shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
 The 'GPU Utilization', 'Est. SM Efficiency' and 'Est. Achieved Occupancy' shows GPU usage efficiency of this run at different levels.
 The detailed information about these three metrics can be found at [gpu_utilization](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/gpu_utilization.md).
 
 
-Step Time Breakdown: This shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
+The 'Step Time Breakdown' panel shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
 The time spent on each step is broken down into multiple categories as follows:
 
 1. Kernel: Kernels execution time on GPU device;
@@ -192,7 +198,11 @@ Host Self Duration: The accumulated time spent on Host, not including this opera
 
 Host Total Duration: The accumulated time spent on Host, including this operator’s child operators.
 
-CallStack: All call stacks of this operator. The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code.
+CallStack: All call stacks of this operator if it has been recorded in profiling trace file.
+           To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API. 
+           The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code as below:
+           
+   ![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/vscode_stack.PNG)
 
 Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
 
@@ -230,16 +240,19 @@ the following 7 ones are scalar variables.
 
     * Min Duration: The minimum time duration among all calls.
 
+      Note: These duration only includes a kernel's elapsed time on GPU device.
+      It does not mean the GPU is fully busy executing instructions during this time interval.
+      Some of the GPU cores may be idle due to reasons such as memory access latency or insufficient parallelism.
+      For example, there may be insufficient number of available warps per SM for the GPU to effectively
+      hide memory access latencies, or some SMs may be entirely idle due to an insufficient number of blocks.
+      Please refer to [Nvidia's best-practices guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html).
+      To investigate efficiency for each kernel, we calculate and show the 'Mean Blocks Per SM' and 'Mean Est. Achieved Occupancy' in the last two column.
+
     * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. “Mean Blocks per SM” is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
     * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
 
-Note: This duration only includes a kernel's elapsed time on GPU device.
-It does not mean the GPU is fully busy executing instructions during this time interval.
-Some of the GPU cores may be idle due to reasons such as memory access latency or insufficient parallelism.
-For example, there may be insufficient number of available warps per SM for the GPU to effectively
-hide memory access latencies, or some SMs may be entirely idle due to an insufficient number of blocks.
-Please refer to [Nvidia's best-practices guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html).
+
 
 The top pie chart is a visualization of "Total Duration" column.
 It makes the breakdowns visible at a glance.
@@ -260,9 +273,9 @@ Each colored rectangle represents an operator, or a CUDA runtime, or a GPU op wh
 
 In the above example:
 
-The “thread 0” is the CPU thread that do “backward” of neural network.
+The “thread 25772” is the CPU thread that do “backward” of neural network.
 
-The “thread 1” is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
+The “thread 25738” is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
 
 The “stream 7” is a CUDA stream, which shows all kernels of this stream.
 
@@ -315,22 +328,22 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 * Distributed View
 
     This view will appear automatically only for DDP jobs that use nccl for communication.
-    There are four panes in this view: 
+    There are four panels in this view: 
 
     ![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/distributed_view.PNG)
 
-    *   The top pane shows the information about nodes/processes/GPU hierarchy of this job.
+    *   The top panel shows the information about nodes/processes/GPU hierarchy of this job.
     
-    *   The left pane in the middle is 'Computation/Communication Overview'. Definition of each legend:
+    *   The left panel in the middle is 'Computation/Communication Overview'. Definition of each legend:
         * Computation: the sum of kernel time on GPU minus the overlapping time
-        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the computation and communication totally overlap with each other. 
+        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the communication could be totally overlapped with computation. 
         * Communication: the total communication time minus the overlapping time 
         * Other: step time minus computation and communication time. Maybe includes initialization, data loader, CPU computation, and so on. 
    
         From this view, you can know computation-to-communication ratio of each worker and load balance between workers. For example, if the computation + overlapping time of 
 one worker is much larger than others, there may be a problem of loading balance or this worker may be a straggler.
 
-    *   The right pane in the middle is 'Synchronizing/Communication Overview'. Definition of each legend:
+    *   The right panel in the middle is 'Synchronizing/Communication Overview'. Definition of each legend:
         * Data Transfer Time: part in the total communication time for actual data exchanging 
         * Synchronizing Time: part in the total communication time for waiting and synchronizing with other workers. 
         

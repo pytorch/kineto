@@ -141,6 +141,7 @@ std::string processName(int32_t pid) {
   if (cmdfile != nullptr) {
     char* command = nullptr;
     int scanned = fscanf(cmdfile, "%ms", &command);
+    fclose(cmdfile);
     if (scanned > 0 && command) {
       std::string ret(basename(command));
       free(command);

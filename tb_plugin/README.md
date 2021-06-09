@@ -108,10 +108,10 @@ You can select the run and worker on the left control panel.
 
 Runs: Select a run. Each run is one execution of a PyTorch application with profiling enabled.
 
-Worker: Select a worker. Each worker is a process. There could be multiple workers when DDP is used.
-
 Views: We organize the profiling result into multiple views,
 from coarse-grained (overview-level) to fine-grained (kernel-level).
+
+Worker: Select a worker. Each worker is a process. There could be multiple workers when DDP is used.
 
 Currently we have the following performance diagnosis views:
 - Overall View
@@ -130,7 +130,7 @@ It shows an overview of time cost, including both host and GPU devices.
 You can select the current worker in the left panel's "Workers" dropdown menu.
 
 An example of overall view:
-![Alt text](https://github.com/pytorch/kineto/blob/master/tb_plugin/docs/images/overall_view.PNG)
+![Alt text](https://github.com/guyang3532/kineto/blob/readme/tb_plugin/docs/images/overall_view.PNG)
 
 The GPU Summary pane shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
 The 'GPU Utilization', 'Est. SM Efficiency' and 'Est. Achieved Occupancy' shows GPU usage efficiency of this run at different levels.

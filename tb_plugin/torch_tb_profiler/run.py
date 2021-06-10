@@ -211,7 +211,7 @@ class RunProfile(object):
             if has_sm_efficiency:
                 tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
             if has_occupancy:
-                tooltip += "\n" + consts.TOOLTIP_OCCUPANCY
+                tooltip += "\n" + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
             return tooltip
 
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)

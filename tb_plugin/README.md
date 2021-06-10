@@ -89,7 +89,7 @@ and give optimization recommendations.
 
   We prepared some sample data in blob, you can also access it using cmd 
   
-      `tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all`
+      tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all
   
   and open tensorboard in browser to see all the views described below.
  

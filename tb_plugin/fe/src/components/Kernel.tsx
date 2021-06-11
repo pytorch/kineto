@@ -3,40 +3,36 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
-import Grid from '@material-ui/core/Grid'
-import TextField, {
-  TextFieldProps,
-  StandardTextFieldProps
-} from '@material-ui/core/TextField'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import FormControlLabel from '@material-ui/core/FormControlLabel'
+import Grid from '@material-ui/core/Grid'
 import InputLabel from '@material-ui/core/InputLabel'
+import MenuItem from '@material-ui/core/MenuItem'
+import Radio from '@material-ui/core/Radio'
+import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
 import Select, { SelectProps } from '@material-ui/core/Select'
+import { makeStyles } from '@material-ui/core/styles'
+import TextField, {
+  StandardTextFieldProps,
+  TextFieldProps
+} from '@material-ui/core/TextField'
 import * as React from 'react'
-import { PieChart } from './charts/PieChart'
-import { TableChart } from './charts/TableChart'
 import * as api from '../api'
 import { Graph } from '../api'
-import { DataLoading } from './DataLoading'
-import { UseTop, useTopN } from '../utils/top'
-import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
-import Radio from '@material-ui/core/Radio'
-import FormControlLabel from '@material-ui/core/FormControlLabel'
+import { KernelGroupBy } from '../constants/groupBy'
 import { useSearch } from '../utils/search'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
+import { topIsValid, UseTop, useTopN } from '../utils/top'
+import { AntTableChart } from './charts/AntTableChart'
+import { PieChart } from './charts/PieChart'
+import { DataLoading } from './DataLoading'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
 import { GPUKernelTotalTimeTooltip } from './TooltipDescriptions'
 
 export interface IProps {
   run: string
   worker: string
-  view: string
-}
-
-enum GroupBy {
-  Kernel = 'Kernel',
-  KernelNameAndOpName = 'KernelNameAndOpName'
+  span: string
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -60,7 +56,7 @@ const useStyles = makeStyles((theme) => ({
 }))
 
 export const Kernel: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
   const chartHeaderRenderer = React.useMemo(
@@ -74,12 +70,12 @@ export const Kernel: React.FC<IProps> = (props) => {
   const [kernelTable, setKernelTable] = React.useState<Graph | undefined>(
     undefined
   )
-  const [groupBy, setGroupBy] = React.useState(GroupBy.Kernel)
+  const [groupBy, setGroupBy] = React.useState(KernelGroupBy.Kernel)
   const [searchKernelName, setSearchKernelName] = React.useState('')
   const [searchOpName, setSearchOpName] = React.useState('')
   const [sortColumn, setSortColumn] = React.useState(2)
 
-  const [top, actualTop, useTop, setTop, setUseTop] = useTopN({
+  const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
     defaultTop: 10
   })
@@ -90,21 +86,23 @@ export const Kernel: React.FC<IProps> = (props) => {
 
   React.useEffect(() => {
     if (kernelGraph) {
-      setTop(Math.min(kernelGraph.rows?.length, 10))
+      setTopText(String(Math.min(kernelGraph.rows?.length, 10)))
     }
   }, [kernelGraph])
 
   React.useEffect(() => {
-    api.defaultApi.kernelTableGet(run, worker, view, groupBy).then((resp) => {
+    api.defaultApi.kernelTableGet(run, worker, span, groupBy).then((resp) => {
       setKernelTable(resp.data)
     })
-  }, [run, worker, view, groupBy])
+  }, [run, worker, span, groupBy])
 
   React.useEffect(() => {
-    api.defaultApi.kernelGet(run, worker, view, GroupBy.Kernel).then((resp) => {
-      setKernelGraph(resp.total)
-    })
-  }, [run, worker, view])
+    api.defaultApi
+      .kernelGet(run, worker, span, KernelGroupBy.Kernel)
+      .then((resp) => {
+        setKernelGraph(resp.total)
+      })
+  }, [run, worker, span])
 
   const [searchedKernelTable] = useSearch(searchKernelName, 'name', kernelTable)
   const [searchedOpTable] = useSearch(
@@ -114,8 +112,8 @@ export const Kernel: React.FC<IProps> = (props) => {
   )
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
-    setGroupBy(event.target.value as GroupBy)
-    setSortColumn(event.target.value == GroupBy.Kernel ? 2 : 3)
+    setGroupBy(event.target.value as KernelGroupBy)
+    setSortColumn(event.target.value == KernelGroupBy.Kernel ? 2 : 3)
   }
 
   const onSearchKernelChanged: TextFieldProps['onChange'] = (event) => {
@@ -131,7 +129,7 @@ export const Kernel: React.FC<IProps> = (props) => {
   }
 
   const onTopChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setTop(Number(event.target.value))
+    setTopText(event.target.value)
   }
 
   const inputProps: StandardTextFieldProps['inputProps'] = {
@@ -170,8 +168,9 @@ export const Kernel: React.FC<IProps> = (props) => {
                     classes={{ root: classes.inputWidth }}
                     inputProps={inputProps}
                     type="number"
-                    value={top}
+                    value={topText}
                     onChange={onTopChanged}
+                    error={!topIsValid(topText)}
                   />
                 </Grid>
               )}
@@ -190,54 +189,54 @@ export const Kernel: React.FC<IProps> = (props) => {
                 )}
               </DataLoading>
             </Grid>
-            <Grid item sm={12}>
-              <Grid container direction="column" spacing={1}>
-                <Grid item container>
-                  <Grid sm={6} item container justify="space-around">
-                    <Grid item>
-                      <InputLabel id="kernel-group-by">Group By</InputLabel>
-                      <Select
-                        labelId="kernel-group-by"
-                        value={groupBy}
-                        onChange={onGroupByChanged}
-                      >
-                        <MenuItem value={GroupBy.KernelNameAndOpName}>
-                          Kernel Name + Op Name
-                        </MenuItem>
-                        <MenuItem value={GroupBy.Kernel}>Kernel Name</MenuItem>
-                      </Select>
-                    </Grid>
+            <Grid item container direction="column" spacing={1} sm={12}>
+              <Grid item container>
+                <Grid sm={6} item container justify="space-around">
+                  <Grid item>
+                    <InputLabel id="kernel-group-by">Group By</InputLabel>
+                    <Select
+                      labelId="kernel-group-by"
+                      value={groupBy}
+                      onChange={onGroupByChanged}
+                    >
+                      <MenuItem value={KernelGroupBy.KernelNameAndOpName}>
+                        Kernel Name + Op Name
+                      </MenuItem>
+                      <MenuItem value={KernelGroupBy.Kernel}>
+                        Kernel Name
+                      </MenuItem>
+                    </Select>
                   </Grid>
-                  <Grid sm={6} item container spacing={1}>
+                </Grid>
+                <Grid sm={6} item container spacing={1}>
+                  <Grid item>
+                    <TextField
+                      classes={{ root: classes.inputWidthOverflow }}
+                      value={searchKernelName}
+                      onChange={onSearchKernelChanged}
+                      type="search"
+                      label="Search by Kernel Name"
+                    />
+                  </Grid>
+                  {groupBy === KernelGroupBy.KernelNameAndOpName && (
                     <Grid item>
                       <TextField
                         classes={{ root: classes.inputWidthOverflow }}
-                        value={searchKernelName}
-                        onChange={onSearchKernelChanged}
+                        value={searchOpName}
+                        onChange={onSearchOpChanged}
                         type="search"
-                        label="Search by Kernel Name"
+                        label="Search by Operator Name"
                       />
                     </Grid>
-                    {groupBy === GroupBy.KernelNameAndOpName && (
-                      <Grid item>
-                        <TextField
-                          classes={{ root: classes.inputWidthOverflow }}
-                          value={searchOpName}
-                          onChange={onSearchOpChanged}
-                          type="search"
-                          label="Search by Operator Name"
-                        />
-                      </Grid>
-                    )}
-                  </Grid>
+                  )}
                 </Grid>
-                <Grid item>
-                  <DataLoading value={searchedOpTable}>
-                    {(graph) => (
-                      <TableChart graph={graph} sortColumn={sortColumn} />
-                    )}
-                  </DataLoading>
-                </Grid>
+              </Grid>
+              <Grid item>
+                <DataLoading value={searchedOpTable}>
+                  {(graph) => (
+                    <AntTableChart graph={graph} sortColumn={sortColumn} />
+                  )}
+                </DataLoading>
               </Grid>
             </Grid>
           </Grid>

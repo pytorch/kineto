@@ -5,6 +5,7 @@
 import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import { Graph } from '../../api'
+import { useResizeEventDependency } from '../../utils/resize'
 
 interface IProps {
   graph: Graph
@@ -28,6 +29,7 @@ export const TableChart: React.FC<IProps> = (props) => {
   const { graph, sortColumn, setCellProperty, allowHtml } = props
   const classes = useStyles(props)
   const graphRef = React.useRef<HTMLDivElement>(null)
+  const [resizeEventDependency] = useResizeEventDependency()
 
   React.useLayoutEffect(() => {
     const element = graphRef.current
@@ -67,8 +69,15 @@ export const TableChart: React.FC<IProps> = (props) => {
 
     const chart = new google.visualization.Table(element)
 
+    /* `chart.draw()` removes the contents of `element` and rebuilds it. This can cause a jump in the scroll position
+     * if the height/width change to 0. Since we can't change the code of Google Charts, we temporarily lock the dims
+     * of the parent container. */
+    if (element.offsetHeight > 0) {
+      element.parentElement!.style.height = element.offsetHeight + 'px'
+    }
     chart.draw(data, options)
-  }, [graph])
+    element.parentElement!.style.height = ''
+  }, [graph, resizeEventDependency])
 
   return (
     <div className={classes.root}>

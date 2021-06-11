@@ -1,124 +1,119 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from enum import IntEnum
 
 from .. import utils
 
-__all__ = ["EventTypes", "get_event_parser"]
+__all__ = ["EventTypes", "create_event"]
 
 logger = utils.get_logger()
 
+DeviceType = IntEnum('DeviceType', ['CPU', 'CUDA'], start=0)
 
 class EventTypes(object):
-    NET = "NetEvent"
-    OPERATOR = "OperatorEvent"
-    PROFILER_STEP = "ProfilerStepEvent"
-    RUNTIME = "RuntimeEvent"
-    KERNEL = "KernelEvent"
-    MEMCPY = "MemcpyEvent"
-    MEMSET = "MemsetEvent"
-    PYTHON = "PythonEvent"
+    TRACE = "Trace"
+    OPERATOR = "Operator"
+    PROFILER_STEP = "ProfilerStep"
+    RUNTIME = "Runtime"
+    KERNEL = "Kernel"
+    MEMCPY = "Memcpy"
+    MEMSET = "Memset"
+    PYTHON = "Python"
+    MEMORY = "Memory"
 
+Supported_EventTypes = [v for k, v in vars(EventTypes).items() if not k.startswith("_") and v != EventTypes.PROFILER_STEP]
 
-class TraceEvent(object):
+class BaseEvent(object):
     def __init__(self, type, data):
         self.type = type
+        self.name = data.get("name")
+        self.ts = data.get("ts")
+        self.pid = data.get("pid")
+        self.tid = data.get("tid")
+        self.args = data.get("args", {})
+
+class TraceEvent(BaseEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
         self.category = data.get("cat", "")
-        self.name = data.get("name", None)
-        self.ts = data.get("ts", None)
-        self.duration = data.get("dur", None)
-        self.pid = data.get("pid", None)
-        self.tid = data.get("tid", None)
-        self.args = data.get("args", None)
+        self.duration = data.get("dur")
 
-    def to_dict(self):
-        return vars(self)
+    @property
+    def external_id(self):
+        extern_id = self.args.get("external id")
+        if extern_id is None:
+            extern_id = self.args.get("External id")
 
+        return extern_id
 
-class NetEvent(TraceEvent):
-    def __init__(self, data):
-        super(NetEvent, self).__init__(EventTypes.NET, data)
+    @property
+    def callstack(self):
+        return self.args.get("Call stack", "")
 
+    @property
+    def input_shape(self):
+        shape = self.args.get("Input Dims")
+        if shape is None:
+            shape = self.args.get("Input dims")
 
-class OperatorEvent(TraceEvent):
-    def __init__(self, data):
-        super(OperatorEvent, self).__init__(EventTypes.OPERATOR, data)
+        return shape
 
+    @property
+    def input_type(self):
+        return self.args.get("Input type")
 
 class ProfilerStepEvent(TraceEvent):
     def __init__(self, data):
-        super(ProfilerStepEvent, self).__init__(EventTypes.PROFILER_STEP, data)
+        super().__init__(EventTypes.PROFILER_STEP, data)
         # torch.profiler.profile.step will invoke record_function with name like "ProfilerStep#5"
         self.step = int(self.name.split("#")[1])
 
+class MemoryEvent(BaseEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.scope = data.get("s", "")
 
-class RuntimeEvent(TraceEvent):
-    def __init__(self, data):
-        super(RuntimeEvent, self).__init__(EventTypes.RUNTIME, data)
-
-
-class KernelEvent(TraceEvent):
-    def __init__(self, data):
-        super(KernelEvent, self).__init__(EventTypes.KERNEL, data)
-
-
-class MemcpyEvent(TraceEvent):
-    def __init__(self, data):
-        super(MemcpyEvent, self).__init__(EventTypes.MEMCPY, data)
-
-
-class MemsetEvent(TraceEvent):
-    def __init__(self, data):
-        super(MemsetEvent, self).__init__(EventTypes.MEMSET, data)
-
-
-class PythonEvent(TraceEvent):
-    def __init__(self, data):
-        super(PythonEvent, self).__init__(EventTypes.PYTHON, data)
-
-
-class EventParser(object):
-    def __init__(self):
-        self._handlers = {
-            "X": {
-                "Net": NetEvent,
-                "Operator": self._parse_operator_event,
-                "Runtime": RuntimeEvent,
-                "Kernel": KernelEvent,
-                "Memcpy": MemcpyEvent,
-                "Memset": MemsetEvent,
-                "Python": PythonEvent,
-            }
-        }
-
-    def _get_handler(self, type=None, category=None):
-        handlers = self._handlers.get(type, None)
-        if handlers is None:
+    @property
+    def device_type(self):
+        dtype = self.args.get("Device Type")
+        if dtype is None:
             return None
-        return handlers.get(category, None)
 
-    def parse(self, event):
         try:
-            type = event.get("ph", None)
-            category = event.get("cat", None)
-            handler = self._get_handler(type, category)
-            if handler is None:
-                return None
-            return handler(event)
-        except Exception as ex:
-            logger.warning("Failed to parse profile event. Exception=%s. Event=%s", ex, event, exc_info=True)
-            raise ex
+            return DeviceType(dtype)
+        except ValueError:
+            return None
 
-    def _parse_operator_event(self, event):
+    @property
+    def device_id(self):
+        return self.args.get("Device Id")
+
+    @property
+    def bytes(self):
+        return self.args.get("Bytes", 0)
+
+def create_event(event):
+    try:
+        type = event.get("ph")
+        if type == "X":
+            return create_trace_event(event)
+        elif type == "i" and event.get('s') == 't':
+            return MemoryEvent(EventTypes.MEMORY, event)
+        else:
+            return None
+    except Exception as ex:
+        logger.warning("Failed to parse profile event. Exception=%s. Event=%s", ex, event, exc_info=True)
+        raise
+
+def create_trace_event(event):
+    category = event.get("cat")
+    if category == "Operator":
         name = event.get("name")
-        if name.startswith("ProfilerStep#"):
+        if name and name.startswith("ProfilerStep#"):
             return ProfilerStepEvent(event)
-        return OperatorEvent(event)
 
-
-def get_event_parser(version=None):
-    return EventParser()
+    if category in Supported_EventTypes:
+        return TraceEvent(category, event)
+    else:
+        return None

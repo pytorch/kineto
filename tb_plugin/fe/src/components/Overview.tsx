@@ -2,24 +2,24 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react'
-import { makeStyles } from '@material-ui/core/styles'
-import Grid from '@material-ui/core/Grid'
 import Card from '@material-ui/core/Card'
-import CardHeader from '@material-ui/core/CardHeader'
 import CardContent from '@material-ui/core/CardContent'
-import { TextListItem } from './TextListItem'
+import CardHeader from '@material-ui/core/CardHeader'
+import Grid from '@material-ui/core/Grid'
+import { makeStyles } from '@material-ui/core/styles'
+import * as React from 'react'
 import * as api from '../api'
-import { DataLoading } from './DataLoading'
-import { SteppedAreaChart } from './charts/SteppedAreaChart'
-import {
-  transformPerformanceIntoTable,
-  transformPerformanceIntoPie
-} from './transform'
-import { TableChart } from './charts/TableChart'
 import { PieChart } from './charts/PieChart'
+import { SteppedAreaChart } from './charts/SteppedAreaChart'
+import { TableChart } from './charts/TableChart'
+import { DataLoading } from './DataLoading'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
+import { TextListItem } from './TextListItem'
 import { StepTimeBreakDownTooltip } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
+import {
+  transformPerformanceIntoPie,
+  transformPerformanceIntoTable
+} from './transform'
 
 const topGraphHeight = 230
 
@@ -64,15 +64,18 @@ const highlightNoTopLevel = (
 export interface IProps {
   run: string
   worker: string
-  view: string
+  span: string
 }
 
 export const Overview: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
 
   const [steps, setSteps] = React.useState<api.Graph | undefined>(undefined)
   const [performances, setPerformances] = React.useState<api.Performance[]>([])
   const [environments, setEnvironments] = React.useState<api.Environment[]>([])
+  const [gpuMetrics, setGpuMetrics] = React.useState<
+    api.GpuMetrics | undefined
+  >(undefined)
   const [recommendations, setRecommendations] = React.useState('')
 
   const synthesizedTableGraph = React.useMemo(() => {
@@ -84,13 +87,15 @@ export const Overview: React.FC<IProps> = (props) => {
   }, [performances])
 
   React.useEffect(() => {
-    api.defaultApi.overviewGet(run, worker, view).then((resp) => {
+    api.defaultApi.overviewGet(run, worker, span).then((resp) => {
       setPerformances(resp.performance)
       setEnvironments(resp.environments)
       setSteps(resp.steps)
       setRecommendations(resp.recommendations)
+      setGpuMetrics(resp.gpu_metrics)
+      console.log(resp.gpu_metrics)
     })
-  }, [run, worker, view])
+  }, [run, worker, span])
 
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
@@ -104,11 +109,15 @@ export const Overview: React.FC<IProps> = (props) => {
     [tooltipCommonClasses, chartHeaderRenderer]
   )
 
+  const cardSizes = gpuMetrics
+    ? ([2, 3, 7] as const)
+    : ([4, undefined, 8] as const)
+
   return (
     <div className={classes.root}>
       <Grid container spacing={1}>
         <Grid container item spacing={1}>
-          <Grid item sm={4}>
+          <Grid item sm={cardSizes[0]}>
             {React.useMemo(
               () => (
                 <Card variant="outlined">
@@ -126,7 +135,28 @@ export const Overview: React.FC<IProps> = (props) => {
               [environments]
             )}
           </Grid>
-          <Grid item sm={8}>
+          {gpuMetrics && (
+            <Grid item sm={cardSizes[1]}>
+              <Card variant="outlined">
+                <CardHeader
+                  title={chartHeaderRenderer('GPU Summary', gpuMetrics.tooltip)}
+                />
+                <CardContent
+                  className={classes.topGraph}
+                  style={{ overflow: 'auto' }}
+                >
+                  {gpuMetrics.data.map((metric) => (
+                    <TextListItem
+                      name={metric.title}
+                      value={metric.value}
+                      dangerouslyAllowHtml
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+          <Grid item sm={cardSizes[2]}>
             <Card variant="outlined">
               <CardHeader title="Execution Summary" />
               <CardContent>

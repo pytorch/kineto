@@ -19,9 +19,6 @@ export interface IProps {
   data: any
   sort: string
 }
-const pagination: TablePaginationConfig = {
-  pageSize: 30
-}
 
 const useStyles = makeStyles((theme) => ({
   tooltip: {
@@ -74,13 +71,22 @@ export const MemoryTable = (props: IProps) => {
     [data.columns, sort, classes.tooltip]
   )
 
+  const [pageSize, setPageSize] = React.useState(30)
+  const onShowSizeChange = (current: number, size: number) => {
+    setPageSize(size)
+  }
+
   return (
     <Table
       size="small"
       bordered
       columns={columns}
       dataSource={rows}
-      pagination={pagination}
+      pagination={{
+        pageSize,
+        pageSizeOptions: ['10', '20', '30', '50', '100'],
+        onShowSizeChange
+      }}
     />
   )
 }

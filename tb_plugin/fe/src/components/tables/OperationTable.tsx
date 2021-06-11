@@ -22,15 +22,17 @@ const expandIcon = makeExpandIcon<OperationTableDataInner>(
   'View CallStack',
   (record) => !record.has_call_stack
 )
-const pagination: TablePaginationConfig = {
-  pageSize: 30
-}
 export const OperationTable = (props: IProps) => {
   const { data, run, worker, span, groupBy } = props
 
   const rows = React.useMemo(() => attachId(data), [data])
 
   const columns = React.useMemo(() => getCommonOperationColumns(rows), [rows])
+
+  const [pageSize, setPageSize] = React.useState(30)
+  const onShowSizeChange = (current: number, size: number) => {
+    setPageSize(size)
+  }
 
   const expandIconColumnIndex = columns.length
   const expandedRowRender = React.useCallback(
@@ -62,7 +64,11 @@ export const OperationTable = (props: IProps) => {
       bordered
       columns={columns}
       dataSource={rows}
-      pagination={pagination}
+      pagination={{
+        pageSize,
+        pageSizeOptions: ['10', '20', '30', '50', '100'],
+        onShowSizeChange
+      }}
       expandable={expandable}
     />
   )

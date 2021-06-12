@@ -13,17 +13,46 @@
 
 #include <atomic>
 #ifdef HAS_ROCTRACER
+#define __HIP_PLATFORM_AMD__
 #include <roctracer.h>
+#include <roctracer_hcc.h>
+#include <roctracer_hip.h>
+#include <roctracer_ext.h>
+#include <roctracer_roctx.h>
+
 #endif
 #include <functional>
 #include <list>
 #include <memory>
 #include <set>
 #include <vector>
+#include <map>
+#include <unordered_map>
+
 
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
+
+class ApiIdList
+{
+public:
+  ApiIdList();
+  bool invertMode() { return m_invert; }
+  void setInvertMode(bool invert) { m_invert = invert; }
+  void add(std::string apiName);
+  void remove(std::string apiName);
+  bool loadUserPrefs();
+
+  bool contains(uint32_t apiId);
+
+private:
+  std::map<std::string, uint32_t> m_ids;
+  std::unordered_map<uint32_t, uint32_t> m_filter;
+  bool m_invert;
+
+  void loadApiNames();
+};
 
 
 class RoctracerActivityInterface {
@@ -84,9 +113,18 @@ class RoctracerActivityInterface {
 #ifdef HAS_ROCTRACER
   roctracer_pool_t *hipPool_{NULL};
   roctracer_pool_t *hccPool_{NULL};
+  static void api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg);
   static void activity_callback(const char* begin, const char* end, void* arg);
   static void hip_activity_callback(const char* begin, const char* end, void* arg);
   static void hcc_activity_callback(const char* begin, const char* end, void* arg);
+
+  //Name cache
+  uint32_t m_nextStringId{2};
+  std::map<uint32_t, std::string> m_strings;
+  std::map<std::string, uint32_t> m_reverseStrings;
+  std::map<activity_correlation_id_t, uint32_t> m_kernelNames;
+
+  ApiIdList m_loggedIds;
 #endif
 
   int maxGpuBufferCount_{0};

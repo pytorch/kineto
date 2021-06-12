@@ -201,23 +201,49 @@ void ChromeTraceLogger::handleGenericActivity(
 
   // FIXME: Make cat and tid customizable
   // clang-format off
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "User", "name": "{}",
-    "pid": {}, "tid": "stream {} user",
-    "ts": {}, "dur": {},
-    "args": {{
-      "External id": {}
-    }}
-  }},)JSON",
-      op.name(), op.deviceId(), op.resourceId(),
-      op.timestamp(), op.duration(),
-      op.correlationId());
+
+  switch (op.type()) {
+    case ActivityType::CUDA_RUNTIME:
+      {
+        traceOf_ << fmt::format(R"JSON(
+        {{
+          "ph": "X", "cat": "Runtime", {}
+        }},)JSON",
+            traceActivityJson(op, ""));
+        handleLinkStart(op);
+      }
+      break;
+    case ActivityType::CONCURRENT_KERNEL:
+      {
+        traceOf_ << fmt::format(R"JSON(
+        {{
+          "ph": "X", "cat": "Kernel", {}
+        }},)JSON",
+            traceActivityJson(op, "stream "));
+        handleLinkEnd(op);
+      }
+      break;
+    default:
+      {
+        traceOf_ << fmt::format(R"JSON(
+        {{
+          "ph": "X", "cat": "User", "name": "{}",
+          "pid": {}, "tid": "stream {} user",
+          "ts": {}, "dur": {},
+          "args": {{
+            "External id": {}
+          }}
+        }},)JSON",
+            op.name(), op.deviceId(), op.resourceId(),
+            op.timestamp(), op.duration(),
+            op.correlationId());
+      }
+      break;
+  }
   // clang-format on
 }
 
-#ifdef HAS_CUPTI
-void ChromeTraceLogger::handleLinkStart(const RuntimeActivity& s) {
+void ChromeTraceLogger::handleLinkStart(const TraceActivity& s) {
   if (!traceOf_) {
     return;
   }
@@ -248,6 +274,7 @@ void ChromeTraceLogger::handleLinkEnd(const TraceActivity& e) {
   // clang-format on
 }
 
+#ifdef HAS_CUPTI
 void ChromeTraceLogger::handleRuntimeActivity(
     const RuntimeActivity& activity) {
   if (!traceOf_) {

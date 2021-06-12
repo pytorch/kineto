@@ -67,11 +67,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
  private:
 
-#ifdef HAS_CUPTI
   // Create a flow event to an external event
-  void handleLinkStart(const RuntimeActivity& s);
+  void handleLinkStart(const TraceActivity& s);
   void handleLinkEnd(const TraceActivity& e);
-#endif // HAS_CUPTI
 
   std::string fileName_;
   std::ofstream traceOf_;

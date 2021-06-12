@@ -167,7 +167,6 @@ void ActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-  printf("FIXME: processActivities\n");
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(logger);

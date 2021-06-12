@@ -9,11 +9,29 @@
 
 #include <cstring>
 #include <chrono>
+#include <time.h>
+
+#include <cxxabi.h>
 
 #include "Logger.h"
 #include "output_base.h"
 
+typedef uint64_t timestamp_t;
+
 static size_t BUFFERSIZE=1<<20;
+
+// C++ symbol demangle
+static inline const char* cxx_demangle(const char* symbol) {
+  size_t funcnamesize;
+  int status;
+  const char* ret = (symbol != NULL) ? abi::__cxa_demangle(symbol, NULL, &funcnamesize, &status) : symbol;
+  return (ret != NULL) ? ret : symbol;
+}
+
+
+static timestamp_t timespec_to_ns(const timespec& time) {
+    return ((timestamp_t)time.tv_sec * 1000000000) + time.tv_nsec;
+  }
 
 using namespace std::chrono;
 
@@ -35,36 +53,23 @@ RoctracerActivityInterface::RoctracerActivityInterface() {
 }
 
 void RoctracerActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
-#ifdef HAS_CUPTI
-  VLOG(2) << "pushCorrelationID(" << id << ")";
-  switch(type) {
-    case Default:
-      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
-        break;
-    case User:
-      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
-  }
+#ifdef HAS_ROCTRACER
+  // FIXME: no type
+  // FIXME: disabled
+  //roctracer_activity_push_external_correlation_id(id);
 #endif
 }
 
 void RoctracerActivityInterface::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_CUPTI
-  switch(type) {
-    case Default:
-      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
-        break;
-    case User:
-      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
-  }
+  // FIXME: no type
+  // FIXME: disabled
+  //roctracer_activity_pop_external_correlation_id(nullptr);
 #endif
 }
 
 static int getSMCount() {
-  //hipDeviceProp_t 
+  // FIXME
   return -1;
 }
 
@@ -79,48 +84,62 @@ void RoctracerActivityInterface::setMaxBufferSize(int size) {
 
 int RoctracerActivityInterface::processActivities(
     ActivityLogger& logger) {
-#if 0
-    printf("logger.handleGenericActivity(): %lu\n", activity_.size());
-    //for (int i = 0; i < activity_.size(); ++i) {
-    for (int i = 0; i < allocatedGpuBufferCount; ++i) {
-        logger.handleGenericActivity(activity_[i]);
-    }
-#endif
+  // Find offset to map from monotonic clock to system clock.
+  // This will break time-ordering of events but is status quo.
+
+  timespec t0, t1, t00;
+  clock_gettime(CLOCK_REALTIME, &t0);
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  clock_gettime(CLOCK_REALTIME, &t00);
+
+  const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
+
+  //printf("timedelta: %lu - %lu == %lu\n", timespec_to_ns(t0), timespec_to_ns(t1), toffset);
+
+  int count = 0;
+
   for (auto& buffer : *gpuTraceBuffers_) {
     const roctracer_record_t* record = (const roctracer_record_t*)(buffer.data);
     const roctracer_record_t* end_record = (const roctracer_record_t*)(buffer.data + buffer.validSize);
     GenericTraceActivity a;
 
     while (record < end_record) {
-      if (record->domain == ACTIVITY_DOMAIN_HIP_API) {
+      if ((record->domain == ACTIVITY_DOMAIN_HIP_API) && (m_loggedIds.contains(record->op))) {
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
         a.device = record->process_id;
         a.resource = record->thread_id;
 
-        a.startTime = record->begin_ns / 1000;
-        a.endTime = record->end_ns / 1000;
-        a.correlation = 0;
+        a.startTime = (record->begin_ns + toffset) / 1000;
+        a.endTime = (record->end_ns + toffset) / 1000;
+        a.correlation = record->correlation_id;
 
         a.activityType = ActivityType::CUDA_RUNTIME;
         a.activityName = std::string(name);
 
         a.linked = NULL;
+        logger.handleGenericActivity(a);
       }
       else if (record->domain == ACTIVITY_DOMAIN_HCC_OPS) {
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
         a.device = record->device_id;
         a.resource = record->queue_id;
 
-        a.startTime = record->begin_ns / 1000;
-        a.endTime = record->end_ns / 1000;
-        a.correlation = 0;
+        a.startTime = (record->begin_ns + toffset) / 1000;
+        a.endTime = (record->end_ns + toffset) / 1000;
+        a.correlation = record->correlation_id;
 
         a.activityType = ActivityType::CONCURRENT_KERNEL;
         a.activityName = std::string(name);
 
         a.linked = NULL;
+
+        auto it = m_kernelNames.find(record->correlation_id);
+        if (it != m_kernelNames.end()) {
+          a.activityName = m_strings[it->second];
+        }
+        logger.handleGenericActivity(a);
       }
-      logger.handleGenericActivity(a);
+      ++count;
       roctracer_next_record(record, &record);     
     }
   }
@@ -139,6 +158,57 @@ void RoctracerActivityInterface::addActivityBuffer(uint8_t* buffer, size_t valid
   gpuTraceBuffers_->emplace_back(buffer, validSize);
 }
 
+void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg)
+{
+  if (domain == ACTIVITY_DOMAIN_HIP_API) {
+    const hip_api_data_t* data = (const hip_api_data_t*)(callback_data);
+    if (data->phase == 0) {
+      std::string name;
+
+      switch (cid) {
+        case HIP_API_ID_hipLaunchKernel:
+          {
+            std::ostringstream ss;
+            ss << data->args.hipLaunchKernel.function_address;
+            name = ss.str();
+            name = hipKernelNameRefByPtr(data->args.hipLaunchKernel.function_address, data->args.hipLaunchKernel.stream);
+          }
+          break;
+        case HIP_API_ID_hipExtLaunchKernel:
+          {
+            std::ostringstream ss;
+            ss << data->args.hipExtLaunchKernel.function_address;
+            name = ss.str();
+            name = hipKernelNameRefByPtr(data->args.hipLaunchKernel.function_address, data->args.hipLaunchKernel.stream);
+          }
+          break;
+        case HIP_API_ID_hipHccModuleLaunchKernel:
+          name = cxx_demangle(hipKernelNameRef(data->args.hipHccModuleLaunchKernel.f));
+          break;
+        case HIP_API_ID_hipExtModuleLaunchKernel:
+          name = cxx_demangle(hipKernelNameRef(data->args.hipExtModuleLaunchKernel.f));
+          break;
+        case HIP_API_ID_hipModuleLaunchKernel:
+          name = cxx_demangle(hipKernelNameRef(data->args.hipModuleLaunchKernel.f));
+          break;
+        default:
+          break;
+      }
+
+      if (name.empty() == false) {
+        RoctracerActivityInterface *dis = &singleton();
+        uint32_t string_id = dis->m_reverseStrings[name];
+        if (string_id == 0) {
+          string_id = dis->m_nextStringId++;
+          dis->m_reverseStrings[name] = string_id;
+          dis->m_strings[string_id] = name;
+        }
+        dis->m_kernelNames[data->correlation_id] = string_id;
+      }
+    }
+  }
+}
+
 void RoctracerActivityInterface::activity_callback(const char* begin, const char* end, void* arg)
 {
   size_t size = end - begin;
@@ -148,57 +218,14 @@ void RoctracerActivityInterface::activity_callback(const char* begin, const char
   ++allocatedGpuBufferCount;
   memcpy(buffer, begin, size);
   gpuTraceBuffers->emplace_back(buffer, size);
-  printf("hip callback: %d\n", allocatedGpuBufferCount);
 }
 
 void RoctracerActivityInterface::hip_activity_callback(const char* begin, const char* end, void* arg)
 {
-#if 0
-  const roctracer_record_t* record = (const roctracer_record_t*)(begin);
-  const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
-
-  auto &allocatedGpuBufferCount = singleton().allocatedGpuBufferCount;
-  auto &activity = singleton().activity_;
-
-  printf("hip callback: %d\n", allocatedGpuBufferCount);
-
-  while (record < end_record) {
-    if (allocatedGpuBufferCount < activity.size()) {
-        const char *name = roctracer_op_string(record->domain, record->op, record->kind);
-        GenericTraceActivity &a = activity[allocatedGpuBufferCount];
-        a.device = record->process_id;
-        a.resource = record->thread_id;
-
-        a.startTime = record->begin_ns / 1000;
-        a.endTime = record->end_ns / 1000;
-        a.correlation = 0;
-
-        a.activityType = ActivityType::CPU_OP;
-        a.activityType = ActivityType::CUDA_RUNTIME;
-        a.activityName = std::string(name);
-
-        a.linked = NULL;
-
-        ++allocatedGpuBufferCount;
-    }
-    //const char *name = roctracer_op_string(record->domain, record->op, record->kind);
-    //printf("t_api=%s, id=%lu, begin=%lu, end=%lu, pid=%d, tid=%lu\n", name, record->correlation_id, record->begin_ns, record->end_ns, record->process_id, record->thread_id);
-    roctracer_next_record(record, &record);
-  }
-#endif
 }
 
 void RoctracerActivityInterface::hcc_activity_callback(const char* begin, const char* end, void* arg)
 {
-  printf("hcc callback\n");
-  const roctracer_record_t* record = (const roctracer_record_t*)(begin);
-  const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
-
-  while (record < end_record) {
-    //const char *name = roctracer_op_string(record->domain, record->op, record->kind); 
-    //printf("t_op=%s, id=%lu, begin=%lu, end=%lu, gpuId=%d, queueId=%lu\n", name, record->correlation_id, record->begin_ns, record->end_ns, record->device_id, record->queue_id);
-    roctracer_next_record(record, &record);
-  }
 }
 
 void RoctracerActivityInterface::enableActivities(
@@ -207,6 +234,10 @@ void RoctracerActivityInterface::enableActivities(
   static bool registered = false;
   if (!registered) {
     roctracer_set_properties(ACTIVITY_DOMAIN_HIP_API, NULL);  // Magic encantation
+
+    // Enable API callbacks
+    roctracer_enable_domain_callback(ACTIVITY_DOMAIN_HIP_API, api_callback, NULL);
+    //roctracer_enable_domain_callback(ACTIVITY_DOMAIN_ROCTX, api_callback, NULL);
 
     // Allocate default tracing pool
     roctracer_properties_t properties;
@@ -218,8 +249,7 @@ void RoctracerActivityInterface::enableActivities(
     // Log hip
     roctracer_properties_t hip_cb_properties;
     memset(&hip_cb_properties, 0, sizeof(roctracer_properties_t));
-    //hip_cb_properties.buffer_size = 0xf0000;
-    hip_cb_properties.buffer_size = 0xf00;
+    hip_cb_properties.buffer_size = 0x4000;
     //hip_cb_properties.buffer_callback_fun = hip_activity_callback;
     hip_cb_properties.buffer_callback_fun = activity_callback;
     roctracer_open_pool_expl(&hip_cb_properties, &hipPool_);
@@ -230,23 +260,83 @@ void RoctracerActivityInterface::enableActivities(
     // Log hcc
     roctracer_properties_t hcc_cb_properties;
     memset(&hcc_cb_properties, 0, sizeof(roctracer_properties_t));
-    hcc_cb_properties.buffer_size = 0x40000;
+    hcc_cb_properties.buffer_size = 0x4000;
     hcc_cb_properties.buffer_callback_fun = hcc_activity_callback;
     roctracer_open_pool_expl(&hcc_cb_properties, &hccPool_);
     roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, hccPool_);
 #endif
-  }
 
+    // Set some api calls to ignore
+    m_loggedIds.setInvertMode(true);  // Omit the specified api
+    m_loggedIds.add("hipGetDevice");
+    m_loggedIds.add("hipSetDevice");
+    m_loggedIds.add("hipGetLastError");
+    m_loggedIds.add("__hipPushCallConfiguration");
+    m_loggedIds.add("__hipPopCallConfiguration");
+    m_loggedIds.add("hipCtxSetCurrent");
+    m_loggedIds.add("hipEventRecord");
+    m_loggedIds.add("hipEventQuery");
+    m_loggedIds.add("hipGetDeviceProperties");
+    m_loggedIds.add("hipPeekAtLastError");
+    m_loggedIds.add("hipModuleGetFunction");
+    m_loggedIds.add("hipEventCreateWithFlags");
+  }
+  roctracer_start();
 #endif
 }
 
 void RoctracerActivityInterface::disableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
+  roctracer_stop();
+  hipStreamSynchronize(NULL);
 
-    //FIXME:  flush
+  roctracer_disable_domain_callback(ACTIVITY_DOMAIN_HIP_API);
+  //roctracer_disable_domain_callback(ACTIVITY_DOMAIN_ROCTX);
 
+  roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HIP_API);
+  roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HCC_OPS);
+  roctracer_flush_activity_expl(hipPool_);
+  roctracer_close_pool_expl(hipPool_);
 #endif
 }
+
+
+ApiIdList::ApiIdList()
+: m_invert(true)
+{
+  loadApiNames();
+}
+
+void ApiIdList::add(std::string apiName)
+{
+  auto it = m_ids.find(apiName);
+  if (it != m_ids.end()) 
+    m_filter[it->second] = 1;
+}
+void ApiIdList::remove(std::string apiName)
+{
+  auto it = m_ids.find(apiName);
+  if (it != m_ids.end())
+    m_filter.erase(it->second);
+}
+
+bool ApiIdList::loadUserPrefs()
+{
+  // FIXME: check an ENV variable that points to an exclude file
+}
+bool ApiIdList::contains(uint32_t apiId)
+{
+  return (m_filter.count(apiId) > 0) ? !m_invert : m_invert;  // XOR
+}
+
+void ApiIdList::loadApiNames()
+{
+  // Build lut from apiName to apiId
+  for (uint32_t i = 0; i < HIP_API_ID_NUMBER; ++i) {
+    m_ids[std::string(hip_api_name(i))] = i;
+  }
+}
+
 
 } // namespace KINETO_NAMESPACE

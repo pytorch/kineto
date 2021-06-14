@@ -45,11 +45,8 @@ def get_libkineto_roctracer_srcs(with_api = True):
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",
-        "src/ProcessInfo.cpp",
         "src/RoctracerActivityInterface.cpp",
-        "src/ThreadName.cpp",
         "src/init.cpp",
-        "src/libkineto_api.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",
     ] + (get_libkineto_api_srcs() if with_api else [])

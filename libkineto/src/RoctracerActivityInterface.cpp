@@ -107,7 +107,7 @@ int RoctracerActivityInterface::processActivities(
       if ((record->domain == ACTIVITY_DOMAIN_HIP_API) && (m_loggedIds.contains(record->op))) {
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
         a.device = record->process_id;
-        a.resource = record->thread_id;
+        a.sysThreadId= record->thread_id;
 
         a.startTime = (record->begin_ns + toffset) / 1000;
         a.endTime = (record->end_ns + toffset) / 1000;
@@ -116,13 +116,12 @@ int RoctracerActivityInterface::processActivities(
         a.activityType = ActivityType::CUDA_RUNTIME;
         a.activityName = std::string(name);
 
-        a.linked = NULL;
         logger.handleGenericActivity(a);
       }
       else if (record->domain == ACTIVITY_DOMAIN_HCC_OPS) {
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
         a.device = record->device_id;
-        a.resource = record->queue_id;
+        a.sysThreadId = record->queue_id;
 
         a.startTime = (record->begin_ns + toffset) / 1000;
         a.endTime = (record->end_ns + toffset) / 1000;
@@ -130,8 +129,6 @@ int RoctracerActivityInterface::processActivities(
 
         a.activityType = ActivityType::CONCURRENT_KERNEL;
         a.activityName = std::string(name);
-
-        a.linked = NULL;
 
         auto it = m_kernelNames.find(record->correlation_id);
         if (it != m_kernelNames.end()) {

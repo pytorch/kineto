@@ -11,13 +11,13 @@
 #include <fstream>
 #include <time.h>
 #include <map>
-#include <unistd.h>
 
 #include "Config.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
+#include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "Demangle.h"
 #include "TraceSpan.h"
@@ -31,28 +31,40 @@ namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
 
-static void writeHeader(std::ofstream& stream) {
-  stream << fmt::format(R"JSON(
+void ChromeTraceLogger::handleTraceStart(
+    const std::unordered_map<std::string, std::string>& metadata) {
+  traceOf_ << fmt::format(R"JSON(
 {{
-  "schemaVersion": {},
-  "traceEvents": [
-  )JSON", kSchemaVersion);
+  "schemaVersion": {},)JSON", kSchemaVersion);
+
+  for (const auto& kv : metadata) {
+    traceOf_ << fmt::format(R"JSON(
+  "{}": {},)JSON", kv.first, kv.second);
+  }
+
+#ifdef HAS_CUPTI
+  traceOf_ << fmt::format(R"JSON(
+  "deviceProperties": [{}
+  ],)JSON", devicePropertiesJson());
+#endif
+
+  traceOf_ << R"JSON(
+  "traceEvents": [)JSON";
 }
 
-static void openTraceFile(std::string& name, std::ofstream& stream) {
-  stream.open(name, std::ofstream::out | std::ofstream::trunc);
-  if (!stream) {
-    PLOG(ERROR) << "Failed to open '" << name << "'";
+void ChromeTraceLogger::openTraceFile() {
+  traceOf_.open(fileName_, std::ofstream::out | std::ofstream::trunc);
+  if (!traceOf_) {
+    PLOG(ERROR) << "Failed to open '" << fileName_ << "'";
   } else {
-    LOG(INFO) << "Tracing to " << name;
-    writeHeader(stream);
+    LOG(INFO) << "Tracing to " << fileName_;
   }
 }
 
 ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
-    : fileName_(traceFileName), pid_(getpid()) {
+    : fileName_(traceFileName) {
   traceOf_.clear(std::ios_base::badbit);
-  openTraceFile(fileName_, traceOf_);
+  openTraceFile();
 #ifdef HAS_CUPTI
   smCount_ = CuptiActivityInterface::singleton().smCount();
 #endif
@@ -111,7 +123,7 @@ void ChromeTraceLogger::handleThreadInfo(
       "name": "thread {} ({})"
     }}
   }},)JSON",
-      time, pid_, threadInfo.tid,
+      time, processId(), threadInfo.tid,
       threadInfo.tid, threadInfo.name);
   // clang-format on
 }
@@ -164,38 +176,64 @@ static std::string traceActivityJson(const TraceActivity& activity, std::string 
   // clang-format on
 }
 
+void ChromeTraceLogger::handleGenericInstantEvent(
+    const libkineto::GenericTraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
+
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "i", "s": "t", "name": "{}",
+    "pid": {}, "tid": {},
+    "ts": {},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+      op.name(), op.deviceId(), op.resourceId(),
+      op.timestamp(), op.getMetadata());
+}
+
 void ChromeTraceLogger::handleCpuActivity(
-    const libkineto::ClientTraceActivity& op,
+    const libkineto::GenericTraceActivity& op,
     const TraceSpan& span) {
   if (!traceOf_) {
     return;
   }
 
-  auto metadata = op.getMetadata();
-  if (!metadata.empty()) {
-    metadata += ",";
+  if (op.activityType == ActivityType::CPU_INSTANT_EVENT) {
+    handleGenericInstantEvent(op);
+    return;
+  }
+
+  auto op_metadata = op.getMetadata();
+  std::string separator = "";
+  if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
+    separator = ",";
   }
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Operator", {},
     "args": {{
-       {}
-       "Device": {}, "External id": {},
-       "Trace name": "{}", "Trace iteration": {}
+      "Device": {}, "External id": {},
+      "Trace name": "{}", "Trace iteration": {} {}
+      {}
     }}
   }},)JSON",
       traceActivityJson(op, ""),
       // args
-      metadata,
       op.device, op.correlation,
-      span.name, span.iteration);
+      span.name, span.iteration,
+      separator,
+      op_metadata);
   // clang-format on
 }
 
 void ChromeTraceLogger::handleGenericActivity(
-      const GenericTraceActivity& op) {
-    if (!traceOf_) {
+    const GenericTraceActivity& op) {
+  if (!traceOf_) {
     return;
   }
 
@@ -254,7 +292,7 @@ void ChromeTraceLogger::handleLinkStart(const TraceActivity& s) {
     "ph": "s", "id": {}, "pid": {}, "tid": {}, "ts": {},
     "cat": "async", "name": "launch"
   }},)JSON",
-      s.correlationId(), pid_, s.resourceId(), s.timestamp());
+      s.correlationId(), processId(), s.resourceId(), s.timestamp());
   // clang-format on
 
 }
@@ -319,12 +357,27 @@ void ChromeTraceLogger::handleGpuActivity(
   const CUpti_ActivityKernel4* kernel = &activity.raw();
   const TraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
+  float blocks_per_sm = -1.0;
   float warps_per_sm = -1.0;
   if (smCount_) {
-    warps_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) *
-        (kernel->blockX * kernel->blockY * kernel->blockZ) /
-        (float) threads_per_warp / smCount_;
+    blocks_per_sm =
+        (kernel->gridX * kernel->gridY * kernel->gridZ) / (float) smCount_;
+    warps_per_sm =
+        blocks_per_sm * (kernel->blockX * kernel->blockY * kernel->blockZ)
+        / threads_per_warp;
   }
+
+  // Calculate occupancy
+  float occupancy = KINETO_NAMESPACE::kernelOccupancy(
+      kernel->deviceId,
+      kernel->registersPerThread,
+      kernel->staticSharedMemory,
+      kernel->dynamicSharedMemory,
+      kernel->blockX,
+      kernel->blockY,
+      kernel->blockZ,
+      blocks_per_sm);
+
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -334,9 +387,11 @@ void ChromeTraceLogger::handleGpuActivity(
       "stream": {}, "correlation": {}, "external id": {},
       "registers per thread": {},
       "shared memory": {},
+      "blocks per SM": {},
       "warps per SM": {},
       "grid": [{}, {}, {}],
-      "block": [{}, {}, {}]
+      "block": [{}, {}, {}],
+      "est. achieved occupancy %": {}
     }}
   }},)JSON",
       traceActivityJson(activity, "stream "),
@@ -345,9 +400,11 @@ void ChromeTraceLogger::handleGpuActivity(
       kernel->streamId, kernel->correlationId, ext.correlationId(),
       kernel->registersPerThread,
       kernel->staticSharedMemory + kernel->dynamicSharedMemory,
+      blocks_per_sm,
       warps_per_sm,
       kernel->gridX, kernel->gridY, kernel->gridZ,
-      kernel->blockX, kernel->blockY, kernel->blockZ);
+      kernel->blockX, kernel->blockY, kernel->blockZ,
+      (int) (0.5 + occupancy * 100.0));
   // clang-format on
 
   handleLinkEnd(activity);

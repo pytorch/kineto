@@ -13,7 +13,7 @@
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
 #include "RoctracerActivityInterface.h"
-#include "ThreadName.h"
+#include "ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"
 
@@ -23,8 +23,7 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-constexpr milliseconds kDefaultInactiveProfilerIntervalMsecs(1000);
-constexpr milliseconds kDefaultActiveProfilerIntervalMsecs(200);
+constexpr milliseconds kProfilerIntervalMsecs(1000);
 
 ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
 #ifdef HAS_ROCTRACER
@@ -69,17 +68,12 @@ static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
       CuptiActivityInterface::singleton().smCount());
 }
 
-static milliseconds profilerInterval(bool profilerActive) {
-  return profilerActive ? kDefaultActiveProfilerIntervalMsecs
-                        : kDefaultInactiveProfilerIntervalMsecs;
-}
-
 void ActivityProfilerController::profilerLoop() {
   setThreadName("Kineto Activity Profiler");
   VLOG(0) << "Entering activity profiler loop";
 
   auto now = system_clock::now();
-  auto next_wakeup_time = now + profilerInterval(false);
+  auto next_wakeup_time = now + kProfilerIntervalMsecs;
 
   while (!stopRunloop_) {
     now = system_clock::now();
@@ -101,7 +95,7 @@ void ActivityProfilerController::profilerLoop() {
     }
 
     while (next_wakeup_time < now) {
-      next_wakeup_time += kDefaultActiveProfilerIntervalMsecs;
+      next_wakeup_time += kProfilerIntervalMsecs;
     }
 
     if (profiler_->isActive()) {
@@ -152,6 +146,11 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   profiler_->processTrace(*logger);
   profiler_->reset();
   return std::make_unique<ActivityTrace>(std::move(logger), CuptiActivityInterface::singleton());
+}
+
+void ActivityProfilerController::addMetadata(
+    const std::string& key, const std::string& value) {
+  profiler_->addMetadata(key, value);
 }
 
 } // namespace KINETO_NAMESPACE

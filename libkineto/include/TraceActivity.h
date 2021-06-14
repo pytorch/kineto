@@ -8,8 +8,6 @@
 #pragma once
 
 #include <string>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "ActivityType.h"
 
@@ -37,21 +35,12 @@ struct TraceActivity {
   virtual const TraceActivity* linkedActivity() const = 0;
   // Log activity
   virtual void log(ActivityLogger& logger) const = 0;
-};
 
-namespace {
-  // Caching pid is not safe across forks and clones but we currently
-  // don't support an active profiler in a forked process.
-  static inline pid_t cachedPid() {
-    static pid_t pid = getpid();
-    return pid;
-  }
-
-  static inline int64_t nsToUs(int64_t ns) {
+  static int64_t nsToUs(int64_t ns) {
     // It's important that this conversion is the same everywhere.
     // No rounding!
     return ns / 1000;
   }
-}
+};
 
 } // namespace libkineto

@@ -8,10 +8,13 @@
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 
-using namespace libkineto;
-
-namespace KINETO_NAMESPACE {
+namespace libkineto {
   void GenericTraceActivity::log(ActivityLogger& logger) const {
+    // TODO(T89833634): Merge handleGenericTraceActivity and handleCpuActivity
+    if (activityType == ActivityType::CPU_OP) {
+      return;
+    }
+
     logger.handleGenericActivity(*this);
   }
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto

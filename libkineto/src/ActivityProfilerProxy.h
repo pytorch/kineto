@@ -40,7 +40,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   bool isActive() override;
 
-  void recordThreadInfo(pid_t tid, pthread_t pthreadId) override;
+  void recordThreadInfo() override;
 
   void scheduleTrace(const std::string& configStr) override;
   void scheduleTrace(const Config& config);
@@ -59,6 +59,8 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
      std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
 
   bool enableForRegion(const std::string& match) override;
+
+  void addMetadata(const std::string& key, const std::string& value) override;
 
  private:
   bool cpuOnly_{true};

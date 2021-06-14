@@ -5,15 +5,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <fcntl.h>
 #include <fmt/format.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <strings.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <time.h>
 #include <chrono>
+
+#ifdef __linux__
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#endif
 
 #include "include/libkineto.h"
 #include "src/ActivityProfiler.h"
@@ -40,12 +43,13 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
   }
 
   void addOp(std::string name, int64_t startTime, int64_t endTime, int64_t correlation) {
-    ClientTraceActivity op;
-    op.opType = name;
+    GenericTraceActivity op;
+    op.activityName = name;
+    op.activityType = ActivityType::CPU_OP;
     op.startTime = startTime;
     op.endTime = endTime;
     op.device = 0;
-    op.sysThreadId = 123;
+    op.sysThreadId = systemThreadId();
     op.correlation = correlation;
     activities.push_back(std::move(op));
     span.opCount++;
@@ -70,7 +74,7 @@ struct MockCuptiActivityBuffer {
         start_us, end_us, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_RUNTIME;
     act.cbid = cbid;
-    act.threadId = pthread_self();
+    act.threadId = threadId();
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -128,7 +132,7 @@ class MockCuptiActivities : public CuptiActivityInterface {
   }
 
   virtual const std::pair<int, int> processActivities(
-      std::list<CuptiActivityBuffer>& /*unused*/,
+      CuptiActivityBufferMap&, /*unused*/
       std::function<void(const CUpti_Activity*)> handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
       handler(act);
@@ -136,11 +140,13 @@ class MockCuptiActivities : public CuptiActivityInterface {
     return {activityBuffer->activities.size(), 100};
   }
 
-  virtual std::unique_ptr<std::list<CuptiActivityBuffer>>
+  virtual std::unique_ptr<CuptiActivityBufferMap>
   activityBuffers() override {
-    auto list = std::make_unique<std::list<CuptiActivityBuffer>>();
-    list->emplace_back(nullptr, 100);
-    return list;
+    auto map = std::make_unique<CuptiActivityBufferMap>();
+    auto buf = std::make_unique<CuptiActivityBuffer>(100);
+    uint8_t* addr = buf->data();
+    (*map)[addr] = std::move(buf);
+    return map;
   }
 
   void bufferRequestedOverride(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
@@ -158,12 +164,6 @@ class ActivityProfilerTest : public ::testing::Test {
     profiler_ = std::make_unique<ActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
-  }
-
-  std::list<CuptiActivityBuffer> createCuptiActivityBuffers() {
-    std::list<CuptiActivityBuffer> res;
-    res.emplace_back(nullptr, 100);
-    return res;
   }
 
   std::unique_ptr<Config> cfg_;
@@ -221,6 +221,7 @@ TEST(ActivityProfiler, AsyncTrace) {
   // Assert that tracing has completed
   EXPECT_FALSE(profiler.isActive());
 
+#ifdef __linux__
   // Check that the expected file was written and that it has some content
   int fd = open(filename, O_RDONLY);
   if (!fd) {
@@ -231,6 +232,7 @@ TEST(ActivityProfiler, AsyncTrace) {
   struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
+#endif
 }
 
 
@@ -252,7 +254,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + microseconds(duration_us));
 
-  profiler.recordThreadInfo(123, pthread_self());
+  profiler.recordThreadInfo();
 
   // Log some cpu ops
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
@@ -299,12 +301,14 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(activityCounts["kernel"], 2);
   EXPECT_EQ(activityCounts["Memcpy HtoD (Pinned -> Device)"], 1);
 
-  // Ops and runtime events are on thread 123
-  EXPECT_EQ(resourceIds[123], 6);
+  auto sysTid = systemThreadId();
+  // Ops and runtime events are on thread sysTid
+  EXPECT_EQ(resourceIds[sysTid], 6);
   // Kernels are on stream 1, memcpy on stream 2
   EXPECT_EQ(resourceIds[1], 2);
   EXPECT_EQ(resourceIds[2], 1);
 
+#ifdef __linux__
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);
   trace.save(filename);
@@ -318,6 +322,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
+#endif
 }
 
 TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
@@ -339,7 +344,7 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   // When launching kernel, the CPU event should always precede the GPU event.
   int64_t kernelLaunchTime = 120;
 
-  profiler.recordThreadInfo(123, pthread_self());
+  profiler.recordThreadInfo();
 
   // set up CPU event
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
@@ -386,9 +391,6 @@ TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
     size_t gpuBufferSize;
     size_t maxNumRecords;
     cuptiActivities_.bufferRequestedOverride(&buf, &gpuBufferSize, &maxNumRecords);
-
-    // we don't actually do anything with the buf so just free it to prevent leaks in tests
-    free(buf);
   }
 
   profiler.performRunLoopStep(now, now);

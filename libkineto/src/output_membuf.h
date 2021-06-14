@@ -17,7 +17,7 @@
 #endif
 
 #include "Config.h"
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
@@ -55,7 +55,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
+      const libkineto::GenericTraceActivity& activity,
       const TraceSpan& span) override {
     activities_.push_back(
         std::make_unique<CpuActivityDecorator>(activity, span));
@@ -87,6 +87,11 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 #endif // HAS_CUPTI
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) override {
+    metadata_ = metadata;
+  }
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -100,6 +105,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void log(ActivityLogger& logger) {
+    logger.handleTraceStart(metadata_);
     for (auto& activity : activities_) {
       activity->log(logger);
     }
@@ -123,7 +129,7 @@ class MemoryTraceLogger : public ActivityLogger {
 
   struct CpuActivityDecorator : public libkineto::TraceActivity {
     CpuActivityDecorator(
-        const libkineto::ClientTraceActivity& activity,
+        const libkineto::GenericTraceActivity& activity,
         const TraceSpan& span)
         : wrappee_(activity), span_(span) {}
     int64_t deviceId() const override {return wrappee_.deviceId();}
@@ -139,7 +145,7 @@ class MemoryTraceLogger : public ActivityLogger {
     void log(ActivityLogger& logger) const override {
       logger.handleCpuActivity(wrappee_, span_);
     }
-    const libkineto::ClientTraceActivity& wrappee_;
+    const libkineto::GenericTraceActivity& wrappee_;
     const TraceSpan span_;
   };
 
@@ -151,6 +157,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::vector<TraceSpan> traceSpanList_;
   std::vector<TraceSpan> iterationList_;
   std::unique_ptr<ActivityBuffers> buffers_;
+  std::unordered_map<std::string, std::string> metadata_;
   int64_t endTime_{0};
 };
 

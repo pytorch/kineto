@@ -25,7 +25,6 @@
  * mechanism), but allows the application to continue.
  */
 
-#include <unistd.h>
 #include <memory>
 #include <mutex>
 

@@ -16,7 +16,7 @@
 #ifdef HAS_CUPTI
 #include <cupti.h>
 #endif
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #include "output_base.h"
 
 namespace libkineto {
@@ -44,7 +44,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleIterationStart(const TraceSpan& span) override;
 
   void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
+      const libkineto::GenericTraceActivity& activity,
       const TraceSpan& span) override;
 
   void handleGenericActivity(
@@ -60,6 +60,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
 #endif // HAS_CUPTI
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) override;
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -71,11 +74,12 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleLinkStart(const TraceActivity& s);
   void handleLinkEnd(const TraceActivity& e);
 
+  void openTraceFile();
+
+  void handleGenericInstantEvent(const GenericTraceActivity& op);
+
   std::string fileName_;
   std::ofstream traceOf_;
-
-  // Cache pid to avoid repeated calls to getpid()
-  pid_t pid_;
 
 #ifdef HAS_CUPTI
   // Number of SMs on current device

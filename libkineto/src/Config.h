@@ -249,17 +249,17 @@ class Config : public AbstractConfig {
     return duration - (duration % alignment);
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandStartTime() const {
     return eventProfilerOnDemandTimestamp_;
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandEndTime() const {
     return eventProfilerOnDemandTimestamp_ + eventProfilerOnDemandDuration_;
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   activityProfilerRequestReceivedTime() const {
     return activitiesOnDemandTimestamp_;
   }
@@ -289,11 +289,12 @@ class Config : public AbstractConfig {
 
   // Adds valid activity types from the user defined string list in the
   // configuration file
-  void addActivityTypes(const std::vector<std::string>& selected_activities);
+  void setActivityTypes(const std::vector<std::string>& selected_activities);
 
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
+    selectedActivityTypes_.insert(ActivityType::CPU_OP);
     selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
     selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
     selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
@@ -315,7 +316,7 @@ class Config : public AbstractConfig {
   // On-demand duration
   std::chrono::seconds eventProfilerOnDemandDuration_;
   // Last on-demand request
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
       eventProfilerOnDemandTimestamp_;
 
   int eventProfilerMaxInstancesPerGpu_;
@@ -355,7 +356,7 @@ class Config : public AbstractConfig {
   // Only profile nets with at least this many GPU operators
   int activitiesExternalAPIGpuOpCountThreshold_;
   // Last activity profiler request
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
       activitiesOnDemandTimestamp_;
 
   // Synchronized start timestamp

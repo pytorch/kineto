@@ -192,7 +192,7 @@ void EventGroupSet::setEnabled(bool enabled) {
 
 // Collect counter values for each counter in group set
 void EventGroupSet::collectSample() {
-  auto timestamp = high_resolution_clock::now();
+  auto timestamp = system_clock::now();
   for (int g = 0; g < set_.numEventGroups; g++) {
     CUpti_EventGroup grp = set_.eventGroups[g];
     for (const auto& id : cuptiEvents_.eventsInGroup(grp)) {
@@ -215,7 +215,7 @@ void EventGroupSet::collectSample() {
   }
 
   if (VLOG_IS_ON(1)) {
-    auto t2 = high_resolution_clock::now();
+    auto t2 = system_clock::now();
     VLOG(1) << "Device " << cuptiEvents_.device() << " Sample (us): "
             << duration_cast<microseconds>(t2 - timestamp).count();
   }
@@ -320,7 +320,7 @@ static unique_ptr<Config> alignAndValidateConfigs(
     Config& base,
     Config& onDemand) {
   if (onDemand.eventProfilerOnDemandDuration().count() == 0 ||
-      high_resolution_clock::now() >
+      system_clock::now() >
           (onDemand.eventProfilerOnDemandStartTime() +
            onDemand.eventProfilerOnDemandDuration())) {
     base.validate();
@@ -530,7 +530,7 @@ void EventProfiler::printAllSamples(ostream& s, CUdevice device) const {
 
 void EventProfiler::enableNextCounterSet() {
   if (sets_.size() > 1) {
-    auto t1 = high_resolution_clock::now();
+    auto t1 = system_clock::now();
 
     VLOG(1) << "Disabling set " << curEnabledSet_;
     sets_[curEnabledSet_].setEnabled(false);
@@ -539,7 +539,7 @@ void EventProfiler::enableNextCounterSet() {
     sets_[curEnabledSet_].setEnabled(true);
 
     if (VLOG_IS_ON(1)) {
-      auto t2 = high_resolution_clock::now();
+      auto t2 = system_clock::now();
       VLOG(1) << "Switch (us): "
               << duration_cast<microseconds>(t2 - t1).count();
     }

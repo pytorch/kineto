@@ -10,17 +10,15 @@
 #include <chrono>
 #include <thread>
 #include <vector>
-#include <sys/syscall.h>
-#include <unistd.h>
 
 #include "ConfigLoader.h"
 #include "CuptiEventInterface.h"
 #include "CuptiMetricInterface.h"
 #include "EventProfiler.h"
-#include "ThreadName.h"
 #include "output_csv.h"
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 using std::unique_ptr;
@@ -94,7 +92,7 @@ class HeartbeatMonitor {
   }
 
   void profilerHeartbeat() {
-    pid_t tid = syscall(SYS_gettid);
+    int32_t tid = systemThreadId();
     std::lock_guard<std::mutex> lock(mutex_);
     profilerAliveMap_[tid]++;
   }
@@ -124,7 +122,7 @@ class HeartbeatMonitor {
       // Don't perform check on spurious wakeup or on notify
       if (cv_status == std::cv_status::timeout) {
         for (auto& pair : profilerAliveMap_) {
-          pid_t tid = pair.first;
+          int32_t tid = pair.first;
           int& i = pair.second;
           if (i == 0) {
             LOG(ERROR) << "Thread " << tid << " appears stuck!";
@@ -155,7 +153,7 @@ class HeartbeatMonitor {
     }
   }
 
-  std::map<pid_t, int> profilerAliveMap_;
+  std::map<int32_t, int> profilerAliveMap_;
   std::unique_ptr<std::thread> monitorThread_;
   std::mutex mutex_;
   std::condition_variable condVar_;
@@ -275,10 +273,10 @@ void EventProfilerController::profilerLoop() {
 
   auto on_demand_config = std::make_unique<Config>();
 
-  time_point<high_resolution_clock> next_sample_time;
-  time_point<high_resolution_clock> next_report_time;
-  time_point<high_resolution_clock> next_on_demand_report_time;
-  time_point<high_resolution_clock> next_multiplex_time;
+  time_point<system_clock> next_sample_time;
+  time_point<system_clock> next_report_time;
+  time_point<system_clock> next_on_demand_report_time;
+  time_point<system_clock> next_multiplex_time;
   bool reconfigure = true;
   bool restart = true;
   int report_count = 0;
@@ -298,7 +296,7 @@ void EventProfilerController::profilerLoop() {
       reconfigure = true;
     }
 
-    auto now = high_resolution_clock::now();
+    auto now = system_clock::now();
     if (on_demand_config->eventProfilerOnDemandDuration().count() > 0 &&
         now > (on_demand_config->eventProfilerOnDemandStartTime() +
                on_demand_config->eventProfilerOnDemandDuration())) {
@@ -323,7 +321,7 @@ void EventProfilerController::profilerLoop() {
     }
 
     if (restart) {
-      now = high_resolution_clock::now();
+      now = system_clock::now();
       next_sample_time = now + profiler_->samplePeriod();
       next_report_time = now + profiler_->reportPeriod();
       next_on_demand_report_time = now + profiler_->onDemandReportPeriod();
@@ -339,13 +337,13 @@ void EventProfilerController::profilerLoop() {
     while (now < next_sample_time) {
       /* sleep override */
       std::this_thread::sleep_for(next_sample_time - now);
-      now = high_resolution_clock::now();
+      now = system_clock::now();
     }
     int sleep_time = duration_cast<milliseconds>(now - start_sleep).count();
 
     auto start_sample = now;
     profiler_->collectSample();
-    now = high_resolution_clock::now();
+    now = system_clock::now();
     int sample_time = duration_cast<milliseconds>(now - start_sample).count();
 
     next_sample_time += profiler_->samplePeriod();
@@ -368,7 +366,7 @@ void EventProfilerController::profilerLoop() {
       next_on_demand_report_time += profiler_->onDemandReportPeriod();
     }
     profiler_->eraseReportedSamples();
-    now = high_resolution_clock::now();
+    now = system_clock::now();
     int report_time = duration_cast<milliseconds>(now - start_report).count();
 
     if (now > next_sample_time) {
@@ -382,7 +380,7 @@ void EventProfilerController::profilerLoop() {
       profiler_->enableNextCounterSet();
       next_multiplex_time += profiler_->multiplexPeriod();
     }
-    now = high_resolution_clock::now();
+    now = system_clock::now();
     int multiplex_time =
         duration_cast<milliseconds>(now - start_multiplex).count();
 

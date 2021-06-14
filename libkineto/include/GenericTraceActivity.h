@@ -12,18 +12,17 @@
 #include <thread>
 #include <vector>
 
+#include "ThreadUtil.h"
 #include "TraceActivity.h"
 
 namespace libkineto {
 
-struct ClientTraceActivity : TraceActivity {
-  ClientTraceActivity() = default;
-  ClientTraceActivity(ClientTraceActivity&&) = default;
-  ClientTraceActivity& operator=(ClientTraceActivity&&) = default;
-  ~ClientTraceActivity() override {}
+// @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
+// @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
+struct GenericTraceActivity : TraceActivity {
 
   int64_t deviceId() const override {
-    return cachedPid();
+    return device;
   }
 
   int64_t resourceId() const override {
@@ -43,38 +42,37 @@ struct ClientTraceActivity : TraceActivity {
   }
 
   ActivityType type() const override {
-    return ActivityType::CPU_OP;
+    return activityType;
   }
 
   const std::string name() const override {
-    return opType;
+    return activityName;
   }
 
   const TraceActivity* linkedActivity() const override {
     return nullptr;
   }
 
-  void log(ActivityLogger& logger) const override {
-    // Unimplemented by default
-  }
+  void log(ActivityLogger& logger) const override;
 
-  // Encode client side metadata as a key/value string.
+  //Encode client side metadata as a key/value string.
   void addMetadata(const std::string& key, const std::string& value) {
-    auto kv = fmt::format("\"{}\": {}", key, value);
-    metadata_.push_back(std::move(kv));
+    metadata_.push_back(fmt::format("\"{}\": {}", key, value));
   }
 
   const std::string getMetadata() const {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
+  virtual ~GenericTraceActivity() {};
+
   int64_t startTime{0};
   int64_t endTime{0};
   int64_t correlation{0};
   int device{-1};
-  // TODO: Add OS abstraction
   int32_t sysThreadId{0};
-  std::string opType;
+  std::string activityName;
+  ActivityType activityType;
 
  private:
   std::vector<std::string> metadata_;

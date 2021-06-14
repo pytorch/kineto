@@ -8,8 +8,8 @@
 #include "Config.h"
 
 #include <stdlib.h>
-#include <unistd.h>
 
+#include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <chrono>
 #include <fstream>
@@ -17,8 +17,10 @@
 #include <istream>
 #include <ostream>
 #include <sstream>
+#include <time.h>
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 
@@ -34,7 +36,7 @@ constexpr int kDefaultActivitiesExternalAPIIterations(3);
 constexpr int kDefaultActivitiesExternalAPINetSizeThreshold(0);
 constexpr int kDefaultActivitiesExternalAPIGpuOpCountThreshold(0);
 constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
-constexpr seconds kDefaultActivitiesWarmupDurationSecs(15);
+constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);
@@ -71,6 +73,7 @@ const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
 // Valid configuration file entries for activity types
+const string kActivityCpuOp = "cpu_op";
 const string kActivityMemcpy = "gpu_memcpy";
 const string kActivityMemset = "gpu_memset";
 const string kActivityConcurrentKernel = "concurrent_kernel";
@@ -129,7 +132,7 @@ void Config::addConfigFactory(
 }
 
 static string defaultTraceFileName() {
-  return fmt::format(kDefaultLogFileFmt, getpid());
+  return fmt::format(kDefaultLogFileFmt, processId());
 }
 
 Config::Config()
@@ -172,39 +175,38 @@ const seconds Config::maxRequestAge() const {
   return kMaxRequestAge;
 }
 
-static char* printTime(time_point<system_clock> t, char* buf, int size) {
+std::string getTimeStr(time_point<system_clock> t) {
   std::time_t t_c = system_clock::to_time_t(t);
-  std::tm lt;
-  localtime_r(&t_c, &lt);
-  std::strftime(buf, size, "%H:%M:%S", &lt);
-  return buf;
+  return fmt::format("{:%H:%M:%S}", fmt::localtime(t_c));
 }
 
 static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   auto t = time_point<system_clock>(milliseconds(ms));
   auto now = system_clock::now();
-  char buf[32];
   if (t > now) {
     throw std::invalid_argument(fmt::format(
         "Invalid {}: {} - time is in future",
         kRequestTimestampKey,
-        printTime(t, buf, sizeof(buf))));
+        getTimeStr(t)));
   } else if ((now - t) > kMaxRequestAge) {
     throw std::invalid_argument(fmt::format(
         "Invalid {}: {} - time is more than {}s in the past",
         kRequestTimestampKey,
-        printTime(t, buf, sizeof(buf)),
+        getTimeStr(t),
         kMaxRequestAge.count()));
   }
   return t;
 }
 
-void Config::addActivityTypes(
+void Config::setActivityTypes(
   const std::vector<std::string>& selected_activities) {
+  selectedActivityTypes_.clear();
   if (selected_activities.size() > 0) {
     for (const auto& activity : selected_activities) {
       if (activity == "") {
         continue;
+      } else if (activity == kActivityCpuOp) {
+        selectedActivityTypes_.insert(ActivityType::CPU_OP);
       } else if (activity == kActivityMemcpy) {
         selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
       } else if (activity == kActivityMemset) {
@@ -235,7 +237,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     metricNames_.insert(metric_names.begin(), metric_names.end());
   } else if (name == kActivityTypesKey) {
     vector<string> activity_types = splitAndTrim(toLower(val), ',');
-    addActivityTypes(activity_types);
+    setActivityTypes(activity_types);
   } else if (name == kSamplePeriodKey) {
     samplePeriod_ = milliseconds(toInt32(val));
   } else if (name == kMultiplexPeriodKey) {
@@ -309,7 +311,7 @@ std::chrono::milliseconds Config::activitiesOnDemandDurationDefault() const {
 };
 
 void Config::updateActivityProfilerRequestReceivedTime() {
-  activitiesOnDemandTimestamp_ = high_resolution_clock::now();
+  activitiesOnDemandTimestamp_ = system_clock::now();
 }
 
 void Config::setClientDefaults() {
@@ -386,9 +388,8 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << std::endl;
   if (hasRequestTimestamp()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    std::tm tm;
     s << "Trace request client timestamp: "
-      << std::put_time(localtime_r(&t_c, &tm), "%F %T") << std::endl;
+      << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c)) << std::endl;
   }
   s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
     << std::endl;
@@ -404,6 +405,9 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Enabled activities: ";
   for (const auto& activity : selectedActivityTypes_) {
     switch(activity){
+      case ActivityType::CPU_OP:
+        s << kActivityCpuOp << " ";
+        break;
       case ActivityType::GPU_MEMCPY:
         s << kActivityMemcpy << " ";
         break;

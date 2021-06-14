@@ -30,7 +30,7 @@ class ActivityTrace : public ActivityTraceInterface {
 
   void save(const std::string& path) override {
     ChromeTraceLogger chrome_logger(path, cuptiActivities_.smCount());
-    return logger_->log(chrome_logger);
+    logger_->log(chrome_logger);
   };
 
  private:

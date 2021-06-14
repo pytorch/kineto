@@ -9,7 +9,6 @@
 
 #pragma once
 
-#include <signal.h>
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -24,8 +23,10 @@
 #include "ActivityTraceInterface.h"
 #include "ActivityType.h"
 #include "ClientInterface.h"
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #include "TraceSpan.h"
+
+#include "ThreadUtil.h"
 
 extern "C" {
   void suppressLibkinetoLogMessages();
@@ -39,7 +40,7 @@ class Config;
 struct CpuTraceBuffer {
   TraceSpan span;
   int gpuOpCount;
-  std::vector<ClientTraceActivity> activities;
+  std::vector<GenericTraceActivity> activities;
 };
 
 class LibkinetoApi {
@@ -98,7 +99,7 @@ class LibkinetoApi {
 
   std::unique_ptr<ActivityProfilerInterface> activityProfiler_{};
   ClientInterface* client_{};
-  pthread_t clientRegisterThread_{0};
+  int32_t clientRegisterThread_{0};
 
   bool isLoaded_{false};
   std::atomic_int netSizeThreshold_{};
@@ -108,4 +109,3 @@ class LibkinetoApi {
 LibkinetoApi& api();
 
 } // namespace libkineto
-

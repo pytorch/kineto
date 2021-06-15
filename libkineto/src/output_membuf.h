@@ -17,7 +17,7 @@
 #endif
 
 #include "Config.h"
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
@@ -47,22 +47,10 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void handleTraceSpan(const TraceSpan& span) override {
-    traceSpanList_.push_back(span);
+    // Handled separately
   }
 
-  void handleIterationStart(const TraceSpan& span) override {
-    iterationList_.push_back(span);
-  }
-
-  void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
-      const TraceSpan& span) override {
-    activities_.push_back(
-        std::make_unique<CpuActivityDecorator>(activity, span));
-  }
-
-  void handleGenericActivity(
-      const GenericTraceActivity& activity) override {
+  void handleGenericActivity(const GenericTraceActivity& activity) override {
     activities_.push_back(
         std::make_unique<GenericTraceActivity>(activity));
   }
@@ -87,6 +75,11 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 #endif // HAS_CUPTI
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) override {
+    metadata_ = metadata;
+  }
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -100,6 +93,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void log(ActivityLogger& logger) {
+    logger.handleTraceStart(metadata_);
     for (auto& activity : activities_) {
       activity->log(logger);
     }
@@ -109,11 +103,8 @@ class MemoryTraceLogger : public ActivityLogger {
     for (auto& p : threadInfoList_) {
       logger.handleThreadInfo(p.first, p.second);
     }
-    for (auto& span : traceSpanList_) {
-      logger.handleTraceSpan(span);
-    }
-    for (auto& it : iterationList_) {
-      logger.handleIterationStart(it);
+    for (auto& cpu_trace_buffer : buffers_->cpu) {
+      logger.handleTraceSpan(cpu_trace_buffer->span);
     }
     // Hold on to the buffers
     logger.finalizeTrace(*config_, nullptr, endTime_);
@@ -121,36 +112,13 @@ class MemoryTraceLogger : public ActivityLogger {
 
  private:
 
-  struct CpuActivityDecorator : public libkineto::TraceActivity {
-    CpuActivityDecorator(
-        const libkineto::ClientTraceActivity& activity,
-        const TraceSpan& span)
-        : wrappee_(activity), span_(span) {}
-    int64_t deviceId() const override {return wrappee_.deviceId();}
-    int64_t resourceId() const override {return wrappee_.resourceId();}
-    int64_t timestamp() const override {return wrappee_.timestamp();}
-    int64_t duration() const override {return wrappee_.duration();}
-    int64_t correlationId() const override {return wrappee_.correlationId();}
-    ActivityType type() const override {return wrappee_.type();}
-    const std::string name() const override {return wrappee_.name();}
-    const TraceActivity* linkedActivity() const override {
-      return wrappee_.linkedActivity();
-    }
-    void log(ActivityLogger& logger) const override {
-      logger.handleCpuActivity(wrappee_, span_);
-    }
-    const libkineto::ClientTraceActivity& wrappee_;
-    const TraceSpan span_;
-  };
-
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
   std::vector<std::unique_ptr<TraceActivity>> activities_;
   std::vector<std::pair<ProcessInfo, int64_t>> processInfoList_;
   std::vector<std::pair<ThreadInfo, int64_t>> threadInfoList_;
-  std::vector<TraceSpan> traceSpanList_;
-  std::vector<TraceSpan> iterationList_;
   std::unique_ptr<ActivityBuffers> buffers_;
+  std::unordered_map<std::string, std::string> metadata_;
   int64_t endTime_{0};
 };
 

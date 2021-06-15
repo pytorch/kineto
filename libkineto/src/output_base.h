@@ -18,15 +18,14 @@
 #include "CuptiActivity.h"
 #endif // HAS_CUPTI
 #include "ActivityBuffers.h"
-#include "ClientTraceActivity.h"
 #include "GenericTraceActivity.h"
-#include "ProcessInfo.h"
+#include "ThreadUtil.h"
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
   class Config;
-  class RuntimeActivity;
   class GpuKernelActivity;
+  struct RuntimeActivity;
 }
 
 namespace libkineto {
@@ -45,14 +44,8 @@ class ActivityLogger {
 
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
-  virtual void handleIterationStart(const TraceSpan& span) = 0;
-
-  virtual void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
-      const TraceSpan& span) = 0;
-
   virtual void handleGenericActivity(
-      const GenericTraceActivity& activity) = 0;
+      const libkineto::GenericTraceActivity& activity) = 0;
 
 #ifdef HAS_CUPTI
   virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
@@ -66,6 +59,13 @@ class ActivityLogger {
   virtual void handleGpuActivity(
       const GpuActivity<CUpti_ActivityMemset>& activity) = 0;
 #endif // HAS_CUPTI
+
+  virtual void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) = 0;
+
+  void handleTraceStart() {
+    handleTraceStart(std::unordered_map<std::string, std::string>());
+  }
 
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,

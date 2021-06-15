@@ -12,7 +12,7 @@
 
 namespace libkineto {
 
-class TraceActivity;
+struct TraceActivity;
 
 class ActivityTraceInterface {
  public:

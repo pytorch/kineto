@@ -84,4 +84,13 @@ bool ActivityProfilerProxy::enableForRegion(const std::string& match) {
   return controller_->traceInclusionFilter(match);
 }
 
+void ActivityProfilerProxy::addMetadata(
+    const std::string& key, const std::string& value) {
+  controller_->addMetadata(key, value);
+}
+
+void ActivityProfilerProxy::recordThreadInfo() {
+  controller_->recordThreadInfo();
+}
+
 } // namespace libkineto

@@ -53,6 +53,15 @@ class Config : public AbstractConfig {
     return activitiesLogFile_;
   }
 
+  // Log activitiy trace to this url
+  const std::string& activitiesLogUrl() const {
+    return activitiesLogUrl_;
+  }
+
+  void setActivitiesLogUrl(const std::string& url) {
+    activitiesLogUrl_ = url;
+  }
+
   bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
   }
@@ -249,17 +258,17 @@ class Config : public AbstractConfig {
     return duration - (duration % alignment);
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandStartTime() const {
     return eventProfilerOnDemandTimestamp_;
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandEndTime() const {
     return eventProfilerOnDemandTimestamp_ + eventProfilerOnDemandDuration_;
   }
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
   activityProfilerRequestReceivedTime() const {
     return activitiesOnDemandTimestamp_;
   }
@@ -272,7 +281,7 @@ class Config : public AbstractConfig {
 
   static void addConfigFactory(
       std::string name,
-      std::function<AbstractConfig*(const Config&)> factory);
+      std::function<AbstractConfig*(Config&)> factory);
 
   void print(std::ostream& s) const;
 
@@ -289,16 +298,14 @@ class Config : public AbstractConfig {
 
   // Adds valid activity types from the user defined string list in the
   // configuration file
-  void addActivityTypes(const std::vector<std::string>& selected_activities);
+  void setActivityTypes(const std::vector<std::string>& selected_activities);
 
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
-    selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
-    selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
-    selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
-    selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
-    selectedActivityTypes_.insert(ActivityType::CUDA_RUNTIME);
+    for (ActivityType t : activityTypes()) {
+      selectedActivityTypes_.insert(t);
+    }
   }
 
   int verboseLogLevel_;
@@ -315,7 +322,7 @@ class Config : public AbstractConfig {
   // On-demand duration
   std::chrono::seconds eventProfilerOnDemandDuration_;
   // Last on-demand request
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
       eventProfilerOnDemandTimestamp_;
 
   int eventProfilerMaxInstancesPerGpu_;
@@ -337,6 +344,8 @@ class Config : public AbstractConfig {
   // The activity profiler settings are all on-demand
   std::string activitiesLogFile_;
 
+  std::string activitiesLogUrl_;
+
   // Log activities to memory buffer
   bool activitiesLogToMemory_{false};
 
@@ -355,7 +364,7 @@ class Config : public AbstractConfig {
   // Only profile nets with at least this many GPU operators
   int activitiesExternalAPIGpuOpCountThreshold_;
   // Last activity profiler request
-  std::chrono::time_point<std::chrono::high_resolution_clock>
+  std::chrono::time_point<std::chrono::system_clock>
       activitiesOnDemandTimestamp_;
 
   // Synchronized start timestamp

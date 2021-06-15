@@ -57,12 +57,12 @@ class ConfigLoader {
 
   // Create configuration when receiving SIGUSR2
   void configureFromSignal(
-      std::chrono::time_point<std::chrono::high_resolution_clock> now,
+      std::chrono::time_point<std::chrono::system_clock> now,
       Config& config);
 
   // Create configuration when receiving request from a daemon
   void configureFromDaemon(
-      std::chrono::time_point<std::chrono::high_resolution_clock> now,
+      std::chrono::time_point<std::chrono::system_clock> now,
       Config& config);
 
   inline bool eventProfilerRequest(const Config& config) {
@@ -72,7 +72,7 @@ class ConfigLoader {
   }
 
   std::string readOnDemandConfigFromDaemon(
-      std::chrono::time_point<std::chrono::high_resolution_clock> now);
+      std::chrono::time_point<std::chrono::system_clock> now);
 
   LibkinetoApi& libkinetoApi_;
   std::mutex configLock_;

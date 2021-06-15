@@ -16,6 +16,9 @@ class DaemonConfigLoader {
  public:
   virtual ~DaemonConfigLoader() {}
 
+  // Return the base config from the daemon
+  virtual std::string readBaseConfig() = 0;
+
   // Return a configuration string from the daemon, if one has been posted.
   virtual std::string readOnDemandConfig(bool events, bool activities) = 0;
 

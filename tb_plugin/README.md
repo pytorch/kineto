@@ -24,7 +24,7 @@ and give optimization recommendations.
 
 * Build the wheel
   - `python setup.py build_fe sdist bdist_wheel` \
-   **_Note_**: the build_fe step need setup yarn and nodejs
+   **_Note_**: the build_fe step need setup yarn and Node.js
   - `python setup.py sdist bdist_wheel`
 
 ### Quick Start Instructions

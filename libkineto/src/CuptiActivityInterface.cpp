@@ -7,10 +7,10 @@
 
 #include "CuptiActivityInterface.h"
 
+#include <assert.h>
 #include <chrono>
 
 #include "cupti_call.h"
-
 #include "Logger.h"
 
 using namespace std::chrono;
@@ -30,6 +30,9 @@ CuptiActivityInterface& CuptiActivityInterface::singleton() {
 
 void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_CUPTI
+  if (!singleton().externalCorrelationEnabled_) {
+    return;
+  }
   VLOG(2) << "pushCorrelationID(" << id << ")";
   switch(type) {
     case Default:
@@ -45,6 +48,9 @@ void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type)
 
 void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_CUPTI
+  if (!singleton().externalCorrelationEnabled_) {
+    return;
+  }
   switch(type) {
     case Default:
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
@@ -121,40 +127,53 @@ void CUPTIAPI CuptiActivityInterface::bufferRequestedTrampoline(
   singleton().bufferRequested(buffer, size, maxNumRecords);
 }
 
-void CuptiActivityInterface::bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
-  if (allocatedGpuBufferCount >= maxGpuBufferCount_) {
+void CuptiActivityInterface::bufferRequested(
+    uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
     stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
-                 << allocatedGpuBufferCount
+                 << allocatedGpuTraceBuffers_.size()
+                 << " > " << maxGpuBufferCount_
                  << ") - terminating tracing";
   }
 
+  auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);
+  *buffer = buf->data();
   *size = kBufSize;
+
+  allocatedGpuTraceBuffers_[*buffer] = std::move(buf);
+
   *maxNumRecords = 0;
-
-  // TODO(xdwang): create a list of buffers in advance so that we can reuse.
-  // This saves time to dynamically allocate new buffers (which could be costly
-  // if we allocated new space from the heap)
-  *buffer = (uint8_t*) malloc(kBufSize);
-
-  allocatedGpuBufferCount++;
 }
 #endif
 
-std::unique_ptr<std::list<CuptiActivityBuffer>> CuptiActivityInterface::activityBuffers() {
+std::unique_ptr<CuptiActivityBufferMap>
+CuptiActivityInterface::activityBuffers() {
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (allocatedGpuTraceBuffers_.empty()) {
+      return nullptr;
+    }
+  }
+
 #ifdef HAS_CUPTI
   VLOG(1) << "Flushing GPU activity buffers";
-  time_point<high_resolution_clock> t1;
+  time_point<system_clock> t1;
   if (VLOG_IS_ON(1)) {
-    t1 = high_resolution_clock::now();
+    t1 = system_clock::now();
   }
+  // Can't hold mutex_ during this call, since bufferCompleted
+  // will be called by libcupti and mutex_ is acquired there.
   CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
   if (VLOG_IS_ON(1)) {
     flushOverhead =
-        duration_cast<microseconds>(high_resolution_clock::now() - t1).count();
+        duration_cast<microseconds>(system_clock::now() - t1).count();
   }
 #endif
-  return std::move(gpuTraceBuffers_);
+  std::lock_guard<std::mutex> guard(mutex_);
+  // Transfer ownership of buffers to caller. A new map is created on-demand.
+  return std::move(readyGpuTraceBuffers_);
 }
 
 #ifdef HAS_CUPTI
@@ -175,35 +194,37 @@ int CuptiActivityInterface::processActivitiesForBuffer(
 #endif
 
 const std::pair<int, int> CuptiActivityInterface::processActivities(
-    std::list<CuptiActivityBuffer>& buffers,
+    CuptiActivityBufferMap& buffers,
     std::function<void(const CUpti_Activity*)> handler) {
   std::pair<int, int> res{0, 0};
 #ifdef HAS_CUPTI
-  for (auto& buf : buffers) {
+  for (auto& pair : buffers) {
     // No lock needed - only accessed from this thread
-    res.first += processActivitiesForBuffer(buf.data, buf.validSize, handler);
-    res.second += buf.validSize;
+    auto& buf = pair.second;
+    res.first += processActivitiesForBuffer(buf->data(), buf->size(), handler);
+    res.second += buf->size();
   }
 #endif
   return res;
 }
 
 void CuptiActivityInterface::clearActivities() {
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (allocatedGpuTraceBuffers_.empty()) {
+      return;
+    }
+  }
+  // Can't hold mutex_ during this call, since bufferCompleted
+  // will be called by libcupti and mutex_ is acquired there.
   CUPTI_CALL(cuptiActivityFlushAll(0));
   // FIXME: We might want to make sure we reuse
   // the same memory during warmup and tracing.
   // Also, try to use the amount of memory required
   // for active tracing during warmup.
-  if (gpuTraceBuffers_) {
-    gpuTraceBuffers_->clear();
-  }
-}
-
-void CuptiActivityInterface::addActivityBuffer(uint8_t* buffer, size_t validSize) {
-  if (!gpuTraceBuffers_) {
-    gpuTraceBuffers_ = std::make_unique<std::list<CuptiActivityBuffer>>();
-  }
-  gpuTraceBuffers_->emplace_back(buffer, validSize);
+  std::lock_guard<std::mutex> guard(mutex_);
+  // Throw away ready buffers as a result of above flush
+  readyGpuTraceBuffers_ = nullptr;
 }
 
 #ifdef HAS_CUPTI
@@ -222,12 +243,22 @@ void CuptiActivityInterface::bufferCompleted(
     uint8_t* buffer,
     size_t /* unused */,
     size_t validSize) {
-  allocatedGpuBufferCount--;
 
-  // lock should be uncessary here, because gpuTraceBuffers is read/written by
-  // profilerLoop only. CUPTI should handle the cuptiActivityFlushAll and
-  // bufferCompleted, so that there is no concurrency issues
-  addActivityBuffer(buffer, validSize);
+  std::lock_guard<std::mutex> guard(mutex_);
+  auto it = allocatedGpuTraceBuffers_.find(buffer);
+  if (it == allocatedGpuTraceBuffers_.end()) {
+    LOG(ERROR) << "bufferCompleted called with unknown buffer: "
+               << (void*) buffer;
+    return;
+  }
+
+  if (!readyGpuTraceBuffers_) {
+    readyGpuTraceBuffers_ = std::make_unique<CuptiActivityBufferMap>();
+  }
+  // Set valid size of buffer before moving to ready map
+  it->second->setSize(validSize);
+  (*readyGpuTraceBuffers_)[it->first] = std::move(it->second);
+  allocatedGpuTraceBuffers_.erase(it);
 
   // report any records dropped from the queue; to avoid unnecessary cupti
   // API calls, we make it report only in verbose mode (it doesn't happen
@@ -251,6 +282,7 @@ void CuptiActivityInterface::enableCuptiActivities(
         cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
   }
 
+  externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
@@ -263,6 +295,7 @@ void CuptiActivityInterface::enableCuptiActivities(
     }
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
+      externalCorrelationEnabled_ = true;
     }
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
@@ -294,6 +327,7 @@ void CuptiActivityInterface::disableCuptiActivities(
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
   }
+  externalCorrelationEnabled_ = false;
 #endif
 }
 

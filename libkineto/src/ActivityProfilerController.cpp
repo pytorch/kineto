@@ -10,9 +10,10 @@
 #include <chrono>
 #include <thread>
 
+#include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
-#include "ThreadName.h"
+#include "ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"
 
@@ -22,8 +23,7 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-constexpr milliseconds kDefaultInactiveProfilerIntervalMsecs(1000);
-constexpr milliseconds kDefaultActiveProfilerIntervalMsecs(200);
+constexpr milliseconds kProfilerIntervalMsecs(1000);
 
 ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
   profiler_ = std::make_unique<ActivityProfiler>(CuptiActivityInterface::singleton(), cpuOnly);
@@ -40,31 +40,29 @@ ActivityProfilerController::~ActivityProfilerController() {
   VLOG(0) << "Stopped activity profiler";
 }
 
-static ActivityLoggerFactory& loggerFactory() {
-  static ActivityLoggerFactory factory{nullptr};
+static ActivityLoggerFactory initLoggerFactory() {
+  ActivityLoggerFactory factory;
+  factory.addProtocol("file", [](const std::string& url) {
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+  });
   return factory;
 }
 
-void ActivityProfilerController::setLoggerFactory(
-    const ActivityLoggerFactory& factory) {
-  loggerFactory() = factory;
+static ActivityLoggerFactory& loggerFactory() {
+  static ActivityLoggerFactory factory = initLoggerFactory();
+  return factory;
+}
+
+void ActivityProfilerController::addLoggerFactory(
+    const std::string& protocol, ActivityLoggerFactory::FactoryFunc factory) {
+  loggerFactory().addProtocol(protocol, factory);
 }
 
 static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
   if (config.activitiesLogToMemory()) {
     return std::make_unique<MemoryTraceLogger>(config);
   }
-  if (loggerFactory()) {
-    return loggerFactory()(config);
-  }
-  return std::make_unique<ChromeTraceLogger>(
-      config.activitiesLogFile(),
-      CuptiActivityInterface::singleton().smCount());
-}
-
-static milliseconds profilerInterval(bool profilerActive) {
-  return profilerActive ? kDefaultActiveProfilerIntervalMsecs
-                        : kDefaultInactiveProfilerIntervalMsecs;
+  return loggerFactory().makeLogger(config.activitiesLogUrl());
 }
 
 void ActivityProfilerController::profilerLoop() {
@@ -72,7 +70,7 @@ void ActivityProfilerController::profilerLoop() {
   VLOG(0) << "Entering activity profiler loop";
 
   auto now = system_clock::now();
-  auto next_wakeup_time = now + profilerInterval(false);
+  auto next_wakeup_time = now + kProfilerIntervalMsecs;
 
   while (!stopRunloop_) {
     now = system_clock::now();
@@ -94,7 +92,7 @@ void ActivityProfilerController::profilerLoop() {
     }
 
     while (next_wakeup_time < now) {
-      next_wakeup_time += kDefaultActiveProfilerIntervalMsecs;
+      next_wakeup_time += kProfilerIntervalMsecs;
     }
 
     if (profiler_->isActive()) {
@@ -144,7 +142,12 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger), CuptiActivityInterface::singleton());
+  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
+}
+
+void ActivityProfilerController::addMetadata(
+    const std::string& key, const std::string& value) {
+  profiler_->addMetadata(key, value);
 }
 
 } // namespace KINETO_NAMESPACE

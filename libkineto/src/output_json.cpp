@@ -11,13 +11,13 @@
 #include <fstream>
 #include <time.h>
 #include <map>
-#include <unistd.h>
 
 #include "Config.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
 #include "CuptiActivityInterface.h"
+#include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "Demangle.h"
 #include "TraceSpan.h"
@@ -30,32 +30,51 @@ using namespace libkineto;
 namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
+#ifdef __linux__
+static const std::string kDefaultLogFileFmt =
+    "/tmp/libkineto_activities_{}.json";
+#else
+static const std::string kDefaultLogFileFmt = "libkineto_activities_{}.json";
+#endif
 
-static void writeHeader(std::ofstream& stream) {
-  stream << fmt::format(R"JSON(
+void ChromeTraceLogger::handleTraceStart(
+    const std::unordered_map<std::string, std::string>& metadata) {
+  traceOf_ << fmt::format(R"JSON(
 {{
-  "schemaVersion": {},
-  "traceEvents": [
-  )JSON", kSchemaVersion);
+  "schemaVersion": {},)JSON", kSchemaVersion);
+
+  for (const auto& kv : metadata) {
+    traceOf_ << fmt::format(R"JSON(
+  "{}": {},)JSON", kv.first, kv.second);
+  }
+
+#ifdef HAS_CUPTI
+  traceOf_ << fmt::format(R"JSON(
+  "deviceProperties": [{}
+  ],)JSON", devicePropertiesJson());
+#endif
+
+  traceOf_ << R"JSON(
+  "traceEvents": [)JSON";
 }
 
-static void openTraceFile(std::string& name, std::ofstream& stream) {
-  stream.open(name, std::ofstream::out | std::ofstream::trunc);
-  if (!stream) {
-    PLOG(ERROR) << "Failed to open '" << name << "'";
+static std::string defaultFileName() {
+  return fmt::format(kDefaultLogFileFmt, processId());
+}
+
+void ChromeTraceLogger::openTraceFile() {
+  traceOf_.open(fileName_, std::ofstream::out | std::ofstream::trunc);
+  if (!traceOf_) {
+    PLOG(ERROR) << "Failed to open '" << fileName_ << "'";
   } else {
-    LOG(INFO) << "Tracing to " << name;
-    writeHeader(stream);
+    LOG(INFO) << "Tracing to " << fileName_;
   }
 }
 
-ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName, int smCount)
-    : fileName_(traceFileName), pid_(getpid()) {
+ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
+  fileName_ = traceFileName.empty() ? defaultFileName() : traceFileName;
   traceOf_.clear(std::ios_base::badbit);
-  openTraceFile(fileName_, traceOf_);
-#ifdef HAS_CUPTI
-  smCount_ = CuptiActivityInterface::singleton().smCount();
-#endif
+  openTraceFile();
 }
 
 static int64_t us(int64_t timestamp) {
@@ -111,7 +130,7 @@ void ChromeTraceLogger::handleThreadInfo(
       "name": "thread {} ({})"
     }}
   }},)JSON",
-      time, pid_, threadInfo.tid,
+      time, processId(), threadInfo.tid,
       threadInfo.tid, threadInfo.name);
   // clang-format on
 }
@@ -136,9 +155,13 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
       span.prefix, span.name, span.iteration,
       span.opCount);
   // clang-format on
+
+  if (span.tracked) {
+    addIterationMarker(span);
+  }
 }
 
-void ChromeTraceLogger::handleIterationStart(const TraceSpan& span) {
+void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
   if (!traceOf_) {
     return;
   }
@@ -154,65 +177,72 @@ void ChromeTraceLogger::handleIterationStart(const TraceSpan& span) {
   // clang-format on
 }
 
-static std::string traceActivityJson(const TraceActivity& activity, std::string tidPrefix) {
+static std::string traceActivityJson(
+    const TraceActivity& activity, std::string tid) {
   // clang-format off
   return fmt::format(R"JSON(
-    "name": "{}", "pid": {}, "tid": "{}{}",
+    "name": "{}", "pid": {}, "tid": "{}",
     "ts": {}, "dur": {})JSON",
-      activity.name(), activity.deviceId(), tidPrefix, (uint32_t)activity.resourceId(),
+      activity.name(), activity.deviceId(), tid,
       activity.timestamp(), activity.duration());
   // clang-format on
 }
 
-void ChromeTraceLogger::handleCpuActivity(
-    const libkineto::ClientTraceActivity& op,
-    const TraceSpan& span) {
+void ChromeTraceLogger::handleGenericInstantEvent(
+    const libkineto::GenericTraceActivity& op) {
   if (!traceOf_) {
     return;
   }
 
-  // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
-    "ph": "X", "cat": "Operator", {},
+    "ph": "i", "s": "t", "name": "{}",
+    "pid": {}, "tid": {},
+    "ts": {},
     "args": {{
-       "Input dims": {}, "Input type": {}, "Input names": {},
-       "Output dims": {}, "Output type": {}, "Output names": {},
-       "Device": {}, "External id": {}, "Extra arguments": {},
-       "Call stack": "{}",
-       "Trace name": "{}", "Trace iteration": {}
-    }}
-  }},)JSON",
-      traceActivityJson(op, ""),
-      // args
-      op.inputDims, op.inputTypes, op.inputNames,
-      op.outputDims, op.outputTypes, op.outputNames,
-      op.device, op.correlation, op.arguments,
-      op.callStack,
-      span.name, span.iteration);
-  // clang-format on
-}
-
-void ChromeTraceLogger::handleGenericActivity(
-      const GenericTraceActivity& op) {
-    if (!traceOf_) {
-    return;
-  }
-
-  // FIXME: Make cat and tid customizable
-  // clang-format off
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "User", "name": "{}",
-    "pid": {}, "tid": "stream {} user",
-    "ts": {}, "dur": {},
-    "args": {{
-      "External id": {}
+      {}
     }}
   }},)JSON",
       op.name(), op.deviceId(), op.resourceId(),
-      op.timestamp(), op.duration(),
-      op.correlationId());
+      op.timestamp(), op.getMetadata());
+}
+
+void ChromeTraceLogger::handleGenericActivity(
+    const libkineto::GenericTraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
+
+  if (op.activityType == ActivityType::CPU_INSTANT_EVENT) {
+    handleGenericInstantEvent(op);
+    return;
+  }
+
+  auto op_metadata = op.getMetadata();
+  std::string separator = "";
+  if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
+    separator = ",";
+  }
+  const std::string tid =
+      op.type() == ActivityType::GPU_USER_ANNOTATION ?
+      fmt::format("stream {} annotations", op.resourceId()) :
+      fmt::format("{}", op.resourceId());
+
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "X", "cat": "{}", {},
+    "args": {{
+       "External id": {},
+       "Trace name": "{}", "Trace iteration": {}{}
+       {}
+    }}
+  }},)JSON",
+      toString(op.type()), traceActivityJson(op, tid),
+      // args
+      op.id,
+      op.traceSpan()->name, op.traceSpan()->iteration, separator,
+      op_metadata);
   // clang-format on
 }
 
@@ -228,7 +258,7 @@ void ChromeTraceLogger::handleLinkStart(const RuntimeActivity& s) {
     "ph": "s", "id": {}, "pid": {}, "tid": {}, "ts": {},
     "cat": "async", "name": "launch"
   }},)JSON",
-      s.correlationId(), pid_, s.resourceId(), s.timestamp());
+      s.correlationId(), processId(), s.resourceId(), s.timestamp());
   // clang-format on
 
 }
@@ -264,7 +294,7 @@ void ChromeTraceLogger::handleRuntimeActivity(
       "external id": {}, "external ts": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, ""),
+      traceActivityJson(activity, fmt::format("{}", activity.resourceId())),
       // args
       cbid, activity.raw().correlationId,
       ext.correlationId(), ext.timestamp());
@@ -283,6 +313,10 @@ void ChromeTraceLogger::handleRuntimeActivity(
   }
 }
 
+static std::string streamName(const TraceActivity& act) {
+  return fmt::format("stream {}", act.resourceId());
+}
+
 // GPU side kernel activity
 void ChromeTraceLogger::handleGpuActivity(
     const GpuActivity<CUpti_ActivityKernel4>& activity) {
@@ -292,12 +326,28 @@ void ChromeTraceLogger::handleGpuActivity(
   const CUpti_ActivityKernel4* kernel = &activity.raw();
   const TraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
+  float blocks_per_sm = -1.0;
   float warps_per_sm = -1.0;
-  if (smCount_) {
-    warps_per_sm = (kernel->gridX * kernel->gridY * kernel->gridZ) *
-        (kernel->blockX * kernel->blockY * kernel->blockZ) /
-        (float) threads_per_warp / smCount_;
+  int sm_count = smCount(kernel->deviceId);
+  if (sm_count) {
+    blocks_per_sm =
+        (kernel->gridX * kernel->gridY * kernel->gridZ) / (float) sm_count;
+    warps_per_sm =
+        blocks_per_sm * (kernel->blockX * kernel->blockY * kernel->blockZ)
+        / threads_per_warp;
   }
+
+  // Calculate occupancy
+  float occupancy = KINETO_NAMESPACE::kernelOccupancy(
+      kernel->deviceId,
+      kernel->registersPerThread,
+      kernel->staticSharedMemory,
+      kernel->dynamicSharedMemory,
+      kernel->blockX,
+      kernel->blockY,
+      kernel->blockZ,
+      blocks_per_sm);
+
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -307,20 +357,24 @@ void ChromeTraceLogger::handleGpuActivity(
       "stream": {}, "correlation": {}, "external id": {},
       "registers per thread": {},
       "shared memory": {},
+      "blocks per SM": {},
       "warps per SM": {},
       "grid": [{}, {}, {}],
-      "block": [{}, {}, {}]
+      "block": [{}, {}, {}],
+      "est. achieved occupancy %": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, "stream "),
+      traceActivityJson(activity, streamName(activity)),
       // args
       us(kernel->queued), kernel->deviceId, kernel->contextId,
       kernel->streamId, kernel->correlationId, ext.correlationId(),
       kernel->registersPerThread,
       kernel->staticSharedMemory + kernel->dynamicSharedMemory,
+      blocks_per_sm,
       warps_per_sm,
       kernel->gridX, kernel->gridY, kernel->gridZ,
-      kernel->blockX, kernel->blockY, kernel->blockZ);
+      kernel->blockX, kernel->blockY, kernel->blockZ,
+      (int) (0.5 + occupancy * 100.0));
   // clang-format on
 
   handleLinkEnd(activity);
@@ -349,7 +403,7 @@ void ChromeTraceLogger::handleGpuActivity(
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, "stream "),
+      traceActivityJson(activity, streamName(activity)),
       // args
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId, ext.correlationId(),
@@ -378,7 +432,7 @@ void ChromeTraceLogger::handleGpuActivity(
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, "stream "),
+      traceActivityJson(activity, streamName(activity)),
       // args
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
@@ -406,7 +460,7 @@ void ChromeTraceLogger::handleGpuActivity(
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, "stream "),
+      traceActivityJson(activity, streamName(activity)),
       // args
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId, ext.correlationId(),

@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <set>
+#include <thread>
 #include <vector>
 
 #include "ActivityType.h"
@@ -17,7 +18,7 @@
 namespace libkineto {
 
 class ActivityProfilerController;
-class CpuTraceBuffer;
+struct CpuTraceBuffer;
 class Config;
 
 class ActivityProfilerInterface {
@@ -76,6 +77,14 @@ class ActivityProfilerInterface {
   virtual bool enableForRegion(const std::string& match) {
     return true;
   }
+
+  // Saves information for the current thread to be used in profiler output
+  // Client must record any new kernel thread where the activity has occured.
+  virtual void recordThreadInfo() {}
+
+  // Record trace metadata, currently supporting only string key and values,
+  // values with the same key are overwritten
+  virtual void addMetadata(const std::string& key, const std::string& value) = 0;
 };
 
 } // namespace libkineto

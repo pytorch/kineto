@@ -16,7 +16,7 @@
 #ifdef HAS_CUPTI
 #include <cupti.h>
 #endif
-#include "ClientTraceActivity.h"
+#include "GenericTraceActivity.h"
 #include "output_base.h"
 
 namespace libkineto {
@@ -29,7 +29,7 @@ class Config;
 
 class ChromeTraceLogger : public libkineto::ActivityLogger {
  public:
-  explicit ChromeTraceLogger(const std::string& traceFileName, int smCount);
+  explicit ChromeTraceLogger(const std::string& traceFileName);
 
   // Note: the caller of these functions should handle concurrency
   // i.e., we these functions are not thread-safe
@@ -41,14 +41,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleTraceSpan(const TraceSpan& span) override;
 
-  void handleIterationStart(const TraceSpan& span) override;
-
-  void handleCpuActivity(
-      const libkineto::ClientTraceActivity& activity,
-      const TraceSpan& span) override;
-
-  void handleGenericActivity(
-      const GenericTraceActivity& activity) override;
+  void handleGenericActivity(const GenericTraceActivity& activity) override;
 
 #ifdef HAS_CUPTI
   void handleRuntimeActivity(
@@ -60,10 +53,17 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
 #endif // HAS_CUPTI
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata) override;
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
       int64_t endTime) override;
+
+  std::string traceFileName() const {
+    return fileName_;
+  }
 
  private:
 
@@ -73,16 +73,14 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleLinkEnd(const TraceActivity& e);
 #endif // HAS_CUPTI
 
+  void addIterationMarker(const TraceSpan& span);
+
+  void openTraceFile();
+
+  void handleGenericInstantEvent(const GenericTraceActivity& op);
+
   std::string fileName_;
   std::ofstream traceOf_;
-
-  // Cache pid to avoid repeated calls to getpid()
-  pid_t pid_;
-
-#ifdef HAS_CUPTI
-  // Number of SMs on current device
-  int smCount_{0};
-#endif
 };
 
 } // namespace KINETO_NAMESPACE

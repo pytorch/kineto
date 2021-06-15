@@ -8,8 +8,8 @@
 #include "Config.h"
 
 #include <stdlib.h>
-#include <unistd.h>
 
+#include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <chrono>
 #include <fstream>
@@ -17,8 +17,10 @@
 #include <istream>
 #include <ostream>
 #include <sstream>
+#include <time.h>
 
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 using namespace std::chrono;
 
@@ -34,7 +36,7 @@ constexpr int kDefaultActivitiesExternalAPIIterations(3);
 constexpr int kDefaultActivitiesExternalAPINetSizeThreshold(0);
 constexpr int kDefaultActivitiesExternalAPIGpuOpCountThreshold(0);
 constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
-constexpr seconds kDefaultActivitiesWarmupDurationSecs(15);
+constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);
@@ -59,6 +61,7 @@ const string kHeartbeatMonitorPeriodKey =
 const string kActivitiesEnabledKey = "ACTIVITIES_ENABLED";
 const string kActivityTypesKey = "ACTIVITY_TYPES";
 const string kActivitiesLogFileKey = "ACTIVITIES_LOG_FILE";
+const string kActivitiesLogUrlKey = "ACTIVITIES_LOG_URL";
 const string kActivitiesDurationKey = "ACTIVITIES_DURATION_SECS";
 const string kActivitiesDurationMsecsKey = "ACTIVITIES_DURATION_MSECS";
 const string kActivitiesIterationsKey = "ACTIVITIES_ITERATIONS";
@@ -69,13 +72,6 @@ const string kActivitiesMinGpuOpCountKey = "ACTIVITIES_MIN_GPU_OP_COUNT";
 const string kActivitiesWarmupDurationSecsKey = "ACTIVITIES_WARMUP_PERIOD_SECS";
 const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
-
-// Valid configuration file entries for activity types
-const string kActivityMemcpy = "gpu_memcpy";
-const string kActivityMemset = "gpu_memset";
-const string kActivityConcurrentKernel = "concurrent_kernel";
-const string kActivityExternalCorrelation = "external_correlation";
-const string kActivityRuntime = "cuda_runtime";
 
 const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
 
@@ -115,21 +111,21 @@ const string kConfigFile = "/etc/libkineto.conf";
 // Max devices supported on any system
 constexpr uint8_t kMaxDevices = 8;
 
-static std::map<std::string, std::function<AbstractConfig*(const Config&)>>&
+static std::map<std::string, std::function<AbstractConfig*(Config&)>>&
 configFactories() {
-  static std::map<std::string, std::function<AbstractConfig*(const Config&)>>
+  static std::map<std::string, std::function<AbstractConfig*(Config&)>>
       factories;
   return factories;
 }
 
 void Config::addConfigFactory(
     std::string name,
-    std::function<AbstractConfig*(const Config&)> factory) {
+    std::function<AbstractConfig*(Config&)> factory) {
   configFactories()[name] = factory;
 }
 
 static string defaultTraceFileName() {
-  return fmt::format(kDefaultLogFileFmt, getpid());
+  return fmt::format(kDefaultLogFileFmt, processId());
 }
 
 Config::Config()
@@ -172,55 +168,38 @@ const seconds Config::maxRequestAge() const {
   return kMaxRequestAge;
 }
 
-static char* printTime(time_point<system_clock> t, char* buf, int size) {
+std::string getTimeStr(time_point<system_clock> t) {
   std::time_t t_c = system_clock::to_time_t(t);
-  std::tm lt;
-  localtime_r(&t_c, &lt);
-  std::strftime(buf, size, "%H:%M:%S", &lt);
-  return buf;
+  return fmt::format("{:%H:%M:%S}", fmt::localtime(t_c));
 }
 
 static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   auto t = time_point<system_clock>(milliseconds(ms));
   auto now = system_clock::now();
-  char buf[32];
   if (t > now) {
     throw std::invalid_argument(fmt::format(
         "Invalid {}: {} - time is in future",
         kRequestTimestampKey,
-        printTime(t, buf, sizeof(buf))));
+        getTimeStr(t)));
   } else if ((now - t) > kMaxRequestAge) {
     throw std::invalid_argument(fmt::format(
         "Invalid {}: {} - time is more than {}s in the past",
         kRequestTimestampKey,
-        printTime(t, buf, sizeof(buf)),
+        getTimeStr(t),
         kMaxRequestAge.count()));
   }
   return t;
 }
 
-void Config::addActivityTypes(
+void Config::setActivityTypes(
   const std::vector<std::string>& selected_activities) {
+  selectedActivityTypes_.clear();
   if (selected_activities.size() > 0) {
     for (const auto& activity : selected_activities) {
       if (activity == "") {
         continue;
-      } else if (activity == kActivityMemcpy) {
-        selectedActivityTypes_.insert(ActivityType::GPU_MEMCPY);
-      } else if (activity == kActivityMemset) {
-        selectedActivityTypes_.insert(ActivityType::GPU_MEMSET);
-      } else if (activity == kActivityConcurrentKernel) {
-        selectedActivityTypes_.insert(ActivityType::CONCURRENT_KERNEL);
-      } else if (activity == kActivityExternalCorrelation) {
-        selectedActivityTypes_.insert(ActivityType::EXTERNAL_CORRELATION);
-      } else if (activity == kActivityRuntime) {
-        selectedActivityTypes_.insert(ActivityType::CUDA_RUNTIME);
-      } else {
-        throw std::invalid_argument(fmt::format(
-          "Invalid activity type selected: {}",
-          activity
-        ));
       }
+      selectedActivityTypes_.insert(toActivityType(activity));
     }
   }
 }
@@ -233,9 +212,6 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (name == kMetricsKey) {
     vector<string> metric_names = splitAndTrim(val, ',');
     metricNames_.insert(metric_names.begin(), metric_names.end());
-  } else if (name == kActivityTypesKey) {
-    vector<string> activity_types = splitAndTrim(toLower(val), ',');
-    addActivityTypes(activity_types);
   } else if (name == kSamplePeriodKey) {
     samplePeriod_ = milliseconds(toInt32(val));
   } else if (name == kMultiplexPeriodKey) {
@@ -262,6 +238,9 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesOnDemandDuration_ =
         duration_cast<milliseconds>(seconds(toInt32(val)));
     activitiesOnDemandTimestamp_ = timestamp();
+  } else if (name == kActivityTypesKey) {
+    vector<string> activity_types = splitAndTrim(toLower(val), ',');
+    setActivityTypes(activity_types);
   } else if (name == kActivitiesDurationMsecsKey) {
     activitiesOnDemandDuration_ = milliseconds(toInt32(val));
     activitiesOnDemandTimestamp_ = timestamp();
@@ -284,6 +263,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activityProfilerEnabled_ = toBool(val);
   } else if (name == kActivitiesLogFileKey) {
     activitiesLogFile_ = val;
+    activitiesLogUrl_ = fmt::format("file://{}", val);
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (name == kActivitiesMaxGpuBufferSizeKey) {
     activitiesMaxGpuBufferSize_ = toInt32(val) * 1024 * 1024;
@@ -309,7 +289,7 @@ std::chrono::milliseconds Config::activitiesOnDemandDurationDefault() const {
 };
 
 void Config::updateActivityProfilerRequestReceivedTime() {
-  activitiesOnDemandTimestamp_ = high_resolution_clock::now();
+  activitiesOnDemandTimestamp_ = system_clock::now();
 }
 
 void Config::setClientDefaults() {
@@ -386,9 +366,8 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << std::endl;
   if (hasRequestTimestamp()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    std::tm tm;
     s << "Trace request client timestamp: "
-      << std::put_time(localtime_r(&t_c, &tm), "%F %T") << std::endl;
+      << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c)) << std::endl;
   }
   s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
     << std::endl;
@@ -401,30 +380,12 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
     << "MB" << std::endl;
 
-  s << "Enabled activities: ";
+  std::vector<const char*> activities;
   for (const auto& activity : selectedActivityTypes_) {
-    switch(activity){
-      case ActivityType::GPU_MEMCPY:
-        s << kActivityMemcpy << " ";
-        break;
-      case ActivityType::GPU_MEMSET:
-        s << kActivityMemset << " ";
-        break;
-      case ActivityType::CONCURRENT_KERNEL:
-        s << kActivityConcurrentKernel << " ";
-        break;
-      case ActivityType::EXTERNAL_CORRELATION:
-        s << kActivityExternalCorrelation << " ";
-        break;
-      case ActivityType::CUDA_RUNTIME:
-        s << kActivityRuntime << " ";
-        break;
-      default:
-        s << "UNKNOWN_ACTIVITY_NAME" << " ";
-        break;
-    }
+    activities.push_back(toString(activity));
   }
-  s << std::endl;
+  s << "Enabled activities: "
+    << fmt::format("{}", fmt::join(activities, ",")) << std::endl;
 
   AbstractConfig::printActivityProfilerConfig(s);
 }

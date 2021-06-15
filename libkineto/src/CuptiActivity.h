@@ -8,10 +8,9 @@
 #pragma once
 
 #include <cupti.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "TraceActivity.h"
+#include "ThreadUtil.h"
 #include "cupti_strings.h"
 
 namespace libkineto {
@@ -21,6 +20,7 @@ namespace libkineto {
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
+struct TraceSpan;
 
 // These classes wrap the various CUPTI activity types
 // into subclasses of TraceActivity so that they can all be accessed
@@ -31,13 +31,16 @@ template<class T>
 struct CuptiActivity : public TraceActivity {
   explicit CuptiActivity(const T* activity, const TraceActivity& linked)
       : activity_(*activity), linked_(linked) {}
-  int64_t timestamp() const override {return nsToUs(activity_.start);}
+  int64_t timestamp() const override {
+    return nsToUs(activity_.start);
+  }
   int64_t duration() const override {
     return nsToUs(activity_.end - activity_.start);
   }
   int64_t correlationId() const override {return activity_.correlationId;}
   const T& raw() const {return activity_;}
   const TraceActivity* linkedActivity() const override {return &linked_;}
+  const TraceSpan* traceSpan() const override {return nullptr;}
 
  protected:
   const T& activity_;
@@ -51,7 +54,7 @@ struct RuntimeActivity : public CuptiActivity<CUpti_ActivityAPI> {
       const TraceActivity& linked,
       int32_t threadId)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
-  int64_t deviceId() const override {return cachedPid();}
+  int64_t deviceId() const override {return processId();}
   int64_t resourceId() const override {return threadId_;}
   ActivityType type() const override {return ActivityType::CUDA_RUNTIME;}
   const std::string name() const override {return runtimeCbidName(activity_.cbid);}
@@ -76,4 +79,3 @@ struct GpuActivity : public CuptiActivity<T> {
 };
 
 } // namespace KINETO_NAMESPACE
-

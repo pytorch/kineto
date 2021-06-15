@@ -10,7 +10,6 @@
 
 #include <list>
 #include <memory>
-#include <vector>
 
 #include "libkineto.h"
 #include "CuptiActivityBuffer.h"
@@ -19,7 +18,7 @@ namespace KINETO_NAMESPACE {
 
 struct ActivityBuffers {
   std::list<std::unique_ptr<libkineto::CpuTraceBuffer>> cpu;
-  std::unique_ptr<std::list<CuptiActivityBuffer>> gpu;
+  std::unique_ptr<CuptiActivityBufferMap> gpu;
 };
 
 } // namespace KINETO_NAMESPACE

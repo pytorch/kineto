@@ -117,6 +117,7 @@ int RoctracerActivityInterface::processActivities(
         a.activityName = std::string(name);
 
         logger.handleGenericActivity(a);
+        ++count;
       }
       else if (record->domain == ACTIVITY_DOMAIN_HCC_OPS) {
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
@@ -135,11 +136,12 @@ int RoctracerActivityInterface::processActivities(
           a.activityName = m_strings[it->second];
         }
         logger.handleGenericActivity(a);
+        ++count;
       }
-      ++count;
       roctracer_next_record(record, &record);     
     }
   }
+  return count;
 }
 
 void RoctracerActivityInterface::clearActivities() {
@@ -321,6 +323,7 @@ void ApiIdList::remove(std::string apiName)
 bool ApiIdList::loadUserPrefs()
 {
   // FIXME: check an ENV variable that points to an exclude file
+  return false;
 }
 bool ApiIdList::contains(uint32_t apiId)
 {

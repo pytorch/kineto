@@ -135,7 +135,6 @@ class RunProfileData(object):
 
         if start_index is not None and end_index is not None:
             dur = event_list[end_index]["ts"] - event_list[start_index]["ts"]
-            print(dur)
             if dur > 24 * 3600 * 1000:
                 del trace_json["traceEvents"][end_index]
                 json_reencode = True

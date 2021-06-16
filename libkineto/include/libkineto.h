@@ -36,6 +36,7 @@ extern "C" {
 namespace libkineto {
 
 class Config;
+class ConfigLoader;
 
 struct CpuTraceBuffer {
   TraceSpan span{0, 0, "none"};
@@ -45,6 +46,9 @@ struct CpuTraceBuffer {
 
 class LibkinetoApi {
  public:
+
+  LibkinetoApi(ConfigLoader& configLoader) : configLoader_(configLoader) {
+  }
 
   // Called by client that supports tracing API.
   // libkineto can still function without this.
@@ -92,11 +96,17 @@ class LibkinetoApi {
     suppressLibkinetoLogMessages();
   }
 
+  // Provides access to profier configuration manaegement
+  ConfigLoader& configLoader() {
+    return configLoader_;
+  }
+
  private:
 
   // Client is initialized once both it and libkineto has registered
   void initClientIfRegistered();
 
+  ConfigLoader& configLoader_;
   std::unique_ptr<ActivityProfilerInterface> activityProfiler_{};
   ClientInterface* client_{};
   int32_t clientRegisterThread_{0};

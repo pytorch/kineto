@@ -49,8 +49,6 @@ class RunGenerator(object):
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
         profile_run.sm_efficency = self.profile_data.sm_efficency
         profile_run.occupancy = self.profile_data.occupancy
-        profile_run.blocks_per_sm_count = self.profile_data.blocks_per_sm_count
-        profile_run.occupancy_count = self.profile_data.occupancy_count
 
         # add memory stats
         if self.profile_data.has_memory_data:

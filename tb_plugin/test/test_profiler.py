@@ -1086,6 +1086,95 @@ class TestProfiler(unittest.TestCase):
                 count += 1
         self.assertEqual(count, 2)
 
+    # Test GPU utilization 3 metrics works fine if kernel out of ProfilerStep.
+    def test_gpu_utilization_kernel_out_of_step(self):
+        json_content = """
+          [{
+            "ph": "X", "cat": "Operator",
+            "name": "aten::mat_mul", "pid": 13721, "tid": "456",
+            "ts": 10, "dur": 10,
+            "args": {"Input Dims": [], "External id": 1}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "aten::mm", "pid": 13721, "tid": "456",
+            "ts": 120, "dur": 70,
+            "args": {"Input Dims": [], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "aten::mm", "pid": 13721, "tid": "456",
+            "ts": 220, "dur": 20,
+            "args": {"Input Dims": [], "External id": 4}
+          },
+          {
+            "ph": "X", "cat": "Operator",
+            "name": "ProfilerStep#2", "pid": 13721, "tid": "456",
+            "ts": 100, "dur": 100,
+            "args": {"Input Dims": [], "External id": 2}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
+            "ts": 60, "dur": 20,
+            "args": {"correlation": 334, "external id": 1, "device": 1,
+                     "blocks per SM": 0.5, "est. achieved occupancy %": 0.6}
+          },
+          {
+            "ph": "X", "cat": "Runtime",
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 15, "dur": 5,
+            "args": {"correlation": 334, "external id": 1}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 1, "tid": "stream 7",
+            "ts": 240, "dur": 25,
+            "args": {"correlation": 337, "external id": 4, "device": 1,
+                     "blocks per SM": 10.5, "est. achieved occupancy %": 0.3}
+          },
+          {
+            "ph": "X", "cat": "Runtime",
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 230, "dur": 10,
+            "args": {"correlation": 337, "external id": 4}
+          }]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        self.assertEqual(len(profile.gpu_ids), 1)
+        self.assertAlmostEqual(profile.gpu_utilization[1], 0.0)
+        self.assertTrue(profile.sm_efficency[1] is None)
+        self.assertTrue(profile.occupancy[1] is None)
+        self.assertTrue(profile.blocks_per_sm_count[1] > 0)
+        self.assertTrue(profile.occupancy_count[1] > 0)
+
+        count = 0
+        for agg_by_op in profile.kernel_list_groupby_name_op:
+            if agg_by_op.name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>" \
+                    and agg_by_op.op_name == "aten::mat_mul":
+                self.assertAlmostEqual(agg_by_op.avg_blocks_per_sm, 0.5)
+                self.assertAlmostEqual(agg_by_op.avg_occupancy, 0.6)
+                count += 1
+            if agg_by_op.name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>" and \
+                    agg_by_op.op_name == "aten::mm":
+                self.assertAlmostEqual(
+                    agg_by_op.avg_blocks_per_sm, 10.5)
+                self.assertAlmostEqual(
+                    agg_by_op.avg_occupancy, 0.3)
+                count += 1
+        self.assertEqual(count, 2)
+
+        count = 0
+        for _id, (name, row) in enumerate(profile.kernel_stat.iterrows()):
+            # The kernel with zero "dur" should be ignored.
+            if name == "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>":
+                self.assertAlmostEqual(row["blocks_per_sm"], (20 * 0.5 + 25 * 10.5) / (20 + 25))
+                self.assertAlmostEqual(row["occupancy"], (20 * 0.6 + 25 * 0.3) / (20 + 25))
+                count += 1
+        self.assertEqual(count, 1)
+
     def test_dump_gpu_metrics(self):
         profile = RunProfile("test_dump_gpu_metrics", None)
         # Faked data for easy to see in UI. Real data values are 1/100 of these.

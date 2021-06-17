@@ -9,7 +9,7 @@
                       Although it is finer grained than above “GPU Utilization”, it still can’t tell the whole story. 
                       For example, a kernel with only one thread per block can’t fully utilize each SM. 
 
-* Est. Achieved Occupancy: For most cases such as memory bandwidth bounded kernels, the higher the better. The definition of occupancy is [here](https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm). 
+* Est. Achieved Occupancy: For most cases such as memory bandwidth bounded kernels, the higher the better. [Reference](http://developer.download.nvidia.com/GTC/PDF/GTC2012/PresentationPDF/S0514-GTC2012-GPU-Performance-Analysis.pdf). The definition of occupancy is [here](https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm). 
                            Occupancy is the ratio of active warps on an SM to the maximum number of
                            active warps supported by the SM. The theoretical occupancy of a kernel is upper limit occupancy of this kernel, limited by multiple 
                            factors such as kernel shape, kernel used resource, and the GPU compute capability. 

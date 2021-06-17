@@ -23,8 +23,8 @@ class GPUMetricsParser(object):
         self.gpu_util_buckets = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         # For calculating approximated SM efficiency.
         self.blocks_per_sm_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
-        self.avg_approximated_sm_efficency_per_device = [None] * consts.MAX_GPU_PER_NODE
-        self.approximated_sm_efficency_ranges = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
+        self.avg_approximated_sm_efficiency_per_device = [None] * consts.MAX_GPU_PER_NODE
+        self.approximated_sm_efficiency_ranges = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.gpu_sm_efficiency_json = None
         self.blocks_per_sm_count = [0] * consts.MAX_GPU_PER_NODE
         # For calculating averaged occupancy.
@@ -108,30 +108,30 @@ class GPUMetricsParser(object):
 
         self.kernel_ranges_per_device = None  # Release memory.
 
-    def calculate_approximated_sm_efficency(self, steps_start_time, steps_end_time):
-        def calculate_avg(approximated_sm_efficency_ranges, total_dur):
+    def calculate_approximated_sm_efficiency(self, steps_start_time, steps_end_time):
+        def calculate_avg(approximated_sm_efficiency_ranges, total_dur):
             total_weighted_sm_efficiency = 0.0
-            for r in approximated_sm_efficency_ranges:
+            for r in approximated_sm_efficiency_ranges:
                 dur = r[1] - r[0]
                 total_weighted_sm_efficiency += r[2] * dur
-            avg_approximated_sm_efficency = total_weighted_sm_efficiency / total_dur
-            return avg_approximated_sm_efficency
+            avg_approximated_sm_efficiency = total_weighted_sm_efficiency / total_dur
+            return avg_approximated_sm_efficiency
 
         total_dur = steps_end_time - steps_start_time
         for gpu_id in self.gpu_ids:
             blocks_per_sm_ranges = self.blocks_per_sm_per_device[gpu_id]
-            approximated_sm_efficency_ranges = merge_ranges_with_value(blocks_per_sm_ranges)
+            approximated_sm_efficiency_ranges = merge_ranges_with_value(blocks_per_sm_ranges)
             # To be consistent with GPU utilization, here it must also intersect with all steps,
             # in order to remove the kernels out of steps range.
-            approximated_sm_efficency_ranges_all_steps = intersection_ranges_lists_with_value(
-                approximated_sm_efficency_ranges, [(steps_start_time, steps_end_time)])
-            if len(approximated_sm_efficency_ranges_all_steps) > 0:
-                avg_approximated_sm_efficency = calculate_avg(approximated_sm_efficency_ranges_all_steps, total_dur)
-                self.avg_approximated_sm_efficency_per_device[gpu_id] = avg_approximated_sm_efficency
+            approximated_sm_efficiency_ranges_all_steps = intersection_ranges_lists_with_value(
+                approximated_sm_efficiency_ranges, [(steps_start_time, steps_end_time)])
+            if len(approximated_sm_efficiency_ranges_all_steps) > 0:
+                avg_approximated_sm_efficiency = calculate_avg(approximated_sm_efficiency_ranges_all_steps, total_dur)
+                self.avg_approximated_sm_efficiency_per_device[gpu_id] = avg_approximated_sm_efficiency
 
             # The timeline still uses all kernels including out of steps scope's.
-            if len(approximated_sm_efficency_ranges) > 0:
-                self.approximated_sm_efficency_ranges[gpu_id] = approximated_sm_efficency_ranges
+            if len(approximated_sm_efficiency_ranges) > 0:
+                self.approximated_sm_efficiency_ranges[gpu_id] = approximated_sm_efficiency_ranges
 
         self.blocks_per_sm_per_device = None  # Release memory.
 
@@ -158,7 +158,7 @@ class GPUMetricsParser(object):
                 self.parse_event(event)
 
         self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)
-        self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
+        self.calculate_approximated_sm_efficiency(steps_start_time, steps_end_time)
         self.calculate_occupancy(steps_start_time, steps_end_time)
 
     def parse_event(self, event):

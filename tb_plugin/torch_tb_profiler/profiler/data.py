@@ -43,10 +43,10 @@ class RunProfileData(object):
         self.runtime_node_list = None
         self.gpu_ids = None
         self.gpu_utilization = None
-        self.sm_efficency = None
+        self.sm_efficiency = None
         self.occupancy = None
         self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
-        self.approximated_sm_efficency_ranges = None  # Cached here. Will be processed to json on first trace view.
+        self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
         self.op_list_groupby_name = None
@@ -190,10 +190,10 @@ class RunProfileData(object):
                                         parser.steps[0][0], parser.steps[-1][1])
         self.gpu_ids = gpu_metrics_parser.gpu_ids
         self.gpu_utilization = gpu_metrics_parser.gpu_utilization
-        self.sm_efficency = gpu_metrics_parser.avg_approximated_sm_efficency_per_device
+        self.sm_efficiency = gpu_metrics_parser.avg_approximated_sm_efficiency_per_device
         self.occupancy = gpu_metrics_parser.avg_occupancy_per_device
         self.gpu_util_buckets = gpu_metrics_parser.gpu_util_buckets
-        self.approximated_sm_efficency_ranges = gpu_metrics_parser.approximated_sm_efficency_ranges
+        self.approximated_sm_efficiency_ranges = gpu_metrics_parser.approximated_sm_efficiency_ranges
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 

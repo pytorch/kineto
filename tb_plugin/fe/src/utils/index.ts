@@ -9,6 +9,10 @@ export function firstOrUndefined<T>(v: T[] | undefined | null): T | undefined {
   return v[0]
 }
 
+export function sleep(delay: number) {
+  return new Promise((resolve) => setTimeout(resolve, delay))
+}
+
 export function isValueAndFormat(v: any): v is ValueAndFormat {
   return 'f' in v && 'v' in v
 }

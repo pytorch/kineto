@@ -8,6 +8,6 @@
     "useTabs": false,
     "trailingComma": "none",
     "proseWrap": "always",
-    "endOfLine": "crlf"
+    "endOfLine": "lf"
 }
 

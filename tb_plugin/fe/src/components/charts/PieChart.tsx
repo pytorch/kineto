@@ -6,6 +6,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import { Graph } from '../../api'
 import { value } from '../../utils'
+import { useResizeEventDependency } from '../../utils/resize'
 
 interface IProps {
   graph: Graph
@@ -29,6 +30,8 @@ export const PieChart: React.FC<IProps> = (props) => {
   const { graph, height = 300, top, noLegend, title } = props
   const classes = useStyles(props)
   const graphRef = React.useRef<HTMLDivElement>(null)
+
+  const [resizeEventDependency] = useResizeEventDependency()
 
   React.useLayoutEffect(() => {
     const element = graphRef.current
@@ -65,15 +68,16 @@ export const PieChart: React.FC<IProps> = (props) => {
 
     const chart = new google.visualization.PieChart(element)
 
-    google.visualization.events.addListener(chart, 'onmouseover', function (
-      entry: any
-    ) {
-      chart.setSelection([{ row: entry.row }])
-    })
+    google.visualization.events.addListener(
+      chart,
+      'onmouseover',
+      function (entry: any) {
+        chart.setSelection([{ row: entry.row }])
+      }
+    )
 
-    google.visualization.events.addListener(chart, 'onmouseout', function (
-    ) {
-        chart.setSelection([])
+    google.visualization.events.addListener(chart, 'onmouseout', function () {
+      chart.setSelection([])
     })
 
     chart.draw(data, options)
@@ -81,7 +85,7 @@ export const PieChart: React.FC<IProps> = (props) => {
     return () => {
       chart.clearChart()
     }
-  }, [graph, height, top])
+  }, [graph, height, top, resizeEventDependency])
 
   return (
     <div className={classes.root}>

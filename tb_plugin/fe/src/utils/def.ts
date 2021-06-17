@@ -11,3 +11,8 @@ export function assertDef<T>(v: T | undefined | null): asserts v is T {
     throw new Error('Must be defined')
   }
 }
+
+export function firstOrUndefined<T>(v: T[] | undefined): T | undefined {
+  if (!v || !v.length) return undefined
+  return v[0]
+}

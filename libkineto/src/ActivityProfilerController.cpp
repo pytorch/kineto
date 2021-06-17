@@ -10,6 +10,7 @@
 #include <chrono>
 #include <thread>
 
+#include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
 #include "ThreadUtil.h"
@@ -39,26 +40,29 @@ ActivityProfilerController::~ActivityProfilerController() {
   VLOG(0) << "Stopped activity profiler";
 }
 
-static ActivityLoggerFactory& loggerFactory() {
-  static ActivityLoggerFactory factory{nullptr};
+static ActivityLoggerFactory initLoggerFactory() {
+  ActivityLoggerFactory factory;
+  factory.addProtocol("file", [](const std::string& url) {
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+  });
   return factory;
 }
 
-void ActivityProfilerController::setLoggerFactory(
-    const ActivityLoggerFactory& factory) {
-  loggerFactory() = factory;
+static ActivityLoggerFactory& loggerFactory() {
+  static ActivityLoggerFactory factory = initLoggerFactory();
+  return factory;
+}
+
+void ActivityProfilerController::addLoggerFactory(
+    const std::string& protocol, ActivityLoggerFactory::FactoryFunc factory) {
+  loggerFactory().addProtocol(protocol, factory);
 }
 
 static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
   if (config.activitiesLogToMemory()) {
     return std::make_unique<MemoryTraceLogger>(config);
   }
-  if (loggerFactory()) {
-    return loggerFactory()(config);
-  }
-  return std::make_unique<ChromeTraceLogger>(
-      config.activitiesLogFile(),
-      CuptiActivityInterface::singleton().smCount());
+  return loggerFactory().makeLogger(config.activitiesLogUrl());
 }
 
 void ActivityProfilerController::profilerLoop() {
@@ -138,7 +142,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger), CuptiActivityInterface::singleton());
+  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
 }
 
 void ActivityProfilerController::addMetadata(

@@ -38,7 +38,7 @@ namespace libkineto {
 class Config;
 
 struct CpuTraceBuffer {
-  TraceSpan span;
+  TraceSpan span{0, 0, "none"};
   int gpuOpCount;
   std::vector<GenericTraceActivity> activities;
 };

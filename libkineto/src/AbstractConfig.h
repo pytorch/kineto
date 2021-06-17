@@ -52,6 +52,7 @@ class AbstractConfig {
     return timestamp_;
   }
 
+  // Source config string that this was parsed from
   const std::string& source() const {
     return source_;
   }

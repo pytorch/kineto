@@ -11,6 +11,7 @@
 #include <memory>
 #include <thread>
 
+#include "ActivityLoggerFactory.h"
 #include "ActivityProfiler.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
@@ -19,9 +20,6 @@
 namespace KINETO_NAMESPACE {
 
 class Config;
-
-using ActivityLoggerFactory =
-    std::function<std::unique_ptr<ActivityLogger>(const Config&)>;
 
 class ActivityProfilerController {
  public:
@@ -32,7 +30,9 @@ class ActivityProfilerController {
 
   ~ActivityProfilerController();
 
-  static void setLoggerFactory(const ActivityLoggerFactory& factory);
+  static void addLoggerFactory(
+      const std::string& protocol,
+      ActivityLoggerFactory::FactoryFunc factory);
 
   void scheduleTrace(const Config& config);
 

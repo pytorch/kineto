@@ -101,8 +101,8 @@ static std::string readConfigFromConfigFile(const char* filename) {
     conf.assign(
         std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
   } catch (std::exception& e) {
-    LOG(ERROR) << "Error in reading libkineto config from config file: "
-               << e.what();
+    VLOG(0) << "Error reading " << filename << ": "
+            << e.what();
     conf = "";
   }
   return conf;
@@ -155,11 +155,12 @@ ConfigLoader::ConfigLoader(LibkinetoApi& api)
   if (configFileName_ == nullptr) {
     configFileName_ = kConfigFile.data();
   }
-  config_.parse(readConfigFromConfigFile(configFileName_));
-  SET_LOG_VERBOSITY_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
-  setupSignalHandler(config_.sigUsr2Enabled());
-  if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
+  if (daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
+  }
+  updateBaseConfig();
+  SET_LOG_VERBOSITY_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
+  if (daemonConfigLoader_) {
     daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
   }
   updateThread_ =
@@ -186,7 +187,15 @@ void ConfigLoader::handleOnDemandSignal() {
 }
 
 void ConfigLoader::updateBaseConfig() {
-  const std::string config_str = readConfigFromConfigFile(configFileName_);
+  // First try reading local config file
+  // If that fails, read from daemon
+  // TODO: Invert these once daemon path fully rolled out
+  std::string config_str = readConfigFromConfigFile(configFileName_);
+  if (config_str.empty() && daemonConfigLoader_) {
+    // If local config file was not successfully loaded (e.g. not found)
+    // then try the daemon
+    config_str = daemonConfigLoader_->readBaseConfig();
+  }
   if (config_str != config_.source()) {
     std::lock_guard<std::mutex> lock(configLock_);
     config_.~Config();
@@ -195,8 +204,8 @@ void ConfigLoader::updateBaseConfig() {
     if (daemonConfigLoader_) {
       daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
     }
+    setupSignalHandler(config_.sigUsr2Enabled());
   }
-  setupSignalHandler(config_.sigUsr2Enabled());
 }
 
 void ConfigLoader::configureFromSignal(
@@ -268,6 +277,9 @@ void ConfigLoader::updateConfigThread() {
     interval = onDemandConfigUpdateIntervalSecs_;
   }
   auto onDemandConfig = std::make_unique<Config>();
+
+  // Refresh config before starting loop
+  updateBaseConfig();
 
   // This can potentially sleep for long periods of time, so allow
   // the desctructor to wake it to avoid a 5-minute long destruct period.

@@ -294,7 +294,7 @@ class RunGenerator(object):
                             "tooltip": consts.TOOLTIP_BLOCKS_PER_SM})
         if occupancy_count > 0:
             columns.append({"type": "number", "name": "Mean Est. Achieved Occupancy (%)",
-                            "tooltip": consts.TOOLTIP_OCCUPANCY})
+                            "tooltip": consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_TABLE})
         return columns
 
     def _generate_kernel_op_table(self):

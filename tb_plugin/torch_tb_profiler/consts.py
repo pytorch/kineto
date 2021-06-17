@@ -25,18 +25,19 @@ MEMORY_VIEW = View(6, "memory", "Memory")
 
 TOOLTIP_GPU_UTIL = \
     "GPU Utilization:\n" \
-    "GPU busy time / All steps time. The bigger, the better. " \
+    "GPU busy time / All steps time. The higher, the better. " \
     "GPU busy time is the time during which there is at least one GPU kernel running on it. " \
     "All steps time is the total time of all profiler steps(or called as iterations).\n"
 TOOLTIP_SM_EFFICIENCY = \
     "Est. SM Efficiency:\n" \
-    "Estimated Stream Multiprocessor Efficiency. The bigger, the better. " \
+    "Estimated Stream Multiprocessor Efficiency. The higher, the better. " \
     "This metric of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%). " \
     "This overall number is the sum of all kernels' SM_Eff_K weighted by kernel's execution duration, " \
     "divided by all steps time.\n"
 TOOLTIP_OCCUPANCY_COMMON = \
     "Est. Achieved Occupancy:\n" \
-    "The bigger, the better. Occupancy is the ratio of active warps on an SM " \
+    "For most cases such as memory bandwidth bounded kernels, the higher the better. " \
+    "Occupancy is the ratio of active warps on an SM " \
     "to the maximum number of active warps supported by the SM. " \
     "The theoretical occupancy of a kernel is upper limit occupancy of this kernel, " \
     "limited by multiple factors such as kernel shape, kernel used resource, " \

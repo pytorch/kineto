@@ -1012,7 +1012,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertEqual(len(profile.gpu_ids), 1)
         self.assertAlmostEqual(profile.gpu_utilization[1], (40 + 20) / 120)
-        self.assertAlmostEqual(profile.sm_efficency[1],
+        self.assertAlmostEqual(profile.sm_efficiency[1],
                                (0.5 * (135 - 130)
                                 + 1.0 * (140 - 135)
                                 + 0.6 * (145 - 140)
@@ -1036,7 +1036,7 @@ class TestProfiler(unittest.TestCase):
         sm_efficiency_expected = [(130, 0.5), (135, 0), (135, 1.0), (140, 0), (140, 0.6), (145, 0), (145, 0.9),
                                   (150, 0), (150, 0.3), (170, 0), (170, 0), (200, 0), (200, 1.0), (220, 0)]
         for gpu_id in profile.gpu_ids:
-            ranges = profile.approximated_sm_efficency_ranges[gpu_id]
+            ranges = profile.approximated_sm_efficiency_ranges[gpu_id]
             sm_efficiency_id = 0
             for r in ranges:
                 self.assertEqual(
@@ -1145,7 +1145,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertEqual(len(profile.gpu_ids), 1)
         self.assertAlmostEqual(profile.gpu_utilization[1], 0.0)
-        self.assertTrue(profile.sm_efficency[1] is None)
+        self.assertTrue(profile.sm_efficiency[1] is None)
         self.assertTrue(profile.occupancy[1] is None)
         self.assertTrue(profile.blocks_per_sm_count[1] > 0)
         self.assertTrue(profile.occupancy_count[1] > 0)
@@ -1187,7 +1187,7 @@ class TestProfiler(unittest.TestCase):
                                      (1621401187235005, 0.4219409282700422),
                                      (1621401187236901, 0)]]
         # Faked data for easy to see in UI. Real data values are 1/10 of these.
-        profile.approximated_sm_efficency_ranges = \
+        profile.approximated_sm_efficiency_ranges = \
             [[(1621401187225275, 1621401187225278, 0.25), (1621401187225530, 1621401187225532, 0.125),
               (1621401187225820, 1621401187225821, 0.125), (1621401187226325, 1621401187226327, 0.25),
               (1621401187226575, 1621401187226577, 0.125), (1621401187226912, 1621401187226913, 0.125),

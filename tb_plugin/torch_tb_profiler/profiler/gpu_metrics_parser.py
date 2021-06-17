@@ -136,17 +136,20 @@ class GPUMetricsParser(object):
         self.blocks_per_sm_per_device = None  # Release memory.
 
     # Weighted average. Weighted by kernel's time duration.
-    def calculate_occupancy(self):
+    def calculate_occupancy(self, steps_start_time, steps_end_time):
         for gpu_id in self.gpu_ids:
             occupancys_on_a_device = self.occupancy_per_device[gpu_id]
             total_time = 0
             total_occupancy = 0.0
             for r in occupancys_on_a_device:
-                dur = r[1] - r[0]
-                total_occupancy += r[2] * dur
-                total_time += dur
-            avg_occupancy = total_occupancy / total_time
-            self.avg_occupancy_per_device[gpu_id] = avg_occupancy
+                min_time = max(r[0], steps_start_time)
+                max_time = min(r[1], steps_end_time)
+                if min_time < max_time:
+                    dur = max_time - min_time
+                    total_occupancy += r[2] * dur
+                    total_time += dur
+            if total_time > 0:
+                self.avg_occupancy_per_device[gpu_id] = total_occupancy / total_time
 
     def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
         logger.debug("GPU Metrics, parse events")
@@ -156,7 +159,7 @@ class GPUMetricsParser(object):
 
         self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)
         self.calculate_approximated_sm_efficency(steps_start_time, steps_end_time)
-        self.calculate_occupancy()
+        self.calculate_occupancy(steps_start_time, steps_end_time)
 
     def parse_event(self, event):
         ts = event.ts

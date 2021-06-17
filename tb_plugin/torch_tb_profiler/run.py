@@ -193,12 +193,12 @@ class RunProfile(object):
                 gpu_metrics_data.append({"title": "GPU Utilization",
                                          "value": "{} %".format(
                                              round(profile.gpu_utilization[gpu_id] * 100, 2))})
-                if profile.blocks_per_sm_count[gpu_id] > 0:
+                if profile.sm_efficency[gpu_id] is not None:
                     gpu_metrics_data.append({"title": "Est. SM Efficiency",
                                              "value": "{} %".format(
                                                  round(profile.sm_efficency[gpu_id] * 100, 2))})
                     has_sm_efficiency = True
-                if profile.occupancy_count[gpu_id] > 0:
+                if profile.occupancy[gpu_id] is not None:
                     gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True

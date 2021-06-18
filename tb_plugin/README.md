@@ -38,7 +38,7 @@ and give optimization recommendations.
   Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
 
   Note: The recommended way to produce profiling data is assigning `torch.profiler.tensorboard_trace_handler`
-  to `on_trace_ready` on creation of `torch.profiler.schedule`.
+  to `on_trace_ready` on creation of `torch.profiler.profile`.
 
 * Start TensorBoard
 

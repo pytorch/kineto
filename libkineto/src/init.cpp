@@ -30,7 +30,6 @@
 
 #include "ActivityProfilerProxy.h"
 #include "Config.h"
-#include "ConfigLoader.h"
 #ifdef HAS_CUPTI
 #include "EventProfilerController.h"
 #endif
@@ -52,7 +51,8 @@ static void initProfilers(CUcontext ctx) {
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }
-  EventProfilerController::start(ctx);
+  ConfigLoader& config_loader = libkineto::api().configLoader();
+  EventProfilerController::start(ctx, config_loader);
 }
 
 static void stopProfiler(CUcontext ctx) {
@@ -131,8 +131,9 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
   }
 #endif // HAS_CUPTI
 
+  ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(
-      std::make_unique<ActivityProfilerProxy>(cpuOnly));
+      std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
 
   return success;
 }

@@ -26,11 +26,12 @@ using namespace libkineto;
 
 class ActivityProfilerController;
 class Config;
+class ConfigLoader;
 
 class ActivityProfilerProxy : public ActivityProfilerInterface {
 
  public:
-  ActivityProfilerProxy(bool cpuOnly) : cpuOnly_(cpuOnly) {}
+  ActivityProfilerProxy(bool cpuOnly, ConfigLoader& configLoader);
   ~ActivityProfilerProxy() override;
 
   void init() override;
@@ -64,6 +65,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
  private:
   bool cpuOnly_{true};
+  ConfigLoader& configLoader_;
   ActivityProfilerController* controller_{nullptr};
 };
 

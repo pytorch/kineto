@@ -73,8 +73,6 @@ const string kActivitiesWarmupDurationSecsKey = "ACTIVITIES_WARMUP_PERIOD_SECS";
 const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
-const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
-
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -125,6 +123,7 @@ void Config::addConfigFactory(
 }
 
 static string defaultTraceFileName() {
+  const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
   return fmt::format(kDefaultLogFileFmt, processId());
 }
 

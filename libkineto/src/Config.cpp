@@ -123,8 +123,7 @@ void Config::addConfigFactory(
 }
 
 static string defaultTraceFileName() {
-  const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
-  return fmt::format(kDefaultLogFileFmt, processId());
+  return fmt::format("/tmp/libkineto_activities_{}.json", processId());
 }
 
 Config::Config()

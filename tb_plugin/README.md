@@ -370,6 +370,6 @@ one worker is much larger than others, there may be a problem of loading balance
         
 ### PyTorch Profiler TensorBoard Plugin 0.2 Release Notes
 
-Note: If the tensorboard launching reports error message "ImportError" and "circular import", 
-please check your Python version. 
-The Python 3.9.0, 3.9.1, 3.9.2 has this [bug](https://bugs.python.org/issue43517) and should be avoided using.
+Known Issues: This software does not support Python 3.9.0, 3.9.1, 3.9.2. 
+If the tensorboard launching reports error message "ImportError" and "circular import", 
+please update your Python to higher version.

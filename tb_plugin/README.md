@@ -368,3 +368,8 @@ one worker is much larger than others, there may be a problem of loading balance
         * Data Transfer Time (us): Total time actually used for data transfer in operator of this type.
         * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
         
+### PyTorch Profiler TensorBoard Plugin 0.2 Release Notes
+
+Known Issues: This software does not support Python 3.9.0, 3.9.1, 3.9.2. 
+If the tensorboard launching reports error message "ImportError" and "circular import", 
+please update your Python to higher version.

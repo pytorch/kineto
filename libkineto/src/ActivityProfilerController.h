@@ -66,6 +66,11 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
     profiler_->recordThreadInfo();
   }
 
+  void addChildActivityProfiler(
+      std::unique_ptr<IActivityProfiler> profiler) {
+    profiler_->addChildActivityProfiler(std::move(profiler));
+  }
+
   void addMetadata(const std::string& key, const std::string& value);
 
  private:

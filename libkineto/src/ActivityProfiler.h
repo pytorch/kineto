@@ -118,10 +118,10 @@ class ActivityProfiler {
     metadata_[key] = value;
   }
 
-  void addActivityProfiler(
-      std::shared_ptr<IActivityProfiler> profiler) {
+  void addChildActivityProfiler(
+      std::unique_ptr<IActivityProfiler> profiler) {
     std::lock_guard<std::mutex> guard(mutex_);
-    profilers_.push_back(profiler);
+    profilers_.push_back(std::move(profiler));
   }
 
  protected:
@@ -368,7 +368,7 @@ class ActivityProfiler {
   std::unordered_map<std::string, std::string> metadata_;
 
   // child activity profilers
-  std::vector<std::shared_ptr<IActivityProfiler>> profilers_;
+  std::vector<std::unique_ptr<IActivityProfiler>> profilers_;
 
   // a vector of active profiler plugin sessions
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;

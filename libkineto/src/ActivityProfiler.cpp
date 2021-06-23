@@ -455,7 +455,7 @@ void ActivityProfiler::configureChildProfilers() {
     auto session = profiler->configure(
         start_time_ms,
         config_->activitiesOnDemandDuration().count(),
-        config_->selectedActivityTypes()
+        std::set<ActivityType>{ActivityType::CPU_OP} // TODO make configurable
     );
     if (session) {
       sessions_.push_back(std::move(session));

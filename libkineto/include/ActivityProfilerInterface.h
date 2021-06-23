@@ -14,7 +14,6 @@
 
 #include "ActivityType.h"
 #include "ActivityTraceInterface.h"
-#include "IActivityProfiler.h"
 
 namespace libkineto {
 
@@ -86,11 +85,6 @@ class ActivityProfilerInterface {
   // Record trace metadata, currently supporting only string key and values,
   // values with the same key are overwritten
   virtual void addMetadata(const std::string& key, const std::string& value) = 0;
-
-  // Add a child activity profiler, this enables frameworks in the application
-  // to enable custom framework events.
-  virtual void addChildActivityProfiler(
-      std::unique_ptr<IActivityProfiler> profiler) {}
 };
 
 } // namespace libkineto

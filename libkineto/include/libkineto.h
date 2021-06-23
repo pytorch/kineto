@@ -25,7 +25,6 @@
 #include "ClientInterface.h"
 #include "GenericTraceActivity.h"
 #include "TraceSpan.h"
-#include "IActivityProfiler.h"
 
 #include "ThreadUtil.h"
 
@@ -44,9 +43,6 @@ struct CpuTraceBuffer {
   int gpuOpCount;
   std::vector<GenericTraceActivity> activities;
 };
-
-using ChildActivityProfilerFactory =
-  std::function<std::unique_ptr<IActivityProfiler>()>;
 
 class LibkinetoApi {
  public:
@@ -76,7 +72,6 @@ class LibkinetoApi {
   void initProfilerIfRegistered() {
     if (activityProfiler_ && !activityProfiler_->isInitialized()) {
       activityProfiler_->init();
-      initChildActivityProfilers();
     }
   }
 
@@ -92,7 +87,7 @@ class LibkinetoApi {
     netSizeThreshold_ = gpu_ops;
   }
 
-  // Include traces with at least this many ops
+  // Inclide traces with at least this many ops
   // FIXME: Rename and move elsewhere
   int netSizeThreshold() {
     return netSizeThreshold_;
@@ -107,26 +102,7 @@ class LibkinetoApi {
     return configLoader_;
   }
 
-  void registerProfilerFactory(
-      ChildActivityProfilerFactory factory) {
-    if (isProfilerInitialized()) {
-      activityProfiler_->addChildActivityProfiler(factory());
-    } else {
-      childProfilerFactories_.push_back(factory);
-    }
-  }
-
  private:
-
-  void initChildActivityProfilers() {
-    if (!isProfilerInitialized()) {
-      return;
-    }
-    for (const auto& factory : childProfilerFactories_) {
-      activityProfiler_->addChildActivityProfiler(factory());
-    }
-    childProfilerFactories_.clear();
-  }
 
   // Client is initialized once both it and libkineto has registered
   void initClientIfRegistered();
@@ -138,7 +114,6 @@ class LibkinetoApi {
 
   bool isLoaded_{false};
   std::atomic_int netSizeThreshold_{};
-  std::vector<ChildActivityProfilerFactory> childProfilerFactories_;
 };
 
 // Singleton

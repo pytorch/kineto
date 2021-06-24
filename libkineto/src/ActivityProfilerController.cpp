@@ -34,7 +34,6 @@ ActivityProfilerController::ActivityProfilerController(
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
-  LOG(INFO) << "ActivityProfilerController::~ActivityProfilerController()";
   configLoader_.removeHandler(
       ConfigLoader::ConfigKind::ActivityProfiler, this);
   if (profilerThread_) {

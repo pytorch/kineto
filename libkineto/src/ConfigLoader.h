@@ -79,7 +79,7 @@ class ConfigLoader {
 
   inline std::unique_ptr<Config> getConfigCopy() {
     std::lock_guard<std::mutex> lock(configLock_);
-    return config_.clone();
+    return config_->clone();
   }
 
   bool hasNewConfig(const Config& oldConfig);
@@ -94,7 +94,9 @@ class ConfigLoader {
   ConfigLoader();
   ~ConfigLoader();
 
-  void initBaseConfig();
+  const char* configFileName();
+  DaemonConfigLoader* daemonConfigLoader();
+
   void startThread();
   void updateConfigThread();
   void updateBaseConfig();
@@ -114,7 +116,7 @@ class ConfigLoader {
 
   std::mutex configLock_;
   std::atomic<const char*> configFileName_{nullptr};
-  Config config_;
+  std::unique_ptr<Config> config_;
   std::unique_ptr<DaemonConfigLoader> daemonConfigLoader_;
   std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;
 

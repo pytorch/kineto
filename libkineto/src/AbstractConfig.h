@@ -28,7 +28,7 @@ class AbstractConfig {
   }
 
   // Return a copy of the full derived class
-  virtual AbstractConfig* cloneDerived() const = 0;
+  virtual AbstractConfig* cloneDerived(AbstractConfig& parent) const = 0;
 
   // Returns true if successfully parsed the config string
   bool parse(const std::string& conf);
@@ -98,7 +98,7 @@ class AbstractConfig {
 
   void cloneFeaturesInto(AbstractConfig& cfg) const {
     for (const auto& feature : featureConfigs_) {
-      cfg.featureConfigs_[feature.first] = feature.second->cloneDerived();
+      cfg.featureConfigs_[feature.first] = feature.second->cloneDerived(cfg);
     }
   }
 

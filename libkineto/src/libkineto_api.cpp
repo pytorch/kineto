@@ -13,7 +13,6 @@
 namespace libkineto {
 
 LibkinetoApi& api() {
-  //static ConfigLoader config_loader;
   static LibkinetoApi instance(ConfigLoader::instance());
   return instance;
 }

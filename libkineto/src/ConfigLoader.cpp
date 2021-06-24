@@ -150,6 +150,11 @@ ConfigLoader::ConfigLoader()
 
 void ConfigLoader::startThread() {
   if (!updateThread_) {
+    // Create default base config here - at this point static initializers
+    // of extensions should have run and registered all config feature factories
+    std::lock_guard<std::mutex> lock(configLock_);
+    config_ = std::make_unique<Config>();
+
     updateThread_ =
         std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
   }
@@ -174,35 +179,42 @@ void ConfigLoader::handleOnDemandSignal() {
   }
 }
 
-void ConfigLoader::initBaseConfig() {
+const char* ConfigLoader::configFileName() {
   if (!configFileName_) {
     configFileName_ = getenv(kConfigFileEnvVar.data());
     if (configFileName_ == nullptr) {
       configFileName_ = kConfigFile.data();
     }
-    updateBaseConfig();
   }
+  return configFileName_;
+}
+
+DaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
+  if (!daemonConfigLoader_ && daemonConfigLoaderFactory()) {
+    daemonConfigLoader_ = daemonConfigLoaderFactory()();
+    daemonConfigLoader_->setCommunicationFabric(config_->ipcFabricEnabled());
+  }
+  return daemonConfigLoader_.get();
 }
 
 void ConfigLoader::updateBaseConfig() {
   // First try reading local config file
   // If that fails, read from daemon
   // TODO: Invert these once daemon path fully rolled out
-  std::string config_str = readConfigFromConfigFile(configFileName_);
-  if (config_str.empty() && daemonConfigLoader_) {
+  std::string config_str = readConfigFromConfigFile(configFileName());
+  if (config_str.empty() && daemonConfigLoader()) {
     // If local config file was not successfully loaded (e.g. not found)
     // then try the daemon
-    config_str = daemonConfigLoader_->readBaseConfig();
+    config_str = daemonConfigLoader()->readBaseConfig();
   }
-  if (config_str != config_.source()) {
+  if (config_str != config_->source()) {
     std::lock_guard<std::mutex> lock(configLock_);
-    config_.~Config();
-    new (&config_) Config();
-    config_.parse(config_str);
-    if (daemonConfigLoader_) {
-      daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+    config_ = std::make_unique<Config>();
+    config_->parse(config_str);
+    if (daemonConfigLoader()) {
+      daemonConfigLoader()->setCommunicationFabric(config_->ipcFabricEnabled());
     }
-    setupSignalHandler(config_.sigUsr2Enabled());
+    setupSignalHandler(config_->sigUsr2Enabled());
   }
 }
 
@@ -215,9 +227,6 @@ void ConfigLoader::configureFromSignal(
       readConfigFromConfigFile(kOnDemandConfigFile.data());
   config.parse(config_str);
   config.setSignalDefaults();
-  if (daemonConfigLoader_) {
-    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
-  }
   notifyHandlers(config);
 }
 
@@ -231,15 +240,12 @@ void ConfigLoader::configureFromDaemon(
 
   LOG(INFO) << "Received config from dyno:\n" << config_str;
   config.parse(config_str);
-  if (daemonConfigLoader_) {
-    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
-  }
   notifyHandlers(config);
 }
 
 void ConfigLoader::updateConfigThread() {
   auto now = system_clock::now();
-  auto next_config_load_time = now + configUpdateIntervalSecs_;
+  auto next_config_load_time = now;
   auto next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;
   auto next_log_level_reset_time = now;
   seconds interval = configUpdateIntervalSecs_;
@@ -247,13 +253,6 @@ void ConfigLoader::updateConfigThread() {
     interval = onDemandConfigUpdateIntervalSecs_;
   }
   auto onDemandConfig = std::make_unique<Config>();
-
-  // Refresh config before starting loop
-  initBaseConfig();
-  if (daemonConfigLoaderFactory()) {
-    daemonConfigLoader_ = daemonConfigLoaderFactory()();
-    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
-  }
 
   // This can potentially sleep for long periods of time, so allow
   // the desctructor to wake it to avoid a 5-minute long destruct period.
@@ -271,7 +270,7 @@ void ConfigLoader::updateConfigThread() {
       next_config_load_time = now + configUpdateIntervalSecs_;
     }
     if (onDemandSignal_.exchange(false)) {
-      onDemandConfig = config_.clone();
+      onDemandConfig = config_->clone();
       configureFromSignal(now, *onDemandConfig);
     } else if (now > next_on_demand_load_time) {
       configureFromDaemon(now, *onDemandConfig);
@@ -289,14 +288,14 @@ void ConfigLoader::updateConfigThread() {
     if (now > next_log_level_reset_time) {
       VLOG(0) << "Resetting verbose level";
       SET_LOG_VERBOSITY_LEVEL(
-          config_.verboseLogLevel(), config_.verboseLogModules());
+          config_->verboseLogLevel(), config_->verboseLogModules());
     }
   }
 }
 
 bool ConfigLoader::hasNewConfig(const Config& oldConfig) {
   std::lock_guard<std::mutex> lock(configLock_);
-  return config_.timestamp() > oldConfig.timestamp();
+  return config_->timestamp() > oldConfig.timestamp();
 }
 
 } // namespace KINETO_NAMESPACE

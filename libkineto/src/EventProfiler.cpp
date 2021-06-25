@@ -590,7 +590,6 @@ void EventProfiler::dispatchSamples(
 }
 
 void EventProfiler::configure(Config& config, Config* onDemandConfig) {
-  LOG(INFO) << "configure";
   if (!sets_.empty()) {
     sets_[curEnabledSet_].setEnabled(false);
     clearSamples();

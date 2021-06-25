@@ -351,7 +351,9 @@ void EventProfilerController::profilerLoop() {
       now = system_clock::now();
       next_sample_time = now + profiler_->samplePeriod();
       next_report_time = now + profiler_->reportPeriod();
-      next_on_demand_report_time = now + profiler_->onDemandReportPeriod();
+      if (profiler_->isOnDemandActive()) {
+        next_on_demand_report_time = now + profiler_->onDemandReportPeriod();
+      }
       next_multiplex_time = now + profiler_->multiplexPeriod();
       // Collect an initial sample and throw it away
       // The next sample is the first valid one
@@ -386,7 +388,7 @@ void EventProfilerController::profilerLoop() {
       profiler_->reportSamples();
       next_report_time += profiler_->reportPeriod();
     }
-    if (on_demand_report_count && now > next_on_demand_report_time) {
+    if (profiler_->isOnDemandActive() && now > next_on_demand_report_time) {
       VLOG(1) << "OnDemand Report #" << on_demand_report_count++;
       profiler_->reportOnDemandSamples();
       next_on_demand_report_time += profiler_->onDemandReportPeriod();

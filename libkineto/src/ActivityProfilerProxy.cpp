@@ -98,4 +98,9 @@ void ActivityProfilerProxy::recordThreadInfo() {
   controller_->recordThreadInfo();
 }
 
+void ActivityProfilerProxy::addChildActivityProfiler(
+    std::unique_ptr<IActivityProfiler> profiler) {
+  controller_->addChildActivityProfiler(std::move(profiler));
+}
+
 } // namespace libkineto

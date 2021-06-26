@@ -69,7 +69,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
         """
+        # On startup, this will block until the _monitor_runs thread has completed its scan and we
+        # know if there's any profiler data.
+        # On subsequent calls (eg when the TB UI refreshes), the latest scan result is returned
+        # immediately with no blocking.
         self._is_active_initialized_event.wait()
+        assert self._is_active is not None, "BUG: _is_active was not properly initialized!"
         return self._is_active
 
     def get_plugin_apps(self):
@@ -311,6 +316,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                             # Use threading to avoid UI stall and reduce data parsing time
                             t = threading.Thread(target=self._load_run, args=(run_dir,))
                             t.start()
+
+                    # Notify the other threads that we're done looking for run dirs even when none
+                    # were found.
+                    if not self._is_active:
+                        self._is_active = False
+                        self._is_active_initialized_event.set()
+
                 except Exception as ex:
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 

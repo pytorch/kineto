@@ -66,7 +66,7 @@ class RoctracerActivityInterface {
   RoctracerActivityInterface(const RoctracerActivityInterface&) = delete;
   RoctracerActivityInterface& operator=(const RoctracerActivityInterface&) = delete;
 
-  virtual ~RoctracerActivityInterface() {}
+  virtual ~RoctracerActivityInterface();
 
   static RoctracerActivityInterface& singleton();
 
@@ -95,20 +95,8 @@ class RoctracerActivityInterface {
   int64_t flushOverhead{0};
 
  private:
-#ifdef HAS_CUPTI
-  int processActivitiesForBuffer(
-      uint8_t* buf,
-      size_t validSize,
-      std::function<void(const CUpti_Activity*)> handler);
-  static void CUPTIAPI
-  bufferRequestedTrampoline(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
-  static void CUPTIAPI bufferCompletedTrampoline(
-      CUcontext ctx,
-      uint32_t streamId,
-      uint8_t* buffer,
-      size_t /* unused */,
-      size_t validSize);
-#endif // HAS_CUPTI
+  bool m_registered{false};
+  void endTracing();
 
 #ifdef HAS_ROCTRACER
   roctracer_pool_t *hipPool_{NULL};
@@ -128,7 +116,6 @@ class RoctracerActivityInterface {
 #endif
 
   int maxGpuBufferCount_{0};
-  int allocatedGpuBufferCount{0};
   std::unique_ptr<std::list<RoctracerActivityBuffer>> gpuTraceBuffers_;
   //int eventCount{0};
   //std::vector<GenericTraceActivity> hipActivity_;

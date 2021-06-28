@@ -52,6 +52,11 @@ RoctracerActivityInterface::RoctracerActivityInterface() {
   gpuTraceBuffers_ = std::make_unique<std::list<RoctracerActivityBuffer>>();
 }
 
+RoctracerActivityInterface::~RoctracerActivityInterface() {
+  disableActivities(std::set<ActivityType>());
+  endTracing();
+}
+
 void RoctracerActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
   // FIXME: no type
@@ -93,8 +98,6 @@ int RoctracerActivityInterface::processActivities(
   clock_gettime(CLOCK_REALTIME, &t00);
 
   const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
-
-  //printf("timedelta: %lu - %lu == %lu\n", timespec_to_ns(t0), timespec_to_ns(t1), toffset);
 
   int count = 0;
 
@@ -212,9 +215,7 @@ void RoctracerActivityInterface::activity_callback(const char* begin, const char
 {
   size_t size = end - begin;
   uint8_t *buffer = (uint8_t*) malloc(size);
-  auto &allocatedGpuBufferCount = singleton().allocatedGpuBufferCount;
   auto &gpuTraceBuffers = singleton().gpuTraceBuffers_;
-  ++allocatedGpuBufferCount;
   memcpy(buffer, begin, size);
   gpuTraceBuffers->emplace_back(buffer, size);
 }
@@ -230,8 +231,7 @@ void RoctracerActivityInterface::hcc_activity_callback(const char* begin, const 
 void RoctracerActivityInterface::enableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
-  static bool registered = false;
-  if (!registered) {
+  if (m_registered == false) {
     roctracer_set_properties(ACTIVITY_DOMAIN_HIP_API, NULL);  // Magic encantation
 
     // Enable API callbacks
@@ -279,6 +279,8 @@ void RoctracerActivityInterface::enableActivities(
     m_loggedIds.add("hipPeekAtLastError");
     m_loggedIds.add("hipModuleGetFunction");
     m_loggedIds.add("hipEventCreateWithFlags");
+
+    m_registered = true;
   }
   roctracer_start();
 #endif
@@ -288,16 +290,19 @@ void RoctracerActivityInterface::disableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   roctracer_stop();
-  hipStreamSynchronize(NULL);
-
-  roctracer_disable_domain_callback(ACTIVITY_DOMAIN_HIP_API);
-  //roctracer_disable_domain_callback(ACTIVITY_DOMAIN_ROCTX);
-
-  roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HIP_API);
-  roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HCC_OPS);
   roctracer_flush_activity_expl(hipPool_);
-  roctracer_close_pool_expl(hipPool_);
 #endif
+}
+
+void RoctracerActivityInterface::endTracing() {
+  if (m_registered == true) {
+    roctracer_disable_domain_callback(ACTIVITY_DOMAIN_HIP_API);
+    //roctracer_disable_domain_callback(ACTIVITY_DOMAIN_ROCTX);
+
+    roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HIP_API);
+    roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HCC_OPS);
+    roctracer_close_pool_expl(hipPool_);
+  }
 }
 
 

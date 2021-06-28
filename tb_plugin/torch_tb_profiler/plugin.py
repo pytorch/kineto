@@ -14,9 +14,8 @@ from collections import OrderedDict
 from queue import Queue
 
 import werkzeug
-from tensorboard import errors
 from tensorboard.plugins import base_plugin
-from werkzeug import wrappers
+from werkzeug import exceptions, wrappers
 
 from . import consts, io, utils
 from .profiler import RunLoader
@@ -24,6 +23,14 @@ from .run import DistributedRunProfile, Run, RunProfile
 
 logger = utils.get_logger()
 
+def decorate_headers(func):
+    def wrapper(*args, **kwargs):
+        headers = func(*args, **kwargs)
+        headers.extend(TorchProfilerPlugin.headers)
+        return headers
+    return wrapper
+
+exceptions.HTTPException.get_headers = decorate_headers(exceptions.HTTPException.get_headers)
 
 class TorchProfilerPlugin(base_plugin.TBPlugin):
     """TensorBoard plugin for Torch Profiler."""
@@ -278,7 +285,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            raise errors.NotFoundError("404 Not Found")
+            raise exceptions.NotFound("404 Not Found")
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
@@ -396,23 +403,22 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._check_run(run, name)
         profile = run.get_profile(worker, span)
         if profile is None:
-            raise errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
+            raise exceptions.NotFound("could not find the profile for %s/%s/%s " %(name, worker, span))
         return profile
 
     def _check_run(self, run, name):
         if run is None:
-            raise errors.NotFoundError("could not find the run for %s" %(name))
+            raise exceptions.NotFound("could not find the run for %s" %(name))
 
     def _check_normal_profile(self, profile, name, worker):
         if not isinstance(profile, RunProfile):
-            raise errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
+            raise exceptions.BadRequest("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
 
     def _check_distributed_profile(self, profile, name):
         if not isinstance(profile, DistributedRunProfile):
-            raise errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
+            raise exceptions.BadRequest("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
 
     def _validate(self, **kwargs):
         for name,v in kwargs.items():
             if v is None:
-                raise errors.InvalidArgumentError("Must specify %s in request url" %(name))
-
+                raise exceptions.BadRequest("Must specify %s in request url" %(name))

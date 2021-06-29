@@ -59,7 +59,7 @@ static bool hasOriginalSignalHandler() {
 static void handle_signal(int signal) {
 #ifdef __linux__
   if (signal == SIGUSR2) {
-    ConfigLoader::instance().handleOnDemandSignal();
+    ConfigLoader::instance()->handleOnDemandSignal();
     if (hasOriginalSignalHandler()) {
       // Invoke original handler and reinstate ours
       struct sigaction act;
@@ -117,8 +117,8 @@ void ConfigLoader::setDaemonConfigLoaderFactory(
   daemonConfigLoaderFactory() = factory;
 }
 
-ConfigLoader& ConfigLoader::instance() {
-  static ConfigLoader config_loader;
+std::shared_ptr<ConfigLoader> ConfigLoader::instance() {
+  static std::shared_ptr<ConfigLoader> config_loader(new ConfigLoader());
   return config_loader;
 }
 

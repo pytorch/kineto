@@ -29,7 +29,7 @@ class DaemonConfigLoader;
 class ConfigLoader {
  public:
 
-  static ConfigLoader& instance();
+  static std::shared_ptr<ConfigLoader> instance();
 
   enum ConfigKind {
     ActivityProfiler = 0,
@@ -42,6 +42,8 @@ class ConfigLoader {
     virtual bool canAcceptConfig() = 0;
     virtual void acceptConfig(const Config& cfg) = 0;
   };
+
+  ~ConfigLoader();
 
   void addHandler(ConfigKind kind, ConfigHandler* handler) {
     std::lock_guard<std::mutex> lock(updateThreadMutex_);
@@ -92,7 +94,6 @@ class ConfigLoader {
 
  private:
   ConfigLoader();
-  ~ConfigLoader();
 
   const char* configFileName();
   DaemonConfigLoader* daemonConfigLoader();

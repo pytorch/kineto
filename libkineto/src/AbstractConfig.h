@@ -62,6 +62,11 @@ class AbstractConfig {
     return *pos->second;
   }
 
+  // Transfers ownership of cfg arg
+  void addFeature(const std::string& name, AbstractConfig* cfg) {
+    featureConfigs_[name] = cfg;
+  }
+
  protected:
   AbstractConfig() {}
   AbstractConfig(const AbstractConfig& other) = default;
@@ -77,11 +82,6 @@ class AbstractConfig {
 
   // TODO: Separate out each profiler type into features?
   virtual void printActivityProfilerConfig(std::ostream& s) const;
-
-  // Transfers ownership of cfg arg
-  void addFeature(const std::string& name, AbstractConfig* cfg) {
-    featureConfigs_[name] = cfg;
-  }
 
   // Helpers for use in handleOption
   // Split a string by delimiter and remove external white space

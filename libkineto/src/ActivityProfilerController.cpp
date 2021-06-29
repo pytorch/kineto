@@ -43,7 +43,6 @@ ActivityProfilerController::~ActivityProfilerController() {
     delete profilerThread_;
     profilerThread_ = nullptr;
   }
-  VLOG(0) << "Stopped activity profiler";
 }
 
 static ActivityLoggerFactory initLoggerFactory() {

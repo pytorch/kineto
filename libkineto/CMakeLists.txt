@@ -171,6 +171,8 @@ endif()
 if(NOT LIBKINETO_NOROCTRACER)
   find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS /opt/rocm/roctracer/lib)
   target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
+  find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS /opt/rocm/lib)
+  target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
 endif()
 
 if(NOT LIBKINETO_NOCUPTI)

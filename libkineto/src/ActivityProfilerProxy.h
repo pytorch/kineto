@@ -63,6 +63,9 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   void addMetadata(const std::string& key, const std::string& value) override;
 
+  virtual void addChildActivityProfiler(
+      std::unique_ptr<IActivityProfiler> profiler) override;
+
  private:
   bool cpuOnly_{true};
   ConfigLoader& configLoader_;

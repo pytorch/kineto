@@ -413,11 +413,12 @@ TEST_F(ActivityProfilerTest, SubActivityProfilers) {
   test_activities[2].activityName = "Operator bar";
 
   auto mock_activity_profiler =
-    std::make_shared<MockActivityProfiler>(test_activities);
+    std::make_unique<MockActivityProfiler>(test_activities);
 
   MockCuptiActivities activities;
   ActivityProfiler profiler(activities, /*cpu only*/ true);
-  profiler.addActivityProfiler(mock_activity_profiler);
+  profiler.addChildActivityProfiler(
+      std::move(mock_activity_profiler));
 
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);

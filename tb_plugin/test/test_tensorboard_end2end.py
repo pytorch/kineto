@@ -128,7 +128,6 @@ class TestEnd2End(unittest.TestCase):
                 if retry_times<0:
                     self.fail("Load run timeout")
             except Exception as e:
-                print(e)
                 if retry_times > 0:
                     continue
                 else:

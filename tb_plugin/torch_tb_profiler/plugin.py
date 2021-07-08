@@ -347,8 +347,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 if is_new:
                     self._runs = OrderedDict(sorted(self._runs.items()))
 
-            self._loaded = True
-
     def _get_run_dirs(self):
         """Scan logdir, find PyTorch Profiler run directories.
         A directory is considered to be a run if it contains 1 or more *.pt.trace.json[.gz].

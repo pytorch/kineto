@@ -2,6 +2,8 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import Card from '@material-ui/core/Card'
+import CardContent from '@material-ui/core/CardContent'
 import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import CssBaseline from '@material-ui/core/CssBaseline'
 import Divider from '@material-ui/core/Divider'
@@ -13,6 +15,7 @@ import ListSubheader from '@material-ui/core/ListSubheader'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
+import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import 'antd/es/button/style/css'
@@ -122,12 +125,18 @@ const useStyles = makeStyles((theme) => ({
   },
   iconButton: {
     padding: '8px'
-  }
+  },
+  container: {
+    display: 'flex',
+    padding: '80px',
+    flexDirection: 'column'
+  },
 }))
 
 export const App = () => {
   const classes = useStyles()
 
+  const [hasRuns, setHasRuns] = React.useState(true)
   const [run, setRun] = React.useState<string>('')
   const [runs, setRuns] = React.useState<string[]>([])
 
@@ -153,8 +162,10 @@ export const App = () => {
       try {
         const runs = await api.defaultApi.runsGet()
         setRuns(runs)
+        setHasRuns(true)
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
+        setHasRuns(false)
       }
       await sleep(5000)
     }
@@ -248,6 +259,22 @@ export const App = () => {
   }
 
   const renderContent = () => {
+    if (!hasRuns) {
+      return (<Card className={classes.container}>
+        <CardContent>
+          <Typography variant="h5" component="h3" align='left'>
+            No run could not be loaded.
+          </Typography>
+        </CardContent>
+        <CardContent>
+          <Typography variant="body2" component="p" align="left">
+          There is no any runs in the log folder.
+          </Typography>
+        </CardContent>
+      </Card>
+      )
+    }
+
     if (!loaded || !run || !worker || !view || !span) {
       return <FullCircularProgress />
     }

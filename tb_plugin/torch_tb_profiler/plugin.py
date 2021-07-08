@@ -49,9 +49,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             mp.set_start_method(start_method, force=True)
         self.logdir = io.abspath(context.logdir.rstrip('/'))
 
-        self._is_active = None
-        self._is_active_initialized_event = threading.Event()
-
+        self._loaded = None
         self._runs = OrderedDict()
         self._runs_lock = threading.Lock()
 
@@ -76,8 +74,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
         """
-        self._is_active_initialized_event.wait()
-        return self._is_active
+        return True
 
     def get_plugin_apps(self):
         return {
@@ -104,11 +101,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         }
 
     def frontend_metadata(self):
-        return base_plugin.FrontendMetadata(es_module_path="/index.js")
+        return base_plugin.FrontendMetadata(es_module_path="/index.js", disable_reload=True)
 
     @wrappers.Request.application
     def runs_route(self, request):
         with self._runs_lock:
+            if self._loaded and not self._runs:
+                # raise not found exception in case of loaded finished but there is not any data.
+                raise exceptions.NotFound("could not find any runs")
             names = list(self._runs.keys())
         return self.respond_as_json(names)
 
@@ -305,19 +305,21 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     logger.debug("Scan run dir")
                     run_dirs = self._get_run_dirs()
 
+                    has_dir = False
                     # Assume no deletion on run directories, trigger async load if find a new run
                     for run_dir in run_dirs:
-                        # Set _is_active quickly based on file pattern match, don't wait for data loading
-                        if not self._is_active:
-                            self._is_active = True
-                            self._is_active_initialized_event.set()
-
+                        has_dir = True
                         if run_dir not in touched:
                             touched.add(run_dir)
                             logger.info("Find run directory %s", run_dir)
                             # Use threading to avoid UI stall and reduce data parsing time
                             t = threading.Thread(target=self._load_run, args=(run_dir,))
                             t.start()
+
+                    if not has_dir:
+                        self._loaded = True
+                        # handle directory removed case.
+                        self._runs.clear()
                 except Exception as ex:
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 
@@ -337,11 +339,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 self._runs[run.name] = run
                 if is_new:
                     self._runs = OrderedDict(sorted(self._runs.items()))
-
-                # Update is_active
-                if not self._is_active:
-                    self._is_active = True
-                    self._is_active_initialized_event.set()
+            self._loaded = True
 
     def _get_run_dirs(self):
         """Scan logdir, find PyTorch Profiler run directories.

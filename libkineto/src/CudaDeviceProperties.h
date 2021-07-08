@@ -12,6 +12,8 @@
 
 namespace KINETO_NAMESPACE {
 
+int smCount(uint32_t deviceId);
+
 // Return estimated achieved occupancy for a kernel
 float kernelOccupancy(
     uint32_t deviceId,

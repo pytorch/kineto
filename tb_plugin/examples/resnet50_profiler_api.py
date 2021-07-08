@@ -19,7 +19,7 @@ transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor()])
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,
-                                          shuffle=True, num_workers=0)
+                                          shuffle=True, num_workers=4)
 
 criterion = nn.CrossEntropyLoss().cuda()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -34,8 +34,10 @@ with torch.profiler.profile(
         wait=2,
         warmup=3,
         active=6),
-    on_trace_ready=torch.profiler.tensorboard_trace_handler('./result'),
-    record_shapes=True
+    on_trace_ready=torch.profiler.tensorboard_trace_handler('./result', worker_name='worker0'),
+    record_shapes=True,
+    profile_memory=True,
+    with_stack=True
 ) as p:
     for step, data in enumerate(trainloader, 0):
         print("step:{}".format(step))
@@ -47,6 +49,6 @@ with torch.profiler.profile(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if step + 1 >= 11:
+        if step + 1 >= 22:
             break
         p.step()

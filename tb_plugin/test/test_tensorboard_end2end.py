@@ -1,24 +1,76 @@
+import json
 import os
 import socket
 import time
+import unittest
 import urllib
 import urllib.request
-import unittest
 from subprocess import Popen
+from urllib.error import HTTPError
 
 
 class TestEnd2End(unittest.TestCase):
 
+    #def test_tensorboard_gs(self):
+    #    test_folder = 'gs://pe-tests-public/tb_samples/'
+    #    expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
+    #    self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+
     def test_tensorboard_end2end(self):
         test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
-        tb = Popen(['tensorboard', '--logdir='+test_folder])
-
-        run_link = "http://localhost:6006/data/plugin/pytorch_profiler/runs"
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
-        host='localhost'
-        port=6006
+        
+        print("starting spawn mode testing...")
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
-        timeout = 60
+    def test_tensorboard_fork(self):
+        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
+
+        print("starting fork mode testing")
+        self._test_tensorboard_with_arguments(test_folder, expected_runs)
+
+    def test_tensorboard_with_path_prefix(self):
+        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, path_prefix='/tensorboard/viewer/')
+
+    def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
+        host='localhost'
+        port=7007
+
+        try:
+            if env:
+                env_copy = os.environ.copy()
+                env_copy.update(env)
+                env = env_copy
+            if not path_prefix:
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
+            else:
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
+            self._test_tensorboard(host, port, expected_runs, path_prefix)
+        finally:
+            pid = tb.pid
+            print("tensorboard process {} is terminating.".format(pid))
+            tb.terminate()
+
+    def _test_tensorboard(self, host, port, expected_runs, path_prefix):
+        if not path_prefix:
+            link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
+        else:
+            path_prefix = path_prefix.strip('/')
+            link_prefix = 'http://{}:{}/{}/data/plugin/pytorch_profiler/'.format(host, port, path_prefix)
+        run_link = link_prefix + 'runs'
+
+        expected_links_format=[
+            link_prefix + 'overview?run={}&worker=worker0&span=1&view=Overview',
+            link_prefix + 'operation?run={}&worker=worker0&span=1&view=Operator&group_by=Operation',
+            link_prefix + 'operation/table?run={}&worker=worker0&span=1&view=Operator&group_by=Operation',
+            link_prefix + 'kernel/table?run={}&worker=worker0&span=1&view=Kernel&group_by=Kernel',
+            link_prefix + 'kernel?run={}&worker=worker0&span=1&view=Kernel&group_by=Kernel'
+        ]
+
+        retry_times = 60
         while True:
             try:
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -26,48 +78,47 @@ class TestEnd2End(unittest.TestCase):
                 break
             except socket.error:
                 time.sleep(2)
-                timeout -= 1
-                if timeout < 0:
-                    tb.kill()
-                    raise RuntimeError("tensorboard start timeout")
+                retry_times -= 1
+                if retry_times < 0:
+                    self.fail("tensorboard start timeout")
                 continue
 
-        timeout = 60
+        retry_times = 60
+
         while True:
             try:
                 response = urllib.request.urlopen(run_link)
-                if response.read()==expected_runs:
+                data = response.read()
+                if data == expected_runs:
                     break
+                if retry_times % 10 == 0:
+                    print("receive mismatched data, retrying", data)
                 time.sleep(2)
-                timeout -= 1
-                if timeout<0:
-                    tb.kill()
-                    raise RuntimeError("Load run timeout")
+                retry_times -= 1
+                if retry_times<0:
+                    self.fail("Load run timeout")
             except Exception:
-                continue
+                if retry_times > 0:
+                    continue
+                else:
+                    raise
 
-        link_prefix = 'http://localhost:6006/data/plugin/pytorch_profiler/'
-        expected_links_format=[]
-        expected_links_format.append(link_prefix + 'overview?run={}&worker=worker0&view=Overview')
-        expected_links_format.append(link_prefix + 'operation?run={}&worker=worker0&view=Operator&group_by=Operation')
-        expected_links_format.append(link_prefix + 'operation/table?run={}&worker=worker0&view=Operator&group_by=Operation')
-        expected_links_format.append(link_prefix + 'kernel/table?run={}&worker=worker0&view=Kernel&group_by=Kernel')
-        expected_links_format.append(link_prefix + 'kernel?run={}&worker=worker0&view=Kernel&group_by=Kernel')
         links=[]
-        for run in ["resnet50_num_workers_0",
-                    "resnet50_num_workers_4"]:
+        for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 
-        try:
-            with open('result_check_file.txt', 'r') as f:
-                lines=f.readlines()
-                i = 0
-                for link in links:
+        with open('result_check_file.txt', 'r') as f:
+            lines=f.readlines()
+            i = 0
+            print("starting testing...")
+            for link in links:
+                try:
                     response = urllib.request.urlopen(link)
                     self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
                     i = i + 1
-            self.assertEqual(i, 10)
-        finally:
-            tb.kill()
+                except HTTPError as e:
+                    self.fail(e)
+        self.assertEqual(i, 10)
+        print("ending testing...")
 

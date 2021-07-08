@@ -7,12 +7,26 @@
 
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <thread>
 
 namespace libkineto {
 
 struct TraceSpan {
+  TraceSpan() = delete;
+  TraceSpan(
+      int64_t startTime, int64_t endTime, std::string name)
+      : startTime(startTime), endTime(endTime), name(std::move(name)) {
+  }
+  TraceSpan(
+      int opCount, int it, std::string name, std::string prefix)
+      : opCount(opCount),
+        iteration(it),
+        name(std::move(name)),
+        prefix(std::move(prefix)) {
+  }
+
   // FIXME: change to duration?
   int64_t startTime{0};
   int64_t endTime{0};
@@ -20,8 +34,10 @@ struct TraceSpan {
   int iteration{-1};
   // Name is used to identify timeline
   std::string name;
-  // Prefix used to distinguish sub-nets on the same timeline
+  // Prefix used to distinguish trace spans on the same timeline
   std::string prefix;
+  // Tracked by profiler for iteration trigger
+  bool tracked{false};
 };
 
 } // namespace libkineto

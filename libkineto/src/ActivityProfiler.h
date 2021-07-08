@@ -26,6 +26,7 @@
 #include "libkineto.h"
 #include "output_base.h"
 #include "GenericTraceActivity.h"
+#include "IActivityProfiler.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -119,27 +120,32 @@ class ActivityProfiler {
     metadata_[key] = value;
   }
 
+  void addChildActivityProfiler(
+      std::unique_ptr<IActivityProfiler> profiler) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    profilers_.push_back(std::move(profiler));
+  }
+
+ protected:
+
+  using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
+  static const CpuGpuSpanPair& defaultTraceSpan();
+
  private:
+
   class ExternalEventMap {
    public:
-    enum CorrelationFlowType {
-      // Default flow type
-      Default,
-      // User annotated flow type
-      User
-    };
 
     // The correlation id of the GPU activity
-    const libkineto::GenericTraceActivity& getGenericTraceActivity(
-      uint32_t correlation_id, CorrelationFlowType flowType);
+    const libkineto::GenericTraceActivity& correlatedActivity(
+        uint32_t correlation_id);
     void insertEvent(const libkineto::GenericTraceActivity* op);
 
-    void addCorrelation(uint64_t external_id, uint32_t cuda_id, CorrelationFlowType flowType);
+    void addCorrelation(uint64_t external_id, uint32_t cuda_id);
 
     void clear() {
       events_.clear();
-      defaultCorrelationMap_.clear();
-      userCorrelationMap_.clear();
+      correlationMap_.clear();
     }
 
    private:
@@ -148,7 +154,7 @@ class ActivityProfiler {
     // but this class also fully owns the objects it is pointing to so
     // it's not so bad. This is done for performance reasons and is an
     // implementation detail of this class that might change.
-    std::unordered_map<uint64_t, const libkineto::GenericTraceActivity*>
+    std::unordered_map<int64_t, const libkineto::GenericTraceActivity*>
         events_;
 
     // Cuda correlation id -> external correlation id for default events
@@ -159,23 +165,7 @@ class ActivityProfiler {
     std::unordered_map<
         uint32_t, // Cuda correlation ID
         uint64_t> // External correlation ID
-        defaultCorrelationMap_;
-
-    // Cuda correlation id -> external correlation id for user annotated
-    // events
-    // CUPTI provides a mechanism for correlating Cuda events to arbitrary
-    // external events, e.g.operator events from Caffe2.
-    // It also marks GPU activities with the Cuda event correlation ID.
-    // So by connecting the two, we get the complete picture.
-    std::unordered_map<
-        uint32_t, // Cuda correlation ID
-        uint64_t> // External correlation ID
-        userCorrelationMap_;
-
-    std::unordered_map<uint32_t, uint64_t>&
-      getCorrelationMap(CorrelationFlowType flowType) {
-        return flowType == User ? userCorrelationMap_ : defaultCorrelationMap_;
-      }
+        correlationMap_;
   };
 
   // Map of gpu activities to user defined events
@@ -190,16 +180,17 @@ class ActivityProfiler {
     void logEvents(ActivityLogger *logger);
 
     void clear() {
-      streamSpanMap.clear();
+      streamSpanMap_.clear();
     }
 
    private:
     // device id and stream name
-    typedef std::pair<int64_t, int64_t> StreamKey;
+    using StreamKey = std::pair<int64_t, int64_t>;
 
     // map of correlation id to TraceSpan
-    typedef std::unordered_map<int64_t, GenericTraceActivity> CorrelationSpanMap;
-    std::map<StreamKey, CorrelationSpanMap> streamSpanMap;
+    using CorrelationSpanMap =
+        std::unordered_map<int64_t, GenericTraceActivity>;
+    std::map<StreamKey, CorrelationSpanMap> streamSpanMap_;
   };
 
   GpuUserEventMap gpuUserEventMap_;
@@ -222,6 +213,8 @@ class ActivityProfiler {
 
   void finalizeTrace(const Config& config, ActivityLogger& logger);
 
+  void configureChildProfilers();
+
   // Process a single CPU trace
   void processCpuTrace(
       libkineto::CpuTraceBuffer& cpuTrace,
@@ -236,13 +229,11 @@ class ActivityProfiler {
 
   // Record client trace span for subsequent lookups from activities
   // Also creates a corresponding GPU-side span.
-  using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
   CpuGpuSpanPair& recordTraceSpan(TraceSpan& span, int gpuOpCount);
 
   // Returns true if net name is to be tracked for a specified number of
   // iterations.
-  bool iterationTargetMatch(
-      const libkineto::CpuTraceBuffer& trace);
+  bool iterationTargetMatch(libkineto::CpuTraceBuffer& trace);
 
   // net name to id
   int netId(const std::string& netName);
@@ -266,7 +257,7 @@ class ActivityProfiler {
 
   // Is logging disabled for this event?
   // Logging can be disabled due to operator count, net name filter etc.
-  inline bool loggingDisabled(const libkineto::TraceActivity& act) {
+  inline bool loggingDisabled(const libkineto::TraceActivity& act) const {
     const auto& it = clientActivityTraceMap_.find(act.correlationId());
     return it != clientActivityTraceMap_.end() &&
         disabledTraceSpans_.find(it->second->first.name) !=
@@ -320,7 +311,8 @@ class ActivityProfiler {
 
   // Maintain a map of client trace activity to trace span.
   // Maps correlation id -> TraceSpan* held by traceSpans_.
-  std::unordered_map<int64_t, CpuGpuSpanPair*> clientActivityTraceMap_;
+  using ActivityTraceMap = std::unordered_map<int64_t, CpuGpuSpanPair*>;
+  ActivityTraceMap clientActivityTraceMap_;
 
   // Cache thread names and system thread ids for pthread ids
   // Note we're using the lower 32 bits of the (opaque) pthread id
@@ -381,6 +373,11 @@ class ActivityProfiler {
   // Trace metadata
   std::unordered_map<std::string, std::string> metadata_;
 
+  // child activity profilers
+  std::vector<std::unique_ptr<IActivityProfiler>> profilers_;
+
+  // a vector of active profiler plugin sessions
+  std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
 };
 
 } // namespace KINETO_NAMESPACE

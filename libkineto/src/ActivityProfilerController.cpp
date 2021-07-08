@@ -10,6 +10,7 @@
 #include <chrono>
 #include <thread>
 
+#include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
 #include "RoctracerActivityInterface.h"
@@ -25,15 +26,22 @@ namespace KINETO_NAMESPACE {
 
 constexpr milliseconds kProfilerIntervalMsecs(1000);
 
-ActivityProfilerController::ActivityProfilerController(bool cpuOnly) {
+ActivityProfilerController::ActivityProfilerController(
+    ConfigLoader& configLoader, bool cpuOnly)
+    : configLoader_(configLoader) {
 #ifdef HAS_ROCTRACER
-  profiler_ = std::make_unique<ActivityProfiler>(RoctracerActivityInterface::singleton(), cpuOnly);
+  profiler_ = std::make_unique<ActivityProfiler>(
+      RoctracerActivityInterface::singleton(), cpuOnly);
 #else
-  profiler_ = std::make_unique<ActivityProfiler>(CuptiActivityInterface::singleton(), cpuOnly);
+  profiler_ = std::make_unique<ActivityProfiler>(
+      CuptiActivityInterface::singleton(), cpuOnly);
 #endif
+  configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
+  configLoader_.removeHandler(
+      ConfigLoader::ConfigKind::ActivityProfiler, this);
   if (profilerThread_) {
     // signaling termination of the profiler loop
     stopRunloop_ = true;
@@ -41,29 +49,42 @@ ActivityProfilerController::~ActivityProfilerController() {
     delete profilerThread_;
     profilerThread_ = nullptr;
   }
-  VLOG(0) << "Stopped activity profiler";
 }
 
-static ActivityLoggerFactory& loggerFactory() {
-  static ActivityLoggerFactory factory{nullptr};
+static ActivityLoggerFactory initLoggerFactory() {
+  ActivityLoggerFactory factory;
+  factory.addProtocol("file", [](const std::string& url) {
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+  });
   return factory;
 }
 
-void ActivityProfilerController::setLoggerFactory(
-    const ActivityLoggerFactory& factory) {
-  loggerFactory() = factory;
+static ActivityLoggerFactory& loggerFactory() {
+  static ActivityLoggerFactory factory = initLoggerFactory();
+  return factory;
+}
+
+void ActivityProfilerController::addLoggerFactory(
+    const std::string& protocol, ActivityLoggerFactory::FactoryFunc factory) {
+  loggerFactory().addProtocol(protocol, factory);
 }
 
 static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
   if (config.activitiesLogToMemory()) {
     return std::make_unique<MemoryTraceLogger>(config);
   }
-  if (loggerFactory()) {
-    return loggerFactory()(config);
+  return loggerFactory().makeLogger(config.activitiesLogUrl());
+}
+
+bool ActivityProfilerController::canAcceptConfig() {
+  return !profiler_->isActive();
+}
+
+void ActivityProfilerController::acceptConfig(const Config& config) {
+  VLOG(1) << "acceptConfig";
+  if (config.activityProfilerEnabled()) {
+    scheduleTrace(config);
   }
-  return std::make_unique<ChromeTraceLogger>(
-      config.activitiesLogFile(),
-      CuptiActivityInterface::singleton().smCount());
 }
 
 void ActivityProfilerController::profilerLoop() {
@@ -108,6 +129,11 @@ void ActivityProfilerController::profilerLoop() {
 }
 
 void ActivityProfilerController::scheduleTrace(const Config& config) {
+  VLOG(1) << "scheduleTrace";
+  if (profiler_->isActive()) {
+    LOG(ERROR) << "Ignored request - profiler busy";
+    return;
+  }
   std::lock_guard<std::mutex> lock(asyncConfigLock_);
   asyncRequestConfig_ = config.clone();
   // start a profilerLoop() thread to handle request
@@ -143,7 +169,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger), CuptiActivityInterface::singleton());
+  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
 }
 
 void ActivityProfilerController::addMetadata(

@@ -103,9 +103,9 @@ class Logger {
   std::stringstream buf_;
   std::ostream& out_;
   int errnum_;
-  static int severityLevel_;
-  static int verboseLogLevel_;
-  static uint64_t verboseLogModules_;
+  static std::atomic_int severityLevel_;
+  static std::atomic_int verboseLogLevel_;
+  static std::atomic<uint64_t> verboseLogModules_;
 };
 
 class VoidLogger {

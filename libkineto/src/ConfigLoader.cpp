@@ -15,8 +15,6 @@
 #include <chrono>
 #include <fstream>
 
-#include "libkineto.h"
-#include "ActivityProfilerProxy.h"
 #include "DaemonConfigLoader.h"
 
 #include "Logger.h"
@@ -101,8 +99,8 @@ static std::string readConfigFromConfigFile(const char* filename) {
     conf.assign(
         std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
   } catch (std::exception& e) {
-    LOG(ERROR) << "Error in reading libkineto config from config file: "
-               << e.what();
+    VLOG(0) << "Error reading " << filename << ": "
+            << e.what();
     conf = "";
   }
   return conf;
@@ -120,7 +118,7 @@ void ConfigLoader::setDaemonConfigLoaderFactory(
 }
 
 ConfigLoader& ConfigLoader::instance() {
-  static ConfigLoader config_loader(libkineto::api());
+  static ConfigLoader config_loader;
   return config_loader;
 }
 
@@ -130,9 +128,8 @@ std::string ConfigLoader::readOnDemandConfigFromDaemon(
   if (!daemonConfigLoader_) {
     return "";
   }
-  bool events =
-      now > onDemandEventProfilerConfig_->eventProfilerOnDemandEndTime();
-  bool activities = !libkinetoApi_.activityProfiler().isActive();
+  bool events = canHandlerAcceptConfig(ConfigKind::EventProfiler);
+  bool activities = canHandlerAcceptConfig(ConfigKind::ActivityProfiler);
   return daemonConfigLoader_->readOnDemandConfig(events, activities);
 }
 
@@ -144,26 +141,23 @@ int ConfigLoader::contextCountForGpu(uint32_t device) {
   return daemonConfigLoader_->gpuContextCount(device);
 }
 
-ConfigLoader::ConfigLoader(LibkinetoApi& api)
-    : libkinetoApi_(api),
-      onDemandEventProfilerConfig_(new Config()),
-      configUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
+ConfigLoader::ConfigLoader()
+    : configUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
       onDemandConfigUpdateIntervalSecs_(kOnDemandConfigUpdateIntervalSecs),
       stopFlag_(false),
       onDemandSignal_(false) {
-  configFileName_ = getenv(kConfigFileEnvVar.data());
-  if (configFileName_ == nullptr) {
-    configFileName_ = kConfigFile.data();
+}
+
+void ConfigLoader::startThread() {
+  if (!updateThread_) {
+    // Create default base config here - at this point static initializers
+    // of extensions should have run and registered all config feature factories
+    std::lock_guard<std::mutex> lock(configLock_);
+    config_ = std::make_unique<Config>();
+
+    updateThread_ =
+        std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
   }
-  config_.parse(readConfigFromConfigFile(configFileName_));
-  SET_LOG_VERBOSITY_LEVEL(config_.verboseLogLevel(), config_.verboseLogModules());
-  setupSignalHandler(config_.sigUsr2Enabled());
-  if (daemonConfigLoaderFactory && daemonConfigLoaderFactory()) {
-    daemonConfigLoader_ = daemonConfigLoaderFactory()();
-    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
-  }
-  updateThread_ =
-      std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
 }
 
 ConfigLoader::~ConfigLoader() {
@@ -185,18 +179,43 @@ void ConfigLoader::handleOnDemandSignal() {
   }
 }
 
-void ConfigLoader::updateBaseConfig() {
-  const std::string config_str = readConfigFromConfigFile(configFileName_);
-  if (config_str != config_.source()) {
-    std::lock_guard<std::mutex> lock(configLock_);
-    config_.~Config();
-    new (&config_) Config();
-    config_.parse(config_str);
-    if (daemonConfigLoader_) {
-      daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
+const char* ConfigLoader::configFileName() {
+  if (!configFileName_) {
+    configFileName_ = getenv(kConfigFileEnvVar.data());
+    if (configFileName_ == nullptr) {
+      configFileName_ = kConfigFile.data();
     }
   }
-  setupSignalHandler(config_.sigUsr2Enabled());
+  return configFileName_;
+}
+
+DaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
+  if (!daemonConfigLoader_ && daemonConfigLoaderFactory()) {
+    daemonConfigLoader_ = daemonConfigLoaderFactory()();
+    daemonConfigLoader_->setCommunicationFabric(config_->ipcFabricEnabled());
+  }
+  return daemonConfigLoader_.get();
+}
+
+void ConfigLoader::updateBaseConfig() {
+  // First try reading local config file
+  // If that fails, read from daemon
+  // TODO: Invert these once daemon path fully rolled out
+  std::string config_str = readConfigFromConfigFile(configFileName());
+  if (config_str.empty() && daemonConfigLoader()) {
+    // If local config file was not successfully loaded (e.g. not found)
+    // then try the daemon
+    config_str = daemonConfigLoader()->readBaseConfig();
+  }
+  if (config_str != config_->source()) {
+    std::lock_guard<std::mutex> lock(configLock_);
+    config_ = std::make_unique<Config>();
+    config_->parse(config_str);
+    if (daemonConfigLoader()) {
+      daemonConfigLoader()->setCommunicationFabric(config_->ipcFabricEnabled());
+    }
+    setupSignalHandler(config_->sigUsr2Enabled());
+  }
 }
 
 void ConfigLoader::configureFromSignal(
@@ -208,59 +227,25 @@ void ConfigLoader::configureFromSignal(
       readConfigFromConfigFile(kOnDemandConfigFile.data());
   config.parse(config_str);
   config.setSignalDefaults();
-  if (daemonConfigLoader_) {
-    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
-  }
-  if (eventProfilerRequest(config)) {
-    if (now > onDemandEventProfilerConfig_->eventProfilerOnDemandEndTime()) {
-      LOG(INFO) << "Starting on-demand event profiling from signal";
-      std::lock_guard<std::mutex> lock(configLock_);
-      onDemandEventProfilerConfig_ = config.clone();
-    } else {
-      LOG(ERROR) << "On-demand event profiler is busy";
-    }
-  }
-  // Initiate a trace by default, even when not specified in the config.
-  // Set trace duration and iterations to 0 to suppress.
-  config.updateActivityProfilerRequestReceivedTime();
-  try {
-    auto& profiler = dynamic_cast<ActivityProfilerProxy&>(
-        libkinetoApi_.activityProfiler());
-    profiler.scheduleTrace(config);
-  } catch (const std::exception& e) {
-    LOG(ERROR) << "Failed to schedule profiler request (busy?)";
-  }
+  notifyHandlers(config);
 }
 
 void ConfigLoader::configureFromDaemon(
     time_point<system_clock> now,
     Config& config) {
   const std::string config_str = readOnDemandConfigFromDaemon(now);
-  LOG_IF(INFO, !config_str.empty()) << "Received config from dyno:\n"
-                                    << config_str;
+  if (config_str.empty()) {
+    return;
+  }
+
+  LOG(INFO) << "Received config from dyno:\n" << config_str;
   config.parse(config_str);
-  if (daemonConfigLoader_) {
-    daemonConfigLoader_->setCommunicationFabric(config_.ipcFabricEnabled());
-  }
-  if (eventProfilerRequest(config)) {
-    std::lock_guard<std::mutex> lock(configLock_);
-    onDemandEventProfilerConfig_ = config.clone();
-  }
-  if (config_.activityProfilerEnabled() &&
-      config.activityProfilerRequestReceivedTime() > now) {
-    try {
-      auto& profiler = dynamic_cast<ActivityProfilerProxy&>(
-          libkinetoApi_.activityProfiler());
-      profiler.scheduleTrace(config);
-    } catch (const std::exception& e) {
-      LOG(ERROR) << "Failed to schedule profiler request (busy?)";
-    }
-  }
+  notifyHandlers(config);
 }
 
 void ConfigLoader::updateConfigThread() {
   auto now = system_clock::now();
-  auto next_config_load_time = now + configUpdateIntervalSecs_;
+  auto next_config_load_time = now;
   auto next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;
   auto next_log_level_reset_time = now;
   seconds interval = configUpdateIntervalSecs_;
@@ -285,7 +270,7 @@ void ConfigLoader::updateConfigThread() {
       next_config_load_time = now + configUpdateIntervalSecs_;
     }
     if (onDemandSignal_.exchange(false)) {
-      onDemandConfig = config_.clone();
+      onDemandConfig = config_->clone();
       configureFromSignal(now, *onDemandConfig);
     } else if (now > next_on_demand_load_time) {
       configureFromDaemon(now, *onDemandConfig);
@@ -303,20 +288,14 @@ void ConfigLoader::updateConfigThread() {
     if (now > next_log_level_reset_time) {
       VLOG(0) << "Resetting verbose level";
       SET_LOG_VERBOSITY_LEVEL(
-          config_.verboseLogLevel(), config_.verboseLogModules());
+          config_->verboseLogLevel(), config_->verboseLogModules());
     }
   }
 }
 
 bool ConfigLoader::hasNewConfig(const Config& oldConfig) {
   std::lock_guard<std::mutex> lock(configLock_);
-  return config_.timestamp() > oldConfig.timestamp();
-}
-
-bool ConfigLoader::hasNewEventProfilerOnDemandConfig(const Config& oldConfig) {
-  std::lock_guard<std::mutex> lock(configLock_);
-  return onDemandEventProfilerConfig_->eventProfilerOnDemandStartTime() >
-      oldConfig.eventProfilerOnDemandStartTime();
+  return config_->timestamp() > oldConfig.timestamp();
 }
 
 } // namespace KINETO_NAMESPACE

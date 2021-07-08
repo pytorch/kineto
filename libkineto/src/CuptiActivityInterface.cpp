@@ -30,6 +30,9 @@ CuptiActivityInterface& CuptiActivityInterface::singleton() {
 
 void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_CUPTI
+  if (!singleton().externalCorrelationEnabled_) {
+    return;
+  }
   VLOG(2) << "pushCorrelationID(" << id << ")";
   switch(type) {
     case Default:
@@ -45,6 +48,9 @@ void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type)
 
 void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_CUPTI
+  if (!singleton().externalCorrelationEnabled_) {
+    return;
+  }
   switch(type) {
     case Default:
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
@@ -276,6 +282,7 @@ void CuptiActivityInterface::enableCuptiActivities(
         cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
   }
 
+  externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
@@ -288,6 +295,7 @@ void CuptiActivityInterface::enableCuptiActivities(
     }
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
+      externalCorrelationEnabled_ = true;
     }
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
@@ -319,6 +327,7 @@ void CuptiActivityInterface::disableCuptiActivities(
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
   }
+  externalCorrelationEnabled_ = false;
 #endif
 }
 

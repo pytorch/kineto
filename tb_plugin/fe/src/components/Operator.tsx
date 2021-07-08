@@ -3,38 +3,42 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Card from '@material-ui/core/Card'
+import CardContent from '@material-ui/core/CardContent'
+import CardHeader from '@material-ui/core/CardHeader'
+import FormControlLabel from '@material-ui/core/FormControlLabel'
 import Grid from '@material-ui/core/Grid'
+import GridList from '@material-ui/core/GridList'
+import GridListTile from '@material-ui/core/GridListTile'
+import InputLabel from '@material-ui/core/InputLabel'
+import MenuItem from '@material-ui/core/MenuItem'
+import Radio from '@material-ui/core/Radio'
+import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
+import Select, { SelectProps } from '@material-ui/core/Select'
+import { makeStyles } from '@material-ui/core/styles'
 import TextField, {
   StandardTextFieldProps,
   TextFieldProps
 } from '@material-ui/core/TextField'
-import CardHeader from '@material-ui/core/CardHeader'
-import CardContent from '@material-ui/core/CardContent'
-import { makeStyles } from '@material-ui/core/styles'
-import MenuItem from '@material-ui/core/MenuItem'
-import InputLabel from '@material-ui/core/InputLabel'
-import GridList from '@material-ui/core/GridList'
-import GridListTile from '@material-ui/core/GridListTile'
-import Select, { SelectProps } from '@material-ui/core/Select'
-
 import * as React from 'react'
-import { PieChart } from './charts/PieChart'
-import { TableChart } from './charts/TableChart'
 import * as api from '../api'
-import { Graph, OperatorGraph } from '../api'
+import {
+  OperationTableData,
+  OperationTableDataInner,
+  OperatorGraph
+} from '../api'
+import { OperationGroupBy } from '../constants/groupBy'
+import { useSearchDirectly } from '../utils/search'
+import { topIsValid, UseTop, useTopN } from '../utils/top'
+import { PieChart } from './charts/PieChart'
 import { DataLoading } from './DataLoading'
-import RadioGroup, { RadioGroupProps } from '@material-ui/core/RadioGroup'
-import Radio from '@material-ui/core/Radio'
-import FormControlLabel from '@material-ui/core/FormControlLabel'
-import { UseTop, useTopN } from '../utils/top'
-import { useSearch } from '../utils/search'
+import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
+import { OperationTable } from './tables/OperationTable'
 import {
   DeviceSelfTimeTooltip,
   DeviceTotalTimeTooltip,
   HostSelfTimeTooltip,
   HostTotalTimeTooltip
 } from './TooltipDescriptions'
-import { useTooltipCommonStyles, makeChartHeaderRenderer } from './helpers'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -62,16 +66,11 @@ const useStyles = makeStyles((theme) => ({
 export interface IProps {
   run: string
   worker: string
-  view: string
-}
-
-enum GroupBy {
-  Operation = 'Operation',
-  OperationAndInputShape = 'OperationAndInputShape'
+  span: string
 }
 
 export const Operator: React.FC<IProps> = (props) => {
-  const { run, worker, view } = props
+  const { run, worker, span } = props
   const classes = useStyles()
   const tooltipCommonClasses = useTooltipCommonStyles()
   const chartHeaderRenderer = React.useMemo(
@@ -82,16 +81,29 @@ export const Operator: React.FC<IProps> = (props) => {
   const [operatorGraph, setOperatorGraph] = React.useState<
     OperatorGraph | undefined
   >(undefined)
-  const [operatorTable, setOperatorTable] = React.useState<Graph | undefined>(
-    undefined
-  )
-  const [groupBy, setGroupBy] = React.useState(GroupBy.Operation)
+  const [operatorTable, setOperatorTable] = React.useState<
+    OperationTableData | undefined
+  >(undefined)
+  const [groupBy, setGroupBy] = React.useState(OperationGroupBy.Operation)
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
-  const [top, actualTop, useTop, setTop, setUseTop] = useTopN({
+  const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
     defaultUseTop: UseTop.Use,
     defaultTop: 10
   })
-  const [sortColumn, setSortColumn] = React.useState(2)
+
+  const getName = React.useCallback(
+    (row: OperationTableDataInner) => row.name,
+    []
+  )
+  const [searchedOperatorTable] = useSearchDirectly(
+    searchOperatorName,
+    getName,
+    operatorTable
+  )
+
+  const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
+    setSearchOperatorName(event.target.value as string)
+  }
 
   React.useEffect(() => {
     if (operatorGraph) {
@@ -101,39 +113,28 @@ export const Operator: React.FC<IProps> = (props) => {
         operatorGraph.host_self_time.rows?.length ?? 0,
         operatorGraph.host_total_time.rows?.length ?? 0
       ]
-      setTop(Math.min(Math.max(...counts), 10))
+      setTopText(String(Math.min(Math.max(...counts), 10)))
     }
   }, [operatorGraph])
 
   React.useEffect(() => {
     api.defaultApi
-      .operationTableGet(run, worker, view, groupBy)
+      .operationTableGet(run, worker, span, groupBy)
       .then((resp) => {
-        setOperatorTable(resp.data)
+        setOperatorTable(resp)
       })
-  }, [run, worker, view, groupBy])
+  }, [run, worker, span, groupBy])
 
   React.useEffect(() => {
     api.defaultApi
-      .operationGet(run, worker, view, GroupBy.Operation)
+      .operationGet(run, worker, span, OperationGroupBy.Operation)
       .then((resp) => {
         setOperatorGraph(resp)
       })
-  }, [run, worker, view])
-
-  const [searchedOperatorTable] = useSearch(
-    searchOperatorName,
-    'name',
-    operatorTable
-  )
-
-  const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
-    setSearchOperatorName(event.target.value as string)
-  }
+  }, [run, worker, span])
 
   const onGroupByChanged: SelectProps['onChange'] = (event) => {
-    setGroupBy(event.target.value as GroupBy)
-    setSortColumn(event.target.value == GroupBy.Operation ? 2 : 3)
+    setGroupBy(event.target.value as OperationGroupBy)
   }
 
   const onUseTopChanged: RadioGroupProps['onChange'] = (event) => {
@@ -141,7 +142,7 @@ export const Operator: React.FC<IProps> = (props) => {
   }
 
   const onTopChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setTop(Number(event.target.value))
+    setTopText(event.target.value)
   }
 
   const inputProps: StandardTextFieldProps['inputProps'] = {
@@ -238,8 +239,9 @@ export const Operator: React.FC<IProps> = (props) => {
                     classes={{ root: classes.inputWidth }}
                     inputProps={inputProps}
                     type="number"
-                    value={top}
+                    value={topText}
                     onChange={onTopChanged}
+                    error={!topIsValid(topText)}
                   />
                 </Grid>
               )}
@@ -257,10 +259,12 @@ export const Operator: React.FC<IProps> = (props) => {
                       value={groupBy}
                       onChange={onGroupByChanged}
                     >
-                      <MenuItem value={GroupBy.OperationAndInputShape}>
+                      <MenuItem value={OperationGroupBy.OperationAndInputShape}>
                         Operator + Input Shape
                       </MenuItem>
-                      <MenuItem value={GroupBy.Operation}>Operator</MenuItem>
+                      <MenuItem value={OperationGroupBy.Operation}>
+                        Operator
+                      </MenuItem>
                     </Select>
                   </Grid>
                   <Grid item>
@@ -276,8 +280,14 @@ export const Operator: React.FC<IProps> = (props) => {
               </Grid>
               <Grid>
                 <DataLoading value={searchedOperatorTable}>
-                  {(graph) => (
-                    <TableChart graph={graph} sortColumn={sortColumn} />
+                  {(table) => (
+                    <OperationTable
+                      data={table}
+                      groupBy={groupBy}
+                      run={run}
+                      span={span}
+                      worker={worker}
+                    />
                   )}
                 </DataLoading>
               </Grid>

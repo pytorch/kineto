@@ -28,6 +28,7 @@
 #include "src/output_membuf.h"
 
 #include "src/Logger.h"
+#include "test/MockActivitySubProfiler.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
@@ -35,22 +36,26 @@ using namespace KINETO_NAMESPACE;
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #define CUDA_MEMCPY CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020
 
+namespace {
+const TraceSpan& defaultTraceSpan() {
+  static TraceSpan span(0, 0, "Unknown", "");
+  return span;
+}
+}
+
 // Provides ability to easily create a few test CPU-side ops
 struct MockCpuActivityBuffer : public CpuTraceBuffer {
   MockCpuActivityBuffer(int64_t startTime, int64_t endTime) {
-    span = {startTime, endTime, 0, 1, "Test trace", ""};
+    span = TraceSpan(startTime, endTime,"Test trace");
     gpuOpCount = 0;
   }
 
   void addOp(std::string name, int64_t startTime, int64_t endTime, int64_t correlation) {
-    GenericTraceActivity op;
-    op.activityName = name;
-    op.activityType = ActivityType::CPU_OP;
+    GenericTraceActivity op(span, ActivityType::CPU_OP, name);
     op.startTime = startTime;
     op.endTime = endTime;
-    op.device = 0;
-    op.sysThreadId = systemThreadId();
-    op.correlation = correlation;
+    op.resource = systemThreadId();
+    op.id = correlation;
     activities.push_back(std::move(op));
     span.opCount++;
   }
@@ -164,11 +169,16 @@ class ActivityProfilerTest : public ::testing::Test {
     profiler_ = std::make_unique<ActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
+    cfg_->validate();
+    loggerFactory.addProtocol("file", [](const std::string& url) {
+        return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+    });
   }
 
   std::unique_ptr<Config> cfg_;
   MockCuptiActivities cuptiActivities_;
   std::unique_ptr<ActivityProfiler> profiler_;
+  ActivityLoggerFactory loggerFactory;
 };
 
 
@@ -193,7 +203,7 @@ TEST(ActivityProfiler, AsyncTrace) {
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());
 
-  auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile(), 10);
+  auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
   auto now = system_clock::now();
   profiler.configure(cfg, now);
   profiler.setLogger(logger.get());
@@ -282,7 +292,7 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
   profiler_->reset();
 
   // Wrapper that allows iterating over the activities
-  ActivityTrace trace(std::move(logger), cuptiActivities_);
+  ActivityTrace trace(std::move(logger), loggerFactory);
   EXPECT_EQ(trace.activities()->size(), 9);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
@@ -362,7 +372,7 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler.processTrace(*logger);
 
-  ActivityTrace trace(std::move(logger), cuptiActivities_);
+  ActivityTrace trace(std::move(logger), loggerFactory);
   std::map<std::string, int> counts;
   for (auto& activity : *trace.activities()) {
     counts[activity->name()]++;
@@ -371,6 +381,79 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   // The GPU launch kernel activities should have been dropped due to invalid timestamps
   EXPECT_EQ(counts["cudaLaunchKernel"], 0);
   EXPECT_EQ(counts["launchKernel"], 1);
+}
+
+TEST_F(ActivityProfilerTest, SubActivityProfilers) {
+  using ::testing::Return;
+  using ::testing::ByMove;
+
+  // Verbose logging is useful for debugging
+  std::vector<std::string> log_modules(
+      {"ActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  // Setup example events to test
+  GenericTraceActivity ev{defaultTraceSpan(), ActivityType::GLOW_RUNTIME, ""};
+  ev.device = 1;
+  ev.resource = 0;
+
+  int64_t start_time_us = 100;
+  int64_t duration_us = 1000;
+  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+
+  std::vector<GenericTraceActivity> test_activities{3, ev};
+  test_activities[0].startTime = start_time_us;
+  test_activities[0].endTime = start_time_us + 5000;
+  test_activities[0].activityName = "SubGraph A execution";
+  test_activities[1].startTime = start_time_us;
+  test_activities[1].endTime = start_time_us + 2000;
+  test_activities[1].activityName = "Operator foo";
+  test_activities[2].startTime = start_time_us + 2500;
+  test_activities[2].endTime = start_time_us + 2900;
+  test_activities[2].activityName = "Operator bar";
+
+  auto mock_activity_profiler =
+    std::make_unique<MockActivityProfiler>(test_activities);
+
+  MockCuptiActivities activities;
+  ActivityProfiler profiler(activities, /*cpu only*/ true);
+  profiler.addChildActivityProfiler(
+      std::move(mock_activity_profiler));
+
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  EXPECT_TRUE(profiler.isActive());
+
+  profiler.stopTrace(start_time + microseconds(duration_us));
+  EXPECT_TRUE(profiler.isActive());
+
+  char filename[] = "/tmp/libkineto_testXXXXXX.json";
+  mkstemps(filename, 5);
+  LOG(INFO) << "Logging to tmp file " << filename;
+
+  // process trace
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.setLogger(logger.get());
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  trace.save(filename);
+  const auto& traced_activites = trace.activities();
+
+  // Test we have all the events
+  EXPECT_EQ(traced_activites->size(), test_activities.size());
+
+  // Check that the expected file was written and that it has some content
+  int fd = open(filename, O_RDONLY);
+  if (!fd) {
+    perror(filename);
+  }
+  EXPECT_TRUE(fd);
+
+  // Should expect at least 100 bytes
+  struct stat buf{};
+  fstat(fd, &buf);
+  EXPECT_GT(buf.st_size, 100);
 }
 
 TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {

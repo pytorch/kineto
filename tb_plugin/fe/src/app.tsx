@@ -2,6 +2,9 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import { CardHeader } from '@material-ui/core'
+import Card from '@material-ui/core/Card'
+import CardContent from '@material-ui/core/CardContent'
 import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import CssBaseline from '@material-ui/core/CssBaseline'
 import Divider from '@material-ui/core/Divider'
@@ -15,6 +18,7 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import { Typography } from 'antd'
 import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
@@ -130,6 +134,7 @@ export const App = () => {
 
   const [run, setRun] = React.useState<string>('')
   const [runs, setRuns] = React.useState<string[]>([])
+  const [runsLoading, setRunsLoading] = React.useState(true)
 
   const [workers, setWorkers] = React.useState<string[]>([])
   const [worker, setWorker] = React.useState<string>('')
@@ -152,7 +157,8 @@ export const App = () => {
     while (true) {
       try {
         const runs = await api.defaultApi.runsGet()
-        setRuns(runs)
+        setRuns(runs.runs)
+        setRunsLoading(runs.loading)
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
       }
@@ -248,6 +254,17 @@ export const App = () => {
   }
 
   const renderContent = () => {
+    if (!runsLoading && runs.length == 0) {
+      return (
+        <Card variant="outlined">
+          <CardHeader title="No Runs Found"></CardHeader>
+          <CardContent>
+            <Typography>There are not any runs in the log folder.</Typography>
+          </CardContent>
+        </Card>
+      )
+    }
+
     if (!loaded || !run || !worker || !view || !span) {
       return <FullCircularProgress />
     }

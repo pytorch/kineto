@@ -2,12 +2,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import bisect
+import multiprocessing as mp
 import os
 import sys
 from collections import defaultdict
-from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
+from ..multiprocessing import get_start_method
 from ..run import Run
 from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
@@ -20,7 +21,8 @@ class RunLoader(object):
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches
-        self.queue = Queue()
+        self.ctx = mp.get_context(get_start_method())
+        self.queue = self.ctx.Queue()
 
     def load(self):
         workers = []
@@ -46,11 +48,11 @@ class RunLoader(object):
             for i, span in enumerate(span_array, 1):
                 span_index_map[(worker, span)] = i
 
-        barrier = Barrier(len(workers) + 1)
+        barrier = self.ctx.Barrier(len(workers) + 1)
         for worker, span, path in workers:
             # convert the span timestamp to the index.
             span_index = None if span is None else span_index_map[(worker, span)]
-            p = Process(target=self._process_data, args=(worker, span_index, path, barrier))
+            p = self.ctx.Process(target=self._process_data, args=(worker, span_index, path, barrier))
             p.start()
 
         logger.info("starting all processing")

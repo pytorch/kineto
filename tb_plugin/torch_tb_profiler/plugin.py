@@ -4,7 +4,6 @@
 import atexit
 import gzip
 import json
-import multiprocessing as mp
 import os
 import sys
 import tempfile
@@ -44,9 +43,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
           context: A base_plugin.TBContext instance.
         """
         super(TorchProfilerPlugin, self).__init__(context)
-        start_method = os.getenv('TORCH_PROFILER_START_METHOD')
-        if start_method:
-            mp.set_start_method(start_method, force=True)
         self.logdir = io.abspath(context.logdir.rstrip('/'))
 
         self._is_active = None

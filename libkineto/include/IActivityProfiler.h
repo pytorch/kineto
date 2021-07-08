@@ -22,6 +22,11 @@
 
 namespace libkineto {
 
+#ifdef _MSC_VER
+  // workaround for the predefined ERROR macro on Windows
+#undef ERROR
+#endif // _MSC_VER
+
 enum class TraceStatus {
   READY, // Accepting trace requests
   WARMUP, // Performing trace warmup

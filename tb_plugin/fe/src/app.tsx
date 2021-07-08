@@ -2,9 +2,9 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import { CardHeader } from '@material-ui/core'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
+import CardHeader from '@material-ui/core/CardHeader'
 import ClickAwayListener from '@material-ui/core/ClickAwayListener'
 import CssBaseline from '@material-ui/core/CssBaseline'
 import Divider from '@material-ui/core/Divider'
@@ -18,7 +18,7 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
-import { Typography } from 'antd'
+import Typography from '@material-ui/core/Typography'
 import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'

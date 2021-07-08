@@ -8,7 +8,7 @@ import sys
 from collections import defaultdict
 
 from .. import consts, io, utils
-from ..multiprocessing import get_start_method
+from ..profiler.multiprocessing import get_start_method
 from ..run import Run
 from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator

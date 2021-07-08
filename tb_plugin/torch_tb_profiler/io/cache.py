@@ -5,7 +5,7 @@ import multiprocessing as mp
 import os
 
 from .. import utils
-from ..multiprocessing import get_start_method
+from ..profiler.multiprocessing import get_start_method
 from .file import download_file, read
 
 logger = utils.get_logger()

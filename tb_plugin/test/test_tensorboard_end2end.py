@@ -112,7 +112,14 @@ class TestEnd2End(unittest.TestCase):
             try:
                 response = urllib.request.urlopen(run_link)
                 data = response.read()
-                if data == expected_runs:
+                runs = None
+                if data:
+                    data = json.loads(data)
+                    runs = data.get("runs")
+                    if runs:
+                        runs = '[{}]'.format(", ".join(['"{}"'.format(i) for i in runs]))
+                        runs = runs.encode('utf-8')
+                if runs == expected_runs:
                     break
                 if retry_times % 10 == 0:
                     print("receive mismatched data, retrying", data)
@@ -120,7 +127,7 @@ class TestEnd2End(unittest.TestCase):
                 retry_times -= 1
                 if retry_times<0:
                     self.fail("Load run timeout")
-            except Exception:
+            except Exception as e:
                 if retry_times > 0:
                     continue
                 else:

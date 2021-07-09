@@ -7,12 +7,13 @@
 
 #include "libkineto.h"
 
+#include "ConfigLoader.h"
 #include "ThreadUtil.h"
 
 namespace libkineto {
 
 LibkinetoApi& api() {
-  static LibkinetoApi instance;
+  static LibkinetoApi instance(ConfigLoader::instance());
   return instance;
 }
 

@@ -28,7 +28,7 @@ class AbstractConfig {
   }
 
   // Return a copy of the full derived class
-  virtual AbstractConfig* cloneDerived() const = 0;
+  virtual AbstractConfig* cloneDerived(AbstractConfig& parent) const = 0;
 
   // Returns true if successfully parsed the config string
   bool parse(const std::string& conf);
@@ -62,6 +62,11 @@ class AbstractConfig {
     return *pos->second;
   }
 
+  // Transfers ownership of cfg arg
+  void addFeature(const std::string& name, AbstractConfig* cfg) {
+    featureConfigs_[name] = cfg;
+  }
+
  protected:
   AbstractConfig() {}
   AbstractConfig(const AbstractConfig& other) = default;
@@ -78,11 +83,6 @@ class AbstractConfig {
   // TODO: Separate out each profiler type into features?
   virtual void printActivityProfilerConfig(std::ostream& s) const;
 
-  // Transfers ownership of cfg arg
-  void addFeature(const std::string& name, AbstractConfig* cfg) {
-    featureConfigs_[name] = cfg;
-  }
-
   // Helpers for use in handleOption
   // Split a string by delimiter and remove external white space
   std::vector<std::string> splitAndTrim(const std::string& s, char delim) const;
@@ -98,7 +98,7 @@ class AbstractConfig {
 
   void cloneFeaturesInto(AbstractConfig& cfg) const {
     for (const auto& feature : featureConfigs_) {
-      cfg.featureConfigs_[feature.first] = feature.second->cloneDerived();
+      cfg.featureConfigs_[feature.first] = feature.second->cloneDerived(cfg);
     }
   }
 

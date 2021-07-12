@@ -1,11 +1,10 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-import multiprocessing as mp
 import os
 
 from .. import utils
-from ..profiler.multiprocessing import get_start_method
+from ..profiler import multiprocessing as mp
 from . import file
 from .file import download_file, read
 
@@ -13,9 +12,8 @@ logger = utils.get_logger()
 
 class Cache:
     def __init__(self):
-        ctx = mp.get_context(get_start_method())
-        self._lock = ctx.Lock()
-        self._manager = ctx.Manager()
+        self._lock = mp.Lock()
+        self._manager = mp.Manager()
         self._cache_dict = self._manager.dict()
 
     def __getstate__(self):

@@ -297,7 +297,12 @@ class RunGenerator(object):
 
     def _generate_kernel_op_table(self):
         table = {}
-        table["columns"] = [{"type": "string", "name": "Name"}, {"type": "string", "name": "Operator"}]
+        table["columns"] = [{"type": "string", "name": "Name"},
+                            {"type": "string", "name": "Operator"},
+                            {"type": "string", "name": "Grid"},
+                            {"type": "string", "name": "Block"},
+                            {"type": "number", "name": "Register Per Thread"},
+                            {"type": "number", "name": "Shared Memory"}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
@@ -309,7 +314,10 @@ class RunGenerator(object):
         kernel_list = sorted(self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration,
                              reverse=True)
         for agg_by_name_op in kernel_list:
-            kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name, agg_by_name_op.calls,
+            kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
+                             agg_by_name_op.grid, agg_by_name_op.block,
+                             int(agg_by_name_op.regs_per_thread), int(agg_by_name_op.shared_memory),
+                             agg_by_name_op.calls,
                              agg_by_name_op.total_duration, round(agg_by_name_op.avg_duration),
                              agg_by_name_op.max_duration, agg_by_name_op.min_duration]
             if sum(self.profile_data.blocks_per_sm_count) > 0:

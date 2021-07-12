@@ -181,12 +181,18 @@ class ModuleParser:
             for kernel in kernel_list:
                 dur = kernel.end_time - kernel.start_time
                 op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
-                key = kernel.name + "###" + op_name
+                key = kernel.name + "###" + op_name + "###" + \
+                      kernel.grid + "###" + kernel.block + "###" + \
+                      kernel.regs_per_thread + "###" + kernel.shared_memory
                 if key not in name_op_to_agg:
                     name_op_to_agg[key] = KernelAggByNameOp()
                 agg = name_op_to_agg[key]
                 agg.name = kernel.name
                 agg.op_name = op_name
+                agg.grid = kernel.grid
+                agg.block = kernel.block
+                agg.regs_per_thread = kernel.regs_per_thread
+                agg.shared_memory = kernel.shared_memory
                 agg.calls += 1
                 agg.total_duration += dur
                 agg.min_duration = min(agg.min_duration, dur)

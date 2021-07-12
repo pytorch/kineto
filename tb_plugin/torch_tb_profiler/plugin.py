@@ -14,9 +14,8 @@ from collections import OrderedDict
 from queue import Queue
 
 import werkzeug
-from tensorboard import errors
 from tensorboard.plugins import base_plugin
-from werkzeug import wrappers
+from werkzeug import exceptions, wrappers
 
 from . import consts, io, utils
 from .profiler import RunLoader
@@ -24,6 +23,14 @@ from .run import DistributedRunProfile, Run, RunProfile
 
 logger = utils.get_logger()
 
+def decorate_headers(func):
+    def wrapper(*args, **kwargs):
+        headers = func(*args, **kwargs)
+        headers.extend(TorchProfilerPlugin.headers)
+        return headers
+    return wrapper
+
+exceptions.HTTPException.get_headers = decorate_headers(exceptions.HTTPException.get_headers)
 
 class TorchProfilerPlugin(base_plugin.TBPlugin):
     """TensorBoard plugin for Torch Profiler."""
@@ -42,8 +49,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             mp.set_start_method(start_method, force=True)
         self.logdir = io.abspath(context.logdir.rstrip('/'))
 
-        self._is_active = None
-        self._is_active_initialized_event = threading.Event()
+        self._load_lock = threading.Lock()
+        self._load_threads = []
 
         self._runs = OrderedDict()
         self._runs_lock = threading.Lock()
@@ -69,8 +76,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
         """
-        self._is_active_initialized_event.wait()
-        return self._is_active
+        return True
 
     def get_plugin_apps(self):
         return {
@@ -97,13 +103,21 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         }
 
     def frontend_metadata(self):
-        return base_plugin.FrontendMetadata(es_module_path="/index.js")
+        return base_plugin.FrontendMetadata(es_module_path="/index.js", disable_reload=True)
 
     @wrappers.Request.application
     def runs_route(self, request):
         with self._runs_lock:
             names = list(self._runs.keys())
-        return self.respond_as_json(names)
+
+        with self._load_lock:
+            loading = bool(self._load_threads)
+
+        data = {
+            "runs": names,
+            "loading": loading
+        }
+        return self.respond_as_json(data)
 
     @wrappers.Request.application
     def views_route(self, request):
@@ -123,7 +137,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._validate(run=name, view=view)
         run = self._get_run(name)
         self._check_run(run, name)
-        workers = run.get_workers(view)
         return self.respond_as_json(run.get_workers(view))
 
     @wrappers.Request.application
@@ -278,7 +291,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            raise errors.NotFoundError("404 Not Found")
+            raise exceptions.NotFound("404 Not Found")
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
@@ -298,19 +311,22 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     logger.debug("Scan run dir")
                     run_dirs = self._get_run_dirs()
 
+                    has_dir = False
                     # Assume no deletion on run directories, trigger async load if find a new run
                     for run_dir in run_dirs:
-                        # Set _is_active quickly based on file pattern match, don't wait for data loading
-                        if not self._is_active:
-                            self._is_active = True
-                            self._is_active_initialized_event.set()
-
+                        has_dir = True
                         if run_dir not in touched:
                             touched.add(run_dir)
                             logger.info("Find run directory %s", run_dir)
                             # Use threading to avoid UI stall and reduce data parsing time
                             t = threading.Thread(target=self._load_run, args=(run_dir,))
                             t.start()
+                            with self._load_lock:
+                                self._load_threads.append(t)
+
+                    if not has_dir:
+                        # handle directory removed case.
+                        self._runs.clear()
                 except Exception as ex:
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 
@@ -330,11 +346,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 self._runs[run.name] = run
                 if is_new:
                     self._runs = OrderedDict(sorted(self._runs.items()))
-
-                # Update is_active
-                if not self._is_active:
-                    self._is_active = True
-                    self._is_active_initialized_event.set()
 
     def _get_run_dirs(self):
         """Scan logdir, find PyTorch Profiler run directories.
@@ -363,6 +374,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             self._queue.put(run)
         except Exception as ex:
             logger.warning("Failed to load run %s. Exception=%s", ex, name, exc_info=True)
+
+        t = threading.current_thread()
+        with self._load_lock:
+            try:
+                self._load_threads.remove(t)
+            except ValueError:
+                logger.warning("could not find the thread {}".format(run_dir))
 
     def _get_run(self, name) -> Run:
         with self._runs_lock:
@@ -396,23 +414,22 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._check_run(run, name)
         profile = run.get_profile(worker, span)
         if profile is None:
-            raise errors.NotFoundError("could not find the profile for %s/%s " %(name, worker))
+            raise exceptions.NotFound("could not find the profile for %s/%s/%s " %(name, worker, span))
         return profile
 
     def _check_run(self, run, name):
         if run is None:
-            raise errors.NotFoundError("could not find the run for %s" %(name))
+            raise exceptions.NotFound("could not find the run for %s" %(name))
 
     def _check_normal_profile(self, profile, name, worker):
         if not isinstance(profile, RunProfile):
-            raise errors.InvalidArgumentError("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
+            raise exceptions.BadRequest("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
 
     def _check_distributed_profile(self, profile, name):
         if not isinstance(profile, DistributedRunProfile):
-            raise errors.InvalidArgumentError("Get an unexpected distributed profile type %s for %s/%s" %(type(profile), name))
+            raise exceptions.BadRequest("Get an unexpected distributed profile type %s for %s" %(type(profile), name))
 
     def _validate(self, **kwargs):
         for name,v in kwargs.items():
             if v is None:
-                raise errors.InvalidArgumentError("Must specify %s in request url" %(name))
-
+                raise exceptions.BadRequest("Must specify %s in request url" %(name))

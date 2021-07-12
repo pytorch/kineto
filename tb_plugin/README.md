@@ -24,7 +24,7 @@ and give optimization recommendations.
 
 * Build the wheel
   - `python setup.py build_fe sdist bdist_wheel` \
-   **_Note_**: the build_fe step need setup yarn and nodejs
+   **_Note_**: the build_fe step need setup yarn and Node.js
   - `python setup.py sdist bdist_wheel`
 
 ### Quick Start Instructions
@@ -37,12 +37,12 @@ and give optimization recommendations.
   [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
   Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
 
-  Note: The recommended way to produce profiling data is assigning "torch.profiler.tensorboard_trace_handler"
-  to "on_trace_ready" on creation of "torch.profiler.schedule".
+  Note: The recommended way to produce profiling data is assigning `torch.profiler.tensorboard_trace_handler`
+  to `on_trace_ready` on creation of `torch.profiler.profile`.
 
 * Start TensorBoard
 
-  Specify the profiling data folder to "logdir" in Tensorboard. If you use the above samples data, start TensorBoard with:
+  Specify the profiling data folder to `logdir` in Tensorboard. If you use the above samples data, start TensorBoard with:
 
   `tensorboard --logdir=./samples`
 
@@ -56,14 +56,17 @@ and give optimization recommendations.
 * Open TensorBoard in Chrome browser
 
   Open URL `http://localhost:6006` in the browser.
-  If you use '--bind_all' in tensorboard start cmd, the hostname may not be 'localhost'. You may find it in the log printed after the cmd.
+  If you use `--bind_all` in tensorboard start command, the hostname may not be 'localhost'. You may find it in the log printed after the cmd.
 
 * Navigate to PYTORCH_PROFILER tab
 
   If the files under `--logdir` are too big or too many,
   please wait a while and refresh the browser to check latest loaded result.
-* Also support loading profiling data stored in AWS(S3://), Azure blob(https://\<account\>.blob.core.windows.net) and Google Cloud(GS://)
-  * S3: install boto3. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
+
+* Loading profiling data from cloud
+  * S3 (S3://)
+
+    install `boto3`. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
     For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
     For example, the following command can be used to create minio storage after following guides: 
     * Server: https://docs.min.io/docs/minio-quickstart-guide.html
@@ -81,8 +84,15 @@ and give optimization recommendations.
      export S3_ENDPOINT=http://localhost:9000
      tensorboard --logdir=s3://profiler/version_2/ --bind_all
   ```
-  * Azure Blob: install azure-storage-blob. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`
-  * Google Cloud: install google-cloud-storage.
+
+  * Azure blob (https://\<account\>.blob.core.windows.net)
+
+    install `azure-storage-blob`. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`
+
+  * Google Cloud (GS://)
+
+    install `google-cloud-storage`.
+
   ---
   > **_NOTES:_** For AWS, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
   ---
@@ -93,7 +103,7 @@ and give optimization recommendations.
   
   and open tensorboard in browser to see all the views described below.
  
-  Note: for accessing data in azure blob, you need to install torch-tb-profiler with cmd: `pip install torch-tb-profiler[blob]`
+  Note: for accessing data in azure blob, you need to install torch-tb-profiler with `pip install torch-tb-profiler[blob]`
   
 ### Quick Usage Instructions
 
@@ -358,3 +368,8 @@ one worker is much larger than others, there may be a problem of loading balance
         * Data Transfer Time (us): Total time actually used for data transfer in operator of this type.
         * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
         
+### PyTorch Profiler TensorBoard Plugin 0.2 Release Notes
+
+Known Issues: This software does not support Python 3.9.0, 3.9.1, 3.9.2.
+If the tensorboard launching reports error message "ImportError" and "circular import",
+please update your Python to higher version.

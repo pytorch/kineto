@@ -31,12 +31,12 @@ with torch.profiler.profile(
         torch.profiler.ProfilerActivity.CPU,
         torch.profiler.ProfilerActivity.CUDA],
     schedule=torch.profiler.schedule(
-        wait=2,
-        warmup=3,
-        active=6),
+        wait=1,
+        warmup=1,
+        active=2),
     on_trace_ready=torch.profiler.tensorboard_trace_handler('./result', worker_name='worker0'),
     record_shapes=True,
-    profile_memory=True,
+    profile_memory=True,  # This will take 1 to 2 minutes. Setting it to False could greatly speedup.
     with_stack=True
 ) as p:
     for step, data in enumerate(trainloader, 0):
@@ -49,6 +49,6 @@ with torch.profiler.profile(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if step + 1 >= 22:
+        if step + 1 >= 4:
             break
         p.step()

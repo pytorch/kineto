@@ -1,12 +1,18 @@
 import json
 import os
+import shutil
 import socket
+import tempfile
 import time
 import unittest
 import urllib
 import urllib.request
 from subprocess import Popen
 from urllib.error import HTTPError
+
+
+def get_samples_dir():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), '../samples')
 
 
 class TestEnd2End(unittest.TestCase):
@@ -17,23 +23,40 @@ class TestEnd2End(unittest.TestCase):
     #    self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
     def test_tensorboard_end2end(self):
-        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
-        
+
         print("starting spawn mode testing...")
         self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
     def test_tensorboard_fork(self):
-        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         print("starting fork mode testing")
         self._test_tensorboard_with_arguments(test_folder, expected_runs)
 
     def test_tensorboard_with_path_prefix(self):
-        test_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../samples')
+        test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
         self._test_tensorboard_with_arguments(test_folder, expected_runs, path_prefix='/tensorboard/viewer/')
+
+    def test_tensorboard_with_symlinks(self):
+        logdir = tempfile.mkdtemp(prefix="tensorboard_logdir")
+
+        samples_dir = get_samples_dir()
+
+        # Create the following layout, with 1 symlink to a run dir, and 1 regular run dir:
+        # logdir/
+        #     run_concrete/
+        #     run_symlink/ --> path/to/samples/resnet50_num_workers_4/
+        shutil.copytree(os.path.join(samples_dir, "resnet50_num_workers_0"), os.path.join(logdir, "run_concrete"))
+        os.symlink(os.path.join(samples_dir, "resnet50_num_workers_4"), os.path.join(logdir, "run_symlink"))
+
+        expected_runs = b'["run_concrete", "run_symlink"]'
+        self._test_tensorboard_with_arguments(logdir, expected_runs)
+
+        shutil.rmtree(logdir)
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
@@ -89,7 +112,14 @@ class TestEnd2End(unittest.TestCase):
             try:
                 response = urllib.request.urlopen(run_link)
                 data = response.read()
-                if data == expected_runs:
+                runs = None
+                if data:
+                    data = json.loads(data)
+                    runs = data.get("runs")
+                    if runs:
+                        runs = '[{}]'.format(", ".join(['"{}"'.format(i) for i in runs]))
+                        runs = runs.encode('utf-8')
+                if runs == expected_runs:
                     break
                 if retry_times % 10 == 0:
                     print("receive mismatched data, retrying", data)

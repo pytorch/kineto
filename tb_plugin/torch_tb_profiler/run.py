@@ -101,10 +101,10 @@ class RunProfile(object):
         self.trace_file_path = None
         self.gpu_ids = None
         self.gpu_utilization = None
-        self.sm_efficency = None
+        self.sm_efficiency = None
         self.occupancy = None
         self.gpu_util_buckets = None
-        self.approximated_sm_efficency_ranges = None
+        self.approximated_sm_efficiency_ranges = None
         self.gpu_infos = None
 
         # memory stats
@@ -145,7 +145,7 @@ class RunProfile(object):
                 add_trace_counter_gpu_util(gpu_id, buckets[0][0], 0, counter_json_list)
             for b in buckets:
                 add_trace_counter_gpu_util(gpu_id, b[0], b[1], counter_json_list)
-        for gpu_id, ranges in enumerate(self.approximated_sm_efficency_ranges):
+        for gpu_id, ranges in enumerate(self.approximated_sm_efficiency_ranges):
             buckets = self.gpu_util_buckets[gpu_id]
             if len(ranges) > 0 and len(buckets) > 0:
                 # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
@@ -193,12 +193,12 @@ class RunProfile(object):
                 gpu_metrics_data.append({"title": "GPU Utilization",
                                          "value": "{} %".format(
                                              round(profile.gpu_utilization[gpu_id] * 100, 2))})
-                if profile.blocks_per_sm_count[gpu_id] > 0:
+                if profile.sm_efficiency[gpu_id] is not None:
                     gpu_metrics_data.append({"title": "Est. SM Efficiency",
                                              "value": "{} %".format(
-                                                 round(profile.sm_efficency[gpu_id] * 100, 2))})
+                                                 round(profile.sm_efficiency[gpu_id] * 100, 2))})
                     has_sm_efficiency = True
-                if profile.occupancy_count[gpu_id] > 0:
+                if profile.occupancy[gpu_id] is not None:
                     gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True
@@ -211,7 +211,7 @@ class RunProfile(object):
             if has_sm_efficiency:
                 tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
             if has_occupancy:
-                tooltip += "\n" + consts.TOOLTIP_OCCUPANCY
+                tooltip += "\n" + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
             return tooltip
 
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)

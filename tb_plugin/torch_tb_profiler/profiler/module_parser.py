@@ -4,9 +4,9 @@
 import sys
 from collections import defaultdict
 
-from .. import utils
 from .node import OperatorNode, is_operator_node
 from .trace import EventTypes
+from .. import utils
 
 logger = utils.get_logger()
 
@@ -181,9 +181,9 @@ class ModuleParser:
             for kernel in kernel_list:
                 dur = kernel.end_time - kernel.start_time
                 op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
-                key = kernel.name + "###" + op_name + "###" + \
-                      kernel.grid + "###" + kernel.block + "###" + \
-                      kernel.regs_per_thread + "###" + kernel.shared_memory
+                key = "###".join((kernel.name, op_name,
+                                  str(kernel.grid), str(kernel.block),
+                                  str(kernel.regs_per_thread), str(kernel.shared_memory)))
                 if key not in name_op_to_agg:
                     name_op_to_agg[key] = KernelAggByNameOp()
                 agg = name_op_to_agg[key]

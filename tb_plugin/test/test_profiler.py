@@ -1722,8 +1722,8 @@ class TestProfiler(unittest.TestCase):
                 "op_name": "op1",
                 "grid": "[16, 1, 1]",
                 "block": "[16, 16, 16]",
-                "registers per thread": "18",
-                "shared memory": "0",
+                "registers per thread": 18,
+                "shared memory": 0,
                 "calls": 2,
                 "total_duration": 15 + 10,
                 "avg_duration": (15 + 10) / 2,
@@ -1735,8 +1735,8 @@ class TestProfiler(unittest.TestCase):
                 "op_name": "op1",
                 "grid": "[16, 1, 1]",
                 "block": "[16, 16, 64]",  # Only changed this.
-                "registers per thread": "18",
-                "shared memory": "0",
+                "registers per thread": 18,
+                "shared memory": 0,
                 "calls": 1,
                 "total_duration": 13,
                 "avg_duration": 13,
@@ -1748,8 +1748,8 @@ class TestProfiler(unittest.TestCase):
                 "op_name": "op2",  # Only changed this.
                 "grid": "[16, 1, 1]",
                 "block": "[16, 16, 64]",
-                "registers per thread": "18",
-                "shared memory": "0",
+                "registers per thread": 18,
+                "shared memory": 0,
                 "calls": 1,
                 "total_duration": 17,
                 "avg_duration": 17,
@@ -1763,8 +1763,170 @@ class TestProfiler(unittest.TestCase):
             expected_agg_kernel = expected_agg_kernels[index]
             self.assertEqual(agg_kernel.name, expected_agg_kernel["name"])
             self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
-            self.assertEqual(agg_kernel.grid, expected_agg_kernel["grid"])
-            self.assertEqual(agg_kernel.block, expected_agg_kernel["block"])
+            self.assertEqual(str(agg_kernel.grid), expected_agg_kernel["grid"])
+            self.assertEqual(str(agg_kernel.block), expected_agg_kernel["block"])
+            self.assertEqual(agg_kernel.regs_per_thread, expected_agg_kernel["registers per thread"])
+            self.assertEqual(agg_kernel.shared_memory, expected_agg_kernel["shared memory"])
+            self.assertEqual(agg_kernel.calls, expected_agg_kernel["calls"])
+            self.assertEqual(agg_kernel.total_duration, expected_agg_kernel["total_duration"])
+            self.assertAlmostEqual(agg_kernel.avg_duration, expected_agg_kernel["avg_duration"])
+            self.assertEqual(agg_kernel.min_duration, expected_agg_kernel["min_duration"])
+            self.assertEqual(agg_kernel.max_duration, expected_agg_kernel["max_duration"])
+            index += 1
+
+    # Test group by "kernel detail + op name" with invalid input lack of some kernel field
+    def test_group_by_kernel_columns_invalid_input(self):
+        json_content = """
+          [
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "op1", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 60,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },          
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 220, "dur": 1,
+            "args": {"correlation": 1000, "external id": 3, "device": 0,
+                    "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 210, "dur": 5,
+            "args": {"correlation": 1000, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 230, "dur": 2,
+            "args": {"correlation": 1001, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 220, "dur": 5,
+            "args": {"correlation": 1001, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 240, "dur": 3,
+            "args": {"correlation": 1002, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "block": [16, 16, 16], "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 230, "dur": 5,
+            "args": {"correlation": 1002, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 250, "dur": 4,
+            "args": {"correlation": 1003, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 240, "dur": 5,
+            "args": {"correlation": 1003, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 260, "dur": 5,
+            "args": {"correlation": 1004, "external id": 3, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime",
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 250, "dur": 5,
+            "args": {"correlation": 1004, "external id": 3}
+          }
+          ]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+        expected_agg_kernels = [
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "None",
+                "block": "[16, 16, 16]",
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 1,
+                "avg_duration": 1,
+                "min_duration": 1,
+                "max_duration": 1
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "[16, 1, 1]",
+                "block": "None",
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 2,
+                "avg_duration": 2,
+                "min_duration": 2,
+                "max_duration": 2
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "[16, 1, 1]",
+                "block": "[16, 16, 16]",
+                "registers per thread": 0,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 3,
+                "avg_duration": 3,
+                "min_duration": 3,
+                "max_duration": 3
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "[16, 1, 1]",
+                "block": "[16, 16, 16]",
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 4,
+                "avg_duration": 4,
+                "min_duration": 4,
+                "max_duration": 4
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "None",
+                "block": "None",
+                "registers per thread": 0,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 5,
+                "avg_duration": 5,
+                "min_duration": 5,
+                "max_duration": 5
+            }
+        ]
+        index = 0
+        self.assertEqual(len(profile.kernel_list_groupby_name_op), len(expected_agg_kernels))
+        for agg_kernel in profile.kernel_list_groupby_name_op:
+            expected_agg_kernel = expected_agg_kernels[index]
+            self.assertEqual(agg_kernel.name, expected_agg_kernel["name"])
+            self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
+            self.assertEqual(str(agg_kernel.grid), expected_agg_kernel["grid"])
+            self.assertEqual(str(agg_kernel.block), expected_agg_kernel["block"])
             self.assertEqual(agg_kernel.regs_per_thread, expected_agg_kernel["registers per thread"])
             self.assertEqual(agg_kernel.shared_memory, expected_agg_kernel["shared memory"])
             self.assertEqual(agg_kernel.calls, expected_agg_kernel["calls"])

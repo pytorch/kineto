@@ -25,7 +25,7 @@ class TestEnd2End(unittest.TestCase):
     def test_tensorboard_end2end(self):
         test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
-        
+
         print("starting spawn mode testing...")
         self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
@@ -112,7 +112,14 @@ class TestEnd2End(unittest.TestCase):
             try:
                 response = urllib.request.urlopen(run_link)
                 data = response.read()
-                if data == expected_runs:
+                runs = None
+                if data:
+                    data = json.loads(data)
+                    runs = data.get("runs")
+                    if runs:
+                        runs = '[{}]'.format(", ".join(['"{}"'.format(i) for i in runs]))
+                        runs = runs.encode('utf-8')
+                if runs == expected_runs:
                     break
                 if retry_times % 10 == 0:
                     print("receive mismatched data, retrying", data)

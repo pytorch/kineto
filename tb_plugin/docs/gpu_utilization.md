@@ -1,15 +1,15 @@
-* GPU Utilization: GPU busy time / all steps time. The higher, the better. All steps time is the total time of all profiler steps(or called as iterations). 
+* GPU Utilization: GPU busy time / all steps time. The higher, the better. All steps time is the total time of all profiler steps(or called as iterations).
                    GPU busy time is the time during “all steps time” when is at least one GPU kernel running on this GPU. 
                    However, this high-level utilization metric is coarse. It can’t tell how many SMs(Stream Multiprocessors) are in use. 
                    For example, a kernel with a single thread running continuously will get 100% GPU utilization. 
 
-* Est. SM Efficiency: Estimated Stream Multiprocessor Efficiency. The higher, the better. This metric of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%). 
+* Est. SM Efficiency: Estimated Stream Multiprocessor Efficiency. The higher, the better. This metric of a kernel, SM_Eff_K = min(blocks of this kernel / SM number of this GPU, 100%).
                       This overall number is the sum of all kernels' SM_Eff_K weighted by kernel's execution duration, divided by “all steps time”. 
                       It shows GPU Stream Multiprocessors’ utilization. 
                       Although it is finer grained than above “GPU Utilization”, it still can’t tell the whole story. 
                       For example, a kernel with only one thread per block can’t fully utilize each SM. 
 
-* Est. Achieved Occupancy: For most cases such as memory bandwidth bounded kernels, the higher the better. [Reference](http://developer.download.nvidia.com/GTC/PDF/GTC2012/PresentationPDF/S0514-GTC2012-GPU-Performance-Analysis.pdf). The definition of occupancy is [here](https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm). 
+* Est. Achieved Occupancy: For most cases such as memory bandwidth bound kernels, a higher value often translates to better performance, especially when the initial value is very low. [Reference](http://developer.download.nvidia.com/GTC/PDF/GTC2012/PresentationPDF/S0514-GTC2012-GPU-Performance-Analysis.pdf). The definition of occupancy is [here](https://docs.nvidia.com/gameworks/content/developertools/desktop/analysis/report/cudaexperiments/kernellevel/achievedoccupancy.htm).
                            Occupancy is the ratio of active warps on an SM to the maximum number of
                            active warps supported by the SM. The theoretical occupancy of a kernel is upper limit occupancy of this kernel, limited by multiple 
                            factors such as kernel shape, kernel used resource, and the GPU compute capability. 

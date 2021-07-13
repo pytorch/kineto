@@ -13,15 +13,20 @@
 
 namespace KINETO_NAMESPACE {
 
-void ActivityProfilerProxy::init() {
-  if (!controller_) {
-    controller_ = new ActivityProfilerController(cpuOnly_);
-  }
+ActivityProfilerProxy::ActivityProfilerProxy(
+    bool cpuOnly, ConfigLoader& configLoader)
+  : cpuOnly_(cpuOnly), configLoader_(configLoader) {
 }
 
 ActivityProfilerProxy::~ActivityProfilerProxy() {
   delete controller_;
 };
+
+void ActivityProfilerProxy::init() {
+  if (!controller_) {
+    controller_ = new ActivityProfilerController(configLoader_, cpuOnly_);
+  }
+}
 
 void ActivityProfilerProxy::scheduleTrace(const std::string& configStr) {
   Config config;
@@ -91,6 +96,11 @@ void ActivityProfilerProxy::addMetadata(
 
 void ActivityProfilerProxy::recordThreadInfo() {
   controller_->recordThreadInfo();
+}
+
+void ActivityProfilerProxy::addChildActivityProfiler(
+    std::unique_ptr<IActivityProfiler> profiler) {
+  controller_->addChildActivityProfiler(std::move(profiler));
 }
 
 } // namespace libkineto

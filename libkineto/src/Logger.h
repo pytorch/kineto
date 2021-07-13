@@ -35,15 +35,17 @@
 #include <sstream>
 #include <vector>
 
+#ifdef _MSC_VER
 // unset a predefined ERROR (windows)
 #undef ERROR
-
-#define VERBOSE 0
-#define INFO 1
-#define WARNING 2
-#define ERROR 3
+#endif // _MSC_VER
 
 namespace libkineto {
+
+constexpr int VERBOSE = 0;
+constexpr int INFO = 1;
+constexpr int WARNING = 2;
+constexpr int ERROR = 3;
 
 class Logger {
  public:
@@ -103,9 +105,9 @@ class Logger {
   std::stringstream buf_;
   std::ostream& out_;
   int errnum_;
-  static int severityLevel_;
-  static int verboseLogLevel_;
-  static uint64_t verboseLogModules_;
+  static std::atomic_int severityLevel_;
+  static std::atomic_int verboseLogLevel_;
+  static std::atomic<uint64_t> verboseLogModules_;
 };
 
 class VoidLogger {

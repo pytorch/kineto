@@ -62,10 +62,10 @@ and give optimization recommendations.
 
   If the files under `--logdir` are too big or too many,
   please wait a while and refresh the browser to check latest loaded result.
-  
+
 * Loading profiling data from cloud
   * S3 (S3://)
-  
+
     install `boto3`. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
     For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
     For example, the following command can be used to create minio storage after following guides: 
@@ -84,15 +84,15 @@ and give optimization recommendations.
      export S3_ENDPOINT=http://localhost:9000
      tensorboard --logdir=s3://profiler/version_2/ --bind_all
   ```
-  
+
   * Azure blob (https://\<account\>.blob.core.windows.net)
 
     install `azure-storage-blob`. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`
-    
-  * Google Cloud (GS://) 
-  
+
+  * Google Cloud (GS://)
+
     install `google-cloud-storage`.
-  
+
   ---
   > **_NOTES:_** For AWS, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
   ---
@@ -370,6 +370,6 @@ one worker is much larger than others, there may be a problem of loading balance
         
 ### PyTorch Profiler TensorBoard Plugin 0.2 Release Notes
 
-Known Issues: This software does not support Python 3.9.0, 3.9.1, 3.9.2. 
-If the tensorboard launching reports error message "ImportError" and "circular import", 
+Known Issues: This software does not support Python 3.9.0, 3.9.1, 3.9.2.
+If the tensorboard launching reports error message "ImportError" and "circular import",
 please update your Python to higher version.

@@ -22,9 +22,9 @@
 
 namespace libkineto {
 
-int Logger::severityLevel_{VERBOSE};
-int Logger::verboseLogLevel_{-1};
-uint64_t Logger::verboseLogModules_{~0ull};
+std::atomic_int Logger::severityLevel_{VERBOSE};
+std::atomic_int Logger::verboseLogLevel_{-1};
+std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum) {
@@ -66,14 +66,15 @@ Logger::~Logger() {
 }
 
 void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
+  uint64_t mask = 0;
   if (modules.empty()) {
-    verboseLogModules_ = ~0ull;
+    mask = ~0ull;
   } else {
-    verboseLogModules_ = 0;
     for (const std::string& name : modules) {
-      verboseLogModules_ |= hash(name.c_str());
+      mask |= hash(name.c_str());
     }
   }
+  verboseLogModules_ = mask;
 }
 
 } // namespace libkineto

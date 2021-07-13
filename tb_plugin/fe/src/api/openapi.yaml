@@ -13,9 +13,7 @@ paths:
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  type: string
+                $ref: '#/components/schemas/Runs'
   /views:
     get:
       parameters:
@@ -453,6 +451,18 @@ paths:
                 type: object
 components:
   schemas:
+    Runs:
+      type: object
+      required:
+        - runs
+        - loading
+      properties:
+        runs:
+          type: array
+          items:
+            type: string
+        loading:
+          type: boolean
     Performance:
       type: object
       required:

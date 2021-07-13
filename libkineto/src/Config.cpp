@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iomanip>
 #include <istream>
+#include <mutex>
 #include <ostream>
 #include <sstream>
 #include <time.h>
@@ -73,8 +74,6 @@ const string kActivitiesWarmupDurationSecsKey = "ACTIVITIES_WARMUP_PERIOD_SECS";
 const string kActivitiesMaxGpuBufferSizeKey =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
-const string kDefaultLogFileFmt = "/tmp/libkineto_activities_{}.json";
-
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -111,21 +110,54 @@ const string kConfigFile = "/etc/libkineto.conf";
 // Max devices supported on any system
 constexpr uint8_t kMaxDevices = 8;
 
-static std::map<std::string, std::function<AbstractConfig*(Config&)>>&
-configFactories() {
-  static std::map<std::string, std::function<AbstractConfig*(Config&)>>
-      factories;
-  return factories;
+namespace {
+
+struct FactoryMap {
+
+  void addFactory(
+      std::string name,
+      std::function<AbstractConfig*(Config&)> factory) {
+    std::lock_guard<std::mutex> lock(lock_);
+    factories_[name] = factory;
+  }
+
+  void addFeatureConfigs(Config& cfg) {
+    std::lock_guard<std::mutex> lock(lock_);
+    for (const auto& p : factories_) {
+      cfg.addFeature(p.first, p.second(cfg));
+    }
+  }
+
+// Config factories are shared between objects and since
+// config objects can be created by multiple threads, we need a lock.
+  std::mutex lock_;
+  std::map<std::string, std::function<AbstractConfig*(Config&)>> factories_;
+};
+
+std::shared_ptr<FactoryMap> configFactories() {
+  // Ensure this is safe to call during shutdown, even as static
+  // destructors are invoked. Once factories destructor has been
+  // invoked, weak_ptr.lock() will return nullptr.
+  // But calls before that point will have a valid shared_ptr,
+  // delaying destruction of the underlying FactoryMap.
+  static auto factories = std::make_shared<FactoryMap>();
+  static std::weak_ptr<FactoryMap> weak_ptr = factories;
+  return weak_ptr.lock();
 }
+
+} // namespace
 
 void Config::addConfigFactory(
     std::string name,
     std::function<AbstractConfig*(Config&)> factory) {
-  configFactories()[name] = factory;
+  auto factories = configFactories();
+  if (factories) {
+    factories->addFactory(name, factory);
+  }
 }
 
 static string defaultTraceFileName() {
-  return fmt::format(kDefaultLogFileFmt, processId());
+  return fmt::format("/tmp/libkineto_activities_{}.json", processId());
 }
 
 Config::Config()
@@ -148,11 +180,13 @@ Config::Config()
           kDefaultActivitiesExternalAPINetSizeThreshold),
       activitiesExternalAPIGpuOpCountThreshold_(
           kDefaultActivitiesExternalAPIGpuOpCountThreshold),
+      activitiesOnDemandTimestamp_(milliseconds(0)),
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(true),
       enableIpcFabric_(false) {
-  for (const auto& p : configFactories()) {
-    addFeature(p.first, p.second(*this));
+  auto factories = configFactories();
+  if (factories) {
+    factories->addFeatureConfigs(*this);
   }
 }
 

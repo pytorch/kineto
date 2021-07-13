@@ -1,22 +1,23 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-import multiprocessing as mp
 import os
 
 from .. import utils
 from .file import download_file, read
+from ..profiler.multiprocessing import KinetoContext
 
 logger = utils.get_logger()
 
 class Cache:
     def __init__(self):
-        self._lock = mp.Lock()
-        self._manager = mp.Manager()
+        ctx = KinetoContext()
+        self._lock = ctx.Lock()
+        self._manager = ctx.Manager()
         self._cache_dict = self._manager.dict()
 
     def __getstate__(self):
-        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
+        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver.
         The default mode is fork in Unix and spawn on Windows and macOS.
         Therefore, the __getstate__ and __setstate__ are used to pickle/unpickle the state in spawn mode.
         '''
@@ -29,8 +30,8 @@ class Cache:
         return data
 
     def __setstate__(self, state):
-        '''The default logging level in new process is warning. Only warning and error log can be written to 
-        streams. 
+        '''The default logging level in new process is warning. Only warning and error log can be written to
+        streams.
         So, we need call use_absl_handler in the new process.
         '''
         from absl import logging
@@ -73,4 +74,3 @@ class Cache:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
         self._manager.__exit__(exc_type, exc_value, traceback)
-

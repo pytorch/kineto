@@ -5,12 +5,13 @@ import bisect
 import os
 import sys
 from collections import defaultdict
-from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
 from ..run import Run
+from ..io.file import get_all_filesystems, restore_filesystems
 from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
+from .multiprocessing import KinetoContext
 
 logger = utils.get_logger()
 
@@ -20,7 +21,8 @@ class RunLoader(object):
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches
-        self.queue = Queue()
+        self.ctx = KinetoContext()
+        self.queue = self.ctx.Queue()
 
     def load(self):
         workers = []
@@ -46,11 +48,14 @@ class RunLoader(object):
             for i, span in enumerate(span_array, 1):
                 span_index_map[(worker, span)] = i
 
-        barrier = Barrier(len(workers) + 1)
+        barrier = self.ctx.Barrier(len(workers) + 1)
         for worker, span, path in workers:
             # convert the span timestamp to the index.
             span_index = None if span is None else span_index_map[(worker, span)]
-            p = Process(target=self._process_data, args=(worker, span_index, path, barrier))
+            p = self.ctx.Process(
+                target=self._process_data,
+                args=(worker, span_index, path, barrier, get_all_filesystems())
+            )
             p.start()
 
         logger.info("starting all processing")
@@ -83,10 +88,13 @@ class RunLoader(object):
         # for no daemon process, no need to join them since it will automatically join
         return run
 
-    def _process_data(self, worker, span, path, barrier):
+    def _process_data(self, worker, span, path, barrier, filesystems):
         import absl.logging
         absl.logging.use_absl_handler()
-
+        # When the multiprocessing start method is set to 'forkserver',
+        # state isn't retained in new threads, so we need to manually
+        # restore the filesystem mapping.
+        restore_filesystems(filesystems)
         try:
             logger.debug("starting process_data")
             data = RunProfileData.parse(self.run_dir, worker, span, path, self.caches)

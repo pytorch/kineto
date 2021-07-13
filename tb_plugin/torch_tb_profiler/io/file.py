@@ -80,6 +80,16 @@ def get_filesystem(filename):
         raise ValueError("No recognized filesystem for prefix %s" % prefix)
     return fs
 
+# When subprocesses are started without state, they won't retain
+# the filesystem dictionary from the main process. Therefore,
+# we define these helpers functions to restore the mapping.
+def get_all_filesystems():
+    return _REGISTERED_FILESYSTEMS
+
+def restore_filesystems(fs_dictionary):
+    global _REGISTERED_FILESYSTEMS
+    _REGISTERED_FILESYSTEMS = fs_dictionary
+
 
 class LocalFileSystem(LocalPath, BaseFileSystem):
     def __init__(self):

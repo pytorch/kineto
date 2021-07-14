@@ -11,6 +11,22 @@ import torchvision.models as models
 
 import torch.profiler
 
+def export_graph(log_dir, model, inputs, text_format=True):
+    import os
+    os.makedirs(log_dir, exist_ok=True)
+
+    if text_format:
+        from torch.utils.tensorboard._pytorch_graph import graph
+        from google.protobuf import text_format
+        graph_def, _ = graph(model, inputs)
+        with open(os.path.join(log_dir, 'model_graph.txt'), 'w') as f:
+            f.write(text_format.MessageToString(graph_def))
+    else:
+        import torch.utils.tensorboard as tb
+        with tb.SummaryWriter(log_dir) as graph_writer:
+            graph_writer.add_graph(model, inputs)
+
+
 model = models.resnet50(pretrained=True)
 model.cuda()
 cudnn.benchmark = True
@@ -39,9 +55,12 @@ with torch.profiler.profile(
     profile_memory=True,  # This will take 1 to 2 minutes. Setting it to False could greatly speedup.
     with_stack=True
 ) as p:
+    model_inputs = None
     for step, data in enumerate(trainloader, 0):
         print("step:{}".format(step))
         inputs, labels = data[0].to(device=device), data[1].to(device=device)
+        if model_inputs is None:
+            model_inputs = inputs
 
         outputs = model(inputs)
         loss = criterion(outputs, labels)
@@ -52,3 +71,5 @@ with torch.profiler.profile(
         if step + 1 >= 4:
             break
         p.step()
+    export_graph('./result', model, model_inputs, text_format=False)
+    export_graph('./result', model, model_inputs, text_format=True)

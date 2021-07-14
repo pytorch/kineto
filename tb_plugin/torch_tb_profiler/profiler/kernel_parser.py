@@ -35,4 +35,5 @@ class KernelParser:
             max=('duration', "max"),
             min=('duration', "min"),
             blocks_per_sm=('blocks_per_sm', weighted_avg),
-            occupancy=('occupancy', weighted_avg))
+            occupancy=('occupancy', weighted_avg))\
+            .sort_values("sum", ascending=False)

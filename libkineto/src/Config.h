@@ -219,20 +219,14 @@ class Config : public AbstractConfig {
     return activitiesWarmupDuration_;
   }
 
-  // Timestamp at which the profiling to start, requested by the user.
+  // Request was initiated at this time
   const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
       const {
-    if  (profileStartTime_.time_since_epoch().count()) {
-      return profileStartTime_;
-    }
-
-    // TODO(T94634890): Deperecate requestTimestamp
-    return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
+    return requestTimestamp_;
   }
 
-  bool hasProfileStartTime() const {
-    return requestTimestamp_.time_since_epoch().count() > 0 ||
-        profileStartTime_.time_since_epoch().count() > 0;
+  bool hasRequestTimestamp() const {
+    return requestTimestamp_.time_since_epoch().count() > 0;
   }
 
   const std::chrono::seconds maxRequestAge() const;
@@ -375,8 +369,6 @@ class Config : public AbstractConfig {
       activitiesOnDemandTimestamp_;
 
   // Synchronized start timestamp
-  std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
-  // DEPRECATED
   std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;
 
   // Enable profiling via SIGUSR2

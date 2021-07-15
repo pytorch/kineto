@@ -96,23 +96,16 @@ void ActivityProfilerController::profilerLoop() {
       std::this_thread::sleep_for(next_wakeup_time - now);
       now = system_clock::now();
     }
-
     if (!profiler_->isActive()) {
       std::lock_guard<std::mutex> lock(asyncConfigLock_);
       if (asyncRequestConfig_) {
-        // Note on now + kProfilerIntervalMsecs
-        // Profiler interval does not align perfectly upto starTime - warmup. Waiting until next the next tick
-        // won't allow sufficient time for the profiler to warm up. So check if we are very close to the warmup time and trigger warmup
-        if (now + kProfilerIntervalMsecs 
-            >= (asyncRequestConfig_->requestTimestamp() - asyncRequestConfig_->activitiesWarmupDuration())) {
-          LOG(INFO) << "Received on-demand activity trace request";
-          logger_ = makeLogger(*asyncRequestConfig_);
-          profiler_->setLogger(logger_.get());
-          profiler_->configure(*asyncRequestConfig_, now);
-          asyncRequestConfig_ = nullptr;
-        }
+        LOG(INFO) << "Received on-demand activity trace request";
+        logger_ = makeLogger(*asyncRequestConfig_);
+        profiler_->setLogger(logger_.get());
+        profiler_->configure(*asyncRequestConfig_, now);
+        asyncRequestConfig_ = nullptr;
       }
-    } 
+    }
 
     while (next_wakeup_time < now) {
       next_wakeup_time += kProfilerIntervalMsecs;

@@ -3,7 +3,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as React from 'react'
-import { OperationTableData, OperationTableDataInner } from '../../api'
+import {
+  OperationTableData,
+  OperationTableDataInner,
+  TableMetadata
+} from '../../api'
 import { OperationGroupBy } from '../../constants/groupBy'
 import { attachId, getCommonOperationColumns } from './common'
 import { Table, TablePaginationConfig, TableProps } from 'antd'
@@ -16,6 +20,7 @@ export interface IProps {
   worker: string
   span: string
   groupBy: OperationGroupBy
+  sortColumn: string
 }
 const rowExpandable = (record: OperationTableDataInner) => record.has_call_stack
 const expandIcon = makeExpandIcon<OperationTableDataInner>(
@@ -23,11 +28,14 @@ const expandIcon = makeExpandIcon<OperationTableDataInner>(
   (record) => !record.has_call_stack
 )
 export const OperationTable = (props: IProps) => {
-  const { data, run, worker, span, groupBy } = props
+  const { data, run, worker, span, groupBy, sortColumn } = props
 
   const rows = React.useMemo(() => attachId(data), [data])
 
-  const columns = React.useMemo(() => getCommonOperationColumns(rows), [rows])
+  const columns = React.useMemo(
+    () => getCommonOperationColumns(rows, sortColumn),
+    [rows]
+  )
 
   const [pageSize, setPageSize] = React.useState(30)
   const onShowSizeChange = (current: number, size: number) => {

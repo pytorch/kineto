@@ -270,7 +270,7 @@ Only the top N kernels sorted by accumulated time (configurable in the text box)
 
 The search box enables searching kernels by name.
 
-“Group By” could choose between “Kernel Name” and “Kernel Name + Op Name”.
+“Group By” could choose between “Kernel Name” and “Kernel Properties + Op Name”.
 The "Operator" is the PyTorch operator which launches this kernel.
 
 * Trace View

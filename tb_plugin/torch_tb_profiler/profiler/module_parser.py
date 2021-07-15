@@ -208,7 +208,7 @@ class ModuleParser:
         corrid_to_device = context.corrid_to_device
 
         # Kernel that not owned by any operator should also be shown in kernel view
-        # when group by "Kernel Name + Op Name".
+        # when group by "Kernel Properties + Op Name".
         for _, device_nodes in corrid_to_device.items():
             self.kernel_list.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
 

@@ -8,7 +8,7 @@ import type { ColumnsType } from 'antd/es/table'
 
 export function getCommonOperationColumns<
   T extends OperationTableDataInner | CallStackTableDataInner
->(data: T[] | undefined): ColumnsType<T> {
+>(data: T[] | undefined, defaultSort?: string): ColumnsType<T> {
   const firstData = firstOrUndefined(data)
 
   const hasInputShape = !firstData || isDef(firstData.input_shape)
@@ -28,7 +28,7 @@ export function getCommonOperationColumns<
   const hostTotalDurationCompare = (a: T, b: T) =>
     (a.host_total_duration || 0) - (b.host_total_duration || 0)
 
-  return [
+  const columns: ColumnsType<T> = [
     {
       dataIndex: 'name',
       key: 'name',
@@ -54,7 +54,8 @@ export function getCommonOperationColumns<
           key: 'device_self_duration',
           title: 'Device Self Duration (us)',
           sorter: deviceSelfDurationCompare,
-          defaultSortOrder: 'descend' as const
+          // Use device_self_duration as default sort if defaultSort is unspecified
+          defaultSortOrder: defaultSort ? undefined : ('descend' as const)
         }
       : undefined,
     hasDeviceTotalDuration
@@ -78,6 +79,12 @@ export function getCommonOperationColumns<
       sorter: hostTotalDurationCompare
     }
   ].filter(isDef)
+  columns.forEach((column) => {
+    if (column.key == defaultSort) {
+      column.defaultSortOrder = 'descend' as const
+    }
+  })
+  return columns
 }
 
 let uid = 1

@@ -200,7 +200,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                       onChange={onGroupByChanged}
                     >
                       <MenuItem value={KernelGroupBy.KernelNameAndOpName}>
-                        Kernel Name + Op Name
+                        Kernel Properties + Op Name
                       </MenuItem>
                       <MenuItem value={KernelGroupBy.Kernel}>
                         Kernel Name

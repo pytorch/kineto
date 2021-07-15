@@ -194,21 +194,32 @@ TEST(ActivityProfiler, AsyncTrace) {
   mkstemps(filename, 5);
 
   Config cfg;
+
+  int warmup = 5;
+  auto now = system_clock::now();
+  auto startTime = now + seconds(10);
+
   bool success = cfg.parse(fmt::format(R"CFG(
-    ACTIVITIES_WARMUP_PERIOD_SECS = 0
+    ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
-  )CFG", filename));
+    PROFILE_START_TIME = {}
+  )CFG", warmup, filename, duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());
 
   auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
-  auto now = system_clock::now();
+
+  // Usually configuration is done when now is startTime - warmup to kick off warmup
+  // but start right away in the test
   profiler.configure(cfg, now);
   profiler.setLogger(logger.get());
 
   EXPECT_TRUE(profiler.isActive());
+
+  // fast forward in time and we have reached the startTime
+  now = startTime;
 
   // Run the profiler
   // Warmup
@@ -217,16 +228,18 @@ TEST(ActivityProfiler, AsyncTrace) {
   profiler.performRunLoopStep(
       /* Current time */ now, /* Next wakeup time */ now);
 
-  // Runloop should now be in collect state, so start workload
   auto next = now + milliseconds(1000);
+  // Runloop should now be in collect state, so start workload
   // Perform another runloop step, passing in the end profile time as current.
   // This should terminate collection
   profiler.performRunLoopStep(
       /* Current time */ next, /* Next wakeup time */ next);
   // One step needed for each of the Process and Finalize phases
   // Doesn't really matter what times we pass in here.
-  profiler.performRunLoopStep(next, next);
-  profiler.performRunLoopStep(next, next);
+  //
+  auto nextnext = next + milliseconds(1000);
+  profiler.performRunLoopStep(nextnext,nextnext);
+  profiler.performRunLoopStep(nextnext,nextnext);
 
   // Assert that tracing has completed
   EXPECT_FALSE(profiler.isActive());
@@ -460,10 +473,15 @@ TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
   ActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
 
   auto now = system_clock::now();
+  auto startTime = now + seconds(10);
 
   int maxBufferSizeMB = 3;
+
+  auto startTimeEpoch = std::to_string(duration_cast<milliseconds>(startTime.time_since_epoch()).count());
   std::string maxBufferSizeMBStr = std::to_string(maxBufferSizeMB);
   cfg_->handleOption("ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB", maxBufferSizeMBStr);
+  cfg_->handleOption("PROFILE_START_TIME", startTimeEpoch);
+
 
   EXPECT_FALSE(profiler.isActive());
   profiler.configure(*cfg_, now);
@@ -475,6 +493,9 @@ TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
     size_t maxNumRecords;
     cuptiActivities_.bufferRequestedOverride(&buf, &gpuBufferSize, &maxNumRecords);
   }
+
+  // fast forward to startTime and profiler is now running
+  now = startTime;
 
   profiler.performRunLoopStep(now, now);
 

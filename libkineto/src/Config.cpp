@@ -79,11 +79,18 @@ const string kActivitiesMaxGpuBufferSizeKey =
 // Client-side timestamp used for synchronized start across hosts for
 // distributed workloads.
 // Specified in milliseconds Unix time (milliseconds since epoch).
-// To use, take a timestamp at request time as follows:
-//    * C++: duration_cast<milliseconds>(
+// To use, compute a future timestamp as follows:
+//    * C++: <delay_ms> + duration_cast<milliseconds>(
 //               system_clock::now().time_since_epoch()).count()
-//    * Python: int(time.time() * 1000)
-//    * Bash: date +%s%3N
+//    * Python: <delay_ms> + int(time.time() * 1000)
+//    * Bash: $((<delay_ms> + $(date +%s%3N)))
+// If used for a tracing request, timestamp must be far enough in the future
+// to accommodate ACTIVITIES_WARMUP_PERIOD_SECS as well as any delays in
+// propagating the request to the profiler.
+// If the request can not be honored, it is up to the profilers to report
+// an error somehow - no checks are done at config parse time.
+const string kProfileStartTimeKey = "PROFILE_START_TIME";
+// DEPRECATED - USE PROFILE_START_TIME instead
 const string kRequestTimestampKey = "REQUEST_TIMESTAMP";
 
 // Enable on-demand trigger via kill -USR2 <pid>
@@ -181,6 +188,7 @@ Config::Config()
       activitiesExternalAPIGpuOpCountThreshold_(
           kDefaultActivitiesExternalAPIGpuOpCountThreshold),
       activitiesOnDemandTimestamp_(milliseconds(0)),
+      profileStartTime_(milliseconds(0)),
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(true),
       enableIpcFabric_(false) {
@@ -307,7 +315,13 @@ bool Config::handleOption(const std::string& name, std::string& val) {
 
   // Common
   else if (name == kRequestTimestampKey) {
+    LOG(WARNING) << kRequestTimestampKey
+                 << " has been deprecated - please use "
+                 << kProfileStartTimeKey;
     requestTimestamp_ = handleRequestTimestamp(toInt64(val));
+  } else if (name == kProfileStartTimeKey) {
+    profileStartTime_ =
+      time_point<system_clock>(milliseconds(toInt64(val)));
   } else if (name == kEnableSigUsr2Key) {
     enableSigUsr2_ = toBool(val);
   } else if (name == kEnableIpcFabricKey) {
@@ -398,10 +412,11 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << std::endl;
   s << "Net Iterations: " << activitiesOnDemandExternalIterations()
     << std::endl;
-  if (hasRequestTimestamp()) {
+  if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    s << "Trace request client timestamp: "
-      << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c)) << std::endl;
+    std::tm tm;
+    LOG(INFO) << "Trace start time: "
+              << std::put_time(localtime_r(&t_c, &tm), "%F %T");
   }
   s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
     << std::endl;

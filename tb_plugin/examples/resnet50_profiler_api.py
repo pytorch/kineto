@@ -12,7 +12,6 @@ import torchvision.models as models
 import torch.profiler
 
 def export_graph(log_dir, model, inputs, text_format=True):
-    import os
     os.makedirs(log_dir, exist_ok=True)
 
     if text_format:
@@ -71,5 +70,4 @@ with torch.profiler.profile(
         if step + 1 >= 4:
             break
         p.step()
-    export_graph('./result', model, model_inputs, text_format=False)
-    export_graph('./result', model, model_inputs, text_format=True)
+    export_graph('./result', model, model_inputs)

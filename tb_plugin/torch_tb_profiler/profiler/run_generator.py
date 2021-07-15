@@ -251,7 +251,7 @@ class RunGenerator(object):
         data = list()
         result = {
             "metadata": {
-                "sort": "device_total_duration" if show_gpu else "host_total_duration"
+                "sort": "device_self_duration" if show_gpu else "host_self_duration"
             },
             "data": data
         }

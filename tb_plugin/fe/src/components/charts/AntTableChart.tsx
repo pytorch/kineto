@@ -9,7 +9,7 @@ import { Graph } from '../../api'
 
 interface IProps {
   graph: Graph
-  sortColumn?: number
+  sortColumn?: string
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -58,15 +58,16 @@ const getTableRows = function (rows: any) {
 export const AntTableChart: React.FC<IProps> = (props) => {
   const { graph, sortColumn } = props
   const classes = useStyles(props)
-  const sort =
-    sortColumn === undefined ? undefined : graph.columns[sortColumn].name
 
   const rows = React.useMemo(() => getTableRows(graph.rows), [graph.rows])
 
   const columns = React.useMemo(
-    () => getTableColumns(graph.columns, sort, classes.tooltip),
-    [graph.columns, sort, classes.tooltip]
+    () => getTableColumns(graph.columns, sortColumn, classes.tooltip),
+    [graph.columns, sortColumn, classes.tooltip]
   )
+
+  // key is used to reset the Table state (page and sort) if the columns change
+  const key = React.useMemo(() => Math.random() + '', [graph.columns])
 
   const [pageSize, setPageSize] = React.useState(30)
   const onShowSizeChange = (current: number, size: number) => {
@@ -85,6 +86,7 @@ export const AntTableChart: React.FC<IProps> = (props) => {
         onShowSizeChange
       }}
       rowClassName={classes.row}
+      key={key}
     />
   )
 }

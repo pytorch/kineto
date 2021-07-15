@@ -44,7 +44,7 @@ export const CallStackTable = (props: IProps) => {
     api.defaultApi
       .operationStackGet(run, worker, span, groupBy, name, input_shape)
       .then((resp) => {
-        setStackData(resp)
+        setStackData(resp.data)
       })
   }, [name, input_shape, run, worker, span, groupBy])
 

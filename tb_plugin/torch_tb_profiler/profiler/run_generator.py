@@ -249,6 +249,12 @@ class RunGenerator(object):
                          reverse=True)
 
         data = list()
+        result = {
+            "metadata": {
+                "sort": "device_total_duration" if show_gpu else "host_total_duration"
+            },
+            "data": data
+        }
         for op in op_list:
             # Whether device_duration & self_device_duration are accurate or not depends on the input tracing data.
             row = dict()
@@ -271,7 +277,7 @@ class RunGenerator(object):
                 row['has_call_stack'] = key in stack_list_dict
             data.append(row)
 
-        return data
+        return result
 
     def _generate_op_table_for_stack(self, group_by_input_shape):
         if group_by_input_shape:
@@ -297,6 +303,12 @@ class RunGenerator(object):
 
     def _generate_kernel_op_table(self):
         table = {}
+        result = {
+            "metadata": {
+                "sort": "Total Duration (us)"
+            },
+            "data": table
+        }
         table["columns"] = [{"type": "string", "name": "Name"},
                             {"type": "string", "name": "Operator"},
                             {"type": "string", "name": "Grid"},
@@ -325,8 +337,7 @@ class RunGenerator(object):
             if sum(self.profile_data.occupancy_count) > 0:
                 kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
-        data = {"data": table}
-        return data
+        return result
 
     def _generate_kernel_pie(self):
         pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
@@ -337,6 +348,12 @@ class RunGenerator(object):
 
     def _generate_kernel_table(self):
         table = {}
+        result = {
+            "metadata": {
+                "sort": "Total Duration (us)"
+            },
+            "data": table
+        }
         table["columns"] = [{"type": "string", "name": "Name"}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
@@ -360,8 +377,7 @@ class RunGenerator(object):
                 kernel_row.append(round(row[column]) if round_digits[i] == 0
                                   else round(row[column], round_digits[i]))
             table["rows"].append(kernel_row)
-        data = {"data": table}
-        return data
+        return result
 
     def _generate_memory_view(self, memory_stats):
 

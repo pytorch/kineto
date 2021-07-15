@@ -62,6 +62,5 @@ export function useSearchDirectly<T>(
       return field(row).toLowerCase().includes(searchNameDebounce.toLowerCase())
     })
   }, [table, field, searchNameDebounce])
-  console.log(result)
   return [result]
 }

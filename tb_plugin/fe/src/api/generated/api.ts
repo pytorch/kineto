@@ -356,14 +356,52 @@ export interface GraphColumnP {
 export interface InlineResponse200 {
   /**
    *
-   * @type {GpuInfoMetadata}
+   * @type {TableMetadata}
    * @memberof InlineResponse200
+   */
+  metadata: TableMetadata
+  /**
+   *
+   * @type {OperationTableData}
+   * @memberof InlineResponse200
+   */
+  data: OperationTableData
+}
+/**
+ *
+ * @export
+ * @interface InlineResponse2001
+ */
+export interface InlineResponse2001 {
+  /**
+   *
+   * @type {TableMetadata}
+   * @memberof InlineResponse2001
+   */
+  metadata: TableMetadata
+  /**
+   *
+   * @type {CallStackTableData}
+   * @memberof InlineResponse2001
+   */
+  data: CallStackTableData
+}
+/**
+ *
+ * @export
+ * @interface InlineResponse2002
+ */
+export interface InlineResponse2002 {
+  /**
+   *
+   * @type {GpuInfoMetadata}
+   * @memberof InlineResponse2002
    */
   metadata: GpuInfoMetadata
   /**
    *
    * @type {any}
-   * @memberof InlineResponse200
+   * @memberof InlineResponse2002
    */
   data: any
 }
@@ -627,6 +665,25 @@ export interface TableData {
    * @memberof TableData
    */
   data: Graph
+  /**
+   *
+   * @type {TableMetadata}
+   * @memberof TableData
+   */
+  metadata: TableMetadata
+}
+/**
+ *
+ * @export
+ * @interface TableMetadata
+ */
+export interface TableMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof TableMetadata
+   */
+  sort: string
 }
 /**
  *
@@ -1802,7 +1859,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       worker: string,
       span: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse200> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse2002> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).distributedCommopsGet(run, worker, span, options)
@@ -2078,7 +2135,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       opName: string,
       inputShape?: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<CallStackTableData> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse2001> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).operationStackGet(
@@ -2121,7 +2178,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       span: string,
       groupBy: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<OperationTableData> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse200> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).operationTableGet(run, worker, span, groupBy, options)

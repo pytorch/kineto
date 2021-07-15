@@ -174,7 +174,15 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/OperationTableData'
+                type: object
+                required:
+                  - metadata
+                  - data
+                properties:
+                  metadata:
+                    $ref: '#/components/schemas/TableMetadata'
+                  data:
+                    $ref: '#/components/schemas/OperationTableData'
   /operation/stack:
     get:
       parameters:
@@ -217,7 +225,15 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/CallStackTableData'
+                type: object
+                required:
+                  - metadata
+                  - data
+                properties:
+                  metadata:
+                    $ref: '#/components/schemas/TableMetadata'
+                  data:
+                    $ref: '#/components/schemas/CallStackTableData'
   /distributed/overlap:
     get:
       parameters:
@@ -580,13 +596,23 @@ components:
           $ref: '#/components/schemas/Graph'
         host_self_time:
           $ref: '#/components/schemas/Graph'
+    TableMetadata:
+      type: object
+      required:
+        - sort
+      properties:
+        sort:
+          type: string
     TableData:
       type: object
       required:
+        - metadata
         - data
       properties:
         data:
           $ref: '#/components/schemas/Graph'
+        metadata:
+          $ref: '#/components/schemas/TableMetadata'
     KernelGraph:
       type: object
       required:

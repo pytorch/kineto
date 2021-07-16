@@ -51,7 +51,7 @@ using ChildActivityProfilerFactory =
 class LibkinetoApi {
  public:
 
-  explicit LibkinetoApi(ConfigLoader& configLoader)
+  explicit LibkinetoApi(std::shared_ptr<ConfigLoader> configLoader)
       : configLoader_(configLoader) {
   }
 
@@ -104,7 +104,7 @@ class LibkinetoApi {
 
   // Provides access to profier configuration manaegement
   ConfigLoader& configLoader() {
-    return configLoader_;
+    return *configLoader_;
   }
 
   void registerProfilerFactory(
@@ -131,7 +131,7 @@ class LibkinetoApi {
   // Client is initialized once both it and libkineto has registered
   void initClientIfRegistered();
 
-  ConfigLoader& configLoader_;
+  std::shared_ptr<ConfigLoader> configLoader_;
   std::unique_ptr<ActivityProfilerInterface> activityProfiler_{};
   ClientInterface* client_{};
   int32_t clientRegisterThread_{0};

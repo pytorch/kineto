@@ -103,6 +103,29 @@ class MemoryEvent(BaseEvent):
 
         self.device_type = dtype
 
+    @property
+    def addr(self):
+        return self.args.get("Addr")
+
+    @property
+    def bytes(self):
+        return self.args.get("Bytes", 0)
+
+    @property
+    def total_allocated(self):
+        # TODO: Allocated Bytes to be renamed to Total Allocated
+        old = self.args.get("Allocated Bytes")
+        if old is not None:
+            return old
+        return self.args.get("Total Allocated", -1)
+
+    @property
+    def total_reserved(self):
+        # TODO: Reserved Bytes to be rename to Total Reserved
+        old = self.args.get("Reserved Bytes")
+        if old is not None:
+            return old
+        return self.args.get("Total Reserved", -1)
 
 def create_event(event):
     try:

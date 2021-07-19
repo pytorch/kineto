@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
-from .trace import DeviceType, EventTypes
+from .trace import DeviceType, EventTypes, MemoryEvent
 
 logger = utils.get_logger()
 
@@ -15,6 +15,7 @@ if BENCHMARK_MEMORY is not None and BENCHMARK_MEMORY.upper() in ("1", "TRUE", "O
     BENCHMARK_MEMORY = True
 else:
     BENCHMARK_MEMORY = False
+
 
 def benchmark(func):
     def wrapper(*args, **kwargs):
@@ -30,15 +31,19 @@ def benchmark(func):
 
     return wrapper
 
+
 class MemoryRecord:
-    def __init__(self, scope, pid, tid, ts, device_type, device_id, bytes):
+    def __init__(self, scope, pid, tid, ts, device_type, device_id, address, bytes, total_allocated, total_reserved):
         self.scope = scope
         self.tid = tid
         self.pid = pid
         self.ts = ts
         self.device_type = device_type
         self.device_id = device_id
+        self.addr = address
         self.bytes = bytes
+        self.total_allocated = total_allocated
+        self.total_reserved = total_reserved
 
     @property
     def device_name(self):
@@ -49,6 +54,10 @@ class MemoryRecord:
         else:
             return None
 
+    @staticmethod
+    def from_event(event: MemoryEvent):
+        return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.addr, event.bytes,
+                            event.total_allocated, event.total_reserved)
 
 class MemoryParser:
     def __init__(self, tid2tree, op_list):
@@ -77,7 +86,7 @@ class MemoryParser:
     def parse_events(self, events):
         for event in events:
             if event.type == EventTypes.MEMORY:
-                record = MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.bytes)
+                record = MemoryRecord.from_event(event)
                 self.records_by_tid[record.tid].append(record)
 
         for val in self.records_by_tid.values():
@@ -119,7 +128,8 @@ class MemoryParser:
                         memory_metrics_keyed_by_node[node][device][i] = value
                         memory_metrics_keyed_by_node[node][device][i + self_metric_length] += value
             else:
-                logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(node.name, node.start_time))
+                logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(
+                    node.name, node.start_time))
 
             # recursive the children nodes
             for child in node.children:
@@ -214,14 +224,16 @@ class MemoryParser:
 
                 if current_node is None:
                     # 3. Ignore all remaining records.
-                    logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (record.tid, record.ts, record_index, len(records)))
+                    logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (
+                        record.tid, record.ts, record_index, len(records)))
                     self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
 
                 if record.ts < current_node.start_time:
                     # this should only happens for root node.
-                    logger.debug("record timestamp %d is less that the start time of %s" % (record.ts, current_node.name))
+                    logger.debug("record timestamp %d is less that the start time of %s" %
+                                 (record.ts, current_node.name))
                     # This record has no chance to be appended to following tree node.
                     self.staled_records.append(record)
                     record_index += 1
@@ -272,7 +284,8 @@ class MemoryParser:
 
         # show summary information
         if len(self.staled_records) > 0 and self.record_length > 0:
-            logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
+            logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(
+                len(self.staled_records), self.record_length, len(self.processed_records)))
         if tree_height > 0:
             logger.debug("max tree height is {}".format(tree_height))
 
@@ -312,4 +325,5 @@ class MemoryParser:
                 _update_memory_event(mem_record, root_node)
 
         if len(self.staled_records_normal) > 0 and self.record_length > 0:
-            logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))
+            logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(
+                len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))

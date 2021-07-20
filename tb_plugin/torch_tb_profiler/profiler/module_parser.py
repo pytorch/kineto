@@ -107,7 +107,7 @@ class ModuleParser:
                 return
             if len(node.children) == 1:
                 child = node.children[0]
-                if node.name == child.name and node.type == EventTypes.OPERATOR and child.type == EventTypes.OPERATOR:
+                if node.name == child.name and node.type in [EventTypes.OPERATOR, EventTypes.CPU_OP] and child.type in [EventTypes.OPERATOR, EventTypes.CPU_OP]:
                     node.children = child.children
                     node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
                     remove_dup_nodes(node)  # This node may have to merge with child's child.

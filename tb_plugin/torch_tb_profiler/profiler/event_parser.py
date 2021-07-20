@@ -163,7 +163,7 @@ class NodeParserMixin:
     def _parse_node(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
         corrid = event.args.get("correlation", None)
         tid = event.tid
-        if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
+        if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.GPU_MEMCPY, EventTypes.MEMSET, EventTypes.GPU_MEMSET]:
             self.used_devices.add(event.pid)
             device_node = DeviceNode.create(event)
             if corrid in corrid_to_runtime:
@@ -196,7 +196,7 @@ class NodeParserMixin:
                     if rt_node.external_id != device_node.external_id:
                         logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (rt external_id, device external_id): (%s, %s)" % 
                             (corrid, rt_node.external_id, device_node.external_id))
-        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.CPU_OP, EventTypes.PROFILER_STEP]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event, event.input_shape, event.input_type, None)
             else:
@@ -275,23 +275,23 @@ class StepParser:
                 self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
             else:
                 self.role_ranges[ProfileRole.Kernel].append((ts, ts + dur))
-        elif evt_type == EventTypes.MEMCPY:
+        elif evt_type in [EventTypes.MEMCPY, EventTypes.GPU_MEMCPY]:
             self.role_ranges[ProfileRole.Memcpy].append((ts, ts + dur))
-        elif evt_type == EventTypes.MEMSET:
+        elif evt_type in [EventTypes.MEMSET, EventTypes.GPU_MEMSET]:
             self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
         elif evt_type == EventTypes.RUNTIME:
             self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
-        elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
+        elif evt_type in [EventTypes.OPERATOR, EventTypes.CPU_OP] and event.name.startswith("enumerate(DataLoader)#") \
                 and event.name.endswith(".__next__"):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))
-        elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
+        elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.CPU_OP]:
             self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
 
         # Record host side min and max time.
-        if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+        if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.CPU_OP, EventTypes.PROFILER_STEP]:
             self.cpu_min_ts = min(self.cpu_min_ts, ts)
             self.cpu_max_ts = max(self.cpu_max_ts, ts + dur)
         # Record global wise min and max time.

@@ -21,6 +21,9 @@ class EventTypes(object):
     MEMSET = "Memset"
     PYTHON = "Python"
     MEMORY = "Memory"
+    CPU_OP = 'cpu_op'
+    GPU_MEMCPY = 'gpu_memcpy'
+    GPU_MEMSET = 'gpu_memset'
 
 Supported_EventTypes = [v for k, v in vars(EventTypes).items() if not k.startswith("_") and v != EventTypes.PROFILER_STEP]
 
@@ -108,7 +111,7 @@ def create_event(event):
 
 def create_trace_event(event):
     category = event.get("cat")
-    if category == "Operator":
+    if category in [EventTypes.OPERATOR, EventTypes.CPU_OP]:
         name = event.get("name")
         if name and name.startswith("ProfilerStep#"):
             return ProfilerStepEvent(event)

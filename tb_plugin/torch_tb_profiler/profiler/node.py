@@ -178,7 +178,7 @@ class DeviceNode(BaseNode):
         return kwargs
 
 def is_operator_node(node):
-    if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \
+    if type(node) is OperatorNode and node.type in [EventTypes.OPERATOR, EventTypes.CPU_OP] \
         and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__")) \
         and not node.name.startswith("Optimizer."):
         return True

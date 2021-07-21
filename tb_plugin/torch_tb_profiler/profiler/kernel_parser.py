@@ -20,7 +20,7 @@ class KernelParser:
                 events_dict[-1]["occupancy"] = event.args.get("est. achieved occupancy %", 0)
         events = events_dict
         events = pd.DataFrame(events)
-        events = events.astype({"type": "category", "category": "category", "name": "string"}, copy=False)
+        events = events.astype({"type": "category", "name": "string"}, copy=False)
 
         def weighted_avg(x):
             try:

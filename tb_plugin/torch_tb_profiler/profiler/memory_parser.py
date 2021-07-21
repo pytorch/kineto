@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
-from .trace import DeviceType, EventTypes
+from .trace import DeviceType, EventTypes, MemoryEvent
 
 logger = utils.get_logger()
 
@@ -33,14 +33,17 @@ def benchmark(func):
 
 
 class MemoryRecord:
-    def __init__(self, scope, pid, tid, ts, device_type, device_id, bytes):
+    def __init__(self, scope, pid, tid, ts, device_type, device_id, address, bytes, total_allocated, total_reserved):
         self.scope = scope
         self.tid = tid
         self.pid = pid
         self.ts = ts
         self.device_type = device_type
         self.device_id = device_id
+        self.addr = address
         self.bytes = bytes
+        self.total_allocated = total_allocated
+        self.total_reserved = total_reserved
 
     @property
     def device_name(self):
@@ -51,6 +54,10 @@ class MemoryRecord:
         else:
             return None
 
+    @staticmethod
+    def from_event(event: MemoryEvent):
+        return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.addr, event.bytes,
+                            event.total_allocated, event.total_reserved)
 
 class MemoryParser:
     def __init__(self, tid2tree, op_list):
@@ -79,8 +86,7 @@ class MemoryParser:
     def parse_events(self, events):
         for event in events:
             if event.type == EventTypes.MEMORY:
-                record = MemoryRecord(event.scope, event.pid, event.tid, event.ts,
-                                      event.device_type, event.device_id, event.bytes)
+                record = MemoryRecord.from_event(event)
                 self.records_by_tid[record.tid].append(record)
 
         for val in self.records_by_tid.values():

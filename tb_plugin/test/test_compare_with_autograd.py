@@ -132,7 +132,7 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
         worker_name = worker_name.split('.')[0]
         assert profile.operation_table_by_name is not None
         result_dict[worker_name + "#operator"] = list()
-        for data in profile.operation_table_by_name:
+        for data in profile.operation_table_by_name['data']:
             row = generate_plugin_result_row(data)
             result_dict[worker_name + "#operator"].append(row)
         if profile.kernel_table is not None:
@@ -143,7 +143,7 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
         if record_shapes:
             assert profile.operation_table_by_name_input is not None
             result_dict[worker_name + "#operator#input_shape"] = list()
-            for data in profile.operation_table_by_name_input:
+            for data in profile.operation_table_by_name_input['data']:
                 row = generate_plugin_result_row(data)
                 result_dict[worker_name + "#operator#input_shape"].append(row)
         # The call stack for legacy and kineto profiler is different for now,

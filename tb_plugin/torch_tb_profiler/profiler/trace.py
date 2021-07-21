@@ -22,7 +22,19 @@ class EventTypes(object):
     PYTHON = "Python"
     MEMORY = "Memory"
 
-Supported_EventTypes = [v for k, v in vars(EventTypes).items() if not k.startswith("_") and v != EventTypes.PROFILER_STEP]
+EventTypeMap = {
+    "Trace" : EventTypes.TRACE,
+    "cpu_op" : EventTypes.OPERATOR,
+    "Operator" : EventTypes.OPERATOR,
+    "Runtime" : EventTypes.RUNTIME,
+    "Kernel" : EventTypes.KERNEL,
+    "Memcpy" : EventTypes.MEMCPY,
+    "gpu_memcpy" : EventTypes.MEMCPY,
+    "Memset" : EventTypes.MEMSET,
+    "gpu_memset" : EventTypes.MEMSET,
+    "Python" : EventTypes.PYTHON,
+    "Memory" : EventTypes.MEMORY
+}
 
 class BaseEvent(object):
     def __init__(self, type, data):
@@ -36,7 +48,6 @@ class BaseEvent(object):
 class TraceEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.category = data.get("cat", "")
         self.duration = data.get("dur")
 
     @property
@@ -108,12 +119,13 @@ def create_event(event):
 
 def create_trace_event(event):
     category = event.get("cat")
-    if category == "Operator":
+    event_type = EventTypeMap.get(category)
+    if event_type == EventTypes.OPERATOR:
         name = event.get("name")
         if name and name.startswith("ProfilerStep#"):
             return ProfilerStepEvent(event)
 
-    if category in Supported_EventTypes:
-        return TraceEvent(category, event)
+    if event_type is not None:
+        return TraceEvent(event_type, event)
     else:
         return None

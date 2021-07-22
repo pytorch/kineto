@@ -10,7 +10,9 @@ __all__ = ["EventTypes", "create_event"]
 
 logger = utils.get_logger()
 
-DeviceType = IntEnum('DeviceType', ['CPU', 'CUDA'], start=0)
+class DeviceType(IntEnum):
+    CPU = 0
+    CUDA = 1
 
 class EventTypes(object):
     TRACE = "Trace"

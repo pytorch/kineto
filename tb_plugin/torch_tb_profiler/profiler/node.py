@@ -11,7 +11,13 @@ from .trace import EventTypes
 
 logger = utils.get_logger()
 
-MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount'], start=0)
+class MemoryMetrics(IntEnum):
+    SelfIncreaseSize = 0
+    SelfAllocationSize = 1
+    SelfAllocationCount = 2
+    IncreaseSize = 3
+    AllocationSize = 4
+    AllocationCount = 5
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, tid, external_id):

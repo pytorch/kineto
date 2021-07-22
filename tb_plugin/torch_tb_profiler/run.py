@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 from . import consts
 
+from typing import List, Optional
 
 class Run(object):
     """ A profiler run. For visualization purpose only.
@@ -57,7 +58,7 @@ class Run(object):
             span = str(span)
         self.profiles[(profile.worker, span)] = profile
 
-    def get_profile(self, worker, span):
+    def get_profile(self, worker, span) -> "RunProfile":
         if worker is None:
             raise ValueError("the worker parameter is mandatory")
 
@@ -66,7 +67,7 @@ class Run(object):
 
         return self.profiles.get((worker, span), None)
 
-    def get_profiles(self, *, worker=None, span=None):
+    def get_profiles(self, *, worker=None, span=None) -> Optional[List["RunProfile"]]:
         # Note: we could not use if span to check it is None or not
         # since the span 0 will be skipped at this case.
         if worker is not None and span is not None:
@@ -110,6 +111,7 @@ class RunProfile(object):
 
         # memory stats
         self.memory_view = None
+        self.memory_curve = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -218,6 +220,10 @@ class RunProfile(object):
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)
         tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency)
         return data, tooltip
+
+    def filter_memory_stats_by_ts(self, start_ts, end_ts):
+        # return something like self.memory_stats, but only event intersect with time interval
+        raise NotImplementedError
 
 
 class DistributedRunProfile(object):

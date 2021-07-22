@@ -97,6 +97,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/distributed/waittime": self.comm_wait_route,
             "/distributed/commops": self.comm_ops_route,
             "/memory": self.memory_route,
+            "/memory_from_selection": self.memory_from_selection_route,
+            "/memory_curve": self.memory_curve_route,
         }
 
     def frontend_metadata(self):
@@ -276,6 +278,19 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def memory_route(self, request):
         profile = self._get_profile_for_request(request)
         return self.respond_as_json(profile.memory_view)
+
+    @wrappers.Request.application
+    def memory_from_selection_route(self, request):
+        # TODO: implement memory stats from curve selection
+        start_ts = request.args.get("start_ts")
+        end_ts = request.args.get("end_ts")
+        profile = self._get_profile_for_request(request)
+        return self.respond_as_json(profile.filter_memory_stats_by_ts(start_ts, end_ts))
+
+    @wrappers.Request.application
+    def memory_curve_route(self, request):
+        profile = self._get_profile_for_request(request)
+        return self.respond_as_json(profile.memory_curve)
 
     @wrappers.Request.application
     def static_file_route(self, request):

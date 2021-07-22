@@ -3,8 +3,9 @@
 # -------------------------------------------------------------------------
 from enum import IntEnum
 
-EndpointTypes = IntEnum('EndpointTypes', ['START', 'END'], start=0)
-
+class EndpointTypes(IntEnum):
+    START = 0
+    END = 1
 
 class EndPoint(object):
     def __init__(self, ep_time, ep_pt_type, ep_value):

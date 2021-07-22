@@ -10,7 +10,7 @@ SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
 
 
-def parse_json_trace(json_content):
+def parse_json_trace(json_content) -> RunProfileData:
     trace_json = json.loads(json_content)
     trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
     return RunProfileData.from_json(WORKER_NAME, 0, trace_json)
@@ -1624,6 +1624,72 @@ class TestProfiler(unittest.TestCase):
         for (mem_stat, expected_data) in validate_data:
             for name, values in expected_data.items():
                 self.assertEqual(mem_stat[name], values)
+
+    def test_memory_curve(self):
+        def entry(ts, dev, dev_id, addr, alloc_size, total_allocated, total_reserved):
+            return {
+                "ph": "i", "s": "t", "name": "[memory]", "pid": 0, "tid": 0, "ts": ts,
+                "args": {
+                    "Device Type": dev,
+                    "Device Id": dev_id,
+                    "Addr": addr,
+                    "Bytes": alloc_size,
+                    "Total Allocated": total_allocated,
+                    "Total Reserved": total_reserved,
+                },
+            }
+
+        event_data_cpu = [
+            [1, 0, 0, 1, 4, 4, 0],         # alloc 1
+            [20, 0, 0, 1, -4, 0, 0],       # free  1
+            [100, 0, 0, 2, 8000, 8000, 0], # alloc 2
+            [200, 0, 0, 2, -8000, 0, 0],   # free  2
+            [300, 0, 0, 3, 4, 4, 0],       # alloc 3
+            [400, 0, 0, 4, 16, 20, 0],     # alloc 4
+            [500, 0, 0, 5, 4000, 4020, 0], # alloc 5
+            [600, 0, 0, 4, -16, 4004, 0],  # free  4
+            [700, 0, 0, 7, 80, 4084, 0],   # alloc 7
+            [800, 0, 0, 3, -4, 4080, 0],   # free  3
+            [900, 0, 0, 7, -80, 4000, 0],  # free  7
+            [905, 0, 0, 4, -4000, 0, 0],   # free  5
+        ]
+
+        event_data_gpu = [
+            [2, 1, 0, 11, 400, 400, 512],        # alloc 11
+            [22, 1, 0, 11, -400, 0, 512],        # free  11
+            [105, 1, 0, 12, 5000, 5000, 10240],  # alloc 12
+            [106, 1, 0, 13, 3000, 8000, 10240],  # alloc 13
+            [205, 1, 0, 12, -5000, 3000, 10240], # free  12
+            [401, 1, 0, 14, 1024, 4024, 10240],  # alloc 14
+            [499, 1, 0, 15, 4, 4028, 10240],     # alloc 15
+            [501, 1, 0, 13, -3000, 1028, 10240], # free  13
+            [502, 1, 0, 15, -4, 1024, 10240],    # free  15
+            [906, 1, 0, 14, -1024, 0, 10240],    # free  14
+        ]
+
+        json_content = json.dumps([entry(*data) for data in sorted(event_data_cpu + event_data_gpu)])
+
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        self.assertIn("CPU", profile.memory_curves)
+        self.assertIn("GPU0", profile.memory_curves)
+
+        self.assertEqual(len(event_data_cpu), len(profile.memory_curves["CPU"]["ts"]))
+        self.assertEqual(len(event_data_cpu), len(profile.memory_curves["CPU"]["total_allocated"]))
+        self.assertEqual(len(event_data_cpu), len(profile.memory_curves["CPU"]["total_reserved"]))
+        for i in range(len(event_data_cpu)):
+            self.assertEqual(event_data_cpu[i][0],  profile.memory_curves["CPU"]["ts"][i])
+            self.assertEqual(event_data_cpu[i][-2], profile.memory_curves["CPU"]["total_allocated"][i])
+            self.assertEqual(event_data_cpu[i][-1], profile.memory_curves["CPU"]["total_reserved"][i])
+
+        self.assertEqual(len(event_data_gpu), len(profile.memory_curves["GPU0"]["ts"]))
+        self.assertEqual(len(event_data_gpu), len(profile.memory_curves["GPU0"]["total_allocated"]))
+        self.assertEqual(len(event_data_gpu), len(profile.memory_curves["GPU0"]["total_reserved"]))
+        for i in range(len(event_data_gpu)):
+            self.assertEqual(event_data_gpu[i][0],  profile.memory_curves["GPU0"]["ts"][i])
+            self.assertEqual(event_data_gpu[i][-2], profile.memory_curves["GPU0"]["total_allocated"][i])
+            self.assertEqual(event_data_gpu[i][-1], profile.memory_curves["GPU0"]["total_reserved"][i])
 
 
     # Test group by "kernel detail + op name".

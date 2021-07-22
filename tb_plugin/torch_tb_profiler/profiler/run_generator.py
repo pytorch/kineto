@@ -3,16 +3,21 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
+from .. import consts, utils
+from ..run import DistributedRunProfile, RunProfile
+from .data import RunProfileData
 from .node import MemoryMetrics
 from .overall_parser import ProfileRole
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 
+from copy import deepcopy
+
 logger = utils.get_logger()
 
 
 class RunGenerator(object):
-    def __init__(self, worker, span, profile_data):
+    def __init__(self, worker, span, profile_data: RunProfileData):
         self.worker = worker
         self.span = span
         self.profile_data = profile_data
@@ -53,8 +58,9 @@ class RunGenerator(object):
 
         # add memory stats
         if self.profile_data.has_memory_data:
-            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_stats)
             profile_run.views.append(consts.MEMORY_VIEW)
+            profile_run.memory_view = self._generate_memory_view()
+            profile_run.memory_curve = self._get_memory_curve()
 
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:
@@ -404,6 +410,7 @@ class RunGenerator(object):
         return data
 
     def _generate_memory_view(self, memory_stats):
+        memory_stats = self.profile_data.memory_stats
 
         data = OrderedDict()
         result = {
@@ -454,6 +461,13 @@ class RunGenerator(object):
             table["rows"] = rows
 
             data[name] = table
+        return result
+
+    def _get_memory_curve(self):
+        result = {
+            "metadata": {},
+            "data": self.profile_data.memory_curves
+        }
         return result
 
     @staticmethod

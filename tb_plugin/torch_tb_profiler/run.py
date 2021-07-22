@@ -443,9 +443,13 @@ class RunProfile(object):
 
         events = defaultdict(list)
         alloc = {}  # allocation events may or may not have paired free event
-        free = {}  # free events that does not have paired free event
+        free = {}  # free events that does not have paired alloc event
         prev_ts = float("-inf")  # ensure ordered memory records is ordered
         for i, r in enumerate(memory_records):
+            if r.addr is None:
+                # profile json data prior to pytorch 1.10 do not have addr
+                # we should ignore them
+                continue
             assert prev_ts < r.ts
             prev_ts = r.ts
             addr = r.addr

@@ -17,8 +17,18 @@ logger = utils.get_logger()
 
 NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
 GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
-ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Communication', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
 CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
+
+class ProfileRole(IntEnum):
+    Kernel = 0
+    Memcpy = 1
+    Memset = 2
+    Communication = 3
+    Runtime = 4
+    DataLoader = 5
+    CpuOp = 6
+    Other = 7
+    Total = 8
 
 
 class NodeParserMixin:

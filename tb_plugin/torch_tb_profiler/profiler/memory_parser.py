@@ -1,9 +1,10 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import Iterable
+from typing import Iterable, Optional
 
 import os
+from copy import deepcopy
 from collections import defaultdict
 
 from .. import utils
@@ -85,7 +86,7 @@ class MemoryParser:
         self.processed_node_normal = set()
         self.unreached_node_normal = defaultdict(list)
 
-        self.memory_events = None
+        self.memory_events: Optional[Iterable[MemoryEvent]] = None
 
     def parse_events(self, events: Iterable[BaseEvent]):
         self.memory_events = [e for e in events if e.type == EventTypes.MEMORY]
@@ -330,5 +331,34 @@ class MemoryParser:
             logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(
                 len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))
 
-    def get_memory_events(self):
-        return self.memory_events
+    def get_memory_curves(self):
+        # E.g.
+        # { "CPU": {
+        #     "ts": [1, 2, 4],
+        #     "total_allocated": [4, 16, 4],
+        #     "total_reserved": [4, 16, 16],
+        #   }, 
+        #   "GPU0": ...
+        # }
+        data = {}
+        tpl = {"ts": [], "total_allocated": [], "total_reserved": []}
+        data["CPU"] = deepcopy(tpl)
+
+        import sys
+        sys.stderr.write(str(data))
+
+        for e in self.memory_events:
+            if e.device_type == DeviceType.CPU:
+                data["CPU"]["ts"].append(e.ts)
+                data["CPU"]["total_allocated"].append(e.total_allocated)
+                data["CPU"]["total_reserved"].append(e.total_reserved)
+            elif e.device_type == DeviceType.CUDA:
+                gpuid = f"GPU{e.device_id}"
+                if gpuid not in data:
+                    data[gpuid] = deepcopy(tpl)
+                data[gpuid]["ts"].append(e.ts)
+                data[gpuid]["total_allocated"].append(e.total_allocated)
+                data[gpuid]["total_reserved"].append(e.total_reserved)
+            else:
+                raise NotImplementedError("Unknown device type for memory curve")
+        return data

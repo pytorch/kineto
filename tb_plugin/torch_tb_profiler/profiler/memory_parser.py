@@ -1,12 +1,15 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import Iterable, Optional
+
 import os
+from copy import deepcopy
 from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
-from .trace import DeviceType, EventTypes, MemoryEvent
+from .trace import DeviceType, EventTypes, MemoryEvent, BaseEvent
 
 logger = utils.get_logger()
 
@@ -83,14 +86,15 @@ class MemoryParser:
         self.processed_node_normal = set()
         self.unreached_node_normal = defaultdict(list)
 
-    def parse_events(self, events):
-        for event in events:
-            if event.type == EventTypes.MEMORY:
-                record = MemoryRecord.from_event(event)
-                self.records_by_tid[record.tid].append(record)
+        self.memory_events: Optional[Iterable[MemoryEvent]] = None
 
-        for val in self.records_by_tid.values():
-            val.sort(key=lambda x: x.ts)
+    def parse_events(self, events: Iterable[BaseEvent]):
+        self.memory_events = [e for e in events if e.type == EventTypes.MEMORY]
+        self.memory_events.sort(key=lambda e: e.ts)
+
+        for event in self.memory_events:
+            record = MemoryRecord.from_event(event)
+            self.records_by_tid[record.tid].append(record)
 
         if BENCHMARK_MEMORY:
             self.update_node_recursive()
@@ -327,3 +331,35 @@ class MemoryParser:
         if len(self.staled_records_normal) > 0 and self.record_length > 0:
             logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(
                 len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))
+
+    def get_memory_curves(self):
+        # E.g.
+        # { "CPU": {
+        #     "ts": [1, 2, 4],
+        #     "total_allocated": [4, 16, 4],
+        #     "total_reserved": [4, 16, 16],
+        #   }, 
+        #   "GPU0": ...
+        # }
+        data = {}
+        tpl = {"ts": [], "total_allocated": [], "total_reserved": []}
+        data["CPU"] = deepcopy(tpl)
+
+        import sys
+        sys.stderr.write(str(data))
+
+        for e in self.memory_events:
+            if e.device_type == DeviceType.CPU:
+                data["CPU"]["ts"].append(e.ts)
+                data["CPU"]["total_allocated"].append(e.total_allocated)
+                data["CPU"]["total_reserved"].append(e.total_reserved)
+            elif e.device_type == DeviceType.CUDA:
+                gpuid = f"GPU{e.device_id}"
+                if gpuid not in data:
+                    data[gpuid] = deepcopy(tpl)
+                data[gpuid]["ts"].append(e.ts)
+                data[gpuid]["total_allocated"].append(e.total_allocated)
+                data[gpuid]["total_reserved"].append(e.total_reserved)
+            else:
+                raise NotImplementedError("Unknown device type for memory curve")
+        return data

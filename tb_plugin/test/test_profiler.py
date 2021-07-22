@@ -1353,7 +1353,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 90,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 90, "Bytes": 4
             }
           },
           {
@@ -1361,7 +1361,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 150,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 150, "Bytes": 4
             }
           },
           {
@@ -1369,7 +1369,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 200,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 200, "Bytes": 4
             }
           },
           {
@@ -1377,7 +1377,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 210,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 210, "Bytes": 4
             }
           },
           {
@@ -1385,7 +1385,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 265,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 265, "Bytes": 4
             }
           },
           {
@@ -1393,7 +1393,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 300,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 300, "Bytes": 4
             }
           },
           {
@@ -1401,7 +1401,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 350,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 10
+                "Device Type": 1, "Device Id": 0, "Addr": 350, "Bytes": 10
             }
           },
           {
@@ -1409,7 +1409,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 360,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -10
+                "Device Type": 1, "Device Id": 0, "Addr": 350, "Bytes": -10
             }
           },
           {
@@ -1417,7 +1417,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 450,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 1000000
+                "Device Type": 0, "Device Id": -1, "Addr": 450, "Bytes": 1000000
             }
           },
 
@@ -1426,7 +1426,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 515,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": 100
             }
           },
           {
@@ -1434,7 +1434,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 520,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 520, "Bytes": 100
             }
           },
           {
@@ -1442,7 +1442,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 600,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 520, "Bytes": -100
             }
           },
           {
@@ -1450,7 +1450,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 690,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 690, "Bytes": 100
             }
           },
           {
@@ -1458,7 +1458,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 701,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 701, "Bytes": 100
             }
           },
           {
@@ -1466,7 +1466,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 795,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": -100
             }
           },
 
@@ -1475,7 +1475,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 708,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 708, "Bytes": 100
             }
           },
           {
@@ -1483,7 +1483,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 742,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 708, "Bytes": -100
             }
           },
           {
@@ -1491,7 +1491,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 715,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 50
+                "Device Type": 1, "Device Id": 0, "Addr": 715, "Bytes": 50
             }
           },
           {
@@ -1499,7 +1499,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 735,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -50
+                "Device Type": 1, "Device Id": 0, "Addr": 715, "Bytes": -50
             }
           },
           {
@@ -1507,7 +1507,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 725,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 50
+                "Device Type": 1, "Device Id": 0, "Addr": 725, "Bytes": 50
             }
           },
           {
@@ -1515,7 +1515,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 728,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -50
+                "Device Type": 1, "Device Id": 0, "Addr": 725, "Bytes": -50
             }
           },
           {
@@ -1523,7 +1523,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 729,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 50
+                "Device Type": 0, "Device Id": -1, "Addr": 729, "Bytes": 50
             }
           },
           {
@@ -1531,7 +1531,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 746,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 100
+                "Device Type": 0, "Device Id": -1, "Addr": 746, "Bytes": 100
             }
           },
           {
@@ -1539,7 +1539,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 747,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 20
+                "Device Type": 1, "Device Id": 0, "Addr": 747, "Bytes": 20
             }
           },
           {
@@ -1547,7 +1547,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 749,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": -100
+                "Device Type": 0, "Device Id": -1, "Addr": 690, "Bytes": -100
             }
           },
           {
@@ -1555,7 +1555,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 760,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 30
+                "Device Type": 1, "Device Id": 0, "Addr": 760, "Bytes": 30
             }
           },
           {
@@ -1563,7 +1563,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 780,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -30
+                "Device Type": 1, "Device Id": 0, "Addr": 760, "Bytes": -30
             }
           },
           {
@@ -1571,7 +1571,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 795,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 10
+                "Device Type": 1, "Device Id": 0, "Addr": 795, "Bytes": 10
             }
           },
           {
@@ -1579,7 +1579,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 799,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -10
+                "Device Type": 1, "Device Id": 0, "Addr": 795, "Bytes": -10
             }
           }
         ]
@@ -1594,7 +1594,7 @@ class TestProfiler(unittest.TestCase):
         profile.process()
 
         self.assertEqual(len(profile.memory_stats), 2)
-        self.assertEqual("GPU0" in profile.memory_stats, True)
+        self.assertIn("GPU0", profile.memory_stats)
 
         # validation
         gpu_expected_data = {
@@ -1623,19 +1623,8 @@ class TestProfiler(unittest.TestCase):
         ]
         for (mem_stat, expected_data) in validate_data:
             for name, values in expected_data.items():
-                # self increase size
-                self.assertEqual(mem_stat[name][0], values[0])
-                # self allocation size
-                self.assertEqual(mem_stat[name][1], values[1])
-                # self allocation count
-                self.assertEqual(mem_stat[name][2], values[2])
-                self.assertEqual(mem_stat[name][3], values[3])  # increase size
-                # allocation size
-                self.assertEqual(mem_stat[name][4], values[4])
-                # allocation count
-                self.assertEqual(mem_stat[name][5], values[5])
-                # op calls
-                self.assertEqual(mem_stat[name][6], values[6])
+                self.assertEqual(mem_stat[name], values)
+
 
     # Test group by "kernel detail + op name".
     def test_group_by_kernel_columns(self):

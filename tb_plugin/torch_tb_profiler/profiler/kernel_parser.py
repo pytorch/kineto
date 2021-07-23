@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from .trace import EventTypes
+from .tensor_core import TC_Whitelist
 
 
 class KernelParser:
@@ -18,6 +19,7 @@ class KernelParser:
                 events_dict.append(vars(event))
                 events_dict[-1]["blocks_per_sm"] = event.args.get("blocks per SM", 0)
                 events_dict[-1]["occupancy"] = event.args.get("est. achieved occupancy %", 0)
+                events_dict[-1]["tc_used"] = event.name in TC_Whitelist()
         events = events_dict
         events = pd.DataFrame(events)
         events = events.astype({"type": "category", "name": "string"}, copy=False)
@@ -29,6 +31,7 @@ class KernelParser:
                 return 0
 
         self.kernel_stat = events.groupby("name").agg(
+            tc_used=('tc_used', "first"),
             count=('duration', "count"),
             sum=('duration', "sum"),
             mean=('duration', "mean"),

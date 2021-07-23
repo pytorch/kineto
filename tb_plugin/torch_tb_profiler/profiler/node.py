@@ -6,6 +6,7 @@ from collections import defaultdict
 from enum import IntEnum
 
 from .trace import EventTypes
+from .tensor_core import TC_Whitelist, TC_OP_Whitelist
 
 MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount', 'Total'], start=0)
 
@@ -71,6 +72,9 @@ class OperatorNode(HostNode):
         self.self_device_duration = self_device_duration
         self.memory_records = []
         # self.parent_node = None
+        self.tc_eligible = False
+        self.tc_self_duration = 0
+        self.tc_total_duration = 0
 
     def add_memory_record(self, record):
         self.memory_records.append(record)
@@ -99,15 +103,20 @@ class OperatorNode(HostNode):
             rt.update_device_op_node(self)
 
         self.self_host_duration = self.end_time - self.start_time
+        self.tc_eligible = self.name in TC_OP_Whitelist()
         for child in self.children:
             self.device_duration += child.device_duration
             self.self_host_duration -= (child.end_time - child.start_time)
+            self.tc_total_duration += child.tc_total_duration
         for rt in self.runtimes:
             # From PyTorch 1.8 RC1, cpu_self_time does not include runtime's time.
             # So here we keep consistent with it.
             self.self_host_duration -= (rt.end_time - rt.start_time)
             self.device_duration += rt.device_duration
             self.self_device_duration += rt.device_duration
+            self.tc_self_duration += rt.tc_duration
+            self.tc_total_duration += rt.tc_duration
+
 
     def replace_time_by_children(self):
             self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)
@@ -130,11 +139,14 @@ class RuntimeNode(HostNode):
         super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = device_nodes
+        self.tc_duration = 0  # Time summarization of all its launched kernels.
 
     def fill_stats(self):
         if self.device_nodes:
             for device_node in self.device_nodes:
-                self.device_duration += device_node.end_time - device_node.start_time
+                device_duration = device_node.end_time - device_node.start_time
+                self.device_duration += device_duration
+                self.tc_duration += device_duration if device_node.tc_used else 0
 
     def update_device_op_node(self, node):
         if self.device_nodes:
@@ -159,6 +171,7 @@ class DeviceNode(BaseNode):
         self.block = block
         self.regs_per_thread = regs_per_thread
         self.shared_memory = shared_memory
+        self.tc_used = self.name in TC_Whitelist() if self.type == EventTypes.KERNEL else False
 
     @classmethod
     def create(cls, event):

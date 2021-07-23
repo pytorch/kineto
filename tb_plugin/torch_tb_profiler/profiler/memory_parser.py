@@ -332,22 +332,29 @@ class MemoryParser:
                 len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))
 
     def get_memory_curves(self):
-        # E.g.
-        # { "CPU": {
-        #     "ts": [1, 2, 4],
-        #     "total_allocated": [4, 16, 4],
-        #     "total_reserved": [4, 16, 16],
-        #   }, 
-        #   "GPU0": ...
-        # }
-        data = {}
-        tpl = {"ts": [], "total_allocated": [], "total_reserved": []}
+        """For example:
+        ```py
+        { 
+            "first_ts": 1,
+            "devices" {
+                "CPU": {
+                    "ts": [1, 2, 4],
+                    "total_allocated": [4, 16, 4],
+                    "total_reserved": [4, 16, 16],
+                }, 
+                "GPU0": ...
+            }
+        }
+        ```
+        """
+        result = { "first_ts": float("nan"), "devices": {} }
+        data = result["devices"]
+        tpl = { "ts": [], "total_allocated": [], "total_reserved": [] }
         data["CPU"] = deepcopy(tpl)
 
-        import sys
-        sys.stderr.write(str(data))
-
+        first_ts = float("inf")
         for e in self.memory_events:
+            first_ts = min(first_ts, e.ts)
             if e.device_type == DeviceType.CPU:
                 data["CPU"]["ts"].append(e.ts)
                 data["CPU"]["total_allocated"].append(e.total_allocated)
@@ -361,4 +368,6 @@ class MemoryParser:
                 data[gpuid]["total_reserved"].append(e.total_reserved)
             else:
                 raise NotImplementedError("Unknown device type for memory curve")
-        return data
+
+        result["first_ts"] = first_ts
+        return result

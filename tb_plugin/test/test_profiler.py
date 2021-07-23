@@ -1672,24 +1672,28 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertIn("CPU", profile.memory_curves)
-        self.assertIn("GPU0", profile.memory_curves)
+        self.assertEqual(1, profile.memory_curves["first_ts"])
+        self.assertEqual(len(profile.memory_curves["devices"]), 2)
 
-        self.assertEqual(len(event_data_cpu), len(profile.memory_curves["CPU"]["ts"]))
-        self.assertEqual(len(event_data_cpu), len(profile.memory_curves["CPU"]["total_allocated"]))
-        self.assertEqual(len(event_data_cpu), len(profile.memory_curves["CPU"]["total_reserved"]))
+        devices = profile.memory_curves["devices"]
+        self.assertIn("CPU", devices)
+        self.assertIn("GPU0", devices)
+
+        self.assertEqual(len(event_data_cpu), len(devices["CPU"]["ts"]))
+        self.assertEqual(len(event_data_cpu), len(devices["CPU"]["total_allocated"]))
+        self.assertEqual(len(event_data_cpu), len(devices["CPU"]["total_reserved"]))
         for i in range(len(event_data_cpu)):
-            self.assertEqual(event_data_cpu[i][0],  profile.memory_curves["CPU"]["ts"][i])
-            self.assertEqual(event_data_cpu[i][-2], profile.memory_curves["CPU"]["total_allocated"][i])
-            self.assertEqual(event_data_cpu[i][-1], profile.memory_curves["CPU"]["total_reserved"][i])
+            self.assertEqual(event_data_cpu[i][0],  devices["CPU"]["ts"][i])
+            self.assertEqual(event_data_cpu[i][-2], devices["CPU"]["total_allocated"][i])
+            self.assertEqual(event_data_cpu[i][-1], devices["CPU"]["total_reserved"][i])
 
-        self.assertEqual(len(event_data_gpu), len(profile.memory_curves["GPU0"]["ts"]))
-        self.assertEqual(len(event_data_gpu), len(profile.memory_curves["GPU0"]["total_allocated"]))
-        self.assertEqual(len(event_data_gpu), len(profile.memory_curves["GPU0"]["total_reserved"]))
+        self.assertEqual(len(event_data_gpu), len(devices["GPU0"]["ts"]))
+        self.assertEqual(len(event_data_gpu), len(devices["GPU0"]["total_allocated"]))
+        self.assertEqual(len(event_data_gpu), len(devices["GPU0"]["total_reserved"]))
         for i in range(len(event_data_gpu)):
-            self.assertEqual(event_data_gpu[i][0],  profile.memory_curves["GPU0"]["ts"][i])
-            self.assertEqual(event_data_gpu[i][-2], profile.memory_curves["GPU0"]["total_allocated"][i])
-            self.assertEqual(event_data_gpu[i][-1], profile.memory_curves["GPU0"]["total_reserved"][i])
+            self.assertEqual(event_data_gpu[i][0],  devices["GPU0"]["ts"][i])
+            self.assertEqual(event_data_gpu[i][-2], devices["GPU0"]["total_allocated"][i])
+            self.assertEqual(event_data_gpu[i][-1], devices["GPU0"]["total_reserved"][i])
 
 
     # Test group by "kernel detail + op name".

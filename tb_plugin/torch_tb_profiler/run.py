@@ -221,7 +221,7 @@ class RunProfile(object):
         tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency)
         return data, tooltip
 
-    def filter_memory_stats_by_ts(self, start_ts, end_ts):
+    def filtered_memory_stats_by_ts(self, start_ts, end_ts):
         # return something like self.memory_stats, but only event intersect with time interval
         raise NotImplementedError
 

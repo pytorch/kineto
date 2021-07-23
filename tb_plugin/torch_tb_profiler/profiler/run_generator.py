@@ -463,12 +463,47 @@ class RunGenerator(object):
             data[name] = table
         return result
 
-    def _get_memory_curve(self):
-        result = {
-            "metadata": {},
-            "data": self.profile_data.memory_curves
+    def _get_memory_curve(self, time_metric: str = "", memory_metric: str = "G"):
+        assert time_metric in ["nano", "micro", "milli", ""]
+        assert memory_metric in ["", "K", "M", "G"]
+        
+        # timestamp is in nanosecond
+        time_factor = {
+            "nano": 1,
+            "micro": 1e-3,
+            "micro": 1e-6,
+            "": 1e-9,
+        }[time_metric]
+
+        # memory is in bytes
+        memory_factor = {
+            "": 1,
+            "K": 1e-3,
+            "M": 1e-6,
+            "G": 1e-9,
+        }[memory_metric]
+
+        first_ts = self.profile_data.memory_curves["first_ts"]
+        per_deivce_data = {}
+        for dev_name, dev_data in self.profile_data.memory_curves["devices"].items():
+            per_deivce_data[dev_name] = list(zip(
+                [(ts - first_ts) * time_factor for ts in dev_data["ts"]],
+                [bytes_ * memory_factor for bytes_ in dev_data["total_allocated"]],
+                [bytes_ * memory_factor for bytes_ in dev_data["total_reserved"]],
+            ))
+
+        return {
+            "metadata": {
+                "title": "Memory Curves",
+                "default_device": "CPU",
+            },
+            "columns": [
+                { "name": "Time", "type": "number", "tooltip": "Time since the first memory event." },
+                { "name": "Allocated", "type": "number", "tooltip": "Total memory in use." },
+                { "name": "Reserved", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+            ],
+            "rows": per_deivce_data,
         }
-        return result
 
     @staticmethod
     def _get_gpu_info(device_props, gpu_id):

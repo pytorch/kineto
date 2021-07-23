@@ -5,8 +5,11 @@ from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
 
+from .. import utils
 from .trace import EventTypes
 from .tensor_core import TC_Whitelist, TC_OP_Whitelist
+
+logger = utils.get_logger()
 
 MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount', 'Total'], start=0)
 
@@ -109,6 +112,10 @@ class OperatorNode(HostNode):
             self.device_duration += child.device_duration
             self.self_host_duration -= (child.end_time - child.start_time)
             self.tc_total_duration += child.tc_total_duration
+            if not self.tc_eligible and child.tc_eligible:
+                logger.warning("None TC eligible operator '{}' is father of TC eligible operator '{}'!".format(
+                    self.name, child.name
+                ))
         for rt in self.runtimes:
             # From PyTorch 1.8 RC1, cpu_self_time does not include runtime's time.
             # So here we keep consistent with it.
@@ -117,7 +124,8 @@ class OperatorNode(HostNode):
             self.self_device_duration += rt.device_duration
             self.tc_self_duration += rt.tc_duration
             self.tc_total_duration += rt.tc_duration
-
+            if not self.tc_eligible and rt.tc_duration > 0:
+                logger.warning("New TC eligible operator found: '{}'!".format(self.name))
 
     def replace_time_by_children(self):
             self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)

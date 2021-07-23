@@ -71,7 +71,7 @@ TEST(ParseTest, Format) {
 
 TEST(ParseTest, DefaultActivityTypes) {
   Config cfg;
-  cfg.validate();
+  cfg.validate(std::chrono::system_clock::now());
   auto all_activities = activityTypes();
   EXPECT_EQ(cfg.selectedActivityTypes(),
     std::set<ActivityType>(all_activities.begin(), all_activities.end()));
@@ -119,7 +119,7 @@ TEST(ParseTest, SamplePeriod) {
   EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=10"));
   EXPECT_EQ(cfg.samplePeriod(), milliseconds(10));
   EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=0"));
-  cfg.validate();
+  cfg.validate(std::chrono::system_clock::now());
   // 0 should be adjustd up to 1
   EXPECT_EQ(cfg.samplePeriod(), milliseconds(1));
   // Negative and non-int values should fail
@@ -132,14 +132,16 @@ TEST(ParseTest, SamplePeriod) {
 
 TEST(ParseTest, MultiplexPeriod) {
   Config cfg;
+  auto now = std::chrono::system_clock::now();
+
   EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=100\nMULTIPLEX_PERIOD_MSECS=100"));
   EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(100));
   EXPECT_TRUE(cfg.parse("MULTIPLEX_PERIOD_MSECS = 0"));
-  cfg.validate();
+  cfg.validate(now);
   // Adjusted to match sample period
   EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(100));
   EXPECT_TRUE(cfg.parse("MULTIPLEX_PERIOD_MSECS \t= \t 750 \n"));
-  cfg.validate();
+  cfg.validate(now);
   // Adjusted to match multiple of sample period
   EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(800));
   EXPECT_FALSE(cfg.parse("MULTIPLEX_PERIOD_MSECS=-10"));
@@ -164,36 +166,38 @@ TEST(ParseTest, ReportPeriod) {
 
 TEST(ParseTest, SamplesPerReport) {
   Config cfg;
+  auto now = std::chrono::system_clock::now();
+
   EXPECT_TRUE(cfg.parse(R"(
     SAMPLE_PERIOD_MSECS = 1000
     REPORT_PERIOD_SECS  =    1
     SAMPLES_PER_REPORT  =   10)"));
-  cfg.validate();
+  cfg.validate(now);
   // Adjusted down to one sample per report
   EXPECT_EQ(cfg.samplesPerReport(), 1);
   EXPECT_TRUE(cfg.parse(R"(
     SAMPLE_PERIOD_MSECS = 1000
     REPORT_PERIOD_SECS  =   10
     SAMPLES_PER_REPORT  =   10)"));
-  cfg.validate();
+  cfg.validate(now);
   // No adjustment needed
   EXPECT_EQ(cfg.samplesPerReport(), 10);
   EXPECT_TRUE(cfg.parse(R"(
     SAMPLE_PERIOD_MSECS = 1000
     REPORT_PERIOD_SECS  =    2
     SAMPLES_PER_REPORT  =   10)"));
-  cfg.validate();
+  cfg.validate(now);
   // Adjusted to 2 samples per report
   EXPECT_EQ(cfg.samplesPerReport(), 2);
   EXPECT_TRUE(cfg.parse(R"(
     SAMPLE_PERIOD_MSECS = 200
     REPORT_PERIOD_SECS  =   2
     SAMPLES_PER_REPORT  =  10)"));
-  cfg.validate();
+  cfg.validate(now);
   // No adjustment needed
   EXPECT_EQ(cfg.samplesPerReport(), 10);
   EXPECT_TRUE(cfg.parse("SAMPLES_PER_REPORT=0"));
-  cfg.validate();
+  cfg.validate(now);
   // Adjusted up to 1
   EXPECT_EQ(cfg.samplesPerReport(), 1);
   // Invalid value types
@@ -206,7 +210,7 @@ TEST(ParseTest, SamplesPerReport) {
     MULTIPLEX_PERIOD_MSECS=500 # Must be a multiple of sample period
     REPORT_PERIOD_SECS=0       # Must be non-zero multiple of multiplex period
     SAMPLES_PER_REPORT=5       # Max report period / multiplex period)"));
-  cfg.validate();
+  cfg.validate(now);
   // Multiple adjustments
   EXPECT_EQ(cfg.samplePeriod(), milliseconds(1000));
   EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(1000));

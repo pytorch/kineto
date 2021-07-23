@@ -10,6 +10,7 @@
 #include "ActivityProfilerController.h"
 #include "Config.h"
 #include "CuptiActivityInterface.h"
+#include <chrono>
 
 namespace KINETO_NAMESPACE {
 
@@ -43,7 +44,7 @@ void ActivityProfilerProxy::prepareTrace(
   Config config;
   config.setClientDefaults();
   config.setSelectedActivityTypes(activityTypes);
-  config.validate();
+  config.validate(std::chrono::system_clock::now());
   controller_->prepareTrace(config);
 }
 

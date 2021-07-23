@@ -267,6 +267,9 @@ class RunGenerator(object):
                 row['device_total_duration'] = round(op.device_duration)
             row['host_self_duration'] = round(op.self_host_duration)
             row['host_total_duration'] = round(op.host_duration)
+            row['tc_eligible'] = str(op.tc_eligible)
+            row['tc_self_ratio'] = round(100 * op.tc_self_ratio, 2)
+            row['tc_total_ratio'] = round(100 * op.tc_total_ratio, 2)
             if call_stack:
                 row['call_stack'] = op.call_stacks.pop()
             else:
@@ -314,7 +317,9 @@ class RunGenerator(object):
                             {"type": "string", "name": "Grid"},
                             {"type": "string", "name": "Block"},
                             {"type": "number", "name": "Register Per Thread"},
-                            {"type": "number", "name": "Shared Memory"}]
+                            {"type": "number", "name": "Shared Memory"},
+                            {"type": "string", "name": "Kernel Uses TC"},
+                            {"type": "string", "name": "Op is TC Eligible"}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
@@ -329,6 +334,7 @@ class RunGenerator(object):
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
                              str(agg_by_name_op.grid), str(agg_by_name_op.block),
                              str(agg_by_name_op.regs_per_thread or '0'), str(agg_by_name_op.shared_memory or '0'),
+                             str(agg_by_name_op.tc_used), str(agg_by_name_op.op_tc_eligible),
                              agg_by_name_op.calls,
                              agg_by_name_op.total_duration, round(agg_by_name_op.avg_duration),
                              agg_by_name_op.max_duration, agg_by_name_op.min_duration]
@@ -355,6 +361,7 @@ class RunGenerator(object):
             "data": table
         }
         table["columns"] = [{"type": "string", "name": "Name"}]
+        table["columns"].append({"type": "string", "name": "TC Used"})
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
         if sum(self.profile_data.blocks_per_sm_count) > 0:
@@ -372,7 +379,7 @@ class RunGenerator(object):
 
         table["rows"] = []
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
-            kernel_row = [name]
+            kernel_row = [name, str(row["tc_used"])]
             for i, column in enumerate(columns):
                 kernel_row.append(round(row[column]) if round_digits[i] == 0
                                   else round(row[column], round_digits[i]))

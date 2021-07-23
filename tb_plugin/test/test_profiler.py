@@ -1936,6 +1936,100 @@ class TestProfiler(unittest.TestCase):
             self.assertEqual(agg_kernel.max_duration, expected_agg_kernel["max_duration"])
             index += 1
 
+    # Test tensor core related feature.
+    def test_tensor_core(self):
+        json_content = """
+          [
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::conv2d", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 100,
+            "args": {"Input Dims": [[]], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "op_no_tc", "pid": 13721, "tid": "123",
+            "ts": 205, "dur": 10,
+            "args": {"Input Dims": [[]], "External id": 4}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::cudnn_convolution", "pid": 13721, "tid": "123",
+            "ts": 215, "dur": 10,
+            "args": {"Input Dims": [[]], "External id": 5}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel_no_tc", "pid": 0, "tid": "stream 7",
+            "ts": 210, "dur": 10,
+            "args": {"correlation": 1000, "external id": 4, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
+            "ts": 205, "dur": 5,
+            "args": {"correlation": 1000, "external id": 4}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "volta_fp16_s884cudnn_fp16_128x128_ldg8_splitK_relu_f2f_exp_small_nhwc_tn_v1", "pid": 0, "tid": "stream 7",
+            "ts": 220, "dur": 15,
+            "args": {"correlation": 1001, "external id": 5, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
+            "ts": 215, "dur": 5,
+            "args": {"correlation": 1001, "external id": 5}
+          }
+          ]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        expected_agg_ops = {
+            "aten::conv2d": {
+                "tc_eligible": True,
+                "tc_self_ratio": 0,
+                "tc_total_ratio": 15 / (15 + 10)
+            },
+            "op_no_tc": {
+                "tc_eligible": False,
+                "tc_self_ratio": 0,
+                "tc_total_ratio": 0
+            },
+            "aten::cudnn_convolution": {
+                "tc_eligible": True,
+                "tc_self_ratio": 1.0,
+                "tc_total_ratio": 1.0
+            }
+        }
+        self.assertEqual(len(profile.op_list_groupby_name), len(expected_agg_ops))
+        for agg_op in profile.op_list_groupby_name:
+            expected_agg_op = expected_agg_ops[agg_op.name]
+            self.assertEqual(agg_op.tc_eligible, expected_agg_op["tc_eligible"])
+            self.assertAlmostEqual(agg_op.tc_self_ratio, expected_agg_op["tc_self_ratio"])
+            self.assertAlmostEqual(agg_op.tc_total_ratio, expected_agg_op["tc_total_ratio"])
+
+        expected_kernels_groupby_op = {
+            "kernel_no_tc": {
+                "op_name": "op_no_tc",
+                "tc_used": False,
+                "op_tc_eligible": False
+            },
+            "volta_fp16_s884cudnn_fp16_128x128_ldg8_splitK_relu_f2f_exp_small_nhwc_tn_v1": {
+                "op_name": "aten::cudnn_convolution",
+                "tc_used": True,
+                "op_tc_eligible": True
+            }
+        }
+        self.assertEqual(len(profile.kernel_list_groupby_name_op), len(expected_kernels_groupby_op))
+        for agg_kernel in profile.kernel_list_groupby_name_op:
+            expected_agg_kernel = expected_kernels_groupby_op[agg_kernel.name]
+            self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
+            self.assertEqual(agg_kernel.tc_used, expected_agg_kernel["tc_used"])
+            self.assertEqual(agg_kernel.op_tc_eligible, expected_agg_kernel["op_tc_eligible"])
+
 
 if __name__ == '__main__':
     unittest.main()

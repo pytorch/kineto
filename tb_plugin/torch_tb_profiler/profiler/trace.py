@@ -132,4 +132,3 @@ def create_trace_event(event):
         return DurationEvent(event_type, event)
     else:
         return None
-

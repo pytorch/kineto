@@ -12,13 +12,7 @@ class KernelParser:
         self.kernel_stat = None
 
     def parse_events(self, events):
-        events_dict = []
-        for event in events:
-            if event.type == EventTypes.KERNEL:
-                events_dict.append(vars(event))
-                events_dict[-1]["blocks_per_sm"] = event.args.get("blocks per SM", 0)
-                events_dict[-1]["occupancy"] = event.args.get("est. achieved occupancy %", 0)
-        events = events_dict
+        events = [vars(event) for event in events if event.type == EventTypes.KERNEL ]
         events = pd.DataFrame(events)
         events = events.astype({"type": "category", "name": "string"}, copy=False)
 

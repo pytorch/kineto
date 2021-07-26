@@ -161,7 +161,7 @@ class NodeParserMixin:
         return StepContext(prev_step_end_time, steps_device, steps_matched_device_nodes)
 
     def _parse_node(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
-        corrid = event.args.get("correlation", None)
+        corrid = event.correlation_id
         tid = event.tid
         if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
             self.used_devices.add(event.pid)

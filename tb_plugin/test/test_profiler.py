@@ -1357,7 +1357,7 @@ class TestProfiler(unittest.TestCase):
           
           
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored by test before start time",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 90,
             "args": {
@@ -1365,7 +1365,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored in ProfilerStep",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 150,
             "args": {
@@ -1373,7 +1373,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] belongs to aten::to",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 200,
             "args": {
@@ -1381,7 +1381,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] aten::to",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 210,
             "args": {
@@ -1389,7 +1389,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored since beyond aten::to and before nll_loss_backward",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 265,
             "args": {
@@ -1397,7 +1397,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 300,
             "args": {
@@ -1421,7 +1421,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 450,
             "args": {
@@ -1454,7 +1454,7 @@ class TestProfiler(unittest.TestCase):
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory]ignored",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 690,
             "args": {

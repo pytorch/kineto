@@ -36,8 +36,6 @@ export function getCommonOperationColumns<
     (a.tc_self_ratio || 0) - (b.tc_self_ratio || 0)
   const tcTotalRatioCompare = (a: T, b: T) =>
     (a.tc_total_ratio || 0) - (b.tc_total_ratio || 0)
-  const boolRenderer = (text: string, record: any, index: number) =>
-    text.toLowerCase() == 'true' ? '✓' : '×'
 
   const columns: ColumnsType<T> = [
     {
@@ -94,8 +92,7 @@ export function getCommonOperationColumns<
           dataIndex: 'tc_eligible',
           key: 'tc_eligible',
           title: 'TC Eligible',
-          sorter: tcEligibleCompare,
-          render: boolRenderer
+          sorter: tcEligibleCompare
         }
       : undefined,
     hasTcSelfRatio

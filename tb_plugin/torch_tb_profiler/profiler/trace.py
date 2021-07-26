@@ -45,36 +45,41 @@ class BaseEvent(object):
         self.tid = data.get("tid")
         self.args = data.get("args", {})
 
-class TraceEvent(BaseEvent):
+class DurationEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
+        self.category = data.get("cat", "")
         self.duration = data.get("dur")
 
-    @property
-    def external_id(self):
         extern_id = self.args.get("external id")
         if extern_id is None:
             extern_id = self.args.get("External id")
+        self.external_id = extern_id
+        self.correlation_id = self.args.get("correlation")
 
-        return extern_id
+class KernelEvent(DurationEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.occupancy = self.args.get("est. achieved occupancy %", 0)
+        self.blocks_per_sm = self.args.get("blocks per SM", 0)
+        self.grid = self.args.get("grid")
+        self.block = self.args.get("block")
+        self.regs_per_thread = self.args.get("registers per thread", 0)
+        self.shared_memory = self.args.get("shared memory", 0)
 
-    @property
-    def callstack(self):
-        return self.args.get("Call stack", "")
 
-    @property
-    def input_shape(self):
+class OperatorEvent(DurationEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.callstack = self.args.get("Call stack", "")
+        self.input_type = self.args.get("Input type")
+
         shape = self.args.get("Input Dims")
         if shape is None:
             shape = self.args.get("Input dims")
+        self.input_shape = shape
 
-        return shape
-
-    @property
-    def input_type(self):
-        return self.args.get("Input type")
-
-class ProfilerStepEvent(TraceEvent):
+class ProfilerStepEvent(OperatorEvent):
     def __init__(self, data):
         super().__init__(EventTypes.PROFILER_STEP, data)
         # torch.profiler.profile.step will invoke record_function with name like "ProfilerStep#5"
@@ -84,32 +89,25 @@ class MemoryEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
         self.scope = data.get("s", "")
+        self.device_id = self.args.get("Device Id")
+        self.bytes = self.args.get("Bytes", 0)
 
-    @property
-    def device_type(self):
         dtype = self.args.get("Device Type")
-        if dtype is None:
-            return None
+        if dtype is not None:
+            try:
+                dtype = DeviceType(dtype)
+            except ValueError:
+                dtype = None
 
-        try:
-            return DeviceType(dtype)
-        except ValueError:
-            return None
+        self.device_type = dtype
 
-    @property
-    def device_id(self):
-        return self.args.get("Device Id")
-
-    @property
-    def bytes(self):
-        return self.args.get("Bytes", 0)
 
 def create_event(event):
     try:
         type = event.get("ph")
         if type == "X":
             return create_trace_event(event)
-        elif type == "i" and event.get('s') == 't':
+        elif type == "i" and event.get("name") == "[memory]":
             return MemoryEvent(EventTypes.MEMORY, event)
         else:
             return None
@@ -124,8 +122,14 @@ def create_trace_event(event):
         name = event.get("name")
         if name and name.startswith("ProfilerStep#"):
             return ProfilerStepEvent(event)
-
-    if event_type is not None:
-        return TraceEvent(event_type, event)
+        else:
+            return OperatorEvent(event_type, event)
+    elif event_type == EventTypes.PYTHON:
+        return OperatorEvent(event_type, event)
+    elif event_type == EventTypes.KERNEL:
+        return KernelEvent(event_type, event)
+    elif event_type is not None:
+        return DurationEvent(event_type, event)
     else:
         return None
+

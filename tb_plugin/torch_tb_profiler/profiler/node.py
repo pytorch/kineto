@@ -27,8 +27,9 @@ class BaseNode(ABC):
         kwargs['type'] = event.type
         kwargs['tid'] = event.tid
 
-        if event.external_id is not None:
-            kwargs['external_id'] = event.external_id
+        external_id = getattr(event, 'external_id', None)
+        if external_id is not None:
+            kwargs['external_id'] = external_id
 
         return kwargs
 
@@ -169,12 +170,12 @@ class DeviceNode(BaseNode):
     def get_node_argument(event):
         kwargs = BaseNode.get_node_argument(event)
         if event.type == EventTypes.KERNEL:
-            kwargs["blocks_per_sm"] = event.args.get("blocks per SM", 0)
-            kwargs["occupancy"] = event.args.get("est. achieved occupancy %", 0)
-            kwargs["grid"] = event.args.get("grid", None)
-            kwargs["block"] = event.args.get("block", None)
-            kwargs["regs_per_thread"] = event.args.get("registers per thread", 0)
-            kwargs["shared_memory"] = event.args.get("shared memory", 0)
+            kwargs["blocks_per_sm"] = event.blocks_per_sm
+            kwargs["occupancy"] = event.occupancy
+            kwargs["grid"] = event.grid
+            kwargs["block"] = event.block
+            kwargs["regs_per_thread"] = event.regs_per_thread
+            kwargs["shared_memory"] = event.shared_memory
         return kwargs
 
 def is_operator_node(node):

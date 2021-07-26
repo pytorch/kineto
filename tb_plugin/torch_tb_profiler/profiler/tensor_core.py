@@ -36,8 +36,7 @@ class TC_OP_Whitelist:
                  "aten::cudnn_convolution_transpose_backward_weight",
                  "aten::cudnn_convolution_transpose_backward_input",
                  "AddmmBackward", "aten::cudnn_convolution_backward_input",
-                 "AddbmmBackward", "aten::cudnn_convolution_backward"
-                 ]
+                 "AddbmmBackward", "aten::cudnn_convolution_backward"]
 
     def __contains__(self, item):
         return item in self.whitelist

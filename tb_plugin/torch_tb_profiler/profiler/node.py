@@ -7,7 +7,7 @@ from enum import IntEnum
 
 from .. import utils
 from .trace import EventTypes
-from .tensor_core import TC_Whitelist, TC_OP_Whitelist
+from .tensor_core import TC_OP_Whitelist
 
 logger = utils.get_logger()
 
@@ -76,9 +76,9 @@ class OperatorNode(HostNode):
         self.self_device_duration = self_device_duration
         self.memory_records = []
         # self.parent_node = None
-        self.tc_eligible = False
-        self.tc_self_duration = 0
-        self.tc_total_duration = 0
+        self.tc_eligible = self.name in TC_OP_Whitelist
+        self.tc_self_duration = 0  # Time of TC kernels launched by this op excluding its children operators.
+        self.tc_total_duration = 0  # Time of TC kernels launched by this op including its children operators.
 
     def add_memory_record(self, record):
         self.memory_records.append(record)
@@ -107,15 +107,13 @@ class OperatorNode(HostNode):
             rt.update_device_op_node(self)
 
         self.self_host_duration = self.end_time - self.start_time
-        self.tc_eligible = self.name in TC_OP_Whitelist()
         for child in self.children:
             self.device_duration += child.device_duration
             self.self_host_duration -= (child.end_time - child.start_time)
             self.tc_total_duration += child.tc_total_duration
+            # Mark TC eligible as True if any child operator is TC eligible.
             if self.type == EventTypes.OPERATOR and not self.tc_eligible and child.tc_eligible:
-                logger.warning("None TC eligible operator '{}' is father of TC eligible operator '{}'!".format(
-                    self.name, child.name
-                ))
+                self.tc_eligible = True
         for rt in self.runtimes:
             # From PyTorch 1.8 RC1, cpu_self_time does not include runtime's time.
             # So here we keep consistent with it.
@@ -126,6 +124,7 @@ class OperatorNode(HostNode):
             self.tc_total_duration += rt.tc_duration
             if self.type == EventTypes.OPERATOR and not self.tc_eligible and rt.tc_duration > 0:
                 logger.warning("New TC eligible operator found: '{}'!".format(self.name))
+                self.tc_eligible = True
 
     def replace_time_by_children(self):
             self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)
@@ -171,7 +170,7 @@ class RuntimeNode(HostNode):
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None,
                  op_node=None, blocks_per_sm=None, occupancy=None,
-                 grid=None, block=None, regs_per_thread=None, shared_memory=None):
+                 grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.op_node = op_node  # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm
@@ -180,7 +179,7 @@ class DeviceNode(BaseNode):
         self.block = block
         self.regs_per_thread = regs_per_thread
         self.shared_memory = shared_memory
-        self.tc_used = self.name in TC_Whitelist() if self.type == EventTypes.KERNEL else False
+        self.tc_used = tc_used
 
     @classmethod
     def create(cls, event):
@@ -197,6 +196,7 @@ class DeviceNode(BaseNode):
             kwargs["block"] = event.block
             kwargs["regs_per_thread"] = event.regs_per_thread
             kwargs["shared_memory"] = event.shared_memory
+            kwargs["tc_used"] = event.tc_used
         return kwargs
 
 def is_operator_node(node):

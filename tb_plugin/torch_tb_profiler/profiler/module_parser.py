@@ -50,15 +50,12 @@ class KernelAggByNameOp:
         self.total_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
-<<<<<<< HEAD
-
         self.blocks_per_sm = 0.0
         self.occupancy = 0.0
-=======
-        self.blocks_per_sm = 0
-        self.occupancy = 0
         self.tc_used = False
->>>>>>> 50711d6... add tensor core
+        self.op_tc_eligible = False
+        self.tc_used = kernel.tc_used
+        self.op_tc_eligible = kernel.op_node.tc_eligible if kernel.op_node is not None else False
 
     @property
     def avg_duration(self):
@@ -205,17 +202,6 @@ class ModuleParser:
                 if key not in name_op_to_agg:
                     name_op_to_agg[key] = KernelAggByNameOp(kernel, op_name)
                 agg = name_op_to_agg[key]
-<<<<<<< HEAD
-=======
-                agg.name = kernel.name
-                agg.op_name = op_name
-                agg.grid = kernel.grid
-                agg.block = kernel.block
-                agg.regs_per_thread = kernel.regs_per_thread
-                agg.shared_memory = kernel.shared_memory
-                agg.tc_used = kernel.tc_used
-                agg.op_tc_eligible = kernel.op_node.name in TC_OP_Whitelist() if kernel.op_node is not None else False
->>>>>>> 50711d6... add tensor core
                 agg.calls += 1
                 agg.total_duration += dur
                 agg.min_duration = min(agg.min_duration, dur)

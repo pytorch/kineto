@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import shutil
 import socket
 import tempfile
@@ -60,7 +61,7 @@ class TestEnd2End(unittest.TestCase):
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
-        port=7007
+        port=random.randint(6008, 65535)
 
         try:
             if env:

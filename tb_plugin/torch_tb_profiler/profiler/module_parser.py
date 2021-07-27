@@ -40,8 +40,12 @@ class KernelAggByNameOp:
         self.total_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
-        self.blocks_per_sm = 0
-        self.occupancy = 0
+        self.blocks_per_sm = 0.0
+        self.occupancy = 0.0
+        self.regs_per_thread = None
+        self.shared_memory = None
+        self.grid = None
+        self.block = None
 
     @property
     def avg_duration(self):

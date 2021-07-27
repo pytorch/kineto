@@ -2686,8 +2686,8 @@ class TestMemoryCurve(unittest.TestCase):
             {
                 "name": "kernel1",
                 "op_name": "op1",
-                "grid": "None",
-                "block": "[16, 16, 16]",
+                "grid": None,
+                "block": [16, 16, 16],
                 "registers per thread": 18,
                 "shared memory": 0,
                 "calls": 1,
@@ -2699,8 +2699,8 @@ class TestMemoryCurve(unittest.TestCase):
             {
                 "name": "kernel1",
                 "op_name": "op1",
-                "grid": "[16, 1, 1]",
-                "block": "None",
+                "grid": [16, 1, 1],
+                "block": None,
                 "registers per thread": 18,
                 "shared memory": 0,
                 "calls": 1,
@@ -2712,9 +2712,9 @@ class TestMemoryCurve(unittest.TestCase):
             {
                 "name": "kernel1",
                 "op_name": "op1",
-                "grid": "[16, 1, 1]",
-                "block": "[16, 16, 16]",
-                "registers per thread": 0,
+                "grid": [16, 1, 1],
+                "block": [16, 16, 16],
+                "registers per thread": None,
                 "shared memory": 0,
                 "calls": 1,
                 "total_duration": 3,
@@ -2725,10 +2725,10 @@ class TestMemoryCurve(unittest.TestCase):
             {
                 "name": "kernel1",
                 "op_name": "op1",
-                "grid": "[16, 1, 1]",
-                "block": "[16, 16, 16]",
+                "grid": [16, 1, 1],
+                "block": [16, 16, 16],
                 "registers per thread": 18,
-                "shared memory": 0,
+                "shared memory": None,
                 "calls": 1,
                 "total_duration": 4,
                 "avg_duration": 4,
@@ -2738,10 +2738,10 @@ class TestMemoryCurve(unittest.TestCase):
             {
                 "name": "kernel1",
                 "op_name": "op1",
-                "grid": "None",
-                "block": "None",
-                "registers per thread": 0,
-                "shared memory": 0,
+                "grid": None,
+                "block": None,
+                "registers per thread": None,
+                "shared memory": None,
                 "calls": 1,
                 "total_duration": 5,
                 "avg_duration": 5,
@@ -2755,9 +2755,10 @@ class TestMemoryCurve(unittest.TestCase):
             expected_agg_kernel = expected_agg_kernels[index]
             self.assertEqual(agg_kernel.name, expected_agg_kernel["name"])
             self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
-            self.assertEqual(str(agg_kernel.grid), expected_agg_kernel["grid"])
-            self.assertEqual(str(agg_kernel.block), expected_agg_kernel["block"])
+            self.assertEqual(agg_kernel.grid, expected_agg_kernel["grid"])
+            self.assertEqual(agg_kernel.block, expected_agg_kernel["block"])
             self.assertEqual(agg_kernel.regs_per_thread, expected_agg_kernel["registers per thread"])
+            print(agg_kernel.name, agg_kernel.grid, agg_kernel.block, agg_kernel.shared_memory)
             self.assertEqual(agg_kernel.shared_memory, expected_agg_kernel["shared memory"])
             self.assertEqual(agg_kernel.calls, expected_agg_kernel["calls"])
             self.assertEqual(agg_kernel.total_duration, expected_agg_kernel["total_duration"])

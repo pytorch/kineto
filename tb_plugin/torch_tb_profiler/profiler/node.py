@@ -151,7 +151,7 @@ class RuntimeNode(HostNode):
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None,
                  op_node=None, blocks_per_sm=None, occupancy=None,
-                 grid=None, block=None, regs_per_thread=0, shared_memory=0):
+                 grid=None, block=None, regs_per_thread=None, shared_memory=None):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.op_node = op_node  # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm

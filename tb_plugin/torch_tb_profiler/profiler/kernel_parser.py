@@ -18,6 +18,8 @@ class KernelParser:
 
         def weighted_avg(x):
             try:
+                # fill these None as zero
+                x = x.fillna(0)
                 return np.average(x, weights=events.loc[x.index, "duration"])
             except ZeroDivisionError:
                 return 0

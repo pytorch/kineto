@@ -183,7 +183,7 @@ class ModuleParser:
                 op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
                 key = "###".join((kernel.name, op_name,
                                   str(kernel.grid), str(kernel.block),
-                                  str(kernel.regs_per_thread), str(kernel.shared_memory)))
+                                  str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
                 if key not in name_op_to_agg:
                     name_op_to_agg[key] = KernelAggByNameOp()
                 agg = name_op_to_agg[key]
@@ -197,8 +197,8 @@ class ModuleParser:
                 agg.total_duration += dur
                 agg.min_duration = min(agg.min_duration, dur)
                 agg.max_duration = max(agg.max_duration, dur)
-                agg.blocks_per_sm += kernel.blocks_per_sm * dur
-                agg.occupancy += kernel.occupancy * dur
+                agg.blocks_per_sm += float(kernel.blocks_per_sm or 0) * dur
+                agg.occupancy += float(kernel.occupancy or 0) * dur
 
             kernel_list_groupby_name_op = list(name_op_to_agg.values())
             return kernel_list_groupby_name_op

@@ -60,12 +60,12 @@ class DurationEvent(BaseEvent):
 class KernelEvent(DurationEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.occupancy = self.args.get("est. achieved occupancy %", 0)
-        self.blocks_per_sm = self.args.get("blocks per SM", 0)
+        self.occupancy = self.args.get("est. achieved occupancy %")
+        self.blocks_per_sm = self.args.get("blocks per SM")
         self.grid = self.args.get("grid")
         self.block = self.args.get("block")
-        self.regs_per_thread = self.args.get("registers per thread", 0)
-        self.shared_memory = self.args.get("shared memory", 0)
+        self.regs_per_thread = self.args.get("registers per thread")
+        self.shared_memory = self.args.get("shared memory")
 
 
 class OperatorEvent(DurationEvent):

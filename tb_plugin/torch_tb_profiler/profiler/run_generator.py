@@ -328,7 +328,7 @@ class RunGenerator(object):
         for agg_by_name_op in kernel_list:
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
                              str(agg_by_name_op.grid), str(agg_by_name_op.block),
-                             agg_by_name_op.regs_per_thread, agg_by_name_op.shared_memory,
+                             str(agg_by_name_op.regs_per_thread or '0'), str(agg_by_name_op.shared_memory or '0'),
                              agg_by_name_op.calls,
                              agg_by_name_op.total_duration, round(agg_by_name_op.avg_duration),
                              agg_by_name_op.max_duration, agg_by_name_op.min_duration]

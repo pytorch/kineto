@@ -4,17 +4,18 @@
 import sys
 from collections import defaultdict
 
+from .. import utils
 from .node import OperatorNode, is_operator_node
 from .trace import EventTypes
-from .. import utils
 
 logger = utils.get_logger()
 
 
 class OperatorAgg:
-    def __init__(self):
-        self.name = None
-        self.input_shape = None  # Optional
+    def __init__(self, op):
+        self.name = op.name
+        self.input_shape = str(op.input_shape)  # Optional
+
         self.call_stacks = set()  # Optional
         self.calls = 0
         self.host_duration = 0
@@ -33,15 +34,21 @@ class OperatorAgg:
 
 
 class KernelAggByNameOp:
-    def __init__(self):
-        self.name = None
-        self.op_name = None
+    def __init__(self, kernel, op_name):
+        self.name = kernel.name
+        self.op_name = op_name
+        self.grid = kernel.grid
+        self.block = kernel.block
+        self.regs_per_thread = kernel.regs_per_thread
+        self.shared_memory = kernel.shared_memory
+
         self.calls = 0
         self.total_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
-        self.blocks_per_sm = 0
-        self.occupancy = 0
+
+        self.blocks_per_sm = 0.0
+        self.occupancy = 0.0
 
     @property
     def avg_duration(self):
@@ -138,10 +145,8 @@ class ModuleParser:
         def parse_ops(cpp_op_list):
             def aggregate(key_to_agg, key, op):
                 if key not in key_to_agg:
-                    key_to_agg[key] = OperatorAgg()
+                    key_to_agg[key] = OperatorAgg(op)
                 agg = key_to_agg[key]
-                agg.name = op.name
-                agg.input_shape = str(op.input_shape)
                 agg.call_stacks.add(op.call_stack)
                 agg.calls += 1
                 agg.host_duration += op.end_time - op.start_time
@@ -183,22 +188,16 @@ class ModuleParser:
                 op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
                 key = "###".join((kernel.name, op_name,
                                   str(kernel.grid), str(kernel.block),
-                                  str(kernel.regs_per_thread), str(kernel.shared_memory)))
+                                  str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
                 if key not in name_op_to_agg:
-                    name_op_to_agg[key] = KernelAggByNameOp()
+                    name_op_to_agg[key] = KernelAggByNameOp(kernel, op_name)
                 agg = name_op_to_agg[key]
-                agg.name = kernel.name
-                agg.op_name = op_name
-                agg.grid = kernel.grid
-                agg.block = kernel.block
-                agg.regs_per_thread = kernel.regs_per_thread
-                agg.shared_memory = kernel.shared_memory
                 agg.calls += 1
                 agg.total_duration += dur
                 agg.min_duration = min(agg.min_duration, dur)
                 agg.max_duration = max(agg.max_duration, dur)
-                agg.blocks_per_sm += kernel.blocks_per_sm * dur
-                agg.occupancy += kernel.occupancy * dur
+                agg.blocks_per_sm += float(kernel.blocks_per_sm or 0) * dur
+                agg.occupancy += float(kernel.occupancy or 0) * dur
 
             kernel_list_groupby_name_op = list(name_op_to_agg.values())
             return kernel_list_groupby_name_op

@@ -23,7 +23,7 @@ class OperatorAgg:
         self.device_duration = 0
         self.self_host_duration = 0
         self.self_device_duration = 0
-        self.tc_eligible = False
+        self.tc_eligible = op.tc_eligible
         self.tc_self_duration = 0
         self.tc_total_duration = 0
         # TODO: Think about adding these avgs to UI.
@@ -52,8 +52,6 @@ class KernelAggByNameOp:
         self.max_duration = 0
         self.blocks_per_sm = 0.0
         self.occupancy = 0.0
-        self.tc_used = False
-        self.op_tc_eligible = False
         self.tc_used = kernel.tc_used
         self.op_tc_eligible = kernel.op_node.tc_eligible if kernel.op_node is not None else False
 
@@ -160,7 +158,6 @@ class ModuleParser:
                 agg.device_duration += op.device_duration
                 agg.self_host_duration += op.self_host_duration
                 agg.self_device_duration += op.self_device_duration
-                agg.tc_eligible = op.tc_eligible
                 agg.tc_self_duration += op.tc_self_duration
                 agg.tc_total_duration += op.tc_total_duration
                 return agg

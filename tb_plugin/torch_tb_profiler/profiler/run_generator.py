@@ -318,8 +318,8 @@ class RunGenerator(object):
                             {"type": "string", "name": "Block"},
                             {"type": "number", "name": "Register Per Thread"},
                             {"type": "number", "name": "Shared Memory"},
-                            {"type": "string", "name": "Kernel Uses TC"},
-                            {"type": "string", "name": "Op is TC Eligible"}]
+                            {"type": "string", "name": "Kernel Uses TensorCore"},
+                            {"type": "string", "name": "Op is TensorCore eligible"}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})

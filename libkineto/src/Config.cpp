@@ -395,7 +395,7 @@ void Config::validate(const std::chrono::time_point<std::chrono::system_clock>& 
   }
 
   if (!hasProfileStartTime()) {
-    LOG(WARNING)
+    VLOG(0)
         << "No explicit timestamp has been set. "
         << "Defaulting it to now + activitiesWarmupDuration with buffer.";
     profileStartTime_ = fallbackProfileStartTime +

@@ -153,8 +153,9 @@ void ConfigLoader::startThread() {
     // Create default base config here - at this point static initializers
     // of extensions should have run and registered all config feature factories
     std::lock_guard<std::mutex> lock(configLock_);
-    config_ = std::make_unique<Config>();
-
+    if (!config_) {
+      config_ = std::make_unique<Config>();
+    }
     updateThread_ =
         std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
   }

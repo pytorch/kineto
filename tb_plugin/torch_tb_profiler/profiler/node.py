@@ -5,7 +5,11 @@ from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
 
+from .. import utils
 from .trace import EventTypes
+from .tensor_core import TC_OP_Whitelist
+
+logger = utils.get_logger()
 
 MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount', 'Total'], start=0)
 
@@ -72,6 +76,9 @@ class OperatorNode(HostNode):
         self.self_device_duration = self_device_duration
         self.memory_records = []
         # self.parent_node = None
+        self.tc_eligible = self.name in TC_OP_Whitelist
+        self.tc_self_duration = 0  # Time of TC kernels launched by this op excluding its children operators.
+        self.tc_total_duration = 0  # Time of TC kernels launched by this op including its children operators.
 
     def add_memory_record(self, record):
         self.memory_records.append(record)
@@ -103,12 +110,21 @@ class OperatorNode(HostNode):
         for child in self.children:
             self.device_duration += child.device_duration
             self.self_host_duration -= (child.end_time - child.start_time)
+            self.tc_total_duration += child.tc_total_duration
+            # Mark TC eligible as True if any child operator is TC eligible.
+            if self.type == EventTypes.OPERATOR and not self.tc_eligible and child.tc_eligible:
+                self.tc_eligible = True
         for rt in self.runtimes:
             # From PyTorch 1.8 RC1, cpu_self_time does not include runtime's time.
             # So here we keep consistent with it.
             self.self_host_duration -= (rt.end_time - rt.start_time)
             self.device_duration += rt.device_duration
             self.self_device_duration += rt.device_duration
+            self.tc_self_duration += rt.tc_duration
+            self.tc_total_duration += rt.tc_duration
+            if self.type == EventTypes.OPERATOR and not self.tc_eligible and rt.tc_duration > 0:
+                logger.warning("New TensorCore eligible operator found: '{}'!".format(self.name))
+                self.tc_eligible = True
 
     def replace_time_by_children(self):
             self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)
@@ -131,11 +147,14 @@ class RuntimeNode(HostNode):
         super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = device_nodes
+        self.tc_duration = 0  # Time summarization of all its launched kernels.
 
     def fill_stats(self):
         if self.device_nodes:
             for device_node in self.device_nodes:
-                self.device_duration += device_node.end_time - device_node.start_time
+                device_duration = device_node.end_time - device_node.start_time
+                self.device_duration += device_duration
+                self.tc_duration += device_duration if device_node.tc_used else 0
 
     def update_device_op_node(self, node):
         if self.device_nodes:
@@ -151,7 +170,7 @@ class RuntimeNode(HostNode):
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None,
                  op_node=None, blocks_per_sm=None, occupancy=None,
-                 grid=None, block=None, regs_per_thread=None, shared_memory=None):
+                 grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.op_node = op_node  # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm
@@ -160,6 +179,7 @@ class DeviceNode(BaseNode):
         self.block = block
         self.regs_per_thread = regs_per_thread
         self.shared_memory = shared_memory
+        self.tc_used = tc_used
 
     @classmethod
     def create(cls, event):
@@ -176,6 +196,7 @@ class DeviceNode(BaseNode):
             kwargs["block"] = event.block
             kwargs["regs_per_thread"] = event.regs_per_thread
             kwargs["shared_memory"] = event.shared_memory
+            kwargs["tc_used"] = event.tc_used
         return kwargs
 
 def is_operator_node(node):

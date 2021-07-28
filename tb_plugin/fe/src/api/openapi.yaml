@@ -647,6 +647,12 @@ components:
             type: number
           has_call_stack:
             type: boolean
+          tc_eligible:
+            type: string
+          tc_self_ratio:
+            type: number
+          tc_total_ratio:
+            type: number
     CallStackTableData:
       type: array
       items:
@@ -673,6 +679,12 @@ components:
             type: number
           call_stack:
             type: string
+          tc_eligible:
+            type: string
+          tc_self_ratio:
+            type: number
+          tc_total_ratio:
+            type: number
     DistributedGraph:
       type: object
       required:

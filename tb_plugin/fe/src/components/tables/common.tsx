@@ -16,6 +16,9 @@ export function getCommonOperationColumns<
     !firstData || isDef(firstData.device_self_duration)
   const hasDeviceTotalDuration =
     !firstData || isDef(firstData.device_total_duration)
+  const hasTcEligible = !firstData || isDef(firstData.tc_eligible)
+  const hasTcSelfRatio = !firstData || isDef(firstData.tc_self_ratio)
+  const hasTcTotalRatio = !firstData || isDef(firstData.tc_total_ratio)
 
   const nameCompare = (a: T, b: T) => a.name.localeCompare(b.name)
   const callsCompare = (a: T, b: T) => a.calls - b.calls
@@ -27,6 +30,12 @@ export function getCommonOperationColumns<
     (a.host_self_duration || 0) - (b.host_self_duration || 0)
   const hostTotalDurationCompare = (a: T, b: T) =>
     (a.host_total_duration || 0) - (b.host_total_duration || 0)
+  const tcEligibleCompare = (a: T, b: T) =>
+    a.tc_eligible!.localeCompare(b.tc_eligible!)
+  const tcSelfRatioCompare = (a: T, b: T) =>
+    (a.tc_self_ratio || 0) - (b.tc_self_ratio || 0)
+  const tcTotalRatioCompare = (a: T, b: T) =>
+    (a.tc_total_ratio || 0) - (b.tc_total_ratio || 0)
 
   const columns: ColumnsType<T> = [
     {
@@ -77,7 +86,31 @@ export function getCommonOperationColumns<
       key: 'host_total_duration',
       title: 'Host Total Duration (us)',
       sorter: hostTotalDurationCompare
-    }
+    },
+    hasTcEligible
+      ? {
+          dataIndex: 'tc_eligible',
+          key: 'tc_eligible',
+          title: 'TC Eligible',
+          sorter: tcEligibleCompare
+        }
+      : undefined,
+    hasTcSelfRatio
+      ? {
+          dataIndex: 'tc_self_ratio',
+          key: 'tc_self_ratio',
+          title: 'TC Self(%)',
+          sorter: tcSelfRatioCompare
+        }
+      : undefined,
+    hasTcTotalRatio
+      ? {
+          dataIndex: 'tc_total_ratio',
+          key: 'tc_total_ratio',
+          title: 'TC Total(%)',
+          sorter: tcTotalRatioCompare
+        }
+      : undefined
   ].filter(isDef)
   columns.forEach((column) => {
     if (column.key == defaultSort) {

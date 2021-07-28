@@ -140,10 +140,7 @@ class TestEnd2End(unittest.TestCase):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 
-        with open('result_check_file.txt', 'r') as f:
-            lines=f.readlines()
-            i = 0
-            print("starting testing...")
+        with open('result_check_file.txt', 'w', encoding="utf-8") as f:
             for link in links:
                 try:
                     response = urllib.request.urlopen(link)
@@ -153,3 +150,7 @@ class TestEnd2End(unittest.TestCase):
                     self.fail(e)
         self.assertEqual(i, 10)
         print("ending testing...")
+
+if __name__ == '__main__':
+    unittest.main()
+

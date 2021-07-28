@@ -145,6 +145,24 @@ export interface CallStackTableDataInner {
    * @memberof CallStackTableDataInner
    */
   callStack?: string
+  /**
+   *
+   * @type {string}
+   * @memberof CallStackTableDataInner
+   */
+  tcEligible?: string
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  tcSelfRatio?: number
+  /**
+   *
+   * @type {number}
+   * @memberof CallStackTableDataInner
+   */
+  tcTotalRatio?: number
 }
 /**
  *
@@ -528,6 +546,24 @@ export interface OperationTableDataInner {
    * @memberof OperationTableDataInner
    */
   hasCallStack: boolean
+  /**
+   *
+   * @type {string}
+   * @memberof OperationTableDataInner
+   */
+  tcEligible?: string
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  tcSelfRatio?: number
+  /**
+   *
+   * @type {number}
+   * @memberof OperationTableDataInner
+   */
+  tcTotalRatio?: number
 }
 /**
  *

@@ -140,7 +140,10 @@ class TestEnd2End(unittest.TestCase):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 
-        with open('result_check_file.txt', 'w', encoding="utf-8") as f:
+        with open('result_check_file.txt', 'r') as f:
+            lines=f.readlines()
+            i = 0
+            print("starting testing...")
             for link in links:
                 try:
                     response = urllib.request.urlopen(link)

@@ -7,6 +7,7 @@ from collections import defaultdict
 from .. import utils
 from .node import OperatorNode, is_operator_node
 from .trace import EventTypes
+from .tensor_core import TC_OP_Whitelist
 
 logger = utils.get_logger()
 
@@ -22,15 +23,18 @@ class OperatorAgg:
         self.device_duration = 0
         self.self_host_duration = 0
         self.self_device_duration = 0
+        self.tc_eligible = op.tc_eligible
+        self.tc_self_duration = 0
+        self.tc_total_duration = 0
         # TODO: Think about adding these avgs to UI.
 
     @property
-    def avg_host_duration(self):
-        return self.host_duration / self.calls
+    def tc_self_ratio(self):
+        return self.tc_self_duration / self.self_device_duration if self.self_device_duration > 0 else 0
 
     @property
-    def avg_device_duration(self):
-        return  self.device_duration / self.calls
+    def tc_total_ratio(self):
+        return self.tc_total_duration / self.device_duration if self.device_duration > 0 else 0
 
 
 class KernelAggByNameOp:
@@ -46,9 +50,10 @@ class KernelAggByNameOp:
         self.total_duration = 0
         self.min_duration = sys.maxsize
         self.max_duration = 0
-
         self.blocks_per_sm = 0.0
         self.occupancy = 0.0
+        self.tc_used = kernel.tc_used
+        self.op_tc_eligible = kernel.op_node.tc_eligible if kernel.op_node is not None else False
 
     @property
     def avg_duration(self):
@@ -153,6 +158,8 @@ class ModuleParser:
                 agg.device_duration += op.device_duration
                 agg.self_host_duration += op.self_host_duration
                 agg.self_device_duration += op.self_device_duration
+                agg.tc_self_duration += op.tc_self_duration
+                agg.tc_total_duration += op.tc_total_duration
                 return agg
 
             name_to_agg = {}

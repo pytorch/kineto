@@ -19,6 +19,9 @@ declare module './api/generated/api' {
     host_self_duration: OperationTableDataInner['hostSelfDuration']
     host_total_duration: OperationTableDataInner['hostTotalDuration']
     has_call_stack: OperationTableDataInner['hasCallStack']
+    tc_eligible: OperationTableDataInner['tcEligible']
+    tc_self_ratio: OperationTableDataInner['tcSelfRatio']
+    tc_total_ratio: OperationTableDataInner['tcTotalRatio']
   }
 
   export interface CallStackTableDataInner {
@@ -28,6 +31,9 @@ declare module './api/generated/api' {
     host_self_duration: CallStackTableDataInner['hostSelfDuration']
     host_total_duration: CallStackTableDataInner['hostTotalDuration']
     call_stack: CallStackTableDataInner['callStack']
+    tc_eligible: OperationTableDataInner['tcEligible']
+    tc_self_ratio: OperationTableDataInner['tcSelfRatio']
+    tc_total_ratio: OperationTableDataInner['tcTotalRatio']
   }
 
   export interface Overview {

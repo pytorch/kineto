@@ -94,8 +94,6 @@ class MemoryEvent(BaseEvent):
         super().__init__(type, data)
         self.scope = data.get("s", "")
         self.device_id = self.args.get("Device Id")
-        self.bytes = self.args.get("Bytes", 0)
-
         dtype = self.args.get("Device Type")
         if dtype is not None:
             try:

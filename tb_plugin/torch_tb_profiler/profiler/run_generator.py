@@ -1,17 +1,19 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import List
+
 from collections import OrderedDict
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .data import RunProfileData
-from .node import MemoryMetrics
+
+from .trace import EventTypes, MemoryEvent
 from .overall_parser import ProfileRole
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 
-from copy import deepcopy
 
 logger = utils.get_logger()
 
@@ -28,6 +30,7 @@ class RunGenerator(object):
         profile_run.has_kernel = self.profile_data.has_kernel
         profile_run.has_communication = self.profile_data.has_communication
         profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset
+        profile_run.profiler_start_ts = self.profile_data.profiler_start_ts
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
 
@@ -56,11 +59,11 @@ class RunGenerator(object):
         profile_run.sm_efficiency = self.profile_data.sm_efficiency
         profile_run.occupancy = self.profile_data.occupancy
 
-        # add memory stats
-        if self.profile_data.has_memory_data:
+        profile_run.memory_events = self.memory_events()
+        if len(profile_run.memory_events) > 0:
             profile_run.views.append(consts.MEMORY_VIEW)
-            profile_run.memory_view = self._generate_memory_view()
-            profile_run.memory_curve = self._get_memory_curve()
+            profile_run.tid2tree = self.profile_data.tid2tree
+            profile_run.op_list_groupby_name = self.profile_data.op_list_groupby_name
 
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:
@@ -69,6 +72,11 @@ class RunGenerator(object):
                 profile_run.gpu_infos[gpu_id] = gpu_info
 
         return profile_run
+
+    def memory_events(self) -> List[MemoryEvent]:
+        memory_events = [e for e in self.profile_data.events if e.type == EventTypes.MEMORY]
+        memory_events.sort(key=lambda e: e.ts)
+        return memory_events
 
     def _generate_overview(self):
         def build_part_time_str(part_cost, part_name):
@@ -423,87 +431,6 @@ class RunGenerator(object):
             "data": data
         }
 
-        columns_names = [
-            ("Operator Name", "string", ""),
-            ("Calls", "number", "# of calls of the operator."),
-            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
-            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
-            ("Allocation Count", "number", "The allocation count including all chidren operators."),
-            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
-            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
-            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
-        ]
-        for name, memory in sorted(memory_stats.items()):
-            table = {}
-
-            # Process columns
-            columns = []
-            for col_name, col_type, tool_tip in columns_names:
-                if tool_tip:
-                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
-                else:
-                    columns.append({"type": col_type, "name": col_name})
-            table["columns"] = columns
-
-            # Process rows
-            rows = []
-            for op_name, stat in sorted(memory.items()):
-                rows.append([
-                    op_name,
-                    stat[6],
-                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
-                    stat[MemoryMetrics.AllocationCount],
-                    stat[MemoryMetrics.SelfAllocationCount],
-                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
-                    ])
-            table["rows"] = rows
-
-            data[name] = table
-        return result
-
-    def _get_memory_curve(self, time_metric: str = "", memory_metric: str = "G"):
-        assert time_metric in ["nano", "micro", "milli", ""]
-        assert memory_metric in ["", "K", "M", "G"]
-        
-        # timestamp is in nanosecond
-        time_factor = {
-            "nano": 1,
-            "micro": 1e-3,
-            "micro": 1e-6,
-            "": 1e-9,
-        }[time_metric]
-
-        # memory is in bytes
-        memory_factor = {
-            "": 1,
-            "K": 1e-3,
-            "M": 1e-6,
-            "G": 1e-9,
-        }[memory_metric]
-
-        first_ts = self.profile_data.memory_curves["first_ts"]
-        per_deivce_data = {}
-        for dev_name, dev_data in self.profile_data.memory_curves["devices"].items():
-            per_deivce_data[dev_name] = list(zip(
-                [(ts - first_ts) * time_factor for ts in dev_data["ts"]],
-                [bytes_ * memory_factor for bytes_ in dev_data["total_allocated"]],
-                [bytes_ * memory_factor for bytes_ in dev_data["total_reserved"]],
-            ))
-
-        return {
-            "metadata": {
-                "title": "Memory Curves",
-                "default_device": "CPU",
-            },
-            "columns": [
-                { "name": "Time", "type": "number", "tooltip": "Time since the first memory event." },
-                { "name": "Allocated", "type": "number", "tooltip": "Total memory in use." },
-                { "name": "Reserved", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
-            ],
-            "rows": per_deivce_data,
-        }
 
     @staticmethod
     def _get_gpu_info(device_props, gpu_id):

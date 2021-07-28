@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import List
+
 import gzip
 import io as sysio
 import json
@@ -10,11 +12,11 @@ from json.decoder import JSONDecodeError
 
 from .. import io, utils
 from . import trace
+from .trace import BaseEvent
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
-from .memory_parser import MemoryParser
 from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
 
@@ -31,7 +33,8 @@ class RunProfileData(object):
         self.use_dp = False
         self.use_ddp =False
         self.use_nccl = False
-        self.events = None
+        self.profiler_start_ts = float("inf")
+        self.events : List[BaseEvent] = None
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
@@ -49,6 +52,7 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
+        self.tid2tree = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
@@ -59,18 +63,6 @@ class RunProfileData(object):
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
-
-        self.memory_stats = None
-
-    @property
-    def has_memory_data(self):
-        if self.memory_stats:
-            for node_metrics in self.memory_stats.values():
-                for metrics_values in node_metrics.values():
-                    if any(metrics_values):
-                        return True
-
-        return False
 
     @staticmethod
     def parse(worker, span, path):
@@ -92,7 +84,9 @@ class RunProfileData(object):
         for data in trace_json:
             event = trace.create_event(data)
             if event is not None:
+                profile.profiler_start_ts = min(profile.profiler_start_ts, event.ts)
                 profile.events.append(event)
+        profile.events.sort(key=lambda e: e.ts)
 
         profile.process()
         profile.analyze()
@@ -198,11 +192,6 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = gpu_metrics_parser.approximated_sm_efficiency_ranges
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
-
-        memory_parser = MemoryParser(tid2tree, module_aggregator.op_list_groupby_name)
-        memory_parser.parse_events(self.events)
-        self.memory_stats = memory_parser.get_memory_statistics()
-        self.memory_curves = memory_parser.get_memory_curves()
 
         if self.has_kernel:
             logger.debug("KernelParser")

@@ -362,7 +362,7 @@ class RunGenerator(object):
             "data": table
         }
         table["columns"] = [{"type": "string", "name": "Name"},
-                            {"type": "string", "name": "Tensor Core Used"}]
+                            {"type": "string", "name": "TensorCore Used"}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
         if sum(self.profile_data.blocks_per_sm_count) > 0:

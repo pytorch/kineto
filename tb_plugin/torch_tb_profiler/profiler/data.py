@@ -12,7 +12,7 @@ from json.decoder import JSONDecodeError
 
 from .. import io, utils
 from . import trace
-from .trace import BaseEvent
+from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
@@ -200,6 +200,8 @@ class RunProfileData(object):
             self.kernel_stat = kernel_parser.kernel_stat
             self.tc_used_ratio = kernel_parser.tc_used_ratio
 
+        self.memory_events = self._memory_events()
+
     def analyze(self):
         self.recommendations = []
 
@@ -247,6 +249,11 @@ class RunProfileData(object):
                    "For such case, you may want to evaluate <a href = \"{}\" target=\"_blank\">LAMB optimizer</a>".format(
                        round(communication_ratio * 100, 1), "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
             self.recommendations.append(text)
+
+    def _memory_events(self) -> List[MemoryEvent]:
+        memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]
+        memory_events.sort(key=lambda e: e.ts)
+        return memory_events
 
     def _analyze_gpu_metrics(self):
         def get_gpus_str(gpus):

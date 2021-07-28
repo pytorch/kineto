@@ -1,12 +1,13 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from collections import OrderedDict, defaultdict
 from math import pow
 
 from . import consts
+from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryParser
 from .profiler.node import MemoryMetrics
 from .profiler.trace import DeviceType, MemoryEvent
@@ -228,19 +229,22 @@ class RunProfile(object):
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)
         tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency)
         return data, tooltip
-    
-    def generate_memory_view(self, start_ts=None, end_ts=None):
-        if start_ts is not None and end_ts is not None:
-            memory_events = [e for e in self.memory_events if start_ts <= e.ts <= end_ts]
-        elif start_ts is not None:
-            memory_events = [e for e in self.memory_events if start_ts <= e.ts]
-        elif end_ts is not None:
-            memory_events = [e for e in self.memory_events if e.ts <= end_ts]
-        else:
-            memory_events = self.memory_events
-        memory_parser = MemoryParser(self.tid2tree, self.op_list_groupby_name, memory_events)
-        memory_stats = memory_parser.get_memory_statistics()
 
+    @staticmethod
+    def get_memory_statistics(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        if start_ts is not None and end_ts is not None:
+            memory_events = [e for e in profile.memory_events if start_ts <= e.ts <= end_ts]
+        elif start_ts is not None:
+            memory_events = [e for e in profile.memory_events if start_ts <= e.ts]
+        elif end_ts is not None:
+            memory_events = [e for e in profile.memory_events if e.ts <= end_ts]
+        else:
+            memory_events = profile.memory_events
+        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
+        return memory_parser.get_memory_statistics()
+
+    @staticmethod
+    def generate_memory_view(memory_stats):
         data = OrderedDict()
         result = {
             "metadata": {
@@ -292,7 +296,8 @@ class RunProfile(object):
             data[name] = table
         return result
 
-    def get_memory_curve(self, time_metric: str = "", memory_metric: str = "G"):
+    @staticmethod
+    def get_memory_curve(profile: Union["RunProfile", RunProfileData], time_metric: str = "", memory_metric: str = "G"):
         def get_curves_and_timestamps(memory_events: List[MemoryEvent], time_factor, memory_factor):
             """For example:
             ```py
@@ -322,7 +327,7 @@ class RunProfile(object):
                     raise NotImplementedError("Unknown device type for memory curve")
                 first_ts = min(first_ts, e.ts)
                 curve_container.append([
-                    (e.ts - self.profiler_start_ts) * time_factor,
+                    (e.ts - profile.profiler_start_ts) * time_factor,
                     e.total_allocated * memory_factor,
                     e.total_reserved * memory_factor,
                 ])
@@ -346,7 +351,7 @@ class RunProfile(object):
 
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
-        curves, timestamps = get_curves_and_timestamps(self.memory_events, time_factor, memory_factor)
+        curves, timestamps = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
         return {
             "metadata": {
                 "title": "Memory Curves",

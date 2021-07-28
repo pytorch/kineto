@@ -9,7 +9,6 @@ from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .data import RunProfileData
 
-from .trace import EventTypes, MemoryEvent
 from .overall_parser import ProfileRole
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
@@ -59,7 +58,7 @@ class RunGenerator(object):
         profile_run.sm_efficiency = self.profile_data.sm_efficiency
         profile_run.occupancy = self.profile_data.occupancy
 
-        profile_run.memory_events = self.memory_events()
+        profile_run.memory_events = self.profile_data.memory_events
         if len(profile_run.memory_events) > 0:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.tid2tree = self.profile_data.tid2tree
@@ -72,11 +71,6 @@ class RunGenerator(object):
                 profile_run.gpu_infos[gpu_id] = gpu_info
 
         return profile_run
-
-    def memory_events(self) -> List[MemoryEvent]:
-        memory_events = [e for e in self.profile_data.events if e.type == EventTypes.MEMORY]
-        memory_events.sort(key=lambda e: e.ts)
-        return memory_events
 
     def _generate_overview(self):
         def build_part_time_str(part_cost, part_name):

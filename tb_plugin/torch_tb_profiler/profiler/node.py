@@ -123,7 +123,7 @@ class OperatorNode(HostNode):
             self.tc_self_duration += rt.tc_duration
             self.tc_total_duration += rt.tc_duration
             if self.type == EventTypes.OPERATOR and not self.tc_eligible and rt.tc_duration > 0:
-                logger.warning("New TC eligible operator found: '{}'!".format(self.name))
+                logger.warning("New TensorCore eligible operator found: '{}'!".format(self.name))
                 self.tc_eligible = True
 
     def replace_time_by_children(self):

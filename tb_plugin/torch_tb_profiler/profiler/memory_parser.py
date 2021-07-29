@@ -12,28 +12,6 @@ from .trace import DeviceType, MemoryEvent
 
 logger = utils.get_logger()
 
-BENCHMARK_MEMORY = os.getenv('TORCH_PROFILER_BENCHMARK_MEMORY')
-if BENCHMARK_MEMORY is not None and BENCHMARK_MEMORY.upper() in ("1", "TRUE", "ON"):
-    BENCHMARK_MEMORY = True
-else:
-    BENCHMARK_MEMORY = False
-
-
-def benchmark(func):
-    def wrapper(*args, **kwargs):
-        if BENCHMARK_MEMORY:
-            import time
-            start = time.time_ns()
-            ret = func(*args, **kwargs)
-            end = time.time_ns()
-            logger.info("{}: {} takes: {} seconds".format(os.getpid(), func.__name__, (end - start) / 1000000000))
-            return ret
-        else:
-            return func(*args, **kwargs)
-
-    return wrapper
-
-
 class MemoryRecord:
     def __init__(self, scope, pid, tid, ts, device_type, device_id, address, bytes, total_allocated, total_reserved):
         self.scope = scope
@@ -90,13 +68,8 @@ class MemoryParser:
             record = MemoryRecord.from_event(event)
             self.records_by_tid[record.tid].append(record)
 
-        if BENCHMARK_MEMORY:
-            self.update_node_recursive()
-            self.update_node()
-        else:
-            self.update_node()
+        self.update_node()
 
-    @benchmark
     def get_memory_statistics(self):
         SELF_METRICS_COUNT = MemoryMetrics.IncreaseSize
 
@@ -108,10 +81,6 @@ class MemoryParser:
         memory_metrics_keyed_by_node = defaultdict(dict_factory)
 
         def traverse_node_memory(node):
-            if BENCHMARK_MEMORY:
-                if node not in self.processed_node_normal:
-                    self.unreached_node_normal[tid].append(node)
-
             if node not in self.processed_node:
                 self.unreached_node[tid].append(node)
                 # since the node has not been visited for insert memory records, just ignore all childrens
@@ -164,33 +133,12 @@ class MemoryParser:
                 if any(values):
                     result[device][node] = values + [op_calls[node]]
 
-        if BENCHMARK_MEMORY:
-            for tid, nodes in self.unreached_node.items():
-                if nodes:
-                    logger.info("LOOP: tid-{}: total {} node doesn't get reached.".format(tid, len(nodes)))
-                else:
-                    logger.info("LOOP: tid-{}: all nodes are covered".format(tid))
-            for tid, nodes in self.unreached_node_normal.items():
-                if nodes:
-                    logger.info("RECURSIVE: tid-{}: total {} node doesn't get reached.".format(tid, len(nodes)))
-                else:
-                    logger.info("RECURSIVE: tid-{}: all nodes are covered".format(tid))
-
-                # for node in nodes:
-                #     logger.debug("node {},{}:{} doesn't reached".format(node.tid, node.name, node.start_time))
-
-            for node, times in self.processed_node.items():
-                assert times == 1
-                # if times > 1:
-                #     logger.info("node {} is processed {} times".format(node.start_time, times))
-
         return result
 
     @property
     def record_length(self):
         return sum(len(v) for v in self.records_by_tid.values())
 
-    @benchmark
     def update_node(self):
         tree_height = 0
         for tid, records in self.records_by_tid.items():
@@ -270,7 +218,7 @@ class MemoryParser:
 
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
-                    if not BENCHMARK_MEMORY or record not in current_node.memory_records:
+                    if record not in current_node.memory_records:
                         current_node.add_memory_record(record)
                     self.processed_records.append(record)
                 else:
@@ -285,42 +233,3 @@ class MemoryParser:
                 len(self.staled_records), self.record_length, len(self.processed_records)))
         if tree_height > 0:
             logger.debug("max tree height is {}".format(tree_height))
-
-    @benchmark
-    def update_node_recursive(self):
-        def _update_memory_event(record, node):
-            if BENCHMARK_MEMORY:
-                self.processed_node_normal.add(node)
-
-            child_found = None
-            for child in node.children:
-                if record.ts >= child.start_time and record.ts < child.end_time:
-                    child_found = child
-                    break
-            if child_found is None:
-                # We use left close and right open deliberately here [start time, end time)
-                # to avoid one memory be calculated twice in case of it is equal to previous operator's end time
-                # and next operator's start time.
-                # the result might be different with PyTorch one.
-                # https://github.com/pytorch/pytorch/blob/26c1f0f72e71c096648a16993484234399da307c/torch/autograd/profiler.py#L1147-L1152
-                if is_operator_node(node) and record.ts >= node.start_time and record.ts < node.end_time:
-                    if not BENCHMARK_MEMORY or record not in node.memory_records:
-                        node.add_memory_record(record)
-                    self.processed_records_normal.append(record)
-                else:
-                    self.staled_records_normal.append(record)
-            else:
-                _update_memory_event(record, child_found)
-
-        for tid, records in self.records_by_tid.items():
-            root_node = self.tid2tree.get(tid)
-            if root_node is None:
-                logger.warning("could not find the root node for tid %d " % tid)
-                self.staled_records_normal.extend(records)
-
-            for mem_record in records:
-                _update_memory_event(mem_record, root_node)
-
-        if len(self.staled_records_normal) > 0 and self.record_length > 0:
-            logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(
-                len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))

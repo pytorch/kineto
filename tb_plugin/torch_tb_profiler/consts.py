@@ -57,3 +57,19 @@ TOOLTIP_BLOCKS_PER_SM = \
     "If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized.\n" \
     "\"Mean Blocks per SM\" is the weighted average of all calls of this kernel, " \
     "using each call's execution duration as weight."
+TOOLTIP_OP_TC_ELIGIBLE = \
+    "Whether this operator is eligible to use Tensor Cores."
+TOOLTIP_OP_TC_SELF = \
+    "Tensor Cores Self Percentage:\n" \
+    "Time of self-kernels with tensor cores / Time of self-kernels.\n" \
+    "Time of self-kernels with tensor cores: Accumulated execution time of TensorCores-used kernels launched by this operator(not including child operators).\n" \
+    "Time of self-kernels: Accumulated execution time of all kernels launched by this operator(not including child operators).\n"
+TOOLTIP_OP_TC_TOTAL = \
+    "Tensor Cores Total Percentage:\n" \
+    "Time of kernels with tensor cores / Time of kernels.\n" \
+    "Time of kernels with tensor cores: Accumulated execution time of TensorCores-used kernels launched by this operator(including child operators).\n" \
+    "Time of kernels: Accumulated execution time of all kernels launched by this operator(including child operators).\n"
+TOOLTIP_KERNEL_USES_TC = \
+    "Whether this kernel uses Tensor Cores."
+TOOLTIP_KERNEL_OP_TC_ELIGIBLE = \
+    "Whether the operator launched this kernel is eligible to use Tensor Cores."

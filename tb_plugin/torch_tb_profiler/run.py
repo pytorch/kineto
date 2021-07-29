@@ -3,7 +3,6 @@
 # --------------------------------------------------------------------------
 from typing import List, Optional, Union
 
-from copy import deepcopy
 from collections import OrderedDict, defaultdict
 from math import pow
 
@@ -381,8 +380,7 @@ class RunProfile(object):
         # NOTE: reuse MemoryParser for annotate records with op name
 
         memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
-        memory_records : List[MemoryRecord] = deepcopy(memory_parser.processed_records)
-        memory_records.sort(key = lambda r: r.ts)
+        memory_records = sorted(memory_parser.processed_records, key = lambda r: r.ts)
 
         events = []
         alloc = {} # allocation events may or may not have paired free event

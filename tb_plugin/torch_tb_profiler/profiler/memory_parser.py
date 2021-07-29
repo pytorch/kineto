@@ -56,14 +56,6 @@ class MemoryParser:
         self.processed_node = defaultdict(int)
         self.unreached_node = defaultdict(list)
 
-        # normal search
-        self.staled_records_normal = []
-        self.processed_records_normal = []
-
-        # for troubleshooting issues.
-        self.processed_node_normal = set()
-        self.unreached_node_normal = defaultdict(list)
-
         for event in self.memory_events:
             record = MemoryRecord.from_event(event)
             self.records_by_tid[record.tid].append(record)

@@ -1,9 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import Iterable
+from typing import Iterable, Optional
 
-import os
 from collections import defaultdict
 
 from .. import utils
@@ -24,6 +23,7 @@ class MemoryRecord:
         self.bytes = bytes
         self.total_allocated = total_allocated
         self.total_reserved = total_reserved
+        self.op_name: Optional[str] = None
 
     @property
     def device_name(self):
@@ -205,7 +205,7 @@ class MemoryParser:
                         break
                     elif record.ts >= current_node.children[child_index].end_time:
                         # if the record timestamp is greater than the children end time, increment to next child
-                        # untile find one contains the records
+                        # until find one contains the record
                         child_index += 1
                     else:
                         # current children contains the record
@@ -220,11 +220,12 @@ class MemoryParser:
                 if is_operator_node(current_node):
                     if record not in current_node.memory_records:
                         current_node.add_memory_record(record)
+                        record.op_name = current_node.name
                     self.processed_records.append(record)
                 else:
                     self.staled_records.append(record)
 
-                # the record is processed done, increment the index to process next one.
+                # the record is processed
                 record_index += 1
 
         # show summary information

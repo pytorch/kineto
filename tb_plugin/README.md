@@ -31,10 +31,10 @@ and give optimization recommendations.
 
 * Prepare profiling data
 
-  We have prepared some sample profiling data at [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/master/tb_plugin/samples)
+  We have prepared some sample profiling data at [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/main/tb_plugin/samples)
   You can download it directly.
   Or you can generate these profiling samples yourself by running
-  [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/master/tb_plugin/examples/resnet50_profiler_api.py).
+  [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/main/tb_plugin/examples/resnet50_profiler_api.py).
   Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
 
   Note: The recommended way to produce profiling data is assigning `torch.profiler.tensorboard_trace_handler`

@@ -231,15 +231,20 @@ class RunProfile(object):
         return data, tooltip
 
     @staticmethod
-    def get_memory_statistics(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+    def _filtered_by_ts(events, start_ts, end_ts):
+        """Returns time-ordered events of memory allocation and free"""
         if start_ts is not None and end_ts is not None:
-            memory_events = [e for e in profile.memory_events if start_ts <= e.ts <= end_ts]
+            events = [e for e in events if start_ts <= e.ts and e.ts <= end_ts]
         elif start_ts is not None:
-            memory_events = [e for e in profile.memory_events if start_ts <= e.ts]
+            events = [e for e in events if start_ts <= e.ts]
         elif end_ts is not None:
-            memory_events = [e for e in profile.memory_events if e.ts <= end_ts]
-        else:
-            memory_events = profile.memory_events
+            events = [e for e in events if e.ts <= end_ts]
+
+        return events
+
+    @staticmethod
+    def get_memory_statistics(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
         memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
         return memory_parser.get_memory_statistics()
 
@@ -364,6 +369,60 @@ class RunProfile(object):
             ],
             "rows": curves,
             "ts": timestamps,
+        }
+
+    @staticmethod
+    def get_memory_events(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        profiler_start_ts = profile.profiler_start_ts
+        memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
+
+        # NOTE: reuse MemoryParser for annotate records with op name
+        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
+        memory_records = sorted(memory_parser.processed_records, key = lambda r: r.ts)
+
+        events = []
+        alloc = {} # allocation events may or may not have paired free event
+        free =  {} # free events that does not have paired free event
+        prev_ts = float("-inf") # ensure ordered memory records is ordered
+        for i, r in enumerate(memory_records):
+            assert prev_ts < r.ts
+            prev_ts = r.ts
+            addr = r.addr
+            size = r.bytes
+            if size > 0:
+                # Allocation event, to be matched with a Release event
+                alloc[addr] = i
+            else:
+                if addr in alloc:
+                    alloc_ts = memory_records[alloc[addr]].ts
+                    free_ts = r.ts
+                    events.append([r.op_name, -size, alloc_ts - profiler_start_ts, free_ts - profiler_start_ts, free_ts - alloc_ts])
+                    del alloc[addr]
+                else:
+                    assert addr not in free
+                    free[addr] = i
+
+        for i in alloc.values():
+            r = memory_records[i]
+            events.append([r.op_name, r.bytes, r.ts - profiler_start_ts, None, None])
+
+        for i in free.values():
+            r = memory_records[i]
+            events.append([r.op_name, -r.bytes, None, r.ts - profiler_start_ts, None])
+
+        return {
+            "metadata": {
+                "title": "Memory Events",
+                "default_device": "CPU",
+            },
+            "columns": [
+                { "name": "Operator", "type": "string", "tooltip": "" },
+                { "name": "Size", "type": "number", "tooltip": "" },
+                { "name": "Allocation Time", "type": "number", "tooltip": "" },
+                { "name": "Release Time", "type": "number", "tooltip": "" },
+                { "name": "Duration", "type": "number", "tooltip": "" },
+            ],
+            "rows": events,
         }
 
 

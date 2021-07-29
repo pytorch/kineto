@@ -61,13 +61,13 @@ TOOLTIP_OP_TC_ELIGIBLE = \
     "Whether this operator is eligible to use Tensor Cores."
 TOOLTIP_OP_TC_SELF = \
     "Tensor Cores Self Percentage:\n" \
-    "Time of self-kernels with tensor cores / Time of self-kernels.\n" \
-    "Time of self-kernels with tensor cores: Accumulated execution time of TensorCores-used kernels launched by this operator(not including child operators).\n" \
+    "Time of self-kernels with Tensor Cores / Time of self-kernels.\n" \
+    "Time of self-kernels with Tensor Cores: Accumulated execution time of Tensor Cores used kernels launched by this operator(not including child operators).\n" \
     "Time of self-kernels: Accumulated execution time of all kernels launched by this operator(not including child operators).\n"
 TOOLTIP_OP_TC_TOTAL = \
     "Tensor Cores Total Percentage:\n" \
-    "Time of kernels with tensor cores / Time of kernels.\n" \
-    "Time of kernels with tensor cores: Accumulated execution time of TensorCores-used kernels launched by this operator(including child operators).\n" \
+    "Time of kernels with Tensor Cores / Time of kernels.\n" \
+    "Time of kernels with Tensor Cores: Accumulated execution time of Tensor Cores used kernels launched by this operator(including child operators).\n" \
     "Time of kernels: Accumulated execution time of all kernels launched by this operator(including child operators).\n"
 TOOLTIP_KERNEL_USES_TC = \
     "Whether this kernel uses Tensor Cores."

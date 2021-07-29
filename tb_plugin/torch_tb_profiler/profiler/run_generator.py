@@ -323,9 +323,9 @@ class RunGenerator(object):
                             {"type": "string", "name": "Block"},
                             {"type": "number", "name": "Register Per Thread"},
                             {"type": "number", "name": "Shared Memory"},
-                            {"type": "string", "name": "Kernel Uses TensorCore",
+                            {"type": "string", "name": "Kernel Uses Tensor Cores",
                              "tooltip": consts.TOOLTIP_KERNEL_USES_TC},
-                            {"type": "string", "name": "Op is TensorCore eligible",
+                            {"type": "string", "name": "Op is Tensor Cores eligible",
                              "tooltip": consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
@@ -369,7 +369,7 @@ class RunGenerator(object):
             "data": table
         }
         table["columns"] = [{"type": "string", "name": "Name"},
-                            {"type": "string", "name": "TensorCore Used",
+                            {"type": "string", "name": "Tensor Cores Used",
                              "tooltip": consts.TOOLTIP_KERNEL_USES_TC}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]

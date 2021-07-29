@@ -3,6 +3,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as React from 'react'
+import { makeStyles } from '@material-ui/core/styles'
 import { CallStackTableData, OperationTableDataInner } from '../../api'
 import { Table, TableProps } from 'antd'
 
@@ -21,6 +22,12 @@ export interface IProps {
   groupBy: OperationGroupBy
 }
 
+const useStyles = makeStyles((theme) => ({
+  tooltip: {
+    whiteSpace: 'pre-wrap'
+  }
+}))
+
 const expandIcon = makeExpandIcon<TransformedCallStackDataInner>(
   'View call frames',
   (record) => !record.callStackFrames.length
@@ -35,15 +42,18 @@ const expandedRowRender = (record: TransformedCallStackDataInner) => (
 export const CallStackTable = (props: IProps) => {
   const { data, run, worker, span, groupBy } = props
   const { name, input_shape } = data
+  const classes = useStyles(props)
 
   const [stackData, setStackData] = React.useState<
     CallStackTableData | undefined
   >(undefined)
+  const [tooltips, setTooltips] = React.useState<any | undefined>()
 
   React.useEffect(() => {
     api.defaultApi
       .operationStackGet(run, worker, span, groupBy, name, input_shape)
       .then((resp) => {
+        setTooltips(resp.metadata.tooltips)
         setStackData(resp.data)
       })
   }, [name, input_shape, run, worker, span, groupBy])
@@ -54,7 +64,9 @@ export const CallStackTable = (props: IProps) => {
   )
 
   const columns = React.useMemo(
-    () => transformedData && getCommonOperationColumns(transformedData),
+    () =>
+      transformedData &&
+      getCommonOperationColumns(transformedData, undefined, tooltips, classes),
     [transformedData]
   )
 

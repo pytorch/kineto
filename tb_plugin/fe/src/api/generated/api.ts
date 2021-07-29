@@ -720,6 +720,12 @@ export interface TableMetadata {
    * @memberof TableMetadata
    */
   sort: string
+  /**
+   *
+   * @type {any}
+   * @memberof TableMetadata
+   */
+  tooltips?: any
 }
 /**
  *

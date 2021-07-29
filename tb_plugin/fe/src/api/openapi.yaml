@@ -603,6 +603,8 @@ components:
       properties:
         sort:
           type: string
+        tooltips:
+          type: object
     TableData:
       type: object
       required:

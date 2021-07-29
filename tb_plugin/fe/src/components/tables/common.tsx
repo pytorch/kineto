@@ -5,10 +5,16 @@
 import { firstOrUndefined, isDef } from '../../utils/def'
 import { CallStackTableDataInner, OperationTableDataInner } from '../../api'
 import type { ColumnsType } from 'antd/es/table'
+import { ClassNameMap } from '@material-ui/styles'
 
 export function getCommonOperationColumns<
   T extends OperationTableDataInner | CallStackTableDataInner
->(data: T[] | undefined, defaultSort?: string): ColumnsType<T> {
+>(
+  data: T[] | undefined,
+  defaultSort?: string,
+  tooltips?: any,
+  classes?: ClassNameMap<'tooltip'>
+): ColumnsType<T> {
   const firstData = firstOrUndefined(data)
 
   const hasInputShape = !firstData || isDef(firstData.input_shape)
@@ -91,7 +97,7 @@ export function getCommonOperationColumns<
       ? {
           dataIndex: 'tc_eligible',
           key: 'tc_eligible',
-          title: 'TC Eligible',
+          title: 'Tensor Cores Eligible',
           sorter: tcEligibleCompare
         }
       : undefined,
@@ -99,7 +105,7 @@ export function getCommonOperationColumns<
       ? {
           dataIndex: 'tc_self_ratio',
           key: 'tc_self_ratio',
-          title: 'TC Self(%)',
+          title: 'Tensor Cores Self(%)',
           sorter: tcSelfRatioCompare
         }
       : undefined,
@@ -107,7 +113,7 @@ export function getCommonOperationColumns<
       ? {
           dataIndex: 'tc_total_ratio',
           key: 'tc_total_ratio',
-          title: 'TC Total(%)',
+          title: 'Tensor Cores Total(%)',
           sorter: tcTotalRatioCompare
         }
       : undefined
@@ -115,6 +121,12 @@ export function getCommonOperationColumns<
   columns.forEach((column) => {
     if (column.key == defaultSort) {
       column.defaultSortOrder = 'descend' as const
+    }
+    if (tooltips[column.key as string]) {
+      column.showSorterTooltip = {
+        title: tooltips[column.key as string],
+        overlayClassName: classes?.tooltip
+      }
     }
   })
   return columns

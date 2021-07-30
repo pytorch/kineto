@@ -91,6 +91,7 @@ class RunLoader(object):
             profile = generator.generate_run_profile()
             dist_data = DistributedRunProfileData(data)
 
+            logger.debug("Sending back profile via mp.Queue")
             self.queue.put((profile, dist_data))
         except KeyboardInterrupt:
             logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))

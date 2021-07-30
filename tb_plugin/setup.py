@@ -67,8 +67,8 @@ setuptools.setup(
     version=get_version(os.path.join('torch_tb_profiler', '__init__.py')),
     description="PyTorch Profiler TensorBoard Plugin",
     long_description="PyTorch Profiler TensorBoard Plugin : \
-        https://github.com/pytorch/kineto/tree/master/tb_plugin",
-    url="https://github.com/pytorch/kineto/tree/master/tb_plugin",
+        https://github.com/pytorch/kineto/tree/main/tb_plugin",
+    url="https://github.com/pytorch/kineto/tree/main/tb_plugin",
     author="PyTorch Team",
     author_email="packages@pytorch.org",
     cmdclass={

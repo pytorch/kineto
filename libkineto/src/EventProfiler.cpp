@@ -320,11 +320,12 @@ bool EventProfiler::initEventGroups() {
 static unique_ptr<Config> alignAndValidateConfigs(
     Config& base,
     Config* onDemand) {
+  auto now = system_clock::now();
   if (!onDemand ||
-      system_clock::now() >
+      now >
           (onDemand->eventProfilerOnDemandStartTime() +
            onDemand->eventProfilerOnDemandDuration())) {
-    base.validate();
+    base.validate(now);
     return base.clone();
   }
 
@@ -343,13 +344,13 @@ static unique_ptr<Config> alignAndValidateConfigs(
         << sample_period << "ms.";
   }
   base.setSamplePeriod(milliseconds(sample_period));
-  base.validate();
+  base.validate(now);
   res->setSamplePeriod(base.samplePeriod());
   res->setMultiplexPeriod(base.multiplexPeriod());
-  res->validate();
+  res->validate(now);
   onDemand->setSamplePeriod(base.samplePeriod());
   onDemand->setMultiplexPeriod(base.multiplexPeriod());
-  onDemand->validate();
+  onDemand->validate(now);
 
   return res;
 }

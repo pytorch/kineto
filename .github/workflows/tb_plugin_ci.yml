@@ -3,13 +3,13 @@ name: TB_Plugin_CI
 on:
   push:
     branches:
-      - master
+      - main
       - release/**
       - plugin/**
 
   pull_request:
     branches:
-      - master
+      - main
       - release/**
       - plugin/**
 

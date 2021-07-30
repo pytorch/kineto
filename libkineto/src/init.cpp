@@ -52,6 +52,7 @@ static void initProfilers(CUcontext ctx) {
     VLOG(0) << "libkineto profilers activated";
   }
   ConfigLoader& config_loader = libkineto::api().configLoader();
+  config_loader.initBaseConfig();
   EventProfilerController::start(ctx, config_loader);
 }
 

@@ -39,6 +39,7 @@ class RunGenerator(object):
             profile_run.kernel_op_table = self._generate_kernel_op_table()
             profile_run.kernel_pie = self._generate_kernel_pie()
             profile_run.kernel_table = self._generate_kernel_table()
+            profile_run.tc_pie = self._generate_tc_pie()
 
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
@@ -394,6 +395,13 @@ class RunGenerator(object):
                                   else round(row[column], round_digits[i]))
             table["rows"].append(kernel_row)
         return result
+
+    def _generate_tc_pie(self):
+        pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
+        pie["rows"].append(["Using Tensor Cores", self.profile_data.tc_used_ratio])
+        pie["rows"].append(["Not Using Tensor Cores", 1.0 - self.profile_data.tc_used_ratio])
+        data = {"total": pie}
+        return data
 
     def _generate_memory_view(self, memory_stats):
 

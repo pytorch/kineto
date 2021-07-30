@@ -373,12 +373,10 @@ class RunProfile(object):
 
     @staticmethod
     def get_memory_events(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
-        from .profiler.memory_parser import MemoryRecord
         profiler_start_ts = profile.profiler_start_ts
-        
         memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
-        # NOTE: reuse MemoryParser for annotate records with op name
 
+        # NOTE: reuse MemoryParser for annotate records with op name
         memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
         memory_records = sorted(memory_parser.processed_records, key = lambda r: r.ts)
 

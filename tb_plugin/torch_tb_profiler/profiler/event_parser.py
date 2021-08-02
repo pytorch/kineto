@@ -159,14 +159,14 @@ class OpTreeBuilder:
 
         return tid2tree
 
-    def _build_tree(self, host_node_list, zero_rt_list, tid, device_nodes):
+    def _build_tree(self, host_node_list, zero_rt_list, tid, staled_device_nodes):
         '''host_node_list: list of OperatorNode and ProfilerStepNode.
         zero_rt_list: list of RuntimeNode with external_id=0.'''
 
-        def build_tree_relationship(host_node_list, zero_rt_list, device_nodes):
+        def build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes):
             dummpy_rt = []
-            if device_nodes:
-                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, device_nodes))
+            if staled_device_nodes:
+                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
                 dummpy_rt[0].fill_stats()
             node_stack = []
             root_node = OperatorNode(
@@ -212,7 +212,7 @@ class OpTreeBuilder:
             for child in node.children:
                 remove_dup_nodes(child)
 
-        root_node = build_tree_relationship(host_node_list, zero_rt_list, device_nodes)
+        root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
         remove_dup_nodes(root_node)
         root_node.replace_time_by_children()
         root_node.fill_stats()

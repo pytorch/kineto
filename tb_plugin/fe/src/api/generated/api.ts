@@ -439,6 +439,50 @@ export interface KernelGraph {
 /**
  *
  * @export
+ * @interface MemoryCurve
+ */
+export interface MemoryCurve {
+  /**
+   *
+   * @type {MemoryCurveMetadata}
+   * @memberof MemoryCurve
+   */
+  metadata: MemoryCurveMetadata
+  /**
+   *
+   * @type {Array<GraphColumn>}
+   * @memberof MemoryCurve
+   */
+  columns: Array<GraphColumn>
+  /**
+   *
+   * @type {any}
+   * @memberof MemoryCurve
+   */
+  rows: any
+}
+/**
+ *
+ * @export
+ * @interface MemoryCurveMetadata
+ */
+export interface MemoryCurveMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryCurveMetadata
+   */
+  title: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryCurveMetadata
+   */
+  defaultDevice: string
+}
+/**
+ *
+ * @export
  * @interface MemoryData
  */
 export interface MemoryData {
@@ -1254,6 +1298,78 @@ export const DefaultApiFetchParamCreator = function (
         )
       }
       const localVarPath = `/kernel/tc_pie`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryCurveGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling memoryCurveGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling memoryCurveGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling memoryCurveGet.'
+        )
+      }
+      const localVarPath = `/memory_curve`
       const localVarUrlObj = url.parse(localVarPath, true)
       const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
       const localVarHeaderParameter = {} as any
@@ -2216,6 +2332,39 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
+    memoryCurveGet(
+      run: string,
+      worker: string,
+      span: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryCurve> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).memoryCurveGet(run, worker, span, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
     memoryGet(
       run: string,
       worker: string,
@@ -2711,6 +2860,22 @@ export const DefaultApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
+    memoryCurveGet(run: string, worker: string, span: string, options?: any) {
+      return DefaultApiFp(configuration).memoryCurveGet(
+        run,
+        worker,
+        span,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
     memoryGet(run: string, worker: string, span: string, options?: any) {
       return DefaultApiFp(configuration).memoryGet(
         run,
@@ -3044,6 +3209,29 @@ export class DefaultApi extends BaseAPI {
     options?: any
   ) {
     return DefaultApiFp(this.configuration).kernelTcPieGet(
+      run,
+      worker,
+      span,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public memoryCurveGet(
+    run: string,
+    worker: string,
+    span: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).memoryCurveGet(
       run,
       worker,
       span,

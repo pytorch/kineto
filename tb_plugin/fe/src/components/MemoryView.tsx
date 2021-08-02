@@ -13,8 +13,9 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryData } from '../api'
+import { MemoryCurve, MemoryData } from '../api'
 import { useSearchDirectly } from '../utils/search'
+import { LineChart } from './charts/LineChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
 
@@ -54,6 +55,9 @@ export const MemoryView: React.FC<IProps> = (props) => {
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
     undefined
   )
+  const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
+    MemoryCurve | undefined
+  >(undefined)
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
@@ -94,6 +98,12 @@ export const MemoryView: React.FC<IProps> = (props) => {
     })
   }, [run, worker, span])
 
+  React.useEffect(() => {
+    api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
+      setMemoryCurveGraph(resp)
+    })
+  }, [run, worker, span])
+
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)
   }
@@ -104,6 +114,21 @@ export const MemoryView: React.FC<IProps> = (props) => {
         <CardHeader title="Memory View" />
         <CardContent>
           <Grid direction="column" container spacing={1}>
+            <Grid item>
+              <DataLoading value={memoryCurveGraph}>
+                {(graph) => (
+                  <LineChart
+                    hAxisTitle="Time (ms)"
+                    vAxisTitle="Memory Usage (GB)"
+                    graph={{
+                      title: graph.metadata.title,
+                      columns: graph.columns,
+                      rows: graph.rows['CPU']
+                    }}
+                  />
+                )}
+              </DataLoading>
+            </Grid>
             <Grid item container direction="column" spacing={1}>
               <Grid item>
                 <Grid container justify="space-around">

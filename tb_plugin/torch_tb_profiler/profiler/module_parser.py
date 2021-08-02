@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 import sys
 from collections import defaultdict
+from typing import Dict, List
 
 from .. import utils
 from .node import OperatorNode, RuntimeNode
@@ -116,15 +117,31 @@ def aggregate_kernels(kernel_list):
 class ModuleParser:
     def __init__(self):
         self.tid2tree = {}
-        self.op_list_groupby_name = []  # For Operator-view.
-        self.op_list_groupby_name_input = []  # For Operator-view.
-        self.kernel_list_groupby_name_op = {}  # For Kernel-view.
-        self.stack_lists_group_by_name = None
-        self.stack_lists_group_by_name_input = None
 
-    # host_node_list: list of OperatorNode and ProfilerStepNode.
-    # zero_rt_list: list of RuntimeNode with external_id=0.
+    def build_tree(self, context):
+        tid2list = context.tid2list
+        tid2zero_rt_list = context.tid2zero_rt_list
+        corrid_to_device = context.corrid_to_device
+
+        staled_device_nodes = []
+        for _, device_nodes in corrid_to_device.items():
+             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+
+        for tid, op_list in tid2list.items():
+            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
+            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
+            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
+            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
+            if main_tid:
+                # only append the staled device nodes into main thread
+                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
+            else:
+                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
+            self.tid2tree[int(tid)] = root_node
+
     def _build_tree(self, host_node_list, zero_rt_list, tid, device_nodes):
+        '''host_node_list: list of OperatorNode and ProfilerStepNode.
+        zero_rt_list: list of RuntimeNode with external_id=0.'''
 
         def build_tree_relationship(host_node_list, zero_rt_list, device_nodes):
             dummy_blank_rt = []
@@ -176,7 +193,6 @@ class ModuleParser:
             for child in node.children:
                 remove_dup_nodes(child)
 
-
         root_node = build_tree_relationship(host_node_list, zero_rt_list, device_nodes)
         remove_dup_nodes(root_node)
         root_node.replace_time_by_children()
@@ -184,60 +200,47 @@ class ModuleParser:
         # traverse_node(root_node)
         return root_node
 
-    def build_tree(self, context):
-        tid2list = context.tid2list
-        tid2zero_rt_list = context.tid2zero_rt_list
-        corrid_to_device = context.corrid_to_device
+class ModuleAggregator:
 
-        staled_device_nodes = []
-        for _, device_nodes in corrid_to_device.items():
-             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+    def __init__(self):
+        self.op_list_groupby_name: List[OperatorAgg] = None  # For Operator-view.
+        self.op_list_groupby_name_input: List[OperatorAgg] = None  # For Operator-view.
+        self.kernel_list_groupby_name_op: Dict[str, KernelAggByNameOp] = None  # For Kernel-view.
+        self.stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = None
+        self.stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = None
 
-        for tid, op_list in tid2list.items():
-            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
-            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
-            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
-            if main_tid:
-                # only append the staled device nodes into main thread
-                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
-            else:
-                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
-            self.tid2tree[int(tid)] = root_node
-
-
-    def aggregate(self):
-
-        def parse_ops(cpp_op_list):
-            keys = [
-                lambda x: x.name,
-                lambda x: x.name + "###" + str(x.input_shape),
-                lambda x: x.name + "###" + str(x.call_stack),
-                lambda x: x.name + "###" + str(x.input_shape) + "###" + str(x.call_stack)
-            ]
-            agg_result = aggregate_ops(cpp_op_list, keys)
-
-            op_list_groupby_name = list(agg_result[0].values())
-            op_list_groupby_name_input = list(agg_result[1].values())
-            stack_lists_group_by_name = defaultdict(list)
-            stack_lists_group_by_name_input = defaultdict(list)
-            for agg in agg_result[2].values():
-                assert (len(agg.call_stacks) == 1)
-                if list(agg.call_stacks)[0]:
-                    stack_lists_group_by_name[agg.name].append(agg)
-            for agg in agg_result[3].values():
-                assert (len(agg.call_stacks) == 1)
-                if list(agg.call_stacks)[0]:
-                    key = agg.name + "###" + str(agg.input_shape)
-                    stack_lists_group_by_name_input[key].append(agg)
-
-            return op_list_groupby_name, op_list_groupby_name_input, stack_lists_group_by_name, stack_lists_group_by_name_input
-
+    def aggregate(self, tid2tree):
+        # get the operators and kernels recursively by traverse the node tree root.
         ops = []
         kernels = []
-        for root in self.tid2tree.values():
+        for root in tid2tree.values():
             root_ops, root_kernels = root.get_operator_and_kernels()
             ops.extend(root_ops)
             kernels.extend(root_kernels)
-        self.op_list_groupby_name, self.op_list_groupby_name_input, self.stack_lists_group_by_name, self.stack_lists_group_by_name_input = parse_ops(ops)
+
+        # aggregate both kernels and operators
         self.kernel_list_groupby_name_op = aggregate_kernels(kernels)
+
+        keys = [
+            lambda x: x.name,
+            lambda x: x.name + "###" + str(x.input_shape),
+            lambda x: x.name + "###" + str(x.call_stack),
+            lambda x: x.name + "###" + str(x.input_shape) + "###" + str(x.call_stack)
+        ]
+        agg_result = aggregate_ops(ops, keys)
+        stack_lists_group_by_name = defaultdict(list)
+        stack_lists_group_by_name_input = defaultdict(list)
+        for agg in agg_result[2].values():
+            assert (len(agg.call_stacks) == 1)
+            if list(agg.call_stacks)[0]:
+                stack_lists_group_by_name[agg.name].append(agg)
+        for agg in agg_result[3].values():
+            assert (len(agg.call_stacks) == 1)
+            if list(agg.call_stacks)[0]:
+                key = agg.name + "###" + str(agg.input_shape)
+                stack_lists_group_by_name_input[key].append(agg)
+
+        self.op_list_groupby_name = list(agg_result[0].values())
+        self.op_list_groupby_name_input = list(agg_result[1].values())
+        self.stack_lists_group_by_name = stack_lists_group_by_name
+        self.stack_lists_group_by_name_input = stack_lists_group_by_name_input

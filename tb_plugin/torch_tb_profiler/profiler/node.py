@@ -104,8 +104,7 @@ class OperatorNode(HostNode):
         for child in self.children:
             child.fill_stats()
         for rt in self.runtimes:
-            rt.fill_stats()
-            rt.update_device_op_node(self)
+            rt.fill_stats(self)
 
         self.self_host_duration = self.end_time - self.start_time
         for child in self.children:
@@ -165,17 +164,14 @@ class RuntimeNode(HostNode):
         self.device_nodes = device_nodes
         self.tc_duration = 0  # Time summarization of all its launched kernels.
 
-    def fill_stats(self):
+    def fill_stats(self, op_node=None):
         if self.device_nodes:
+            op_node_ref = ref(op_node) if op_node else None
             for device_node in self.device_nodes:
+                device_node.op_node_ref = op_node_ref
                 device_duration = device_node.end_time - device_node.start_time
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
-
-    def update_device_op_node(self, node):
-        if self.device_nodes:
-            for device_node in self.device_nodes:
-                device_node.op_node_ref = ref(node)
 
     def get_kernels(self):
         kernels = []

@@ -15,7 +15,7 @@ from .event_parser import EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser
-from .module_parser import ModuleParser
+from .module_parser import ModuleAggregator, ModuleParser
 from .overall_parser import OverallParser
 
 logger = utils.get_logger()
@@ -170,12 +170,14 @@ class RunProfileData(object):
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
         module_parser.build_tree(node_context)
-        module_parser.aggregate()
-        self.op_list_groupby_name = module_parser.op_list_groupby_name
-        self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
-        self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
-        self.stack_lists_group_by_name_input = module_parser.stack_lists_group_by_name_input
-        self.kernel_list_groupby_name_op = module_parser.kernel_list_groupby_name_op
+
+        module_aggregator = ModuleAggregator()
+        module_aggregator.aggregate(module_parser.tid2tree)
+        self.op_list_groupby_name = module_aggregator.op_list_groupby_name
+        self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
+        self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
+        self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
+        self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -198,7 +200,7 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
-        memory_parser = MemoryParser(module_parser.tid2tree, module_parser.op_list_groupby_name)
+        memory_parser = MemoryParser(module_parser.tid2tree, module_aggregator.op_list_groupby_name)
         memory_parser.parse_events(self.events)
         self.memory_stats = memory_parser.get_memory_statistics()
 

@@ -166,6 +166,9 @@ class OpTreeBuilder:
         def build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes):
             dummpy_rt = []
             if staled_device_nodes:
+                # Note: Although kernels of this dummy runtime is put under main thread's tree, 
+                # we don't know which thread launches them. 
+                # TODO: Don't make belonging thread assumption on future usage if we need special handling
                 dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
                 dummpy_rt[0].fill_stats()
             node_stack = []

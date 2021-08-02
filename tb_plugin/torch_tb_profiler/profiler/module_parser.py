@@ -144,11 +144,10 @@ class ModuleParser:
         zero_rt_list: list of RuntimeNode with external_id=0.'''
 
         def build_tree_relationship(host_node_list, zero_rt_list, device_nodes):
-            dummy_blank_rt = []
-            if (device_nodes):
-                dummpy_rt = RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, device_nodes)
-                dummpy_rt.fill_stats()
-                dummy_blank_rt.append(dummpy_rt)
+            dummpy_rt = []
+            if device_nodes:
+                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, device_nodes))
+                dummpy_rt[0].fill_stats()
             node_stack = []
             root_node = OperatorNode(
                 name="CallTreeRoot",
@@ -156,7 +155,7 @@ class ModuleParser:
                 end_time=sys.maxsize,
                 type=EventTypes.PYTHON,
                 tid=tid,
-                runtimes=zero_rt_list + dummy_blank_rt) # Give the list of RuntimeNode with external_id=0 to root node.
+                runtimes=zero_rt_list + dummpy_rt) # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
                 while True:  # break loop when the node is inserted.
@@ -197,7 +196,6 @@ class ModuleParser:
         remove_dup_nodes(root_node)
         root_node.replace_time_by_children()
         root_node.fill_stats()
-        # traverse_node(root_node)
         return root_node
 
 class ModuleAggregator:

@@ -6,8 +6,6 @@ from collections import defaultdict
 from typing import Dict, List
 
 from .. import utils
-from .node import OperatorNode, RuntimeNode
-from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -113,90 +111,6 @@ def aggregate_kernels(kernel_list):
     kernel_list_groupby_name_op = list(name_op_to_agg.values())
     return kernel_list_groupby_name_op
 
-
-class ModuleParser:
-    def __init__(self):
-        self.tid2tree = {}
-
-    def build_tree(self, context):
-        tid2list = context.tid2list
-        tid2zero_rt_list = context.tid2zero_rt_list
-        corrid_to_device = context.corrid_to_device
-
-        staled_device_nodes = []
-        for _, device_nodes in corrid_to_device.items():
-             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
-
-        for tid, op_list in tid2list.items():
-            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
-            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
-            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
-            if main_tid:
-                # only append the staled device nodes into main thread
-                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
-            else:
-                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
-            self.tid2tree[int(tid)] = root_node
-
-    def _build_tree(self, host_node_list, zero_rt_list, tid, device_nodes):
-        '''host_node_list: list of OperatorNode and ProfilerStepNode.
-        zero_rt_list: list of RuntimeNode with external_id=0.'''
-
-        def build_tree_relationship(host_node_list, zero_rt_list, device_nodes):
-            dummpy_rt = []
-            if device_nodes:
-                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, device_nodes))
-                dummpy_rt[0].fill_stats()
-            node_stack = []
-            root_node = OperatorNode(
-                name="CallTreeRoot",
-                start_time=-sys.maxsize - 1,
-                end_time=sys.maxsize,
-                type=EventTypes.PYTHON,
-                tid=tid,
-                runtimes=zero_rt_list + dummpy_rt) # Give the list of RuntimeNode with external_id=0 to root node.
-            node_stack.append(root_node)
-            for node in host_node_list:
-                while True:  # break loop when the node is inserted.
-                    tail_node = node_stack[-1]
-                    if node.start_time < tail_node.end_time:
-                        if node.end_time <= tail_node.end_time:
-                            tail_node.children.append(node)
-                            # node.parent_node = weakref.ref(tail_node)
-                            node_stack.append(node)
-                        else:
-                            logger.error("Error in input data: ranges on the same thread should not intersect!"
-                                         "Father:({},{},{}) Child:({},{},{})".format(
-                                tail_node.name, tail_node.start_time, tail_node.end_time,
-                                node.name, node.start_time, node.end_time
-                            ))
-                        break
-                    else:
-                        node_stack.pop()
-            return root_node
-
-        # Merge the consecutive calls to same function into one.
-        # Just follow the same pattern in torch/autograd/profiler.py,
-        # EventList._remove_dup_nodes
-        # TODO: Replace recursive by for loop, in case of too deep callstack.
-        def remove_dup_nodes(node):
-            if node.type == EventTypes.RUNTIME:
-                return
-            if len(node.children) == 1:
-                child = node.children[0]
-                if node.name == child.name and node.type == EventTypes.OPERATOR and child.type == EventTypes.OPERATOR:
-                    node.children = child.children
-                    node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
-                    remove_dup_nodes(node)  # This node may have to merge with child's child.
-            for child in node.children:
-                remove_dup_nodes(child)
-
-        root_node = build_tree_relationship(host_node_list, zero_rt_list, device_nodes)
-        remove_dup_nodes(root_node)
-        root_node.replace_time_by_children()
-        root_node.fill_stats()
-        return root_node
 
 class ModuleAggregator:
 

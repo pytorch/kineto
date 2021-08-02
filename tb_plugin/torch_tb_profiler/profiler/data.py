@@ -15,7 +15,7 @@ from .event_parser import EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser
-from .module_parser import ModuleAggregator, ModuleParser
+from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
 
 logger = utils.get_logger()
@@ -151,7 +151,7 @@ class RunProfileData(object):
 
     def process(self):
         parser = EventParser()
-        node_context = parser.parse(self.events)
+        tid2tree = parser.parse(self.events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
@@ -167,12 +167,9 @@ class RunProfileData(object):
         self.comm_node_list = parser.generate_communication_nodes()
 
         # Starting aggregate
-        logger.debug("ModuleParser")
-        module_parser = ModuleParser()
-        module_parser.build_tree(node_context)
-
+        logger.debug("ModuleAggregator")
         module_aggregator = ModuleAggregator()
-        module_aggregator.aggregate(module_parser.tid2tree)
+        module_aggregator.aggregate(tid2tree)
         self.op_list_groupby_name = module_aggregator.op_list_groupby_name
         self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
@@ -200,7 +197,7 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
-        memory_parser = MemoryParser(module_parser.tid2tree, module_aggregator.op_list_groupby_name)
+        memory_parser = MemoryParser(tid2tree, module_aggregator.op_list_groupby_name)
         memory_parser.parse_events(self.events)
         self.memory_stats = memory_parser.get_memory_statistics()
 

@@ -4,10 +4,11 @@
 from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
+from weakref import ref
 
 from .. import utils
-from .trace import EventTypes
 from .tensor_core import TC_OP_Whitelist
+from .trace import EventTypes
 
 logger = utils.get_logger()
 
@@ -130,6 +131,21 @@ class OperatorNode(HostNode):
             self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)
             self.end_time = next((child.end_time for child in reversed(self.children) if child.end_time is not None), None)
 
+    def get_operator_and_kernels(self):
+        ops = []
+        kernels = []
+        for child in self.children:
+            child_ops, child_kernels = child.get_operator_and_kernels()
+            ops.extend(child_ops)
+            kernels.extend(child_kernels)
+        for rt in self.runtimes:
+            kernels.extend(rt.get_kernels())
+
+        if is_operator_node(self):
+            ops.append(self)
+
+        return ops, kernels
+
     @classmethod
     def create(cls, event, input_shape, input_type, call_stack):
         kwargs = BaseNode.get_node_argument(event)
@@ -159,7 +175,13 @@ class RuntimeNode(HostNode):
     def update_device_op_node(self, node):
         if self.device_nodes:
             for device_node in self.device_nodes:
-                device_node.op_node = node
+                device_node.op_node_ref = ref(node)
+
+    def get_kernels(self):
+        kernels = []
+        if self.device_nodes is not None:
+            kernels.extend([n for n in self.device_nodes if n.type == EventTypes.KERNEL])
+        return kernels
 
     @classmethod
     def create(cls, event, device_nodes):
@@ -169,10 +191,10 @@ class RuntimeNode(HostNode):
 
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None,
-                 op_node=None, blocks_per_sm=None, occupancy=None,
+                 blocks_per_sm=None, occupancy=None,
                  grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False):
         super().__init__(name, start_time, end_time, type, tid, external_id)
-        self.op_node = op_node  # The cpu operator that launched it.
+        self.op_node_ref = None # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm
         self.occupancy = occupancy
         self.grid = grid

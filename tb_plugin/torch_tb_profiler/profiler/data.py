@@ -169,7 +169,8 @@ class RunProfileData(object):
         # Starting aggregate
         logger.debug("ModuleParser")
         module_parser = ModuleParser()
-        module_parser.aggregate(node_context)
+        module_parser.build_tree(node_context)
+        module_parser.aggregate()
         self.op_list_groupby_name = module_parser.op_list_groupby_name
         self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name

@@ -5,9 +5,8 @@ import sys
 from collections import defaultdict
 
 from .. import utils
-from .node import OperatorNode, is_operator_node
+from .node import OperatorNode, RuntimeNode
 from .trace import EventTypes
-from .tensor_core import TC_OP_Whitelist
 
 logger = utils.get_logger()
 
@@ -37,6 +36,30 @@ class OperatorAgg:
         return self.tc_total_duration / self.device_duration if self.device_duration > 0 else 0
 
 
+def aggregate_ops(op_list, keys_func):
+    def aggregate(key_to_agg, key, op):
+        if key not in key_to_agg:
+            key_to_agg[key] = OperatorAgg(op)
+        agg = key_to_agg[key]
+        agg.call_stacks.add(op.call_stack)
+        agg.calls += 1
+        agg.host_duration += op.end_time - op.start_time
+        agg.device_duration += op.device_duration
+        agg.self_host_duration += op.self_host_duration
+        agg.self_device_duration += op.self_device_duration
+        agg.tc_self_duration += op.tc_self_duration
+        agg.tc_total_duration += op.tc_total_duration
+        return agg
+
+    agg_dicts = [{} for _ in range(len(keys_func))]
+    for op in op_list:
+        for i, key_func in enumerate(keys_func):
+            key = key_func(op)
+            aggregate(agg_dicts[i], key, op)
+
+    return agg_dicts
+
+
 class KernelAggByNameOp:
     def __init__(self, kernel, op_name):
         self.name = kernel.name
@@ -53,7 +76,7 @@ class KernelAggByNameOp:
         self.blocks_per_sm = 0.0
         self.occupancy = 0.0
         self.tc_used = kernel.tc_used
-        self.op_tc_eligible = kernel.op_node.tc_eligible if kernel.op_node is not None else False
+        self.op_tc_eligible = kernel.op_node_ref().tc_eligible if kernel.op_node_ref is not None else False
 
     @property
     def avg_duration(self):
@@ -68,20 +91,47 @@ class KernelAggByNameOp:
         return self.occupancy / self.total_duration if self.total_duration > 0 else 0
 
 
+def aggregate_kernels(kernel_list):
+    name_op_to_agg = {}
+    for kernel in kernel_list:
+        dur = kernel.end_time - kernel.start_time
+        op_name = "N/A" if kernel.op_node_ref is None else kernel.op_node_ref().name
+        key = "###".join((kernel.name, op_name,
+                            str(kernel.grid), str(kernel.block),
+                            str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
+        if key not in name_op_to_agg:
+            name_op_to_agg[key] = KernelAggByNameOp(kernel, op_name)
+        agg = name_op_to_agg[key]
+        agg.calls += 1
+        agg.total_duration += dur
+        agg.min_duration = min(agg.min_duration, dur)
+        agg.max_duration = max(agg.max_duration, dur)
+        agg.blocks_per_sm += float(kernel.blocks_per_sm or 0) * dur
+        agg.occupancy += float(kernel.occupancy or 0) * dur
+
+    kernel_list_groupby_name_op = list(name_op_to_agg.values())
+    return kernel_list_groupby_name_op
+
+
 class ModuleParser:
     def __init__(self):
         self.tid2tree = {}
-        self.cpp_op_list = []  # For Operator-view.
-        self.kernel_list = []  # For Kernel-view.
         self.op_list_groupby_name = []  # For Operator-view.
         self.op_list_groupby_name_input = []  # For Operator-view.
         self.kernel_list_groupby_name_op = {}  # For Kernel-view.
+        self.stack_lists_group_by_name = None
+        self.stack_lists_group_by_name_input = None
 
     # host_node_list: list of OperatorNode and ProfilerStepNode.
     # zero_rt_list: list of RuntimeNode with external_id=0.
-    def _build_tree(self, host_node_list, zero_rt_list, tid):
+    def _build_tree(self, host_node_list, zero_rt_list, tid, device_nodes):
 
-        def build_tree_relationship(host_node_list, zero_rt_list):
+        def build_tree_relationship(host_node_list, zero_rt_list, device_nodes):
+            dummy_blank_rt = []
+            if (device_nodes):
+                dummpy_rt = RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, device_nodes)
+                dummpy_rt.fill_stats()
+                dummy_blank_rt.append(dummpy_rt)
             node_stack = []
             root_node = OperatorNode(
                 name="CallTreeRoot",
@@ -89,7 +139,7 @@ class ModuleParser:
                 end_time=sys.maxsize,
                 type=EventTypes.PYTHON,
                 tid=tid,
-                runtimes=zero_rt_list) # Give the list of RuntimeNode with external_id=0 to root node.
+                runtimes=zero_rt_list + dummy_blank_rt) # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
                 while True:  # break loop when the node is inserted.
@@ -126,61 +176,56 @@ class ModuleParser:
             for child in node.children:
                 remove_dup_nodes(child)
 
-        def traverse_node(node):
-            if node.type != EventTypes.RUNTIME:
-                for child in node.children:
-                    traverse_node(child)
-                for rt in node.runtimes:
-                    traverse_node(rt)
 
-            if is_operator_node(node):
-                self.cpp_op_list.append(node)
-            if node.type == EventTypes.RUNTIME and node.device_nodes is not None:
-                self.kernel_list.extend([n for n in node.device_nodes if n.type == EventTypes.KERNEL])
-
-        root_node = build_tree_relationship(host_node_list, zero_rt_list)
+        root_node = build_tree_relationship(host_node_list, zero_rt_list, device_nodes)
         remove_dup_nodes(root_node)
         root_node.replace_time_by_children()
         root_node.fill_stats()
-        traverse_node(root_node)
+        # traverse_node(root_node)
         return root_node
 
-    def aggregate(self, context):
+    def build_tree(self, context):
+        tid2list = context.tid2list
+        tid2zero_rt_list = context.tid2zero_rt_list
+        corrid_to_device = context.corrid_to_device
+
+        staled_device_nodes = []
+        for _, device_nodes in corrid_to_device.items():
+             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+
+        for tid, op_list in tid2list.items():
+            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
+            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
+            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
+            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
+            if main_tid:
+                # only append the staled device nodes into main thread
+                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
+            else:
+                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
+            self.tid2tree[int(tid)] = root_node
+
+
+    def aggregate(self):
 
         def parse_ops(cpp_op_list):
-            def aggregate(key_to_agg, key, op):
-                if key not in key_to_agg:
-                    key_to_agg[key] = OperatorAgg(op)
-                agg = key_to_agg[key]
-                agg.call_stacks.add(op.call_stack)
-                agg.calls += 1
-                agg.host_duration += op.end_time - op.start_time
-                agg.device_duration += op.device_duration
-                agg.self_host_duration += op.self_host_duration
-                agg.self_device_duration += op.self_device_duration
-                agg.tc_self_duration += op.tc_self_duration
-                agg.tc_total_duration += op.tc_total_duration
-                return agg
+            keys = [
+                lambda x: x.name,
+                lambda x: x.name + "###" + str(x.input_shape),
+                lambda x: x.name + "###" + str(x.call_stack),
+                lambda x: x.name + "###" + str(x.input_shape) + "###" + str(x.call_stack)
+            ]
+            agg_result = aggregate_ops(cpp_op_list, keys)
 
-            name_to_agg = {}
-            name_input_to_agg = {}
-            name_stack_to_agg = {}
-            name_input_stack_to_agg = {}
-            for op in cpp_op_list:
-                aggregate(name_to_agg, op.name, op)
-                aggregate(name_input_to_agg, op.name + "###" + str(op.input_shape), op)
-                aggregate(name_stack_to_agg, op.name + "###" + str(op.call_stack), op)
-                aggregate(name_input_stack_to_agg, op.name + "###" + str(op.input_shape) + "###" + str(op.call_stack), op)
-
-            op_list_groupby_name = list(name_to_agg.values())
-            op_list_groupby_name_input = list(name_input_to_agg.values())
+            op_list_groupby_name = list(agg_result[0].values())
+            op_list_groupby_name_input = list(agg_result[1].values())
             stack_lists_group_by_name = defaultdict(list)
             stack_lists_group_by_name_input = defaultdict(list)
-            for agg in name_stack_to_agg.values():
+            for agg in agg_result[2].values():
                 assert (len(agg.call_stacks) == 1)
                 if list(agg.call_stacks)[0]:
                     stack_lists_group_by_name[agg.name].append(agg)
-            for agg in name_input_stack_to_agg.values():
+            for agg in agg_result[3].values():
                 assert (len(agg.call_stacks) == 1)
                 if list(agg.call_stacks)[0]:
                     key = agg.name + "###" + str(agg.input_shape)
@@ -188,41 +233,11 @@ class ModuleParser:
 
             return op_list_groupby_name, op_list_groupby_name_input, stack_lists_group_by_name, stack_lists_group_by_name_input
 
-        def parse_kernels(kernel_list):
-            name_op_to_agg = {}
-            for kernel in kernel_list:
-                dur = kernel.end_time - kernel.start_time
-                op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
-                key = "###".join((kernel.name, op_name,
-                                  str(kernel.grid), str(kernel.block),
-                                  str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
-                if key not in name_op_to_agg:
-                    name_op_to_agg[key] = KernelAggByNameOp(kernel, op_name)
-                agg = name_op_to_agg[key]
-                agg.calls += 1
-                agg.total_duration += dur
-                agg.min_duration = min(agg.min_duration, dur)
-                agg.max_duration = max(agg.max_duration, dur)
-                agg.blocks_per_sm += float(kernel.blocks_per_sm or 0) * dur
-                agg.occupancy += float(kernel.occupancy or 0) * dur
-
-            kernel_list_groupby_name_op = list(name_op_to_agg.values())
-            return kernel_list_groupby_name_op
-
-        tid2list = context.tid2list
-        tid2zero_rt_list = context.tid2zero_rt_list
-        corrid_to_device = context.corrid_to_device
-
-        # Kernel that not owned by any operator should also be shown in kernel view
-        # when group by "Kernel Properties + Op Name".
-        for _, device_nodes in corrid_to_device.items():
-            self.kernel_list.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
-
-        for tid, op_list in tid2list.items():
-            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
-            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
-            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            root_node = self._build_tree(op_list, zero_rt_list, tid)
-            self.tid2tree[int(tid)] = root_node
-        self.op_list_groupby_name, self.op_list_groupby_name_input, self.stack_lists_group_by_name, self.stack_lists_group_by_name_input = parse_ops(self.cpp_op_list)
-        self.kernel_list_groupby_name_op = parse_kernels(self.kernel_list)
+        ops = []
+        kernels = []
+        for root in self.tid2tree.values():
+            root_ops, root_kernels = root.get_operator_and_kernels()
+            ops.extend(root_ops)
+            kernels.extend(root_kernels)
+        self.op_list_groupby_name, self.op_list_groupby_name_input, self.stack_lists_group_by_name, self.stack_lists_group_by_name_input = parse_ops(ops)
+        self.kernel_list_groupby_name_op = aggregate_kernels(kernels)

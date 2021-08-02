@@ -50,9 +50,9 @@ class CommunicationNode(BaseNode):
         self.step_name = None
 
     @classmethod
-    def create(cls, event, input_shape, input_type):
+    def create(cls, event):
         kwargs = BaseNode.get_node_argument(event)
-        return cls(input_shape=input_shape, input_type=input_type, **kwargs)
+        return cls(input_shape=event.input_shape, input_type=event.input_type, **kwargs)
 
 
 class HostNode(BaseNode):
@@ -66,13 +66,13 @@ class OperatorNode(HostNode):
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
-            children=None, runtimes=None, input_shape=None, input_type=None, call_stack=None, self_host_duration=0, self_device_duration=0):
+            children=None, runtimes=None, input_shape=None, input_type=None, callstack=None, self_host_duration=0, self_device_duration=0):
         super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
         self.children = [] if children is None else children # OperatorNode and ProfilerStepNode.
         self.runtimes = [] if runtimes is None else runtimes # RuntimeNode
         self.input_shape = input_shape
         self.input_type = input_type
-        self.call_stack = call_stack
+        self.callstack = callstack
         self.self_host_duration = self_host_duration
         self.self_device_duration = self_device_duration
         self.memory_records = []
@@ -146,9 +146,9 @@ class OperatorNode(HostNode):
         return ops, kernels
 
     @classmethod
-    def create(cls, event, input_shape, input_type, call_stack):
+    def create(cls, event):
         kwargs = BaseNode.get_node_argument(event)
-        return cls(input_shape=input_shape, input_type=input_type, call_stack=call_stack, **kwargs)
+        return cls(input_shape=event.input_shape, input_type=event.input_type, callstack=event.callstack, **kwargs)
 
 
 class ProfilerStepNode(OperatorNode):
@@ -174,10 +174,7 @@ class RuntimeNode(HostNode):
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
     def get_kernels(self):
-        kernels = []
-        if self.device_nodes is not None:
-            kernels.extend([n for n in self.device_nodes if n.type == EventTypes.KERNEL])
-        return kernels
+        return [n for n in self.device_nodes if n.type == EventTypes.KERNEL] if self.device_nodes else []
 
     @classmethod
     def create(cls, event, device_nodes):
@@ -201,11 +198,6 @@ class DeviceNode(BaseNode):
 
     @classmethod
     def create(cls, event):
-        kwargs = DeviceNode.get_node_argument(event)
-        return cls(**kwargs)
-
-    @staticmethod
-    def get_node_argument(event):
         kwargs = BaseNode.get_node_argument(event)
         if event.type == EventTypes.KERNEL:
             kwargs["blocks_per_sm"] = event.blocks_per_sm
@@ -215,7 +207,7 @@ class DeviceNode(BaseNode):
             kwargs["regs_per_thread"] = event.regs_per_thread
             kwargs["shared_memory"] = event.shared_memory
             kwargs["tc_used"] = event.tc_used
-        return kwargs
+        return cls(**kwargs)
 
 def is_operator_node(node):
     if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \

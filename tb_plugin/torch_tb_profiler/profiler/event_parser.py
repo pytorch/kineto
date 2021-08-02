@@ -121,11 +121,11 @@ class NodeParserMixin:
                             (corrid, rt_node.external_id, device_node.external_id))
         elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
             if event.type == EventTypes.PROFILER_STEP:
-                op_node = ProfilerStepNode.create(event, event.input_shape, event.input_type, None)
+                op_node = ProfilerStepNode.create(event)
             else:
-                op_node = OperatorNode.create(event, event.input_shape, event.input_type, event.callstack)
+                op_node = OperatorNode.create(event)
             if event.name in CommunicationOpNameSet:
-                self.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
+                self.communication_data[op_node.external_id] = CommunicationNode.create(event)
                 self.use_nccl = True
             if event.name == "DataParallel.forward":
                 self.use_dp = True

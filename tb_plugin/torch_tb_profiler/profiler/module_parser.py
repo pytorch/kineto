@@ -15,7 +15,7 @@ class OperatorAgg:
         self.name = op.name
         self.input_shape = str(op.input_shape)  # Optional
 
-        self.call_stacks = set()  # Optional
+        self.callstacks = set()  # Optional
         self.calls = 0
         self.host_duration = 0
         self.device_duration = 0
@@ -40,7 +40,7 @@ def aggregate_ops(op_list, keys_func):
         if key not in key_to_agg:
             key_to_agg[key] = OperatorAgg(op)
         agg = key_to_agg[key]
-        agg.call_stacks.add(op.call_stack)
+        agg.callstacks.add(op.callstack)
         agg.calls += 1
         agg.host_duration += op.end_time - op.start_time
         agg.device_duration += op.device_duration
@@ -136,19 +136,19 @@ class ModuleAggregator:
         keys = [
             lambda x: x.name,
             lambda x: x.name + "###" + str(x.input_shape),
-            lambda x: x.name + "###" + str(x.call_stack),
-            lambda x: x.name + "###" + str(x.input_shape) + "###" + str(x.call_stack)
+            lambda x: x.name + "###" + str(x.callstack),
+            lambda x: x.name + "###" + str(x.input_shape) + "###" + str(x.callstack)
         ]
         agg_result = aggregate_ops(ops, keys)
         stack_lists_group_by_name = defaultdict(list)
         stack_lists_group_by_name_input = defaultdict(list)
         for agg in agg_result[2].values():
-            assert (len(agg.call_stacks) == 1)
-            if list(agg.call_stacks)[0]:
+            assert (len(agg.callstacks) == 1)
+            if list(agg.callstacks)[0]:
                 stack_lists_group_by_name[agg.name].append(agg)
         for agg in agg_result[3].values():
-            assert (len(agg.call_stacks) == 1)
-            if list(agg.call_stacks)[0]:
+            assert (len(agg.callstacks) == 1)
+            if list(agg.callstacks)[0]:
                 key = agg.name + "###" + str(agg.input_shape)
                 stack_lists_group_by_name_input[key].append(agg)
 

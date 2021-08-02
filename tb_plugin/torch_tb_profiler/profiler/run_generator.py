@@ -271,7 +271,7 @@ class RunGenerator(object):
             row['tc_self_ratio'] = round(100 * op.tc_self_ratio, 2)
             row['tc_total_ratio'] = round(100 * op.tc_total_ratio, 2)
             if call_stack:
-                row['call_stack'] = op.call_stacks.pop()
+                row['call_stack'] = op.callstacks.pop()
             else:
                 if group_by_input_shape:
                     key = op.name + '###' + str(op.input_shape)

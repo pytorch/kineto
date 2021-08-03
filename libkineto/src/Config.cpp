@@ -38,7 +38,7 @@ constexpr int kDefaultActivitiesExternalAPINetSizeThreshold(0);
 constexpr int kDefaultActivitiesExternalAPIGpuOpCountThreshold(0);
 constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
 constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
-constexpr seconds kDefaultBufferUntilWarmup(1);
+constexpr seconds kDefaultBufferUntilWarmup(10);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);

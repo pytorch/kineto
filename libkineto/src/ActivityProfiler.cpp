@@ -522,12 +522,11 @@ void ActivityProfiler::configure(
 #endif // HAS_CUPTI
 
   profileStartTime_ = config_->requestTimestamp();
-  if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
-    if (profileStartTime_ < now) {
-      LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
-    } else {
-      LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
-    }
+
+  if (profileStartTime_ < now) {
+    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
+  } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
+    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
   } else {
     if (profilers_.size() > 0) {
       configureChildProfilers();

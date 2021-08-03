@@ -101,7 +101,7 @@ void ActivityProfilerController::profilerLoop() {
       std::lock_guard<std::mutex> lock(asyncConfigLock_);
       if (asyncRequestConfig_) {
         // Note on now + kProfilerIntervalMsecs
-        // Profiler interval does not align perfectly upto starTime - warmup. Waiting until next the next tick
+        // Profiler interval does not align perfectly upto startTime - warmup. Waiting until the next tick
         // won't allow sufficient time for the profiler to warm up. So check if we are very close to the warmup time and trigger warmup
         if (now + kProfilerIntervalMsecs 
             >= (asyncRequestConfig_->requestTimestamp() - asyncRequestConfig_->activitiesWarmupDuration())) {

@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------
 import sys
 from collections import defaultdict
-from enum import IntEnum
+from enum import IntEnum, auto
 from typing import Dict, List
 
 from .. import utils
@@ -16,7 +16,17 @@ from .trace import EventTypes
 logger = utils.get_logger()
 
 CommunicationOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
-ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Communication', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
+
+class ProfileRole(IntEnum):
+    Kernel = auto()
+    Memcpy = auto()
+    Memset = auto()
+    Communication = auto()
+    Runtime = auto()
+    DataLoader = auto()
+    CpuOp = auto()
+    Other = auto()
+    Total = auto()
 
 
 class NodeParserMixin:
@@ -224,10 +234,7 @@ class OpTreeBuilder:
 
 class StepParser:
     def __init__(self):
-        # we could not use [[]] * len here since they all point to same memory
-        # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
-        # https://stackoverflow.com/questions/240178/list-of-lists-changes-reflected-across-sublists-unexpectedly
-        self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
+        self.role_ranges = dict([(role, []) for role in ProfileRole if role != ProfileRole.Total])
         self.steps = []
         self.steps_names = []
         self.cpu_min_ts = sys.maxsize  # Min time of CPU side events.
@@ -258,8 +265,8 @@ class StepParser:
             self.steps.append((self.cpu_min_ts, self.cpu_max_ts))
             self.steps_names.append("0")
 
-        for i in range(len(self.role_ranges)):
-            self.role_ranges[i] = merge_ranges(self.role_ranges[i])
+        for role in self.role_ranges:
+            self.role_ranges[role] = merge_ranges(self.role_ranges[role])
 
     def update_device_steps(self, runtime_node_list):
         self._update_steps_duration(*self._find_device_steps(runtime_node_list))

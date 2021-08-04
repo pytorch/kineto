@@ -3,6 +3,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as React from 'react'
+import { makeStyles } from '@material-ui/core/styles'
 import {
   OperationTableData,
   OperationTableDataInner,
@@ -21,19 +22,28 @@ export interface IProps {
   span: string
   groupBy: OperationGroupBy
   sortColumn: string
+  tooltips?: any
 }
+
+const useStyles = makeStyles((theme) => ({
+  tooltip: {
+    whiteSpace: 'pre-wrap'
+  }
+}))
+
 const rowExpandable = (record: OperationTableDataInner) => record.has_call_stack
 const expandIcon = makeExpandIcon<OperationTableDataInner>(
   'View CallStack',
   (record) => !record.has_call_stack
 )
 export const OperationTable = (props: IProps) => {
-  const { data, run, worker, span, groupBy, sortColumn } = props
+  const { data, run, worker, span, groupBy, sortColumn, tooltips } = props
+  const classes = useStyles(props)
 
   const rows = React.useMemo(() => attachId(data), [data])
 
   const columns = React.useMemo(
-    () => getCommonOperationColumns(rows, sortColumn),
+    () => getCommonOperationColumns(rows, sortColumn, tooltips, classes),
     [rows]
   )
 

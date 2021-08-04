@@ -90,6 +90,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/operation/stack": self.operation_stack_route,
             "/kernel": self.kernel_pie_route,
             "/kernel/table": self.kernel_table_route,
+            "/kernel/tc_pie": self.kernel_tc_route,
             "/trace": self.trace_route,
             "/distributed/gpuinfo": self.dist_gpu_info_route,
             "/distributed/overlap": self.comm_overlap_route,
@@ -214,6 +215,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return self.respond_as_json(profile.kernel_table)
         else:
             return self.respond_as_json(profile.kernel_op_table)
+
+    @wrappers.Request.application
+    def kernel_tc_route(self, request):
+        profile = self._get_profile_for_request(request)
+
+        return self.respond_as_json(profile.tc_pie)
 
     @wrappers.Request.application
     def trace_route(self, request):

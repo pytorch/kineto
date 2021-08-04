@@ -55,6 +55,7 @@ class RunProfileData(object):
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
         self.kernel_stat = None
+        self.tc_used_ratio = None
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
@@ -208,6 +209,7 @@ class RunProfileData(object):
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
+            self.tc_used_ratio = kernel_parser.tc_used_ratio
 
     def analyze(self):
         self.recommendations = []

@@ -86,6 +86,9 @@ export const Operator: React.FC<IProps> = (props) => {
     OperationTableData | undefined
   >(undefined)
   const [sortColumn, setSortColumn] = React.useState('')
+  const [tableTooltips, setTableTooltips] = React.useState<any | undefined>(
+    undefined
+  )
   const [groupBy, setGroupBy] = React.useState(OperationGroupBy.Operation)
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
   const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
@@ -124,6 +127,7 @@ export const Operator: React.FC<IProps> = (props) => {
       .operationTableGet(run, worker, span, groupBy)
       .then((resp) => {
         setSortColumn(resp.metadata.sort)
+        setTableTooltips(resp.metadata.tooltips)
         setOperatorTable(resp.data)
       })
   }, [run, worker, span, groupBy])
@@ -291,6 +295,7 @@ export const Operator: React.FC<IProps> = (props) => {
                       span={span}
                       worker={worker}
                       sortColumn={sortColumn}
+                      tooltips={tableTooltips}
                     />
                   )}
                 </DataLoading>

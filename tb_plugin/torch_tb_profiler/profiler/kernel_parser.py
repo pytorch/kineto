@@ -10,6 +10,7 @@ from .trace import EventTypes
 class KernelParser:
     def __init__(self):
         self.kernel_stat = None
+        self.tc_used_ratio = 0.0
 
     def parse_events(self, events):
         events = [vars(event) for event in events if event.type == EventTypes.KERNEL]
@@ -34,3 +35,8 @@ class KernelParser:
             blocks_per_sm=('blocks_per_sm', weighted_avg),
             occupancy=('occupancy', weighted_avg))\
             .sort_values("sum", ascending=False)
+
+        tc_total = self.kernel_stat["sum"].sum()
+        tc_self = self.kernel_stat[self.kernel_stat["tc_used"]]["sum"].sum()
+        if tc_total > 0:
+            self.tc_used_ratio = tc_self / tc_total

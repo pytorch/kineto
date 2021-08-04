@@ -440,6 +440,31 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/TableData'
+  /kernel/tc_pie:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TensorCoresGraph'
   /trace:
     get:
       parameters:
@@ -603,6 +628,8 @@ components:
       properties:
         sort:
           type: string
+        tooltips:
+          type: object
     TableData:
       type: object
       required:
@@ -614,6 +641,13 @@ components:
         metadata:
           $ref: '#/components/schemas/TableMetadata'
     KernelGraph:
+      type: object
+      required:
+        - total
+      properties:
+        total:
+          $ref: '#/components/schemas/Graph'
+    TensorCoresGraph:
       type: object
       required:
         - total

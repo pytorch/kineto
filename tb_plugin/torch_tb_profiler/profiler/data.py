@@ -73,18 +73,20 @@ class RunProfileData(object):
         return False
 
     @staticmethod
-    def parse(run_dir, worker, span, path, caches):
-        logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
+    def parse(worker, span, path):
+        trace_path, trace_json = RunProfileData._preprocess_file(path)
 
-        trace_path, trace_json = RunProfileData._preprocess_file(caches, io.join(run_dir, path))
-
-        profile = RunProfileData(worker, span)
+        profile = RunProfileData.from_json(worker, span, trace_json)
         profile.trace_file_path = trace_path
-        if type(trace_json) is dict:
-            profile.data_schema_version = trace_json.get("schemaVersion", None)
-            profile.distributed_info = trace_json.get("distributedInfo", None)
-            profile.device_props = trace_json.get("deviceProperties", None)
-            trace_json = trace_json["traceEvents"]
+        return profile, trace_path
+
+    @staticmethod
+    def from_json(worker, span, trace_json):
+        profile = RunProfileData(worker, span)
+        profile.data_schema_version = trace_json.get("schemaVersion", None)
+        profile.distributed_info = trace_json.get("distributedInfo", None)
+        profile.device_props = trace_json.get("deviceProperties", None)
+        trace_json = trace_json["traceEvents"]
 
         profile.events = []
         for data in trace_json:
@@ -92,15 +94,16 @@ class RunProfileData(object):
             if event is not None:
                 profile.events.append(event)
 
+        profile.process()
+        profile.analyze()
         return profile
 
     @staticmethod
-    def _preprocess_file(caches, trace_path):
+    def _preprocess_file(trace_path):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
-        local_file = caches.get_remote_cache(trace_path)
-        data = io.read(local_file)
+        data = io.read(trace_path)
         if trace_path.endswith('.gz'):
             data = gzip.decompress(data)
 
@@ -144,7 +147,6 @@ class RunProfileData(object):
             fp.close()
             with gzip.open(fp.name, mode='wt') as fzip:
                 fzip.write(json.dumps(trace_json))
-            caches.add_file(local_file, fp.name)
             trace_path = fp.name
 
         return trace_path, trace_json

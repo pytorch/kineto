@@ -83,10 +83,11 @@ class RunLoader(object):
         absl.logging.use_absl_handler()
 
         try:
-            logger.debug("starting process_data")
-            data = RunProfileData.parse(self.run_dir, worker, span, path, self.caches)
-            data.process()
-            data.analyze()
+            logger.debug("Parse trace, run_dir=%s, worker=%s", self.run_dir, path)
+            local_file = self.caches.get_remote_cache(io.join(self.run_dir, path))
+            data, trace_path = RunProfileData.parse(worker, span, local_file)
+            if trace_path != local_file:
+                self.caches.add_file(local_file, trace_path)
 
             generator = RunGenerator(worker, span, data)
             profile = generator.generate_run_profile()

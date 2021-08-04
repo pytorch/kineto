@@ -1,8 +1,7 @@
-import json
 import gzip
+import json
 import unittest
 
-import torch_tb_profiler.profiler.trace as trace
 from torch_tb_profiler.profiler.data import RunProfileData
 from torch_tb_profiler.profiler.overall_parser import ProfileRole
 from torch_tb_profiler.run import RunProfile
@@ -14,14 +13,7 @@ WORKER_NAME = "worker0"
 def parse_json_trace(json_content):
     trace_json = json.loads(json_content)
     trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
-    profile = RunProfileData(WORKER_NAME)
-    profile.trace_json = trace_json
-    profile.events = []
-    for data in trace_json["traceEvents"]:
-        event = trace.create_event(data)
-        if event is not None:
-            profile.events.append(event)
-    return profile
+    return RunProfileData.from_json(WORKER_NAME, 0, trace_json)
 
 
 '''
@@ -1593,6 +1585,7 @@ class TestProfiler(unittest.TestCase):
         ]
         """
         import logging
+
         from torch_tb_profiler.utils import get_logger
         logger = get_logger()
         logger.addHandler(logging.StreamHandler())

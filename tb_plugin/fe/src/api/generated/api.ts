@@ -502,6 +502,62 @@ export interface MemoryData {
 /**
  *
  * @export
+ * @interface MemoryEventsData
+ */
+export interface MemoryEventsData {
+  /**
+   *
+   * @type {MemoryEventsTableMetadata}
+   * @memberof MemoryEventsData
+   */
+  metadata: MemoryEventsTableMetadata
+  /**
+   *
+   * @type {Array<GraphColumn>}
+   * @memberof MemoryEventsData
+   */
+  columns: Array<GraphColumn>
+  /**
+   *
+   * @type {Array<Array<string | number | boolean | ValueAndFormat>>}
+   * @memberof MemoryEventsData
+   */
+  rows: Array<Array<string | number | boolean | ValueAndFormat>>
+}
+/**
+ *
+ * @export
+ * @interface MemoryEventsTableMetadata
+ */
+export interface MemoryEventsTableMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryEventsTableMetadata
+   */
+  title: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryEventsTableMetadata
+   */
+  defaultDevice: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryEventsTableMetadata
+   */
+  search?: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryEventsTableMetadata
+   */
+  sort?: string
+}
+/**
+ *
+ * @export
  * @interface MemoryTableMetadata
  */
 export interface MemoryTableMetadata {
@@ -1411,6 +1467,92 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
+     * @param {number} [startTs]
+     * @param {number} [endTs]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryEventsGet(
+      run: string,
+      worker: string,
+      span: string,
+      startTs?: number,
+      endTs?: number,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling memoryEventsGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling memoryEventsGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling memoryEventsGet.'
+        )
+      }
+      const localVarPath = `/memory_events`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      if (startTs !== undefined) {
+        localVarQueryParameter['start_ts'] = startTs
+      }
+
+      if (endTs !== undefined) {
+        localVarQueryParameter['end_ts'] = endTs
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {number} [startTs]
+     * @param {number} [endTs]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1418,6 +1560,8 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
+      startTs?: number,
+      endTs?: number,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1457,6 +1601,14 @@ export const DefaultApiFetchParamCreator = function (
 
       if (span !== undefined) {
         localVarQueryParameter['span'] = span
+      }
+
+      if (startTs !== undefined) {
+        localVarQueryParameter['start_ts'] = startTs
+      }
+
+      if (endTs !== undefined) {
+        localVarQueryParameter['end_ts'] = endTs
       }
 
       localVarUrlObj.query = Object.assign(
@@ -2362,6 +2514,45 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
+     * @param {number} [startTs]
+     * @param {number} [endTs]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryEventsGet(
+      run: string,
+      worker: string,
+      span: string,
+      startTs?: number,
+      endTs?: number,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryEventsData> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).memoryEventsGet(run, worker, span, startTs, endTs, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {number} [startTs]
+     * @param {number} [endTs]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2369,11 +2560,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
+      startTs?: number,
+      endTs?: number,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).memoryGet(run, worker, span, options)
+      ).memoryGet(run, worker, span, startTs, endTs, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2873,14 +3066,52 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
+     * @param {number} [startTs]
+     * @param {number} [endTs]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    memoryGet(run: string, worker: string, span: string, options?: any) {
+    memoryEventsGet(
+      run: string,
+      worker: string,
+      span: string,
+      startTs?: number,
+      endTs?: number,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).memoryEventsGet(
+        run,
+        worker,
+        span,
+        startTs,
+        endTs,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {number} [startTs]
+     * @param {number} [endTs]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    memoryGet(
+      run: string,
+      worker: string,
+      span: string,
+      startTs?: number,
+      endTs?: number,
+      options?: any
+    ) {
       return DefaultApiFp(configuration).memoryGet(
         run,
         worker,
         span,
+        startTs,
+        endTs,
         options
       )(fetch, basePath)
     },
@@ -3244,15 +3475,55 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
+   * @param {number} [startTs]
+   * @param {number} [endTs]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
    */
-  public memoryGet(run: string, worker: string, span: string, options?: any) {
+  public memoryEventsGet(
+    run: string,
+    worker: string,
+    span: string,
+    startTs?: number,
+    endTs?: number,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).memoryEventsGet(
+      run,
+      worker,
+      span,
+      startTs,
+      endTs,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {number} [startTs]
+   * @param {number} [endTs]
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public memoryGet(
+    run: string,
+    worker: string,
+    span: string,
+    startTs?: number,
+    endTs?: number,
+    options?: any
+  ) {
     return DefaultApiFp(this.configuration).memoryGet(
       run,
       worker,
       span,
+      startTs,
+      endTs,
       options
     )(this.fetch, this.basePath)
   }

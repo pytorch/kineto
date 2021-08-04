@@ -13,9 +13,10 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryCurve, MemoryData } from '../api'
+import { MemoryCurve, MemoryData, MemoryEventsData } from '../api'
 import { useSearchDirectly } from '../utils/search'
 import { LineChart } from './charts/LineChart'
+import { AntTableChart } from './charts/AntTableChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
 
@@ -55,6 +56,9 @@ export const MemoryView: React.FC<IProps> = (props) => {
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
     undefined
   )
+  const [memoryEventsData, setMemoryEventsData] = React.useState<
+    MemoryEventsData | undefined
+  >(undefined)
   const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
     MemoryCurve | undefined
   >(undefined)
@@ -99,6 +103,12 @@ export const MemoryView: React.FC<IProps> = (props) => {
   }, [run, worker, span])
 
   React.useEffect(() => {
+    api.defaultApi.memoryEventsGet(run, worker, span).then((resp) => {
+      setMemoryEventsData(resp)
+    })
+  }, [run, worker, span])
+
+  React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
       setMemoryCurveGraph(resp)
     })
@@ -127,6 +137,11 @@ export const MemoryView: React.FC<IProps> = (props) => {
                     }}
                   />
                 )}
+              </DataLoading>
+            </Grid>
+            <Grid item>
+              <DataLoading value={memoryEventsData}>
+                {(data) => <AntTableChart graph={data} />}
               </DataLoading>
             </Grid>
             <Grid item container direction="column" spacing={1}>

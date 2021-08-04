@@ -45,6 +45,7 @@ class CommunicationNode(BaseNode):
         self.input_shape = input_shape
         self.input_type = input_type
         self.kernel_ranges = []
+        self.real_time_ranges = []
         self.total_time = 0
         self.real_time = 0
         self.step_name = None

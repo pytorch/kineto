@@ -3,10 +3,10 @@
 # --------------------------------------------------------------------------
 from collections import OrderedDict
 
-from .. import consts, utils
-from ..run import DistributedRunProfile, RunProfile
 from .node import MemoryMetrics
 from .overall_parser import ProfileRole
+from .. import consts, utils
+from ..run import DistributedRunProfile, RunProfile
 
 logger = utils.get_logger()
 
@@ -39,6 +39,7 @@ class RunGenerator(object):
             profile_run.kernel_op_table = self._generate_kernel_op_table()
             profile_run.kernel_pie = self._generate_kernel_pie()
             profile_run.kernel_table = self._generate_kernel_table()
+            profile_run.tc_pie = self._generate_tc_pie()
 
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
@@ -251,7 +252,12 @@ class RunGenerator(object):
         data = list()
         result = {
             "metadata": {
-                "sort": "device_self_duration" if show_gpu else "host_self_duration"
+                "sort": "device_self_duration" if show_gpu else "host_self_duration",
+                "tooltips": {
+                    "tc_eligible": consts.TOOLTIP_OP_TC_ELIGIBLE,
+                    "tc_self_ratio": consts.TOOLTIP_OP_TC_SELF,
+                    "tc_total_ratio": consts.TOOLTIP_OP_TC_TOTAL
+                }
             },
             "data": data
         }
@@ -318,8 +324,10 @@ class RunGenerator(object):
                             {"type": "string", "name": "Block"},
                             {"type": "number", "name": "Register Per Thread"},
                             {"type": "number", "name": "Shared Memory"},
-                            {"type": "string", "name": "Kernel Uses TensorCore"},
-                            {"type": "string", "name": "Op is TensorCore eligible"}]
+                            {"type": "string", "name": "Kernel Uses Tensor Cores",
+                             "tooltip": consts.TOOLTIP_KERNEL_USES_TC},
+                            {"type": "string", "name": "Op is Tensor Cores eligible",
+                             "tooltip": consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
@@ -362,7 +370,8 @@ class RunGenerator(object):
             "data": table
         }
         table["columns"] = [{"type": "string", "name": "Name"},
-                            {"type": "string", "name": "TensorCore Used"}]
+                            {"type": "string", "name": "Tensor Cores Used",
+                             "tooltip": consts.TOOLTIP_KERNEL_USES_TC}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
         if sum(self.profile_data.blocks_per_sm_count) > 0:
@@ -386,6 +395,13 @@ class RunGenerator(object):
                                   else round(row[column], round_digits[i]))
             table["rows"].append(kernel_row)
         return result
+
+    def _generate_tc_pie(self):
+        pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
+        pie["rows"].append(["Using Tensor Cores", self.profile_data.tc_used_ratio])
+        pie["rows"].append(["Not Using Tensor Cores", 1.0 - self.profile_data.tc_used_ratio])
+        data = {"total": pie}
+        return data
 
     def _generate_memory_view(self, memory_stats):
 

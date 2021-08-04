@@ -27,7 +27,10 @@ import { AntTableChart } from './charts/AntTableChart'
 import { PieChart } from './charts/PieChart'
 import { DataLoading } from './DataLoading'
 import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
-import { GPUKernelTotalTimeTooltip } from './TooltipDescriptions'
+import {
+  GPUKernelTotalTimeTooltip,
+  TensorCoresPieChartTooltip
+} from './TooltipDescriptions'
 
 export interface IProps {
   run: string
@@ -67,6 +70,7 @@ export const Kernel: React.FC<IProps> = (props) => {
   const [kernelGraph, setKernelGraph] = React.useState<Graph | undefined>(
     undefined
   )
+  const [tcGraph, setTcGraph] = React.useState<Graph | undefined>(undefined)
   const [kernelTable, setKernelTable] = React.useState<Graph | undefined>(
     undefined
   )
@@ -105,6 +109,12 @@ export const Kernel: React.FC<IProps> = (props) => {
       })
   }, [run, worker, span])
 
+  React.useEffect(() => {
+    api.defaultApi.kernelTcPieGet(run, worker, span).then((resp) => {
+      setTcGraph(resp.total)
+    })
+  }, [run, worker, span])
+
   const [searchedKernelTable] = useSearch(searchKernelName, 'name', kernelTable)
   const [searchedOpTable] = useSearch(
     searchOpName,
@@ -141,13 +151,22 @@ export const Kernel: React.FC<IProps> = (props) => {
     [chartHeaderRenderer]
   )
 
+  const TensorCoresTitle = React.useMemo(
+    () =>
+      chartHeaderRenderer(
+        'Tensor Cores Utilization',
+        TensorCoresPieChartTooltip
+      ),
+    [chartHeaderRenderer]
+  )
+
   return (
     <div className={classes.root}>
       <Card variant="outlined">
         <CardHeader title="Kernel View" />
         <CardContent>
-          <Grid container direction="column" spacing={1}>
-            <Grid item container>
+          <Grid container spacing={1}>
+            <Grid item container sm={12}>
               <Grid item>
                 <RadioGroup row value={useTop} onChange={onUseTopChanged}>
                   <FormControlLabel
@@ -184,6 +203,22 @@ export const Kernel: React.FC<IProps> = (props) => {
                       title={graph.title}
                       graph={graph}
                       top={actualTop}
+                    />
+                  </Card>
+                )}
+              </DataLoading>
+            </Grid>
+            <Grid item sm={6}>
+              <DataLoading value={tcGraph}>
+                {(graph) => (
+                  <Card elevation={0}>
+                    <CardHeader title={TensorCoresTitle} />
+                    <PieChart
+                      title={graph.title}
+                      graph={graph}
+                      colors={['#0099C6', '#DD4477', '#66AA00', '#B82E2E']}
+                      top={actualTop}
+                      tooltip_mode='percentage'
                     />
                   </Card>
                 )}

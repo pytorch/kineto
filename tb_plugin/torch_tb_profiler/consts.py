@@ -67,3 +67,35 @@ TOOLTIP_KERNEL_USES_TC = \
     "Whether this kernel uses Tensor Cores."
 TOOLTIP_KERNEL_OP_TC_ELIGIBLE = \
     "Whether the operator launched this kernel is eligible to use Tensor Cores."
+
+WATT_MAP = {
+    "AGX Xavier": 30,
+    "AMD RX480": 150,
+    "GTX 1080": 180,
+    "GTX 1080 Ti": 250,
+    "GTX 750": 250,
+    "GTX TITAN X": 250,
+    "Intel Xeon E5-2699": 145,
+    "Quadro K6000": 225,
+    "Quadro P6000": 250,
+    "RTX 2080": 215,
+    "RTX 2080 Ti": 250,
+    "RTX 8000": 260,
+    "T4": 70,
+    "Tesla K40c": 245,
+    "Tesla K80": 300,
+    "Tesla M40 24GB": 250,
+    "Tesla P100": 250,
+    "Tesla V100-PCIE-16GB": 300,
+    "Tesla V100-SXM2-16GB": 250,
+    "Tesla V100-SXM2-32GB": 300,
+    "Titan RTX": 280,
+    "Titan V": 250,
+    "TITAN X Pascal": 250,
+    "Titan Xp": 250,
+    "TPUv2 Chip": 221,
+    "TPUv3 Chip": 283
+}
+
+DEFAULT_IMPACT = 0.432 # kg/kwH
+DEFAULT_OFFSET = 0

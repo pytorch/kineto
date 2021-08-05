@@ -24,3 +24,11 @@ def get_logger():
 
 def is_chrome_trace_file(path):
     return consts.WORKER_PATTERN.match(path)
+
+def get_carbon_emit(gpu):
+    watt = consts.WATT_MAP.get(gpu)
+    if watt is None:
+        return None
+
+    energy = watt / 1000 # kWh
+    return energy * consts.DEFAULT_IMPACT # kg/hour

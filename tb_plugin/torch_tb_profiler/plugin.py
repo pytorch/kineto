@@ -340,7 +340,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if carbon is None:
             raise exceptions.NotFound("404 Not Found carbon in the dictionary")
         else:
-            data = {"carbon": carbon}
+            data = {"carbon": carbon, "units": "kg CO2 per hour"}
             result = {
                 "metadata": {"context": "See https://mlco2.github.io/impact/#compute for more details computation"},
                 "data": data

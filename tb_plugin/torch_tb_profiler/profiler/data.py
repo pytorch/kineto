@@ -148,7 +148,7 @@ class RunProfileData(object):
 
     def process(self):
         parser = EventParser()
-        tid2tree = parser.parse(self.events)
+        self.tid2tree = parser.parse(self.events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
@@ -166,7 +166,7 @@ class RunProfileData(object):
         # Starting aggregate
         logger.debug("ModuleAggregator")
         module_aggregator = ModuleAggregator()
-        module_aggregator.aggregate(tid2tree)
+        module_aggregator.aggregate(self.tid2tree)
         self.op_list_groupby_name = module_aggregator.op_list_groupby_name
         self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name

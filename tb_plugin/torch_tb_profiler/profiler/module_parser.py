@@ -75,7 +75,7 @@ class KernelAggByNameOp:
         self.blocks_per_sm = 0.0
         self.occupancy = 0.0
         self.tc_used = kernel.tc_used
-        self.op_tc_eligible = kernel.op_node_ref().tc_eligible if kernel.op_node_ref is not None else False
+        self.op_tc_eligible = kernel.op_node.tc_eligible if kernel.op_node is not None else False
 
     @property
     def avg_duration(self):
@@ -94,7 +94,7 @@ def aggregate_kernels(kernel_list):
     name_op_to_agg = {}
     for kernel in kernel_list:
         dur = kernel.end_time - kernel.start_time
-        op_name = "N/A" if kernel.op_node_ref is None else kernel.op_node_ref().name
+        op_name = "N/A" if kernel.op_node is None else kernel.op_node.name
         key = "###".join((kernel.name, op_name,
                             str(kernel.grid), str(kernel.block),
                             str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))

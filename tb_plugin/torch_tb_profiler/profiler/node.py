@@ -4,7 +4,6 @@
 from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
-from weakref import ref
 
 from .. import utils
 from .tensor_core import TC_OP_Whitelist
@@ -173,9 +172,8 @@ class RuntimeNode(HostNode):
 
     def fill_stats(self, op_node=None):
         if self.device_nodes:
-            op_node_ref = ref(op_node) if op_node else None
             for device_node in self.device_nodes:
-                device_node.op_node_ref = op_node_ref
+                device_node.op_node = op_node
                 device_duration = device_node.end_time - device_node.start_time
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
@@ -194,7 +192,7 @@ class DeviceNode(BaseNode):
                  blocks_per_sm=None, occupancy=None,
                  grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False):
         super().__init__(name, start_time, end_time, type, tid, external_id)
-        self.op_node_ref = None # The cpu operator that launched it.
+        self.op_node = None # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm
         self.occupancy = occupancy
         self.grid = grid

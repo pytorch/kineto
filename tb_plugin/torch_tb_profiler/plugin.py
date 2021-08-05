@@ -341,7 +341,11 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             raise exceptions.NotFound("404 Not Found carbon in the dictionary")
         else:
             data = {"carbon": carbon}
-            return self.respond_as_json(data)
+            result = {
+                "metadata": {"context": "See https://mlco2.github.io/impact/#compute for more details computation"},
+                "data": data
+            }
+            return self.respond_as_json(result)
 
     @staticmethod
     def respond_as_json(obj):

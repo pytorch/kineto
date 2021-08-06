@@ -64,6 +64,7 @@ class RunGenerator(object):
             profile_run.tid2tree = self.profile_data.tid2tree
             profile_run.op_list_groupby_name = self.profile_data.op_list_groupby_name
 
+
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:
             gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)

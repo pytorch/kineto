@@ -307,10 +307,10 @@ class RunProfile(object):
             """For example:
             ```py
             {
-                "CPU": [# ts, total_allocated, total_reserved
-                    [1, 4, 4],
-                    [2, 16, 16],
-                    [4, 4, 16],
+                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory
+                    [1, 4, 4, 1000000],
+                    [2, 16, 16, 1000000],
+                    [4, 4, 16, 1000000],
                 ],
                 "GPU0": ...
             }
@@ -318,7 +318,6 @@ class RunProfile(object):
             curves = defaultdict(list)
             timestamps = defaultdict(list)
             peaks = defaultdict(float)
-            first_ts = float("inf")
             for e in memory_events:
                 if e.device_type == DeviceType.CPU:
                     dev = "CPU"
@@ -329,8 +328,6 @@ class RunProfile(object):
                 ts = e.ts
                 ta = e.total_allocated
                 tr = e.total_reserved
-
-                first_ts = min(first_ts, ts)
 
                 if ta != ta or tr != tr: # isnan
                     continue
@@ -345,26 +342,36 @@ class RunProfile(object):
 
             return curves, timestamps, peaks
 
-        # raw timestamp is in microsecond
-        # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
-        time_metric_to_factor = {
-            "micro": 1,    "microsecond": 1,    "us": 1,
-            "milli": 1e-3, "millisecond": 1e-3, "ms": 1e-3,
-            "":      1e-6, "second":      1e-6, "s":  1e-6,
-        }
-        # raw memory is in bytes
-        memory_metric_to_factor = {
-            "":  pow(1024,  0), "B":  pow(1024,  0),
-            "K": pow(1024, -1), "KB": pow(1024, -1),
-            "M": pow(1024, -2), "MB": pow(1024, -2),
-            "G": pow(1024, -3), "GB": pow(1024, -3),
+        # canonicalize the memory metric to a string
+        canonical_time_metrics = {
+            "micro": "us", "microsecond": "us", "us": "us",
+            "milli": "ms", "millisecond": "ms", "ms": "ms",
+                 "":  "s",      "second":  "s",  "s":  "s",
         }
         # canonicalize the memory metric to a string
-        canonical_memory_metric = {
-            "": "B",   "B": "B",
+        canonical_memory_metrics = {
+             "":  "B",  "B":  "B",
             "K": "KB", "KB": "KB",
             "M": "MB", "MB": "MB",
             "G": "GB", "GB": "GB",
+        }
+
+        time_metric = canonical_time_metrics[time_metric]
+        memory_metric = canonical_memory_metrics[memory_metric]
+
+        # raw timestamp is in microsecond
+        # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
+        time_metric_to_factor = {
+            "us": 1,
+            "ms": 1e-3,
+            "s":  1e-6,
+        }
+        # raw memory is in bytes
+        memory_metric_to_factor = {
+            "B":  pow(1024,  0),
+            "KB": pow(1024, -1),
+            "MB": pow(1024, -2),
+            "GB": pow(1024, -3),
         }
 
         time_factor = time_metric_to_factor[time_metric]
@@ -376,20 +383,22 @@ class RunProfile(object):
                 del timestamps[dev]
                 del peaks[dev]
         peaks_formatted = {}
+        totals = {}
         for dev, value in peaks.items():
-            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, canonical_memory_metric[memory_metric])
+            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, memory_metric)
 
         devices = list(curves.keys())
         return {
             "metadata": {
-                "peaks": peaks_formatted,
                 "default_device": "CPU",
                 "devices": devices,
+                "peaks": peaks_formatted,
             },
             "columns": [
-                { "name": "Time", "type": "number", "tooltip": "Time since profiler starts" },
-                { "name": "Allocated", "type": "number", "tooltip": "Total memory in use." },
-                { "name": "Reserved", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+                { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
+                { "name": f"Allocated ({memory_metric})", "type": "number", "tooltip": "Total memory in use." },
+                { "name": f"Reserved ({memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+                # { "name": f"Total ({memory_metric})", "type": "number", "tooltip": "Total Memory the device have."},
             ],
             "rows": curves,
             "ts": timestamps,

@@ -386,6 +386,11 @@ class RunProfile(object):
         totals = {}
         for dev, value in peaks.items():
             peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, memory_metric)
+            if dev != "CPU":
+                try:
+                    totals[dev] = profile.gpu_infos[int(dev[3:])]["Memory Raw"] * memory_factor
+                except:
+                    pass
 
         devices = list(curves.keys())
         return {
@@ -393,6 +398,7 @@ class RunProfile(object):
                 "default_device": "CPU",
                 "devices": devices,
                 "peaks": peaks_formatted,
+                "totals": totals,
             },
             "columns": [
                 { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },

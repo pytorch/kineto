@@ -441,6 +441,7 @@ class RunGenerator(object):
         mem = device_prop.get("totalGlobalMem")
         if mem is not None:
             gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
+            gpu_info["Memory Raw"] = mem
 
         major = device_prop.get("computeMajor")
         minor = device_prop.get("computeMinor")

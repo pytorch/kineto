@@ -64,6 +64,7 @@ class RunGenerator(object):
             profile_run.tid2tree = self.profile_data.tid2tree
             profile_run.op_list_groupby_name = self.profile_data.op_list_groupby_name
 
+
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:
             gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
@@ -440,6 +441,7 @@ class RunGenerator(object):
         mem = device_prop.get("totalGlobalMem")
         if mem is not None:
             gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
+            gpu_info["Memory Raw"] = mem
 
         major = device_prop.get("computeMajor")
         minor = device_prop.get("computeMinor")

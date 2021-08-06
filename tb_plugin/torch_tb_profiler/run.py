@@ -307,65 +307,104 @@ class RunProfile(object):
             """For example:
             ```py
             {
-                "CPU": [# ts, total_allocated, total_reserved
-                    [1, 4, 4],
-                    [2, 16, 16],
-                    [4, 4, 16],
+                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory
+                    [1, 4, 4, 1000000],
+                    [2, 16, 16, 1000000],
+                    [4, 4, 16, 1000000],
                 ],
                 "GPU0": ...
             }
             ```"""
             curves = defaultdict(list)
             timestamps = defaultdict(list)
-            first_ts = float("inf")
+            peaks = defaultdict(float)
             for e in memory_events:
-                curve_container = None
-                ts_container = None
                 if e.device_type == DeviceType.CPU:
-                    curve_container = curves["CPU"]
-                    ts_container = timestamps["CPU"]
+                    dev = "CPU"
                 elif e.device_type == DeviceType.CUDA:
-                    gpuid = f"GPU{e.device_id}"
-                    curve_container = curves[gpuid]
-                    ts_container = timestamps[gpuid]
+                    dev = f"GPU{e.device_id}"
                 else:
                     raise NotImplementedError("Unknown device type for memory curve")
-                first_ts = min(first_ts, e.ts)
-                curve_container.append([
-                    (e.ts - profile.profiler_start_ts) * time_factor,
-                    e.total_allocated * memory_factor,
-                    e.total_reserved * memory_factor,
+                ts = e.ts
+                ta = e.total_allocated
+                tr = e.total_reserved
+
+                if ta != ta or tr != tr: # isnan
+                    continue
+
+                curves[dev].append([
+                    (ts - profile.profiler_start_ts) * time_factor,
+                    ta * memory_factor,
+                    tr * memory_factor,
                 ])
-                ts_container.append(e.ts)
-            return curves, timestamps
+                timestamps[dev].append(ts)
+                peaks[dev] = max(peaks[dev], ta)
+
+            return curves, timestamps, peaks
+
+        # canonicalize the memory metric to a string
+        canonical_time_metrics = {
+            "micro": "us", "microsecond": "us", "us": "us",
+            "milli": "ms", "millisecond": "ms", "ms": "ms",
+                 "":  "s",      "second":  "s",  "s":  "s",
+        }
+        # canonicalize the memory metric to a string
+        canonical_memory_metrics = {
+             "":  "B",  "B":  "B",
+            "K": "KB", "KB": "KB",
+            "M": "MB", "MB": "MB",
+            "G": "GB", "GB": "GB",
+        }
+
+        time_metric = canonical_time_metrics[time_metric]
+        memory_metric = canonical_memory_metrics[memory_metric]
 
         # raw timestamp is in microsecond
         # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
         time_metric_to_factor = {
-            "micro": 1,    "microsecond": 1,    "us": 1,
-            "milli": 1e-3, "millisecond": 1e-3, "ms": 1e-3,
-            "":      1e-6, "second":      1e-6, "s":  1e-6,
+            "us": 1,
+            "ms": 1e-3,
+            "s":  1e-6,
         }
         # raw memory is in bytes
         memory_metric_to_factor = {
-            "":  pow(1024,  0), "B":  pow(1024,  0),
-            "K": pow(1024, -1), "KB": pow(1024, -1),
-            "M": pow(1024, -2), "MB": pow(1024, -2),
-            "G": pow(1024, -3), "GB": pow(1024, -3),
+            "B":  pow(1024,  0),
+            "KB": pow(1024, -1),
+            "MB": pow(1024, -2),
+            "GB": pow(1024, -3),
         }
 
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
-        curves, timestamps = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
+        curves, timestamps, peaks = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
+        for dev in curves:
+            if len(curves[dev]) == 0:
+                del curves[dev]
+                del timestamps[dev]
+                del peaks[dev]
+        peaks_formatted = {}
+        totals = {}
+        for dev, value in peaks.items():
+            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, memory_metric)
+            if dev != "CPU":
+                try:
+                    totals[dev] = profile.gpu_infos[int(dev[3:])]["Memory Raw"] * memory_factor
+                except:
+                    pass
+
+        devices = list(curves.keys())
         return {
             "metadata": {
-                "title": "Memory Curves",
                 "default_device": "CPU",
+                "devices": devices,
+                "peaks": peaks_formatted,
+                "totals": totals,
             },
             "columns": [
-                { "name": "Time", "type": "number", "tooltip": "Time since profiler starts" },
-                { "name": "Allocated", "type": "number", "tooltip": "Total memory in use." },
-                { "name": "Reserved", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+                { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
+                { "name": f"Allocated ({memory_metric})", "type": "number", "tooltip": "Total memory in use." },
+                { "name": f"Reserved ({memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+                # { "name": f"Total ({memory_metric})", "type": "number", "tooltip": "Total Memory the device have."},
             ],
             "rows": curves,
             "ts": timestamps,

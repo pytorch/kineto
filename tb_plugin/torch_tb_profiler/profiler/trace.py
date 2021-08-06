@@ -117,7 +117,7 @@ class MemoryEvent(BaseEvent):
         old = self.args.get("Allocated Bytes")
         if old is not None:
             return old
-        return self.args.get("Total Allocated", -1)
+        return self.args.get("Total Allocated", float("nan"))
 
     @property
     def total_reserved(self):
@@ -125,7 +125,7 @@ class MemoryEvent(BaseEvent):
         old = self.args.get("Reserved Bytes")
         if old is not None:
             return old
-        return self.args.get("Total Reserved", -1)
+        return self.args.get("Total Reserved", float("nan"))
 
 def create_event(event):
     try:

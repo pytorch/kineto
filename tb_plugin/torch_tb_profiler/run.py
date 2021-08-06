@@ -317,6 +317,7 @@ class RunProfile(object):
             ```"""
             curves = defaultdict(list)
             timestamps = defaultdict(list)
+            peaks = defaultdict(float)
             first_ts = float("inf")
             for e in memory_events:
                 if e.device_type == DeviceType.CPU:
@@ -340,8 +341,9 @@ class RunProfile(object):
                     tr * memory_factor,
                 ])
                 timestamps[dev].append(ts)
+                peaks[dev] = max(peaks[dev], ta)
 
-            return curves, timestamps
+            return curves, timestamps, peaks
 
         # raw timestamp is in microsecond
         # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
@@ -357,18 +359,30 @@ class RunProfile(object):
             "M": pow(1024, -2), "MB": pow(1024, -2),
             "G": pow(1024, -3), "GB": pow(1024, -3),
         }
+        # canonicalize the memory metric to a string
+        canonical_memory_metric = {
+            "": "B",   "B": "B",
+            "K": "KB", "KB": "KB",
+            "M": "MB", "MB": "MB",
+            "G": "GB", "GB": "GB",
+        }
 
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
-        curves, timestamps = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
+        curves, timestamps, peaks = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
         for dev in curves:
             if len(curves[dev]) == 0:
                 del curves[dev]
                 del timestamps[dev]
+                del peaks[dev]
+        peaks_formatted = {}
+        for dev, value in peaks.items():
+            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, canonical_memory_metric[memory_metric])
+
         devices = list(curves.keys())
         return {
             "metadata": {
-                "title": "Memory Curves",
+                "peaks": peaks_formatted,
                 "default_device": "CPU",
                 "devices": devices,
             },

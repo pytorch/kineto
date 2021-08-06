@@ -319,24 +319,28 @@ class RunProfile(object):
             timestamps = defaultdict(list)
             first_ts = float("inf")
             for e in memory_events:
-                curve_container = None
-                ts_container = None
                 if e.device_type == DeviceType.CPU:
-                    curve_container = curves["CPU"]
-                    ts_container = timestamps["CPU"]
+                    dev = "CPU"
                 elif e.device_type == DeviceType.CUDA:
-                    gpuid = f"GPU{e.device_id}"
-                    curve_container = curves[gpuid]
-                    ts_container = timestamps[gpuid]
+                    dev = f"GPU{e.device_id}"
                 else:
                     raise NotImplementedError("Unknown device type for memory curve")
-                first_ts = min(first_ts, e.ts)
-                curve_container.append([
-                    (e.ts - profile.profiler_start_ts) * time_factor,
-                    e.total_allocated * memory_factor,
-                    e.total_reserved * memory_factor,
+                ts = e.ts
+                ta = e.total_allocated
+                tr = e.total_reserved
+
+                first_ts = min(first_ts, ts)
+
+                if ta != ta or tr != tr: # isnan
+                    continue
+
+                curves[dev].append([
+                    (ts - profile.profiler_start_ts) * time_factor,
+                    ta * memory_factor,
+                    tr * memory_factor,
                 ])
-                ts_container.append(e.ts)
+                timestamps[dev].append(ts)
+
             return curves, timestamps
 
         # raw timestamp is in microsecond
@@ -357,10 +361,16 @@ class RunProfile(object):
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
         curves, timestamps = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
+        for dev in curves:
+            if len(curves[dev]) == 0:
+                del curves[dev]
+                del timestamps[dev]
+        devices = list(curves.keys())
         return {
             "metadata": {
                 "title": "Memory Curves",
                 "default_device": "CPU",
+                "devices": devices,
             },
             "columns": [
                 { "name": "Time", "type": "number", "tooltip": "Time since profiler starts" },

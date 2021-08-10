@@ -113,6 +113,7 @@ bool ActivityProfiler::applyNetFilterInternal(const std::string& name) {
   return false;
 }
 
+// This has dependence on CuptiActivityInterface
 ActivityProfiler::ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
     : cupti_(cupti),
       flushOverhead_{0, 0},

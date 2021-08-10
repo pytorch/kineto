@@ -103,7 +103,7 @@ void ActivityProfilerController::profilerLoop() {
         // Note on now + kProfilerIntervalMsecs
         // Profiler interval does not align perfectly upto startTime - warmup. Waiting until the next tick
         // won't allow sufficient time for the profiler to warm up. So check if we are very close to the warmup time and trigger warmup
-        if (now + kProfilerIntervalMsecs 
+        if (now + kProfilerIntervalMsecs
             >= (asyncRequestConfig_->requestTimestamp() - asyncRequestConfig_->activitiesWarmupDuration())) {
           LOG(INFO) << "Received on-demand activity trace request";
           logger_ = makeLogger(*asyncRequestConfig_);
@@ -112,7 +112,7 @@ void ActivityProfilerController::profilerLoop() {
           asyncRequestConfig_ = nullptr;
         }
       }
-    } 
+    }
 
     while (next_wakeup_time < now) {
       next_wakeup_time += kProfilerIntervalMsecs;

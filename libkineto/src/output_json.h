@@ -20,7 +20,8 @@
 #include "output_base.h"
 
 namespace libkineto {
-  class TraceSpan;
+  // Previous declaration of TraceSpan is struct. Must match the same here.
+  struct TraceSpan;
 }
 
 namespace KINETO_NAMESPACE {

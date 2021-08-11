@@ -139,7 +139,7 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
             rows = profile.kernel_table["data"]["rows"]
             result_dict[worker_name + "#kernel"] = list()
             for row in rows:
-                result_dict[worker_name + "#kernel"].append(row[:3])
+                result_dict[worker_name + "#kernel"].append([row[0], row[2], row[3]]) # row[1] is "Tensor Cores Used".
         if record_shapes:
             assert profile.operation_table_by_name_input is not None
             result_dict[worker_name + "#operator#input_shape"] = list()

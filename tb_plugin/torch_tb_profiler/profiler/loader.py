@@ -5,10 +5,10 @@ import bisect
 import os
 import sys
 from collections import defaultdict
-from multiprocessing import Barrier, Process, Queue
 
 from .. import consts, io, utils
 from ..run import Run
+from .multiprocessing import Barrier, Process, Queue
 from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
 

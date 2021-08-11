@@ -36,6 +36,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // i.e., we these functions are not thread-safe
   void handleProcessInfo(
       const ProcessInfo& processInfo,
+      int32_t sort_index,
       uint64_t time) override;
 
   void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) override;

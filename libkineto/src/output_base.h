@@ -38,6 +38,7 @@ class ActivityLogger {
 
   virtual void handleProcessInfo(
       const ProcessInfo& processInfo,
+      int32_t sort_index,
       uint64_t time) = 0;
 
   virtual void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) = 0;

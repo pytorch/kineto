@@ -85,6 +85,7 @@ static int64_t us(int64_t timestamp) {
 
 void ChromeTraceLogger::handleProcessInfo(
     const ProcessInfo& processInfo,
+    int32_t sort_index,
     uint64_t time) {
   if (!traceOf_) {
     return;
@@ -105,11 +106,19 @@ void ChromeTraceLogger::handleProcessInfo(
     "args": {{
       "labels": "{}"
     }}
+  }},
+  {{
+    "name": "process_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": 0,
+    "args": {{
+      "sort_index": {}
+    }}
   }},)JSON",
       time, processInfo.pid,
       processInfo.name,
       time, processInfo.pid,
-      processInfo.label);
+      processInfo.label,
+      time, processInfo.pid,
+      sort_index);
   // clang-format on
 }
 
@@ -129,9 +138,17 @@ void ChromeTraceLogger::handleThreadInfo(
     "args": {{
       "name": "thread {} ({})"
     }}
+  }},
+  {{
+    "name": "thread_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": "{}",
+    "args": {{
+      "sort_index": {}
+    }}
   }},)JSON",
       time, processId(), threadInfo.tid,
-      threadInfo.tid, threadInfo.name);
+      threadInfo.tid, threadInfo.name,
+      time, processId(), threadInfo.tid,
+      threadInfo.tid);
   // clang-format on
 }
 

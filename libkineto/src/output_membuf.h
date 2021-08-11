@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -38,8 +39,9 @@ class MemoryTraceLogger : public ActivityLogger {
   // i.e., these functions are not thread-safe
   void handleProcessInfo(
       const ProcessInfo& processInfo,
+      int32_t sort_index,
       uint64_t time) override {
-    processInfoList_.emplace_back(processInfo, time);
+    processInfoList_.emplace_back(processInfo, sort_index, time);
   }
 
   void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) override {
@@ -98,7 +100,8 @@ class MemoryTraceLogger : public ActivityLogger {
       activity->log(logger);
     }
     for (auto& p : processInfoList_) {
-      logger.handleProcessInfo(p.first, p.second);
+      using std::get;
+      logger.handleProcessInfo(get<0>(p), get<1>(p), get<2>(p));
     }
     for (auto& p : threadInfoList_) {
       logger.handleThreadInfo(p.first, p.second);
@@ -115,7 +118,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
   std::vector<std::unique_ptr<TraceActivity>> activities_;
-  std::vector<std::pair<ProcessInfo, int64_t>> processInfoList_;
+  std::vector<std::tuple<ProcessInfo, int32_t, int64_t>> processInfoList_;
   std::vector<std::pair<ThreadInfo, int64_t>> threadInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;

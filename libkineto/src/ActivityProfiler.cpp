@@ -700,13 +700,14 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
   if (!process_name.empty()) {
     int32_t pid = processId();
     logger.handleProcessInfo(
-        {pid, process_name, "CPU"}, captureWindowStartTime_);
+        {pid, process_name, "CPU"}, pid, captureWindowStartTime_);
     if (!cpuOnly_) {
       // GPU events use device id as pid (0-7).
       constexpr int kMaxGpuCount = 8;
       for (int gpu = 0; gpu < kMaxGpuCount; gpu++) {
         logger.handleProcessInfo(
             {gpu, process_name, fmt::format("GPU {}", gpu)},
+            0x40000000 + gpu, // appear after CPU processes
             captureWindowStartTime_);
       }
     }

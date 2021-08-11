@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import socket
+import sys
 import tempfile
 import time
 import unittest
@@ -68,16 +69,26 @@ class TestEnd2End(unittest.TestCase):
         host='localhost'
         port = get_free_port(host)
 
+        log_name = tempfile.mktemp()
+        log = open(log_name, "w")
         try:
             if env:
                 env_copy = os.environ.copy()
                 env_copy.update(env)
                 env = env_copy
-            if not path_prefix:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
-            else:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
+
+            popen_args = ['tensorboard', '--logdir='+test_folder, '--port='+str(port)]
+            if path_prefix:
+                popen_args.extend(['--path_prefix='+path_prefix])
+            tb = Popen(popen_args, env=env, stdout=log, stderr=log)
             self._test_tensorboard(host, port, expected_runs, path_prefix)
+        except:
+            log.close()
+            sys.stdout.write("======== TensoBoard output ========\n")
+            sys.stdout.write(open(log_name, "r").read())
+            sys.stdout.write("===================================\n")
+            sys.stdout.flush()
+            raise
         finally:
             pid = tb.pid
             print("tensorboard process {} is terminating.".format(pid))

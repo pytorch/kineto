@@ -72,4 +72,3 @@ KINETO_COMPILER_FLAGS = [
     "-Wno-unused-function",
     "-Wno-unused-private-field",
 ]
-

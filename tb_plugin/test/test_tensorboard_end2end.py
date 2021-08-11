@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import shutil
 import socket
 import tempfile
@@ -9,11 +8,17 @@ import unittest
 import urllib
 import urllib.request
 from subprocess import Popen
-from urllib.error import HTTPError
 
 
 def get_samples_dir():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), '../samples')
+
+
+def get_free_port(addr):
+    with socket.socket() as s:
+        s.bind((addr, 0))
+        free_port = s.getsockname()[1]
+    return free_port
 
 
 class TestEnd2End(unittest.TestCase):
@@ -61,7 +66,7 @@ class TestEnd2End(unittest.TestCase):
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
-        port=random.randint(6008, 65535)
+        port = get_free_port(host)
 
         try:
             if env:
@@ -100,7 +105,7 @@ class TestEnd2End(unittest.TestCase):
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
                 print('tensorboard start successfully')
                 break
-            except socket.error:
+            except (socket.error, ConnectionError):
                 time.sleep(2)
                 retry_times -= 1
                 if retry_times < 0:
@@ -148,4 +153,3 @@ class TestEnd2End(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

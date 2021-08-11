@@ -532,8 +532,6 @@ void ActivityProfiler::configure(
     if (profilers_.size() > 0) {
       configureChildProfilers();
     }
-
-
     LOG(INFO) << "Tracing starting in "
               << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
 
@@ -545,9 +543,6 @@ void ActivityProfiler::configure(
 
 void ActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
-  if (libkineto::api().client()) {
-    libkineto::api().client()->start();
-  }
   VLOG(0) << "Warmup -> CollectTrace";
   for (auto& session: sessions_){
     LOG(INFO) << "Starting child profiler session";
@@ -613,9 +608,6 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       if (cupti_.stopCollection) {
         // Go to process trace to clear any outstanding buffers etc
         LOG(WARNING) << "Trace terminated during warmup";
-        if (libkineto::api().client()) {
-          libkineto::api().client()->stop();
-        }
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         resetInternal();
@@ -634,6 +626,9 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
           LOG(INFO) << "Tracing started";
         }
         startTrace(now);
+        if (libkineto::api().client()) {
+          libkineto::api().client()->start();
+        }
       } else if (nextWakeupTime > profileStartTime_) {
         new_wakeup_time = profileStartTime_;
       }

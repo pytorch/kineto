@@ -163,9 +163,6 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
 }
 
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
-  if (libkineto::api().client()) {
-    libkineto::api().client()->stop();
-  }
   profiler_->stopTrace(std::chrono::system_clock::now());
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);

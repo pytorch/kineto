@@ -35,12 +35,12 @@ class TestEnd2End(unittest.TestCase):
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         print("starting fork mode testing")
-        self._test_tensorboard_with_arguments(test_folder, expected_runs)
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
     def test_tensorboard_with_path_prefix(self):
         test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, path_prefix='/tensorboard/viewer/')
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'}, path_prefix='/tensorboard/viewer/')
 
     def test_tensorboard_with_symlinks(self):
         logdir = tempfile.mkdtemp(prefix="tensorboard_logdir")

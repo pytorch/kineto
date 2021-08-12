@@ -40,4 +40,4 @@ jobs:
           sh ./ci_scripts/install_env.sh
           pip install .[gs]
           cd test
-          pytest
+          pytest -v

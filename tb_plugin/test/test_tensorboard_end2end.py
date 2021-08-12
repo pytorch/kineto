@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import shutil
 import socket
 import sys
@@ -13,13 +14,6 @@ from subprocess import Popen
 
 def get_samples_dir():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), '../samples')
-
-
-def get_free_port(addr):
-    with socket.socket() as s:
-        s.bind((addr, 0))
-        free_port = s.getsockname()[1]
-    return free_port
 
 
 class TestEnd2End(unittest.TestCase):
@@ -67,7 +61,7 @@ class TestEnd2End(unittest.TestCase):
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
-        port = get_free_port(host)
+        port=random.randint(6008, 65535)
 
         log_name = tempfile.mktemp()
         log = open(log_name, "w")

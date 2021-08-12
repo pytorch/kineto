@@ -59,9 +59,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._gpu_metrics_file_dict = {}
         print("before thread create")
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
-        print("monitor thread created")
         monitor_runs.start()
-        print("monitor thread started")
 
         receive_runs = threading.Thread(target=self._receive_runs, name="receive_runs", daemon=True)
         receive_runs.start()

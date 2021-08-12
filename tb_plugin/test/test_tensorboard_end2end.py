@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import random
 import shutil
 import socket
@@ -35,12 +36,12 @@ class TestEnd2End(unittest.TestCase):
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         print("starting fork mode testing")
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+        self._test_tensorboard_with_arguments(test_folder, expected_runs)
 
     def test_tensorboard_with_path_prefix(self):
         test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'}, path_prefix='/tensorboard/viewer/')
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, path_prefix='/tensorboard/viewer/')
 
     def test_tensorboard_with_symlinks(self):
         logdir = tempfile.mkdtemp(prefix="tensorboard_logdir")
@@ -63,6 +64,8 @@ class TestEnd2End(unittest.TestCase):
         host='localhost'
         port=random.randint(6008, 65535)
 
+        print("cpu count==============", os.cpu_count())
+        print("processor==============", platform.processor())
         log_name = tempfile.mktemp()
         log = open(log_name, "w")
         try:

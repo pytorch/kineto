@@ -14,7 +14,7 @@ from .. import io, utils
 from . import trace
 from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
-from .event_parser import EventParser, ProfileRole
+from .event_parser import EventParser, ProfileRole, CommLibTypes
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .module_parser import ModuleAggregator
@@ -32,9 +32,9 @@ class RunProfileData(object):
         self.used_devices = []
         self.use_dp = False
         self.use_ddp =False
-        self.use_nccl = False
         self.profiler_start_ts = float("inf")
         self.events : List[BaseEvent] = None
+        self.comm_lib = None
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
@@ -157,7 +157,7 @@ class RunProfileData(object):
         self.used_devices = sorted(list(parser.used_devices))
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
-        self.use_nccl = parser.use_nccl
+        self.comm_lib = parser.comm_lib
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()
@@ -228,7 +228,7 @@ class RunProfileData(object):
                    )
             self.recommendations.append(text)
 
-        if self.use_ddp and not self.use_nccl and self.device_props:
+        if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
                 major = device_prop.get("computeMajor")
                 minor = device_prop.get("computeMinor")
@@ -284,6 +284,7 @@ class DistributedRunProfileData:
         self.span = run_profile_data.span
         self.steps_names = run_profile_data.steps_names
         self.has_communication = run_profile_data.has_communication
+        self.comm_lib = run_profile_data.comm_lib
         self.comm_node_list = run_profile_data.comm_node_list
         self.comm_overlap_costs = run_profile_data.comm_overlap_costs
         self.used_devices = run_profile_data.used_devices

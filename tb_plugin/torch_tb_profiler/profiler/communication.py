@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+from .range_utils import merge_ranges, get_ranges_sum
 from .. import utils
 
 logger = utils.get_logger()
@@ -34,18 +35,19 @@ def generate_communication_nodes(communication_data, steps, steps_names):
 
     return comm_node_list
 
-
 def analyze_communication_nodes(comm_node_list):
     step_comm_stats = {}
     total_comm_stats = {}
 
+    step_to_comm_ranges = {}
     for comm_node in comm_node_list:
-        if comm_node.step_name not in step_comm_stats:
-            step_comm_stats[comm_node.step_name] = [0, 0]
-        step_comm_stats[comm_node.step_name][0] += comm_node.total_time
-        step_comm_stats[comm_node.step_name][1] += comm_node.real_time
+        if comm_node.step_name not in step_to_comm_ranges:
+            step_to_comm_ranges[comm_node.step_name] = [[], []]
+        step_to_comm_ranges[comm_node.step_name][0].extend(comm_node.kernel_ranges)
+        step_to_comm_ranges[comm_node.step_name][1].extend(comm_node.real_time_ranges)
+
         if comm_node.name not in total_comm_stats:
-            total_comm_stats[comm_node.name] = [0, 0, 0, 0]
+            total_comm_stats[comm_node.name] = [0, 0, [], []]
         total_comm_stats[comm_node.name][0] += 1
         bytes_one_value = 0
         if comm_node.input_shape:
@@ -63,7 +65,14 @@ def analyze_communication_nodes(comm_node_list):
                 for size in comm_node.input_shape[i]:
                     total_size *= size
                 total_comm_stats[comm_node.name][1] += total_size * bytes_one_value
-        total_comm_stats[comm_node.name][2] += comm_node.total_time
-        total_comm_stats[comm_node.name][3] += comm_node.real_time
+        total_comm_stats[comm_node.name][2].extend(comm_node.kernel_ranges)
+        total_comm_stats[comm_node.name][3].extend(comm_node.real_time_ranges)
+
+    for step, comm_ranges in step_to_comm_ranges.items():
+        step_comm_stats[step] = [get_ranges_sum(merge_ranges(comm_ranges[0])), get_ranges_sum(merge_ranges(comm_ranges[1]))]
+
+    for _, stats in total_comm_stats.items():
+        stats[2] = get_ranges_sum(merge_ranges(stats[2]))
+        stats[3] = get_ranges_sum(merge_ranges(stats[3]))
 
     return step_comm_stats, total_comm_stats

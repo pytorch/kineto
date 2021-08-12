@@ -69,6 +69,7 @@ class TestEnd2End(unittest.TestCase):
             if env:
                 env_copy = os.environ.copy()
                 env_copy.update(env)
+                env_copy['TORCH_PROFILER_START_METHOD'] = 'spawn'
                 env = env_copy
 
             popen_args = ['tensorboard', '--logdir='+test_folder, '--port='+str(port)]

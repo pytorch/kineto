@@ -54,8 +54,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         print("locks created")
         self._cache = io.Cache()
+        print("before queue create")
         self._queue = Queue()
         self._gpu_metrics_file_dict = {}
+        print("before thread create")
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         print("monitor thread created")
         monitor_runs.start()

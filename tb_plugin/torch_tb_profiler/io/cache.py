@@ -12,9 +12,13 @@ logger = utils.get_logger()
 
 class Cache:
     def __init__(self):
+        print(1)
         self._lock = mp.Lock()
+        print(2)
         self._manager = mp.Manager()
+        print(3)
         self._cache_dict = self._manager.dict()
+        print(4)
 
     def __getstate__(self):
         '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
@@ -75,4 +79,3 @@ class Cache:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
         self._manager.__exit__(exc_type, exc_value, traceback)
-

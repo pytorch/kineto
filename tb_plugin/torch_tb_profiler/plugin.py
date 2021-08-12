@@ -465,3 +465,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         for name,v in kwargs.items():
             if v is None:
                 raise exceptions.BadRequest("Must specify %s in request url" %(name))
+
+class TorchProfilerLoader(base_plugin.TBLoader):
+    def load(self, context):
+        print("loading TorchProfilerLoader")
+        return TorchProfilerPlugin(context)

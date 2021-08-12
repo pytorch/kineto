@@ -80,7 +80,7 @@ setuptools.setup(
     },
     entry_points={
         "tensorboard_plugins": [
-            "torch_profiler = torch_tb_profiler.plugin:TorchProfilerPlugin",
+            "torch_profiler = torch_tb_profiler.plugin:TorchProfilerLoader",
         ],
     },
     python_requires=">=3.6.2",

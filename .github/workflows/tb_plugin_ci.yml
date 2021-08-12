@@ -34,6 +34,7 @@ jobs:
           CUDA_VERSION: ${{ matrix.cuda-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
           TORCH_PROFILER_LOG_LEVEL: DEBUG
+          GRPC_VERBOSITY: DEBUG
         run: |
           set -e
           cd tb_plugin

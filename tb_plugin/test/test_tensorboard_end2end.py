@@ -72,7 +72,7 @@ class TestEnd2End(unittest.TestCase):
                 env_copy['TORCH_PROFILER_START_METHOD'] = 'spawn'
                 env = env_copy
 
-            popen_args = ['tensorboard', '--logdir='+test_folder, '--port='+str(port)]
+            popen_args = ['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--load_fast=false']
             if path_prefix:
                 popen_args.extend(['--path_prefix='+path_prefix])
             tb = Popen(popen_args, env=env, stdout=log, stderr=log, close_fds=False)

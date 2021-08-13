@@ -1,19 +1,25 @@
 import json
 import os
-import random
 import shutil
 import socket
+import sys
 import tempfile
 import time
 import unittest
 import urllib
 import urllib.request
 from subprocess import Popen
-from urllib.error import HTTPError
 
 
 def get_samples_dir():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), '../samples')
+
+
+def get_free_port(addr):
+    with socket.socket() as s:
+        s.bind((addr, 0))
+        free_port = s.getsockname()[1]
+    return free_port
 
 
 class TestEnd2End(unittest.TestCase):
@@ -61,18 +67,28 @@ class TestEnd2End(unittest.TestCase):
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
         host='localhost'
-        port=random.randint(6008, 65535)
+        port = get_free_port(host)
 
+        log_name = tempfile.mktemp()
+        log = open(log_name, "w")
         try:
             if env:
                 env_copy = os.environ.copy()
                 env_copy.update(env)
                 env = env_copy
-            if not path_prefix:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
-            else:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
+
+            popen_args = ['tensorboard', '--logdir='+test_folder, '--port='+str(port)]
+            if path_prefix:
+                popen_args.extend(['--path_prefix='+path_prefix])
+            tb = Popen(popen_args, env=env, stdout=log, stderr=log)
             self._test_tensorboard(host, port, expected_runs, path_prefix)
+        except:
+            log.close()
+            sys.stdout.write("++++++++++++++++ TensoBoard output ++++++++++++++++\n")
+            sys.stdout.write(open(log_name, "r").read())
+            sys.stdout.write("---------------- TensoBoard output ----------------\n")
+            sys.stdout.flush()
+            raise
         finally:
             pid = tb.pid
             print("tensorboard process {} is terminating.".format(pid))
@@ -148,4 +164,3 @@ class TestEnd2End(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

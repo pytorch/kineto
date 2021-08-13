@@ -33,10 +33,13 @@ jobs:
         env:
           CUDA_VERSION: ${{ matrix.cuda-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
+          TORCH_PROFILER_LOG_LEVEL: DEBUG
+          GRPC_VERBOSITY: DEBUG
+          GRPC_ENABLE_FORK_SUPPORT: 'False'
         run: |
           set -e
           cd tb_plugin
           sh ./ci_scripts/install_env.sh
           pip install .[gs]
           cd test
-          pytest
+          pytest -v

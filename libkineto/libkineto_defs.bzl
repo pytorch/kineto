@@ -20,6 +20,7 @@ def get_libkineto_srcs(with_api = True):
         "src/ConfigLoader.cpp",
         "src/CudaDeviceProperties.cpp",
         "src/CuptiActivityInterface.cpp",
+        "src/CuptiActivityPlatform.cpp",
         "src/CuptiEventInterface.cpp",
         "src/CuptiMetricInterface.cpp",
         "src/Demangle.cpp",

@@ -162,6 +162,11 @@ export const App = () => {
       } catch (e) {
         console.info('Cannot fetch runs: ', e)
       }
+      if (runs) {
+        while (true) {
+          await sleep(5000)
+        }
+      }
       await sleep(5000)
     }
   }

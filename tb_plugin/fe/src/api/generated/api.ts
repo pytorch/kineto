@@ -472,13 +472,25 @@ export interface MemoryCurveMetadata {
    * @type {string}
    * @memberof MemoryCurveMetadata
    */
-  title: string
+  defaultDevice: string
   /**
    *
-   * @type {string}
+   * @type {Array<string>}
    * @memberof MemoryCurveMetadata
    */
-  defaultDevice: string
+  devices: Array<string>
+  /**
+   *
+   * @type {any}
+   * @memberof MemoryCurveMetadata
+   */
+  peaks: any
+  /**
+   *
+   * @type {any}
+   * @memberof MemoryCurveMetadata
+   */
+  totals: any
 }
 /**
  *

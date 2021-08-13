@@ -19,6 +19,7 @@ import { LineChart } from './charts/LineChart'
 import { AntTableChart } from './charts/AntTableChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
+import { SelectionRange } from './SelectionRange'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -64,6 +65,8 @@ export const MemoryView: React.FC<IProps> = (props) => {
   >(undefined)
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
+  const [curveDevice, setCurveDevice] = React.useState('')
+  const [selectedRange, setSelectedRange] = React.useState({start: 1426839090790973, end: 1726839091220818})
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
 
   const tableData = memoryData ? memoryData.data[device] : undefined
@@ -95,21 +98,22 @@ export const MemoryView: React.FC<IProps> = (props) => {
   }
 
   React.useEffect(() => {
-    api.defaultApi.memoryGet(run, worker, span).then((resp) => {
+    api.defaultApi.memoryGet(run, worker, span, selectedRange.start, selectedRange.end).then((resp) => {
       setMemoryData(resp)
       setDevices(Object.keys(resp.data))
       setDevice(resp.metadata.default_device)
     })
-  }, [run, worker, span])
+  }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
-    api.defaultApi.memoryEventsGet(run, worker, span).then((resp) => {
+    api.defaultApi.memoryEventsGet(run, worker, span, selectedRange.start, selectedRange.end).then((resp) => {
       setMemoryEventsData(resp)
     })
-  }, [run, worker, span])
+  }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
+      setCurveDevice(resp.metadata.default_device)
       setMemoryCurveGraph(resp)
     })
   }, [run, worker, span])
@@ -118,30 +122,59 @@ export const MemoryView: React.FC<IProps> = (props) => {
     setDevice(event.target.value as string)
   }
 
+  const onCurveDeviceChanged: SelectProps['onChange'] = (event) => {
+    setCurveDevice(event.target.value as string)
+  }
+
+  const onSelectedRangeChanged = (start: number, end: number) => {
+    setSelectedRange({start: Math.round(start * 1e9), end: Math.round(end * 1e9)})
+  }
+
   return (
     <div className={classes.root}>
       <Card variant="outlined">
         <CardHeader title="Memory View" />
         <CardContent>
           <Grid direction="column" container spacing={1}>
-            <Grid item>
+            <Grid item >
               <DataLoading value={memoryCurveGraph}>
                 {(graph) => (
-                  <LineChart
-                    hAxisTitle="Time (ms)"
-                    vAxisTitle="Memory Usage (GB)"
-                    graph={{
-                      title: graph.metadata.title,
-                      columns: graph.columns,
-                      rows: graph.rows['CPU']
-                    }}
-                  />
+                  <Grid container direction="column">
+                    <Grid item>
+                      <InputLabel id="memory-curve-device">Device</InputLabel>
+                      <Select
+                        labelId="memory-curve-device"
+                        value={curveDevice}
+                        onChange={onCurveDeviceChanged}
+                      >
+                        {graph.metadata.devices.map((device) => (
+                          <MenuItem value={device}>{device}</MenuItem>
+                        ))}
+                      </Select>
+                    </Grid>
+                    <Grid item>
+                      <div>
+                        <LineChart
+                          hAxisTitle="Time (ms)"
+                          vAxisTitle="Memory Usage (GB)"
+                          graph={{
+                            title: graph.metadata.peaks[curveDevice],
+                            columns: graph.columns,
+                            rows: graph.rows[curveDevice]
+                          }}
+                          initialSelectionStart={selectedRange.start}
+                          initialSelectionEnd={selectedRange.end}
+                          onSelectionChanged={onSelectedRangeChanged}
+                        />
+                      </div>
+                    </Grid>
+                  </Grid>
                 )}
               </DataLoading>
             </Grid>
             <Grid item>
               <DataLoading value={memoryEventsData}>
-                {(data) => <AntTableChart graph={data} />}
+                {(data) => <AntTableChart graph={data} initialPageSize={10} />}
               </DataLoading>
             </Grid>
             <Grid item container direction="column" spacing={1}>

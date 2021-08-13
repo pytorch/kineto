@@ -917,13 +917,21 @@ components:
     MemoryCurveMetadata:
       type: object
       required:
-        - title
         - default_device
+        - devices
+        - peaks
+        - totals
       properties:
-        title:
-          type: string
         default_device:
           type: string
+        devices:
+          type: array
+          items:
+            type: string
+        peaks:
+          type: object
+        totals:
+          type: object
     MemoryCurve:
       type: object
       required:

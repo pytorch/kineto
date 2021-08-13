@@ -197,12 +197,36 @@ class BackwardNode(OperatorNode):
                 self.tc_eligible = True
 
 
+class DataLoaderNode(OperatorNode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class OptimizerNode(OperatorNode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class RuntimeNode(HostNode):
     def __init__(self, device_nodes: Optional[List['DeviceNode']] = None, **kwargs):
         super().__init__(**kwargs)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
         self.tc_duration: int = 0  # Time summarization of all its launched kernels.
+
+    @property
+    def device_start_time(self):
+        if self.device_nodes:
+            return self.device_nodes[0].start_time
+        else:
+            return self.start_time
+
+    @property
+    def device_end_time(self):
+        if self.device_nodes:
+            return self.device_nodes[-1].end_time
+        else:
+            return self.end_time
 
     def fill_stats(self, op_node: OperatorNode = None):
         if self.device_nodes:
@@ -261,11 +285,16 @@ class DeviceNode(BaseNode):
         return cls(**kwargs)
 
 
-def is_operator_node(node):
-    if (type(node) is OperatorNode and node.type == EventTypes.OPERATOR
-            and not (node.name.startswith('enumerate(DataLoader)#') and node.name.endswith('.__next__'))
-            and not node.name.startswith('enumerate(DataPipe)#')
-            and not node.name.startswith('Optimizer.') and node.name not in ExcludeOpName):
-        return True
+def create_operator_node(event):
+    if (event.name.startswith("enumerate(DataLoader)#") and event.name.endswith(".__next__")
+            or event.name.startswith("enumerate(DataPipe)#")):
+        return DataLoaderNode.create(event)
+    elif event.name.startswith("Optimizer."):
+        return OptimizerNode.create(event)
     else:
-        return False
+        return OperatorNode.create(event)
+
+
+def is_operator_node(node):
+    return bool(type(node) is OperatorNode and node.type == EventTypes.OPERATOR and node.name not in ExcludeOpName)
+

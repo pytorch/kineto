@@ -399,6 +399,9 @@ class RunProfile(object):
                 "devices": devices,
                 "peaks": peaks_formatted,
                 "totals": totals,
+                "first_ts": profile.profiler_start_ts,
+                "time_factor": time_factor,
+                "memory_factor": memory_factor,
             },
             "columns": [
                 { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
@@ -407,7 +410,6 @@ class RunProfile(object):
                 # { "name": f"Total ({memory_metric})", "type": "number", "tooltip": "Total Memory the device have."},
             ],
             "rows": curves,
-            "ts": timestamps,
         }
 
     @staticmethod

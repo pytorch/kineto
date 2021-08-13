@@ -157,4 +157,4 @@ class ModuleAggregator:
         self.op_list_groupby_name_input = list(agg_result[1].values())
         self.stack_lists_group_by_name = stack_lists_group_by_name
         self.stack_lists_group_by_name_input = stack_lists_group_by_name_input
-        self.tc_eligible_ops = sum(map(lambda op : op.tc_eligible, ops))
+        self.tc_eligible_ops = sum([1 if op.tc_eligible else 0 for op in ops])

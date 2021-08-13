@@ -233,7 +233,7 @@ class RunProfileData(object):
 
         # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
         # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
-        if self.device_props is not None:
+        if self.device_props is not None and len(self.device_props) > 0:
             major = self.device_props[0].get("computeMajor")
             if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
                 text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \

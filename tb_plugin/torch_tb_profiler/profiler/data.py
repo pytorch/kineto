@@ -54,6 +54,7 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
+        self.tc_eligible_ops = None
         self.kernel_stat = None
         self.tc_used_ratio = None
         self.recommendations = []
@@ -178,6 +179,7 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
         self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
         self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
+        self.tc_eligible_ops = module_aggregator.tc_eligible_ops
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -228,6 +230,21 @@ class RunProfileData(object):
 
         self._analyze_distributed_metrics()
         self._analyze_gpu_metrics()
+
+        # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
+        # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
+        if self.device_props:
+            major = self.device_props[0].get("computeMajor")
+            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
+                text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \
+                       "You could enable AMP to speedup by using FP16. " \
+                       "Reference: <a href =\"{}\" target=\"_blank\">" \
+                       "Automatic Mixed Precision Package - torch.cuda.amp</a>".format(
+                    self.tc_eligible_ops,
+                    "https://pytorch.org/docs/stable/amp.html"
+                )
+                self.recommendations.append(text)
+
 
     def _analyze_distributed_metrics(self):
         if self.use_dp and len(self.used_devices) > 1:

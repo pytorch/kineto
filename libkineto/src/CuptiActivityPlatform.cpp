@@ -18,12 +18,12 @@ uint64_t epochs_diff() {
   return time_since_unix - time_since_boot;
 }
 
-uint64_t cuptiPlatformAgnosticTs(uint64_t ts) {
+uint64_t unixEpochTimestamp(uint64_t ts) {
   static uint64_t diff = epochs_diff();
   return ts + diff;
 }
 #else
-uint64_t cuptiPlatformAgnosticTs(uint64_t ts) {
+uint64_t unixEpochTimestamp(uint64_t ts) {
   return ts;
 }
 #endif // _WIN32

@@ -33,7 +33,7 @@ struct CuptiActivity : public TraceActivity {
   explicit CuptiActivity(const T* activity, const TraceActivity& linked)
       : activity_(*activity), linked_(linked) {}
   int64_t timestamp() const override {
-    return nsToUs(cuptiPlatformAgnosticTs(activity_.start));
+    return nsToUs(unixEpochTimestamp(activity_.start));
   }
   int64_t duration() const override {
     return nsToUs(activity_.end - activity_.start);

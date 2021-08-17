@@ -91,10 +91,11 @@ class MemoryParser:
 
     @benchmark
     def get_memory_statistics(self):
-        SELF_METRICS_COUNT = MemoryMetrics.IncreaseSize
+        metric_length = len(MemoryMetrics)
+        self_metric_length = metric_length // 2
 
         def dict_factory():
-            return defaultdict(lambda: [0] * MemoryMetrics.Total)
+            return defaultdict(lambda: [0] * metric_length)
 
         # two level keys dictionary
         # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
@@ -116,7 +117,7 @@ class MemoryParser:
                     # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]
                     for i, value in enumerate(metrics):
                         memory_metrics_keyed_by_node[node][device][i] = value
-                        memory_metrics_keyed_by_node[node][device][i + SELF_METRICS_COUNT] += value
+                        memory_metrics_keyed_by_node[node][device][i + self_metric_length] += value
             else:
                 logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(node.name, node.start_time))
 
@@ -125,7 +126,7 @@ class MemoryParser:
                 traverse_node_memory(child)
                 # sum up the child metrics
                 for device, metrics in memory_metrics_keyed_by_node[child].items():
-                    for i in range(SELF_METRICS_COUNT, MemoryMetrics.Total):
+                    for i in range(self_metric_length, metric_length):
                         memory_metrics_keyed_by_node[node][device][i] += metrics[i]
 
         for tid, root in self.tid2tree.items():

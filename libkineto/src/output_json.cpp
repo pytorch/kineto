@@ -244,6 +244,50 @@ void ChromeTraceLogger::handleGenericActivity(
       op.traceSpan()->name, op.traceSpan()->iteration, separator,
       op_metadata);
   // clang-format on
+
+  if (op.linkedActivity() != nullptr) {
+    handleGenericLink(op);
+  }
+}
+
+void ChromeTraceLogger::handleGenericLink(const GenericTraceActivity& op) {
+  uint64_t link_type = GET_LINK_TYPE(op.linkId);
+  if (link_type == LINK_FORWARD_BACKWARD_HEAD) {
+    this->handleFwdBwdLinkStart(op);
+  }
+  else if (link_type == LINK_FORWARD_BACKWARD_TAIL) {
+    this->handleFwdBwdLinkEnd(op);
+  }
+}
+
+void ChromeTraceLogger::handleFwdBwdLinkStart(const libkineto::GenericTraceActivity& s) {
+  if (!traceOf_) {
+    return;
+  }
+
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "s", "id": {}, "pid": {}, "tid": "{}", "ts": {},
+    "cat": "forward_backward", "name": "fwd_bwd"
+  }},)JSON",
+      GET_LINK_ID(s.linkId), processId(), s.resourceId(), s.timestamp());
+  // clang-format on
+}
+
+void ChromeTraceLogger::handleFwdBwdLinkEnd(const libkineto::GenericTraceActivity& e) {
+  if (!traceOf_) {
+    return;
+  }
+
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "f", "id": {}, "pid": {}, "tid": "{}", "ts": {},
+    "cat": "forward_backward", "name": "fwd_bwd", "bp": "e"
+  }},)JSON",
+      GET_LINK_ID(e.linkId), processId(), e.resourceId(), e.timestamp());
+  // clang-format on
 }
 
 #ifdef HAS_CUPTI

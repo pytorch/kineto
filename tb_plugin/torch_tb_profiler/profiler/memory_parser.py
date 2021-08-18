@@ -211,9 +211,8 @@ class MemoryParser:
 
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
-                    if record not in current_node.memory_records:
-                        current_node.add_memory_record(record)
-                        record.op_name = current_node.name
+                    current_node.add_memory_record(record)
+                    record.op_name = current_node.name
                     self.processed_records.append(record)
                 else:
                     self.staled_records.append(record)

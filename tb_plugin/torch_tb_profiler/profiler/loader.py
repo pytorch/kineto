@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from .. import consts, io, utils
 from ..run import Run
-from .multiprocessing import Barrier, Process, Queue
+from .multiprocessing import Process, Queue
 from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
 
@@ -47,27 +47,24 @@ class RunLoader(object):
             for i, span in enumerate(span_array, 1):
                 span_index_map[(worker, span)] = i
 
-        barrier = Barrier(len(workers) + 1)
         for worker, span, path in workers:
             # convert the span timestamp to the index.
             span_index = None if span is None else span_index_map[(worker, span)]
-            p = Process(target=self._process_data, args=(worker, span_index, path, barrier))
+            p = Process(target=self._process_data, args=(worker, span_index, path))
             p.start()
-
-        logger.info("starting all processing")
-        # since there is one queue, its data must be read before join.
-        # https://stackoverflow.com/questions/31665328/python-3-multiprocessing-queue-deadlock-when-calling-join-before-the-queue-is-em
-        #   The queue implementation in multiprocessing that allows data to be transferred between processes relies on standard OS pipes.
-        #   OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the put()
-        #   operation until some other process uses get() to retrieve data from the queue.
-        # During my testing, I found that the maximum buffer length is 65532 in my test machine.
-        # If I increase the message size to 65533, the join would hang the process.
-        barrier.wait()
+        logger.info("started all processing")
 
         distributed_run = Run(self.run_name, self.run_dir)
         run = Run(self.run_name, self.run_dir)
-        for _ in range(len(workers)):
-            r, d = self.queue.get()
+        num_items = len(workers)
+        while num_items > 0:
+            try:
+                item = self.queue.get(timeout=0.5)
+            except:
+                continue
+
+            num_items -= 1
+            r, d = item
             if r or d:
                 logger.debug("Loaded profile via mp.Queue")
             if r is not None:
@@ -83,7 +80,7 @@ class RunLoader(object):
         # for no daemon process, no need to join them since it will automatically join
         return run
 
-    def _process_data(self, worker, span, path, barrier):
+    def _process_data(self, worker, span, path):
         import absl.logging
         absl.logging.use_absl_handler()
 
@@ -107,7 +104,6 @@ class RunLoader(object):
             logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run_name, worker, ex, exc_info=True)
             self.queue.put((None, None))
-        barrier.wait()
         logger.debug("finishing process data")
 
     def _process_spans(self, distributed_run):

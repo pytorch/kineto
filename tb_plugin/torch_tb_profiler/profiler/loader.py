@@ -50,7 +50,7 @@ class RunLoader(object):
         for worker, span, path in workers:
             # convert the span timestamp to the index.
             span_index = None if span is None else span_index_map[(worker, span)]
-            p = Process(target=self._process_data, args=(worker, span_index, path))
+            p = Process(target=self._process_data, name=f"{self.run_name}|{span}", args=(worker, span_index, path))
             p.start()
         logger.info("started all processing")
 

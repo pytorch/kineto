@@ -19,6 +19,10 @@ def get_logger():
     global logger
     if logger is None:
         logger = logging.getLogger(consts.PLUGIN_NAME)
+        formatter = logging.Formatter('  [%(levelname)s/%(processName)s] %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
         logger.setLevel(get_logging_level())
     return logger
 

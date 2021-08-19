@@ -35,7 +35,7 @@ class TestEnd2End(unittest.TestCase):
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         print("starting fork mode testing")
-        self._test_tensorboard_with_arguments(test_folder, expected_runs)
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'fork'})
 
     def test_tensorboard_with_path_prefix(self):
         test_folder = get_samples_dir()
@@ -148,4 +148,3 @@ class TestEnd2End(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

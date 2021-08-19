@@ -1,9 +1,11 @@
 import multiprocessing as mp
 import os
 
+logger = mp.log_to_stderr()
+logger.setLevel(mp.SUBDEBUG)
 
 def get_start_method():
-    return os.getenv('TORCH_PROFILER_START_METHOD', "spawn")
+    return os.getenv('TORCH_PROFILER_START_METHOD')
 
 __all__ = [x for x in dir(mp.get_context(get_start_method())) if not x.startswith('_')]
 globals().update((name, getattr(mp.get_context(get_start_method()), name)) for name in __all__)

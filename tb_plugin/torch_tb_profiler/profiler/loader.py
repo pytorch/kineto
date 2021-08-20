@@ -69,7 +69,7 @@ class RunLoader(object):
             num_items -= 1
             r, d = item
             if r or d:
-                logger.debug("Loaded profile via mp.Queue")
+                logger.debug("Loaded profile via mp.Queue: {}".format(self.run_dir))
             if r is not None:
                 run.add_profile(r)
             if d is not None:
@@ -84,6 +84,7 @@ class RunLoader(object):
         return run
 
     def _process_data(self, worker, span, path):
+        print("==========_process_data", worker, ":", path)
         import absl.logging
         absl.logging.use_absl_handler()
 

@@ -51,13 +51,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
         self._runs = OrderedDict()
         self._runs_lock = threading.Lock()
+        logger.info("TorchProfilerPlugin.before create cache")
 
         self._cache = io.Cache()
         logger.info("TorchProfilerPlugin.after cache")
 
         self._queue = Queue()
         self._gpu_metrics_file_dict = {}
-        logger.info("TorchProfilerPlugin.after create Queue")
 
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()

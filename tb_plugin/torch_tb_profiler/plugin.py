@@ -42,6 +42,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         Args:
           context: A base_plugin.TBContext instance.
         """
+        logger.info("TorchProfilerPlugin.__init__")
         super(TorchProfilerPlugin, self).__init__(context)
         self.logdir = io.abspath(context.logdir.rstrip('/'))
 
@@ -52,13 +53,19 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._runs_lock = threading.Lock()
 
         self._cache = io.Cache()
+        logger.info("TorchProfilerPlugin.after cache")
+
         self._queue = Queue()
         self._gpu_metrics_file_dict = {}
+        logger.info("TorchProfilerPlugin.after create Queue")
+
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
+        logger.info("TorchProfilerPlugin.after create _monitor_runs")
 
         receive_runs = threading.Thread(target=self._receive_runs, name="receive_runs", daemon=True)
         receive_runs.start()
+        logger.info("TorchProfilerPlugin.after create _receive_runs")
 
         def clean():
             logger.debug("starting cleanup...")
@@ -68,6 +75,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 os.remove(temp_file)
 
         atexit.register(clean)
+        logger.info("TorchProfilerPlugin.__init__ exiting...")
 
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.

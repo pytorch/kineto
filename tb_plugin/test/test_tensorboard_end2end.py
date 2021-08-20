@@ -69,9 +69,9 @@ class TestEnd2End(unittest.TestCase):
                 env_copy.update(env)
                 env = env_copy
             if not path_prefix:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--load_fast=false'], env=env)
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
             else:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix, '--load_fast=false'], env=env)
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
             self._test_tensorboard(host, port, expected_runs, path_prefix)
         finally:
             pid = tb.pid

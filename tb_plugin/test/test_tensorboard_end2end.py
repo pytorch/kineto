@@ -40,7 +40,7 @@ class TestEnd2End(unittest.TestCase):
     def test_tensorboard_with_path_prefix(self):
         test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, path_prefix='/tensorboard/viewer/')
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'fork'}, path_prefix='/tensorboard/viewer/')
 
     def test_tensorboard_with_symlinks(self):
         logdir = tempfile.mkdtemp(prefix="tensorboard_logdir")
@@ -55,7 +55,7 @@ class TestEnd2End(unittest.TestCase):
         os.symlink(os.path.join(samples_dir, "resnet50_num_workers_4"), os.path.join(logdir, "run_symlink"))
 
         expected_runs = b'["run_concrete", "run_symlink"]'
-        self._test_tensorboard_with_arguments(logdir, expected_runs)
+        self._test_tensorboard_with_arguments(logdir, expected_runs, {'TORCH_PROFILER_START_METHOD':'fork'})
 
         shutil.rmtree(logdir)
 

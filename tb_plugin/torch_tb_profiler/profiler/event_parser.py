@@ -15,7 +15,9 @@ from .trace import EventTypes
 
 logger = utils.get_logger()
 
-CommunicationOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
+NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
+GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
+CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
 
 class ProfileRole(IntEnum):
     Kernel = 0
@@ -42,7 +44,7 @@ class NodeParserMixin:
         self.used_devices = set()
         self.use_dp = False
         self.use_ddp = False
-        self.use_nccl = False
+        self.comm_lib = set()
 
     def parse_nodes(self, events):
         # For OperatorNode and ProfilerStepNode:
@@ -64,9 +66,10 @@ class NodeParserMixin:
                 continue
             self._parse_node(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
 
-        for event in events:
-            if event.type == EventTypes.KERNEL:
-                self._update_communication_node(event)
+        if CommLibTypes.Nccl in self.comm_lib:
+            for event in events:
+                if event.type == EventTypes.KERNEL:
+                    self._update_communication_node(event)
 
         # associate CUDA Runtimes with CPU events
         for _, op_list in tid2list.items():
@@ -134,9 +137,17 @@ class NodeParserMixin:
                 op_node = ProfilerStepNode.create(event)
             else:
                 op_node = OperatorNode.create(event)
-            if event.name in CommunicationOpNameSet:
-                self.communication_data[op_node.external_id] = CommunicationNode.create(event)
-                self.use_nccl = True
+            if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
+                comm_node = CommunicationNode.create(event)
+                if event.name in NcclOpNameSet:
+                    self.comm_lib.add(CommLibTypes.Nccl)
+                if event.name in GlooOpNameSet:
+                    self.comm_lib.add(CommLibTypes.Gloo)
+                    ts = event.ts
+                    dur = event.duration
+                    comm_node.kernel_ranges.append((ts, ts + dur))
+                    comm_node.total_time = dur
+                self.communication_data[op_node.external_id] = comm_node
             if event.name == "DataParallel.forward":
                 self.use_dp = True
             if event.name == "DistributedDataParallel.forward":
@@ -312,7 +323,10 @@ class StepParser:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
-            self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
+            if event.name in GlooOpNameSet:
+                self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
+            else:
+                self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
 
         # Record host side min and max time.
         if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
@@ -326,7 +340,7 @@ class StepParser:
     def _find_device_steps(self, runtime_node_list):
         '''return steps associated with device nodes. 
         '''
-        runtime_node_list = sorted(self.runtime_node_list, key=lambda x: x.start_time)
+        runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
 
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
         # then record each step's min kernel start time and max kernel end time:
@@ -442,6 +456,9 @@ class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
 
         # Process steps
         self.parse_steps(events, self.communication_data)
+        if len(self.comm_lib) > 1:
+            logger.warning("Multiple communication libs are found. To avoid confusing, we disable the distributed view.")
+            self.communication_data.clear()
         # Move the interleaved logic out of each NodeParser and StepParser
         self.update_device_steps(self.runtime_node_list)
         return tid2tree

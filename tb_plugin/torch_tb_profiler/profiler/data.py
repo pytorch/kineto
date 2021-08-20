@@ -14,7 +14,7 @@ from .. import io, utils
 from . import trace
 from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
-from .event_parser import EventParser, ProfileRole
+from .event_parser import EventParser, ProfileRole, CommLibTypes
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .module_parser import ModuleAggregator
@@ -32,7 +32,7 @@ class RunProfileData(object):
         self.used_devices = []
         self.use_dp = False
         self.use_ddp =False
-        self.use_nccl = False
+        self.comm_lib = None
         self.profiler_start_ts = float("inf")
         self.events : List[BaseEvent] = None
         self.trace_file_path = None
@@ -58,6 +58,7 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
+        self.tc_eligible_ops = None
         self.kernel_stat = None
         self.tc_used_ratio = None
         self.recommendations = []
@@ -157,7 +158,7 @@ class RunProfileData(object):
         self.used_devices = sorted(list(parser.used_devices))
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
-        self.use_nccl = parser.use_nccl
+        self.comm_lib = parser.comm_lib
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()
@@ -171,6 +172,7 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
         self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
         self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
+        self.tc_eligible_ops = module_aggregator.tc_eligible_ops
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -220,6 +222,21 @@ class RunProfileData(object):
         self._analyze_distributed_metrics()
         self._analyze_gpu_metrics()
 
+        # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
+        # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
+        if self.device_props:
+            major = self.device_props[0].get("computeMajor")
+            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
+                text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \
+                       "You could enable AMP to speedup by using FP16. " \
+                       "Reference: <a href =\"{}\" target=\"_blank\">" \
+                       "Automatic Mixed Precision Package - torch.cuda.amp</a>".format(
+                    self.tc_eligible_ops,
+                    "https://pytorch.org/docs/stable/amp.html"
+                )
+                self.recommendations.append(text)
+
+
     def _analyze_distributed_metrics(self):
         if self.use_dp and len(self.used_devices) > 1:
             text = "It is recommended to use DistributedDataParallel, instead of DataParallel to do multi-GPU training." \
@@ -228,7 +245,7 @@ class RunProfileData(object):
                    )
             self.recommendations.append(text)
 
-        if self.use_ddp and not self.use_nccl and self.device_props:
+        if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
                 major = device_prop.get("computeMajor")
                 minor = device_prop.get("computeMinor")
@@ -284,6 +301,7 @@ class DistributedRunProfileData:
         self.span = run_profile_data.span
         self.steps_names = run_profile_data.steps_names
         self.has_communication = run_profile_data.has_communication
+        self.comm_lib = run_profile_data.comm_lib
         self.comm_node_list = run_profile_data.comm_node_list
         self.comm_overlap_costs = run_profile_data.comm_overlap_costs
         self.used_devices = run_profile_data.used_devices

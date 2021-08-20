@@ -2,7 +2,8 @@ import gzip
 import json
 import unittest
 
-from torch_tb_profiler.profiler.data import RunProfileData
+from torch_tb_profiler.profiler.data import DistributedRunProfileData, RunProfileData
+from torch_tb_profiler.profiler.loader import RunLoader
 from torch_tb_profiler.profiler.overall_parser import ProfileRole
 from torch_tb_profiler.run import RunProfile
 
@@ -10,10 +11,10 @@ SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
 
 
-def parse_json_trace(json_content) -> RunProfileData:
+def parse_json_trace(json_content, worker_name = WORKER_NAME) -> RunProfileData:
     trace_json = json.loads(json_content)
     trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
-    return RunProfileData.from_json(WORKER_NAME, 0, trace_json)
+    return RunProfileData.from_json(worker_name, 0, trace_json)
 
 
 '''
@@ -1678,18 +1679,12 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(1, start_ts)
 
         curves = result["rows"]
-        timestamps = result["ts"]
 
         self.assertIn("CPU", curves)
         self.assertIn("GPU0", curves)
-        self.assertIn("CPU", timestamps)
-        self.assertIn("GPU0", timestamps)
 
         self.assertEqual(len(event_data_cpu), len(curves["CPU"]))
-        self.assertEqual(len(event_data_cpu), len(timestamps["CPU"]))
         for i in range(len(event_data_cpu)):
-            # original timestamp
-            self.assertEqual(event_data_cpu[i][0],  timestamps["CPU"][i])
             # adjusted timestamp
             self.assertEqual(event_data_cpu[i][0] - start_ts,  curves["CPU"][i][0])
             # total allocated
@@ -1698,9 +1693,7 @@ class TestProfiler(unittest.TestCase):
             self.assertEqual(event_data_cpu[i][-1], curves["CPU"][i][2])
 
         self.assertEqual(len(event_data_gpu), len(curves["GPU0"]))
-        self.assertEqual(len(event_data_gpu), len(timestamps["GPU0"]))
         for i in range(len(event_data_gpu)):
-            self.assertEqual(event_data_gpu[i][0],  timestamps["GPU0"][i])
             self.assertEqual(event_data_gpu[i][0] - start_ts,  curves["GPU0"][i][0])
             self.assertEqual(event_data_gpu[i][-2], curves["GPU0"][i][1])
             self.assertEqual(event_data_gpu[i][-1], curves["GPU0"][i][2])
@@ -2093,6 +2086,344 @@ class TestProfiler(unittest.TestCase):
             self.assertEqual(agg_kernel.tc_used, expected_agg_kernel["tc_used"])
             self.assertEqual(agg_kernel.op_tc_eligible, expected_agg_kernel["op_tc_eligible"])
 
+    def test_distributed_nccl(self):
+        json_content0 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 0, "dur": 75,
+          "args": {"External id": 146, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_Broadcast_RING_LL_Sum_int8_t(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 16, "dur": 16,
+          "args": {"device": 0, "correlation": 28506, "external id": 146}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23803",
+          "ts": 100, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 130, "dur": 161,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:all_reduce", "pid": 23803, "tid": "25166",
+          "ts": 160, "dur": 75,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_AllReduce_RING_LL_Sum_float(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 162, "dur": 1556,
+          "args": {"device": 0, "correlation": 33218, "external id": 2513}
+        }
+        ]
+        """
+        json_content1 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 0, "dur": 20,
+          "args": {"External id": 146, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_Broadcast_RING_LL_Sum_int8_t(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 8, "dur": 31,
+          "args": {"device": 0, "correlation": 28506, "external id": 146}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23803",
+          "ts": 25, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 30, "dur": 161,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:all_reduce", "pid": 23803, "tid": "25166",
+          "ts": 160, "dur": 75,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_AllReduce_RING_LL_Sum_float(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 562, "dur": 1058,
+          "args": {"device": 0, "correlation": 33218, "external id": 2513}
+        }
+        ]
+        """
+
+        profile0 = parse_json_trace(json_content0, "worker0")
+        dist_data0 = DistributedRunProfileData(profile0)
+        self.assertTrue(profile0.has_communication)
+        self.assertEqual(len(profile0.comm_node_list), 2)
+        self.assertEqual(profile0.steps_costs[0].costs, [105, 0, 0, 16, 0, 0, 79, 35, 235])
+
+        profile1 = parse_json_trace(json_content1, "worker1")
+        dist_data1 = DistributedRunProfileData(profile1)
+        self.assertTrue(profile1.has_communication)
+        self.assertEqual(len(profile1.comm_node_list), 2)
+        self.assertEqual(profile1.steps_costs[0].costs[3], 22)
+
+        loader = RunLoader("test_nccl", "", None)
+        dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [32, 73, 16, 114])
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [152, 9, 22, 52])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [1074, 498])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [1074, 15])
+        self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
+            [['nccl:broadcast', 1, 212480, 212480, 16, 16, 16, 16], ['nccl:all_reduce', 1, 8196000, 8196000, 1556, 1556, 1058, 1058]])
+        self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
+            [['nccl:broadcast', 1, 212480, 212480, 31, 31, 16, 16], ['nccl:all_reduce', 1, 8196000, 8196000, 1058, 1058, 1058, 1058]])
+
+    def test_distributed_gloo_gpu(self):
+        json_content0 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 16, "dur": 38,
+          "args": {"External id": 165, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 25, "dur": 36,
+          "args": {"External id": 166, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 66, "dur": 18,
+          "args": {"External id": 167, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 30, "dur": 101,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 110, "dur": 18,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 120, "dur": 36,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+        json_content1 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 20, "dur": 28,
+          "args": {"External id": 256, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 28, "dur": 30,
+          "args": {"External id": 257, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 77, "dur": 6,
+          "args": {"External id": 258, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 30,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 70, "dur": 70,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 88, "dur": 38,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 130, "dur": 16,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+
+        profile0 = parse_json_trace(json_content0, "worker0")
+        dist_data0 = DistributedRunProfileData(profile0)
+        self.assertTrue(profile0.has_communication)
+        self.assertEqual(len(profile0.comm_node_list), 5)
+        self.assertEqual(profile0.steps_costs[0].costs, [101, 0, 0, 39, 0, 0, 16, 0, 156])
+
+        profile1 = parse_json_trace(json_content1, "worker1")
+        dist_data1 = DistributedRunProfileData(profile1)
+        self.assertTrue(profile1.has_communication)
+        self.assertEqual(len(profile1.comm_node_list), 5)
+        self.assertEqual(profile1.steps_costs[0].costs, [70, 0, 0, 44, 0, 0, 20, 12, 146])
+
+        loader = RunLoader("test_gloo_gpu", "", None)
+        dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [31, 70, 39, 16])
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [16, 54, 44, 32])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [75, 34])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [78, 20])
+        self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14], ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
+        self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
+
+    def test_distributed_gloo_cpu(self):
+        json_content0 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 16, "dur": 38,
+          "args": {"External id": 165, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 25, "dur": 36,
+          "args": {"External id": 166, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 66, "dur": 18,
+          "args": {"External id": 167, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::mul", "pid": 23803, "tid": "23800",
+          "ts": 30, "dur": 101,
+          "args": {"External id": 24505}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 110, "dur": 18,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 120, "dur": 36,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+        json_content1 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 20, "dur": 28,
+          "args": {"External id": 256, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 28, "dur": 30,
+          "args": {"External id": 257, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 77, "dur": 6,
+          "args": {"External id": 258, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 30,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::mul", "pid": 23803, "tid": "23800",
+          "ts": 70, "dur": 70,
+          "args": {"External id": 24505}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 88, "dur": 38,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 130, "dur": 16,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+
+        profile0 = parse_json_trace(json_content0, "worker0")
+        dist_data0 = DistributedRunProfileData(profile0)
+        self.assertTrue(profile0.has_communication)
+        self.assertEqual(len(profile0.comm_node_list), 5)
+        self.assertEqual(profile0.steps_costs[0].costs, [0, 0, 0, 109, 0, 0, 47, 0, 156])
+
+        profile1 = parse_json_trace(json_content1, "worker1")
+        dist_data1 = DistributedRunProfileData(profile1)
+        self.assertTrue(profile1.has_communication)
+        self.assertEqual(len(profile1.comm_node_list), 5)
+        self.assertEqual(profile1.steps_costs[0].costs, [0, 0, 0, 98, 0, 0, 36, 12, 146])
+
+        loader = RunLoader("test_gloo_cpu", "", None)
+        dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [47, 74, 35, 0])
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [36, 64, 34, 12])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [75, 34])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [78, 20])
+        self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14], ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
+        self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
 
 if __name__ == '__main__':
     unittest.main()

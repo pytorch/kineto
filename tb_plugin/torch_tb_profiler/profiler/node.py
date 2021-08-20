@@ -9,7 +9,7 @@ from .. import utils
 from .tensor_core import TC_OP_Whitelist
 from .trace import EventTypes
 
-logger = utils.logger
+logger = utils.get_logger()
 
 class MemoryMetrics(IntEnum):
     SelfIncreaseSize = 0
@@ -18,7 +18,6 @@ class MemoryMetrics(IntEnum):
     IncreaseSize = 3
     AllocationSize = 4
     AllocationCount = 5
-    Total = 6
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, tid, external_id):
@@ -51,6 +50,7 @@ class CommunicationNode(BaseNode):
         self.input_shape = input_shape
         self.input_type = input_type
         self.kernel_ranges = []
+        self.real_time_ranges = []
         self.total_time = 0
         self.real_time = 0
         self.step_name = None

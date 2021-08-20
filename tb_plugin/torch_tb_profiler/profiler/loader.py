@@ -21,7 +21,9 @@ class RunLoader(object):
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches
+        logger.info("before RunLoader create Queue")
         self.queue = Queue()
+        logger.info("after RunLoader create Queue")
 
     def load(self):
         workers = []
@@ -47,12 +49,13 @@ class RunLoader(object):
             for i, span in enumerate(span_array, 1):
                 span_index_map[(worker, span)] = i
 
+        logger.info("before forking {}".format(self.run_name))
         for worker, span, path in workers:
             # convert the span timestamp to the index.
             span_index = None if span is None else span_index_map[(worker, span)]
             p = Process(target=self._process_data, name=f"{self.run_name}|{span}", args=(worker, span_index, path))
             p.start()
-        logger.info("started all processing")
+        logger.info("started all processing {}".format(self.run_name))
 
         distributed_run = Run(self.run_name, self.run_dir)
         run = Run(self.run_name, self.run_dir)

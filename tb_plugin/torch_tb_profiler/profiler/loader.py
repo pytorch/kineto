@@ -58,11 +58,7 @@ class RunLoader(object):
         run = Run(self.run_name, self.run_dir)
         num_items = len(workers)
         while num_items > 0:
-            try:
-                item = self.queue.get(timeout=0.5)
-            except:
-                continue
-
+            item = self.queue.get()
             num_items -= 1
             r, d = item
             if r or d:

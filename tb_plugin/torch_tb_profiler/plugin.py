@@ -46,8 +46,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         super(TorchProfilerPlugin, self).__init__(context)
         self.logdir = io.abspath(context.logdir.rstrip('/'))
 
-        self._load_lock = threading.Lock()
-        self._load_threads = []
+        self._loading_run_dirs = []
 
         self._runs = OrderedDict()
         self._runs_lock = threading.Lock()
@@ -117,8 +116,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         with self._runs_lock:
             names = list(self._runs.keys())
 
-        with self._load_lock:
-            loading = bool(self._load_threads)
+        loading = bool(self._loading_run_dirs)
 
         data = {
             "runs": names,
@@ -361,8 +359,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                             # Use threading to avoid UI stall and reduce data parsing time
                             t = threading.Thread(target=self._load_run, args=(run_dir,))
                             t.start()
-                            with self._load_lock:
-                                self._load_threads.append(t)
+                            self._loading_run_dirs.append(run_dir)
 
                     if not has_dir:
                         # handle directory removed case.
@@ -381,6 +378,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 continue
 
             logger.info("Add run %s", run.name)
+            self._loading_run_dirs.remove(run.run_dir)
             with self._runs_lock:
                 is_new = run.name not in self._runs
                 self._runs[run.name] = run
@@ -414,13 +412,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             self._queue.put(run)
         except Exception as ex:
             logger.warning("Failed to load run %s. Exception=%s", ex, name, exc_info=True)
-
-        t = threading.current_thread()
-        with self._load_lock:
-            try:
-                self._load_threads.remove(t)
-            except ValueError:
-                logger.warning("could not find the thread {}".format(run_dir))
+            self._loading_run_dirs.remove(run_dir)
 
     def _get_run(self, name) -> Run:
         with self._runs_lock:

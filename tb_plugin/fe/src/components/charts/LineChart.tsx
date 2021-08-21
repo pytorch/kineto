@@ -62,7 +62,6 @@ export const LineChart: React.FC<IProps> = (props) => {
       isStacked: true,
       height,
       legend: { position: 'bottom' },
-      //chartArea: { left: '15%', width: '80%', top: '10%' },
       tooltip: { isHtml: true },
       hAxis: {
         title: hAxisTitle
@@ -90,12 +89,6 @@ export const LineChart: React.FC<IProps> = (props) => {
       minX: 0,
       maxX: 0
     }
-    console.log([
-      state,
-      initialSelectionStart,
-      initialSelectionEnd,
-      graphRect.left
-    ])
 
     rangeDiv.style.width = graphRect.width + 'px'
     rangeDiv.style.height = graphRect.height + 'px'
@@ -123,7 +116,6 @@ export const LineChart: React.FC<IProps> = (props) => {
           const startVal = cli.getHAxisValue(state.minX + graphRect.left)
           const endVal = cli.getHAxisValue(state.maxX + graphRect.left)
           onSelectionChanged(startVal, endVal)
-          console.log(['selection', startVal, endVal])
         }
       }
       window.removeEventListener('mouseup', onMouseUp)

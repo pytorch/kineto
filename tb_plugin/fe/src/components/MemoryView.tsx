@@ -126,7 +126,6 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         selectedRange?.endTs
       )
       .then((resp) => {
-        console.log(['Memory data', resp])
         setMemoryData(resp)
         setDevices(Object.keys(resp.data))
       })
@@ -166,12 +165,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       setSelectedRange(undefined)
       return
     }
-    setSelectedRange({
-      start,
-      end,
-      startTs,
-      endTs
-    })
+    setSelectedRange({ start, end, startTs, endTs })
   }
 
   return (

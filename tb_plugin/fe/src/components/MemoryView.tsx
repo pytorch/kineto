@@ -50,7 +50,7 @@ export interface IProps {
   span: string
 }
 
-export const MemoryView: React.FC<IProps> = (props) => {
+export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const { run, worker, span } = props
   const classes = useStyles()
 
@@ -65,9 +65,19 @@ export const MemoryView: React.FC<IProps> = (props) => {
   >(undefined)
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
-  const [curveDevice, setCurveDevice] = React.useState('')
-  const [selectedRange, setSelectedRange] = React.useState({start: 1426839090790973, end: 1726839091220818})
+  interface SelectedRange {
+    start: number
+    end: number
+    startTs: number
+    endTs: number
+  }
+  const [selectedRange, setSelectedRange] = React.useState<
+    SelectedRange | undefined
+  >()
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
+  const [searchEventOperatorName, setSearchEventOperatorName] = React.useState(
+    ''
+  )
 
   const tableData = memoryData ? memoryData.data[device] : undefined
 
@@ -92,28 +102,53 @@ export const MemoryView: React.FC<IProps> = (props) => {
     getName,
     tableData?.rows
   )
+  const [searchedEventsTableDataRows] = useSearchDirectly(
+    searchEventOperatorName,
+    getName,
+    memoryEventsData?.rows
+  )
 
   const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
     setSearchOperatorName(event.target.value as string)
   }
 
+  const onSearchEventOperatorChanged: TextFieldProps['onChange'] = (event) => {
+    setSearchEventOperatorName(event.target.value as string)
+  }
+
   React.useEffect(() => {
-    api.defaultApi.memoryGet(run, worker, span, selectedRange.start, selectedRange.end).then((resp) => {
-      setMemoryData(resp)
-      setDevices(Object.keys(resp.data))
-      setDevice(resp.metadata.default_device)
-    })
+    api.defaultApi
+      .memoryGet(
+        run,
+        worker,
+        span,
+        selectedRange?.startTs,
+        selectedRange?.endTs
+      )
+      .then((resp) => {
+        console.log(['Memory data', resp])
+        setMemoryData(resp)
+        setDevices(Object.keys(resp.data))
+      })
   }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
-    api.defaultApi.memoryEventsGet(run, worker, span, selectedRange.start, selectedRange.end).then((resp) => {
-      setMemoryEventsData(resp)
-    })
+    api.defaultApi
+      .memoryEventsGet(
+        run,
+        worker,
+        span,
+        selectedRange?.startTs,
+        selectedRange?.endTs
+      )
+      .then((resp) => {
+        setMemoryEventsData(resp)
+      })
   }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      setCurveDevice(resp.metadata.default_device)
+      setDevice(resp.metadata.default_device)
       setMemoryCurveGraph(resp)
     })
   }, [run, worker, span])
@@ -122,12 +157,21 @@ export const MemoryView: React.FC<IProps> = (props) => {
     setDevice(event.target.value as string)
   }
 
-  const onCurveDeviceChanged: SelectProps['onChange'] = (event) => {
-    setCurveDevice(event.target.value as string)
-  }
-
   const onSelectedRangeChanged = (start: number, end: number) => {
-    setSelectedRange({start: Math.round(start * 1e9), end: Math.round(end * 1e9)})
+    let bias = memoryCurveGraph?.metadata.first_ts ?? 0
+    let scale = 1 / (memoryCurveGraph?.metadata.time_factor ?? 1)
+    let startTs = Math.round(start * scale + bias)
+    let endTs = Math.round(end * scale + bias)
+    if (startTs == endTs) {
+      setSelectedRange(undefined)
+      return
+    }
+    setSelectedRange({
+      start,
+      end,
+      startTs,
+      endTs
+    })
   }
 
   return (
@@ -136,7 +180,7 @@ export const MemoryView: React.FC<IProps> = (props) => {
         <CardHeader title="Memory View" />
         <CardContent>
           <Grid direction="column" container spacing={1}>
-            <Grid item >
+            <Grid item>
               <DataLoading value={memoryCurveGraph}>
                 {(graph) => (
                   <Grid container direction="column">
@@ -144,8 +188,8 @@ export const MemoryView: React.FC<IProps> = (props) => {
                       <InputLabel id="memory-curve-device">Device</InputLabel>
                       <Select
                         labelId="memory-curve-device"
-                        value={curveDevice}
-                        onChange={onCurveDeviceChanged}
+                        value={device}
+                        onChange={onDeviceChanged}
                       >
                         {graph.metadata.devices.map((device) => (
                           <MenuItem value={device}>{device}</MenuItem>
@@ -158,12 +202,12 @@ export const MemoryView: React.FC<IProps> = (props) => {
                           hAxisTitle="Time (ms)"
                           vAxisTitle="Memory Usage (GB)"
                           graph={{
-                            title: graph.metadata.peaks[curveDevice],
+                            title: graph.metadata.peaks[device],
                             columns: graph.columns,
-                            rows: graph.rows[curveDevice]
+                            rows: graph.rows[device]
                           }}
-                          initialSelectionStart={selectedRange.start}
-                          initialSelectionEnd={selectedRange.end}
+                          initialSelectionStart={selectedRange?.start}
+                          initialSelectionEnd={selectedRange?.end}
                           onSelectionChanged={onSelectedRangeChanged}
                         />
                       </div>
@@ -172,9 +216,28 @@ export const MemoryView: React.FC<IProps> = (props) => {
                 )}
               </DataLoading>
             </Grid>
-            <Grid item>
+            <Grid item container direction="column" sm={6}>
+              <Grid item container direction="column" alignContent="center">
+                <TextField
+                  classes={{ root: classes.inputWidthOverflow }}
+                  value={searchEventOperatorName}
+                  onChange={onSearchEventOperatorChanged}
+                  type="search"
+                  label="Search by Name"
+                />
+              </Grid>
+            </Grid>
+            <Grid item direction="column">
               <DataLoading value={memoryEventsData}>
-                {(data) => <AntTableChart graph={data} initialPageSize={10} />}
+                {(data) => (
+                  <AntTableChart
+                    graph={{
+                      columns: data.columns,
+                      rows: searchedEventsTableDataRows ?? []
+                    }}
+                    initialPageSize={10}
+                  />
+                )}
               </DataLoading>
             </Grid>
             <Grid item container direction="column" spacing={1}>
@@ -222,4 +285,4 @@ export const MemoryView: React.FC<IProps> = (props) => {
       </Card>
     </div>
   )
-}
+})

@@ -921,6 +921,9 @@ components:
         - devices
         - peaks
         - totals
+        - first_ts
+        - time_factor
+        - memory_factor
       properties:
         default_device:
           type: string
@@ -932,6 +935,12 @@ components:
           type: object
         totals:
           type: object
+        first_ts:
+          type: number
+        time_factor:
+          type: number
+        memory_factor:
+          type: number
     MemoryCurve:
       type: object
       required:

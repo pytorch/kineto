@@ -491,6 +491,24 @@ export interface MemoryCurveMetadata {
    * @memberof MemoryCurveMetadata
    */
   totals: any
+  /**
+   *
+   * @type {number}
+   * @memberof MemoryCurveMetadata
+   */
+  firstTs: number
+  /**
+   *
+   * @type {number}
+   * @memberof MemoryCurveMetadata
+   */
+  timeFactor: number
+  /**
+   *
+   * @type {number}
+   * @memberof MemoryCurveMetadata
+   */
+  memoryFactor: number
 }
 /**
  *

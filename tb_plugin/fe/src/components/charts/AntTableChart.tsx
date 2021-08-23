@@ -10,6 +10,7 @@ import { Graph } from '../../api'
 interface IProps {
   graph: Graph
   sortColumn?: string
+  initialPageSize?: number
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -56,7 +57,7 @@ const getTableRows = function (rows: any) {
 }
 
 export const AntTableChart: React.FC<IProps> = (props) => {
-  const { graph, sortColumn } = props
+  const { graph, sortColumn, initialPageSize } = props
   const classes = useStyles(props)
 
   const rows = React.useMemo(() => getTableRows(graph.rows), [graph.rows])
@@ -69,7 +70,7 @@ export const AntTableChart: React.FC<IProps> = (props) => {
   // key is used to reset the Table state (page and sort) if the columns change
   const key = React.useMemo(() => Math.random() + '', [graph.columns])
 
-  const [pageSize, setPageSize] = React.useState(30)
+  const [pageSize, setPageSize] = React.useState(initialPageSize ?? 30)
   const onShowSizeChange = (current: number, size: number) => {
     setPageSize(size)
   }

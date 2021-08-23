@@ -11,7 +11,7 @@ SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
 
 
-def parse_json_trace(json_content, worker_name = WORKER_NAME):
+def parse_json_trace(json_content, worker_name = WORKER_NAME) -> RunProfileData:
     trace_json = json.loads(json_content)
     trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
     return RunProfileData.from_json(worker_name, 0, trace_json)
@@ -1354,7 +1354,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 90,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 90, "Bytes": 4
             }
           },
           {
@@ -1362,7 +1362,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 150,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 150, "Bytes": 4
             }
           },
           {
@@ -1370,7 +1370,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 200,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 200, "Bytes": 4
             }
           },
           {
@@ -1378,7 +1378,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 210,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 210, "Bytes": 4
             }
           },
           {
@@ -1386,7 +1386,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 265,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 265, "Bytes": 4
             }
           },
           {
@@ -1394,7 +1394,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 300,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 300, "Bytes": 4
             }
           },
           {
@@ -1402,7 +1402,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 350,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 10
+                "Device Type": 1, "Device Id": 0, "Addr": 350, "Bytes": 10
             }
           },
           {
@@ -1410,7 +1410,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 360,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -10
+                "Device Type": 1, "Device Id": 0, "Addr": 350, "Bytes": -10
             }
           },
           {
@@ -1418,7 +1418,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 450,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 1000000
+                "Device Type": 0, "Device Id": -1, "Addr": 450, "Bytes": 1000000
             }
           },
 
@@ -1427,7 +1427,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 515,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": 100
             }
           },
           {
@@ -1435,7 +1435,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 520,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 520, "Bytes": 100
             }
           },
           {
@@ -1443,7 +1443,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 600,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 520, "Bytes": -100
             }
           },
           {
@@ -1451,7 +1451,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 690,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 690, "Bytes": 100
             }
           },
           {
@@ -1459,7 +1459,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 701,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 701, "Bytes": 100
             }
           },
           {
@@ -1467,7 +1467,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 795,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": -100
             }
           },
 
@@ -1476,7 +1476,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 708,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 708, "Bytes": 100
             }
           },
           {
@@ -1484,7 +1484,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 742,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 708, "Bytes": -100
             }
           },
           {
@@ -1492,7 +1492,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 715,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 50
+                "Device Type": 1, "Device Id": 0, "Addr": 715, "Bytes": 50
             }
           },
           {
@@ -1500,7 +1500,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 735,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -50
+                "Device Type": 1, "Device Id": 0, "Addr": 715, "Bytes": -50
             }
           },
           {
@@ -1508,7 +1508,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 725,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 50
+                "Device Type": 1, "Device Id": 0, "Addr": 725, "Bytes": 50
             }
           },
           {
@@ -1516,7 +1516,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 728,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -50
+                "Device Type": 1, "Device Id": 0, "Addr": 725, "Bytes": -50
             }
           },
           {
@@ -1524,7 +1524,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 729,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 50
+                "Device Type": 0, "Device Id": -1, "Addr": 729, "Bytes": 50
             }
           },
           {
@@ -1532,7 +1532,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 746,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 100
+                "Device Type": 0, "Device Id": -1, "Addr": 746, "Bytes": 100
             }
           },
           {
@@ -1540,7 +1540,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 747,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 20
+                "Device Type": 1, "Device Id": 0, "Addr": 747, "Bytes": 20
             }
           },
           {
@@ -1548,7 +1548,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 749,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": -100
+                "Device Type": 0, "Device Id": -1, "Addr": 690, "Bytes": -100
             }
           },
           {
@@ -1556,7 +1556,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 760,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 30
+                "Device Type": 1, "Device Id": 0, "Addr": 760, "Bytes": 30
             }
           },
           {
@@ -1564,7 +1564,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 780,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -30
+                "Device Type": 1, "Device Id": 0, "Addr": 760, "Bytes": -30
             }
           },
           {
@@ -1572,7 +1572,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 795,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 10
+                "Device Type": 1, "Device Id": 0, "Addr": 795, "Bytes": 10
             }
           },
           {
@@ -1580,7 +1580,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 799,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -10
+                "Device Type": 1, "Device Id": 0, "Addr": 795, "Bytes": -10
             }
           }
         ]
@@ -1593,9 +1593,10 @@ class TestProfiler(unittest.TestCase):
 
         profile = parse_json_trace(json_content)
         profile.process()
+        memory_stats = RunProfile.get_memory_statistics(profile)
 
-        self.assertEqual(len(profile.memory_stats), 2)
-        self.assertEqual("GPU0" in profile.memory_stats, True)
+        self.assertEqual(len(memory_stats), 2)
+        self.assertIn("GPU0", memory_stats)
 
         # validation
         gpu_expected_data = {
@@ -1619,24 +1620,84 @@ class TestProfiler(unittest.TestCase):
         }
 
         validate_data = [
-            (profile.memory_stats["CPU"], cpu_expected_data),
-            (profile.memory_stats["GPU0"], gpu_expected_data)
+            (memory_stats["CPU"], cpu_expected_data),
+            (memory_stats["GPU0"], gpu_expected_data)
         ]
         for (mem_stat, expected_data) in validate_data:
             for name, values in expected_data.items():
-                # self increase size
-                self.assertEqual(mem_stat[name][0], values[0])
-                # self allocation size
-                self.assertEqual(mem_stat[name][1], values[1])
-                # self allocation count
-                self.assertEqual(mem_stat[name][2], values[2])
-                self.assertEqual(mem_stat[name][3], values[3])  # increase size
-                # allocation size
-                self.assertEqual(mem_stat[name][4], values[4])
-                # allocation count
-                self.assertEqual(mem_stat[name][5], values[5])
-                # op calls
-                self.assertEqual(mem_stat[name][6], values[6])
+                self.assertEqual(mem_stat[name], values)
+
+    def test_memory_curve(self):
+        def entry(ts, dev, dev_id, addr, alloc_size, total_allocated, total_reserved):
+            return {
+                "ph": "i", "s": "t", "name": "[memory]", "pid": 0, "tid": 0, "ts": ts,
+                "args": {
+                    "Device Type": dev,
+                    "Device Id": dev_id,
+                    "Addr": addr,
+                    "Bytes": alloc_size,
+                    "Total Allocated": total_allocated,
+                    "Total Reserved": total_reserved,
+                },
+            }
+
+        event_data_cpu = [
+            [1, 0, 0, 1, 4, 4, 0],         # alloc 1
+            [20, 0, 0, 1, -4, 0, 0],       # free  1
+            [100, 0, 0, 2, 8000, 8000, 0], # alloc 2
+            [200, 0, 0, 2, -8000, 0, 0],   # free  2
+            [300, 0, 0, 3, 4, 4, 0],       # alloc 3
+            [400, 0, 0, 4, 16, 20, 0],     # alloc 4
+            [500, 0, 0, 5, 4000, 4020, 0], # alloc 5
+            [600, 0, 0, 4, -16, 4004, 0],  # free  4
+            [700, 0, 0, 7, 80, 4084, 0],   # alloc 7
+            [800, 0, 0, 3, -4, 4080, 0],   # free  3
+            [900, 0, 0, 7, -80, 4000, 0],  # free  7
+            [905, 0, 0, 4, -4000, 0, 0],   # free  5
+        ]
+
+        event_data_gpu = [
+            [2, 1, 0, 11, 400, 400, 512],        # alloc 11
+            [22, 1, 0, 11, -400, 0, 512],        # free  11
+            [105, 1, 0, 12, 5000, 5000, 10240],  # alloc 12
+            [106, 1, 0, 13, 3000, 8000, 10240],  # alloc 13
+            [205, 1, 0, 12, -5000, 3000, 10240], # free  12
+            [401, 1, 0, 14, 1024, 4024, 10240],  # alloc 14
+            [499, 1, 0, 15, 4, 4028, 10240],     # alloc 15
+            [501, 1, 0, 13, -3000, 1028, 10240], # free  13
+            [502, 1, 0, 15, -4, 1024, 10240],    # free  15
+            [906, 1, 0, 14, -1024, 0, 10240],    # free  14
+        ]
+
+        json_content = json.dumps([entry(*data) for data in sorted(event_data_cpu + event_data_gpu)])
+
+        profile = parse_json_trace(json_content)
+        profile.process()
+        result = RunProfile.get_memory_curve(profile, time_metric="us", memory_metric="B")
+
+        start_ts = profile.profiler_start_ts
+        self.assertEqual(1, start_ts)
+
+        curves = result["rows"]
+
+        self.assertIn("CPU", curves)
+        self.assertIn("GPU0", curves)
+
+        self.assertEqual(len(event_data_cpu), len(curves["CPU"]))
+        for i in range(len(event_data_cpu)):
+            # adjusted timestamp
+            self.assertEqual(event_data_cpu[i][0] - start_ts,  curves["CPU"][i][0])
+            # total allocated
+            self.assertEqual(event_data_cpu[i][-2], curves["CPU"][i][1])
+            # total reserved
+            self.assertEqual(event_data_cpu[i][-1], curves["CPU"][i][2])
+
+        self.assertEqual(len(event_data_gpu), len(curves["GPU0"]))
+        for i in range(len(event_data_gpu)):
+            self.assertEqual(event_data_gpu[i][0] - start_ts,  curves["GPU0"][i][0])
+            self.assertEqual(event_data_gpu[i][-2], curves["GPU0"][i][1])
+            self.assertEqual(event_data_gpu[i][-1], curves["GPU0"][i][2])
+
 
     # Test group by "kernel detail + op name".
     def test_group_by_kernel_columns(self):

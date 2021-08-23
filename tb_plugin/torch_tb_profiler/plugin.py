@@ -97,6 +97,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/distributed/waittime": self.comm_wait_route,
             "/distributed/commops": self.comm_ops_route,
             "/memory": self.memory_route,
+            "/memory_curve": self.memory_curve_route,
+            "/memory_events": self.memory_events_route,
         }
 
     def frontend_metadata(self):
@@ -275,7 +277,34 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def memory_route(self, request):
         profile = self._get_profile_for_request(request)
-        return self.respond_as_json(profile.memory_view)
+        start_ts = request.args.get("start_ts", None)
+        end_ts = request.args.get("end_ts", None)
+        if start_ts is not None:
+            start_ts = int(start_ts)
+        if end_ts is not None:
+            end_ts = int(end_ts)
+
+        memory_stats = RunProfile.get_memory_statistics(profile, start_ts=start_ts, end_ts=end_ts)
+        return self.respond_as_json(RunProfile.generate_memory_view(memory_stats))
+
+    @wrappers.Request.application
+    def memory_curve_route(self, request):
+        profile = self._get_profile_for_request(request)
+        time_metric = request.args.get("time_metric", "second")
+        memory_metric = request.args.get("memory_metric", "MB")
+        return self.respond_as_json(RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
+
+    @wrappers.Request.application
+    def memory_events_route(self, request):
+        profile = self._get_profile_for_request(request)
+        start_ts = request.args.get("start_ts", None)
+        end_ts = request.args.get("end_ts", None)
+        if start_ts is not None:
+            start_ts = int(start_ts)
+        if end_ts is not None:
+            end_ts = int(end_ts)
+
+        return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts))
 
     @wrappers.Request.application
     def static_file_route(self, request):

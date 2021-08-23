@@ -365,6 +365,16 @@ paths:
           required: true
           schema:
             type: string
+        - in: query
+          name: start_ts
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: end_ts
+          required: false
+          schema:
+            type: number
       responses:
         '200':
           description: successful operation
@@ -372,6 +382,66 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/MemoryData'
+  /memory_curve:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/MemoryCurve'
+  /memory_events:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: start_ts
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: end_ts
+          required: false
+          schema:
+            type: number
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/MemoryEventsData'
   /kernel:
     get:
       parameters:
@@ -789,6 +859,44 @@ components:
           $ref: '#/components/schemas/MemoryTableMetadata'
         data:
           type: object
+    MemoryEventsData:
+      type: object
+      required:
+        - metadata
+        - columns
+        - rows
+      properties:
+        metadata:
+          $ref: '#/components/schemas/MemoryEventsTableMetadata'
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphColumn'
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+                - $ref: '#/components/schemas/ValueAndFormat'
+    MemoryEventsTableMetadata:
+      type: object
+      required:
+        - title
+        - default_device
+        - value
+      properties:
+        title:
+          type: string
+        default_device:
+          type: string
+        search:
+          type: string
+        sort:
+          type: string
     MemoryTableMetadata:
       type: object
       required:
@@ -806,3 +914,45 @@ components:
           type: string
         sort:
           type: string
+    MemoryCurveMetadata:
+      type: object
+      required:
+        - default_device
+        - devices
+        - peaks
+        - totals
+        - first_ts
+        - time_factor
+        - memory_factor
+      properties:
+        default_device:
+          type: string
+        devices:
+          type: array
+          items:
+            type: string
+        peaks:
+          type: object
+        totals:
+          type: object
+        first_ts:
+          type: number
+        time_factor:
+          type: number
+        memory_factor:
+          type: number
+    MemoryCurve:
+      type: object
+      required:
+        - metadata
+        - columns
+        - rows
+      properties:
+        metadata:
+          $ref: '#/components/schemas/MemoryCurveMetadata'
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphColumn'
+        rows:
+          type: object

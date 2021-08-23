@@ -1,8 +1,16 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from . import consts
+from typing import List, Optional, Union
 
+from collections import OrderedDict, defaultdict
+from math import pow
+
+from . import consts
+from .profiler.data import RunProfileData
+from .profiler.memory_parser import MemoryParser
+from .profiler.node import MemoryMetrics
+from .profiler.trace import DeviceType, MemoryEvent
 
 class Run(object):
     """ A profiler run. For visualization purpose only.
@@ -57,7 +65,7 @@ class Run(object):
             span = str(span)
         self.profiles[(profile.worker, span)] = profile
 
-    def get_profile(self, worker, span):
+    def get_profile(self, worker, span) -> "RunProfile":
         if worker is None:
             raise ValueError("the worker parameter is mandatory")
 
@@ -66,7 +74,7 @@ class Run(object):
 
         return self.profiles.get((worker, span), None)
 
-    def get_profiles(self, *, worker=None, span=None):
+    def get_profiles(self, *, worker=None, span=None) -> Optional[List["RunProfile"]]:
         # Note: we could not use if span to check it is None or not
         # since the span 0 will be skipped at this case.
         if worker is not None and span is not None:
@@ -90,6 +98,7 @@ class RunProfile(object):
         self.has_kernel = False
         self.has_communication = False
         self.has_memcpy_or_memset = False
+        self.profiler_start_ts = float("inf")
         self.overview = None
         self.operation_pie_by_name = None
         self.operation_table_by_name = None
@@ -108,8 +117,10 @@ class RunProfile(object):
         self.approximated_sm_efficiency_ranges = None
         self.gpu_infos = None
 
-        # memory stats
-        self.memory_view = None
+        # for memory stats and curve
+        self.tid2tree = None
+        self.op_list_groupby_name = None
+        self.memory_events : Optional[List[MemoryEvent]] = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -218,6 +229,242 @@ class RunProfile(object):
         data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)
         tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency)
         return data, tooltip
+
+    @staticmethod
+    def _filtered_by_ts(events, start_ts, end_ts):
+        """Returns time-ordered events of memory allocation and free"""
+        if start_ts is not None and end_ts is not None:
+            events = [e for e in events if start_ts <= e.ts and e.ts <= end_ts]
+        elif start_ts is not None:
+            events = [e for e in events if start_ts <= e.ts]
+        elif end_ts is not None:
+            events = [e for e in events if e.ts <= end_ts]
+
+        return events
+
+    @staticmethod
+    def get_memory_statistics(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
+        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
+        return memory_parser.get_memory_statistics()
+
+    @staticmethod
+    def generate_memory_view(memory_stats):
+        data = OrderedDict()
+        result = {
+            "metadata": {
+                "title": "Memory View",
+                "default_device": "CPU",
+                "search": "Operator Name",
+                "sort": "Self Size Increase (KB)"
+            },
+            "data": data
+        }
+
+        columns_names = [
+            ("Operator Name", "string", ""),
+            ("Calls", "number", "# of calls of the operator."),
+            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
+            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
+            ("Allocation Count", "number", "The allocation count including all chidren operators."),
+            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
+            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
+            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
+        ]
+        for name, memory in sorted(memory_stats.items()):
+            table = {}
+
+            # Process columns
+            columns = []
+            for col_name, col_type, tool_tip in columns_names:
+                if tool_tip:
+                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
+                else:
+                    columns.append({"type": col_type, "name": col_name})
+            table["columns"] = columns
+
+            # Process rows
+            rows = []
+            for op_name, stat in sorted(memory.items()):
+                rows.append([
+                    op_name,
+                    stat[6],
+                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
+                    stat[MemoryMetrics.AllocationCount],
+                    stat[MemoryMetrics.SelfAllocationCount],
+                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
+                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
+                    ])
+            table["rows"] = rows
+
+            data[name] = table
+        return result
+
+    @staticmethod
+    def get_memory_curve(profile: Union["RunProfile", RunProfileData], time_metric: str = "", memory_metric: str = "G"):
+        def get_curves_and_timestamps(memory_events: List[MemoryEvent], time_factor, memory_factor):
+            """For example:
+            ```py
+            {
+                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory
+                    [1, 4, 4, 1000000],
+                    [2, 16, 16, 1000000],
+                    [4, 4, 16, 1000000],
+                ],
+                "GPU0": ...
+            }
+            ```"""
+            curves = defaultdict(list)
+            timestamps = defaultdict(list)
+            peaks = defaultdict(float)
+            for e in memory_events:
+                if e.device_type == DeviceType.CPU:
+                    dev = "CPU"
+                elif e.device_type == DeviceType.CUDA:
+                    dev = f"GPU{e.device_id}"
+                else:
+                    raise NotImplementedError("Unknown device type for memory curve")
+                ts = e.ts
+                ta = e.total_allocated
+                tr = e.total_reserved
+
+                if ta != ta or tr != tr: # isnan
+                    continue
+
+                curves[dev].append([
+                    (ts - profile.profiler_start_ts) * time_factor,
+                    ta * memory_factor,
+                    tr * memory_factor,
+                ])
+                timestamps[dev].append(ts)
+                peaks[dev] = max(peaks[dev], ta)
+
+            return curves, timestamps, peaks
+
+        # canonicalize the memory metric to a string
+        canonical_time_metrics = {
+            "micro": "us", "microsecond": "us", "us": "us",
+            "milli": "ms", "millisecond": "ms", "ms": "ms",
+                 "":  "s",      "second":  "s",  "s":  "s",
+        }
+        # canonicalize the memory metric to a string
+        canonical_memory_metrics = {
+             "":  "B",  "B":  "B",
+            "K": "KB", "KB": "KB",
+            "M": "MB", "MB": "MB",
+            "G": "GB", "GB": "GB",
+        }
+
+        time_metric = canonical_time_metrics[time_metric]
+        memory_metric = canonical_memory_metrics[memory_metric]
+
+        # raw timestamp is in microsecond
+        # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
+        time_metric_to_factor = {
+            "us": 1,
+            "ms": 1e-3,
+            "s":  1e-6,
+        }
+        # raw memory is in bytes
+        memory_metric_to_factor = {
+            "B":  pow(1024,  0),
+            "KB": pow(1024, -1),
+            "MB": pow(1024, -2),
+            "GB": pow(1024, -3),
+        }
+
+        time_factor = time_metric_to_factor[time_metric]
+        memory_factor = memory_metric_to_factor[memory_metric]
+        curves, timestamps, peaks = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
+        for dev in curves:
+            if len(curves[dev]) == 0:
+                del curves[dev]
+                del timestamps[dev]
+                del peaks[dev]
+        peaks_formatted = {}
+        totals = {}
+        for dev, value in peaks.items():
+            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, memory_metric)
+            if dev != "CPU":
+                try:
+                    totals[dev] = profile.gpu_infos[int(dev[3:])]["Memory Raw"] * memory_factor
+                except:
+                    pass
+
+        devices = list(curves.keys())
+        return {
+            "metadata": {
+                "default_device": "CPU",
+                "devices": devices,
+                "peaks": peaks_formatted,
+                "totals": totals,
+                "first_ts": profile.profiler_start_ts,
+                "time_factor": time_factor,
+                "memory_factor": memory_factor,
+            },
+            "columns": [
+                { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
+                { "name": f"Allocated ({memory_metric})", "type": "number", "tooltip": "Total memory in use." },
+                { "name": f"Reserved ({memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+                # { "name": f"Total ({memory_metric})", "type": "number", "tooltip": "Total Memory the device have."},
+            ],
+            "rows": curves,
+        }
+
+    @staticmethod
+    def get_memory_events(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        profiler_start_ts = profile.profiler_start_ts
+        memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
+
+        # NOTE: reuse MemoryParser for annotate records with op name
+        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
+        memory_records = sorted(memory_parser.processed_records, key = lambda r: r.ts)
+
+        events = []
+        alloc = {} # allocation events may or may not have paired free event
+        free =  {} # free events that does not have paired free event
+        prev_ts = float("-inf") # ensure ordered memory records is ordered
+        for i, r in enumerate(memory_records):
+            assert prev_ts < r.ts
+            prev_ts = r.ts
+            addr = r.addr
+            size = r.bytes
+            if size > 0:
+                # Allocation event, to be matched with a Release event
+                alloc[addr] = i
+            else:
+                if addr in alloc:
+                    alloc_ts = memory_records[alloc[addr]].ts
+                    free_ts = r.ts
+                    events.append([r.op_name, -size, alloc_ts - profiler_start_ts, free_ts - profiler_start_ts, free_ts - alloc_ts])
+                    del alloc[addr]
+                else:
+                    assert addr not in free
+                    free[addr] = i
+
+        for i in alloc.values():
+            r = memory_records[i]
+            events.append([r.op_name, r.bytes, r.ts - profiler_start_ts, None, None])
+
+        for i in free.values():
+            r = memory_records[i]
+            events.append([r.op_name, -r.bytes, None, r.ts - profiler_start_ts, None])
+
+        return {
+            "metadata": {
+                "title": "Memory Events",
+                "default_device": "CPU",
+            },
+            "columns": [
+                { "name": "Operator", "type": "string", "tooltip": "" },
+                { "name": "Size", "type": "number", "tooltip": "" },
+                { "name": "Allocation Time", "type": "number", "tooltip": "" },
+                { "name": "Release Time", "type": "number", "tooltip": "" },
+                { "name": "Duration", "type": "number", "tooltip": "" },
+            ],
+            "rows": events,
+        }
 
 
 class DistributedRunProfile(object):

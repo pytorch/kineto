@@ -10,7 +10,9 @@ __all__ = ["EventTypes", "create_event"]
 
 logger = utils.get_logger()
 
-DeviceType = IntEnum('DeviceType', ['CPU', 'CUDA'], start=0)
+class DeviceType(IntEnum):
+    CPU = 0
+    CUDA = 1
 
 class EventTypes(object):
     TRACE = "Trace"
@@ -92,8 +94,6 @@ class MemoryEvent(BaseEvent):
         super().__init__(type, data)
         self.scope = data.get("s", "")
         self.device_id = self.args.get("Device Id")
-        self.bytes = self.args.get("Bytes", 0)
-
         dtype = self.args.get("Device Type")
         if dtype is not None:
             try:
@@ -103,6 +103,29 @@ class MemoryEvent(BaseEvent):
 
         self.device_type = dtype
 
+    @property
+    def addr(self):
+        return self.args.get("Addr")
+
+    @property
+    def bytes(self):
+        return self.args.get("Bytes", 0)
+
+    @property
+    def total_allocated(self):
+        # TODO: Allocated Bytes to be renamed to Total Allocated
+        old = self.args.get("Allocated Bytes")
+        if old is not None:
+            return old
+        return self.args.get("Total Allocated", float("nan"))
+
+    @property
+    def total_reserved(self):
+        # TODO: Reserved Bytes to be rename to Total Reserved
+        old = self.args.get("Reserved Bytes")
+        if old is not None:
+            return old
+        return self.args.get("Total Reserved", float("nan"))
 
 def create_event(event):
     try:

@@ -29,7 +29,15 @@ const normalArea = { left: '5%', width: '95%' }
 const noTitleArea = { left: '5%', width: '95%', top: '10%', height: '80%' }
 
 export const PieChart: React.FC<IProps> = (props) => {
-  const { graph, height = 300, top, noLegend, title, colors, tooltip_mode = 'both' } = props
+  const {
+    graph,
+    height = 300,
+    top,
+    noLegend,
+    title,
+    colors,
+    tooltip_mode = 'both'
+  } = props
   const classes = useStyles(props)
   const graphRef = React.useRef<HTMLDivElement>(null)
 

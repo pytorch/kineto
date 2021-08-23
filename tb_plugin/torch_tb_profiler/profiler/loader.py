@@ -58,7 +58,11 @@ class RunLoader(object):
         run = Run(self.run_name, self.run_dir)
         num_items = len(workers)
         while num_items > 0:
-            item = self.queue.get()
+            try:
+                item = self.queue.get(timeout=0.5)
+            except:
+                continue
+
             num_items -= 1
             r, d = item
             if r or d:
@@ -91,6 +95,7 @@ class RunLoader(object):
             profile = generator.generate_run_profile()
             dist_data = DistributedRunProfileData(data)
 
+            logger.debug("Sending back profile via mp.Queue")
             self.queue.put((profile, dist_data))
         except KeyboardInterrupt:
             logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))

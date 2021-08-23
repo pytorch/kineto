@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import List
+
 import gzip
 import io as sysio
 import json
@@ -10,11 +12,11 @@ from json.decoder import JSONDecodeError
 
 from .. import io, utils
 from . import trace
+from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
 from .event_parser import EventParser, ProfileRole, CommLibTypes
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
-from .memory_parser import MemoryParser
 from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
 
@@ -31,7 +33,8 @@ class RunProfileData(object):
         self.use_dp = False
         self.use_ddp =False
         self.comm_lib = None
-        self.events = None
+        self.profiler_start_ts = float("inf")
+        self.events : List[BaseEvent] = None
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
@@ -49,6 +52,7 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
+        self.tid2tree = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
@@ -60,19 +64,6 @@ class RunProfileData(object):
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
-
-        # Memory stats
-        self.memory_stats = None
-
-    @property
-    def has_memory_data(self):
-        if self.memory_stats:
-            for node_metrics in self.memory_stats.values():
-                for metrics_values in node_metrics.values():
-                    if any(metrics_values):
-                        return True
-
-        return False
 
     @staticmethod
     def parse(worker, span, path):
@@ -94,7 +85,9 @@ class RunProfileData(object):
         for data in trace_json:
             event = trace.create_event(data)
             if event is not None:
+                profile.profiler_start_ts = min(profile.profiler_start_ts, event.ts)
                 profile.events.append(event)
+        profile.events.sort(key=lambda e: e.ts)
 
         profile.process()
         profile.analyze()
@@ -155,7 +148,7 @@ class RunProfileData(object):
 
     def process(self):
         parser = EventParser()
-        tid2tree = parser.parse(self.events)
+        self.tid2tree = parser.parse(self.events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
@@ -173,7 +166,7 @@ class RunProfileData(object):
         # Starting aggregate
         logger.debug("ModuleAggregator")
         module_aggregator = ModuleAggregator()
-        module_aggregator.aggregate(tid2tree)
+        module_aggregator.aggregate(self.tid2tree)
         self.op_list_groupby_name = module_aggregator.op_list_groupby_name
         self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
@@ -202,16 +195,14 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
-        memory_parser = MemoryParser(tid2tree, module_aggregator.op_list_groupby_name)
-        memory_parser.parse_events(self.events)
-        self.memory_stats = memory_parser.get_memory_statistics()
-
         if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
             self.tc_used_ratio = kernel_parser.tc_used_ratio
+
+        self.memory_events = self._memory_events()
 
     def analyze(self):
         self.recommendations = []
@@ -275,6 +266,11 @@ class RunProfileData(object):
                    "For such case, you may want to evaluate <a href = \"{}\" target=\"_blank\">LAMB optimizer</a>".format(
                        round(communication_ratio * 100, 1), "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
             self.recommendations.append(text)
+
+    def _memory_events(self) -> List[MemoryEvent]:
+        memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]
+        memory_events.sort(key=lambda e: e.ts)
+        return memory_events
 
     def _analyze_gpu_metrics(self):
         def get_gpus_str(gpus):

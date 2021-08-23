@@ -16,16 +16,10 @@
 #include "TraceActivity.h"
 #include "TraceSpan.h"
 
-#define GENERATE_FORWARD_BACKWARD_LINK(link_id, link_type) \
-  ((((uint64_t)(link_type)) << 60) | (link_id))
-#define GET_LINK_TYPE(link) \
-  (((uint64_t)(link)) >> 60)
-#define GET_LINK_ID(link) \
-  ((((uint64_t)1 << 60) - 1) & (link))
-#define LINK_FORWARD_BACKWARD_HEAD 1
-#define LINK_FORWARD_BACKWARD_TAIL 2
-
 namespace libkineto {
+
+// Link type, used in GenericTraceActivity.flow.type
+constexpr unsigned int kLinkFwdBwd = 1;
 
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
@@ -36,7 +30,7 @@ class GenericTraceActivity : public TraceActivity {
 
   GenericTraceActivity(
       const TraceSpan& trace, ActivityType type, const std::string& name)
-      : activityType(type), activityName(name), traceSpan_(&trace), linkedAct(nullptr), linkId(0){
+      : activityType(type), activityName(name), traceSpan_(&trace){
   }
 
   int64_t deviceId() const override {
@@ -68,7 +62,7 @@ class GenericTraceActivity : public TraceActivity {
   }
 
   const TraceActivity* linkedActivity() const override {
-    return linkedAct;
+    return flow.linkedActivity;
   }
 
   const TraceSpan* traceSpan() const override {
@@ -95,9 +89,12 @@ class GenericTraceActivity : public TraceActivity {
   int32_t resource{0};
   ActivityType activityType;
   std::string activityName;
-  TraceActivity* linkedAct;
-  // High-4bits represents link type.
-  uint64_t linkId;
+  struct Flow {
+    Flow(): linkedActivity(nullptr), id(0), type(0) {}
+    TraceActivity* linkedActivity; // Only set in destination side.
+    uint64_t id : 60;
+    uint64_t type : 4;
+  } flow;
 
  private:
   const TraceSpan* traceSpan_;

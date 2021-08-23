@@ -245,22 +245,22 @@ void ChromeTraceLogger::handleGenericActivity(
       op_metadata);
   // clang-format on
 
-  if (op.linkedActivity() != nullptr) {
+  if (op.flow.linkedActivity != nullptr) {
     handleGenericLink(op);
   }
 }
 
 void ChromeTraceLogger::handleGenericLink(const GenericTraceActivity& op) {
-  uint64_t link_type = GET_LINK_TYPE(op.linkId);
-  if (link_type == LINK_FORWARD_BACKWARD_HEAD) {
-    this->handleFwdBwdLinkStart(op);
-  }
-  else if (link_type == LINK_FORWARD_BACKWARD_TAIL) {
-    this->handleFwdBwdLinkEnd(op);
+  if (op.flow.type == kLinkFwdBwd) {
+    this->handleFwdBwdLinkStart(*((GenericTraceActivity*)op.flow.linkedActivity), "forward_backward", "fwd_bwd");
+    this->handleFwdBwdLinkEnd(op, "forward_backward", "fwd_bwd");
   }
 }
 
-void ChromeTraceLogger::handleFwdBwdLinkStart(const libkineto::GenericTraceActivity& s) {
+void ChromeTraceLogger::handleFwdBwdLinkStart(
+    const libkineto::GenericTraceActivity& s,
+    const std::string& cat,
+    const std::string& name) {
   if (!traceOf_) {
     return;
   }
@@ -269,13 +269,16 @@ void ChromeTraceLogger::handleFwdBwdLinkStart(const libkineto::GenericTraceActiv
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "s", "id": {}, "pid": {}, "tid": "{}", "ts": {},
-    "cat": "forward_backward", "name": "fwd_bwd"
+    "cat": "{}", "name": "{}"
   }},)JSON",
-      GET_LINK_ID(s.linkId), processId(), s.resourceId(), s.timestamp());
+      s.flow.id, processId(), s.resourceId(), s.timestamp(), cat, name);
   // clang-format on
 }
 
-void ChromeTraceLogger::handleFwdBwdLinkEnd(const libkineto::GenericTraceActivity& e) {
+void ChromeTraceLogger::handleFwdBwdLinkEnd(
+    const libkineto::GenericTraceActivity& e,
+    const std::string& cat,
+    const std::string& name) {
   if (!traceOf_) {
     return;
   }
@@ -284,9 +287,9 @@ void ChromeTraceLogger::handleFwdBwdLinkEnd(const libkineto::GenericTraceActivit
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "f", "id": {}, "pid": {}, "tid": "{}", "ts": {},
-    "cat": "forward_backward", "name": "fwd_bwd", "bp": "e"
+    "cat": "{}", "name": "{}", "bp": "e"
   }},)JSON",
-      GET_LINK_ID(e.linkId), processId(), e.resourceId(), e.timestamp());
+      e.flow.id, processId(), e.resourceId(), e.timestamp(), cat, name);
   // clang-format on
 }
 

@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 from typing import List, Optional, Union
 
+import copy
 from collections import OrderedDict, defaultdict
 from math import pow
 
@@ -11,6 +12,16 @@ from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryParser
 from .profiler.node import MemoryMetrics
 from .profiler.trace import DeviceType, MemoryEvent
+
+
+def dev_name(dev_type: DeviceType, dev_id: Optional[int]):
+    if dev_type == DeviceType.CPU:
+        return "CPU"
+    elif dev_type == DeviceType.CUDA:
+        return f"GPU{dev_id}"
+    else:
+        raise ValueError
+
 
 class Run(object):
     """ A profiler run. For visualization purpose only.
@@ -249,8 +260,9 @@ class RunProfile(object):
         return memory_parser.get_memory_statistics()
 
     @staticmethod
-    def generate_memory_view(memory_stats):
-        data = OrderedDict()
+    def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        stats = RunProfile.get_memory_statistics(profile, start_ts, end_ts)
+
         result = {
             "metadata": {
                 "title": "Memory View",
@@ -258,35 +270,32 @@ class RunProfile(object):
                 "search": "Operator Name",
                 "sort": "Self Size Increase (KB)"
             },
-            "data": data
+            "columns": [
+                {"name": "Operator Name", "type": "string"},
+                {"name": "Calls", "type": "number", "tooltip": "# of calls of the operator."},
+                {"name": "Size Increase (KB)", "type": "number",
+                 "tooltip": "The memory increase size include all children operators."},
+                {"name": "Self Size Increase (KB)", "type": "number",
+                 "tooltip": "The memory increase size associated with the operator itself."},
+                {"name": "Allocation Count", "type": "number",
+                    "tooltip": "The allocation count including all chidren operators."},
+                {"name": "Self Allocation Count", "type": "number",
+                 "tooltip": "The allocation count belonging to the operator itself."},
+                {"name": "Allocation Size (KB)", "type": "number",
+                 "tooltip": "The allocation size including all children operators."},
+                {"name": "Self Allocation Size (KB)", "type": "number",
+                 "tooltip": "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free."},
+            ],
+            "rows": {}
         }
 
-        columns_names = [
-            ("Operator Name", "string", ""),
-            ("Calls", "number", "# of calls of the operator."),
-            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
-            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
-            ("Allocation Count", "number", "The allocation count including all chidren operators."),
-            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
-            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
-            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
-        ]
-        for name, memory in sorted(memory_stats.items()):
-            table = {}
+        for name in stats:
+            these_rows = []
+            result["rows"][name] = these_rows
 
-            # Process columns
-            columns = []
-            for col_name, col_type, tool_tip in columns_names:
-                if tool_tip:
-                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
-                else:
-                    columns.append({"type": col_type, "name": col_name})
-            table["columns"] = columns
-
-            # Process rows
-            rows = []
+            memory = stats[name]
             for op_name, stat in sorted(memory.items()):
-                rows.append([
+                these_rows.append([
                     op_name,
                     stat[6],
                     round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
@@ -295,10 +304,8 @@ class RunProfile(object):
                     stat[MemoryMetrics.SelfAllocationCount],
                     round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
                     round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
-                    ])
-            table["rows"] = rows
+                ])
 
-            data[name] = table
         return result
 
     @staticmethod
@@ -419,12 +426,12 @@ class RunProfile(object):
 
         # NOTE: reuse MemoryParser for annotate records with op name
         memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
-        memory_records = sorted(memory_parser.processed_records, key = lambda r: r.ts)
+        memory_records = sorted(memory_parser.processed_records, key=lambda r: r.ts)
 
-        events = []
-        alloc = {} # allocation events may or may not have paired free event
-        free =  {} # free events that does not have paired free event
-        prev_ts = float("-inf") # ensure ordered memory records is ordered
+        events = defaultdict(list)
+        alloc = {}  # allocation events may or may not have paired free event
+        free = {}  # free events that does not have paired free event
+        prev_ts = float("-inf")  # ensure ordered memory records is ordered
         for i, r in enumerate(memory_records):
             assert prev_ts < r.ts
             prev_ts = r.ts
@@ -437,7 +444,8 @@ class RunProfile(object):
                 if addr in alloc:
                     alloc_ts = memory_records[alloc[addr]].ts
                     free_ts = r.ts
-                    events.append([r.op_name, -size, alloc_ts - profiler_start_ts, free_ts - profiler_start_ts, free_ts - alloc_ts])
+                    events[dev_name(r.device_type, r.device_id)].append(
+                        [r.op_name, -size, alloc_ts - profiler_start_ts, free_ts - profiler_start_ts, free_ts - alloc_ts])
                     del alloc[addr]
                 else:
                     assert addr not in free
@@ -445,11 +453,13 @@ class RunProfile(object):
 
         for i in alloc.values():
             r = memory_records[i]
-            events.append([r.op_name, r.bytes, r.ts - profiler_start_ts, None, None])
+            events[dev_name(r.device_type, r.device_id)].append(
+                [r.op_name, r.bytes, r.ts - profiler_start_ts, None, None])
 
         for i in free.values():
             r = memory_records[i]
-            events.append([r.op_name, -r.bytes, None, r.ts - profiler_start_ts, None])
+            events[dev_name(r.device_type, r.device_id)].append(
+                [r.op_name, -r.bytes, None, r.ts - profiler_start_ts, None])
 
         return {
             "metadata": {
@@ -457,13 +467,13 @@ class RunProfile(object):
                 "default_device": "CPU",
             },
             "columns": [
-                { "name": "Operator", "type": "string", "tooltip": "" },
-                { "name": "Size", "type": "number", "tooltip": "" },
-                { "name": "Allocation Time", "type": "number", "tooltip": "" },
-                { "name": "Release Time", "type": "number", "tooltip": "" },
-                { "name": "Duration", "type": "number", "tooltip": "" },
+                {"name": "Operator", "type": "string", "tooltip": ""},
+                {"name": "Size", "type": "number", "tooltip": ""},
+                {"name": "Allocation Time", "type": "number", "tooltip": ""},
+                {"name": "Release Time", "type": "number", "tooltip": ""},
+                {"name": "Duration", "type": "number", "tooltip": ""},
             ],
-            "rows": events,
+            "rows": events,  # in the form of { "CPU": [...], "GPU0": [...], ... }
         }
 
 

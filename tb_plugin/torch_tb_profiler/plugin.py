@@ -284,8 +284,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        memory_stats = RunProfile.get_memory_statistics(profile, start_ts=start_ts, end_ts=end_ts)
-        return self.respond_as_json(RunProfile.generate_memory_view(memory_stats))
+        return self.respond_as_json(RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts))
 
     @wrappers.Request.application
     def memory_curve_route(self, request):

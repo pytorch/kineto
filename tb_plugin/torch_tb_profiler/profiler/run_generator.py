@@ -412,20 +412,6 @@ class RunGenerator(object):
         data = {"total": pie}
         return data
 
-    def _generate_memory_view(self, memory_stats):
-        memory_stats = self.profile_data.memory_stats
-
-        data = OrderedDict()
-        result = {
-            "metadata": {
-                "title": "Memory View",
-                "default_device": "CPU",
-                "search": "Operator Name",
-                "sort": "Self Size Increase (KB)"
-            },
-            "data": data
-        }
-
 
     @staticmethod
     def _get_gpu_info(device_props, gpu_id):

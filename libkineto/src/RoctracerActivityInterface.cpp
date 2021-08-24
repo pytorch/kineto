@@ -59,17 +59,19 @@ RoctracerActivityInterface::~RoctracerActivityInterface() {
 
 void RoctracerActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
+  if (!singleton().externalCorrelationEnabled_)
+    return;
   // FIXME: no type
-  // FIXME: disabled
-  //roctracer_activity_push_external_correlation_id(id);
+  roctracer_activity_push_external_correlation_id(id);
 #endif
 }
 
 void RoctracerActivityInterface::popCorrelationID(CorrelationFlowType type) {
-#ifdef HAS_CUPTI
+#ifdef HAS_ROCTRACER
+  if (!singleton().externalCorrelationEnabled_)
+    return;
   // FIXME: no type
-  // FIXME: disabled
-  //roctracer_activity_pop_external_correlation_id(nullptr);
+  roctracer_activity_pop_external_correlation_id(nullptr);
 #endif
 }
 
@@ -143,6 +145,9 @@ int RoctracerActivityInterface::processActivities(
       }
       roctracer_next_record(record, &record);     
     }
+    else if (domain == ACTIVITY_DOMAIN_EXT_API) {
+      printf("%d :: %d\n", record->correlation_id, record->external_id);
+    }
   }
   return count;
 }
@@ -170,17 +175,11 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
       switch (cid) {
         case HIP_API_ID_hipLaunchKernel:
           {
-            std::ostringstream ss;
-            ss << data->args.hipLaunchKernel.function_address;
-            name = ss.str();
             name = hipKernelNameRefByPtr(data->args.hipLaunchKernel.function_address, data->args.hipLaunchKernel.stream);
           }
           break;
         case HIP_API_ID_hipExtLaunchKernel:
           {
-            std::ostringstream ss;
-            ss << data->args.hipExtLaunchKernel.function_address;
-            name = ss.str();
             name = hipKernelNameRefByPtr(data->args.hipLaunchKernel.function_address, data->args.hipLaunchKernel.stream);
           }
           break;
@@ -254,6 +253,7 @@ void RoctracerActivityInterface::enableActivities(
     roctracer_open_pool_expl(&hip_cb_properties, &hipPool_);
     roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HIP_API, hipPool_);
     roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, hipPool_);    // FIXME - logging on 1 thread for now
+    roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_EXT_API, hipPool_);    // FIXME - logging on 1 thread for now
 #endif
 #if 0
     // Log hcc
@@ -282,6 +282,7 @@ void RoctracerActivityInterface::enableActivities(
 
     m_registered = true;
   }
+
   roctracer_start();
 #endif
 }

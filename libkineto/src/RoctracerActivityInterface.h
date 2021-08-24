@@ -120,7 +120,7 @@ class RoctracerActivityInterface {
   //int eventCount{0};
   //std::vector<GenericTraceActivity> hipActivity_;
   //std::vector<GenericTraceActivity> hccActivity_;
-
+  bool externalCorrelationEnabled_{true};
 
  protected:
 #ifdef HAS_CUPTI

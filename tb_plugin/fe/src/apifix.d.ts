@@ -43,4 +43,11 @@ declare module './api/generated/api' {
   export interface MemoryTableMetadata {
     default_device: MemoryTableMetadata['defaultDevice']
   }
+
+  export interface MemoryCurveMetadata {
+    default_device: MemoryCurveMetadata['defaultDevice']
+    first_ts: MemoryCurveMetadata['firstTs']
+    time_factor: MemoryCurveMetadata['timeFactor']
+    memory_factor: MemoryCurveMetadata['memoryFactor']
+  }
 }

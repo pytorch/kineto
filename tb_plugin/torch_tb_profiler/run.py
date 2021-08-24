@@ -310,7 +310,7 @@ class RunProfile(object):
 
     @staticmethod
     def get_memory_curve(profile: Union["RunProfile", RunProfileData], time_metric: str = "", memory_metric: str = "G"):
-        def get_curves_and_timestamps(memory_events: List[MemoryEvent], time_factor, memory_factor):
+        def get_curves_and_peaks(memory_events: List[MemoryEvent], time_factor, memory_factor):
             """For example:
             ```py
             {
@@ -323,7 +323,6 @@ class RunProfile(object):
             }
             ```"""
             curves = defaultdict(list)
-            timestamps = defaultdict(list)
             peaks = defaultdict(float)
             for e in memory_events:
                 if e.device_type == DeviceType.CPU:
@@ -344,10 +343,14 @@ class RunProfile(object):
                     ta * memory_factor,
                     tr * memory_factor,
                 ])
-                timestamps[dev].append(ts)
                 peaks[dev] = max(peaks[dev], ta)
 
-            return curves, timestamps, peaks
+            for dev in curves:
+                if len(curves[dev]) == 0:
+                    del curves[dev]
+                    del peaks[dev]
+
+            return curves, peaks
 
         # canonicalize the memory metric to a string
         canonical_time_metrics = {
@@ -383,12 +386,7 @@ class RunProfile(object):
 
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
-        curves, timestamps, peaks = get_curves_and_timestamps(profile.memory_events, time_factor, memory_factor)
-        for dev in curves:
-            if len(curves[dev]) == 0:
-                del curves[dev]
-                del timestamps[dev]
-                del peaks[dev]
+        curves, peaks = get_curves_and_peaks(profile.memory_events, time_factor, memory_factor)
         peaks_formatted = {}
         totals = {}
         for dev, value in peaks.items():

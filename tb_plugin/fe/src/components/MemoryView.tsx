@@ -19,7 +19,6 @@ import { LineChart } from './charts/LineChart'
 import { AntTableChart } from './charts/AntTableChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
-import { SelectionRange } from './SelectionRange'
 
 const useStyles = makeStyles((theme) => ({
   root: {

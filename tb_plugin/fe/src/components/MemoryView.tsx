@@ -221,18 +221,15 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
             </Grid>
             <Grid item direction="column">
               <DataLoading value={memoryEventsData}>
-                {(data) => {
-                  console.log(searchedEventsTableDataRows)
-                  return (
-                    <AntTableChart
-                      graph={{
-                        columns: data.columns,
-                        rows: searchedEventsTableDataRows ?? []
-                      }}
-                      initialPageSize={10}
-                    />
-                  )
-                }}
+                {(data) => (
+                  <AntTableChart
+                    graph={{
+                      columns: data.columns,
+                      rows: searchedEventsTableDataRows ?? []
+                    }}
+                    initialPageSize={10}
+                  />
+                )}
               </DataLoading>
             </Grid>
             <Grid item container direction="column" spacing={1}>

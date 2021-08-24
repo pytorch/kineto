@@ -28,7 +28,6 @@ const getTableColumns = function (
   tooltipClass: string
 ) {
   let i = 0
-  console.log(['cols', columns])
   return columns.map(function (col: any) {
     const key = 'col' + i++
     const stringCompare = (a: any, b: any) => a[key].localeCompare(b[key])

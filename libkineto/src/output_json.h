@@ -81,8 +81,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGenericInstantEvent(const GenericTraceActivity& op);
 
   void handleGenericLink(const GenericTraceActivity& activity);
-  void handleFwdBwdLinkStart(const GenericTraceActivity& s, const std::string& cat, const std::string& name);
-  void handleFwdBwdLinkEnd(const GenericTraceActivity& e, const std::string& cat, const std::string& name);
+  void handleGenericLinkStart(const GenericTraceActivity& s, const std::string& cat, const std::string& name);
+  void handleGenericLinkEnd(const GenericTraceActivity& e, const std::string& cat, const std::string& name);
 
   std::string fileName_;
   std::ofstream traceOf_;

@@ -252,12 +252,12 @@ void ChromeTraceLogger::handleGenericActivity(
 
 void ChromeTraceLogger::handleGenericLink(const GenericTraceActivity& op) {
   if (op.flow.type == kLinkFwdBwd) {
-    this->handleFwdBwdLinkStart(*((GenericTraceActivity*)op.flow.linkedActivity), "forward_backward", "fwd_bwd");
-    this->handleFwdBwdLinkEnd(op, "forward_backward", "fwd_bwd");
+    this->handleGenericLinkStart(*((GenericTraceActivity*)op.flow.linkedActivity), "forward_backward", "fwd_bwd");
+    this->handleGenericLinkEnd(op, "forward_backward", "fwd_bwd");
   }
 }
 
-void ChromeTraceLogger::handleFwdBwdLinkStart(
+void ChromeTraceLogger::handleGenericLinkStart(
     const libkineto::GenericTraceActivity& s,
     const std::string& cat,
     const std::string& name) {
@@ -275,7 +275,7 @@ void ChromeTraceLogger::handleFwdBwdLinkStart(
   // clang-format on
 }
 
-void ChromeTraceLogger::handleFwdBwdLinkEnd(
+void ChromeTraceLogger::handleGenericLinkEnd(
     const libkineto::GenericTraceActivity& e,
     const std::string& cat,
     const std::string& name) {

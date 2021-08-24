@@ -309,7 +309,12 @@ class RunProfile(object):
         return result
 
     @staticmethod
-    def get_memory_curve(profile: Union["RunProfile", RunProfileData], time_metric: str = "", memory_metric: str = "G"):
+    def get_memory_curve(
+        profile: Union["RunProfile", RunProfileData],
+        time_metric: str = "",
+        memory_metric: str = "G",
+        patch_for_step_plot=True,
+    ):
         def get_curves_and_peaks(memory_events: List[MemoryEvent], time_factor, memory_factor):
             """For example:
             ```py
@@ -352,6 +357,20 @@ class RunProfile(object):
 
             return curves, peaks
 
+        def patch_curves_for_step_plot(curves):
+            # For example, if a curve is [(0, 0), (1, 1), (2,2)], the line plot
+            # is a stright line. Interpolating it as [(0, 0), (1, 0), (1, 1),
+            # (2,1) (2,2)], then the line plot will work as step plot.
+            new_curves = defaultdict(list)
+            for dev, curve in curves.items():
+                new_curve = []
+                for i, p in enumerate(curve):
+                    if i != 0:
+                        new_curve.append(p[:1] + new_curve[-1][1:])
+                    new_curve.append(p)
+                new_curves[dev] = new_curve
+            return new_curves
+
         # canonicalize the memory metric to a string
         canonical_time_metrics = {
             "micro": "us", "microsecond": "us", "us": "us",
@@ -387,6 +406,8 @@ class RunProfile(object):
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
         curves, peaks = get_curves_and_peaks(profile.memory_events, time_factor, memory_factor)
+        if patch_for_step_plot:
+            curves = patch_curves_for_step_plot(curves)
         peaks_formatted = {}
         totals = {}
         for dev, value in peaks.items():

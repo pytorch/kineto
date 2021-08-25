@@ -39,6 +39,10 @@ class MemoryRecord:
         return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.addr, event.bytes,
                             event.total_allocated, event.total_reserved)
 
+    def __repr__(self) -> str:
+        return f"<{'+' if self.bytes>0 else ''}{self.bytes}B, addr: {self.addr}, ts: {self.ts}>"
+
+
 class MemoryParser:
     def __init__(self, tid2tree, op_list, memory_events: Iterable[MemoryEvent]):
         self.tid2tree = tid2tree

@@ -465,3 +465,40 @@ class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
 
     def generate_communication_nodes(self):
         return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+
+    @staticmethod
+    def print_tree(tid2tree):
+        class Ctx:
+            tid: int = -1
+            name_stack: list = []
+
+        ctx = Ctx()
+
+        def print_node_set_prefix(node: OperatorNode):
+            header = f"[{ctx.tid}]" + ".".join(ctx.name_stack[1:]) # omit the CallTreeRoot
+            prefix_len = len(ctx.name_stack) * 4 - 4 - 1
+            if len(ctx.name_stack) > 1:
+                print(header)
+                prefix = " " * prefix_len
+                print(prefix, node.name)
+                print(prefix, "time:", node.start_time, "-->", node.end_time)
+                print(prefix, "memory:", node.memory_records)
+
+        def push(node: OperatorNode):
+            ctx.name_stack.append(node.name)
+
+        def pop():
+            ctx.name_stack.pop()
+
+        def traverse_opeartor_node(node: OperatorNode):
+            print_node_set_prefix(node)
+
+            push(node)
+            for n in node.children:
+                traverse_opeartor_node(n)
+            pop()
+
+        for tid, tree in tid2tree.items():
+            ctx.tid = tid
+            traverse_opeartor_node(tree)
+            ctx.tid = -1

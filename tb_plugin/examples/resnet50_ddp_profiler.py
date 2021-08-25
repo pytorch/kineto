@@ -56,7 +56,7 @@ def example(rank, use_gpu=True):
             warmup=2,
             active=5),
         with_stack=False,
-        on_trace_ready=torch.profiler.tensorboard_trace_handler('./result_temp3'),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler('./result'),
         record_shapes=True
     ) as p:
         for step, data in enumerate(trainloader, 0):

@@ -66,7 +66,7 @@ class MemoryParser:
 
         self.update_node()
 
-    def get_memory_statistics(self):
+    def get_memory_statistics(self, start_ts=None, end_ts=None):
         metric_length = len(MemoryMetrics)
         self_metric_length = metric_length // 2
 
@@ -78,6 +78,11 @@ class MemoryParser:
         memory_metrics_keyed_by_node = defaultdict(dict_factory)
 
         def traverse_node_memory(node):
+            if start_ts is not None and node.end_time < start_ts:
+                return
+            if end_ts is not None and node.start_time > end_ts:
+                return
+
             if node not in self.processed_node:
                 self.unreached_node[tid].append(node)
                 # since the node has not been visited for insert memory records, just ignore all childrens

@@ -22,6 +22,9 @@ def dev_name(dev_type: DeviceType, dev_id: Optional[int]):
     else:
         raise ValueError
 
+def op_name(name: Optional[str]):
+    return name if name else "<unknown>"
+
 
 class Run(object):
     """ A profiler run. For visualization purpose only.
@@ -255,9 +258,8 @@ class RunProfile(object):
 
     @staticmethod
     def get_memory_statistics(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
-        memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
-        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
-        return memory_parser.get_memory_statistics()
+        memory_parser = MemoryParser(copy.deepcopy(profile.tid2tree), profile.op_list_groupby_name, profile.memory_events)
+        return memory_parser.get_memory_statistics(start_ts=start_ts, end_ts=end_ts)
 
     @staticmethod
     def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
@@ -441,11 +443,11 @@ class RunProfile(object):
     @staticmethod
     def get_memory_events(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
         profiler_start_ts = profile.profiler_start_ts
-        memory_events = RunProfile._filtered_by_ts(profile.memory_events, start_ts, end_ts)
 
         # NOTE: reuse MemoryParser for annotate records with op name
-        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, memory_events)
-        memory_records = sorted(memory_parser.processed_records, key=lambda r: r.ts)
+        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, profile.memory_events)
+        memory_records = sorted(memory_parser.staled_records + memory_parser.processed_records, key=lambda r: r.ts)
+        memory_records = RunProfile._filtered_by_ts(memory_records, start_ts, end_ts)
 
         events = defaultdict(list)
         alloc = {}  # allocation events may or may not have paired free event
@@ -463,8 +465,13 @@ class RunProfile(object):
                 if addr in alloc:
                     alloc_ts = memory_records[alloc[addr]].ts
                     free_ts = r.ts
-                    events[dev_name(r.device_type, r.device_id)].append(
-                        [r.op_name, -size, alloc_ts - profiler_start_ts, free_ts - profiler_start_ts, free_ts - alloc_ts])
+                    events[dev_name(r.device_type, r.device_id)].append([
+                        op_name(r.op_name),
+                        -size,
+                        alloc_ts - profiler_start_ts,
+                        free_ts - profiler_start_ts,
+                        free_ts - alloc_ts,
+                    ])
                     del alloc[addr]
                 else:
                     assert addr not in free
@@ -473,12 +480,12 @@ class RunProfile(object):
         for i in alloc.values():
             r = memory_records[i]
             events[dev_name(r.device_type, r.device_id)].append(
-                [r.op_name, r.bytes, r.ts - profiler_start_ts, None, None])
+                [op_name(r.op_name), r.bytes, r.ts - profiler_start_ts, None, None])
 
         for i in free.values():
             r = memory_records[i]
             events[dev_name(r.device_type, r.device_id)].append(
-                [r.op_name, -r.bytes, None, r.ts - profiler_start_ts, None])
+                [op_name(r.op_name), -r.bytes, None, r.ts - profiler_start_ts, None])
 
         return {
             "metadata": {

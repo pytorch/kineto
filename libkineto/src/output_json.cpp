@@ -105,11 +105,19 @@ void ChromeTraceLogger::handleDeviceInfo(
     "args": {{
       "labels": "{}"
     }}
+  }},
+  {{
+    "name": "process_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": 0,
+    "args": {{
+      "sort_index": {}
+    }}
   }},)JSON",
       time, info.id,
       info.name,
       time, info.id,
-      info.label);
+      info.label,
+      time, info.id,
+      info.id < 8 ? info.id + 0x1000000ll : info.id);
   // clang-format on
 }
 
@@ -125,13 +133,21 @@ void ChromeTraceLogger::handleResourceInfo(
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
-    "name": "thread_name", "ph": "M", "ts": {}, "pid": {}, "tid": "{}",
+    "name": "thread_name", "ph": "M", "ts": {}, "pid": {}, "tid": {},
     "args": {{
       "name": "{}"
     }}
+  }},
+  {{
+    "name": "thread_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": {},
+    "args": {{
+      "sort_index": {}
+    }}
   }},)JSON",
       time, info.deviceId, info.id,
-      info.name);
+      info.name,
+      time, info.deviceId, info.id,
+      info.id);
   // clang-format on
 }
 
@@ -144,16 +160,26 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Trace", "ts": {}, "dur": {},
-    "pid": "Traces", "tid": "{}",
+    "pid": "Spans", "tid": "{}",
     "name": "{}{} ({})",
     "args": {{
       "Op count": {}
+    }}
+  }},
+  {{
+    "name": "process_sort_index", "ph": "M", "ts": {},
+    "pid": "Spans", "tid": 0,
+    "args": {{
+      "sort_index": {}
     }}
   }},)JSON",
       span.startTime, span.endTime - span.startTime,
       span.name,
       span.prefix, span.name, span.iteration,
-      span.opCount);
+      span.opCount,
+      span.startTime,
+      // Large sort index to appear at the bottom
+      0x20000000ll);
   // clang-format on
 
   if (span.tracked) {

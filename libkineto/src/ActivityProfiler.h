@@ -104,12 +104,18 @@ class ActivityProfiler {
 
   inline void recordThreadInfo() {
     int32_t sysTid = systemThreadId();
+    // Note we're using the lower 32 bits of the (opaque) pthread id
+    // as key, because that's what CUPTI records.
     int32_t tid = threadId();
+    int32_t pid = processId();
     std::lock_guard<std::mutex> guard(mutex_);
-    if (threadInfo_.find(tid) == threadInfo_.end()) {
-      threadInfo_.emplace(
-          tid,
-          ThreadInfo(sysTid, getThreadName()));
+    if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
+      resourceInfo_.emplace(
+          std::make_pair(pid, tid),
+          ActivityLogger::ResourceInfo(
+              pid,
+              sysTid,
+              fmt::format("thread {} ({})", sysTid, getThreadName())));
     }
   }
 
@@ -225,6 +231,16 @@ class ActivityProfiler {
         cpuTrace.gpuOpCount >= netGpuOpCountThreshold_;
   }
 
+  // Create resource names for streams
+  inline void recordStream(int device, int id) {
+    if (resourceInfo_.find({device, id}) == resourceInfo_.end()) {
+      resourceInfo_.emplace(
+          std::make_pair(device, id),
+          ActivityLogger::ResourceInfo(
+              device, id, fmt::format("stream {}", id)));
+    }
+  }
+
   // Record client trace span for subsequent lookups from activities
   // Also creates a corresponding GPU-side span.
   CpuGpuSpanPair& recordTraceSpan(TraceSpan& span, int gpuOpCount);
@@ -308,10 +324,11 @@ class ActivityProfiler {
   using ActivityTraceMap = std::unordered_map<int64_t, CpuGpuSpanPair*>;
   ActivityTraceMap clientActivityTraceMap_;
 
-  // Cache thread names and system thread ids for pthread ids
-  // Note we're using the lower 32 bits of the (opaque) pthread id
-  // as key, because that's what CUPTI records.
-  std::unordered_map<int32_t, ThreadInfo> threadInfo_;
+  // Cache thread names and system thread ids for pthread ids,
+  // and stream ids for GPU streams
+  std::map<
+      std::pair<int64_t, int64_t>,
+      ActivityLogger::ResourceInfo> resourceInfo_;
 
   // Which trace spans are disabled. Together with the operator -> net id map
   // this allows us to determine whether a GPU or CUDA API event should

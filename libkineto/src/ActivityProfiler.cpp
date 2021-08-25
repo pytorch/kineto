@@ -322,9 +322,9 @@ inline void ActivityProfiler::handleRuntimeActivity(
   const GenericTraceActivity& ext =
       externalEvents_.correlatedActivity(activity->correlationId);
   int32_t tid = activity->threadId;
-  const auto& it = threadInfo_.find(tid);
-  if (it != threadInfo_.end()) {
-    tid = it->second.tid;
+  const auto& it = resourceInfo_.find({processId(), tid});
+  if (it != resourceInfo_.end()) {
+    tid = it->second.id;
   }
   RuntimeActivity runtimeActivity(activity, ext, tid);
   if (ext.correlationId() == 0 && outOfRange(runtimeActivity)) {
@@ -382,6 +382,7 @@ inline void ActivityProfiler::handleGpuActivity(
   VLOG(2) << ext.correlationId() << "," << act.correlationId() << ": "
           << act.name();
   if (!loggingDisabled(ext)) {
+    recordStream(act.deviceId(), act.resourceId());
     act.log(*logger);
     updateGpuNetSpan(act);
     /*
@@ -691,26 +692,26 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
   }
 
   // Process names
-  string process_name = processName(processId());
+  int32_t pid = processId();
+  string process_name = processName(pid);
   if (!process_name.empty()) {
-    int32_t pid = processId();
-    logger.handleProcessInfo(
+    logger.handleDeviceInfo(
         {pid, process_name, "CPU"}, captureWindowStartTime_);
     if (!cpuOnly_) {
       // GPU events use device id as pid (0-7).
       constexpr int kMaxGpuCount = 8;
       for (int gpu = 0; gpu < kMaxGpuCount; gpu++) {
-        logger.handleProcessInfo(
+        logger.handleDeviceInfo(
             {gpu, process_name, fmt::format("GPU {}", gpu)},
             captureWindowStartTime_);
       }
     }
   }
 
-  // Thread info
-  for (auto pair : threadInfo_) {
-    const auto& thread_info = pair.second;
-    logger.handleThreadInfo(thread_info, captureWindowStartTime_);
+  // Thread & stream info
+  for (auto pair : resourceInfo_) {
+    const auto& resource = pair.second;
+    logger.handleResourceInfo(resource, captureWindowStartTime_);
   }
 
   for (const auto& iterations : traceSpans_) {

@@ -36,14 +36,14 @@ class MemoryTraceLogger : public ActivityLogger {
 
   // Note: the caller of these functions should handle concurrency
   // i.e., these functions are not thread-safe
-  void handleProcessInfo(
-      const ProcessInfo& processInfo,
+  void handleDeviceInfo(
+      const DeviceInfo& info,
       uint64_t time) override {
-    processInfoList_.emplace_back(processInfo, time);
+    deviceInfoList_.emplace_back(info, time);
   }
 
-  void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) override {
-    threadInfoList_.emplace_back(threadInfo, time);
+  void handleResourceInfo(const ResourceInfo& info, int64_t time) override {
+    resourceInfoList_.emplace_back(info, time);
   }
 
   void handleTraceSpan(const TraceSpan& span) override {
@@ -97,11 +97,11 @@ class MemoryTraceLogger : public ActivityLogger {
     for (auto& activity : activities_) {
       activity->log(logger);
     }
-    for (auto& p : processInfoList_) {
-      logger.handleProcessInfo(p.first, p.second);
+    for (auto& p : deviceInfoList_) {
+      logger.handleDeviceInfo(p.first, p.second);
     }
-    for (auto& p : threadInfoList_) {
-      logger.handleThreadInfo(p.first, p.second);
+    for (auto& p : resourceInfoList_) {
+      logger.handleResourceInfo(p.first, p.second);
     }
     for (auto& cpu_trace_buffer : buffers_->cpu) {
       logger.handleTraceSpan(cpu_trace_buffer->span);
@@ -115,8 +115,8 @@ class MemoryTraceLogger : public ActivityLogger {
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
   std::vector<std::unique_ptr<TraceActivity>> activities_;
-  std::vector<std::pair<ProcessInfo, int64_t>> processInfoList_;
-  std::vector<std::pair<ThreadInfo, int64_t>> threadInfoList_;
+  std::vector<std::pair<DeviceInfo, int64_t>> deviceInfoList_;
+  std::vector<std::pair<ResourceInfo, int64_t>> resourceInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;
   int64_t endTime_{0};

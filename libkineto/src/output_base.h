@@ -34,13 +34,30 @@ using namespace KINETO_NAMESPACE;
 
 class ActivityLogger {
  public:
+
   virtual ~ActivityLogger() = default;
 
-  virtual void handleProcessInfo(
-      const ProcessInfo& processInfo,
+  struct DeviceInfo {
+    DeviceInfo(int64_t id, const std::string& name, const std::string& label) :
+      id(id), name(name), label(label) {}
+    int64_t id;
+    const std::string name;
+    const std::string label;
+  };
+
+  struct ResourceInfo {
+    ResourceInfo(int64_t deviceId, int64_t id, const std::string& name) :
+        id(id), deviceId(deviceId), name(name) {}
+    int64_t id;
+    int64_t deviceId;
+    const std::string name;
+  };
+
+  virtual void handleDeviceInfo(
+      const DeviceInfo& info,
       uint64_t time) = 0;
 
-  virtual void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) = 0;
+  virtual void handleResourceInfo(const ResourceInfo& info, int64_t time) = 0;
 
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
@@ -74,24 +91,6 @@ class ActivityLogger {
 
  protected:
   ActivityLogger() = default;
-
-  // get a cleaner thread id
-  int renameThreadID(size_t tid) {
-    // the tid here is the thread ID that schedules the operator
-    static int curr_tid = 0;
-
-    // Note this function is not thread safe; The user of this
-    // ActivityLogger need to maintain thread safety
-    if (tidMap_.count(tid)) {
-      return tidMap_[tid];
-    } else {
-      return tidMap_[tid] = curr_tid++;
-    }
-  }
-
- private:
-  // store the mapping of thread id vs. showing on the trace
-  std::unordered_map<size_t, int> tidMap_;
 };
 
 } // namespace KINETO_NAMESPACE

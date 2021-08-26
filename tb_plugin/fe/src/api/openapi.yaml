@@ -919,6 +919,8 @@ components:
         - peaks
         - totals
         - first_ts
+        - time_metric
+        - memory_metric
         - time_factor
         - memory_factor
       properties:
@@ -934,6 +936,10 @@ components:
           type: object
         first_ts:
           type: number
+        time_metric:
+          type: string
+        memory_metric:
+          type: string
         time_factor:
           type: number
         memory_factor:

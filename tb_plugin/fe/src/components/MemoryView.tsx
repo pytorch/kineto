@@ -19,7 +19,6 @@ import { LineChart } from './charts/LineChart'
 import { AntTableChart } from './charts/AntTableChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
-import { SelectionRange } from './SelectionRange'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -125,7 +124,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       )
       .then((resp) => {
         setMemoryData(resp)
-        setDevices(Object.keys(resp.rows))
+        console.log(devices)
+        if (!devices || devices.length == 0) {
+          // setDevices only execute on view load. Since selection on curve
+          // might filter all events later, some devices might is missing.
+          setDevices(Object.keys(resp.rows))
+        }
       })
   }, [run, worker, span, selectedRange])
 
@@ -152,6 +156,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)
+    setSelectedRange(undefined)
   }
 
   const onSelectedRangeChanged = (start: number, end: number) => {
@@ -183,7 +188,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         value={device}
                         onChange={onDeviceChanged}
                       >
-                        {graph.metadata.devices.map((device) => (
+                        {devices.map((device) => (
                           <MenuItem value={device}>{device}</MenuItem>
                         ))}
                       </Select>
@@ -191,12 +196,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                     <Grid item>
                       <div>
                         <LineChart
-                          hAxisTitle="Time (ms)"
-                          vAxisTitle="Memory Usage (GB)"
+                          hAxisTitle={`Time (${graph.metadata.time_metric})`}
+                          vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
                           graph={{
                             title: graph.metadata.peaks[device],
                             columns: graph.columns,
-                            rows: graph.rows[device]
+                            rows: graph.rows[device] ?? []
                           }}
                           initialSelectionStart={selectedRange?.start}
                           initialSelectionEnd={selectedRange?.end}
@@ -235,31 +240,15 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 }}
               </DataLoading>
             </Grid>
-            <Grid item container direction="column" spacing={1}>
-              <Grid item>
-                <Grid container justify="space-around">
-                  <Grid item>
-                    <InputLabel id="memory-device">Device</InputLabel>
-                    <Select
-                      labelId="memory-device"
-                      value={device}
-                      onChange={onDeviceChanged}
-                    >
-                      {devices.map((device) => (
-                        <MenuItem value={device}>{device}</MenuItem>
-                      ))}
-                    </Select>
-                  </Grid>
-                  <Grid item>
-                    <TextField
-                      classes={{ root: classes.inputWidthOverflow }}
-                      value={searchOperatorName}
-                      onChange={onSearchOperatorChanged}
-                      type="search"
-                      label="Search by Name"
-                    />
-                  </Grid>
-                </Grid>
+            <Grid item container direction="column" sm={6}>
+              <Grid item container direction="column" alignContent="center">
+                <TextField
+                  classes={{ root: classes.inputWidthOverflow }}
+                  value={searchOperatorName}
+                  onChange={onSearchOperatorChanged}
+                  type="search"
+                  label="Search by Name"
+                />
               </Grid>
               <Grid>
                 <DataLoading value={memoryData}>

@@ -499,6 +499,18 @@ export interface MemoryCurveMetadata {
   firstTs: number
   /**
    *
+   * @type {string}
+   * @memberof MemoryCurveMetadata
+   */
+  timeMetric: string
+  /**
+   *
+   * @type {string}
+   * @memberof MemoryCurveMetadata
+   */
+  memoryMetric: string
+  /**
+   *
    * @type {number}
    * @memberof MemoryCurveMetadata
    */

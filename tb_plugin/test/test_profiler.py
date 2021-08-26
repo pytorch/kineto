@@ -1599,7 +1599,7 @@ class TestProfiler(unittest.TestCase):
 
         # validation
         gpu_expected_data = {
-            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count,
+            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count, call
             'aten::to': [104, 104, 2, 104, 204, 3, 4],
             'aten::nll_loss_backward': [0, 10, 1, 0, 10, 1 ,1],
             'aten::copy_': [0, 100, 1, 0, 100, 1, 1],

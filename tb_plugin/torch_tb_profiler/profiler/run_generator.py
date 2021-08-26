@@ -43,14 +43,12 @@ class RunGenerator(object):
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
         profile_run.gpu_util_buckets = self.profile_data.gpu_util_buckets
-        profile_run.approximated_sm_efficency_ranges = self.profile_data.approximated_sm_efficency_ranges
+        profile_run.approximated_sm_efficiency_ranges = self.profile_data.approximated_sm_efficiency_ranges
 
         profile_run.gpu_ids = self.profile_data.gpu_ids
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
-        profile_run.sm_efficency = self.profile_data.sm_efficency
+        profile_run.sm_efficiency = self.profile_data.sm_efficiency
         profile_run.occupancy = self.profile_data.occupancy
-        profile_run.blocks_per_sm_count = self.profile_data.blocks_per_sm_count
-        profile_run.occupancy_count = self.profile_data.occupancy_count
 
         # add memory stats
         if self.profile_data.has_memory_data:
@@ -294,7 +292,7 @@ class RunGenerator(object):
                             "tooltip": consts.TOOLTIP_BLOCKS_PER_SM})
         if occupancy_count > 0:
             columns.append({"type": "number", "name": "Mean Est. Achieved Occupancy (%)",
-                            "tooltip": consts.TOOLTIP_OCCUPANCY})
+                            "tooltip": consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_TABLE})
         return columns
 
     def _generate_kernel_op_table(self):

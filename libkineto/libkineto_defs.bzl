@@ -84,3 +84,9 @@ def get_libkineto_public_headers():
         "include/libkineto.h",
         "include/time_since_epoch.h",
     ]
+
+KINETO_COMPILER_FLAGS = [
+    "-fexceptions",
+    "-Wno-unused-function",
+    "-Wno-unused-private-field",
+]

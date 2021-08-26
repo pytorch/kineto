@@ -169,7 +169,7 @@ bool AbstractConfig::parse(const string& conf) {
     }
   }
 
-  validate();
+  validate(timestamp_);
 
   // Store original text, used to detect updates
   source_ = conf;

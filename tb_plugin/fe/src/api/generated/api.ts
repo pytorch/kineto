@@ -599,6 +599,25 @@ export interface Performance {
 /**
  *
  * @export
+ * @interface Runs
+ */
+export interface Runs {
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof Runs
+   */
+  runs: Array<string>
+  /**
+   *
+   * @type {boolean}
+   * @memberof Runs
+   */
+  loading: boolean
+}
+/**
+ *
+ * @export
  * @interface TableData
  */
 export interface TableData {
@@ -2162,7 +2181,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      */
     runsGet(
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<Array<string>> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<Runs> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).runsGet(options)

@@ -117,6 +117,8 @@ bool ActivityProfiler::applyNetFilterInternal(const std::string& name) {
   }
   return false;
 }
+
+// This has dependence on CuptiActivityInterface
 #ifdef HAS_ROCTRACER
 ActivityProfiler::ActivityProfiler(RoctracerActivityInterface& cupti, bool cpuOnly)
 #else
@@ -546,29 +548,27 @@ void ActivityProfiler::configure(
   }
 #endif // HAS_ROCTRACER
 
-  profileStartTime_ = (config_->requestTimestamp() + config_->maxRequestAge()) +
-      config_->activitiesWarmupDuration();
+  profileStartTime_ = config_->requestTimestamp();
+
   if (profileStartTime_ < now) {
-    profileStartTime_ = now + config_->activitiesWarmupDuration();
+    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
+  } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
+    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
+  } else {
+    if (profilers_.size() > 0) {
+      configureChildProfilers();
+    }
+    LOG(INFO) << "Tracing starting in "
+              << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
+
+    traceBuffers_ = std::make_unique<ActivityBuffers>();
+    captureWindowStartTime_ = captureWindowEndTime_ = 0;
+    currentRunloopState_ = RunloopState::Warmup;
   }
-
-  if (profilers_.size() > 0) {
-    configureChildProfilers();
-  }
-
-  LOG(INFO) << "Tracing starting in "
-            << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
-
-  traceBuffers_ = std::make_unique<ActivityBuffers>();
-  captureWindowStartTime_ = captureWindowEndTime_ = 0;
-  currentRunloopState_ = RunloopState::Warmup;
 }
 
 void ActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
-  if (libkineto::api().client()) {
-    libkineto::api().client()->start();
-  }
   VLOG(0) << "Warmup -> CollectTrace";
   for (auto& session: sessions_){
     LOG(INFO) << "Starting child profiler session";
@@ -631,6 +631,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       break;
 
     case RunloopState::Warmup:
+      VLOG(1) << "State: Warmup";
 #ifdef HAS_CUPTI
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && nextWakeupTime < profileStartTime_) {
@@ -639,9 +640,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
 
       if (cupti_.stopCollection) {
         // Go to process trace to clear any outstanding buffers etc
-        if (libkineto::api().client()) {
-          libkineto::api().client()->stop();
-        }
+        LOG(WARNING) << "Trace terminated during warmup";
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         resetInternal();
@@ -660,6 +659,9 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
           LOG(INFO) << "Tracing started";
         }
         startTrace(now);
+        if (libkineto::api().client()) {
+          libkineto::api().client()->start();
+        }
       } else if (nextWakeupTime > profileStartTime_) {
         new_wakeup_time = profileStartTime_;
       }
@@ -667,6 +669,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       break;
 
     case RunloopState::CollectTrace:
+      VLOG(1) << "State: CollectTrace";
       // captureWindowStartTime_ can be set by external threads,
       // so recompute end time.
       // FIXME: Is this a good idea for synced start?
@@ -698,6 +701,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       break;
 
     case RunloopState::ProcessTrace:
+      VLOG(1) << "State: ProcessTrace";
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);

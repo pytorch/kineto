@@ -17,7 +17,8 @@
 #include "TraceActivity.h"
 
 namespace libkineto {
-  class CpuTraceBuffer;
+  // previous declaration is struct so this one must be too.
+  struct CpuTraceBuffer;
 }
 
 namespace KINETO_NAMESPACE {

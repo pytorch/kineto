@@ -35,15 +35,17 @@
 #include <sstream>
 #include <vector>
 
+#ifdef _MSC_VER
 // unset a predefined ERROR (windows)
 #undef ERROR
-
-#define VERBOSE 0
-#define INFO 1
-#define WARNING 2
-#define ERROR 3
+#endif // _MSC_VER
 
 namespace libkineto {
+
+constexpr int VERBOSE = 0;
+constexpr int INFO = 1;
+constexpr int WARNING = 2;
+constexpr int ERROR = 3;
 
 class Logger {
  public:

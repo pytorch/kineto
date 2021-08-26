@@ -12,6 +12,7 @@ from .trace import EventTypes
 logger = utils.get_logger()
 
 MemoryMetrics = IntEnum('MemoryMetrics', ['SelfIncreaseSize', 'SelfAllocationSize', 'SelfAllocationCount', 'IncreaseSize', 'AllocationSize', 'AllocationCount'], start=0)
+ExcludeOpName = ["DataParallel.forward", "DistributedDataParallel.forward"]
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, tid, external_id):
@@ -211,7 +212,7 @@ class DeviceNode(BaseNode):
 def is_operator_node(node):
     if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \
         and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__")) \
-        and not node.name.startswith("Optimizer."):
+        and not node.name.startswith("Optimizer.") and not node.name in ExcludeOpName:
         return True
     else:
         return False

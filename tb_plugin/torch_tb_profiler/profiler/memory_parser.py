@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
+from .module_parser import aggregate_ops
 from .trace import DeviceType, MemoryEvent
 
 logger = utils.get_logger()
@@ -44,12 +45,9 @@ class MemoryRecord:
 
 
 class MemoryParser:
-    def __init__(self, tid2tree, op_list, memory_events: Iterable[MemoryEvent]):
+    def __init__(self, tid2tree, memory_events: Iterable[MemoryEvent]):
         self.tid2tree = tid2tree
-        self.op_list = op_list
         self.memory_events = memory_events
-
-        self.records_by_tid = defaultdict(list)
 
         # statistics purpose
         self.staled_records = []
@@ -60,11 +58,12 @@ class MemoryParser:
         self.processed_node = defaultdict(int)
         self.unreached_node = defaultdict(list)
 
+        records_by_tid = defaultdict(list)
         for event in self.memory_events:
             record = MemoryRecord.from_event(event)
-            self.records_by_tid[record.tid].append(record)
+            records_by_tid[record.tid].append(record)
 
-        self.update_node()
+        self.update_node(records_by_tid)
 
     def get_memory_statistics(self, start_ts=None, end_ts=None):
         metric_length = len(MemoryMetrics)
@@ -73,6 +72,8 @@ class MemoryParser:
         def dict_factory():
             return defaultdict(lambda: [0] * metric_length)
 
+        # traverse outputs
+        op_list = []
         # two level keys dictionary
         # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
         memory_metrics_keyed_by_node = defaultdict(dict_factory)
@@ -83,11 +84,15 @@ class MemoryParser:
             if end_ts is not None and node.start_time > end_ts:
                 return
 
+            is_op = is_operator_node(node)
+            if is_op:
+                op_list.append(node)
+
             if node not in self.processed_node:
                 self.unreached_node[tid].append(node)
                 # since the node has not been visited for insert memory records, just ignore all childrens
                 return
-            elif is_operator_node(node):
+            elif is_op:
                 node_memory_metrics = node.get_memory_metrics()
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
@@ -126,8 +131,9 @@ class MemoryParser:
 
         # get the op_calls dictionary from module parser result.
         op_calls = defaultdict(int)
-        for op in self.op_list:
-            op_calls[op.name] += op.calls
+        agg_result = aggregate_ops(op_list, [lambda op: op.name])
+        for op_name, op_agg in agg_result[0].items():
+            op_calls[op_name] += op_agg.calls
 
         result = defaultdict(defaultdict)
         for device, node_metrics in memory_metrics_keyed_by_nodename.items():
@@ -137,13 +143,12 @@ class MemoryParser:
 
         return result
 
-    @property
-    def record_length(self):
-        return sum(len(v) for v in self.records_by_tid.values())
+    def record_length(self, records_by_tid):
+        return sum(len(v) for v in records_by_tid.values())
 
-    def update_node(self):
+    def update_node(self, records_by_tid):
         tree_height = 0
-        for tid, records in self.records_by_tid.items():
+        for tid, records in records_by_tid.items():
             if not records:
                 continue
 
@@ -230,8 +235,8 @@ class MemoryParser:
                 record_index += 1
 
         # show summary information
-        if len(self.staled_records) > 0 and self.record_length > 0:
+        if len(self.staled_records) > 0 and self.record_length(records_by_tid) > 0:
             logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(
-                len(self.staled_records), self.record_length, len(self.processed_records)))
+                len(self.staled_records), self.record_length(records_by_tid), len(self.processed_records)))
         if tree_height > 0:
             logger.debug("max tree height is {}".format(tree_height))

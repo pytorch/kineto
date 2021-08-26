@@ -206,7 +206,7 @@ class RunProfileData(object):
 
         memory_events = self._memory_events()
         if len(memory_events):
-            self.memory_parser = MemoryParser(self.tid2tree, self.op_list_groupby_name, memory_events)
+            self.memory_parser = MemoryParser(self.tid2tree, memory_events)
 
     def analyze(self):
         self.recommendations = []

@@ -10,6 +10,7 @@ from ..run import DistributedRunProfile, RunProfile
 from .data import RunProfileData
 
 from .overall_parser import ProfileRole
+from .memory_parser import MemoryParser
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 
@@ -58,12 +59,9 @@ class RunGenerator(object):
         profile_run.sm_efficiency = self.profile_data.sm_efficiency
         profile_run.occupancy = self.profile_data.occupancy
 
-        profile_run.memory_events = self.profile_data.memory_events
-        if len(profile_run.memory_events) > 0:
+        if self.profile_data.memory_parser:
             profile_run.views.append(consts.MEMORY_VIEW)
-            profile_run.tid2tree = self.profile_data.tid2tree
-            profile_run.op_list_groupby_name = self.profile_data.op_list_groupby_name
-
+            profile_run.memory_parser = self.profile_data.memory_parser
 
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:

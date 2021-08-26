@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import List
+from typing import List, Optional
 
 import gzip
 import io as sysio
@@ -19,6 +19,7 @@ from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
+from .memory_parser import MemoryParser
 
 logger = utils.get_logger()
 
@@ -64,6 +65,7 @@ class RunProfileData(object):
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
+        self.memory_parser: Optional[MemoryParser] = None
 
     @staticmethod
     def parse(worker, span, path):
@@ -202,7 +204,9 @@ class RunProfileData(object):
             self.kernel_stat = kernel_parser.kernel_stat
             self.tc_used_ratio = kernel_parser.tc_used_ratio
 
-        self.memory_events = self._memory_events()
+        memory_events = self._memory_events()
+        if len(memory_events):
+            self.memory_parser = MemoryParser(self.tid2tree, self.op_list_groupby_name, memory_events)
 
     def analyze(self):
         self.recommendations = []

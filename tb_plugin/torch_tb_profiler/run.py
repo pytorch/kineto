@@ -132,9 +132,7 @@ class RunProfile(object):
         self.gpu_infos = None
 
         # for memory stats and curve
-        self.tid2tree = None
-        self.op_list_groupby_name = None
-        self.memory_events : Optional[List[MemoryEvent]] = None
+        self.memory_parser: Optional[MemoryParser] = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -257,13 +255,8 @@ class RunProfile(object):
         return events
 
     @staticmethod
-    def get_memory_statistics(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
-        memory_parser = MemoryParser(copy.deepcopy(profile.tid2tree), profile.op_list_groupby_name, profile.memory_events)
-        return memory_parser.get_memory_statistics(start_ts=start_ts, end_ts=end_ts)
-
-    @staticmethod
     def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
-        stats = RunProfile.get_memory_statistics(profile, start_ts, end_ts)
+        stats = profile.memory_parser.get_memory_statistics(start_ts=start_ts, end_ts=end_ts)
 
         result = {
             "metadata": {
@@ -407,7 +400,7 @@ class RunProfile(object):
 
         time_factor = time_metric_to_factor[time_metric]
         memory_factor = memory_metric_to_factor[memory_metric]
-        curves, peaks = get_curves_and_peaks(profile.memory_events, time_factor, memory_factor)
+        curves, peaks = get_curves_and_peaks(profile.memory_parser.memory_events, time_factor, memory_factor)
         if patch_for_step_plot:
             curves = patch_curves_for_step_plot(curves)
         peaks_formatted = {}
@@ -441,12 +434,9 @@ class RunProfile(object):
         }
 
     @staticmethod
-    def get_memory_events(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
-        profiler_start_ts = profile.profiler_start_ts
-
-        # NOTE: reuse MemoryParser for annotate records with op name
-        memory_parser = MemoryParser(profile.tid2tree, profile.op_list_groupby_name, profile.memory_events)
-        memory_records = sorted(memory_parser.staled_records + memory_parser.processed_records, key=lambda r: r.ts)
+    def get_memory_events(p: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+        profiler_start_ts = p.profiler_start_ts
+        memory_records = sorted(p.memory_parser.staled_records + p.memory_parser.processed_records, key=lambda r: r.ts)
         memory_records = RunProfile._filtered_by_ts(memory_records, start_ts, end_ts)
 
         events = defaultdict(list)

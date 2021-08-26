@@ -421,6 +421,8 @@ class RunProfile(object):
                 "peaks": peaks_formatted,
                 "totals": totals,
                 "first_ts": profile.profiler_start_ts,
+                "time_metric": time_metric,
+                "memory_metric": memory_metric,
                 "time_factor": time_factor,
                 "memory_factor": memory_factor,
             },

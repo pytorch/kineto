@@ -36,6 +36,24 @@ import { setup } from './setup'
 import './styles.css'
 import { firstOrUndefined, sleep } from './utils'
 
+import Button from '@material-ui/core/Button'
+import TextField from '@material-ui/core/TextField'
+import Checkbox from '@material-ui/core/Checkbox'
+import FormControlLabel from '@material-ui/core/FormControlLabel'
+import Dialog from '@material-ui/core/Dialog'
+import DialogActions from '@material-ui/core/DialogActions'
+import DialogContent from '@material-ui/core/DialogContent'
+import DialogContentText from '@material-ui/core/DialogContentText'
+import DialogTitle from '@material-ui/core/DialogTitle'
+import FormLabel from '@material-ui/core/FormLabel'
+import Grid from '@material-ui/core/Grid'
+import FormGroup from '@material-ui/core/FormGroup'
+import Snackbar from '@material-ui/core/Snackbar'
+import Alert, { Color } from '@material-ui/lab/Alert'
+import Slide from '@material-ui/core/Slide'
+import Backdrop from '@material-ui/core/Backdrop'
+import CircularProgress from '@material-ui/core/CircularProgress'
+
 export enum Views {
   Overview = 'Overview',
   Operator = 'Operator',
@@ -126,11 +144,42 @@ const useStyles = makeStyles((theme) => ({
   },
   iconButton: {
     padding: '8px'
+  },
+  button: {
+    padding: theme.spacing(2),
+    margin: theme.spacing(1)
+  },
+  formLabel: {
+    fontSize: '0.75rem',
+    paddingTop: theme.spacing(2)
+  },
+  backdrop: {
+    zIndex: theme.zIndex.drawer + 1,
+    color: '#fff'
   }
 }))
 
 export const App = () => {
   const classes = useStyles()
+
+  const [startDialogOpen, setStartDialogOpen] = React.useState(false)
+  const [stopDialogOpen, setStopDialogOpen] = React.useState(false)
+  const [isWaiting, setIsWaiting] = React.useState(false)
+  const [profilingSettings, setProfilingSettings] = React.useState({
+    host: 'localhost',
+    port: 3180,
+    log_dir: 'default',
+    warmup_dur: 0,
+    record_shapes: true,
+    profile_memory: true,
+    with_stack: true,
+    with_flops: false
+  })
+  const [alertConfig, setAlertConfig] = React.useState({
+    open: false,
+    status: 'error',
+    message: 'Undefined error message.'
+  })
 
   const [run, setRun] = React.useState<string>('')
   const [runs, setRuns] = React.useState<string[]>([])
@@ -214,6 +263,152 @@ export const App = () => {
   React.useEffect(() => {
     setSpan(firstOrUndefined(spans) ?? '')
   }, [spans])
+
+  const handleStartProfiling = () => {
+    setStartDialogOpen(true)
+  }
+
+  const handleStopProfiling = () => {
+    setStopDialogOpen(true)
+  }
+
+  const handleStartDialogSubmit = () => {
+    setIsWaiting(true)
+    setStartDialogOpen(false)
+    api.defaultApi
+      .servicePut('start', {
+        ...profilingSettings,
+        ['host']:
+          profilingSettings.host.startsWith('http://') ||
+          profilingSettings.host.startsWith('https://')
+            ? profilingSettings.host
+            : 'http://' + profilingSettings.host
+      })
+      .then((response) => {
+        setAlertConfig({
+          open: true,
+          status: response.success ? 'success' : 'error',
+          message: response.message
+        })
+      })
+      .catch(() => {
+        setAlertConfig({
+          open: true,
+          status: 'error',
+          message: 'Failed to request profiling service to start.'
+        })
+      })
+      .finally(() => {
+        setIsWaiting(false)
+      })
+  }
+
+  const handleStartDialogCancel = () => {
+    setStartDialogOpen(false)
+  }
+
+  const dataSynchronize = async () => {
+    try {
+      if (run) {
+        const rawViews = await api.defaultApi.viewsGet(run)
+        const views = rawViews
+          .map((v) => Views[Views[v as Views]])
+          .filter(Boolean)
+        setViews(views)
+      }
+    } catch (e) {
+      console.info('Cannot fetch views: ', e)
+    }
+    try {
+      if (run && view) {
+        const workers = await api.defaultApi.workersGet(run, view)
+        setWorkers(workers)
+      }
+    } catch (e) {
+      console.info('Cannot fetch workers: ', e)
+    }
+    try {
+      if (run && worker) {
+        const spans = await api.defaultApi.spansGet(run, worker)
+        setSpans(spans)
+      }
+    } catch (e) {
+      console.info('Cannot fetch spans: ', e)
+    }
+  }
+
+  const handleStopDialogSubmit = () => {
+    setIsWaiting(true)
+    setStopDialogOpen(false)
+    api.defaultApi
+      .servicePut('stop', {
+        ...profilingSettings,
+        ['host']:
+          profilingSettings.host.startsWith('http://') ||
+          profilingSettings.host.startsWith('https://')
+            ? profilingSettings.host
+            : 'http://' + profilingSettings.host
+      })
+      .then((response) => {
+        if(response.success) {
+          dataSynchronize().then(() => {
+            setAlertConfig({
+              open: true,
+              status: 'success',
+              message: response.message
+            })
+          })
+        } else {
+          setAlertConfig({
+            open: true,
+            status: 'error',
+            message: response.message
+          })
+        }
+      })
+      .catch(() => {
+        setAlertConfig({
+          open: true,
+          status: 'error',
+          message: 'An error occurs in tb_plugin server.'
+        })
+      })
+      .finally(() => {
+        setIsWaiting(false)
+      })
+  }
+
+  const handleStopDialogCancel = () => {
+    setStopDialogOpen(false)
+  }
+
+  const handleCheckChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setProfilingSettings({
+      ...profilingSettings,
+      [event.target.name]: event.target.checked
+    })
+  }
+
+  const handleNumberChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setProfilingSettings({
+      ...profilingSettings,
+      [event.target.name]: Number(event.target.value)
+    })
+  }
+
+  const handleStringChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setProfilingSettings({
+      ...profilingSettings,
+      [event.target.name]: event.target.value
+    })
+  }
+
+  const handleAlertClose = () => {
+    setAlertConfig({
+      ...alertConfig,
+      ['open']: false
+    })
+  }
 
   const handleRunChange: SelectProps['onChange'] = (event) => {
     setRun(event.target.value as string)
@@ -373,6 +568,21 @@ export const App = () => {
           </FormControl>
         </ClickAwayListener>
         {spanComponent()}
+        <ListSubheader>Profiling</ListSubheader>
+        <Button
+          variant="outlined"
+          className={classes.button}
+          onClick={handleStartProfiling}
+        >
+          start
+        </Button>
+        <Button
+          variant="outlined"
+          className={classes.button}
+          onClick={handleStopProfiling}
+        >
+          stop
+        </Button>
       </Drawer>
       {!open && (
         <Fab
@@ -385,6 +595,185 @@ export const App = () => {
           <ChevronRightIcon />
         </Fab>
       )}
+      <Dialog
+        open={startDialogOpen}
+        onClose={handleStartDialogCancel}
+        aria-labelledby="form-dialog-title"
+      >
+        <DialogTitle id="form-dialog-title">Start Profiling</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            To start profiling service, input the host and port of the PyTorch training process, run name, warmup duration and
+            profiling configs here.
+          </DialogContentText>
+          <Grid container spacing={1}>
+            <Grid item xs={6}>
+              <TextField
+                name="host"
+                label="PyTorch Service Host"
+                type="text"
+                value={profilingSettings.host}
+                onChange={handleStringChange}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                name="port"
+                label="PyTorch Service Port"
+                type="number"
+                value={profilingSettings.port}
+                onChange={handleNumberChange}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                name="log_dir"
+                label="Run Name"
+                type="text"
+                value={profilingSettings.log_dir}
+                onChange={handleStringChange}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                name="warmup_dur"
+                label="Warmup Duration(Sec)"
+                type="number"
+                value={profilingSettings.warmup_dur}
+                onChange={handleNumberChange}
+              />
+            </Grid>
+          </Grid>
+          <FormControl component="fieldset">
+            <FormLabel className={classes.formLabel}>
+              Profiling Config
+            </FormLabel>
+            <FormGroup aria-label="position" row>
+              <Grid container>
+                <Grid item xs={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={profilingSettings.record_shapes}
+                        onChange={handleCheckChange}
+                        name="record_shapes"
+                        color="primary"
+                      />
+                    }
+                    label="Record Shapes"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={profilingSettings.profile_memory}
+                        onChange={handleCheckChange}
+                        name="profile_memory"
+                        color="primary"
+                      />
+                    }
+                    label="Profile Memory"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={profilingSettings.with_stack}
+                        onChange={handleCheckChange}
+                        name="with_stack"
+                        color="primary"
+                      />
+                    }
+                    label="With Stack"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={profilingSettings.with_flops}
+                        onChange={handleCheckChange}
+                        name="with_flops"
+                        color="primary"
+                      />
+                    }
+                    label="With Flops"
+                  />
+                </Grid>
+              </Grid>
+            </FormGroup>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleStartDialogCancel} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleStartDialogSubmit} color="primary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={stopDialogOpen}
+        onClose={handleStopDialogCancel}
+        aria-labelledby="form-dialog-title"
+      >
+        <DialogTitle id="form-dialog-title">Stop Profiling</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            To stop profiling service, you need to specify the port and host of the PyTorch training process to
+            send the stop message.
+          </DialogContentText>
+          <Grid container spacing={1}>
+            <Grid item xs={6}>
+              <TextField
+                name="host"
+                label="PyTorch Service Host"
+                type="text"
+                value={profilingSettings.host}
+                onChange={handleStringChange}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                name="port"
+                label="PyTorch Service Port"
+                type="number"
+                value={profilingSettings.port}
+                onChange={handleNumberChange}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleStopDialogCancel} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleStopDialogSubmit} color="primary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Backdrop className={classes.backdrop} open={isWaiting}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+      <Snackbar
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        open={alertConfig.open}
+        onClose={handleAlertClose}
+        autoHideDuration={5000}
+        TransitionComponent={Slide}
+      >
+        <Alert
+          severity={alertConfig.status as Color}
+          elevation={6}
+          variant="filled"
+        >
+          {alertConfig.message}
+        </Alert>
+      </Snackbar>
       <main className={classes.content}>{renderContent()}</main>
     </div>
   )

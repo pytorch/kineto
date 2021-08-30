@@ -583,5 +583,5 @@ class DistributedRunGenerator(object):
                 row = [op, stats[0], stats[1], round(stats[1]/stats[0]), stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
                 table["rows"].append(row)
             workers_to_comm_ops[data.worker] = table
-        result["data"] = workers_to_comm_ops
+        result["data"] = OrderedDict(sorted(workers_to_comm_ops.items()))
         return result

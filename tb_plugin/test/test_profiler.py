@@ -1,3 +1,4 @@
+import os
 import gzip
 import json
 import unittest
@@ -1197,14 +1198,15 @@ class TestProfiler(unittest.TestCase):
               (1621401187236158, 1621401187236159, 0.125), (1621401187236278, 1621401187236279, 0.125),
               (1621401187236390, 1621401187236391, 0.125), (1621401187236501, 1621401187236502, 0.125)]]
 
-        trace_json_flat_path = "gpu_metrics_input.json"
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        trace_json_flat_path = os.path.join(basedir, "gpu_metrics_input.json")
         with open(trace_json_flat_path, "rb") as file:
             raw_data = file.read()
         data_with_gpu_metrics_compressed = profile.append_gpu_metrics(raw_data)
         data_with_gpu_metrics_flat = gzip.decompress(
             data_with_gpu_metrics_compressed)
 
-        trace_json_expected_path = "gpu_metrics_expected.json"
+        trace_json_expected_path = os.path.join(basedir, "gpu_metrics_expected.json")
         with open(trace_json_expected_path, "rb") as file:
             data_expected = file.read()
 

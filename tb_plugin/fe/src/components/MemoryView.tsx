@@ -13,8 +13,10 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryData } from '../api'
+import { MemoryCurve, MemoryData, MemoryEventsData } from '../api'
 import { useSearchDirectly } from '../utils/search'
+import { LineChart } from './charts/LineChart'
+import { AntTableChart } from './charts/AntTableChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
 
@@ -47,25 +49,48 @@ export interface IProps {
   span: string
 }
 
-export const MemoryView: React.FC<IProps> = (props) => {
+export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const { run, worker, span } = props
   const classes = useStyles()
 
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
     undefined
   )
+  const [hasMemoryEventsData, setHasMemoryEventsData] = React.useState<
+    boolean | undefined
+  >(undefined)
+  const [memoryEventsData, setMemoryEventsData] = React.useState<
+    MemoryEventsData | undefined
+  >(undefined)
+
+  const [hasMemoryCurveGraph, setHasMemoryCurveGraph] = React.useState<
+    boolean | undefined
+  >(undefined)
+  const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
+    MemoryCurve | undefined
+  >(undefined)
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
+  interface SelectedRange {
+    start: number
+    end: number
+    startTs: number
+    endTs: number
+  }
+  const [selectedRange, setSelectedRange] = React.useState<
+    SelectedRange | undefined
+  >()
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
-
-  const tableData = memoryData ? memoryData.data[device] : undefined
+  const [searchEventOperatorName, setSearchEventOperatorName] = React.useState(
+    ''
+  )
 
   const getSearchIndex = function () {
-    if (!tableData || !memoryData) {
+    if (!memoryData) {
       return -1
     }
-    for (let i = 0; i < tableData.columns.length; i++) {
-      if (tableData.columns[i].name == memoryData.metadata.search) {
+    for (let i = 0; i < memoryData.columns.length; i++) {
+      if (memoryData.columns[i].name == memoryData.metadata.search) {
         return i
       }
     }
@@ -79,23 +104,83 @@ export const MemoryView: React.FC<IProps> = (props) => {
   const [searchedTableDataRows] = useSearchDirectly(
     searchOperatorName,
     getName,
-    tableData?.rows
+    memoryData?.rows[device] ?? []
+  )
+  const [searchedEventsTableDataRows] = useSearchDirectly(
+    searchEventOperatorName,
+    getName,
+    memoryEventsData?.rows[device] ?? []
   )
 
   const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
     setSearchOperatorName(event.target.value as string)
   }
 
+  const onSearchEventOperatorChanged: TextFieldProps['onChange'] = (event) => {
+    setSearchEventOperatorName(event.target.value as string)
+  }
+
   React.useEffect(() => {
-    api.defaultApi.memoryGet(run, worker, span).then((resp) => {
-      setMemoryData(resp)
-      setDevices(Object.keys(resp.data))
+    api.defaultApi
+      .memoryGet(
+        run,
+        worker,
+        span,
+        selectedRange?.startTs,
+        selectedRange?.endTs
+      )
+      .then((resp) => {
+        setMemoryData(resp)
+        if (!devices || devices.length == 0) {
+          // setDevices only execute on view load. Since selection on curve
+          // might filter all events later, some devices might is missing.
+          setDevices(Object.keys(resp.rows))
+        }
+      })
+  }, [run, worker, span, selectedRange])
+
+  React.useEffect(() => {
+    api.defaultApi
+      .memoryEventsGet(
+        run,
+        worker,
+        span,
+        selectedRange?.startTs,
+        selectedRange?.endTs
+      )
+      .then((resp) => {
+        if (hasMemoryEventsData === undefined) {
+          setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
+        }
+        setMemoryEventsData(resp)
+      })
+  }, [run, worker, span, selectedRange])
+
+  React.useEffect(() => {
+    api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
       setDevice(resp.metadata.default_device)
+      if (hasMemoryCurveGraph === undefined) {
+        setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
+      }
+      setMemoryCurveGraph(resp)
     })
   }, [run, worker, span])
 
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)
+    setSelectedRange(undefined)
+  }
+
+  const onSelectedRangeChanged = (start: number, end: number) => {
+    let bias = memoryCurveGraph?.metadata.first_ts ?? 0
+    let scale = 1 / (memoryCurveGraph?.metadata.time_factor ?? 1)
+    let startTs = Math.round(start * scale + bias)
+    let endTs = Math.round(end * scale + bias)
+    if (startTs == endTs) {
+      setSelectedRange(undefined)
+      return
+    }
+    setSelectedRange({ start, end, startTs, endTs })
   }
 
   return (
@@ -104,34 +189,86 @@ export const MemoryView: React.FC<IProps> = (props) => {
         <CardHeader title="Memory View" />
         <CardContent>
           <Grid direction="column" container spacing={1}>
-            <Grid item container direction="column" spacing={1}>
-              <Grid item>
-                <Grid container justify="space-around">
-                  <Grid item>
-                    <InputLabel id="memory-device">Device</InputLabel>
-                    <Select
-                      labelId="memory-device"
-                      value={device}
-                      onChange={onDeviceChanged}
-                    >
-                      {devices.map((device) => (
-                        <MenuItem value={device}>{device}</MenuItem>
-                      ))}
-                    </Select>
+            <Grid item>
+              <DataLoading value={memoryCurveGraph}>
+                {(graph) => (
+                  <Grid container direction="column">
+                    <Grid item>
+                      <InputLabel id="memory-curve-device">Device</InputLabel>
+                      <Select
+                        labelId="memory-curve-device"
+                        value={device}
+                        onChange={onDeviceChanged}
+                      >
+                        {devices.map((device) => (
+                          <MenuItem value={device}>{device}</MenuItem>
+                        ))}
+                      </Select>
+                    </Grid>
+                    {hasMemoryCurveGraph && (
+                      <Grid item>
+                        <div>
+                          <LineChart
+                            hAxisTitle={`Time (${graph.metadata.time_metric})`}
+                            vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
+                            graph={{
+                              title: graph.metadata.peaks[device],
+                              columns: graph.columns,
+                              rows: graph.rows[device] ?? []
+                            }}
+                            initialSelectionStart={selectedRange?.start}
+                            initialSelectionEnd={selectedRange?.end}
+                            onSelectionChanged={onSelectedRangeChanged}
+                          />
+                        </div>
+                      </Grid>
+                    )}
                   </Grid>
-                  <Grid item>
+                )}
+              </DataLoading>
+            </Grid>
+            {hasMemoryEventsData && (
+              <>
+                <Grid item container direction="column" sm={6}>
+                  <Grid item container direction="column" alignContent="center">
                     <TextField
                       classes={{ root: classes.inputWidthOverflow }}
-                      value={searchOperatorName}
-                      onChange={onSearchOperatorChanged}
+                      value={searchEventOperatorName}
+                      onChange={onSearchEventOperatorChanged}
                       type="search"
                       label="Search by Name"
                     />
                   </Grid>
                 </Grid>
+                <Grid item direction="column">
+                  <DataLoading value={memoryEventsData}>
+                    {(data) => {
+                      return (
+                        <AntTableChart
+                          graph={{
+                            columns: data.columns,
+                            rows: searchedEventsTableDataRows ?? []
+                          }}
+                          initialPageSize={10}
+                        />
+                      )
+                    }}
+                  </DataLoading>
+                </Grid>
+              </>
+            )}
+            <Grid item container direction="column" sm={6}>
+              <Grid item container direction="column" alignContent="center">
+                <TextField
+                  classes={{ root: classes.inputWidthOverflow }}
+                  value={searchOperatorName}
+                  onChange={onSearchOperatorChanged}
+                  type="search"
+                  label="Search by Name"
+                />
               </Grid>
               <Grid>
-                <DataLoading value={tableData}>
+                <DataLoading value={memoryData}>
                   {(data) => (
                     <MemoryTable
                       data={{
@@ -149,4 +286,4 @@ export const MemoryView: React.FC<IProps> = (props) => {
       </Card>
     </div>
   )
-}
+})

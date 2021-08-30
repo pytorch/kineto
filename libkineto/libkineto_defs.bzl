@@ -67,8 +67,13 @@ def get_libkineto_public_headers():
         "include/time_since_epoch.h",
     ]
 
+# kineto code should be updated to not have to
+# suppress these warnings.
 KINETO_COMPILER_FLAGS = [
     "-fexceptions",
     "-Wno-unused-function",
+    "-Wno-unused-private-field",
+    "-Wno-global-constructors",
+    "-Wno-missing-prototypes",
     "-Wno-unused-private-field",
 ]

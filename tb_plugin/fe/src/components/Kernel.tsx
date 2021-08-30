@@ -218,7 +218,7 @@ export const Kernel: React.FC<IProps> = (props) => {
                       graph={graph}
                       colors={['#0099C6', '#DD4477', '#66AA00', '#B82E2E']}
                       top={actualTop}
-                      tooltip_mode='percentage'
+                      tooltip_mode="percentage"
                     />
                   </Card>
                 )}

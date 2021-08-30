@@ -1,44 +1,30 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-import os
+from typing import Iterable, Optional
+
 from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
-from .trace import DeviceType, EventTypes
+from .module_parser import aggregate_ops
+from .trace import DeviceType, MemoryEvent
 
 logger = utils.get_logger()
 
-BENCHMARK_MEMORY = os.getenv('TORCH_PROFILER_BENCHMARK_MEMORY')
-if BENCHMARK_MEMORY is not None and BENCHMARK_MEMORY.upper() in ("1", "TRUE", "ON"):
-    BENCHMARK_MEMORY = True
-else:
-    BENCHMARK_MEMORY = False
-
-def benchmark(func):
-    def wrapper(*args, **kwargs):
-        if BENCHMARK_MEMORY:
-            import time
-            start = time.time_ns()
-            ret = func(*args, **kwargs)
-            end = time.time_ns()
-            logger.info("{}: {} takes: {} seconds".format(os.getpid(), func.__name__, (end - start) / 1000000000))
-            return ret
-        else:
-            return func(*args, **kwargs)
-
-    return wrapper
-
 class MemoryRecord:
-    def __init__(self, scope, pid, tid, ts, device_type, device_id, bytes):
+    def __init__(self, scope, pid, tid, ts, device_type, device_id, address, bytes, total_allocated, total_reserved):
         self.scope = scope
         self.tid = tid
         self.pid = pid
         self.ts = ts
         self.device_type = device_type
         self.device_id = device_id
+        self.addr = address
         self.bytes = bytes
+        self.total_allocated = total_allocated
+        self.total_reserved = total_reserved
+        self.op_name: Optional[str] = None
 
     @property
     def device_name(self):
@@ -49,13 +35,19 @@ class MemoryRecord:
         else:
             return None
 
+    @staticmethod
+    def from_event(event: MemoryEvent):
+        return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.addr, event.bytes,
+                            event.total_allocated, event.total_reserved)
+
+    def __repr__(self) -> str:
+        return f"<{'+' if self.bytes>0 else ''}{self.bytes}B, addr: {self.addr}, ts: {self.ts}>"
+
 
 class MemoryParser:
-    def __init__(self, tid2tree, op_list):
+    def __init__(self, tid2tree, memory_events: Iterable[MemoryEvent]):
         self.tid2tree = tid2tree
-        self.op_list = op_list
-
-        self.records_by_tid = defaultdict(list)
+        self.memory_events = memory_events
 
         # statistics purpose
         self.staled_records = []
@@ -66,51 +58,41 @@ class MemoryParser:
         self.processed_node = defaultdict(int)
         self.unreached_node = defaultdict(list)
 
-        # normal search
-        self.staled_records_normal = []
-        self.processed_records_normal = []
+        records_by_tid = defaultdict(list)
+        for event in self.memory_events:
+            record = MemoryRecord.from_event(event)
+            records_by_tid[record.tid].append(record)
 
-        # for troubleshooting issues.
-        self.processed_node_normal = set()
-        self.unreached_node_normal = defaultdict(list)
+        self.update_node(records_by_tid)
 
-    def parse_events(self, events):
-        for event in events:
-            if event.type == EventTypes.MEMORY:
-                record = MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.bytes)
-                self.records_by_tid[record.tid].append(record)
-
-        for val in self.records_by_tid.values():
-            val.sort(key=lambda x: x.ts)
-
-        if BENCHMARK_MEMORY:
-            self.update_node_recursive()
-            self.update_node()
-        else:
-            self.update_node()
-
-    @benchmark
-    def get_memory_statistics(self):
+    def get_memory_statistics(self, start_ts=None, end_ts=None):
         metric_length = len(MemoryMetrics)
         self_metric_length = metric_length // 2
 
         def dict_factory():
             return defaultdict(lambda: [0] * metric_length)
 
+        # traverse outputs
+        op_list = []
         # two level keys dictionary
         # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
         memory_metrics_keyed_by_node = defaultdict(dict_factory)
 
         def traverse_node_memory(node):
-            if BENCHMARK_MEMORY:
-                if node not in self.processed_node_normal:
-                    self.unreached_node_normal[tid].append(node)
+            if start_ts is not None and node.end_time < start_ts:
+                return
+            if end_ts is not None and node.start_time > end_ts:
+                return
+
+            is_op = is_operator_node(node)
+            if is_op:
+                op_list.append(node)
 
             if node not in self.processed_node:
                 self.unreached_node[tid].append(node)
                 # since the node has not been visited for insert memory records, just ignore all childrens
                 return
-            elif is_operator_node(node):
+            elif is_op:
                 node_memory_metrics = node.get_memory_metrics()
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
@@ -119,7 +101,8 @@ class MemoryParser:
                         memory_metrics_keyed_by_node[node][device][i] = value
                         memory_metrics_keyed_by_node[node][device][i + self_metric_length] += value
             else:
-                logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(node.name, node.start_time))
+                logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(
+                    node.name, node.start_time))
 
             # recursive the children nodes
             for child in node.children:
@@ -148,8 +131,9 @@ class MemoryParser:
 
         # get the op_calls dictionary from module parser result.
         op_calls = defaultdict(int)
-        for op in self.op_list:
-            op_calls[op.name] += op.calls
+        agg_result = aggregate_ops(op_list, [lambda op: op.name])
+        for op_name, op_agg in agg_result[0].items():
+            op_calls[op_name] += op_agg.calls
 
         result = defaultdict(defaultdict)
         for device, node_metrics in memory_metrics_keyed_by_nodename.items():
@@ -157,36 +141,14 @@ class MemoryParser:
                 if any(values):
                     result[device][node] = values + [op_calls[node]]
 
-        if BENCHMARK_MEMORY:
-            for tid, nodes in self.unreached_node.items():
-                if nodes:
-                    logger.info("LOOP: tid-{}: total {} node doesn't get reached.".format(tid, len(nodes)))
-                else:
-                    logger.info("LOOP: tid-{}: all nodes are covered".format(tid))
-            for tid, nodes in self.unreached_node_normal.items():
-                if nodes:
-                    logger.info("RECURSIVE: tid-{}: total {} node doesn't get reached.".format(tid, len(nodes)))
-                else:
-                    logger.info("RECURSIVE: tid-{}: all nodes are covered".format(tid))
-
-                # for node in nodes:
-                #     logger.debug("node {},{}:{} doesn't reached".format(node.tid, node.name, node.start_time))
-
-            for node, times in self.processed_node.items():
-                assert times == 1
-                # if times > 1:
-                #     logger.info("node {} is processed {} times".format(node.start_time, times))
-
         return result
 
-    @property
-    def record_length(self):
-        return sum(len(v) for v in self.records_by_tid.values())
+    def record_length(self, records_by_tid):
+        return sum(len(v) for v in records_by_tid.values())
 
-    @benchmark
-    def update_node(self):
+    def update_node(self, records_by_tid):
         tree_height = 0
-        for tid, records in self.records_by_tid.items():
+        for tid, records in records_by_tid.items():
             if not records:
                 continue
 
@@ -214,14 +176,16 @@ class MemoryParser:
 
                 if current_node is None:
                     # 3. Ignore all remaining records.
-                    logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (record.tid, record.ts, record_index, len(records)))
+                    logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (
+                        record.tid, record.ts, record_index, len(records)))
                     self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
 
                 if record.ts < current_node.start_time:
                     # this should only happens for root node.
-                    logger.debug("record timestamp %d is less that the start time of %s" % (record.ts, current_node.name))
+                    logger.debug("record timestamp %d is less that the start time of %s" %
+                                 (record.ts, current_node.name))
                     # This record has no chance to be appended to following tree node.
                     self.staled_records.append(record)
                     record_index += 1
@@ -248,7 +212,7 @@ class MemoryParser:
                         break
                     elif record.ts >= current_node.children[child_index].end_time:
                         # if the record timestamp is greater than the children end time, increment to next child
-                        # untile find one contains the records
+                        # until find one contains the record
                         child_index += 1
                     else:
                         # current children contains the record
@@ -261,55 +225,18 @@ class MemoryParser:
 
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
-                    if not BENCHMARK_MEMORY or record not in current_node.memory_records:
-                        current_node.add_memory_record(record)
+                    current_node.add_memory_record(record)
+                    record.op_name = current_node.name
                     self.processed_records.append(record)
                 else:
                     self.staled_records.append(record)
 
-                # the record is processed done, increment the index to process next one.
+                # the record is processed
                 record_index += 1
 
         # show summary information
-        if len(self.staled_records) > 0 and self.record_length > 0:
-            logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records), self.record_length, len(self.processed_records)))
+        if len(self.staled_records) > 0 and self.record_length(records_by_tid) > 0:
+            logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(
+                len(self.staled_records), self.record_length(records_by_tid), len(self.processed_records)))
         if tree_height > 0:
             logger.debug("max tree height is {}".format(tree_height))
-
-    @benchmark
-    def update_node_recursive(self):
-        def _update_memory_event(record, node):
-            if BENCHMARK_MEMORY:
-                self.processed_node_normal.add(node)
-
-            child_found = None
-            for child in node.children:
-                if record.ts >= child.start_time and record.ts < child.end_time:
-                    child_found = child
-                    break
-            if child_found is None:
-                # We use left close and right open deliberately here [start time, end time)
-                # to avoid one memory be calculated twice in case of it is equal to previous operator's end time
-                # and next operator's start time.
-                # the result might be different with PyTorch one.
-                # https://github.com/pytorch/pytorch/blob/26c1f0f72e71c096648a16993484234399da307c/torch/autograd/profiler.py#L1147-L1152
-                if is_operator_node(node) and record.ts >= node.start_time and record.ts < node.end_time:
-                    if not BENCHMARK_MEMORY or record not in node.memory_records:
-                        node.add_memory_record(record)
-                    self.processed_records_normal.append(record)
-                else:
-                    self.staled_records_normal.append(record)
-            else:
-                _update_memory_event(record, child_found)
-
-        for tid, records in self.records_by_tid.items():
-            root_node = self.tid2tree.get(tid)
-            if root_node is None:
-                logger.warning("could not find the root node for tid %d " % tid)
-                self.staled_records_normal.extend(records)
-
-            for mem_record in records:
-                _update_memory_event(mem_record, root_node)
-
-        if len(self.staled_records_normal) > 0 and self.record_length > 0:
-            logger.info("{} memory records are skipped in total {} memory records and only {} get processed".format(len(self.staled_records_normal), self.record_length, len(self.processed_records_normal)))

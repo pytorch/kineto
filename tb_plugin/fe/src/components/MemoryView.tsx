@@ -56,8 +56,15 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
     undefined
   )
+  const [hasMemoryEventsData, setHasMemoryEventsData] = React.useState<
+    boolean | undefined
+  >(undefined)
   const [memoryEventsData, setMemoryEventsData] = React.useState<
     MemoryEventsData | undefined
+  >(undefined)
+
+  const [hasMemoryCurveGraph, setHasMemoryCurveGraph] = React.useState<
+    boolean | undefined
   >(undefined)
   const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
     MemoryCurve | undefined
@@ -124,7 +131,6 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       )
       .then((resp) => {
         setMemoryData(resp)
-        console.log(devices)
         if (!devices || devices.length == 0) {
           // setDevices only execute on view load. Since selection on curve
           // might filter all events later, some devices might is missing.
@@ -143,6 +149,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         selectedRange?.endTs
       )
       .then((resp) => {
+        if (hasMemoryEventsData === undefined) {
+          setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
+        }
         setMemoryEventsData(resp)
       })
   }, [run, worker, span, selectedRange])
@@ -150,6 +159,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
       setDevice(resp.metadata.default_device)
+      if (hasMemoryCurveGraph === undefined) {
+        setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
+      }
       setMemoryCurveGraph(resp)
     })
   }, [run, worker, span])
@@ -193,53 +205,58 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         ))}
                       </Select>
                     </Grid>
-                    <Grid item>
-                      <div>
-                        <LineChart
-                          hAxisTitle={`Time (${graph.metadata.time_metric})`}
-                          vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
-                          graph={{
-                            title: graph.metadata.peaks[device],
-                            columns: graph.columns,
-                            rows: graph.rows[device] ?? []
-                          }}
-                          initialSelectionStart={selectedRange?.start}
-                          initialSelectionEnd={selectedRange?.end}
-                          onSelectionChanged={onSelectedRangeChanged}
-                        />
-                      </div>
-                    </Grid>
+                    {hasMemoryCurveGraph && (
+                      <Grid item>
+                        <div>
+                          <LineChart
+                            hAxisTitle={`Time (${graph.metadata.time_metric})`}
+                            vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
+                            graph={{
+                              title: graph.metadata.peaks[device],
+                              columns: graph.columns,
+                              rows: graph.rows[device] ?? []
+                            }}
+                            initialSelectionStart={selectedRange?.start}
+                            initialSelectionEnd={selectedRange?.end}
+                            onSelectionChanged={onSelectedRangeChanged}
+                          />
+                        </div>
+                      </Grid>
+                    )}
                   </Grid>
                 )}
               </DataLoading>
             </Grid>
-            <Grid item container direction="column" sm={6}>
-              <Grid item container direction="column" alignContent="center">
-                <TextField
-                  classes={{ root: classes.inputWidthOverflow }}
-                  value={searchEventOperatorName}
-                  onChange={onSearchEventOperatorChanged}
-                  type="search"
-                  label="Search by Name"
-                />
-              </Grid>
-            </Grid>
-            <Grid item direction="column">
-              <DataLoading value={memoryEventsData}>
-                {(data) => {
-                  console.log(searchedEventsTableDataRows)
-                  return (
-                    <AntTableChart
-                      graph={{
-                        columns: data.columns,
-                        rows: searchedEventsTableDataRows ?? []
-                      }}
-                      initialPageSize={10}
+            {hasMemoryEventsData && (
+              <>
+                <Grid item container direction="column" sm={6}>
+                  <Grid item container direction="column" alignContent="center">
+                    <TextField
+                      classes={{ root: classes.inputWidthOverflow }}
+                      value={searchEventOperatorName}
+                      onChange={onSearchEventOperatorChanged}
+                      type="search"
+                      label="Search by Name"
                     />
-                  )
-                }}
-              </DataLoading>
-            </Grid>
+                  </Grid>
+                </Grid>
+                <Grid item direction="column">
+                  <DataLoading value={memoryEventsData}>
+                    {(data) => {
+                      return (
+                        <AntTableChart
+                          graph={{
+                            columns: data.columns,
+                            rows: searchedEventsTableDataRows ?? []
+                          }}
+                          initialPageSize={10}
+                        />
+                      )
+                    }}
+                  </DataLoading>
+                </Grid>
+              </>
+            )}
             <Grid item container direction="column" sm={6}>
               <Grid item container direction="column" alignContent="center">
                 <TextField

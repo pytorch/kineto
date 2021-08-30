@@ -5,6 +5,26 @@ info:
 servers:
   - url: .
 paths:
+  /service:
+    put:
+      parameters:
+        - in: query
+          name: cmd
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ServiceRequest'
+      responses:
+        '200':
+          description: successful service operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
   /runs:
     get:
       responses:
@@ -562,6 +582,38 @@ paths:
                 type: object
 components:
   schemas:
+    ServiceRequest:
+      type: object
+      required:
+        - host
+        - port
+      properties:
+        host:
+          type: string
+        port:
+          type: number
+        run_name:
+          type: string
+        warmup_dur:
+          type: number
+        record_shapes:
+          type: boolean
+        profile_memory:
+          type: boolean
+        with_stack:
+          type: boolean
+        with_flops:
+          type: boolean
+    ServiceResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
     Runs:
       type: object
       required:

@@ -118,23 +118,56 @@ class RunLoader(object):
     def _process_distributed_profiles(self, profiles, span):
         has_communication = True
         comm_node_lists = []
+        logger.debug("Processing profile data")
+        min_id = 0
+        max_id = float('inf')
         for data in profiles:
-            logger.debug("Processing profile data")
             # Set has_communication to False and disable distributed view if any one worker has no communication
             if data.has_communication and data.comm_node_list:
                 comm_node_lists.append(data.comm_node_list)
-                if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
-                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
-                    has_communication = False
+                cur_min_id = float('inf')
+                cur_max_id = 0
+                for comm_node in comm_node_lists[-1]:
+                    cur_min_id = min(cur_min_id, comm_node.comm_id)
+                    cur_max_id = max(cur_max_id, comm_node.comm_id)
+                min_id = max(min_id, cur_min_id)
+                max_id = min(max_id, cur_max_id)
             else:
                 has_communication = False
-            logger.debug("Processing profile data finish")
+                break
+        if has_communication:
+            for i in range(len(comm_node_lists)):
+                j = 0
+                while j < len(comm_node_lists[i]):
+                    if min_id <= comm_node_lists[i][j].comm_id <= max_id:
+                        j += 1
+                    else:
+                        comm_node_lists[i].pop(j)
+                if len(comm_node_lists[i]) != len(comm_node_lists[0]):
+                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
+                    has_communication = False
+                    break
+        logger.debug("Processing profile data finish")
 
         if not has_communication:
             logger.debug("There is no communication profile in this run.")
             return None
 
         worker_num = len(comm_node_lists)
+        i = len(comm_node_lists[0]) - 1
+        while i >= 0:
+            ragged_kernel = False
+            for j in range(1, worker_num):
+                if len(comm_node_lists[0][i].kernel_ranges) != len(comm_node_lists[j][i].kernel_ranges):
+                    ragged_kernel = True
+                    break
+            if ragged_kernel:
+                for j in range(worker_num):
+                    comm_node_lists[j].pop(i)
+            else:
+                break
+            i -= 1
+
         for i, node in enumerate(comm_node_lists[0]):
             kernel_range_size = len(node.kernel_ranges)
             # loop for all communication kernel ranges in order

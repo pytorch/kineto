@@ -47,10 +47,11 @@ class BaseNode(ABC):
 
 
 class CommunicationNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, tid, external_id, input_shape, input_type):
+    def __init__(self, name, start_time, end_time, type, tid, external_id, input_shape, input_type, comm_id):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.input_shape = input_shape
         self.input_type = input_type
+        self.comm_id = comm_id
         self.kernel_ranges = []
         self.real_time_ranges = []
         self.total_time = 0
@@ -60,7 +61,7 @@ class CommunicationNode(BaseNode):
     @classmethod
     def create(cls, event):
         kwargs = BaseNode.get_node_argument(event)
-        return cls(input_shape=event.input_shape, input_type=event.input_type, **kwargs)
+        return cls(input_shape=event.input_shape, input_type=event.input_type, comm_id=event.comm_id, **kwargs)
 
 
 class HostNode(BaseNode):

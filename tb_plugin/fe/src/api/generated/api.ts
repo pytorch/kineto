@@ -840,6 +840,80 @@ export interface Runs {
 /**
  *
  * @export
+ * @interface ServiceRequest
+ */
+export interface ServiceRequest {
+  /**
+   *
+   * @type {string}
+   * @memberof ServiceRequest
+   */
+  host: string
+  /**
+   *
+   * @type {number}
+   * @memberof ServiceRequest
+   */
+  port: number
+  /**
+   *
+   * @type {string}
+   * @memberof ServiceRequest
+   */
+  runName?: string
+  /**
+   *
+   * @type {number}
+   * @memberof ServiceRequest
+   */
+  warmupDur?: number
+  /**
+   *
+   * @type {boolean}
+   * @memberof ServiceRequest
+   */
+  recordShapes?: boolean
+  /**
+   *
+   * @type {boolean}
+   * @memberof ServiceRequest
+   */
+  profileMemory?: boolean
+  /**
+   *
+   * @type {boolean}
+   * @memberof ServiceRequest
+   */
+  withStack?: boolean
+  /**
+   *
+   * @type {boolean}
+   * @memberof ServiceRequest
+   */
+  withFlops?: boolean
+}
+/**
+ *
+ * @export
+ * @interface ServiceResponse
+ */
+export interface ServiceResponse {
+  /**
+   *
+   * @type {boolean}
+   * @memberof ServiceResponse
+   */
+  success: boolean
+  /**
+   *
+   * @type {string}
+   * @memberof ServiceResponse
+   */
+  message: string
+}
+/**
+ *
+ * @export
  * @interface TableData
  */
 export interface TableData {
@@ -2057,6 +2131,62 @@ export const DefaultApiFetchParamCreator = function (
     },
     /**
      *
+     * @param {string} cmd
+     * @param {ServiceRequest} [body]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    servicePut(
+      cmd: string,
+      body?: ServiceRequest,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'cmd' is not null or undefined
+      if (cmd === null || cmd === undefined) {
+        throw new RequiredError(
+          'cmd',
+          'Required parameter cmd was null or undefined when calling servicePut.'
+        )
+      }
+      const localVarPath = `/service`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'PUT' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (cmd !== undefined) {
+        localVarQueryParameter['cmd'] = cmd
+      }
+
+      localVarHeaderParameter['Content-Type'] = '*/*'
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+      const needsSerialization =
+        <any>'ServiceRequest' !== 'string' ||
+        localVarRequestOptions.headers['Content-Type'] === 'application/json'
+      localVarRequestOptions.body = needsSerialization
+        ? JSON.stringify(body || {})
+        : body || ''
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
      * @param {string} run
      * @param {string} worker
      * @param {*} [options] Override http request option.
@@ -2810,6 +2940,37 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} cmd
+     * @param {ServiceRequest} [body]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    servicePut(
+      cmd: string,
+      body?: ServiceRequest,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<ServiceResponse> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).servicePut(cmd, body, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
      * @param {string} run
      * @param {string} worker
      * @param {*} [options] Override http request option.
@@ -3267,6 +3428,20 @@ export const DefaultApiFactory = function (
     },
     /**
      *
+     * @param {string} cmd
+     * @param {ServiceRequest} [body]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    servicePut(cmd: string, body?: ServiceRequest, options?: any) {
+      return DefaultApiFp(configuration).servicePut(
+        cmd,
+        body,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
      * @param {string} run
      * @param {string} worker
      * @param {*} [options] Override http request option.
@@ -3689,6 +3864,22 @@ export class DefaultApi extends BaseAPI {
       this.fetch,
       this.basePath
     )
+  }
+
+  /**
+   *
+   * @param {string} cmd
+   * @param {ServiceRequest} [body]
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public servicePut(cmd: string, body?: ServiceRequest, options?: any) {
+    return DefaultApiFp(this.configuration).servicePut(
+      cmd,
+      body,
+      options
+    )(this.fetch, this.basePath)
   }
 
   /**

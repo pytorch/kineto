@@ -16,6 +16,8 @@ import werkzeug
 from tensorboard.plugins import base_plugin
 from werkzeug import exceptions, wrappers
 
+import requests
+
 from . import consts, io, utils
 from .profiler import RunLoader
 from .run import DistributedRunProfile, Run, RunProfile
@@ -54,9 +56,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._cache = io.Cache()
         self._queue = Queue()
         self._gpu_metrics_file_dict = {}
+
+        self._dir_touched = set()
+        self._file_touched = set()
+        self._scan_lock = threading.Lock()
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
         monitor_runs.start()
 
+        self._not_received = 0
         receive_runs = threading.Thread(target=self._receive_runs, name="receive_runs", daemon=True)
         receive_runs.start()
 
@@ -99,10 +106,69 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/memory": self.memory_route,
             "/memory_curve": self.memory_curve_route,
             "/memory_events": self.memory_events_route,
+            "/service": self.service_route,
         }
 
     def frontend_metadata(self):
         return base_plugin.FrontendMetadata(es_module_path="/index.js", disable_reload=True)
+
+    @wrappers.Request.application
+    def service_route(self, request):
+        method = request.method
+        cmd = request.args.get("cmd")
+        data = json.loads(request.data)
+        baseUrl = "".join(["http://", data["host"], ":", str(data["port"])])
+        url = "".join([baseUrl, "/service"])
+        res = {"success": False, "message": "Error message in tb_plugin not specified."}
+
+        if method == "PUT":
+            if cmd == "start":
+                body = {
+                    "log_dir": self.logdir,
+                    "run_name": data["run_name"],
+                    "record_shapes": data["record_shapes"],
+                    "profile_memory": data["profile_memory"],
+                    "with_stack": data["with_stack"],
+                    "with_flops": data["with_flops"],
+                    "warmup_dur": data["warmup_dur"]
+                }
+                try:
+                    r = requests.put(url=url, json=body, params={"cmd": "start"})
+                    if r.status_code == 200:
+                        res = r.json()
+                except:
+                    res["message"] = "An error occurs in the server of the PyTorch training process."
+            elif cmd == "stop":
+                try:
+                    r = requests.put(url=url, params={"cmd": "stop"})
+                    if r.status_code == 200:
+                        res = r.json()
+                except:
+                    res["message"] = "An error occurs in the server of the PyTorch training process."
+                if res["success"]:
+                    file_names = res.pop("file_names")
+                    need_log_fetch = res.pop("need_log_fetch")
+                    if need_log_fetch:
+                        try:
+                            for file_name in file_names:
+                                log_file = requests.get(url="/".join([baseUrl, "log", data["run_name"], file_name]))
+                                log_path = os.path.join(self.logdir, data["run_name"])
+                                if not os.path.exists(log_path):
+                                    os.makedirs(log_path)
+                                with open(os.path.join(log_path, file_name), 'w') as f:
+                                    f.write(log_file.text)
+                        except:
+                            res = {"success": False, "message": "An error occurs when trying to fetch log file from training machine."}
+                if res["success"]:
+                    self._scan_run_dirs()
+                    while self._not_received > 0:
+                        pass
+            else:
+                exceptions.abort(400)
+        else:
+            exceptions.abort(405)
+        
+        return self.respond_as_json(res)
 
     @wrappers.Request.application
     def runs_route(self, request):
@@ -337,33 +403,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def _monitor_runs(self):
         logger.info("Monitor runs begin")
-
         try:
-            touched = set()
             while True:
-                try:
-                    logger.debug("Scan run dir")
-                    run_dirs = self._get_run_dirs()
-
-                    has_dir = False
-                    # Assume no deletion on run directories, trigger async load if find a new run
-                    for run_dir in run_dirs:
-                        has_dir = True
-                        if run_dir not in touched:
-                            touched.add(run_dir)
-                            logger.info("Find run directory %s", run_dir)
-                            # Use threading to avoid UI stall and reduce data parsing time
-                            t = threading.Thread(target=self._load_run, args=(run_dir,))
-                            t.start()
-                            with self._load_lock:
-                                self._load_threads.append(t)
-
-                    if not has_dir:
-                        # handle directory removed case.
-                        self._runs.clear()
-                except Exception as ex:
-                    logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
-
+                self._scan_run_dirs()
                 time.sleep(consts.MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS)
         except:
             logger.exception("Failed to start monitor_runs")
@@ -380,6 +422,33 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 self._runs[run.name] = run
                 if is_new:
                     self._runs = OrderedDict(sorted(self._runs.items()))
+            self._not_received -= 1
+    
+    def _scan_run_dirs(self):
+        with self._scan_lock:
+            try:
+                logger.debug("Scan run dir")
+                run_dirs = self._get_run_dirs()
+
+                has_dir = False
+                # Assume no deletion on run directories, trigger async load if find a new run
+                for run_dir in run_dirs:
+                    has_dir = True
+                    if run_dir not in self._dir_touched:
+                        self._dir_touched.add(run_dir)
+                        logger.info("Find run directory %s", run_dir)
+                        self._not_received += 1
+                        # Use threading to avoid UI stall and reduce data parsing time
+                        t = threading.Thread(target=self._load_run, args=(run_dir,))
+                        t.start()
+                        with self._load_lock:
+                            self._load_threads.append(t)
+
+                if not has_dir:
+                    # handle directory removed case.
+                    self._runs.clear()
+            except Exception as ex:
+                logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 
     def _get_run_dirs(self):
         """Scan logdir, find PyTorch Profiler run directories.
@@ -392,10 +461,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 /[worker1].pt.trace.json
         """
         for root, _, files in io.walk(self.logdir):
+            contains_file = False
             for file in files:
                 if utils.is_chrome_trace_file(file):
-                    yield root
-                    break
+                    contains_file = True
+                    if "/".join([root, file]) not in self._file_touched:
+                        self._file_touched.add("/".join([root, file]))
+                        if root in self._dir_touched:
+                            self._dir_touched.remove(root)
+            if contains_file:
+                yield root
 
     def _load_run(self, run_dir):
         try:
@@ -408,6 +483,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             self._queue.put(run)
         except Exception as ex:
             logger.warning("Failed to load run %s. Exception=%s", ex, name, exc_info=True)
+            self._not_received -= 1
 
         t = threading.current_thread()
         with self._load_lock:

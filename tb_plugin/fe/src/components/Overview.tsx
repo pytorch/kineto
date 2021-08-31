@@ -77,7 +77,9 @@ export const Overview: React.FC<IProps> = (props) => {
     api.GpuMetrics | undefined
   >(undefined)
   const [recommendations, setRecommendations] = React.useState('')
-  const [carbon, setCarbon] = React.useState<api.CarbonInfo | undefined>(undefined)
+  const [carbon, setCarbon] = React.useState<api.CarbonInfo | undefined>(
+    undefined
+  )
 
   const synthesizedTableGraph = React.useMemo(() => {
     return transformPerformanceIntoTable(performances)
@@ -97,7 +99,7 @@ export const Overview: React.FC<IProps> = (props) => {
       console.log(resp.gpu_metrics)
     })
 
-    api.defaultApi.carbonGet(run, worker, span).then((resp) =>{
+    api.defaultApi.carbonGet(run, worker, span).then((resp) => {
       setCarbon(resp)
     })
   }, [run, worker, span])
@@ -219,17 +221,28 @@ export const Overview: React.FC<IProps> = (props) => {
             </Card>
           </Grid>
         </Grid>
-        {carbon && (<Grid container item>
-          <Grid item sm={12}>
-            <Card variant="outlined">
-              <CardHeader title="Carbon Emission" />
-              <CardContent>
-                <div>{carbon.data.carbon} {carbon.data.units}</div>
-                <div>{carbon.metadata.context}</div>
-              </CardContent>
-            </Card>
+        {carbon && (
+          <Grid container item>
+            <Grid item sm={12}>
+              <Card variant="outlined">
+                <CardHeader title="Carbon Emission" />
+                <CardContent>
+                  <div>
+                    <strong>{carbon.carbon}</strong> kg CO<sub>2</sub> per hour
+                  </div>
+                  <div>
+                    <a
+                      href="https://mlco2.github.io/impact/#compute"
+                      target="_blank"
+                    >
+                      https://mlco2.github.io/impact/#compute
+                    </a>
+                    for details about computation
+                  </div>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
-        </Grid>
         )}
       </Grid>
     </div>

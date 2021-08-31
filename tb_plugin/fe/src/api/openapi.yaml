@@ -987,23 +987,7 @@ components:
     CarbonInfo:
       type: object
       required:
-        - metadata
-        - data
+        - carbon
       properties:
-        metadata:
-          type: object
-          required:
-            - context
-          properties:
-            context:
-              type: string
-        data:
-          type: object
-          required:
-            - carbon
-            - units
-          properties:
-            carbon:
-              type: string
-            units:
-              type: string
+        carbon:
+          type: string

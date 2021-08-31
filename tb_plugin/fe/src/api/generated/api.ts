@@ -172,48 +172,10 @@ export interface CallStackTableDataInner {
 export interface CarbonInfo {
   /**
    *
-   * @type {CarbonInfoMetadata}
-   * @memberof CarbonInfo
-   */
-  metadata: CarbonInfoMetadata
-  /**
-   *
-   * @type {CarbonInfoData}
-   * @memberof CarbonInfo
-   */
-  data: CarbonInfoData
-}
-/**
- *
- * @export
- * @interface CarbonInfoData
- */
-export interface CarbonInfoData {
-  /**
-   *
    * @type {string}
-   * @memberof CarbonInfoData
+   * @memberof CarbonInfo
    */
   carbon: string
-  /**
-   *
-   * @type {string}
-   * @memberof CarbonInfoData
-   */
-  units: string
-}
-/**
- *
- * @export
- * @interface CarbonInfoMetadata
- */
-export interface CarbonInfoMetadata {
-  /**
-   *
-   * @type {string}
-   * @memberof CarbonInfoMetadata
-   */
-  context: string
 }
 /**
  *

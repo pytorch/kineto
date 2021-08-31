@@ -228,15 +228,17 @@ export const Overview: React.FC<IProps> = (props) => {
                 <CardHeader title="Carbon Emission" />
                 <CardContent>
                   <div>
-                    <strong>{carbon.carbon}</strong> kg CO<sub>2</sub> per hour
+                    <strong>{carbon.carbon}</strong> kg CO<sub>2</sub> per
+                    hour
                   </div>
                   <div>
+                    See{' '}
                     <a
                       href="https://mlco2.github.io/impact/#compute"
                       target="_blank"
                     >
                       https://mlco2.github.io/impact/#compute
-                    </a>
+                    </a>{' '}
                     for details about computation
                   </div>
                 </CardContent>

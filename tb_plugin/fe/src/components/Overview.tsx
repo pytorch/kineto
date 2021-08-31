@@ -77,6 +77,7 @@ export const Overview: React.FC<IProps> = (props) => {
     api.GpuMetrics | undefined
   >(undefined)
   const [recommendations, setRecommendations] = React.useState('')
+  const [carbon, setCarbon] = React.useState<api.CarbonInfo | undefined>(undefined)
 
   const synthesizedTableGraph = React.useMemo(() => {
     return transformPerformanceIntoTable(performances)
@@ -94,6 +95,10 @@ export const Overview: React.FC<IProps> = (props) => {
       setRecommendations(resp.recommendations)
       setGpuMetrics(resp.gpu_metrics)
       console.log(resp.gpu_metrics)
+    })
+
+    api.defaultApi.carbonGet(run, worker, span).then((resp) =>{
+      setCarbon(resp)
     })
   }, [run, worker, span])
 
@@ -214,6 +219,18 @@ export const Overview: React.FC<IProps> = (props) => {
             </Card>
           </Grid>
         </Grid>
+        {carbon && (<Grid container item>
+          <Grid item sm={12}>
+            <Card variant="outlined">
+              <CardHeader title="Carbon Emission" />
+              <CardContent>
+                <div>{carbon.data.carbon} {carbon.data.units}</div>
+                <div>{carbon.metadata.context}</div>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+        )}
       </Grid>
     </div>
   )

@@ -167,6 +167,57 @@ export interface CallStackTableDataInner {
 /**
  *
  * @export
+ * @interface CarbonInfo
+ */
+export interface CarbonInfo {
+  /**
+   *
+   * @type {CarbonInfoMetadata}
+   * @memberof CarbonInfo
+   */
+  metadata: CarbonInfoMetadata
+  /**
+   *
+   * @type {CarbonInfoData}
+   * @memberof CarbonInfo
+   */
+  data: CarbonInfoData
+}
+/**
+ *
+ * @export
+ * @interface CarbonInfoData
+ */
+export interface CarbonInfoData {
+  /**
+   *
+   * @type {string}
+   * @memberof CarbonInfoData
+   */
+  carbon: string
+  /**
+   *
+   * @type {string}
+   * @memberof CarbonInfoData
+   */
+  units: string
+}
+/**
+ *
+ * @export
+ * @interface CarbonInfoMetadata
+ */
+export interface CarbonInfoMetadata {
+  /**
+   *
+   * @type {string}
+   * @memberof CarbonInfoMetadata
+   */
+  context: string
+}
+/**
+ *
+ * @export
  * @interface DistributedGraph
  */
 export interface DistributedGraph {
@@ -915,6 +966,78 @@ export const DefaultApiFetchParamCreator = function (
   configuration?: Configuration
 ) {
   return {
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    carbonGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling carbonGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling carbonGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling carbonGet.'
+        )
+      }
+      const localVarPath = `/carbon`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
     /**
      *
      * @param {string} run
@@ -2297,6 +2420,39 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
+    carbonGet(
+      run: string,
+      worker: string,
+      span: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<CarbonInfo> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).carbonGet(run, worker, span, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
     distributedCommopsGet(
       run: string,
       worker: string,
@@ -2953,6 +3109,22 @@ export const DefaultApiFactory = function (
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
+    carbonGet(run: string, worker: string, span: string, options?: any) {
+      return DefaultApiFp(configuration).carbonGet(
+        run,
+        worker,
+        span,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
     distributedCommopsGet(
       run: string,
       worker: string,
@@ -3328,6 +3500,24 @@ export const DefaultApiFactory = function (
  * @extends {BaseAPI}
  */
 export class DefaultApi extends BaseAPI {
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public carbonGet(run: string, worker: string, span: string, options?: any) {
+    return DefaultApiFp(this.configuration).carbonGet(
+      run,
+      worker,
+      span,
+      options
+    )(this.fetch, this.basePath)
+  }
+
   /**
    *
    * @param {string} run

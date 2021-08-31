@@ -560,6 +560,31 @@ paths:
             '*/*':
               schema:
                 type: object
+  /carbon:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful data
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CarbonInfo"
 components:
   schemas:
     Runs:
@@ -959,3 +984,26 @@ components:
             $ref: '#/components/schemas/GraphColumn'
         rows:
           type: object
+    CarbonInfo:
+      type: object
+      required:
+        - metadata
+        - data
+      properties:
+        metadata:
+          type: object
+          required:
+            - context
+          properties:
+            context:
+              type: string
+        data:
+          type: object
+          required:
+            - carbon
+            - units
+          properties:
+            carbon:
+              type: string
+            units:
+              type: string

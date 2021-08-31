@@ -228,8 +228,7 @@ export const Overview: React.FC<IProps> = (props) => {
                 <CardHeader title="Carbon Emission" />
                 <CardContent>
                   <div>
-                    <strong>{carbon.carbon}</strong> kg CO<sub>2</sub> per
-                    hour
+                    <strong>{carbon.carbon}</strong> kg CO<sub>2</sub> per hour
                   </div>
                   <div>
                     See{' '}

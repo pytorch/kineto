@@ -490,10 +490,10 @@ class RunProfile(object):
             },
             "columns": [
                 {"name": "Operator", "type": "string", "tooltip": ""},
-                {"name": "Size", "type": "number", "tooltip": ""},
-                {"name": "Allocation Time", "type": "number", "tooltip": ""},
-                {"name": "Release Time", "type": "number", "tooltip": ""},
-                {"name": "Duration", "type": "number", "tooltip": ""},
+                {"name": "Size (B)", "type": "number", "tooltip": ""},
+                {"name": "Allocation Time (us)", "type": "number", "tooltip": ""},
+                {"name": "Release Time (us)", "type": "number", "tooltip": ""},
+                {"name": "Duration (us)", "type": "number", "tooltip": ""},
             ],
             "rows": events,  # in the form of { "CPU": [...], "GPU0": [...], ... }
         }

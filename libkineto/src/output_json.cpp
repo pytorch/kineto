@@ -30,6 +30,9 @@ using namespace libkineto;
 namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
+static constexpr char kFlowStart = 's';
+static constexpr char kFlowEnd = 'f';
+
 #ifdef __linux__
 static const std::string kDefaultLogFileFmt =
     "/tmp/libkineto_activities_{}.json";
@@ -269,28 +272,22 @@ void ChromeTraceLogger::handleGenericActivity(
       op.traceSpan()->name, op.traceSpan()->iteration, separator,
       op_metadata);
   // clang-format on
-}
 
-void ChromeTraceLogger::handleLinkStart(
-    const TraceActivity& s,
-    int64_t id,
-    const std::string& cat,
-    const std::string& name) {
-  if (!traceOf_) {
-    return;
+  if (op.flow.linkedActivity != nullptr) {
+    handleGenericLink(op);
   }
-
-  // clang-format off
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "s", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "{}", "name": "{}"
-  }},)JSON",
-      id, s.deviceId(), s.resourceId(), s.timestamp(), cat, name);
-  // clang-format on
 }
 
-void ChromeTraceLogger::handleLinkEnd(
+void ChromeTraceLogger::handleGenericLink(const GenericTraceActivity& act) {
+  if (act.flow.type == kLinkFwdBwd) {
+    const auto& from_act = *act.flow.linkedActivity;
+    handleLink(kFlowStart, from_act, act.flow.id, "forward_backward", "fwd_bwd");
+    handleLink(kFlowEnd, act, act.flow.id, "forward_backward", "fwd_bwd");
+  }
+}
+
+void ChromeTraceLogger::handleLink(
+    char type,
     const TraceActivity& e,
     int64_t id,
     const std::string& cat,
@@ -302,12 +299,13 @@ void ChromeTraceLogger::handleLinkEnd(
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
-    "ph": "f", "id": {}, "pid": {}, "tid": {}, "ts": {},
+    "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
     "cat": "{}", "name": "{}", "bp": "e"
   }},)JSON",
-      id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
   // clang-format on
 }
+
 
 #ifdef HAS_CUPTI
 void ChromeTraceLogger::handleRuntimeActivity(
@@ -341,8 +339,8 @@ void ChromeTraceLogger::handleRuntimeActivity(
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
       cbid ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000) {
-    handleLinkStart(
-        activity, activity.correlationId(), "async_gpu", activity.name());
+    auto from_id = activity.correlationId();
+    handleLink(kFlowStart, activity, from_id, "async_gpu", activity.name());
   }
 }
 
@@ -406,8 +404,8 @@ void ChromeTraceLogger::handleGpuActivity(
       (int) (0.5 + occupancy * 100.0));
   // clang-format on
 
-  handleLinkEnd(
-      activity, activity.correlationId(), "async_gpu", "cudaLaunchKernel");
+  auto to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaLaunchKernel");
 }
 
 static std::string bandwidth(uint64_t bytes, uint64_t duration) {
@@ -440,8 +438,8 @@ void ChromeTraceLogger::handleGpuActivity(
       memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
-  handleLinkEnd(
-      activity, activity.correlationId(), "async_gpu", "cudaMemcpyAsync");
+  int64_t to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemcpyAsync");
 }
 
 // GPU side memcpy activity
@@ -471,8 +469,8 @@ void ChromeTraceLogger::handleGpuActivity(
       memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
-  handleLinkEnd(
-      activity, activity.correlationId(), "async_gpu", "cudaMemcpyAsync");
+  int64_t to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemcpyAsync");
 }
 
 void ChromeTraceLogger::handleGpuActivity(
@@ -499,8 +497,8 @@ void ChromeTraceLogger::handleGpuActivity(
       memset.bytes, bandwidth(memset.bytes, memset.end - memset.start));
   // clang-format on
 
-  handleLinkEnd(
-      activity, activity.correlationId(), "async_gpu", "cudaMemsetAsync");
+  int64_t to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemsetAsync");
 }
 #endif // HAS_CUPTI
 

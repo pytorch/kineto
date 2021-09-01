@@ -69,12 +69,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
  private:
 
   // Create a flow event (arrow)
-  void handleLinkStart(
-      const TraceActivity& s,
-      int64_t id,
-      const std::string& cat,
-      const std::string& name);
-  void handleLinkEnd(
+  void handleLink(
+      char type,
       const TraceActivity& e,
       int64_t id,
       const std::string& cat,
@@ -85,6 +81,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void openTraceFile();
 
   void handleGenericInstantEvent(const GenericTraceActivity& op);
+
+  void handleGenericLink(const GenericTraceActivity& activity);
 
   std::string fileName_;
   std::ofstream traceOf_;

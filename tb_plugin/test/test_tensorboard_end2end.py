@@ -29,6 +29,7 @@ class TestEnd2End(unittest.TestCase):
         print("starting spawn mode testing...")
         self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
 
+    @unittest.skip("fork is not use anymore")
     def test_tensorboard_fork(self):
         test_folder = get_samples_dir()
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
@@ -151,4 +152,3 @@ class TestEnd2End(unittest.TestCase):
                     self.fail(e)
         self.assertEqual(i, 10)
         print("ending testing...")
-

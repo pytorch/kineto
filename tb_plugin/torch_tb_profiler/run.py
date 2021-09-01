@@ -458,10 +458,11 @@ class RunProfile(object):
                 alloc[addr] = i
             else:
                 if addr in alloc:
-                    alloc_ts = memory_records[alloc[addr]].ts
+                    alloc_r = memory_records[alloc[addr]]
+                    alloc_ts = alloc_r.ts
                     free_ts = r.ts
-                    events[dev_name(r.device_type, r.device_id)].append([
-                        op_name(r.op_name),
+                    events[dev_name(alloc_r.device_type, alloc_r.device_id)].append([
+                        op_name(alloc_r.op_name),
                         -size,
                         alloc_ts - profiler_start_ts,
                         free_ts - profiler_start_ts,

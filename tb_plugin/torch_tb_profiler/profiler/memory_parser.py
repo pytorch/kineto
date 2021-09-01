@@ -63,7 +63,16 @@ class MemoryParser:
             record = MemoryRecord.from_event(event)
             records_by_tid[record.tid].append(record)
 
+        self.peaks = self.get_peak_memory()
+
         self.update_node(records_by_tid)
+
+    def get_peak_memory(self):
+        peaks = defaultdict(int)
+        for e in self.memory_events:
+            if e.total_allocated == e.total_allocated: # !isnan
+                peaks[(e.device_type, e.device_id)] = max(peaks[(e.device_type, e.device_id)], e.total_allocated)
+        return peaks
 
     def get_memory_statistics(self, start_ts=None, end_ts=None):
         metric_length = len(MemoryMetrics)

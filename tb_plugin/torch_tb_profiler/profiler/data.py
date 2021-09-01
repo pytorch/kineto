@@ -11,6 +11,7 @@ import tempfile
 from json.decoder import JSONDecodeError
 
 from .. import io, utils
+from ..utils import href
 from . import trace
 from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
@@ -226,9 +227,9 @@ class RunProfileData(object):
         self._analyze_distributed_metrics()
         self._analyze_gpu_metrics()
 
-        # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
-        # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
         if self.device_props:
+            # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
+            # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
             major = self.device_props[0].get("computeMajor")
             if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
                 text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \
@@ -239,6 +240,23 @@ class RunProfileData(object):
                     "https://pytorch.org/docs/stable/amp.html"
                 )
                 self.recommendations.append(text)
+
+            # Memory related
+            for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
+                if dev_type == -1: # ignore cpu
+                    continue
+                total_mem = self.device_props[dev_id].get("totalGlobalMem")
+                if total_mem is not None and peak_mem > total_mem * 0.9:
+                    percentage = peak_mem / total_mem * 100
+                    total_mem_gb = total_mem / 1024 / 1024 / 1024
+                    ckp_url = "https://pytorch.org/docs/stable/checkpoint.html"
+                    amp_url = "https://pytorch.org/docs/stable/amp.html"
+                    self.recommendations.append(
+                        f"Device memory usage is at the limit of device memory capacity ({percentage:.1f}% of {total_mem_gb:.1f}GB " +
+                        f"on GPU{dev_id}). To get better value of your GPU or to use larger batch size for training, please " + 
+                        f"refer to {href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}."
+                    )
+                    break
 
 
     def _analyze_distributed_metrics(self):

@@ -24,3 +24,12 @@ def get_logger():
 
 def is_chrome_trace_file(path):
     return consts.WORKER_PATTERN.match(path)
+
+
+def href(text, url):
+    """"return html formatted hyperlink string
+
+    Note:
+        target="_blank" causes this link to be opened in new tab if clicked.
+    """
+    return f'<a href ="{url}" target="_blank">{text}</a>'

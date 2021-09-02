@@ -115,13 +115,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         method = request.method
         cmd = request.args.get("cmd")
         data = json.loads(request.data)
-        url = "".join([data["host"], ":", str(data["port"]), "/service"])
+        host_local = data["host"].split(":")[1][2:] in ["localhost", "127.0.0.1"]
+        baseUrl = ":".join([data["host"], str(data["port"])])
+        url = "".join([baseUrl, "/service"])
         res = {"success": False, "message": "Error message in tb_plugin not specified."}
 
         if method == "PUT":
             if cmd == "start":
                 body = {
-                    "log_dir": io.abspath(os.path.join(self.logdir, data["log_dir"]).rstrip('/')),
+                    "log_dir": io.abspath(os.path.join(self.logdir, data["log_dir"]).rstrip('/')) if host_local 
+                               else os.path.join("./tmplog", data["log_dir"]).rstrip('/'),
                     "record_shapes": data["record_shapes"],
                     "profile_memory": data["profile_memory"],
                     "with_stack": data["with_stack"],
@@ -141,6 +144,19 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                         res = r.json()
                 except:
                     res["message"] = "An error occurs in the server of the PyTorch training process."
+                if res["success"]:
+                    log_dir = res.pop("log_dir")
+                    file_name = res.pop("file_name")
+                    if not host_local:
+                        try:
+                            log_file = requests.get(url="/".join([baseUrl, "log", log_dir, file_name]))
+                            log_path = os.path.join(self.logdir, log_dir)
+                            if not os.path.exists(log_path):
+                                os.makedirs(log_path)
+                            with open(os.path.join(log_path, file_name), 'w') as f:
+                                f.write(log_file.text)
+                        except:
+                            res = {"success": False, "message": "An error occurs when trying to fetch log file from training machine."}
                 if res["success"]:
                     self._scan_run_dirs()
                     while self._not_received > 0:

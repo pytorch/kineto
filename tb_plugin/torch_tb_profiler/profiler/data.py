@@ -214,15 +214,13 @@ class RunProfileData(object):
 
         dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
         if dataloader_ratio > 0.05:
-            text = "This run has high time cost on input data loading. " \
-                   "{}% of the step time is in DataLoader. You could " \
-                   "try to set num_workers on DataLoader's construction " \
-                   "and enable multi-processes on data loading. " \
-                   "Reference: <a href =\"{}\" target=\"_blank\">Single- and Multi-process Data Loading</a>".format(
-                       round(dataloader_ratio * 100, 1),
-                       "https://pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading"
-                   )
-            self.recommendations.append(text)
+            percentage = dataloader_ratio * 100
+            url = "https://pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading"
+            self.recommendations.append(
+                f"This run has high time cost on input data loading. {percentage:.1f}% of the step " +
+                "time is in DataLoader. You could try to set num_workers on DataLoader's construction " +
+                f"and {href('enable multi-processes on data loading', url)}."
+            )
 
         self._analyze_distributed_metrics()
         self._analyze_gpu_metrics()
@@ -232,14 +230,12 @@ class RunProfileData(object):
             # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
             major = self.device_props[0].get("computeMajor")
             if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
-                text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \
-                       "You could enable AMP to speedup by using FP16. " \
-                       "Reference: <a href =\"{}\" target=\"_blank\">" \
-                       "Automatic Mixed Precision Package - torch.cuda.amp</a>".format(
-                    self.tc_eligible_ops,
-                    "https://pytorch.org/docs/stable/amp.html"
+                url = "https://pytorch.org/docs/stable/amp.html"
+                self.recommendations.append(
+                    f"{self.tc_eligible_ops} operator callings are eligible to use Tensor Cores but none uses it. " +
+                    f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16."
                 )
-                self.recommendations.append(text)
+
 
             # Memory related
             for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
@@ -261,11 +257,10 @@ class RunProfileData(object):
 
     def _analyze_distributed_metrics(self):
         if self.use_dp and len(self.used_devices) > 1:
-            text = "It is recommended to use DistributedDataParallel, instead of DataParallel to do multi-GPU training." \
-                   "Reference: <a href = \"{}\" target=\"_blank\">Use DistributedDataParallel instead of DataParallel</a>".format(
-                       "https://pytorch.org/docs/stable/notes/cuda.html#cuda-nn-ddp-instead"
-                   )
-            self.recommendations.append(text)
+            url = "https://pytorch.org/docs/stable/notes/cuda.html#cuda-nn-ddp-instead"
+            self.recommendations.append(
+                f"It is recommended to {href('use DistributedDataParallel instead of DataParallel', url)} to do multi-GPU training."
+            )
 
         if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
@@ -281,17 +276,16 @@ class RunProfileData(object):
 
         communication_ratio = self.avg_costs.costs[ProfileRole.Communication] / self.avg_costs.costs[ProfileRole.Total]
         if communication_ratio > 0.1:
-            text = "This run has high time cost on communication. " \
-                   "{}% of the step time is in communication. You could " \
-                   "try <a href = \"{}\" target=\"_blank\">Gradient Compression</a> or "\
-                   "<a href = \"{}\" target=\"_blank\">Gradient Accumulation</a> or increase the batch size. " \
-                   "Note: Gradient accumulation will increase global effective batch size, which may hurt model convergence and accuracy. " \
-                   "For such case, you may want to evaluate <a href = \"{}\" target=\"_blank\">LAMB optimizer</a>".format(
-                       round(communication_ratio * 100, 1),
-                       "https://pytorch.org/docs/stable/ddp_comm_hooks.html",
-                       "https://towardsdatascience.com/what-is-gradient-accumulation-in-deep-learning-ec034122cfa",
-                       "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
-            self.recommendations.append(text)
+            percentage = communication_ratio * 100
+            compress_url = "https://pytorch.org/docs/stable/ddp_comm_hooks.html",
+            grad_acc_url = "https://towardsdatascience.com/what-is-gradient-accumulation-in-deep-learning-ec034122cfa"
+            lamb_url = "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB"
+            self.recommendations.append(
+                f"This run has high time cost on communication. {percentage:.1f}% of the step time is in communication. " +
+                f"You could try {href('Gradient Compression', compress_url)} or {href('Gradient Accumulation', grad_acc_url)} or " +
+                "increase the batch size. Note: Gradient accumulation will increase global effective batch size, which may hurt " +
+                f"model convergence and accuracy. For such case, you may want to evaluate {href('LAMB optimizer', lamb_url)}."
+            )
 
     def _memory_events(self) -> List[MemoryEvent]:
         memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]

@@ -9,7 +9,8 @@ import { Graph } from '../../api'
 
 interface IProps {
   graph: Graph
-  sortColumn?: number
+  sortColumn?: string
+  initialPageSize?: number
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -27,6 +28,7 @@ const getTableColumns = function (
   tooltipClass: string
 ) {
   let i = 0
+  console.log(['cols', columns])
   return columns.map(function (col: any) {
     const key = 'col' + i++
     const stringCompare = (a: any, b: any) => a[key].localeCompare(b[key])
@@ -56,19 +58,20 @@ const getTableRows = function (rows: any) {
 }
 
 export const AntTableChart: React.FC<IProps> = (props) => {
-  const { graph, sortColumn } = props
+  const { graph, sortColumn, initialPageSize } = props
   const classes = useStyles(props)
-  const sort =
-    sortColumn === undefined ? undefined : graph.columns[sortColumn].name
 
   const rows = React.useMemo(() => getTableRows(graph.rows), [graph.rows])
 
   const columns = React.useMemo(
-    () => getTableColumns(graph.columns, sort, classes.tooltip),
-    [graph.columns, sort, classes.tooltip]
+    () => getTableColumns(graph.columns, sortColumn, classes.tooltip),
+    [graph.columns, sortColumn, classes.tooltip]
   )
 
-  const [pageSize, setPageSize] = React.useState(30)
+  // key is used to reset the Table state (page and sort) if the columns change
+  const key = React.useMemo(() => Math.random() + '', [graph.columns])
+
+  const [pageSize, setPageSize] = React.useState(initialPageSize ?? 30)
   const onShowSizeChange = (current: number, size: number) => {
     setPageSize(size)
   }
@@ -85,6 +88,7 @@ export const AntTableChart: React.FC<IProps> = (props) => {
         onShowSizeChange
       }}
       rowClassName={classes.row}
+      key={key}
     />
   )
 }

@@ -4,6 +4,7 @@
 import sys
 from collections import defaultdict
 from enum import IntEnum
+from typing import Dict, List
 
 from .. import utils
 from .communication import generate_communication_nodes
@@ -14,21 +15,21 @@ from .trace import EventTypes
 
 logger = utils.get_logger()
 
-CommunicationOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
-ProfileRole = IntEnum('ProfileRole', ['Kernel', 'Memcpy', 'Memset', 'Communication', 'Runtime', 'DataLoader', 'CpuOp', 'Other', 'Total'], start=0)
+NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
+GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
+CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
 
+class ProfileRole(IntEnum):
+    Kernel = 0
+    Memcpy = 1
+    Memset = 2
+    Communication = 3
+    Runtime = 4
+    DataLoader = 5
+    CpuOp = 6
+    Other = 7
+    Total = 8
 
-class NodeContext:
-    def __init__(self, tid2list, tid2zero_rt_list, corrid_to_device):
-        self.tid2list = tid2list
-        self.tid2zero_rt_list = tid2zero_rt_list
-        self.corrid_to_device = corrid_to_device
-
-class StepContext:
-    def __init__(self, prev_step_end_time, steps_device, steps_matched_device_nodes):
-        self.prev_step_end_time = prev_step_end_time
-        self.steps_device = steps_device
-        self.steps_matched_device_nodes = steps_matched_device_nodes
 
 class NodeParserMixin:
     def __init__(self, *args, **kwargs):
@@ -43,7 +44,7 @@ class NodeParserMixin:
         self.used_devices = set()
         self.use_dp = False
         self.use_ddp = False
-        self.use_nccl = False
+        self.comm_lib = set()
 
     def parse_nodes(self, events):
         # For OperatorNode and ProfilerStepNode:
@@ -65,9 +66,10 @@ class NodeParserMixin:
                 continue
             self._parse_node(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
 
-        for event in events:
-            if event.type == EventTypes.KERNEL:
-                self._update_communication_node(event)
+        if CommLibTypes.Nccl in self.comm_lib:
+            for event in events:
+                if event.type == EventTypes.KERNEL:
+                    self._update_communication_node(event)
 
         # associate CUDA Runtimes with CPU events
         for _, op_list in tid2list.items():
@@ -80,7 +82,7 @@ class NodeParserMixin:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
 
-        return NodeContext(tid2list, tid2zero_rt_list, corrid_to_device)
+        return tid2list, tid2zero_rt_list, corrid_to_device
 
     def _update_communication_node(self, event):
         '''Update the communication node by using the TraceEvent instance'''
@@ -94,74 +96,8 @@ class NodeParserMixin:
 
         return comm_node is not None
 
-    def find_device_steps(self, steps):
-        '''return steps associated with device nodes. 
-        '''
-        runtime_node_list = sorted(self.runtime_node_list, key=lambda x: x.start_time)
-
-        # Use similar code with two-way merge to get all runtimes inside each host-side step span,
-        # then record each step's min kernel start time and max kernel end time:
-        steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(steps)
-        # where the steps associated with devcie node, if yes, the related array item is larger than 0.
-        steps_matched_device_nodes = [0] * len(steps)
-
-        i_step = 0
-        i_runtime = 0
-        step_device_min_ts = sys.maxsize
-        step_device_max_ts = -sys.maxsize - 1
-        matched_device_nodes = set()
-
-        while i_step < len(steps) and i_runtime < len(runtime_node_list):
-            step_host_start_time = steps[i_step][0]
-            step_host_end_time = steps[i_step][1]
-            if runtime_node_list[i_runtime].start_time < step_host_start_time:
-                # This runtime is ahead of or intersects with this step span. Skip this runtime.
-                i_runtime += 1
-            elif runtime_node_list[i_runtime].end_time <= step_host_end_time:
-                # and runtime_node_list[i_runtime].start_time >= step_host_start_time
-                # This runtime is inside this step span. Scan its device_nodes.
-                rt = runtime_node_list[i_runtime]
-                if rt.device_nodes is not None:
-                    for device_node in rt.device_nodes:
-                        step_device_min_ts = min(device_node.start_time, step_device_min_ts)
-                        step_device_max_ts = max(device_node.end_time, step_device_max_ts)
-                        matched_device_nodes.add(device_node)
-                        steps_matched_device_nodes[i_step] += 1
-                i_runtime += 1
-            elif runtime_node_list[i_runtime].start_time < step_host_end_time:
-                # and runtime_node_list[i_runtime].end_time > step_host_end_time
-                # This runtime intersects with this step span. Skip this runtime.
-                i_runtime += 1
-            else:
-                # runtime_node_list[i_runtime].start_time >= step_host_end_time
-                # This runtime starts after this step's end. Record and move forward this step.
-                steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
-                i_step += 1
-                step_device_min_ts = sys.maxsize
-                step_device_max_ts = -sys.maxsize - 1
-
-        while i_step < len(steps):
-            # This step doesn't launch any device side event, just assign it as empty.
-            steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
-            step_device_min_ts = sys.maxsize
-            step_device_max_ts = -sys.maxsize - 1
-            i_step += 1
-
-        # If there are matched device, find the first step end time before steps_device[0][0]
-        prev_step_end_time = None
-        if len(matched_device_nodes) > 0:
-            prev_step_end_time = steps[0][0]
-            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
-                for device_node in self.device_node_list:
-                    if device_node not in matched_device_nodes:
-                        # Now this device_node is not launched inside any step span.
-                        if device_node.end_time < steps_device[0][0]:
-                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
-
-        return StepContext(prev_step_end_time, steps_device, steps_matched_device_nodes)
-
     def _parse_node(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
-        corrid = event.args.get("correlation", None)
+        corrid = event.correlation_id
         tid = event.tid
         if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
             self.used_devices.add(event.pid)
@@ -198,17 +134,113 @@ class NodeParserMixin:
                             (corrid, rt_node.external_id, device_node.external_id))
         elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
             if event.type == EventTypes.PROFILER_STEP:
-                op_node = ProfilerStepNode.create(event, event.input_shape, event.input_type, None)
+                op_node = ProfilerStepNode.create(event)
             else:
-                op_node = OperatorNode.create(event, event.input_shape, event.input_type, event.callstack)
-            if event.name in CommunicationOpNameSet:
-                self.communication_data[op_node.external_id] = CommunicationNode.create(event, op_node.input_shape, op_node.input_type)
-                self.use_nccl = True
+                op_node = OperatorNode.create(event)
+            if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
+                comm_node = CommunicationNode.create(event)
+                if event.name in NcclOpNameSet:
+                    self.comm_lib.add(CommLibTypes.Nccl)
+                if event.name in GlooOpNameSet:
+                    self.comm_lib.add(CommLibTypes.Gloo)
+                    ts = event.ts
+                    dur = event.duration
+                    comm_node.kernel_ranges.append((ts, ts + dur))
+                    comm_node.total_time = dur
+                self.communication_data[op_node.external_id] = comm_node
             if event.name == "DataParallel.forward":
                 self.use_dp = True
             if event.name == "DistributedDataParallel.forward":
                 self.use_ddp = True
             tid2list[int(tid)].append(op_node)
+
+
+class OpTreeBuilder:
+    def __init__(self):
+        pass
+
+    def build_tree(self, tid2list, tid2zero_rt_list, corrid_to_device):
+        tid2tree = {}
+
+        staled_device_nodes = []
+        for _, device_nodes in corrid_to_device.items():
+             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+
+        for tid, op_list in tid2list.items():
+            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
+            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
+            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
+            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
+            if main_tid:
+                # only append the staled device nodes into main thread
+                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
+            else:
+                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
+            tid2tree[int(tid)] = root_node
+
+        return tid2tree
+
+    def _build_tree(self, host_node_list, zero_rt_list, tid, staled_device_nodes):
+        '''host_node_list: list of OperatorNode and ProfilerStepNode.
+        zero_rt_list: list of RuntimeNode with external_id=0.'''
+
+        def build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes):
+            dummpy_rt = []
+            if staled_device_nodes:
+                # Note: Although kernels of this dummy runtime is put under main thread's tree, 
+                # we don't know which thread launches them. 
+                # TODO: Don't make belonging thread assumption on future usage if we need special handling
+                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
+                dummpy_rt[0].fill_stats()
+            node_stack = []
+            root_node = OperatorNode(
+                name="CallTreeRoot",
+                start_time=-sys.maxsize - 1,
+                end_time=sys.maxsize,
+                type=EventTypes.PYTHON,
+                tid=tid,
+                runtimes=zero_rt_list + dummpy_rt) # Give the list of RuntimeNode with external_id=0 to root node.
+            node_stack.append(root_node)
+            for node in host_node_list:
+                while True:  # break loop when the node is inserted.
+                    tail_node = node_stack[-1]
+                    if node.start_time < tail_node.end_time:
+                        if node.end_time <= tail_node.end_time:
+                            tail_node.children.append(node)
+                            # node.parent_node = weakref.ref(tail_node)
+                            node_stack.append(node)
+                        else:
+                            logger.error("Error in input data: ranges on the same thread should not intersect!"
+                                         "Father:({},{},{}) Child:({},{},{})".format(
+                                tail_node.name, tail_node.start_time, tail_node.end_time,
+                                node.name, node.start_time, node.end_time
+                            ))
+                        break
+                    else:
+                        node_stack.pop()
+            return root_node
+
+        # Merge the consecutive calls to same function into one.
+        # Just follow the same pattern in torch/autograd/profiler.py,
+        # EventList._remove_dup_nodes
+        # TODO: Replace recursive by for loop, in case of too deep callstack.
+        def remove_dup_nodes(node):
+            if node.type == EventTypes.RUNTIME:
+                return
+            if len(node.children) == 1:
+                child = node.children[0]
+                if node.name == child.name and node.type == EventTypes.OPERATOR and child.type == EventTypes.OPERATOR:
+                    node.children = child.children
+                    node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
+                    remove_dup_nodes(node)  # This node may have to merge with child's child.
+            for child in node.children:
+                remove_dup_nodes(child)
+
+        root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
+        remove_dup_nodes(root_node)
+        root_node.replace_time_by_children()
+        root_node.fill_stats()
+        return root_node
 
 
 class StepParser:
@@ -250,6 +282,9 @@ class StepParser:
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
 
+    def update_device_steps(self, runtime_node_list):
+        self._update_steps_duration(*self._find_device_steps(runtime_node_list))
+
     @property
     def has_runtime(self):
         return bool(self.role_ranges[ProfileRole.Runtime])
@@ -288,7 +323,10 @@ class StepParser:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
-            self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
+            if event.name in GlooOpNameSet:
+                self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
+            else:
+                self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))
 
         # Record host side min and max time.
         if evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
@@ -298,13 +336,77 @@ class StepParser:
         self.global_min_ts = min(self.global_min_ts, ts)
         self.global_max_ts = max(self.global_max_ts, ts + dur)
 
-    def update_steps_duration(self, context):
+
+    def _find_device_steps(self, runtime_node_list):
+        '''return steps associated with device nodes. 
+        '''
+        runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
+
+        # Use similar code with two-way merge to get all runtimes inside each host-side step span,
+        # then record each step's min kernel start time and max kernel end time:
+        steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(self.steps)
+        # where the steps associated with devcie node, if yes, the related array item is larger than 0.
+        steps_matched_device_nodes = [0] * len(self.steps)
+
+        i_step = 0
+        i_runtime = 0
+        step_device_min_ts = sys.maxsize
+        step_device_max_ts = -sys.maxsize - 1
+        matched_device_nodes = set()
+
+        while i_step < len(self.steps) and i_runtime < len(runtime_node_list):
+            step_host_start_time = self.steps[i_step][0]
+            step_host_end_time = self.steps[i_step][1]
+            if runtime_node_list[i_runtime].start_time < step_host_start_time:
+                # This runtime is ahead of or intersects with this step span. Skip this runtime.
+                i_runtime += 1
+            elif runtime_node_list[i_runtime].end_time <= step_host_end_time:
+                # and runtime_node_list[i_runtime].start_time >= step_host_start_time
+                # This runtime is inside this step span. Scan its device_nodes.
+                rt = runtime_node_list[i_runtime]
+                if rt.device_nodes is not None:
+                    for device_node in rt.device_nodes:
+                        step_device_min_ts = min(device_node.start_time, step_device_min_ts)
+                        step_device_max_ts = max(device_node.end_time, step_device_max_ts)
+                        matched_device_nodes.add(device_node)
+                        steps_matched_device_nodes[i_step] += 1
+                i_runtime += 1
+            elif runtime_node_list[i_runtime].start_time < step_host_end_time:
+                # and runtime_node_list[i_runtime].end_time > step_host_end_time
+                # This runtime intersects with this step span. Skip this runtime.
+                i_runtime += 1
+            else:
+                # runtime_node_list[i_runtime].start_time >= step_host_end_time
+                # This runtime starts after this step's end. Record and move forward this step.
+                steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
+                i_step += 1
+                step_device_min_ts = sys.maxsize
+                step_device_max_ts = -sys.maxsize - 1
+
+        while i_step < len(self.steps):
+            # This step doesn't launch any device side event, just assign it as empty.
+            steps_device[i_step] = (step_device_min_ts, step_device_max_ts)
+            step_device_min_ts = sys.maxsize
+            step_device_max_ts = -sys.maxsize - 1
+            i_step += 1
+
+        # If there are matched device, find the first step end time before steps_device[0][0]
+        prev_step_end_time = None
+        if len(matched_device_nodes) > 0:
+            prev_step_end_time = self.steps[0][0]
+            if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
+                for device_node in self.device_node_list:
+                    if device_node not in matched_device_nodes:
+                        # Now this device_node is not launched inside any step span.
+                        if device_node.end_time < steps_device[0][0]:
+                            prev_step_end_time = max(prev_step_end_time, device_node.end_time)
+
+        return prev_step_end_time, steps_device, steps_matched_device_nodes
+
+
+    def _update_steps_duration(self, prev_step_end_time, steps_device, steps_matched_device_nodes):
         '''Update self.steps considering device side events launched by each host side step.
         Update self.steps_names if some tail steps are removed.'''
-
-        prev_step_end_time = context.prev_step_end_time
-        steps_device = context.steps_device
-        steps_matched_device_nodes = context.steps_matched_device_nodes
 
         # Change step time to device side on the condition that any step have device time.
         is_use_gpu = prev_step_end_time is not None
@@ -345,18 +447,58 @@ class StepParser:
                     self.steps = self.steps[:keep_steps]
                     self.steps_names = self.steps_names[:keep_steps]
 
-class EventParser(NodeParserMixin, StepParser):
+class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
     def __init__(self):
         super().__init__()
 
-    def parse(self, events):
-        node_context = self.parse_nodes(events)
-        self.parse_steps(events, self.communication_data)
+    def parse(self, events) ->  Dict[int, List[OperatorNode]]:
+        tid2tree = self.build_tree(*self.parse_nodes(events))
 
+        # Process steps
+        self.parse_steps(events, self.communication_data)
+        if len(self.comm_lib) > 1:
+            logger.warning("Multiple communication libs are found. To avoid confusing, we disable the distributed view.")
+            self.communication_data.clear()
         # Move the interleaved logic out of each NodeParser and StepParser
-        steps_context = self.find_device_steps(self.steps)
-        self.update_steps_duration(steps_context)
-        return node_context
+        self.update_device_steps(self.runtime_node_list)
+        return tid2tree
 
     def generate_communication_nodes(self):
         return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+
+    @staticmethod
+    def print_tree(tid2tree):
+        class Ctx:
+            tid: int = -1
+            name_stack: list = []
+
+        ctx = Ctx()
+
+        def print_node_set_prefix(node: OperatorNode):
+            header = f"[{ctx.tid}]" + ".".join(ctx.name_stack[1:]) # omit the CallTreeRoot
+            prefix_len = len(ctx.name_stack) * 4 - 4 - 1
+            if len(ctx.name_stack) > 1:
+                print(header)
+                prefix = " " * prefix_len
+                print(prefix, node.name)
+                print(prefix, "time:", node.start_time, "-->", node.end_time)
+                print(prefix, "memory:", node.memory_records)
+
+        def push(node: OperatorNode):
+            ctx.name_stack.append(node.name)
+
+        def pop():
+            ctx.name_stack.pop()
+
+        def traverse_opeartor_node(node: OperatorNode):
+            print_node_set_prefix(node)
+
+            push(node)
+            for n in node.children:
+                traverse_opeartor_node(n)
+            pop()
+
+        for tid, tree in tid2tree.items():
+            ctx.tid = tid
+            traverse_opeartor_node(tree)
+            ctx.tid = -1

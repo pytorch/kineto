@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import List, Optional
+
 import gzip
 import io as sysio
 import json
@@ -10,13 +12,14 @@ from json.decoder import JSONDecodeError
 
 from .. import io, utils
 from . import trace
+from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
-from .event_parser import EventParser, ProfileRole
+from .event_parser import EventParser, ProfileRole, CommLibTypes
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
-from .memory_parser import MemoryParser
-from .module_parser import ModuleParser
+from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
+from .memory_parser import MemoryParser
 
 logger = utils.get_logger()
 
@@ -30,8 +33,9 @@ class RunProfileData(object):
         self.used_devices = []
         self.use_dp = False
         self.use_ddp =False
-        self.use_nccl = False
-        self.events = None
+        self.comm_lib = None
+        self.profiler_start_ts = float("inf")
+        self.events : List[BaseEvent] = None
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
@@ -49,58 +53,54 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
+        self.tid2tree = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
+        self.tc_eligible_ops = None
         self.kernel_stat = None
+        self.tc_used_ratio = None
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
-
-        # Memory stats
-        self.memory_stats = None
-
-    @property
-    def has_memory_data(self):
-        if self.memory_stats:
-            for node_metrics in self.memory_stats.values():
-                for metrics_values in node_metrics.values():
-                    if any(metrics_values):
-                        return True
-
-        return False
+        self.memory_parser: Optional[MemoryParser] = None
 
     @staticmethod
-    def parse(run_dir, worker, span, path, caches):
-        logger.debug("Parse trace, run_dir=%s, worker=%s", run_dir, path)
+    def parse(worker, span, path):
+        trace_path, trace_json = RunProfileData._preprocess_file(path)
 
-        trace_path, trace_json = RunProfileData._preprocess_file(caches, io.join(run_dir, path))
-
-        profile = RunProfileData(worker, span)
+        profile = RunProfileData.from_json(worker, span, trace_json)
         profile.trace_file_path = trace_path
-        if type(trace_json) is dict:
-            profile.data_schema_version = trace_json.get("schemaVersion", None)
-            profile.distributed_info = trace_json.get("distributedInfo", None)
-            profile.device_props = trace_json.get("deviceProperties", None)
-            trace_json = trace_json["traceEvents"]
+        return profile, trace_path
+
+    @staticmethod
+    def from_json(worker, span, trace_json):
+        profile = RunProfileData(worker, span)
+        profile.data_schema_version = trace_json.get("schemaVersion", None)
+        profile.distributed_info = trace_json.get("distributedInfo", None)
+        profile.device_props = trace_json.get("deviceProperties", None)
+        trace_json = trace_json["traceEvents"]
 
         profile.events = []
         for data in trace_json:
             event = trace.create_event(data)
             if event is not None:
+                profile.profiler_start_ts = min(profile.profiler_start_ts, event.ts)
                 profile.events.append(event)
+        profile.events.sort(key=lambda e: e.ts)
 
+        profile.process()
+        profile.analyze()
         return profile
 
     @staticmethod
-    def _preprocess_file(caches, trace_path):
+    def _preprocess_file(trace_path):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
-        local_file = caches.get_remote_cache(trace_path)
-        data = io.read(local_file)
+        data = io.read(trace_path)
         if trace_path.endswith('.gz'):
             data = gzip.decompress(data)
 
@@ -144,14 +144,13 @@ class RunProfileData(object):
             fp.close()
             with gzip.open(fp.name, mode='wt') as fzip:
                 fzip.write(json.dumps(trace_json))
-            caches.add_file(local_file, fp.name)
             trace_path = fp.name
 
         return trace_path, trace_json
 
     def process(self):
         parser = EventParser()
-        node_context = parser.parse(self.events)
+        self.tid2tree = parser.parse(self.events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
@@ -161,20 +160,21 @@ class RunProfileData(object):
         self.used_devices = sorted(list(parser.used_devices))
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
-        self.use_nccl = parser.use_nccl
+        self.comm_lib = parser.comm_lib
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()
 
         # Starting aggregate
-        logger.debug("ModuleParser")
-        module_parser = ModuleParser()
-        module_parser.aggregate(node_context)
-        self.op_list_groupby_name = module_parser.op_list_groupby_name
-        self.op_list_groupby_name_input = module_parser.op_list_groupby_name_input
-        self.stack_lists_group_by_name = module_parser.stack_lists_group_by_name
-        self.stack_lists_group_by_name_input = module_parser.stack_lists_group_by_name_input
-        self.kernel_list_groupby_name_op = module_parser.kernel_list_groupby_name_op
+        logger.debug("ModuleAggregator")
+        module_aggregator = ModuleAggregator()
+        module_aggregator.aggregate(self.tid2tree)
+        self.op_list_groupby_name = module_aggregator.op_list_groupby_name
+        self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
+        self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
+        self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
+        self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
+        self.tc_eligible_ops = module_aggregator.tc_eligible_ops
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -197,15 +197,16 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
-        memory_parser = MemoryParser(module_parser.tid2tree, module_parser.op_list_groupby_name)
-        memory_parser.parse_events(self.events)
-        self.memory_stats = memory_parser.get_memory_statistics()
-
         if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
             kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
+            self.tc_used_ratio = kernel_parser.tc_used_ratio
+
+        memory_events = self._memory_events()
+        if len(memory_events):
+            self.memory_parser = MemoryParser(self.tid2tree, memory_events)
 
     def analyze(self):
         self.recommendations = []
@@ -225,6 +226,21 @@ class RunProfileData(object):
         self._analyze_distributed_metrics()
         self._analyze_gpu_metrics()
 
+        # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
+        # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
+        if self.device_props:
+            major = self.device_props[0].get("computeMajor")
+            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
+                text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \
+                       "You could enable AMP to speedup by using FP16. " \
+                       "Reference: <a href =\"{}\" target=\"_blank\">" \
+                       "Automatic Mixed Precision Package - torch.cuda.amp</a>".format(
+                    self.tc_eligible_ops,
+                    "https://pytorch.org/docs/stable/amp.html"
+                )
+                self.recommendations.append(text)
+
+
     def _analyze_distributed_metrics(self):
         if self.use_dp and len(self.used_devices) > 1:
             text = "It is recommended to use DistributedDataParallel, instead of DataParallel to do multi-GPU training." \
@@ -233,7 +249,7 @@ class RunProfileData(object):
                    )
             self.recommendations.append(text)
 
-        if self.use_ddp and not self.use_nccl and self.device_props:
+        if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
                 major = device_prop.get("computeMajor")
                 minor = device_prop.get("computeMinor")
@@ -249,11 +265,20 @@ class RunProfileData(object):
         if communication_ratio > 0.1:
             text = "This run has high time cost on communication. " \
                    "{}% of the step time is in communication. You could " \
-                   "try Gradient Accumulation or increase the batch size. " \
+                   "try <a href = \"{}\" target=\"_blank\">Gradient Compression</a> or "\
+                   "<a href = \"{}\" target=\"_blank\">Gradient Accumulation</a> or increase the batch size. " \
                    "Note: Gradient accumulation will increase global effective batch size, which may hurt model convergence and accuracy. " \
                    "For such case, you may want to evaluate <a href = \"{}\" target=\"_blank\">LAMB optimizer</a>".format(
-                       round(communication_ratio * 100, 1), "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
+                       round(communication_ratio * 100, 1),
+                       "https://pytorch.org/docs/stable/ddp_comm_hooks.html",
+                       "https://towardsdatascience.com/what-is-gradient-accumulation-in-deep-learning-ec034122cfa",
+                       "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
             self.recommendations.append(text)
+
+    def _memory_events(self) -> List[MemoryEvent]:
+        memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]
+        memory_events.sort(key=lambda e: e.ts)
+        return memory_events
 
     def _analyze_gpu_metrics(self):
         def get_gpus_str(gpus):
@@ -284,6 +309,7 @@ class DistributedRunProfileData:
         self.span = run_profile_data.span
         self.steps_names = run_profile_data.steps_names
         self.has_communication = run_profile_data.has_communication
+        self.comm_lib = run_profile_data.comm_lib
         self.comm_node_list = run_profile_data.comm_node_list
         self.comm_overlap_costs = run_profile_data.comm_overlap_costs
         self.used_devices = run_profile_data.used_devices

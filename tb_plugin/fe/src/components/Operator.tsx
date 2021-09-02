@@ -22,6 +22,7 @@ import TextField, {
 import * as React from 'react'
 import * as api from '../api'
 import {
+  TableMetadata,
   OperationTableData,
   OperationTableDataInner,
   OperatorGraph
@@ -84,6 +85,10 @@ export const Operator: React.FC<IProps> = (props) => {
   const [operatorTable, setOperatorTable] = React.useState<
     OperationTableData | undefined
   >(undefined)
+  const [sortColumn, setSortColumn] = React.useState('')
+  const [tableTooltips, setTableTooltips] = React.useState<any | undefined>(
+    undefined
+  )
   const [groupBy, setGroupBy] = React.useState(OperationGroupBy.Operation)
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
   const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
@@ -121,7 +126,9 @@ export const Operator: React.FC<IProps> = (props) => {
     api.defaultApi
       .operationTableGet(run, worker, span, groupBy)
       .then((resp) => {
-        setOperatorTable(resp)
+        setSortColumn(resp.metadata.sort)
+        setTableTooltips(resp.metadata.tooltips)
+        setOperatorTable(resp.data)
       })
   }, [run, worker, span, groupBy])
 
@@ -287,6 +294,8 @@ export const Operator: React.FC<IProps> = (props) => {
                       run={run}
                       span={span}
                       worker={worker}
+                      sortColumn={sortColumn}
+                      tooltips={tableTooltips}
                     />
                   )}
                 </DataLoading>

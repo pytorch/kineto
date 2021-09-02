@@ -172,20 +172,18 @@ class GPUMetricsParser(object):
             if gpu_id not in self.gpu_ids:
                 self.gpu_ids.add(gpu_id)
             self.kernel_ranges_per_device[gpu_id].append((ts, ts + dur))
-            if "blocks per SM" in event.args:
-                blocks_per_sm = event.args.get("blocks per SM")
-                if blocks_per_sm > 0.0:
-                    self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, blocks_per_sm))
+            if event.blocks_per_sm is not None:
+                if event.blocks_per_sm > 0.0:
+                    self.blocks_per_sm_per_device[gpu_id].append((ts, ts + dur, event.blocks_per_sm))
                     self.blocks_per_sm_count[gpu_id] += 1
                 else:
                     # Workaround for negative value input.
-                    logger.warning("blocks per SM {} with ts {} is not positive!".format(blocks_per_sm, ts))
+                    logger.warning("blocks per SM {} with ts {} is not positive!".format(event.blocks_per_sm, ts))
 
-            if "est. achieved occupancy %" in event.args:
-                occupancy = event.args.get("est. achieved occupancy %")
-                if occupancy >= 0.0:
-                    self.occupancy_per_device[gpu_id].append((ts, ts + dur, occupancy))
+            if event.occupancy is not None:
+                if event.occupancy >= 0.0:
+                    self.occupancy_per_device[gpu_id].append((ts, ts + dur, event.occupancy))
                     self.occupancy_count[gpu_id] += 1
                 else:
                     # Workaround for negative value input.
-                    logger.warning("est. achieved occupancy % {} with ts {} is negative!".format(occupancy, ts))
+                    logger.warning("est. achieved occupancy % {} with ts {} is negative!".format(event.occupancy, ts))

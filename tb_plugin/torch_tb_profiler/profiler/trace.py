@@ -4,12 +4,15 @@
 from enum import IntEnum
 
 from .. import utils
+from .tensor_core import TC_Allowlist
 
 __all__ = ["EventTypes", "create_event"]
 
 logger = utils.get_logger()
 
-DeviceType = IntEnum('DeviceType', ['CPU', 'CUDA'], start=0)
+class DeviceType(IntEnum):
+    CPU = 0
+    CUDA = 1
 
 class EventTypes(object):
     TRACE = "Trace"
@@ -22,7 +25,19 @@ class EventTypes(object):
     PYTHON = "Python"
     MEMORY = "Memory"
 
-Supported_EventTypes = [v for k, v in vars(EventTypes).items() if not k.startswith("_") and v != EventTypes.PROFILER_STEP]
+EventTypeMap = {
+    "Trace" : EventTypes.TRACE,
+    "cpu_op" : EventTypes.OPERATOR,
+    "Operator" : EventTypes.OPERATOR,
+    "Runtime" : EventTypes.RUNTIME,
+    "Kernel" : EventTypes.KERNEL,
+    "Memcpy" : EventTypes.MEMCPY,
+    "gpu_memcpy" : EventTypes.MEMCPY,
+    "Memset" : EventTypes.MEMSET,
+    "gpu_memset" : EventTypes.MEMSET,
+    "Python" : EventTypes.PYTHON,
+    "Memory" : EventTypes.MEMORY
+}
 
 class BaseEvent(object):
     def __init__(self, type, data):
@@ -33,37 +48,42 @@ class BaseEvent(object):
         self.tid = data.get("tid")
         self.args = data.get("args", {})
 
-class TraceEvent(BaseEvent):
+class DurationEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
         self.category = data.get("cat", "")
         self.duration = data.get("dur")
 
-    @property
-    def external_id(self):
         extern_id = self.args.get("external id")
         if extern_id is None:
             extern_id = self.args.get("External id")
+        self.external_id = extern_id
+        self.correlation_id = self.args.get("correlation")
 
-        return extern_id
+class KernelEvent(DurationEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.occupancy = self.args.get("est. achieved occupancy %")
+        self.blocks_per_sm = self.args.get("blocks per SM")
+        self.grid = self.args.get("grid")
+        self.block = self.args.get("block")
+        self.regs_per_thread = self.args.get("registers per thread")
+        self.shared_memory = self.args.get("shared memory")
+        self.tc_used = self.name in TC_Allowlist
 
-    @property
-    def callstack(self):
-        return self.args.get("Call stack", "")
 
-    @property
-    def input_shape(self):
+class OperatorEvent(DurationEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.callstack = self.args.get("Call stack", "")
+        self.input_type = self.args.get("Input type")
+
         shape = self.args.get("Input Dims")
         if shape is None:
             shape = self.args.get("Input dims")
+        self.input_shape = shape
 
-        return shape
-
-    @property
-    def input_type(self):
-        return self.args.get("Input type")
-
-class ProfilerStepEvent(TraceEvent):
+class ProfilerStepEvent(OperatorEvent):
     def __init__(self, data):
         super().__init__(EventTypes.PROFILER_STEP, data)
         # torch.profiler.profile.step will invoke record_function with name like "ProfilerStep#5"
@@ -73,32 +93,46 @@ class MemoryEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
         self.scope = data.get("s", "")
-
-    @property
-    def device_type(self):
+        self.device_id = self.args.get("Device Id")
         dtype = self.args.get("Device Type")
-        if dtype is None:
-            return None
+        if dtype is not None:
+            try:
+                dtype = DeviceType(dtype)
+            except ValueError:
+                dtype = None
 
-        try:
-            return DeviceType(dtype)
-        except ValueError:
-            return None
+        self.device_type = dtype
 
     @property
-    def device_id(self):
-        return self.args.get("Device Id")
+    def addr(self):
+        return self.args.get("Addr")
 
     @property
     def bytes(self):
         return self.args.get("Bytes", 0)
+
+    @property
+    def total_allocated(self):
+        # TODO: Allocated Bytes to be renamed to Total Allocated
+        old = self.args.get("Allocated Bytes")
+        if old is not None:
+            return old
+        return self.args.get("Total Allocated", float("nan"))
+
+    @property
+    def total_reserved(self):
+        # TODO: Reserved Bytes to be rename to Total Reserved
+        old = self.args.get("Reserved Bytes")
+        if old is not None:
+            return old
+        return self.args.get("Total Reserved", float("nan"))
 
 def create_event(event):
     try:
         type = event.get("ph")
         if type == "X":
             return create_trace_event(event)
-        elif type == "i" and event.get('s') == 't':
+        elif type == "i" and event.get("name") == "[memory]":
             return MemoryEvent(EventTypes.MEMORY, event)
         else:
             return None
@@ -108,12 +142,18 @@ def create_event(event):
 
 def create_trace_event(event):
     category = event.get("cat")
-    if category == "Operator":
+    event_type = EventTypeMap.get(category)
+    if event_type == EventTypes.OPERATOR:
         name = event.get("name")
         if name and name.startswith("ProfilerStep#"):
             return ProfilerStepEvent(event)
-
-    if category in Supported_EventTypes:
-        return TraceEvent(category, event)
+        else:
+            return OperatorEvent(event_type, event)
+    elif event_type == EventTypes.PYTHON:
+        return OperatorEvent(event_type, event)
+    elif event_type == EventTypes.KERNEL:
+        return KernelEvent(event_type, event)
+    elif event_type is not None:
+        return DurationEvent(event_type, event)
     else:
         return None

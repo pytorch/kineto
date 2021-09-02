@@ -124,7 +124,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             if cmd == "start":
                 body = {
                     "log_dir": io.abspath(os.path.join(self.logdir, data["log_dir"]).rstrip('/')) if host_local 
-                               else os.path.join("./tmplog", data["log_dir"]).rstrip('/'),
+                               else os.path.join("./tmplog", data["log_dir"]).rstrip('/').replace('\\', '/'),
                     "record_shapes": data["record_shapes"],
                     "profile_memory": data["profile_memory"],
                     "with_stack": data["with_stack"],

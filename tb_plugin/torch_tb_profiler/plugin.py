@@ -146,17 +146,18 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     res["message"] = "An error occurs in the server of the PyTorch training process."
                 if res["success"]:
                     log_dir = res.pop("log_dir")
-                    file_name = res.pop("file_name")
+                    file_names = res.pop("file_names")
                     if not host_local:
-                        try:
-                            log_file = requests.get(url="/".join([baseUrl, "log", log_dir, file_name]))
-                            log_path = os.path.join(self.logdir, log_dir)
-                            if not os.path.exists(log_path):
-                                os.makedirs(log_path)
-                            with open(os.path.join(log_path, file_name), 'w') as f:
-                                f.write(log_file.text)
-                        except:
-                            res = {"success": False, "message": "An error occurs when trying to fetch log file from training machine."}
+                        for file_name in file_names:
+                            try:
+                                log_file = requests.get(url="/".join([baseUrl, "log", log_dir, file_name]))
+                                log_path = os.path.join(self.logdir, log_dir)
+                                if not os.path.exists(log_path):
+                                    os.makedirs(log_path)
+                                with open(os.path.join(log_path, file_name), 'w') as f:
+                                    f.write(log_file.text)
+                            except:
+                                res = {"success": False, "message": "An error occurs when trying to fetch log file from training machine."}
                 if res["success"]:
                     self._scan_run_dirs()
                     while self._not_received > 0:

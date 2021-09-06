@@ -35,6 +35,10 @@ class MemoryRecord:
         else:
             return None
 
+    @property
+    def op_name_or_unknown(self):
+        return self.op_name if self.op_name else "<unknown>"
+
     @staticmethod
     def from_event(event: MemoryEvent):
         return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.addr, event.bytes,

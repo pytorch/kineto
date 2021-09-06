@@ -13,18 +13,6 @@ from .profiler.node import MemoryMetrics
 from .profiler.trace import DeviceType, MemoryEvent
 
 
-def dev_name(dev_type: DeviceType, dev_id: Optional[int]):
-    if dev_type == DeviceType.CPU:
-        return "CPU"
-    elif dev_type == DeviceType.CUDA:
-        return f"GPU{dev_id}"
-    else:
-        raise ValueError
-
-def op_name(name: Optional[str]):
-    return name if name else "<unknown>"
-
-
 class Run(object):
     """ A profiler run. For visualization purpose only.
     May contain profiling results from multiple workers. E.g. distributed scenario.
@@ -461,8 +449,8 @@ class RunProfile(object):
                     alloc_r = memory_records[alloc[addr]]
                     alloc_ts = alloc_r.ts
                     free_ts = r.ts
-                    events[dev_name(alloc_r.device_type, alloc_r.device_id)].append([
-                        op_name(alloc_r.op_name),
+                    events[alloc_r.device_name].append([
+                        alloc_r.op_name_or_unknown,
                         -size,
                         alloc_ts - profiler_start_ts,
                         free_ts - profiler_start_ts,
@@ -475,13 +463,13 @@ class RunProfile(object):
 
         for i in alloc.values():
             r = memory_records[i]
-            events[dev_name(r.device_type, r.device_id)].append(
-                [op_name(r.op_name), r.bytes, r.ts - profiler_start_ts, None, None])
+            events[r.device_name].append(
+                [r.op_name_or_unknown, r.bytes, r.ts - profiler_start_ts, None, None])
 
         for i in free.values():
             r = memory_records[i]
-            events[dev_name(r.device_type, r.device_id)].append(
-                [op_name(r.op_name), -r.bytes, None, r.ts - profiler_start_ts, None])
+            events[r.device_name].append(
+                [r.op_name_or_unknown, -r.bytes, None, r.ts - profiler_start_ts, None])
 
         return {
             "metadata": {

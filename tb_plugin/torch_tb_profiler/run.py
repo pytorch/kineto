@@ -288,6 +288,11 @@ class RunProfile(object):
                     round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
                 ])
 
+        for dev_name in sorted(stats.keys()):
+            if dev_name.startswith("GPU"):
+                result["metadata"]["default_device"] = dev_name
+                break
+
         return result
 
     @staticmethod
@@ -400,10 +405,16 @@ class RunProfile(object):
                 except BaseException:
                     pass
 
-        devices = list(curves.keys())
+        devices = sorted(list(curves.keys()))
+        default_device = "CPU"
+        for dev in devices:
+            if dev.startswith("GPU"):
+                default_device = dev
+                break
+
         return {
             "metadata": {
-                "default_device": "CPU",
+                "default_device": default_device,
                 "devices": devices,
                 "peaks": peaks_formatted,
                 "totals": totals,
@@ -471,10 +482,16 @@ class RunProfile(object):
             events[r.device_name].append(
                 [r.op_name_or_unknown, -r.bytes, None, r.ts - profiler_start_ts, None])
 
+        default_device = "CPU"
+        for dev_name in sorted(events.keys()):
+            if dev_name.startswith("GPU"):
+                default_device = dev_name
+                break
+
         return {
             "metadata": {
                 "title": "Memory Events",
-                "default_device": "CPU",
+                "default_device": default_device,
             },
             "columns": [
                 {"name": "Operator", "type": "string", "tooltip": ""},

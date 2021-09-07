@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------
 import logging
 import os
+import math
 from math import pow
 
 from . import consts
@@ -86,3 +87,19 @@ class Canonicalizer:
 
     def convert_memory(self, m):
         return self.memory_factor * m
+
+
+class DisplayRounder:
+    """Round a value for display purpose."""
+
+    def __init__(self, ndigits):
+        self.ndigits = ndigits
+        self.precision = pow(10, -ndigits)
+
+    def __call__(self, v: float):
+        _v = abs(v)
+        if _v >= self.precision or v == 0:
+            return round(v, 2)
+        else:
+            ndigit = abs(math.floor(math.log10(_v)))
+            return round(v, ndigit)

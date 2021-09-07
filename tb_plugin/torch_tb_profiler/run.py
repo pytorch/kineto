@@ -10,7 +10,7 @@ from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryParser
 from .profiler.node import MemoryMetrics
 from .profiler.trace import DeviceType, MemoryEvent
-from .utils import Canonicalizer
+from .utils import Canonicalizer, DisplayRounder
 
 
 class Run(object):
@@ -242,7 +242,10 @@ class RunProfile(object):
         return events
 
     @staticmethod
-    def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+    def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None, memory_metric="K"):
+        cano = Canonicalizer(memory_metric=memory_metric)
+        round = DisplayRounder(ndigits=2)
+
         stats = profile.memory_parser.get_memory_statistics(start_ts=start_ts, end_ts=end_ts)
 
         result = {
@@ -250,22 +253,22 @@ class RunProfile(object):
                 "title": "Memory View",
                 "default_device": "CPU",
                 "search": "Operator Name",
-                "sort": "Self Size Increase (KB)"
+                "sort": f"Self Size Increase ({cano.memory_metric})"
             },
             "columns": [
                 {"name": "Operator Name", "type": "string"},
                 {"name": "Calls", "type": "number", "tooltip": "# of calls of the operator."},
-                {"name": "Size Increase (KB)", "type": "number",
+                {"name": f"Size Increase ({cano.memory_metric})", "type": "number",
                  "tooltip": "The memory increase size include all children operators."},
-                {"name": "Self Size Increase (KB)", "type": "number",
+                {"name": f"Self Size Increase ({cano.memory_metric})", "type": "number",
                  "tooltip": "The memory increase size associated with the operator itself."},
                 {"name": "Allocation Count", "type": "number",
                     "tooltip": "The allocation count including all chidren operators."},
                 {"name": "Self Allocation Count", "type": "number",
                  "tooltip": "The allocation count belonging to the operator itself."},
-                {"name": "Allocation Size (KB)", "type": "number",
+                {"name": f"Allocation Size ({cano.memory_metric})", "type": "number",
                  "tooltip": "The allocation size including all children operators."},
-                {"name": "Self Allocation Size (KB)", "type": "number",
+                {"name": f"Self Allocation Size ({cano.memory_metric})", "type": "number",
                  "tooltip": "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free."},
             ],
             "rows": {}
@@ -280,12 +283,12 @@ class RunProfile(object):
                 these_rows.append([
                     op_name,
                     stat[6],
-                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
+                    round(cano.convert_memory(stat[MemoryMetrics.IncreaseSize])),
+                    round(cano.convert_memory(stat[MemoryMetrics.SelfIncreaseSize])),
                     stat[MemoryMetrics.AllocationCount],
                     stat[MemoryMetrics.SelfAllocationCount],
-                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
+                    round(cano.convert_memory(stat[MemoryMetrics.AllocationSize])),
+                    round(cano.convert_memory(stat[MemoryMetrics.SelfAllocationSize])),
                 ])
 
         for dev_name in sorted(stats.keys()):
@@ -408,6 +411,9 @@ class RunProfile(object):
             time_metric: str = "ms",
             memory_metric: str = "K",
         ):
+        cano = Canonicalizer(time_metric=time_metric, memory_metric=memory_metric)
+        round = DisplayRounder(ndigits=2)
+
         profiler_start_ts = p.profiler_start_ts
         memory_records = sorted(p.memory_parser.staled_records + p.memory_parser.processed_records, key=lambda r: r.ts)
         memory_records = RunProfile._filtered_by_ts(memory_records, start_ts, end_ts)
@@ -435,10 +441,10 @@ class RunProfile(object):
                     free_ts = r.ts
                     events[alloc_r.device_name].append([
                         alloc_r.op_name_or_unknown,
-                        -size,
-                        alloc_ts - profiler_start_ts,
-                        free_ts - profiler_start_ts,
-                        free_ts - alloc_ts,
+                        round(cano.convert_memory(-size)),
+                        round(cano.convert_time(alloc_ts - profiler_start_ts)),
+                        round(cano.convert_time(free_ts - profiler_start_ts)),
+                        round(cano.convert_time(free_ts - alloc_ts)),
                     ])
                     del alloc[addr]
                 else:
@@ -447,13 +453,23 @@ class RunProfile(object):
 
         for i in alloc.values():
             r = memory_records[i]
-            events[r.device_name].append(
-                [r.op_name_or_unknown, r.bytes, r.ts - profiler_start_ts, None, None])
+            events[r.device_name].append([
+                r.op_name_or_unknown,
+                round(cano.convert_memory(r.bytes)),
+                round(cano.convert_time(r.ts - profiler_start_ts)),
+                None,
+                None,
+            ])
 
         for i in free.values():
             r = memory_records[i]
-            events[r.device_name].append(
-                [r.op_name_or_unknown, -r.bytes, None, r.ts - profiler_start_ts, None])
+            events[r.device_name].append([
+                r.op_name_or_unknown,
+                round(cano.convert_memory(-r.bytes)),
+                None,
+                round(cano.convert_time(r.ts - profiler_start_ts)),
+                None,
+            ])
 
         default_device = "CPU"
         for dev_name in sorted(events.keys()):
@@ -468,10 +484,10 @@ class RunProfile(object):
             },
             "columns": [
                 {"name": "Operator", "type": "string", "tooltip": ""},
-                {"name": "Size (B)", "type": "number", "tooltip": ""},
-                {"name": "Allocation Time (us)", "type": "number", "tooltip": ""},
-                {"name": "Release Time (us)", "type": "number", "tooltip": ""},
-                {"name": "Duration (us)", "type": "number", "tooltip": ""},
+                {"name": f"Size ({cano.memory_metric})", "type": "number", "tooltip": ""},
+                {"name": f"Allocation Time ({cano.time_metric})", "type": "number", "tooltip": ""},
+                {"name": f"Release Time ({cano.time_metric})", "type": "number", "tooltip": ""},
+                {"name": f"Duration ({cano.time_metric})", "type": "number", "tooltip": ""},
             ],
             "rows": events,  # in the form of { "CPU": [...], "GPU0": [...], ... }
         }

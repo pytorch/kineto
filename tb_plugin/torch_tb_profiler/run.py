@@ -4,13 +4,13 @@
 from typing import List, Optional, Union
 
 from collections import OrderedDict, defaultdict
-from math import pow
 
 from . import consts
 from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryParser
 from .profiler.node import MemoryMetrics
 from .profiler.trace import DeviceType, MemoryEvent
+from .utils import Canonicalizer
 
 
 class Run(object):
@@ -297,12 +297,12 @@ class RunProfile(object):
 
     @staticmethod
     def get_memory_curve(
-        profile: Union["RunProfile", RunProfileData],
-        time_metric: str = "",
-        memory_metric: str = "G",
-        patch_for_step_plot=True,
-    ):
-        def get_curves_and_peaks(memory_events: List[MemoryEvent], time_factor, memory_factor):
+            profile: Union["RunProfile", RunProfileData],
+            time_metric: str = "ms",
+            memory_metric: str = "K",
+            patch_for_step_plot=True,
+        ):
+        def get_curves_and_peaks(memory_events: List[MemoryEvent], cano: Canonicalizer):
             """For example:
             ```py
             {
@@ -331,9 +331,9 @@ class RunProfile(object):
                     continue
 
                 curves[dev].append([
-                    (ts - profile.profiler_start_ts) * time_factor,
-                    ta * memory_factor,
-                    tr * memory_factor,
+                    cano.convert_time(ts - profile.profiler_start_ts),
+                    cano.convert_memory(ta),
+                    cano.convert_memory(tr),
                 ])
                 peaks[dev] = max(peaks[dev], ta)
 
@@ -358,50 +358,18 @@ class RunProfile(object):
                 new_curves[dev] = new_curve
             return new_curves
 
-        # canonicalize the memory metric to a string
-        canonical_time_metrics = {
-            "micro": "us", "microsecond": "us", "us": "us",
-            "milli": "ms", "millisecond": "ms", "ms": "ms",
-                 "":  "s",      "second":  "s",  "s":  "s",
-        }
-        # canonicalize the memory metric to a string
-        canonical_memory_metrics = {
-             "":  "B",  "B":  "B",
-            "K": "KB", "KB": "KB",
-            "M": "MB", "MB": "MB",
-            "G": "GB", "GB": "GB",
-        }
+        cano = Canonicalizer(time_metric, memory_metric)
 
-        time_metric = canonical_time_metrics[time_metric]
-        memory_metric = canonical_memory_metrics[memory_metric]
-
-        # raw timestamp is in microsecond
-        # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
-        time_metric_to_factor = {
-            "us": 1,
-            "ms": 1e-3,
-            "s":  1e-6,
-        }
-        # raw memory is in bytes
-        memory_metric_to_factor = {
-            "B":  pow(1024,  0),
-            "KB": pow(1024, -1),
-            "MB": pow(1024, -2),
-            "GB": pow(1024, -3),
-        }
-
-        time_factor = time_metric_to_factor[time_metric]
-        memory_factor = memory_metric_to_factor[memory_metric]
-        curves, peaks = get_curves_and_peaks(profile.memory_parser.memory_events, time_factor, memory_factor)
+        curves, peaks = get_curves_and_peaks(profile.memory_parser.memory_events, cano)
         if patch_for_step_plot:
             curves = patch_curves_for_step_plot(curves)
         peaks_formatted = {}
         totals = {}
         for dev, value in peaks.items():
-            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, memory_metric)
+            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(cano.convert_memory(value), cano.memory_metric)
             if dev != "CPU":
                 try:
-                    totals[dev] = profile.gpu_infos[int(dev[3:])]["Memory Raw"] * memory_factor
+                    totals[dev] = cano.convert_memory(profile.gpu_infos[int(dev[3:])]["Memory Raw"])
                 except BaseException:
                     pass
 
@@ -419,22 +387,27 @@ class RunProfile(object):
                 "peaks": peaks_formatted,
                 "totals": totals,
                 "first_ts": profile.profiler_start_ts,
-                "time_metric": time_metric,
-                "memory_metric": memory_metric,
-                "time_factor": time_factor,
-                "memory_factor": memory_factor,
+                "time_metric": cano.time_metric,
+                "memory_metric": cano.memory_metric,
+                "time_factor": cano.time_factor,
+                "memory_factor": cano.memory_factor,
             },
             "columns": [
-                { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
-                { "name": f"Allocated ({memory_metric})", "type": "number", "tooltip": "Total memory in use." },
-                { "name": f"Reserved ({memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
-                # { "name": f"Total ({memory_metric})", "type": "number", "tooltip": "Total Memory the device have."},
+                { "name": f"Time ({cano.time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
+                { "name": f"Allocated ({cano.memory_metric})", "type": "number", "tooltip": "Total memory in use." },
+                { "name": f"Reserved ({cano.memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
             ],
             "rows": curves,
         }
 
     @staticmethod
-    def get_memory_events(p: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+    def get_memory_events(
+            p: Union["RunProfile", RunProfileData],
+            start_ts=None,
+            end_ts=None,
+            time_metric: str = "ms",
+            memory_metric: str = "K",
+        ):
         profiler_start_ts = p.profiler_start_ts
         memory_records = sorted(p.memory_parser.staled_records + p.memory_parser.processed_records, key=lambda r: r.ts)
         memory_records = RunProfile._filtered_by_ts(memory_records, start_ts, end_ts)

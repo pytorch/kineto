@@ -115,7 +115,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         method = request.method
         cmd = request.args.get("cmd")
         data = json.loads(request.data)
-        host_local = data["host"].split(":")[1][2:] in ["localhost", "127.0.0.1"]
         baseUrl = ":".join([data["host"], str(data["port"])])
         url = "".join([baseUrl, "/service"])
         res = {"success": False, "message": "Error message in tb_plugin not specified."}
@@ -123,8 +122,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if method == "PUT":
             if cmd == "start":
                 body = {
-                    "log_dir": io.abspath(os.path.join(self.logdir, data["log_dir"]).rstrip('/')) if host_local 
-                               else os.path.join("./tmplog", data["log_dir"]).rstrip('/').replace('\\', '/'),
+                    "log_dir": self.logdir,
+                    "run_name": data["log_dir"],
                     "record_shapes": data["record_shapes"],
                     "profile_memory": data["profile_memory"],
                     "with_stack": data["with_stack"],
@@ -145,13 +144,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 except:
                     res["message"] = "An error occurs in the server of the PyTorch training process."
                 if res["success"]:
-                    log_dir = res.pop("log_dir")
                     file_names = res.pop("file_names")
-                    if not host_local:
+                    need_log_fetch = res.pop("need_log_fetch")
+                    if need_log_fetch:
                         try:
                             for file_name in file_names:
-                                log_file = requests.get(url="/".join([baseUrl, "log", log_dir, file_name]))
-                                log_path = os.path.join(self.logdir, log_dir)
+                                log_file = requests.get(url="/".join([baseUrl, "log", data["log_dir"], file_name]))
+                                log_path = os.path.join(self.logdir, data["log_dir"])
                                 if not os.path.exists(log_path):
                                     os.makedirs(log_path)
                                 with open(os.path.join(log_path, file_name), 'w') as f:

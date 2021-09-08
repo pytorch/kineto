@@ -106,7 +106,7 @@ class MemoryParser:
                 # since the node has not been visited for insert memory records, just ignore all childrens
                 return
             elif is_op:
-                node_memory_metrics = node.get_memory_metrics()
+                node_memory_metrics = node.get_memory_metrics(start_ts, end_ts)
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
                     # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]

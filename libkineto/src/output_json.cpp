@@ -188,6 +188,10 @@ static std::string traceActivityJson(
   // clang-format on
 }
 
+static std::string streamName(const TraceActivity& act) {
+  return fmt::format("stream {}", act.resourceId());
+}
+
 void ChromeTraceLogger::handleGenericInstantEvent(
     const libkineto::GenericTraceActivity& op) {
   if (!traceOf_) {
@@ -235,9 +239,13 @@ void ChromeTraceLogger::handleGenericActivity(
       {
         traceOf_ << fmt::format(R"JSON(
         {{
-          "ph": "X", "cat": "Runtime", {}
+          "ph": "X", "cat": "Runtime", {},
+          "args": {{
+            {}
+          }}
         }},)JSON",
-            traceActivityJson(op, ""));
+            traceActivityJson(op, fmt::format("{}", op.resourceId())), 
+            op_metadata);
         handleLinkStart(op);
       }
       break;
@@ -245,9 +253,13 @@ void ChromeTraceLogger::handleGenericActivity(
       {
         traceOf_ << fmt::format(R"JSON(
         {{
-          "ph": "X", "cat": "Kernel", {}
+          "ph": "X", "cat": "Kernel", {},
+          "args": {{
+            {}
+          }}
         }},)JSON",
-            traceActivityJson(op, "stream "));
+            traceActivityJson(op, streamName(op)), 
+            op_metadata);
         handleLinkEnd(op);
       }
       break;
@@ -273,7 +285,7 @@ void ChromeTraceLogger::handleGenericActivity(
   // clang-format on
 }
 
-#ifdef defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
 void ChromeTraceLogger::handleLinkStart(const TraceActivity& s) {
   if (!traceOf_) {
     return;
@@ -340,10 +352,6 @@ void ChromeTraceLogger::handleRuntimeActivity(
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000) {
     handleLinkStart(activity);
   }
-}
-
-static std::string streamName(const TraceActivity& act) {
-  return fmt::format("stream {}", act.resourceId());
 }
 
 // GPU side kernel activity

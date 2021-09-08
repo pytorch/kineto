@@ -23,7 +23,9 @@ namespace libkineto {
 class GenericTraceActivity : public TraceActivity {
 
  public:
-  GenericTraceActivity() = delete;
+  // FIXME
+  //GenericTraceActivity() = delete;
+  GenericTraceActivity() : traceSpan_(NULL) {}
 
   GenericTraceActivity(
       const TraceSpan& trace, ActivityType type, const std::string& name)
@@ -70,7 +72,10 @@ class GenericTraceActivity : public TraceActivity {
 
   //Encode client side metadata as a key/value string.
   void addMetadata(const std::string& key, const std::string& value) {
-    metadata_.push_back(fmt::format("\"{}\": {}", key, value));
+    if (!value.empty() && value.find_first_not_of("-0123456789") == std::string::npos)
+      metadata_.push_back(fmt::format("\"{}\": {}", key, value));
+    else
+      metadata_.push_back(fmt::format("\"{}\": \"{}\"", key, value));
   }
 
   const std::string getMetadata() const {

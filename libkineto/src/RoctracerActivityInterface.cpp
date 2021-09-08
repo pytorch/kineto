@@ -12,11 +12,15 @@
 #include <time.h>
 
 #include <cxxabi.h>
+#include <sys/syscall.h>
 
 #include "Logger.h"
 #include "output_base.h"
 
 typedef uint64_t timestamp_t;
+
+static inline uint32_t getPid() { return syscall(__NR_getpid); }
+static inline uint32_t getTid() { return syscall(__NR_gettid); }
 
 static size_t BUFFERSIZE=1<<20;
 
@@ -102,6 +106,120 @@ int RoctracerActivityInterface::processActivities(
   const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
 
   int count = 0;
+  char buff[4096];
+
+  printf("processActivities: %lu items\n", m_rows.size());
+
+  // Basic Api calls
+
+  for (auto &item : m_rows) {
+    GenericTraceActivity a;
+    a.startTime = (item.begin + toffset) / 1000;
+    a.endTime = (item.end + toffset) / 1000;
+    a.id = item.id;
+    a.device = item.pid;
+    a.resource = item.tid;
+    a.activityType = ActivityType::CUDA_RUNTIME;
+    a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+
+    logger.handleGenericActivity(a);
+    ++count;
+  }
+
+  // Malloc/Free calls
+  for (auto &item : m_mallocRows) {
+    GenericTraceActivity a;
+    a.startTime = (item.begin + toffset) / 1000;
+    a.endTime = (item.end + toffset) / 1000;
+    a.id = item.id;
+    a.device = item.pid;
+    a.resource = item.tid;
+    a.activityType = ActivityType::CUDA_RUNTIME;
+    a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+
+    std::snprintf(buff, 4096, "%p", item.ptr);
+    a.addMetadata("ptr", std::string(buff));
+    if (item.cid == HIP_API_ID_hipMalloc)
+      a.addMetadata("size", std::to_string(item.size));
+
+    logger.handleGenericActivity(a);
+    ++count;
+  }
+
+  // HipMemcpy calls
+  for (auto &item : m_copyRows) {
+    GenericTraceActivity a;
+    a.startTime = (item.begin + toffset) / 1000;
+    a.endTime = (item.end + toffset) / 1000;
+    a.id = item.id;
+    a.device = item.pid;
+    a.resource = item.tid;
+    a.activityType = ActivityType::CUDA_RUNTIME;
+    a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+
+    std::snprintf(buff, 4096, "%p", item.src);
+    a.addMetadata("src", std::string(buff));
+    std::snprintf(buff, 4096, "%p", item.dst);
+    a.addMetadata("dst", std::string(buff));
+    a.addMetadata("size", std::to_string(item.size));
+    a.addMetadata("kind", std::to_string(item.kind));
+    if ((item.cid == HIP_API_ID_hipMemcpyAsync) || (item.cid == HIP_API_ID_hipMemcpyWithStream)) {
+      std::snprintf(buff, 4096, "%p", item.stream);
+      a.addMetadata("stream", std::string(buff));
+    }
+
+    logger.handleGenericActivity(a);
+    ++count;
+  }
+
+  // Kernel Launch Api calls
+
+  for (auto &item : m_kernelRows) {
+    GenericTraceActivity a;
+    a.startTime = (item.begin + toffset) / 1000;
+    a.endTime = (item.end + toffset) / 1000;
+    a.id = item.id;
+    a.device = item.pid;
+    a.resource = item.tid;
+    a.activityType = ActivityType::CUDA_RUNTIME;
+    a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+
+    if (item.functionAddr != NULL)
+      a.addMetadata("kernel", hipKernelNameRefByPtr(item.functionAddr, item.stream));
+    else if (item.function != NULL)
+      a.addMetadata("kernel", hipKernelNameRef(item.function));
+    std::snprintf(buff, 4096, "(%d, %d, %d)", item.gridX, item.gridY, item.gridZ);
+    a.addMetadata("grid dim", std::string(buff));
+    std::snprintf(buff, 4096, "(%d, %d, %d)", item.workgroupX, item.workgroupY, item.workgroupZ);
+    a.addMetadata("block dim", std::string(buff));
+    a.addMetadata("shared size", std::to_string(item.groupSegmentSize));
+    std::snprintf(buff, 4096, "%p", item.stream);
+    a.addMetadata("stream", std::string(buff));
+
+    // Stash launches to tie to the async ops
+    m_kernelLaunches[a.id] = a;
+
+    // Stash kernel names to tie to the async ops
+    std::string name;
+    if (item.functionAddr != NULL)
+      name = hipKernelNameRefByPtr(item.functionAddr, item.stream);
+    else if (item.function != NULL)
+      name = hipKernelNameRef(item.function);
+    if (name.empty() == false) {
+      uint32_t string_id = m_reverseStrings[name];
+      if (string_id == 0) {
+        string_id = m_nextStringId++;
+        m_reverseStrings[name] = string_id;
+        m_strings[string_id] = name;
+      }
+      m_kernelNames[item.id] = string_id;
+    }
+
+    logger.handleGenericActivity(a);
+    ++count;
+  }
+
+  // Async Ops
 
   for (auto& buffer : *gpuTraceBuffers_) {
     const roctracer_record_t* record = (const roctracer_record_t*)(buffer.data);
@@ -112,11 +230,11 @@ int RoctracerActivityInterface::processActivities(
       if ((record->domain == ACTIVITY_DOMAIN_HIP_API) && (m_loggedIds.contains(record->op))) {
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
         a.device = record->process_id;
-        a.sysThreadId= record->thread_id;
+        a.resource = record->thread_id;
 
         a.startTime = (record->begin_ns + toffset) / 1000;
         a.endTime = (record->end_ns + toffset) / 1000;
-        a.correlation = record->correlation_id;
+        a.id = record->correlation_id;
 
         a.activityType = ActivityType::CUDA_RUNTIME;
         a.activityName = std::string(name);
@@ -125,13 +243,19 @@ int RoctracerActivityInterface::processActivities(
         ++count;
       }
       else if (record->domain == ACTIVITY_DOMAIN_HCC_OPS) {
+        // Overlay launch metadata for kernels
+        auto kit = m_kernelLaunches.find(record->correlation_id);
+        if (kit != m_kernelLaunches.end()) {
+          a = (*kit).second;
+        }
+
         const char *name = roctracer_op_string(record->domain, record->op, record->kind);
         a.device = record->device_id;
-        a.sysThreadId = record->queue_id;
+        a.resource = record->queue_id;
 
         a.startTime = (record->begin_ns + toffset) / 1000;
         a.endTime = (record->end_ns + toffset) / 1000;
-        a.correlation = record->correlation_id;
+        a.id = record->correlation_id;
 
         a.activityType = ActivityType::CONCURRENT_KERNEL;
         a.activityName = std::string(name);
@@ -140,13 +264,15 @@ int RoctracerActivityInterface::processActivities(
         if (it != m_kernelNames.end()) {
           a.activityName = m_strings[it->second];
         }
+
         logger.handleGenericActivity(a);
         ++count;
       }
+      else if (record->domain == ACTIVITY_DOMAIN_EXT_API) {
+        //printf("%ul :: %d\n", record->correlation_id, record->external_id);
+      }
+
       roctracer_next_record(record, &record);     
-    }
-    else if (domain == ACTIVITY_DOMAIN_EXT_API) {
-      printf("%d :: %d\n", record->correlation_id, record->external_id);
     }
   }
   return count;
@@ -156,17 +282,26 @@ void RoctracerActivityInterface::clearActivities() {
   if (gpuTraceBuffers_) {
     gpuTraceBuffers_->clear();
   }
+  m_rows.clear();
+  m_kernelRows.clear();
+  m_copyRows.clear();
+  m_mallocRows.clear();
+  m_kernelLaunches.clear();
 }
 
+// FIXME remove me
+#if 0
 void RoctracerActivityInterface::addActivityBuffer(uint8_t* buffer, size_t validSize) {
   if (!gpuTraceBuffers_) {
     gpuTraceBuffers_ = std::make_unique<std::list<RoctracerActivityBuffer>>();
   }
   gpuTraceBuffers_->emplace_back(buffer, validSize);
 }
+#endif
 
 void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg)
 {
+#if 0
   if (domain == ACTIVITY_DOMAIN_HIP_API) {
     const hip_api_data_t* data = (const hip_api_data_t*)(callback_data);
     if (data->phase == 0) {
@@ -208,6 +343,176 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
       }
     }
   }
+#endif
+
+  RoctracerActivityInterface *dis = &singleton();
+
+  if (domain == ACTIVITY_DOMAIN_HIP_API && dis->m_loggedIds.contains(cid)) {
+    const hip_api_data_t* data = (const hip_api_data_t*)(callback_data);
+
+    // Pack callbacks into row structures
+
+    static timespec timestamp;	// FIXME check thread safety
+
+    if (data->phase == ACTIVITY_API_PHASE_ENTER) {
+      clock_gettime(CLOCK_MONOTONIC, &timestamp);  // record proper clock
+    }
+    else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
+      timespec endTime;
+      timespec startTime { timestamp };
+      clock_gettime(CLOCK_MONOTONIC, &endTime);  // record proper clock
+
+      switch (cid) {
+        case HIP_API_ID_hipLaunchKernel:
+        case HIP_API_ID_hipExtLaunchKernel:
+        case HIP_API_ID_hipLaunchCooperativeKernel:     // Should work here
+          {
+          auto &args = data->args.hipLaunchKernel;
+          dis->m_kernelRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              args.function_address,
+                              nullptr,
+                              args.numBlocks.x,
+                              args.numBlocks.y,
+                              args.numBlocks.z,
+                              args.dimBlocks.x,
+                              args.dimBlocks.y,
+                              args.dimBlocks.z,
+                              args.sharedMemBytes,
+                              args.stream
+                            );
+          }
+          break;
+        case HIP_API_ID_hipHccModuleLaunchKernel:
+        case HIP_API_ID_hipModuleLaunchKernel:
+        case HIP_API_ID_hipExtModuleLaunchKernel:
+          {
+          auto &args = data->args.hipModuleLaunchKernel;
+          dis->m_kernelRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              nullptr,
+                              args.f,
+                              args.gridDimX,
+                              args.gridDimY,
+                              args.gridDimZ,
+                              args.blockDimX,
+                              args.blockDimY,
+                              args.blockDimZ,
+                              args.sharedMemBytes,
+                              args.stream
+                            );
+          }
+          break;
+        case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
+        case HIP_API_ID_hipExtLaunchMultiKernelMultiDevice:
+#if 0
+          {
+            auto &args = data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val;
+            dis->m_kernelRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              args.function_address,
+                              nullptr,
+                              args.numBlocks.x,
+                              args.numBlocks.y,
+                              args.numBlocks.z,
+                              args.dimBlocks.x,
+                              args.dimBlocks.y,
+                              args.dimBlocks.z,
+                              args.sharedMemBytes,
+                              args.stream
+                            );
+          }
+#endif
+          break;
+        case HIP_API_ID_hipMalloc:
+            dis->m_mallocRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              data->args.hipMalloc.ptr__val,
+                              data->args.hipMalloc.size
+                              );
+          break;
+        case HIP_API_ID_hipFree:
+            dis->m_mallocRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              data->args.hipFree.ptr,
+                              0
+                              );
+          break;
+        case HIP_API_ID_hipMemcpy:
+          {
+            auto &args = data->args.hipMemcpy;
+            dis->m_copyRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              args.src,
+                              args.dst,
+                              args.sizeBytes,
+                              args.kind,
+                              static_cast<hipStream_t>(0)  // use placeholder?
+                              );
+          }
+          break;
+        case HIP_API_ID_hipMemcpyAsync:
+        case HIP_API_ID_hipMemcpyWithStream:
+          {
+            auto &args = data->args.hipMemcpyAsync;
+            dis->m_copyRows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime),
+                              args.src,
+                              args.dst,
+                              args.sizeBytes,
+                              args.kind,
+                              args.stream
+                              );
+          }
+          break;
+        default:
+          dis->m_rows.emplace_back(data->correlation_id,
+                              domain,
+                              cid,
+                              getPid(),
+                              getTid(),
+                              timespec_to_ns(startTime),
+                              timespec_to_ns(endTime)
+                              );
+          break;
+      }
+    }
+  }
 }
 
 void RoctracerActivityInterface::activity_callback(const char* begin, const char* end, void* arg)
@@ -217,14 +522,6 @@ void RoctracerActivityInterface::activity_callback(const char* begin, const char
   auto &gpuTraceBuffers = singleton().gpuTraceBuffers_;
   memcpy(buffer, begin, size);
   gpuTraceBuffers->emplace_back(buffer, size);
-}
-
-void RoctracerActivityInterface::hip_activity_callback(const char* begin, const char* end, void* arg)
-{
-}
-
-void RoctracerActivityInterface::hcc_activity_callback(const char* begin, const char* end, void* arg)
-{
 }
 
 void RoctracerActivityInterface::enableActivities(
@@ -243,27 +540,14 @@ void RoctracerActivityInterface::enableActivities(
     properties.buffer_size = 0x1000;
     roctracer_open_pool(&properties);
 
-#if 1
-    // Log hip
-    roctracer_properties_t hip_cb_properties;
-    memset(&hip_cb_properties, 0, sizeof(roctracer_properties_t));
-    hip_cb_properties.buffer_size = 0x4000;
-    //hip_cb_properties.buffer_callback_fun = hip_activity_callback;
-    hip_cb_properties.buffer_callback_fun = activity_callback;
-    roctracer_open_pool_expl(&hip_cb_properties, &hipPool_);
-    roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HIP_API, hipPool_);
-    roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, hipPool_);    // FIXME - logging on 1 thread for now
-    roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_EXT_API, hipPool_);    // FIXME - logging on 1 thread for now
-#endif
-#if 0
-    // Log hcc
+    // Enable async op collection
     roctracer_properties_t hcc_cb_properties;
     memset(&hcc_cb_properties, 0, sizeof(roctracer_properties_t));
     hcc_cb_properties.buffer_size = 0x4000;
-    hcc_cb_properties.buffer_callback_fun = hcc_activity_callback;
+    hcc_cb_properties.buffer_callback_fun = activity_callback;
     roctracer_open_pool_expl(&hcc_cb_properties, &hccPool_);
     roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, hccPool_);
-#endif
+    //roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_EXT_API, hccPool_);
 
     // Set some api calls to ignore
     m_loggedIds.setInvertMode(true);  // Omit the specified api
@@ -283,6 +567,12 @@ void RoctracerActivityInterface::enableActivities(
     m_registered = true;
   }
 
+  for (const auto& activity : selected_activities) {
+    if (activity == ActivityType::EXTERNAL_CORRELATION) {
+        roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_EXT_API, hccPool_);
+    }
+  }
+
   roctracer_start();
 #endif
 }
@@ -291,7 +581,7 @@ void RoctracerActivityInterface::disableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   roctracer_stop();
-  roctracer_flush_activity_expl(hipPool_);
+  roctracer_flush_activity_expl(hccPool_);
 #endif
 }
 
@@ -302,7 +592,7 @@ void RoctracerActivityInterface::endTracing() {
 
     roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HIP_API);
     roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HCC_OPS);
-    roctracer_close_pool_expl(hipPool_);
+    roctracer_close_pool_expl(hccPool_);
   }
 }
 

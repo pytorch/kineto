@@ -168,7 +168,7 @@ export const App = () => {
   const [profilingSettings, setProfilingSettings] = React.useState({
     host: 'localhost',
     port: 3180,
-    log_dir: 'default',
+    run_name: 'default',
     warmup_dur: 0,
     record_shapes: true,
     profile_memory: true,
@@ -276,14 +276,7 @@ export const App = () => {
     setIsWaiting(true)
     setStartDialogOpen(false)
     api.defaultApi
-      .servicePut('start', {
-        ...profilingSettings,
-        ['host']:
-          profilingSettings.host.startsWith('http://') ||
-          profilingSettings.host.startsWith('https://')
-            ? profilingSettings.host
-            : 'http://' + profilingSettings.host
-      })
+      .servicePut('start', profilingSettings)
       .then((response) => {
         setAlertConfig({
           open: true,
@@ -341,16 +334,9 @@ export const App = () => {
     setIsWaiting(true)
     setStopDialogOpen(false)
     api.defaultApi
-      .servicePut('stop', {
-        ...profilingSettings,
-        ['host']:
-          profilingSettings.host.startsWith('http://') ||
-          profilingSettings.host.startsWith('https://')
-            ? profilingSettings.host
-            : 'http://' + profilingSettings.host
-      })
+      .servicePut('stop', profilingSettings)
       .then((response) => {
-        if(response.success) {
+        if (response.success) {
           dataSynchronize().then(() => {
             setAlertConfig({
               open: true,
@@ -603,8 +589,9 @@ export const App = () => {
         <DialogTitle id="form-dialog-title">Start Profiling</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            To start profiling service, input the host and port of the PyTorch training process, run name, warmup duration and
-            profiling configs here.
+            To start profiling service, input the host and port of the PyTorch
+            training process, run name, warmup duration and profiling configs
+            here.
           </DialogContentText>
           <Grid container spacing={1}>
             <Grid item xs={6}>
@@ -627,10 +614,10 @@ export const App = () => {
             </Grid>
             <Grid item xs={6}>
               <TextField
-                name="log_dir"
+                name="run_name"
                 label="Run Name"
                 type="text"
-                value={profilingSettings.log_dir}
+                value={profilingSettings.run_name}
                 onChange={handleStringChange}
               />
             </Grid>
@@ -723,8 +710,8 @@ export const App = () => {
         <DialogTitle id="form-dialog-title">Stop Profiling</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            To stop profiling service, you need to specify the port and host of the PyTorch training process to
-            send the stop message.
+            To stop profiling service, you need to specify the port and host of
+            the PyTorch training process to send the stop message.
           </DialogContentText>
           <Grid container spacing={1}>
             <Grid item xs={6}>

@@ -115,7 +115,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         method = request.method
         cmd = request.args.get("cmd")
         data = json.loads(request.data)
-        baseUrl = ":".join([data["host"], str(data["port"])])
+        baseUrl = "".join(["http://", data["host"], ":", str(data["port"])])
         url = "".join([baseUrl, "/service"])
         res = {"success": False, "message": "Error message in tb_plugin not specified."}
 
@@ -123,7 +123,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             if cmd == "start":
                 body = {
                     "log_dir": self.logdir,
-                    "run_name": data["log_dir"],
+                    "run_name": data["run_name"],
                     "record_shapes": data["record_shapes"],
                     "profile_memory": data["profile_memory"],
                     "with_stack": data["with_stack"],
@@ -149,8 +149,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     if need_log_fetch:
                         try:
                             for file_name in file_names:
-                                log_file = requests.get(url="/".join([baseUrl, "log", data["log_dir"], file_name]))
-                                log_path = os.path.join(self.logdir, data["log_dir"])
+                                log_file = requests.get(url="/".join([baseUrl, "log", data["run_name"], file_name]))
+                                log_path = os.path.join(self.logdir, data["run_name"])
                                 if not os.path.exists(log_path):
                                     os.makedirs(log_path)
                                 with open(os.path.join(log_path, file_name), 'w') as f:

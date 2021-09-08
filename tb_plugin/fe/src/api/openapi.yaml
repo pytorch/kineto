@@ -522,7 +522,7 @@ components:
           type: string
         port:
           type: number
-        log_dir:
+        run_name:
           type: string
         warmup_dur:
           type: number

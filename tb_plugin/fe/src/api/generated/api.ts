@@ -712,7 +712,7 @@ export interface ServiceRequest {
    * @type {string}
    * @memberof ServiceRequest
    */
-  logDir?: string
+  runName?: string
   /**
    *
    * @type {number}

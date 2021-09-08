@@ -3,13 +3,12 @@
 # --------------------------------------------------------------------------
 from typing import List, Optional, Union
 
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
 from . import consts
 from .profiler.data import RunProfileData
-from .profiler.memory_parser import MemoryParser
+from .profiler.memory_parser import MemoryParser, MemoryRecord
 from .profiler.node import MemoryMetrics
-from .profiler.trace import DeviceType, MemoryEvent
 from .utils import Canonicalizer, DisplayRounder
 
 
@@ -305,30 +304,30 @@ class RunProfile(object):
             memory_metric: str = "K",
             patch_for_step_plot=True,
         ):
-        def get_curves_and_peaks(memory_events: List[MemoryEvent], cano: Canonicalizer):
-            """For example:
+        def get_curves_and_peaks(records: List[MemoryRecord], cano: Canonicalizer):
+            """Inputs:
+                records: Sorted list of MemoryRecord
+
+            For example:
             ```py
             {
-                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory
-                    [1, 4, 4, 1000000],
-                    [2, 16, 16, 1000000],
-                    [4, 4, 16, 1000000],
+                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory, operator
+                    [1, 4, 4, 1000000, "aten::add"],
+                    [2, 16, 16, 1000000, "aten::empty],
+                    [4, 4, 16, 1000000, "..."],
                 ],
                 "GPU0": ...
             }
             ```"""
             curves = defaultdict(list)
             peaks = defaultdict(float)
-            for e in memory_events:
-                if e.device_type == DeviceType.CPU:
-                    dev = "CPU"
-                elif e.device_type == DeviceType.CUDA:
-                    dev = f"GPU{e.device_id}"
-                else:
-                    raise NotImplementedError("Unknown device type for memory curve")
-                ts = e.ts
-                ta = e.total_allocated
-                tr = e.total_reserved
+            for r in records:
+                if r.addr == None:
+                    continue
+                dev = r.device_name
+                ts = r.ts
+                ta = r.total_allocated
+                tr = r.total_reserved
 
                 if ta != ta or tr != tr: # isnan
                     continue
@@ -347,6 +346,7 @@ class RunProfile(object):
 
             return curves, peaks
 
+        # NOTE: this should have been occured in frontend
         def patch_curves_for_step_plot(curves):
             # For example, if a curve is [(0, 0), (1, 1), (2,2)], the line plot
             # is a stright line. Interpolating it as [(0, 0), (1, 0), (1, 1),
@@ -363,7 +363,7 @@ class RunProfile(object):
 
         cano = Canonicalizer(time_metric, memory_metric)
 
-        curves, peaks = get_curves_and_peaks(profile.memory_parser.memory_events, cano)
+        curves, peaks = get_curves_and_peaks(profile.memory_parser.all_records, cano)
         if patch_for_step_plot:
             curves = patch_curves_for_step_plot(curves)
         peaks_formatted = {}
@@ -415,8 +415,7 @@ class RunProfile(object):
         round = DisplayRounder(ndigits=2)
 
         profiler_start_ts = p.profiler_start_ts
-        memory_records = sorted(p.memory_parser.staled_records + p.memory_parser.processed_records, key=lambda r: r.ts)
-        memory_records = RunProfile._filtered_by_ts(memory_records, start_ts, end_ts)
+        memory_records = RunProfile._filtered_by_ts(p.memory_parser.all_records, start_ts, end_ts)
 
         events = defaultdict(list)
         alloc = {}  # allocation events may or may not have paired free event

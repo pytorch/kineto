@@ -40,6 +40,7 @@ def get_libkineto_roctracer_srcs(with_api = True):
         "src/ActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",
+        "src/ActivityType.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
         "src/CuptiActivityInterface.cpp",

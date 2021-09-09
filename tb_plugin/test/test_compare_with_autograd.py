@@ -71,7 +71,7 @@ def get_autograd_result(p, worker_name, record_shapes=False, with_stack=False):
         for avg in avgs:
             evt_type = get_type(avg)
             if evt_type == "operator":
-                line = [avg.key, str(avg.input_shapes), int(avg.count)]
+                line = [avg.key, str(avg.input_shapes) if avg.input_shapes else "[]", int(avg.count)]
                 if is_gpu:
                     line.extend([int(avg.self_cuda_time_total), int(avg.cuda_time_total)])
                 line.extend([int(avg.self_cpu_time_total), int(avg.cpu_time_total)])

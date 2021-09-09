@@ -80,7 +80,8 @@ class OperatorEvent(DurationEvent):
 
         shape = self.args.get("Input Dims")
         if shape is None:
-            shape = self.args.get("Input dims")
+            # Setting shape to '[]' other None is to align with autograd result
+            shape = self.args.get("Input dims", [])
         self.input_shape = shape
 
 class ProfilerStepEvent(OperatorEvent):

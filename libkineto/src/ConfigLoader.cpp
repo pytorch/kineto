@@ -26,13 +26,13 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
-const string kConfigFileEnvVar = "KINETO_CONFIG";
+constexpr char kConfigFileEnvVar[] = "KINETO_CONFIG";
 #ifdef __linux__
-const string kConfigFile = "/etc/libkineto.conf";
-const string kOnDemandConfigFile = "/tmp/libkineto.conf";
+constexpr char kConfigFile[] = "/etc/libkineto.conf";
+constexpr char kOnDemandConfigFile[] = "/tmp/libkineto.conf";
 #else
-const string kConfigFile = "libkineto.conf";
-const string kOnDemandConfigFile = "libkineto.conf";
+constexpr char kConfigFile[] = "libkineto.conf";
+constexpr char kOnDemandConfigFile[] = "libkineto.conf";
 #endif
 
 constexpr std::chrono::seconds kConfigUpdateIntervalSecs(300);
@@ -182,9 +182,9 @@ void ConfigLoader::handleOnDemandSignal() {
 
 const char* ConfigLoader::configFileName() {
   if (!configFileName_) {
-    configFileName_ = getenv(kConfigFileEnvVar.data());
+    configFileName_ = getenv(kConfigFileEnvVar);
     if (configFileName_ == nullptr) {
-      configFileName_ = kConfigFile.data();
+      configFileName_ = kConfigFile;
     }
   }
   return configFileName_;
@@ -223,9 +223,9 @@ void ConfigLoader::configureFromSignal(
     time_point<system_clock> now,
     Config& config) {
   LOG(INFO) << "Received on-demand profiling signal, "
-            << "reading config from " << kOnDemandConfigFile.data();
+            << "reading config from " << kOnDemandConfigFile;
   const std::string config_str =
-      readConfigFromConfigFile(kOnDemandConfigFile.data());
+      readConfigFromConfigFile(kOnDemandConfigFile);
   config.parse(config_str);
   config.setSignalDefaults();
   notifyHandlers(config);

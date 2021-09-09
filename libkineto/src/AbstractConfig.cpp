@@ -20,10 +20,10 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
-const string kWhitespace = "\t\n ";
+constexpr char kWhitespace[] = "\t\n ";
 
 static bool isWhitespace(string& s) {
-  return s.find_first_not_of(kWhitespace.data()) == string::npos;
+  return s.find_first_not_of(kWhitespace) == string::npos;
 }
 
 // Remove whitespace from both end of string
@@ -33,8 +33,8 @@ static inline string trim(string& s) {
   } else if (isWhitespace(s)) {
     return "";
   }
-  auto start = s.find_first_not_of(kWhitespace.data());
-  auto end = s.find_last_not_of(kWhitespace.data());
+  auto start = s.find_first_not_of(kWhitespace);
+  auto end = s.find_last_not_of(kWhitespace);
   return s.substr(start, end - start + 1);
 }
 

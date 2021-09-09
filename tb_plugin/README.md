@@ -310,29 +310,57 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 
 * Memory View
 
-    Pytorch profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
-    inside its life span.
+    Pytorch profiler records all memory allocation/release events and allocator's internal state during profiling. For
+    each operator, the plugin aggregates all the events inside its life span.
 
-    ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/memory_view.PNG)
+    ![Alt text](./docs/images/memory_view.PNG)
 
-    The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs. 
+    The memory kind could be selected in 'Device' selection box. For example, 'GPU0' means the following plot and tables only shows each
+    operator's memory usage on GPU 0, not including CPU or other GPUs. 
 
-    Definition of each field in the table:
+    * Memory Curve
 
+      Memory curve shows the memory usage trends. It helps the user get an overview about memory consumption. The 'Allocated' plot is the
+      total memory requested from the allocator, for example, used by tensors. The 'Reserved' plot only make sense if the underlying
+      allocator make use of caching mechanism. It represents the total memory that is allocated from the operating system by the allocator.
 
-    * Calls: How many times this operator is called. 
+      User can select a range and zoom into it by pressing left mouse button and dragging on the curve. Right click will reset to the
+      initial state. Upon selection, it will affect 'Memory Events' table and 'Memory Statistics' table as mentioned in the following
+      sections.
 
-    * Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
+    * Memory Events
 
-    * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes. 
+      Memory events table shows the memory allocation and release event pairs. Definition of each field in the table:
 
-    * Allocation Count: The allocation count including all children operators. 
+      * Operator: the immediate operator causing allocation from allocator.
 
-    * Self Allocation Count: The allocation count belonging to the operator itself excluding its chilren. 
+      * Size: The allocated memory size.
 
-    * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+      * Allocation Time: Memory allocation time point relative to profiler start. It maybe missing from the table if the allocation event
+        is not included in the selected range.
 
-    * Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
+      * Release Time: Memory release time point relative to profiler start. It maybe missing from the table if the release event is not
+        included in the selected range.
+
+      * Duration: The life duration of the allocated memory. It maybe missing from the table if Allocation Time or Release Time is absent.
+
+    * Memory Statistics
+
+      Definition of each field in the table:
+
+      * Calls: How many times this operator is called. 
+
+      * Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
+
+      * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes. 
+
+      * Allocation Count: The allocation count including all children operators. 
+
+      * Self Allocation Count: The allocation count belonging to the operator itself excluding its chilren. 
+
+      * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+
+      * Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
 
 
 * Distributed View

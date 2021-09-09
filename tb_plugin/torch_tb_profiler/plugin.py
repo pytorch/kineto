@@ -279,17 +279,18 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = self._get_profile_for_request(request)
         start_ts = request.args.get("start_ts", None)
         end_ts = request.args.get("end_ts", None)
+        memory_metric = request.args.get("memory_metric", "KB")
         if start_ts is not None:
             start_ts = int(start_ts)
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        return self.respond_as_json(RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts))
+        return self.respond_as_json(RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def memory_curve_route(self, request):
         profile = self._get_profile_for_request(request)
-        time_metric = request.args.get("time_metric", "second")
+        time_metric = request.args.get("time_metric", "ms")
         memory_metric = request.args.get("memory_metric", "MB")
         return self.respond_as_json(RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
 
@@ -298,12 +299,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = self._get_profile_for_request(request)
         start_ts = request.args.get("start_ts", None)
         end_ts = request.args.get("end_ts", None)
+        time_metric = request.args.get("time_metric", "ms")
+        memory_metric = request.args.get("memory_metric", "KB")
         if start_ts is not None:
             start_ts = int(start_ts)
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts))
+        return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts, time_metric=time_metric, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def static_file_route(self, request):

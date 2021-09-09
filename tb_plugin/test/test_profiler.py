@@ -1467,7 +1467,7 @@ class TestProfiler(unittest.TestCase):
           {
             "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
-            "ts": 795,
+            "ts": 796,
             "args": {
                 "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": -100
             }

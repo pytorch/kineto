@@ -216,9 +216,15 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                               columns: graph.columns,
                               rows: graph.rows[device] ?? []
                             }}
-                            initialSelectionStart={selectedRange?.start}
-                            initialSelectionEnd={selectedRange?.end}
+                            device={device}
                             onSelectionChanged={onSelectedRangeChanged}
+                            explorerOptions={{
+                              actions: ['dragToZoom', 'rightClickToReset'],
+                              axis: 'horizontal',
+                              keepInBounds: true,
+                              maxZoomIn: 0.000001,
+                              maxZoomOut: 10
+                            }}
                           />
                         </div>
                       </Grid>
@@ -257,17 +263,19 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 </Grid>
               </>
             )}
-            <Grid item container direction="column" sm={6}>
-              <Grid item container direction="column" alignContent="center">
-                <TextField
-                  classes={{ root: classes.inputWidthOverflow }}
-                  value={searchOperatorName}
-                  onChange={onSearchOperatorChanged}
-                  type="search"
-                  label="Search by Name"
-                />
+            <>
+              <Grid item container direction="column" sm={6}>
+                <Grid item container direction="column" alignContent="center">
+                  <TextField
+                    classes={{ root: classes.inputWidthOverflow }}
+                    value={searchOperatorName}
+                    onChange={onSearchOperatorChanged}
+                    type="search"
+                    label="Search by Name"
+                  />
+                </Grid>
               </Grid>
-              <Grid>
+              <Grid item direction="column">
                 <DataLoading value={memoryData}>
                   {(data) => (
                     <MemoryTable
@@ -280,7 +288,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                   )}
                 </DataLoading>
               </Grid>
-            </Grid>
+            </>
           </Grid>
         </CardContent>
       </Card>

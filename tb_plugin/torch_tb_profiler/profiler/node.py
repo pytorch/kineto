@@ -92,10 +92,14 @@ class OperatorNode(HostNode):
     def add_memory_record(self, record):
         self.memory_records.append(record)
 
-    def get_memory_metrics(self):
-        metrics_count = MemoryMetrics.SelfAllocationCount + 1
+    def get_memory_metrics(self, start_ts, end_ts):
+        metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
         memory_metrics = defaultdict(lambda: [0] * metrics_count)
         for record in self.memory_records:
+            if start_ts is not None and record.ts < start_ts:
+                continue
+            if end_ts is not None and record.ts > end_ts:
+                continue
             name = record.device_name
             if name is None:
                 continue

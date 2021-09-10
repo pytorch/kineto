@@ -46,33 +46,32 @@ constexpr int kDefaultEventProfilerHearbeatMonitorPeriod(0);
 constexpr seconds kMaxRequestAge(10);
 
 // Event Profiler
-const string kEventsKey = "EVENTS";
-const string kMetricsKey = "METRICS";
-const string kSamplePeriodKey = "SAMPLE_PERIOD_MSECS";
-const string kMultiplexPeriodKey = "MULTIPLEX_PERIOD_MSECS";
-const string kReportPeriodKey = "REPORT_PERIOD_SECS";
-const string kSamplesPerReportKey = "SAMPLES_PER_REPORT";
-const string kEventsLogFileKey = "EVENTS_LOG_FILE";
-const string kEventsEnabledDevicesKey = "EVENTS_ENABLED_DEVICES";
-const string kOnDemandDurationKey = "EVENTS_DURATION_SECS";
-const string kMaxEventProfilersPerGpuKey = "MAX_EVENT_PROFILERS_PER_GPU";
-const string kHeartbeatMonitorPeriodKey =
+constexpr char kEventsKey[] = "EVENTS";
+constexpr char kMetricsKey[] = "METRICS";
+constexpr char kSamplePeriodKey[] = "SAMPLE_PERIOD_MSECS";
+constexpr char kMultiplexPeriodKey[] = "MULTIPLEX_PERIOD_MSECS";
+constexpr char kReportPeriodKey[] = "REPORT_PERIOD_SECS";
+constexpr char kSamplesPerReportKey[] = "SAMPLES_PER_REPORT";
+constexpr char kEventsLogFileKey[] = "EVENTS_LOG_FILE";
+constexpr char kEventsEnabledDevicesKey[] = "EVENTS_ENABLED_DEVICES";
+constexpr char kOnDemandDurationKey[] = "EVENTS_DURATION_SECS";
+constexpr char kMaxEventProfilersPerGpuKey[] = "MAX_EVENT_PROFILERS_PER_GPU";
+constexpr char kHeartbeatMonitorPeriodKey[] =
     "EVENTS_HEARTBEAT_MONITOR_PERIOD_SECS";
 
 // Activity Profiler
-const string kActivitiesEnabledKey = "ACTIVITIES_ENABLED";
-const string kActivityTypesKey = "ACTIVITY_TYPES";
-const string kActivitiesLogFileKey = "ACTIVITIES_LOG_FILE";
-const string kActivitiesLogUrlKey = "ACTIVITIES_LOG_URL";
-const string kActivitiesDurationKey = "ACTIVITIES_DURATION_SECS";
-const string kActivitiesDurationMsecsKey = "ACTIVITIES_DURATION_MSECS";
-const string kActivitiesIterationsKey = "ACTIVITIES_ITERATIONS";
-const string kActivitiesIterationsTargetKey = "ACTIVITIES_ITERATIONS_TARGET";
-const string kActivitiesNetFilterKey = "ACTIVITIES_NET_FILTER";
-const string kActivitiesMinNetSizeKey = "ACTIVITIES_MIN_NET_SIZE";
-const string kActivitiesMinGpuOpCountKey = "ACTIVITIES_MIN_GPU_OP_COUNT";
-const string kActivitiesWarmupDurationSecsKey = "ACTIVITIES_WARMUP_PERIOD_SECS";
-const string kActivitiesMaxGpuBufferSizeKey =
+constexpr char kActivitiesEnabledKey[] = "ACTIVITIES_ENABLED";
+constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
+constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
+constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
+constexpr char kActivitiesDurationMsecsKey[] = "ACTIVITIES_DURATION_MSECS";
+constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
+constexpr char kActivitiesIterationsTargetKey[] = "ACTIVITIES_ITERATIONS_TARGET";
+constexpr char kActivitiesNetFilterKey[] = "ACTIVITIES_NET_FILTER";
+constexpr char kActivitiesMinNetSizeKey[] = "ACTIVITIES_MIN_NET_SIZE";
+constexpr char kActivitiesMinGpuOpCountKey[] = "ACTIVITIES_MIN_GPU_OP_COUNT";
+constexpr char kActivitiesWarmupDurationSecsKey[] = "ACTIVITIES_WARMUP_PERIOD_SECS";
+constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
 // Common
@@ -90,30 +89,27 @@ const string kActivitiesMaxGpuBufferSizeKey =
 // propagating the request to the profiler.
 // If the request can not be honored, it is up to the profilers to report
 // an error somehow - no checks are done at config parse time.
-const string kProfileStartTimeKey = "PROFILE_START_TIME";
+constexpr char kProfileStartTimeKey[] = "PROFILE_START_TIME";
 // DEPRECATED - USE PROFILE_START_TIME instead
-const string kRequestTimestampKey = "REQUEST_TIMESTAMP";
+constexpr char kRequestTimestampKey[] = "REQUEST_TIMESTAMP";
 
 // Enable on-demand trigger via kill -USR2 <pid>
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
-const string kEnableSigUsr2Key = "ENABLE_SIGUSR2";
+constexpr char kEnableSigUsr2Key[] = "ENABLE_SIGUSR2";
 
 // Enable communication through IPC Fabric
 // and disable thrift communication with dynolog daemon
-const string kEnableIpcFabricKey = "ENABLE_IPC_FABRIC";
+constexpr char kEnableIpcFabricKey[] = "ENABLE_IPC_FABRIC";
 
 // Verbose log level
 // The actual glog is not used and --v and --vmodule has no effect.
 // Instead set the verbose level and modules in the config file.
-const string kLogVerboseLevelKey = "VERBOSE_LOG_LEVEL";
+constexpr char kLogVerboseLevelKey[] = "VERBOSE_LOG_LEVEL";
 // By default, all modules will log verbose messages >= verboseLogLevel.
 // But to reduce noise we can specify one or more modules of interest.
 // A module is a C/C++ object file (source file name),
 // Example argument: ActivityProfiler.cpp,output_json.cpp
-const string kLogVerboseModulesKey = "VERBOSE_LOG_MODULES";
-
-const string kConfigFileEnvVar = "KINETO_CONFIG";
-const string kConfigFile = "/etc/libkineto.conf";
+constexpr char kLogVerboseModulesKey[] = "VERBOSE_LOG_MODULES";
 
 // Max devices supported on any system
 constexpr uint8_t kMaxDevices = 8;
@@ -211,7 +207,7 @@ const seconds Config::maxRequestAge() const {
   return kMaxRequestAge;
 }
 
-std::string getTimeStr(time_point<system_clock> t) {
+static std::string getTimeStr(time_point<system_clock> t) {
   std::time_t t_c = system_clock::to_time_t(t);
   return fmt::format("{:%H:%M:%S}", fmt::localtime(t_c));
 }
@@ -249,83 +245,83 @@ void Config::setActivityTypes(
 
 bool Config::handleOption(const std::string& name, std::string& val) {
   // Event Profiler
-  if (name == kEventsKey) {
+  if (!name.compare(kEventsKey)) {
     vector<string> event_names = splitAndTrim(val, ',');
     eventNames_.insert(event_names.begin(), event_names.end());
-  } else if (name == kMetricsKey) {
+  } else if (!name.compare(kMetricsKey)) {
     vector<string> metric_names = splitAndTrim(val, ',');
     metricNames_.insert(metric_names.begin(), metric_names.end());
-  } else if (name == kSamplePeriodKey) {
+  } else if (!name.compare(kSamplePeriodKey)) {
     samplePeriod_ = milliseconds(toInt32(val));
-  } else if (name == kMultiplexPeriodKey) {
+  } else if (!name.compare(kMultiplexPeriodKey)) {
     multiplexPeriod_ = milliseconds(toInt32(val));
-  } else if (name == kReportPeriodKey) {
+  } else if (!name.compare(kReportPeriodKey)) {
     setReportPeriod(seconds(toInt32(val)));
-  } else if (name == kSamplesPerReportKey) {
+  } else if (!name.compare(kSamplesPerReportKey)) {
     samplesPerReport_ = toInt32(val);
-  } else if (name == kEventsLogFileKey) {
+  } else if (!name.compare(kEventsLogFileKey)) {
     eventLogFile_ = val;
-  } else if (name == kEventsEnabledDevicesKey) {
+  } else if (!name.compare(kEventsEnabledDevicesKey)) {
     eventProfilerDeviceMask_ = createDeviceMask(val);
-  } else if (name == kOnDemandDurationKey) {
+  } else if (!name.compare(kOnDemandDurationKey)) {
     eventProfilerOnDemandDuration_ = seconds(toInt32(val));
     eventProfilerOnDemandTimestamp_ = timestamp();
-  } else if (name == kMaxEventProfilersPerGpuKey) {
+  } else if (!name.compare(kMaxEventProfilersPerGpuKey)) {
     eventProfilerMaxInstancesPerGpu_ = toInt32(val);
-  } else if (name == kHeartbeatMonitorPeriodKey) {
+  } else if (!name.compare(kHeartbeatMonitorPeriodKey)) {
     eventProfilerHeartbeatMonitorPeriod_ = seconds(toInt32(val));
   }
 
   // Activity Profiler
-  else if (name == kActivitiesDurationKey) {
+  else if (!name.compare(kActivitiesDurationKey)) {
     activitiesOnDemandDuration_ =
         duration_cast<milliseconds>(seconds(toInt32(val)));
     activitiesOnDemandTimestamp_ = timestamp();
-  } else if (name == kActivityTypesKey) {
+  } else if (!name.compare(kActivityTypesKey)) {
     vector<string> activity_types = splitAndTrim(toLower(val), ',');
     setActivityTypes(activity_types);
-  } else if (name == kActivitiesDurationMsecsKey) {
+  } else if (!name.compare(kActivitiesDurationMsecsKey)) {
     activitiesOnDemandDuration_ = milliseconds(toInt32(val));
     activitiesOnDemandTimestamp_ = timestamp();
-  } else if (name == kActivitiesIterationsKey) {
+  } else if (!name.compare(kActivitiesIterationsKey)) {
     activitiesExternalAPIIterations_ = toInt32(val);
     activitiesOnDemandTimestamp_ = timestamp();
-  } else if (name == kActivitiesIterationsTargetKey) {
+  } else if (!name.compare(kActivitiesIterationsTargetKey)) {
     activitiesExternalAPIIterationsTarget_ = val;
-  } else if (name == kActivitiesNetFilterKey) {
+  } else if (!name.compare(kActivitiesNetFilterKey)) {
     activitiesExternalAPIFilter_ = splitAndTrim(val, ',');
-  } else if (name == kActivitiesMinNetSizeKey) {
+  } else if (!name.compare(kActivitiesMinNetSizeKey)) {
     activitiesExternalAPINetSizeThreshold_ = toInt32(val);
-  } else if (name == kActivitiesMinGpuOpCountKey) {
+  } else if (!name.compare(kActivitiesMinGpuOpCountKey)) {
     activitiesExternalAPIGpuOpCountThreshold_ = toInt32(val);
-  } else if (name == kLogVerboseLevelKey) {
+  } else if (!name.compare(kLogVerboseLevelKey)) {
     verboseLogLevel_ = toInt32(val);
-  } else if (name == kLogVerboseModulesKey) {
+  } else if (!name.compare(kLogVerboseModulesKey)) {
     verboseLogModules_ = splitAndTrim(val, ',');
-  } else if (name == kActivitiesEnabledKey) {
+  } else if (!name.compare(kActivitiesEnabledKey)) {
     activityProfilerEnabled_ = toBool(val);
-  } else if (name == kActivitiesLogFileKey) {
+  } else if (!name.compare(kActivitiesLogFileKey)) {
     activitiesLogFile_ = val;
     activitiesLogUrl_ = fmt::format("file://{}", val);
     activitiesOnDemandTimestamp_ = timestamp();
-  } else if (name == kActivitiesMaxGpuBufferSizeKey) {
+  } else if (!name.compare(kActivitiesMaxGpuBufferSizeKey)) {
     activitiesMaxGpuBufferSize_ = toInt32(val) * 1024 * 1024;
-  } else if (name == kActivitiesWarmupDurationSecsKey) {
+  } else if (!name.compare(kActivitiesWarmupDurationSecsKey)) {
     activitiesWarmupDuration_ = seconds(toInt32(val));
   }
 
   // Common
-  else if (name == kRequestTimestampKey) {
+  else if (!name.compare(kRequestTimestampKey)) {
     LOG(WARNING) << kRequestTimestampKey
                  << " has been deprecated - please use "
                  << kProfileStartTimeKey;
     requestTimestamp_ = handleRequestTimestamp(toInt64(val));
-  } else if (name == kProfileStartTimeKey) {
+  } else if (!name.compare(kProfileStartTimeKey)) {
     profileStartTime_ =
       time_point<system_clock>(milliseconds(toInt64(val)));
-  } else if (name == kEnableSigUsr2Key) {
+  } else if (!name.compare(kEnableSigUsr2Key)) {
     enableSigUsr2_ = toBool(val);
-  } else if (name == kEnableIpcFabricKey) {
+  } else if (!name.compare(kEnableIpcFabricKey)) {
     enableIpcFabric_ = toBool(val);
   } else {
     return false;

@@ -74,7 +74,4 @@ KINETO_COMPILER_FLAGS = [
     "-fexceptions",
     "-Wno-unused-function",
     "-Wno-unused-private-field",
-    "-Wno-global-constructors",
-    "-Wno-missing-prototypes",
-    "-Wno-unused-private-field",
 ]

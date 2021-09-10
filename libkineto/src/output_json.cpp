@@ -34,10 +34,10 @@ static constexpr char kFlowStart = 's';
 static constexpr char kFlowEnd = 'f';
 
 #ifdef __linux__
-static const std::string kDefaultLogFileFmt =
+static constexpr char kDefaultLogFileFmt[] =
     "/tmp/libkineto_activities_{}.json";
 #else
-static const std::string kDefaultLogFileFmt = "libkineto_activities_{}.json";
+static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 #endif
 
 void ChromeTraceLogger::handleTraceStart(

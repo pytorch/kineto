@@ -13,6 +13,7 @@
 
 #include <stdlib.h>
 #include <chrono>
+#include <fmt/format.h>
 #include <fstream>
 
 #include "DaemonConfigLoader.h"
@@ -224,8 +225,9 @@ void ConfigLoader::configureFromSignal(
     Config& config) {
   LOG(INFO) << "Received on-demand profiling signal, "
             << "reading config from " << kOnDemandConfigFile;
-  const std::string config_str =
-      readConfigFromConfigFile(kOnDemandConfigFile);
+  // Reset start time to 0 in order to compute new default start time
+  const std::string config_str = "PROFILE_START_TIME=0\n"
+      + readConfigFromConfigFile(kOnDemandConfigFile);
   config.parse(config_str);
   config.setSignalDefaults();
   notifyHandlers(config);

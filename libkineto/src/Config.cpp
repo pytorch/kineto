@@ -176,6 +176,7 @@ Config::Config()
       multiplexPeriod_(kDefaultMultiplexPeriodMsecs),
       activityProfilerEnabled_(true),
       activitiesLogFile_(defaultTraceFileName()),
+      activitiesLogUrl_(fmt::format("file://{}", activitiesLogFile_)),
       activitiesMaxGpuBufferSize_(kDefaultActivitiesMaxGpuBufferSize),
       activitiesWarmupDuration_(kDefaultActivitiesWarmupDurationSecs),
       activitiesOnDemandDuration_(kDefaultActivitiesProfileDurationMSecs),
@@ -187,7 +188,7 @@ Config::Config()
       activitiesOnDemandTimestamp_(milliseconds(0)),
       profileStartTime_(milliseconds(0)),
       requestTimestamp_(milliseconds(0)),
-      enableSigUsr2_(true),
+      enableSigUsr2_(false),
       enableIpcFabric_(false) {
   auto factories = configFactories();
   if (factories) {
@@ -342,7 +343,8 @@ void Config::setClientDefaults() {
   activitiesLogToMemory_ = true;
 }
 
-void Config::validate(const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) {
+void Config::validate(
+    const time_point<system_clock>& fallbackProfileStartTime) {
   if (samplePeriod_.count() == 0) {
     LOG(WARNING) << "Sample period must be greater than 0, setting to 1ms";
     samplePeriod_ = milliseconds(1);

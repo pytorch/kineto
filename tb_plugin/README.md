@@ -196,7 +196,7 @@ This view displays the performance of every PyTorch operator that is executed ei
 
 ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/operator_view.PNG)
 Each table row is a PyTorch operator, which is a computation operator implemented by C++,
-such as “aten::relu_”, “aten::convolution”.
+such as "aten::relu_", "aten::convolution".
 
 Calls: How many times the operator is called in this run.
 
@@ -222,10 +222,10 @@ Only the top N operators sorted by duration (configurable in the text box) will 
 
 The search box enables searching operators by name.
 
-“Group By” could choose between “Operator” and “Operator + Input Shape”.
-The “Input Shape” is shapes of tensors in this operator’s input argument list.
-The empty “[]” means argument with scalar type.
-For example, “[[32, 256, 14, 14], [1024, 256, 1, 1], [], [], [], [], [], [], []]”
+"Group By" could choose between "Operator" and "Operator + Input Shape".
+The "Input Shape" is shapes of tensors in this operator’s input argument list.
+The empty "[]" means argument with scalar type.
+For example, "[[32, 256, 14, 14], [1024, 256, 1, 1], [], [], [], [], [], [], []]"
 means this operator has 9 input arguments,
 1st is a tensor of size 32\*256\*14\*14,
 2nd is a tensor of size 1024\*256\*1\*1,
@@ -258,7 +258,7 @@ the following 7 ones are scalar variables.
       Please refer to [Nvidia's best-practices guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html).
       To investigate efficiency for each kernel, we calculate and show the 'Mean Blocks Per SM' and 'Mean Est. Achieved Occupancy' in the last two column.
 
-    * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. “Mean Blocks per SM” is weighted average of all runs of this kernel name, using each run’s duration as weight.
+    * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. "Mean Blocks per SM" is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
     * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
 
@@ -270,7 +270,7 @@ Only the top N kernels sorted by accumulated time (configurable in the text box)
 
 The search box enables searching kernels by name.
 
-“Group By” could choose between “Kernel Name” and “Kernel Properties + Op Name”.
+"Group By" could choose between "Kernel Name" and "Kernel Properties + Op Name".
 The "Operator" is the PyTorch operator which launches this kernel.
 
 * Trace View
@@ -283,13 +283,13 @@ Each colored rectangle represents an operator, or a CUDA runtime, or a GPU op wh
 
 In the above example:
 
-The “thread 25772” is the CPU thread that do “backward” of neural network.
+The "thread 25772" is the CPU thread that do "backward" of neural network.
 
-The “thread 25738” is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
+The "thread 25738" is the main CPU thread, which mainly do data loading, forward of neural network, and model update.
 
-The “stream 7” is a CUDA stream, which shows all kernels of this stream.
+The "stream 7" is a CUDA stream, which shows all kernels of this stream.
 
-You can see there are 6 “ProfilerStep” at the top of "thread 1". Each “ProfilerStep” represents a mini-batch step.
+You can see there are 6 "ProfilerStep" at the top of "thread 1". Each "ProfilerStep" represents a mini-batch step.
 
 The suspended toolbar has functionalities to help view the trace line.
 For example, when the up-down arrow is enabled,
@@ -297,10 +297,10 @@ you can zoom in by dragging the mouse up and keeping mouse's left button pushed 
 
 ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/trace_view_one_step.PNG)
 
-The “Optimizer.step#SGD.step” and ”enumerate(DataLoader)#_SingleProcessDataLoaderIter.\__next\__”
+The "Optimizer.step#SGD.step" and "enumerate(DataLoader)#_SingleProcessDataLoaderIter.\__next\__"
 are high-level python side functions.
 
-When you select the top-right corner's “Flow events” to ”async”,
+When you select the top-right corner's "Flow events" to "async",
 you can see the relationship between an operator and its launched kernels.
 ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/trace_view_launch.PNG)
 

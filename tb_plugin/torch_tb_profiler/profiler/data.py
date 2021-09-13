@@ -54,6 +54,7 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
+        self.tc_ratio = None
         self.tid2tree = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
@@ -197,6 +198,7 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = gpu_metrics_parser.approximated_sm_efficiency_ranges
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
+        self.tc_ratio = gpu_metrics_parser.tc_ratio
 
         if self.has_kernel:
             logger.debug("KernelParser")

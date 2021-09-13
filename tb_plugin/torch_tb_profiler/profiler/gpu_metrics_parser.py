@@ -6,6 +6,7 @@ from .range_utils import (get_ranges_sum, intersection_ranges_lists,
                           intersection_ranges_lists_with_value, merge_ranges,
                           merge_ranges_with_value)
 from .trace import EventTypes
+from .tensor_core import TC_Allowlist
 
 logger = utils.get_logger()
 
@@ -31,6 +32,9 @@ class GPUMetricsParser(object):
         self.occupancy_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.avg_occupancy_per_device = [None] * consts.MAX_GPU_PER_NODE
         self.occupancy_count = [0] * consts.MAX_GPU_PER_NODE
+        # For calculating Tensor Cores time ratio.
+        self.kernel_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
+        self.tc_ratio = [None] * consts.MAX_GPU_PER_NODE
 
     def calculate_gpu_utilization(self, global_start_time, global_end_time, steps_start_time, steps_end_time):
         # Make bucket_size to 10-power's of us, and number of buckets to (10, 100].
@@ -151,6 +155,27 @@ class GPUMetricsParser(object):
             if total_time > 0:
                 self.avg_occupancy_per_device[gpu_id] = total_occupancy / total_time
 
+    def calculate_tc_ratio(self, steps_start_time, steps_end_time):
+        kernels_num = sum(len(self.kernel_per_device[gpu_id]) for gpu_id in self.gpu_ids)
+        if kernels_num > 0: # If no kernel, then keep all self.tc_ratio as None.
+            for gpu_id in self.gpu_ids:
+                tc_time = 0
+                total_time = 0
+                kernels = self.kernel_per_device[gpu_id]
+                for r in kernels:
+                    min_time = max(r[0], steps_start_time)
+                    max_time = min(r[1], steps_end_time)
+                    if min_time < max_time:
+                        dur = max_time - min_time
+                        is_tc_used = r[2]
+                        if is_tc_used:
+                            tc_time += dur
+                        total_time += dur
+                if total_time > 0:
+                    self.tc_ratio[gpu_id] = tc_time / total_time
+                else:
+                    self.tc_ratio[gpu_id] = 0.0
+
     def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
         logger.debug("GPU Metrics, parse events")
         for event in events:
@@ -160,6 +185,7 @@ class GPUMetricsParser(object):
         self.calculate_gpu_utilization(global_start_time, global_end_time, steps_start_time, steps_end_time)
         self.calculate_approximated_sm_efficiency(steps_start_time, steps_end_time)
         self.calculate_occupancy(steps_start_time, steps_end_time)
+        self.calculate_tc_ratio(steps_start_time, steps_end_time)
 
     def parse_event(self, event):
         ts = event.ts
@@ -179,7 +205,6 @@ class GPUMetricsParser(object):
                 else:
                     # Workaround for negative value input.
                     logger.warning("blocks per SM {} with ts {} is not positive!".format(event.blocks_per_sm, ts))
-
             if event.occupancy is not None:
                 if event.occupancy >= 0.0:
                     self.occupancy_per_device[gpu_id].append((ts, ts + dur, event.occupancy))
@@ -187,3 +212,4 @@ class GPUMetricsParser(object):
                 else:
                     # Workaround for negative value input.
                     logger.warning("est. achieved occupancy % {} with ts {} is negative!".format(event.occupancy, ts))
+            self.kernel_per_device[gpu_id].append((ts, ts + dur, event.name in TC_Allowlist))

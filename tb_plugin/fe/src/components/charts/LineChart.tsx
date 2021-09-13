@@ -15,6 +15,7 @@ interface IProps {
   vAxisTitle?: string
   explorerOptions?: object
   onSelectionChanged?: (start: number, end: number) => void
+  record?: object
 }
 
 const useStyles = makeStyles(() => ({
@@ -31,11 +32,13 @@ export const LineChart: React.FC<IProps> = (props) => {
     hAxisTitle,
     vAxisTitle,
     onSelectionChanged,
-    explorerOptions
+    explorerOptions,
+    record
   } = props
   const classes = useStyles({ height })
   const graphRef = React.useRef<HTMLDivElement>(null)
   const [resizeEventDependency] = useResizeEventDependency()
+  const [chartObj, setChartObj] = React.useState<any | undefined>()
 
   React.useLayoutEffect(() => {
     const element = graphRef.current
@@ -105,7 +108,17 @@ export const LineChart: React.FC<IProps> = (props) => {
     }
 
     chart.draw(data, options)
+    setChartObj(chart)
   }, [device, height, resizeEventDependency])
+
+  React.useEffect(() => {
+    console.log(JSON.stringify(record) + ' aaaaaaaa is selected')
+    if (chartObj) {
+      const selected = chartObj.getSelection()
+      console.log(chartObj)
+      console.log(selected)
+    }
+  }, [record, chartObj])
 
   return (
     <div className={classes.root}>

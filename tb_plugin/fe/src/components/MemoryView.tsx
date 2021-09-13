@@ -15,8 +15,8 @@ import * as React from 'react'
 import * as api from '../api'
 import { MemoryCurve, MemoryData, MemoryEventsData } from '../api'
 import { useSearchDirectly } from '../utils/search'
-import { LineChart } from './charts/LineChart'
 import { AntTableChart } from './charts/AntTableChart'
+import { LineChart } from './charts/LineChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
 
@@ -118,6 +118,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   const onSearchEventOperatorChanged: TextFieldProps['onChange'] = (event) => {
     setSearchEventOperatorName(event.target.value as string)
+  }
+
+  const [selectedRecord, setSelectedRecord] = React.useState<any | undefined>()
+  const onRowSelected = (record: object, rowIndex?: number) => {
+    console.log('MemoryView:' + rowIndex)
+    setSelectedRecord(record)
   }
 
   React.useEffect(() => {
@@ -225,6 +231,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                               maxZoomIn: 0.000001,
                               maxZoomOut: 10
                             }}
+                            record={selectedRecord}
                           />
                         </div>
                       </Grid>
@@ -256,6 +263,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                             rows: searchedEventsTableDataRows ?? []
                           }}
                           initialPageSize={10}
+                          onRowSelected={onRowSelected}
                         />
                       )
                     }}

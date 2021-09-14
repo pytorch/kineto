@@ -411,6 +411,13 @@ class RunProfile(object):
             time_metric: str = "ms",
             memory_metric: str = "K",
         ):
+        def get_op_name_or_ctx(record: MemoryRecord):
+            name = record.op_name_or_unknown
+            if name.startswith("aten::empty") and record.parent_op_name:
+                # aten::empty can be treated as the "malloc" in pytorch
+                name = f"{record.parent_op_name} ({name})"
+            return name
+
         cano = Canonicalizer(time_metric=time_metric, memory_metric=memory_metric)
         round = DisplayRounder(ndigits=2)
 
@@ -430,8 +437,8 @@ class RunProfile(object):
             prev_ts = r.ts
             addr = r.addr
             size = r.bytes
-            if size > 0:
-                # Allocation event, to be matched with a Release event
+            if r.is_allocation:
+                # to be matched with a release event
                 alloc[addr] = i
             else:
                 if addr in alloc:
@@ -439,7 +446,7 @@ class RunProfile(object):
                     alloc_ts = alloc_r.ts
                     free_ts = r.ts
                     events[alloc_r.device_name].append([
-                        alloc_r.op_name_or_unknown,
+                        get_op_name_or_ctx(alloc_r),
                         round(cano.convert_memory(-size)),
                         round(cano.convert_time(alloc_ts - profiler_start_ts)),
                         round(cano.convert_time(free_ts - profiler_start_ts)),
@@ -453,7 +460,7 @@ class RunProfile(object):
         for i in alloc.values():
             r = memory_records[i]
             events[r.device_name].append([
-                r.op_name_or_unknown,
+                get_op_name_or_ctx(r),
                 round(cano.convert_memory(r.bytes)),
                 round(cano.convert_time(r.ts - profiler_start_ts)),
                 None,
@@ -463,7 +470,7 @@ class RunProfile(object):
         for i in free.values():
             r = memory_records[i]
             events[r.device_name].append([
-                r.op_name_or_unknown,
+                get_op_name_or_ctx(r),
                 round(cano.convert_memory(-r.bytes)),
                 None,
                 round(cano.convert_time(r.ts - profiler_start_ts)),

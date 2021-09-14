@@ -333,7 +333,8 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 
       Memory events table shows the memory allocation and release event pairs. Definition of each field in the table:
 
-      * Operator: the immediate operator causing allocation from allocator.
+      * Operator: The immediate operator causing allocation from allocator. In pytorch, some operators such as
+        `aten::empty` is widely used as an API for tensor creation, in this case, we show it as `<parent-op> (<op>)`.
 
       * Size: The allocated memory size.
 

@@ -25,6 +25,7 @@ class MemoryRecord:
         self.total_allocated = total_allocated
         self.total_reserved = total_reserved
         self.op_name: Optional[str] = None
+        self.parent_op_name: Optional[str] = None
 
     @property
     def device_name(self):
@@ -34,6 +35,10 @@ class MemoryRecord:
             return "GPU{}".format(self.device_id)
         else:
             return None
+
+    @property
+    def is_allocation(self):
+        return self.bytes > 0
 
     @property
     def op_name_or_unknown(self):
@@ -239,7 +244,12 @@ class MemoryParser:
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
                     current_node.add_memory_record(record)
-                    record.op_name = current_node.name
+                    # NOTE: only allocation record can be associated with op. Because deallocation happens at the end 
+                    # of a tensor's lifetime which is not deterministic.
+                    if record.is_allocation:
+                        record.op_name = current_node.name
+                        if len(node_stack) > 0:
+                            record.parent_op_name = node_stack[-1][0].name
                     self.processed_records.append(record)
                 else:
                     self.staled_records.append(record)
@@ -277,6 +287,7 @@ class MemoryParser:
                 if addr in alloc:
                     alloc_r = memory_records[alloc[addr]]
                     r.op_name = alloc_r.op_name
+                    r.parent_op_name = alloc_r.parent_op_name
                     del alloc[addr]
                 else:
                     assert addr not in free

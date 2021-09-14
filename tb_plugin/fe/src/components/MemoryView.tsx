@@ -84,6 +84,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchEventOperatorName, setSearchEventOperatorName] = React.useState(
     ''
   )
+  const [filterEventSize, setFilterEventSize] = React.useState(512)
 
   const getSearchIndex = function () {
     if (!memoryData) {
@@ -95,6 +96,26 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       }
     }
     return -1
+  }
+
+  const filterByEventSize = <T,>(rows: T[] | undefined, size: number) => {
+    const result = React.useMemo(() => {
+      if (!rows) {
+        return undefined
+      }
+
+      // workaround type system
+      const field = (row: any): number => {
+        const sizeColIndex = 1
+        return row[sizeColIndex]
+      }
+
+      return rows.filter((row) => {
+        return field(row) > size
+      })
+    }, [rows, size])
+
+    return result
   }
 
   const searchIndex = getSearchIndex()
@@ -109,7 +130,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchedEventsTableDataRows] = useSearchDirectly(
     searchEventOperatorName,
     getName,
-    memoryEventsData?.rows[device] ?? []
+    filterByEventSize(memoryEventsData?.rows[device], filterEventSize) ?? []
   )
 
   const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
@@ -118,6 +139,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   const onSearchEventOperatorChanged: TextFieldProps['onChange'] = (event) => {
     setSearchEventOperatorName(event.target.value as string)
+  }
+
+  const onFilterEventSizeChanged: TextFieldProps['onChange'] = (event) => {
+    setFilterEventSize((event.target.value as unknown) as number)
   }
 
   React.useEffect(() => {
@@ -243,6 +268,15 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                       onChange={onSearchEventOperatorChanged}
                       type="search"
                       label="Search by Name"
+                    />
+                  </Grid>
+                  <Grid item container direction="column" alignContent="center">
+                    <TextField
+                      classes={{ root: classes.inputWidthOverflow }}
+                      value={filterEventSize}
+                      onChange={onFilterEventSizeChanged}
+                      type="number"
+                      label="Larger than (KB)"
                     />
                   </Grid>
                 </Grid>

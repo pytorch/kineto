@@ -61,9 +61,9 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
-        self.tc_eligible_ops = None
+        self.tc_eligible_ops_kernel_ratio = None
         self.kernel_stat = None
-        self.tc_used_ratio = None
+        self.tc_used_ratio = None # If it's a pure CPU run, then this keeps as None.
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
@@ -176,7 +176,7 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
         self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
         self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
-        self.tc_eligible_ops = module_aggregator.tc_eligible_ops
+        self.tc_eligible_ops_kernel_ratio = module_aggregator.tc_eligible_ops_kernel_ratio
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -231,10 +231,11 @@ class RunProfileData(object):
             # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
             # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
             major = self.device_props[0].get("computeMajor")
-            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
+            # If it's a pure CPU run, then self.tc_used_ratio is None, this rule will not be triggered.
+            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops_kernel_ratio > 0.0:
                 url = "https://pytorch.org/docs/stable/amp.html"
                 self.recommendations.append(
-                    f"{self.tc_eligible_ops} operator callings are eligible to use Tensor Cores but none uses it. " +
+                    f"Kernels with {round(self.tc_eligible_ops_kernel_ratio * 100)}% time are launched by Tensor Cores eligible operators. " +
                     f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16."
                 )
 

@@ -120,9 +120,19 @@ class ModuleAggregator:
         self.kernel_list_groupby_name_op: Dict[str, KernelAggByNameOp] = None  # For Kernel-view.
         self.stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = None
         self.stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = None
-        self.tc_eligible_ops = None
+        self.tc_eligible_ops_kernel_ratio = 0.0
 
     def aggregate(self, tid2tree):
+        def sum_self_kernel_time(ops):
+            sum_time = 0
+            for op in ops:
+                for rt in op.runtimes:
+                    # "CallTreeRoot" & "dummy" kernels are launched out of profiler step, so don't count them.
+                    if op.name != "CallTreeRoot" and rt.name != "dummy":
+                        for k in rt.get_kernels():
+                            sum_time += k.end_time - k.start_time
+            return sum_time
+
         # get the operators and kernels recursively by traverse the node tree root.
         ops = []
         kernels = []
@@ -157,4 +167,10 @@ class ModuleAggregator:
         self.op_list_groupby_name_input = list(agg_result[1].values())
         self.stack_lists_group_by_name = stack_lists_group_by_name
         self.stack_lists_group_by_name_input = stack_lists_group_by_name_input
-        self.tc_eligible_ops = sum([1 if op.tc_eligible else 0 for op in ops])
+        ops_bottom_tc_eligible = []
+        for root in tid2tree.values():
+            ops_bottom_tc_eligible.extend(root.get_bottom_tc_eligible_operators())
+        ops_bottom_tc_eligible_kernel_sum = sum_self_kernel_time(ops_bottom_tc_eligible)
+        ops_kernel_sum = sum_self_kernel_time(ops)
+        self.tc_eligible_ops_kernel_ratio = ops_bottom_tc_eligible_kernel_sum / ops_kernel_sum \
+            if ops_kernel_sum > 0 else 0.0

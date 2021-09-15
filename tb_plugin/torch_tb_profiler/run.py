@@ -214,7 +214,7 @@ class RunProfile(object):
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True
                 if profile.tc_ratio[gpu_id] is not None:
-                    gpu_metrics_data.append({"title": "Kernel using Tensor Cores",
+                    gpu_metrics_data.append({"title": "Kernel Time using Tensor Cores",
                                              "value": "{} %".format(round(profile.tc_ratio[gpu_id] * 100, 2))})
                     has_tc = True
                 is_first = False

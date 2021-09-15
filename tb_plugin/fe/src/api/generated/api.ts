@@ -592,6 +592,12 @@ export interface MemoryEventsTableMetadata {
   defaultDevice: string
   /**
    *
+   * @type {number}
+   * @memberof MemoryEventsTableMetadata
+   */
+  maxSize: number
+  /**
+   *
    * @type {string}
    * @memberof MemoryEventsTableMetadata
    */

@@ -19,6 +19,7 @@ import { AntTableChart } from './charts/AntTableChart'
 import { LineChart } from './charts/LineChart'
 import { DataLoading } from './DataLoading'
 import { MemoryTable } from './tables/MemoryTable'
+import Slider from '@material-ui/core/Slider'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -40,6 +41,14 @@ const useStyles = makeStyles((theme) => ({
   },
   description: {
     marginLeft: theme.spacing(1)
+  },
+  filterSlider: {
+    marginTop: 15,
+    marginRight: 6,
+    width: 250
+  },
+  filterInput: {
+    width: 100
   }
 }))
 
@@ -84,7 +93,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchEventOperatorName, setSearchEventOperatorName] = React.useState(
     ''
   )
-  const [filterEventSize, setFilterEventSize] = React.useState(512)
+  const [filterEventSize, setFilterEventSize] = React.useState<number[]>([0, 0])
+  const [maxSize, setMaxSize] = React.useState(0)
 
   const getSearchIndex = function () {
     if (!memoryData) {
@@ -98,7 +108,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     return -1
   }
 
-  const filterByEventSize = <T,>(rows: T[] | undefined, size: number) => {
+  const filterByEventSize = <T,>(
+    rows: T[] | undefined,
+    size: Array<number>
+  ) => {
     const result = React.useMemo(() => {
       if (!rows) {
         return undefined
@@ -111,7 +124,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       }
 
       return rows.filter((row) => {
-        return field(row) > size
+        return field(row) > size[0] && field(row) < size[1]
       })
     }, [rows, size])
 
@@ -144,6 +157,25 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [selectedRecord, setSelectedRecord] = React.useState<any | undefined>()
   const onRowSelected = (record?: object, rowIndex?: number) => {
     setSelectedRecord(record)
+  }
+  
+  const onFilterEventSizeChanged = (
+    event: any,
+    newValue: number | number[]
+  ) => {
+    setFilterEventSize(newValue as number[])
+  }
+
+  const onFilterEventMinSizeInputChanged = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFilterEventSize([Number(event.target.value), filterEventSize[1]])
+  }
+
+  const onFilterEventMaxSizeInputChanged = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFilterEventSize([filterEventSize[0], Number(event.target.value)])
   }
 
   React.useEffect(() => {
@@ -178,6 +210,11 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         if (hasMemoryEventsData === undefined) {
           setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
         }
+        setMaxSize(resp.metadata.max_size)
+        setFilterEventSize([
+          resp.metadata.max_size / 4,
+          resp.metadata.max_size
+        ])
         setMemoryEventsData(resp)
       })
   }, [run, worker, span, selectedRange])
@@ -262,24 +299,61 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
             </Grid>
             {hasMemoryEventsData && (
               <>
-                <Grid item container direction="column" sm={6}>
-                  <Grid item container direction="column" alignContent="center">
-                    <TextField
-                      classes={{ root: classes.inputWidthOverflow }}
-                      value={searchEventOperatorName}
-                      onChange={onSearchEventOperatorChanged}
-                      type="search"
-                      label="Search by Name"
-                    />
+                <Grid container>
+                  <Grid item container sm={6} justify="space-around">
+                    <Grid item>
+                      <TextField
+                        classes={{ root: classes.inputWidthOverflow }}
+                        value={searchEventOperatorName}
+                        onChange={onSearchEventOperatorChanged}
+                        type="search"
+                        label="Search by Name"
+                      />
+                    </Grid>
                   </Grid>
-                  <Grid item container direction="column" alignContent="center">
-                    <TextField
-                      classes={{ root: classes.inputWidthOverflow }}
-                      value={filterEventSize}
-                      onChange={onFilterEventSizeChanged}
-                      type="number"
-                      label="Larger than (KB)"
-                    />
+                  <Grid item sm={6}>
+                    <Grid container direction='row' spacing={2}>
+                      <Grid item>
+                        <TextField
+                          className={classes.filterInput}
+                          label="Min Size(KB)"
+                          value={filterEventSize[0]}
+                          onChange={onFilterEventMinSizeInputChanged}
+                          inputProps={{
+                            step: 100,
+                            min: 0,
+                            max: maxSize,
+                            type: 'number',
+                            'aria-labelledby': 'input-slider'
+                          }}
+                        />
+                      </Grid>
+                      <Grid item>
+                        <Slider
+                          className={classes.filterSlider}
+                          value={filterEventSize}
+                          onChange={onFilterEventSizeChanged}
+                          aria-labelledby="input-slider"
+                          min={0}
+                          max={maxSize}
+                        />
+                      </Grid>
+                      <Grid item>
+                        <TextField
+                          className={classes.filterInput}
+                          label="Max Size(KB)"
+                          value={filterEventSize[1]}
+                          onChange={onFilterEventMaxSizeInputChanged}
+                          inputProps={{
+                            step: 100,
+                            min: 0,
+                            max: maxSize,
+                            type: 'number',
+                            'aria-labelledby': 'input-slider'
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
                   </Grid>
                 </Grid>
                 <Grid item direction="column">

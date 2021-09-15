@@ -884,12 +884,15 @@ components:
       required:
         - title
         - default_device
+        - max_size
         - value
       properties:
         title:
           type: string
         default_device:
           type: string
+        max_size:
+          type: number
         search:
           type: string
         sort:

@@ -6,6 +6,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import * as React from 'react'
 import { Graph } from '../../api'
 import { useResizeEventDependency } from '../../utils/resize'
+import { binarySearch } from '../../utils/binarysearch'
 
 interface IProps {
   graph: Graph
@@ -15,7 +16,7 @@ interface IProps {
   vAxisTitle?: string
   explorerOptions?: object
   onSelectionChanged?: (start: number, end: number) => void
-  record?: object
+  record?: any
 }
 
 const useStyles = makeStyles(() => ({
@@ -78,7 +79,6 @@ export const LineChart: React.FC<IProps> = (props) => {
     })
 
     google.visualization.events.addListener(chart, 'ready', function () {
-      // console.log('ready')
       var zoomLast = getCoords()
       var observer = new MutationObserver(function () {
         var zoomCurrent = getCoords()
@@ -112,11 +112,18 @@ export const LineChart: React.FC<IProps> = (props) => {
   }, [device, height, resizeEventDependency])
 
   React.useEffect(() => {
-    console.log(JSON.stringify(record) + ' aaaaaaaa is selected')
+    const compare_fn = (key: number, mid: Array<number>) => key - parseFloat(mid[0].toFixed(2))
     if (chartObj) {
-      const selected = chartObj.getSelection()
-      console.log(chartObj)
-      console.log(selected)
+      if (record) {
+        let startId = binarySearch(graph.rows, record.col2, compare_fn)
+        let endId = binarySearch(graph.rows, record.col3, compare_fn)
+        let selection = []
+        if (startId >= 0) selection.push({row: startId, column: 1})
+        if (endId >= 0) selection.push({row: endId, column: 1})
+        chartObj.setSelection(selection)
+      } else {
+        chartObj.setSelection()
+      }
     }
   }, [record, chartObj])
 

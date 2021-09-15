@@ -121,8 +121,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   }
 
   const [selectedRecord, setSelectedRecord] = React.useState<any | undefined>()
-  const onRowSelected = (record: object, rowIndex?: number) => {
-    console.log('MemoryView:' + rowIndex)
+  const onRowSelected = (record?: object, rowIndex?: number) => {
     setSelectedRecord(record)
   }
 

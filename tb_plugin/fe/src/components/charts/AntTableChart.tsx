@@ -11,7 +11,7 @@ interface IProps {
   graph: Graph
   sortColumn?: string
   initialPageSize?: number
-  onRowSelected?: (record: object, rowIndex?: number) => void
+  onRowSelected?: (record?: object, rowIndex?: number) => void
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -29,7 +29,6 @@ const getTableColumns = function (
   tooltipClass: string
 ) {
   let i = 0
-  console.log(['cols', columns])
   return columns.map(function (col: any) {
     const key = 'col' + i++
     const stringCompare = (a: any, b: any) => a[key].localeCompare(b[key])
@@ -79,14 +78,15 @@ export const AntTableChart: React.FC<IProps> = (props) => {
 
   const onRow = (record: object, rowIndex?: number) => {
     return {
-      onClick: (event: any) => {
+      onMouseEnter: (event: any) => {
         if (onRowSelected) {
           onRowSelected(record, rowIndex)
         }
-
-        // console.log(record)
-        // console.log(rowIndex)
-        // alert('' + JSON.stringify(record) + ':     ' + rowIndex)
+      },
+      onMouseLeave: (event: any) => {
+        if (onRowSelected) {
+          onRowSelected(undefined, undefined)
+        }
       }
     }
   }

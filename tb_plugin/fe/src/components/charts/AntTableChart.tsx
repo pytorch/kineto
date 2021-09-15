@@ -3,7 +3,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from '@material-ui/core/styles'
-import { Table, TablePaginationConfig } from 'antd'
+import { Table } from 'antd'
 import * as React from 'react'
 import { Graph } from '../../api'
 
@@ -11,6 +11,7 @@ interface IProps {
   graph: Graph
   sortColumn?: string
   initialPageSize?: number
+  onRowSelected?: (record?: object, rowIndex?: number) => void
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -28,7 +29,6 @@ const getTableColumns = function (
   tooltipClass: string
 ) {
   let i = 0
-  console.log(['cols', columns])
   return columns.map(function (col: any) {
     const key = 'col' + i++
     const stringCompare = (a: any, b: any) => a[key].localeCompare(b[key])
@@ -58,7 +58,7 @@ const getTableRows = function (rows: any) {
 }
 
 export const AntTableChart: React.FC<IProps> = (props) => {
-  const { graph, sortColumn, initialPageSize } = props
+  const { graph, sortColumn, initialPageSize, onRowSelected } = props
   const classes = useStyles(props)
 
   const rows = React.useMemo(() => getTableRows(graph.rows), [graph.rows])
@@ -76,6 +76,21 @@ export const AntTableChart: React.FC<IProps> = (props) => {
     setPageSize(size)
   }
 
+  const onRow = (record: object, rowIndex?: number) => {
+    return {
+      onMouseEnter: (event: any) => {
+        if (onRowSelected) {
+          onRowSelected(record, rowIndex)
+        }
+      },
+      onMouseLeave: (event: any) => {
+        if (onRowSelected) {
+          onRowSelected(undefined, undefined)
+        }
+      }
+    }
+  }
+
   return (
     <Table
       size="small"
@@ -89,6 +104,7 @@ export const AntTableChart: React.FC<IProps> = (props) => {
       }}
       rowClassName={classes.row}
       key={key}
+      onRow={onRow}
     />
   )
 }

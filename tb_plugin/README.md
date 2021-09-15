@@ -311,7 +311,7 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 * Memory View
 
     Pytorch profiler records all memory allocation/release events and allocator's internal state during profiling. For
-    each operator, the plugin aggregates all the events inside its life span.
+    each operator, the plugin aggregates all the events inside its lifespan.
 
     ![Alt text](./docs/images/memory_view.PNG)
 
@@ -320,13 +320,13 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 
     * Memory Curve
 
-      Memory curve shows the memory usage trends. It helps the user get an overview about memory consumption. The 'Allocated' plot is the
-      total memory requested from the allocator, for example, used by tensors. The 'Reserved' plot only make sense if the underlying
+      Memory curve shows the memory usage trends. It helps the user get an overview on memory consumption. The 'Allocated' plot is the
+      total memory requested from the allocator, for example, used by tensors. The 'Reserved' plot only makes sense if the underlying
       allocator make use of caching mechanism. It represents the total memory that is allocated from the operating system by the allocator.
 
-      User can select a range and zoom into it by pressing left mouse button and dragging on the curve. Right click will reset to the
-      initial state. Upon selection, it will affect 'Memory Events' table and 'Memory Statistics' table as mentioned in the following
-      sections.
+      User can select on the memory curve plot and zoom into the selected range by pressing left mouse button and dragging on the curve.
+      Right click will reset the plot to the initial state. The selection will affect 'Memory Events' table and 'Memory Statistics' table
+      as mentioned in the following sections.
 
     * Memory Events
 
@@ -340,8 +340,8 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
       * Allocation Time: Memory allocation time point relative to profiler start. It maybe missing from the table if the allocation event
         is not included in the selected range.
 
-      * Release Time: Memory release time point relative to profiler start. It maybe missing from the table if the release event is not
-        included in the selected range.
+      * Release Time: Memory deallocation time point relative to profiler start. It maybe missing from the table if the release event is
+        not included in the selected range. Notice, released memory block might still be cached by the underlying allocator.
 
       * Duration: The life duration of the allocated memory. It maybe missing from the table if Allocation Time or Release Time is absent.
 

@@ -1,18 +1,23 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import List
+
 from collections import OrderedDict
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
-from .node import MemoryMetrics
+from .data import RunProfileData
+
 from .overall_parser import ProfileRole
+from .memory_parser import MemoryParser
+
 
 logger = utils.get_logger()
 
 
 class RunGenerator(object):
-    def __init__(self, worker, span, profile_data):
+    def __init__(self, worker, span, profile_data: RunProfileData):
         self.worker = worker
         self.span = span
         self.profile_data = profile_data
@@ -23,6 +28,7 @@ class RunGenerator(object):
         profile_run.has_kernel = self.profile_data.has_kernel
         profile_run.has_communication = self.profile_data.has_communication
         profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset
+        profile_run.profiler_start_ts = self.profile_data.profiler_start_ts
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
 
@@ -39,6 +45,7 @@ class RunGenerator(object):
             profile_run.kernel_op_table = self._generate_kernel_op_table()
             profile_run.kernel_pie = self._generate_kernel_pie()
             profile_run.kernel_table = self._generate_kernel_table()
+            profile_run.tc_pie = self._generate_tc_pie()
 
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
@@ -50,10 +57,9 @@ class RunGenerator(object):
         profile_run.sm_efficiency = self.profile_data.sm_efficiency
         profile_run.occupancy = self.profile_data.occupancy
 
-        # add memory stats
-        if self.profile_data.has_memory_data:
-            profile_run.memory_view = self._generate_memory_view(self.profile_data.memory_stats)
+        if self.profile_data.memory_parser:
             profile_run.views.append(consts.MEMORY_VIEW)
+            profile_run.memory_parser = self.profile_data.memory_parser
 
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:
@@ -249,6 +255,17 @@ class RunGenerator(object):
                          reverse=True)
 
         data = list()
+        result = {
+            "metadata": {
+                "sort": "device_self_duration" if show_gpu else "host_self_duration",
+                "tooltips": {
+                    "tc_eligible": consts.TOOLTIP_OP_TC_ELIGIBLE,
+                    "tc_self_ratio": consts.TOOLTIP_OP_TC_SELF,
+                    "tc_total_ratio": consts.TOOLTIP_OP_TC_TOTAL
+                }
+            },
+            "data": data
+        }
         for op in op_list:
             # Whether device_duration & self_device_duration are accurate or not depends on the input tracing data.
             row = dict()
@@ -261,8 +278,11 @@ class RunGenerator(object):
                 row['device_total_duration'] = round(op.device_duration)
             row['host_self_duration'] = round(op.self_host_duration)
             row['host_total_duration'] = round(op.host_duration)
+            row['tc_eligible'] = "Yes" if op.tc_eligible else "No"
+            row['tc_self_ratio'] = round(100 * op.tc_self_ratio, 2)
+            row['tc_total_ratio'] = round(100 * op.tc_total_ratio, 2)
             if call_stack:
-                row['call_stack'] = op.call_stacks.pop()
+                row['call_stack'] = op.callstacks.pop()
             else:
                 if group_by_input_shape:
                     key = op.name + '###' + str(op.input_shape)
@@ -271,7 +291,7 @@ class RunGenerator(object):
                 row['has_call_stack'] = key in stack_list_dict
             data.append(row)
 
-        return data
+        return result
 
     def _generate_op_table_for_stack(self, group_by_input_shape):
         if group_by_input_shape:
@@ -297,7 +317,22 @@ class RunGenerator(object):
 
     def _generate_kernel_op_table(self):
         table = {}
-        table["columns"] = [{"type": "string", "name": "Name"}, {"type": "string", "name": "Operator"}]
+        result = {
+            "metadata": {
+                "sort": "Total Duration (us)"
+            },
+            "data": table
+        }
+        table["columns"] = [{"type": "string", "name": "Name"},
+                            {"type": "string", "name": "Operator"},
+                            {"type": "string", "name": "Grid"},
+                            {"type": "string", "name": "Block"},
+                            {"type": "number", "name": "Register Per Thread"},
+                            {"type": "number", "name": "Shared Memory"},
+                            {"type": "string", "name": "Kernel Uses Tensor Cores",
+                             "tooltip": consts.TOOLTIP_KERNEL_USES_TC},
+                            {"type": "string", "name": "Op is Tensor Cores eligible",
+                             "tooltip": consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE}]
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
@@ -309,7 +344,12 @@ class RunGenerator(object):
         kernel_list = sorted(self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration,
                              reverse=True)
         for agg_by_name_op in kernel_list:
-            kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name, agg_by_name_op.calls,
+            kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
+                             str(agg_by_name_op.grid), str(agg_by_name_op.block),
+                             str(agg_by_name_op.regs_per_thread or '0'), str(agg_by_name_op.shared_memory or '0'),
+                             "Yes" if agg_by_name_op.tc_used else "No",
+                             "Yes" if agg_by_name_op.op_tc_eligible else "No",
+                             agg_by_name_op.calls,
                              agg_by_name_op.total_duration, round(agg_by_name_op.avg_duration),
                              agg_by_name_op.max_duration, agg_by_name_op.min_duration]
             if sum(self.profile_data.blocks_per_sm_count) > 0:
@@ -317,8 +357,7 @@ class RunGenerator(object):
             if sum(self.profile_data.occupancy_count) > 0:
                 kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
-        data = {"data": table}
-        return data
+        return result
 
     def _generate_kernel_pie(self):
         pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
@@ -329,7 +368,15 @@ class RunGenerator(object):
 
     def _generate_kernel_table(self):
         table = {}
-        table["columns"] = [{"type": "string", "name": "Name"}]
+        result = {
+            "metadata": {
+                "sort": "Total Duration (us)"
+            },
+            "data": table
+        }
+        table["columns"] = [{"type": "string", "name": "Name"},
+                            {"type": "string", "name": "Tensor Cores Used",
+                             "tooltip": consts.TOOLTIP_KERNEL_USES_TC}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
         if sum(self.profile_data.blocks_per_sm_count) > 0:
@@ -347,66 +394,20 @@ class RunGenerator(object):
 
         table["rows"] = []
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
-            kernel_row = [name]
+            kernel_row = [name, "Yes" if row["tc_used"] else "No"]
             for i, column in enumerate(columns):
                 kernel_row.append(round(row[column]) if round_digits[i] == 0
                                   else round(row[column], round_digits[i]))
             table["rows"].append(kernel_row)
-        data = {"data": table}
+        return result
+
+    def _generate_tc_pie(self):
+        pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
+        pie["rows"].append(["Using Tensor Cores", self.profile_data.tc_used_ratio])
+        pie["rows"].append(["Not Using Tensor Cores", 1.0 - self.profile_data.tc_used_ratio])
+        data = {"total": pie}
         return data
 
-    def _generate_memory_view(self, memory_stats):
-
-        data = OrderedDict()
-        result = {
-            "metadata": {
-                "title": "Memory View",
-                "default_device": "CPU",
-                "search": "Operator Name",
-                "sort": "Self Size Increase (KB)"
-            },
-            "data": data
-        }
-
-        columns_names = [
-            ("Operator Name", "string", ""),
-            ("Calls", "number", "# of calls of the operator."),
-            ("Size Increase (KB)", "number", "The memory increase size include all children operators."),
-            ("Self Size Increase (KB)", "number", "The memory increase size associated with the operator itself."),
-            ("Allocation Count", "number", "The allocation count including all chidren operators."),
-            ("Self Allocation Count", "number", "The allocation count belonging to the operator itself."),
-            ("Allocation Size (KB)", "number", "The allocation size including all children operators."),
-            ("Self Allocation Size (KB)", "number", "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free.")
-        ]
-        for name, memory in sorted(memory_stats.items()):
-            table = {}
-
-            # Process columns
-            columns = []
-            for col_name, col_type, tool_tip in columns_names:
-                if tool_tip:
-                    columns.append({"type": col_type, "name": col_name, "tooltip": tool_tip})
-                else:
-                    columns.append({"type": col_type, "name": col_name})
-            table["columns"] = columns
-
-            # Process rows
-            rows = []
-            for op_name, stat in sorted(memory.items()):
-                rows.append([
-                    op_name,
-                    stat[6],
-                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
-                    stat[MemoryMetrics.AllocationCount],
-                    stat[MemoryMetrics.SelfAllocationCount],
-                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
-                    ])
-            table["rows"] = rows
-
-            data[name] = table
-        return result
 
     @staticmethod
     def _get_gpu_info(device_props, gpu_id):
@@ -422,6 +423,7 @@ class RunGenerator(object):
         mem = device_prop.get("totalGlobalMem")
         if mem is not None:
             gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
+            gpu_info["Memory Raw"] = mem
 
         major = device_prop.get("computeMajor")
         minor = device_prop.get("computeMinor")
@@ -535,5 +537,5 @@ class DistributedRunGenerator(object):
                 row = [op, stats[0], stats[1], round(stats[1]/stats[0]), stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
                 table["rows"].append(row)
             workers_to_comm_ops[data.worker] = table
-        result["data"] = workers_to_comm_ops
+        result["data"] = OrderedDict(sorted(workers_to_comm_ops.items()))
         return result

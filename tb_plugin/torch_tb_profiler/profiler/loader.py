@@ -1,3 +1,4 @@
+
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
@@ -8,7 +9,7 @@ from collections import defaultdict
 
 from .. import consts, io, utils
 from ..run import Run
-from .multiprocessing import Barrier, Process, Queue
+from .multiprocessing import Process, Queue
 from .data import DistributedRunProfileData, RunProfileData
 from .run_generator import DistributedRunGenerator, RunGenerator
 
@@ -46,57 +47,51 @@ class RunLoader(object):
             for i, span in enumerate(span_array, 1):
                 span_index_map[(worker, span)] = i
 
-        barrier = Barrier(len(workers) + 1)
         for worker, span, path in workers:
             # convert the span timestamp to the index.
             span_index = None if span is None else span_index_map[(worker, span)]
-            p = Process(target=self._process_data, args=(worker, span_index, path, barrier))
+            p = Process(target=self._process_data, args=(worker, span_index, path))
             p.start()
-
-        logger.info("starting all processing")
-        # since there is one queue, its data must be read before join.
-        # https://stackoverflow.com/questions/31665328/python-3-multiprocessing-queue-deadlock-when-calling-join-before-the-queue-is-em
-        #   The queue implementation in multiprocessing that allows data to be transferred between processes relies on standard OS pipes.
-        #   OS pipes are not infinitely long, so the process which queues data could be blocked in the OS during the put()
-        #   operation until some other process uses get() to retrieve data from the queue.
-        # During my testing, I found that the maximum buffer length is 65532 in my test machine.
-        # If I increase the message size to 65533, the join would hang the process.
-        barrier.wait()
+        logger.info("started all processing")
 
         distributed_run = Run(self.run_name, self.run_dir)
         run = Run(self.run_name, self.run_dir)
-        for _ in range(len(workers)):
-            r, d = self.queue.get()
+        num_items = len(workers)
+        while num_items > 0:
+            item = self.queue.get()
+            num_items -= 1
+            r, d = item
+            if r or d:
+                logger.debug("Loaded profile via mp.Queue")
             if r is not None:
                 run.add_profile(r)
             if d is not None:
                 distributed_run.add_profile(d)
 
         distributed_profiles = self._process_spans(distributed_run)
-        if distributed_profiles is not None:
-            if isinstance(distributed_profiles, list):
-                for d in distributed_profiles:
-                    run.add_profile(d)
-            else:
-                run.add_profile(distributed_profiles)
+        for d in distributed_profiles:
+            if d is not None:
+                run.add_profile(d)
 
         # for no daemon process, no need to join them since it will automatically join
         return run
 
-    def _process_data(self, worker, span, path, barrier):
+    def _process_data(self, worker, span, path):
         import absl.logging
         absl.logging.use_absl_handler()
 
         try:
-            logger.debug("starting process_data")
-            data = RunProfileData.parse(self.run_dir, worker, span, path, self.caches)
-            data.process()
-            data.analyze()
+            logger.debug("Parse trace, run_dir=%s, worker=%s", self.run_dir, path)
+            local_file = self.caches.get_remote_cache(io.join(self.run_dir, path))
+            data, trace_path = RunProfileData.parse(worker, span, local_file)
+            if trace_path != local_file:
+                self.caches.add_file(local_file, trace_path)
 
             generator = RunGenerator(worker, span, data)
             profile = generator.generate_run_profile()
             dist_data = DistributedRunProfileData(data)
 
+            logger.debug("Sending back profile via mp.Queue")
             self.queue.put((profile, dist_data))
         except KeyboardInterrupt:
             logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))
@@ -105,13 +100,12 @@ class RunLoader(object):
             logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
                                self.run_name, worker, ex, exc_info=True)
             self.queue.put((None, None))
-        barrier.wait()
         logger.debug("finishing process data")
 
     def _process_spans(self, distributed_run):
         spans = distributed_run.get_spans()
         if spans is None:
-            return self._process_distributed_profiles(distributed_run.get_profiles(), None)
+            return [self._process_distributed_profiles(distributed_run.get_profiles(), None)]
         else:
             span_profiles = []
             for span in spans:
@@ -127,13 +121,13 @@ class RunLoader(object):
         for data in profiles:
             logger.debug("Processing profile data")
             # Set has_communication to False and disable distributed view if any one worker has no communication
-            if not data.has_communication:
-                has_communication = False
-            else:
+            if data.has_communication and data.comm_node_list:
                 comm_node_lists.append(data.comm_node_list)
                 if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
                     logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
                     has_communication = False
+            else:
+                has_communication = False
             logger.debug("Processing profile data finish")
 
         if not has_communication:
@@ -157,7 +151,8 @@ class RunLoader(object):
                         if kernel_ranges[j][1] - kernel_ranges[j][0] < min_range:
                             min_range = kernel_ranges[j][1] - kernel_ranges[j][0]
                 for k in range(worker_num):
-                    comm_node_lists[k][i].real_time += min_range
+                    kernel_range = comm_node_lists[k][i].kernel_ranges[j]
+                    comm_node_lists[k][i].real_time_ranges.append((kernel_range[1] - min_range, kernel_range[1]))
 
         for data in profiles:
             data.communication_parse()

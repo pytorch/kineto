@@ -10,29 +10,33 @@ from .trace import EventTypes
 class KernelParser:
     def __init__(self):
         self.kernel_stat = None
+        self.tc_used_ratio = 0.0
 
     def parse_events(self, events):
-        events_dict = []
-        for event in events:
-            if event.type == EventTypes.KERNEL:
-                events_dict.append(vars(event))
-                events_dict[-1]["blocks_per_sm"] = event.args.get("blocks per SM", 0)
-                events_dict[-1]["occupancy"] = event.args.get("est. achieved occupancy %", 0)
-        events = events_dict
+        events = [vars(event) for event in events if event.type == EventTypes.KERNEL]
         events = pd.DataFrame(events)
-        events = events.astype({"type": "category", "category": "category", "name": "string"}, copy=False)
+        events = events.astype({"type": "category", "name": "string"}, copy=False)
 
         def weighted_avg(x):
             try:
+                # fill these None as zero
+                x = x.fillna(0)
                 return np.average(x, weights=events.loc[x.index, "duration"])
             except ZeroDivisionError:
                 return 0
 
         self.kernel_stat = events.groupby("name").agg(
+            tc_used=('tc_used', "first"),
             count=('duration', "count"),
             sum=('duration', "sum"),
             mean=('duration', "mean"),
             max=('duration', "max"),
             min=('duration', "min"),
             blocks_per_sm=('blocks_per_sm', weighted_avg),
-            occupancy=('occupancy', weighted_avg))
+            occupancy=('occupancy', weighted_avg))\
+            .sort_values("sum", ascending=False)
+
+        tc_total = self.kernel_stat["sum"].sum()
+        tc_self = self.kernel_stat[self.kernel_stat["tc_used"]]["sum"].sum()
+        if tc_total > 0:
+            self.tc_used_ratio = tc_self / tc_total

@@ -1,0 +1,37 @@
+package:
+  name: torch_tb_profiler
+  version: "{{ environ.get('BUILD_VERSION', '0.2.0') }}"
+
+source:
+ path: "{{ environ.get('SOURCE_ROOT_DIR', '../..') }}"
+
+requirements:
+  host:
+    - python
+    - setuptools
+    - pytorch
+
+  run:
+    - python
+    - pandas
+    - tensorboard
+
+build:
+  string: py{{py}}
+  script: python setup.py install --single-version-externally-managed --record=record.txt
+
+test:
+  imports:
+    - torch_tb_profiler
+  source_files:
+    - test
+  requires:
+    - tensorboard
+    - pandas
+
+
+about:
+  home: https://github.com/pytorch/kineto/tree/main/tb_plugin
+  license: BSD
+  license_file: LICENSE
+  summary: 'Tensoboard Plugin that provides visualization of PyTorch profiling'

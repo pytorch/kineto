@@ -1,9 +1,10 @@
-import json
+import os
 import gzip
+import json
 import unittest
 
-import torch_tb_profiler.profiler.trace as trace
-from torch_tb_profiler.profiler.data import RunProfileData
+from torch_tb_profiler.profiler.data import DistributedRunProfileData, RunProfileData
+from torch_tb_profiler.profiler.loader import RunLoader
 from torch_tb_profiler.profiler.overall_parser import ProfileRole
 from torch_tb_profiler.run import RunProfile
 
@@ -11,17 +12,10 @@ SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
 
 
-def parse_json_trace(json_content):
+def parse_json_trace(json_content, worker_name = WORKER_NAME) -> RunProfileData:
     trace_json = json.loads(json_content)
     trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
-    profile = RunProfileData(WORKER_NAME)
-    profile.trace_json = trace_json
-    profile.events = []
-    for data in trace_json["traceEvents"]:
-        event = trace.create_event(data)
-        if event is not None:
-            profile.events.append(event)
-    return profile
+    return RunProfileData.from_json(worker_name, 0, trace_json)
 
 
 '''
@@ -1204,14 +1198,15 @@ class TestProfiler(unittest.TestCase):
               (1621401187236158, 1621401187236159, 0.125), (1621401187236278, 1621401187236279, 0.125),
               (1621401187236390, 1621401187236391, 0.125), (1621401187236501, 1621401187236502, 0.125)]]
 
-        trace_json_flat_path = "gpu_metrics_input.json"
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        trace_json_flat_path = os.path.join(basedir, "gpu_metrics_input.json")
         with open(trace_json_flat_path, "rb") as file:
             raw_data = file.read()
         data_with_gpu_metrics_compressed = profile.append_gpu_metrics(raw_data)
         data_with_gpu_metrics_flat = gzip.decompress(
             data_with_gpu_metrics_compressed)
 
-        trace_json_expected_path = "gpu_metrics_expected.json"
+        trace_json_expected_path = os.path.join(basedir, "gpu_metrics_expected.json")
         with open(trace_json_expected_path, "rb") as file:
             data_expected = file.read()
 
@@ -1357,51 +1352,51 @@ class TestProfiler(unittest.TestCase):
           
           
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored by test before start time",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 90,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 90, "Bytes": 4
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored in ProfilerStep",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 150,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 150, "Bytes": 4
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] belongs to aten::to",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 200,
             "args": {
-            "Device Type": 0, "Device Id": -1, "Bytes": 4
+            "Device Type": 0, "Device Id": -1, "Addr": 200, "Bytes": 4
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] aten::to",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 210,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 210, "Bytes": 4
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored since beyond aten::to and before nll_loss_backward",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 265,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 265, "Bytes": 4
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 300,
             "args": {
-            "Device Type": 1, "Device Id": 0, "Bytes": 4
+            "Device Type": 1, "Device Id": 0, "Addr": 300, "Bytes": 4
             }
           },
           {
@@ -1409,7 +1404,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 350,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 10
+                "Device Type": 1, "Device Id": 0, "Addr": 350, "Bytes": 10
             }
           },
           {
@@ -1417,15 +1412,15 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 360,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -10
+                "Device Type": 1, "Device Id": 0, "Addr": 350, "Bytes": -10
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory] ignored",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 450,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 1000000
+                "Device Type": 0, "Device Id": -1, "Addr": 450, "Bytes": 1000000
             }
           },
 
@@ -1434,7 +1429,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 515,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": 100
             }
           },
           {
@@ -1442,7 +1437,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 520,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 520, "Bytes": 100
             }
           },
           {
@@ -1450,15 +1445,15 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 600,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 520, "Bytes": -100
             }
           },
           {
-            "ph": "i", "s": "t", "name": "[memory]ignored",
+            "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
             "ts": 690,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 690, "Bytes": 100
             }
           },
           {
@@ -1466,7 +1461,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 701,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 701, "Bytes": 100
             }
           },
           {
@@ -1474,7 +1469,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 795,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": -100
             }
           },
 
@@ -1483,7 +1478,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 708,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 100
+                "Device Type": 1, "Device Id": 0, "Addr": 708, "Bytes": 100
             }
           },
           {
@@ -1491,7 +1486,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 742,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -100
+                "Device Type": 1, "Device Id": 0, "Addr": 708, "Bytes": -100
             }
           },
           {
@@ -1499,7 +1494,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 715,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 50
+                "Device Type": 1, "Device Id": 0, "Addr": 715, "Bytes": 50
             }
           },
           {
@@ -1507,7 +1502,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 735,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -50
+                "Device Type": 1, "Device Id": 0, "Addr": 715, "Bytes": -50
             }
           },
           {
@@ -1515,7 +1510,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 725,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 50
+                "Device Type": 1, "Device Id": 0, "Addr": 725, "Bytes": 50
             }
           },
           {
@@ -1523,7 +1518,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 728,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -50
+                "Device Type": 1, "Device Id": 0, "Addr": 725, "Bytes": -50
             }
           },
           {
@@ -1531,7 +1526,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 729,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 50
+                "Device Type": 0, "Device Id": -1, "Addr": 729, "Bytes": 50
             }
           },
           {
@@ -1539,7 +1534,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 746,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": 100
+                "Device Type": 0, "Device Id": -1, "Addr": 746, "Bytes": 100
             }
           },
           {
@@ -1547,7 +1542,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 747,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 20
+                "Device Type": 1, "Device Id": 0, "Addr": 747, "Bytes": 20
             }
           },
           {
@@ -1555,7 +1550,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 749,
             "args": {
-                "Device Type": 0, "Device Id": -1, "Bytes": -100
+                "Device Type": 0, "Device Id": -1, "Addr": 690, "Bytes": -100
             }
           },
           {
@@ -1563,7 +1558,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 760,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 30
+                "Device Type": 1, "Device Id": 0, "Addr": 760, "Bytes": 30
             }
           },
           {
@@ -1571,7 +1566,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 780,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -30
+                "Device Type": 1, "Device Id": 0, "Addr": 760, "Bytes": -30
             }
           },
           {
@@ -1579,7 +1574,7 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 795,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": 10
+                "Device Type": 1, "Device Id": 0, "Addr": 795, "Bytes": 10
             }
           },
           {
@@ -1587,25 +1582,27 @@ class TestProfiler(unittest.TestCase):
             "pid": 13721, "tid": 123,
             "ts": 799,
             "args": {
-                "Device Type": 1, "Device Id": 0, "Bytes": -10
+                "Device Type": 1, "Device Id": 0, "Addr": 795, "Bytes": -10
             }
           }
         ]
         """
         import logging
+
         from torch_tb_profiler.utils import get_logger
         logger = get_logger()
         logger.addHandler(logging.StreamHandler())
 
         profile = parse_json_trace(json_content)
         profile.process()
+        memory_stats = profile.memory_parser.get_memory_statistics()
 
-        self.assertEqual(len(profile.memory_stats), 2)
-        self.assertEqual("GPU0" in profile.memory_stats, True)
+        self.assertEqual(len(memory_stats), 2)
+        self.assertIn("GPU0", memory_stats)
 
         # validation
         gpu_expected_data = {
-            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count,
+            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count, call
             'aten::to': [104, 104, 2, 104, 204, 3, 4],
             'aten::nll_loss_backward': [0, 10, 1, 0, 10, 1 ,1],
             'aten::copy_': [0, 100, 1, 0, 100, 1, 1],
@@ -1625,24 +1622,857 @@ class TestProfiler(unittest.TestCase):
         }
 
         validate_data = [
-            (profile.memory_stats["CPU"], cpu_expected_data),
-            (profile.memory_stats["GPU0"], gpu_expected_data)
+            (memory_stats["CPU"], cpu_expected_data),
+            (memory_stats["GPU0"], gpu_expected_data)
         ]
         for (mem_stat, expected_data) in validate_data:
             for name, values in expected_data.items():
-                # self increase size
-                self.assertEqual(mem_stat[name][0], values[0])
-                # self allocation size
-                self.assertEqual(mem_stat[name][1], values[1])
-                # self allocation count
-                self.assertEqual(mem_stat[name][2], values[2])
-                self.assertEqual(mem_stat[name][3], values[3])  # increase size
-                # allocation size
-                self.assertEqual(mem_stat[name][4], values[4])
-                # allocation count
-                self.assertEqual(mem_stat[name][5], values[5])
-                # op calls
-                self.assertEqual(mem_stat[name][6], values[6])
+                self.assertEqual(mem_stat[name], values)
+
+    # Test group by "kernel detail + op name".
+    def test_group_by_kernel_columns(self):
+        json_content = """
+          [
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "op1", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 60,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "op2", "pid": 13721, "tid": "456",
+            "ts": 340, "dur": 70,
+            "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
+          },          
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 230, "dur": 15,
+            "args": {"correlation": 1000, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 210, "dur": 5,
+            "args": {"correlation": 1000, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 250, "dur": 10,
+            "args": {"correlation": 1001, "external id": 3, "device": 0,
+                     "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 215, "dur": 5,
+            "args": {"correlation": 1001, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 250, "dur": 13,
+            "args": {"correlation": 1002, "external id": 3, "device": 0,
+                     "grid": [16, 1, 1], "block": [16, 16, 64], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 220, "dur": 5,
+            "args": {"correlation": 1002, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 250, "dur": 17,
+            "args": {"correlation": 1003, "external id": 4, "device": 0,
+                     "grid": [16, 1, 1], "block": [16, 16, 64], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 350, "dur": 5,
+            "args": {"correlation": 1003, "external id": 4}
+          }
+          ]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+        expected_agg_kernels = [
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "[16, 1, 1]",
+                "block": "[16, 16, 16]",
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 2,
+                "total_duration": 15 + 10,
+                "avg_duration": (15 + 10) / 2,
+                "min_duration": min(15, 10),
+                "max_duration": max(15, 10)
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": "[16, 1, 1]",
+                "block": "[16, 16, 64]",  # Only changed this.
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 13,
+                "avg_duration": 13,
+                "min_duration": 13,
+                "max_duration": 13
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op2",  # Only changed this.
+                "grid": "[16, 1, 1]",
+                "block": "[16, 16, 64]",
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 17,
+                "avg_duration": 17,
+                "min_duration": 17,
+                "max_duration": 17
+            }
+        ]
+        index = 0
+        self.assertEqual(len(profile.kernel_list_groupby_name_op), len(expected_agg_kernels))
+        for agg_kernel in profile.kernel_list_groupby_name_op:
+            expected_agg_kernel = expected_agg_kernels[index]
+            self.assertEqual(agg_kernel.name, expected_agg_kernel["name"])
+            self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
+            self.assertEqual(str(agg_kernel.grid), expected_agg_kernel["grid"])
+            self.assertEqual(str(agg_kernel.block), expected_agg_kernel["block"])
+            self.assertEqual(agg_kernel.regs_per_thread, expected_agg_kernel["registers per thread"])
+            self.assertEqual(agg_kernel.shared_memory, expected_agg_kernel["shared memory"])
+            self.assertEqual(agg_kernel.calls, expected_agg_kernel["calls"])
+            self.assertEqual(agg_kernel.total_duration, expected_agg_kernel["total_duration"])
+            self.assertAlmostEqual(agg_kernel.avg_duration, expected_agg_kernel["avg_duration"])
+            self.assertEqual(agg_kernel.min_duration, expected_agg_kernel["min_duration"])
+            self.assertEqual(agg_kernel.max_duration, expected_agg_kernel["max_duration"])
+            index += 1
+
+    # Test group by "kernel detail + op name" with invalid input lack of some kernel field
+    def test_group_by_kernel_columns_invalid_input(self):
+        json_content = """
+          [
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "op1", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 60,
+            "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
+          },          
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 220, "dur": 1,
+            "args": {"correlation": 1000, "external id": 3, "device": 0,
+                    "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 210, "dur": 5,
+            "args": {"correlation": 1000, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 230, "dur": 2,
+            "args": {"correlation": 1001, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "registers per thread": 18, "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 220, "dur": 5,
+            "args": {"correlation": 1001, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 240, "dur": 3,
+            "args": {"correlation": 1002, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "block": [16, 16, 16], "shared memory": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 230, "dur": 5,
+            "args": {"correlation": 1002, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 250, "dur": 4,
+            "args": {"correlation": 1003, "external id": 3, "device": 0,
+                    "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 240, "dur": 5,
+            "args": {"correlation": 1003, "external id": 3}
+          },
+          {
+            "ph": "X", "cat": "Kernel",
+            "name": "kernel1", "pid": 0, "tid": "stream 7",
+            "ts": 260, "dur": 5,
+            "args": {"correlation": 1004, "external id": 3, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime",
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
+            "ts": 250, "dur": 5,
+            "args": {"correlation": 1004, "external id": 3}
+          }
+          ]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+        expected_agg_kernels = [
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": None,
+                "block": [16, 16, 16],
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 1,
+                "avg_duration": 1,
+                "min_duration": 1,
+                "max_duration": 1
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": [16, 1, 1],
+                "block": None,
+                "registers per thread": 18,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 2,
+                "avg_duration": 2,
+                "min_duration": 2,
+                "max_duration": 2
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": [16, 1, 1],
+                "block": [16, 16, 16],
+                "registers per thread": None,
+                "shared memory": 0,
+                "calls": 1,
+                "total_duration": 3,
+                "avg_duration": 3,
+                "min_duration": 3,
+                "max_duration": 3
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": [16, 1, 1],
+                "block": [16, 16, 16],
+                "registers per thread": 18,
+                "shared memory": None,
+                "calls": 1,
+                "total_duration": 4,
+                "avg_duration": 4,
+                "min_duration": 4,
+                "max_duration": 4
+            },
+            {
+                "name": "kernel1",
+                "op_name": "op1",
+                "grid": None,
+                "block": None,
+                "registers per thread": None,
+                "shared memory": None,
+                "calls": 1,
+                "total_duration": 5,
+                "avg_duration": 5,
+                "min_duration": 5,
+                "max_duration": 5
+            }
+        ]
+        index = 0
+        self.assertEqual(len(profile.kernel_list_groupby_name_op), len(expected_agg_kernels))
+        for agg_kernel in profile.kernel_list_groupby_name_op:
+            expected_agg_kernel = expected_agg_kernels[index]
+            self.assertEqual(agg_kernel.name, expected_agg_kernel["name"])
+            self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
+            self.assertEqual(agg_kernel.grid, expected_agg_kernel["grid"])
+            self.assertEqual(agg_kernel.block, expected_agg_kernel["block"])
+            self.assertEqual(agg_kernel.regs_per_thread, expected_agg_kernel["registers per thread"])
+            print(agg_kernel.name, agg_kernel.grid, agg_kernel.block, agg_kernel.shared_memory)
+            self.assertEqual(agg_kernel.shared_memory, expected_agg_kernel["shared memory"])
+            self.assertEqual(agg_kernel.calls, expected_agg_kernel["calls"])
+            self.assertEqual(agg_kernel.total_duration, expected_agg_kernel["total_duration"])
+            self.assertAlmostEqual(agg_kernel.avg_duration, expected_agg_kernel["avg_duration"])
+            self.assertEqual(agg_kernel.min_duration, expected_agg_kernel["min_duration"])
+            self.assertEqual(agg_kernel.max_duration, expected_agg_kernel["max_duration"])
+            index += 1
+
+    # Test tensor core related feature.
+    def test_tensor_core(self):
+        json_content = """
+          [
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::conv2d", "pid": 13721, "tid": "123",
+            "ts": 200, "dur": 100,
+            "args": {"Input Dims": [[]], "External id": 3}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "op_no_tc", "pid": 13721, "tid": "123",
+            "ts": 205, "dur": 10,
+            "args": {"Input Dims": [[]], "External id": 4}
+          },
+          {
+            "ph": "X", "cat": "Operator", 
+            "name": "aten::cudnn_convolution", "pid": 13721, "tid": "123",
+            "ts": 215, "dur": 10,
+            "args": {"Input Dims": [[]], "External id": 5}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "kernel_no_tc", "pid": 0, "tid": "stream 7",
+            "ts": 210, "dur": 10,
+            "args": {"correlation": 1000, "external id": 4, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
+            "ts": 205, "dur": 5,
+            "args": {"correlation": 1000, "external id": 4}
+          },
+          {
+            "ph": "X", "cat": "Kernel", 
+            "name": "volta_fp16_s884cudnn_fp16_128x128_ldg8_splitK_relu_f2f_exp_small_nhwc_tn_v1", "pid": 0, "tid": "stream 7",
+            "ts": 220, "dur": 15,
+            "args": {"correlation": 1001, "external id": 5, "device": 0}
+          },
+          {
+            "ph": "X", "cat": "Runtime", 
+            "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
+            "ts": 215, "dur": 5,
+            "args": {"correlation": 1001, "external id": 5}
+          }
+          ]
+        """
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        expected_agg_ops = {
+            "aten::conv2d": {
+                "tc_eligible": True,
+                "tc_self_ratio": 0,
+                "tc_total_ratio": 15 / (15 + 10)
+            },
+            "op_no_tc": {
+                "tc_eligible": False,
+                "tc_self_ratio": 0,
+                "tc_total_ratio": 0
+            },
+            "aten::cudnn_convolution": {
+                "tc_eligible": True,
+                "tc_self_ratio": 1.0,
+                "tc_total_ratio": 1.0
+            }
+        }
+        self.assertEqual(len(profile.op_list_groupby_name), len(expected_agg_ops))
+        for agg_op in profile.op_list_groupby_name:
+            expected_agg_op = expected_agg_ops[agg_op.name]
+            self.assertEqual(agg_op.tc_eligible, expected_agg_op["tc_eligible"])
+            self.assertAlmostEqual(agg_op.tc_self_ratio, expected_agg_op["tc_self_ratio"])
+            self.assertAlmostEqual(agg_op.tc_total_ratio, expected_agg_op["tc_total_ratio"])
+
+        expected_kernels_groupby_op = {
+            "kernel_no_tc": {
+                "op_name": "op_no_tc",
+                "tc_used": False,
+                "op_tc_eligible": False
+            },
+            "volta_fp16_s884cudnn_fp16_128x128_ldg8_splitK_relu_f2f_exp_small_nhwc_tn_v1": {
+                "op_name": "aten::cudnn_convolution",
+                "tc_used": True,
+                "op_tc_eligible": True
+            }
+        }
+        self.assertEqual(len(profile.kernel_list_groupby_name_op), len(expected_kernels_groupby_op))
+        for agg_kernel in profile.kernel_list_groupby_name_op:
+            expected_agg_kernel = expected_kernels_groupby_op[agg_kernel.name]
+            self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
+            self.assertEqual(agg_kernel.tc_used, expected_agg_kernel["tc_used"])
+            self.assertEqual(agg_kernel.op_tc_eligible, expected_agg_kernel["op_tc_eligible"])
+
+    def test_distributed_nccl(self):
+        json_content0 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 0, "dur": 75,
+          "args": {"External id": 146, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_Broadcast_RING_LL_Sum_int8_t(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 16, "dur": 16,
+          "args": {"device": 0, "correlation": 28506, "external id": 146}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23803",
+          "ts": 100, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 130, "dur": 161,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:all_reduce", "pid": 23803, "tid": "25166",
+          "ts": 160, "dur": 75,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_AllReduce_RING_LL_Sum_float(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 162, "dur": 1556,
+          "args": {"device": 0, "correlation": 33218, "external id": 2513}
+        }
+        ]
+        """
+        json_content1 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 0, "dur": 20,
+          "args": {"External id": 146, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_Broadcast_RING_LL_Sum_int8_t(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 8, "dur": 31,
+          "args": {"device": 0, "correlation": 28506, "external id": 146}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23803",
+          "ts": 25, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 30, "dur": 161,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "nccl:all_reduce", "pid": 23803, "tid": "25166",
+          "ts": 160, "dur": 75,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "ncclKernel_AllReduce_RING_LL_Sum_float(ncclWorkElem)", "pid": 0, "tid": "stream 16",
+          "ts": 562, "dur": 1058,
+          "args": {"device": 0, "correlation": 33218, "external id": 2513}
+        }
+        ]
+        """
+
+        profile0 = parse_json_trace(json_content0, "worker0")
+        dist_data0 = DistributedRunProfileData(profile0)
+        self.assertTrue(profile0.has_communication)
+        self.assertEqual(len(profile0.comm_node_list), 2)
+        self.assertEqual(profile0.steps_costs[0].costs, [105, 0, 0, 16, 0, 0, 79, 35, 235])
+
+        profile1 = parse_json_trace(json_content1, "worker1")
+        dist_data1 = DistributedRunProfileData(profile1)
+        self.assertTrue(profile1.has_communication)
+        self.assertEqual(len(profile1.comm_node_list), 2)
+        self.assertEqual(profile1.steps_costs[0].costs[3], 22)
+
+        loader = RunLoader("test_nccl", "", None)
+        dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [32, 73, 16, 114])
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [152, 9, 22, 52])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [1074, 498])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [1074, 15])
+        self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
+            [['nccl:broadcast', 1, 212480, 212480, 16, 16, 16, 16], ['nccl:all_reduce', 1, 8196000, 8196000, 1556, 1556, 1058, 1058]])
+        self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
+            [['nccl:broadcast', 1, 212480, 212480, 31, 31, 16, 16], ['nccl:all_reduce', 1, 8196000, 8196000, 1058, 1058, 1058, 1058]])
+
+    def test_distributed_gloo_gpu(self):
+        json_content0 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 16, "dur": 38,
+          "args": {"External id": 165, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 25, "dur": 36,
+          "args": {"External id": 166, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 66, "dur": 18,
+          "args": {"External id": 167, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 30, "dur": 101,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 110, "dur": 18,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 120, "dur": 36,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+        json_content1 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 20, "dur": 28,
+          "args": {"External id": 256, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 28, "dur": 30,
+          "args": {"External id": 257, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 77, "dur": 6,
+          "args": {"External id": 258, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 30,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "Kernel",
+          "name": "void at::native::vectorized_elementwise_kernel", "pid": 0, "tid": "stream 7",
+          "ts": 70, "dur": 70,
+          "args": {"device": 0, "correlation": 99765, "external id": 24504}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 88, "dur": 38,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 130, "dur": 16,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+
+        profile0 = parse_json_trace(json_content0, "worker0")
+        dist_data0 = DistributedRunProfileData(profile0)
+        self.assertTrue(profile0.has_communication)
+        self.assertEqual(len(profile0.comm_node_list), 5)
+        self.assertEqual(profile0.steps_costs[0].costs, [101, 0, 0, 39, 0, 0, 16, 0, 156])
+
+        profile1 = parse_json_trace(json_content1, "worker1")
+        dist_data1 = DistributedRunProfileData(profile1)
+        self.assertTrue(profile1.has_communication)
+        self.assertEqual(len(profile1.comm_node_list), 5)
+        self.assertEqual(profile1.steps_costs[0].costs, [70, 0, 0, 44, 0, 0, 20, 12, 146])
+
+        loader = RunLoader("test_gloo_gpu", "", None)
+        dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [31, 70, 39, 16])
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [16, 54, 44, 32])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [75, 34])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [78, 20])
+        self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14], ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
+        self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
+
+    def test_distributed_gloo_cpu(self):
+        json_content0 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 16, "dur": 38,
+          "args": {"External id": 165, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 25, "dur": 36,
+          "args": {"External id": 166, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 66, "dur": 18,
+          "args": {"External id": 167, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 20,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::mul", "pid": 23803, "tid": "23800",
+          "ts": 30, "dur": 101,
+          "args": {"External id": 24505}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 110, "dur": 18,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 120, "dur": 36,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+        json_content1 = """
+        [
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 20, "dur": 28,
+          "args": {"External id": 256, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23805",
+          "ts": 28, "dur": 30,
+          "args": {"External id": 257, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:broadcast", "pid": 23803, "tid": "23803",
+          "ts": 77, "dur": 6,
+          "args": {"External id": 258, "Input Dims": [[53120]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::add_", "pid": 23803, "tid": "23800",
+          "ts": 0, "dur": 30,
+          "args": {"External id": 24504, "Input Dims": [[1000], [1000], []], "Input type": ["float", "float", "Int"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "aten::mul", "pid": 23803, "tid": "23800",
+          "ts": 70, "dur": 70,
+          "args": {"External id": 24505}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23805",
+          "ts": 88, "dur": 38,
+          "args": {"External id": 2513, "Input Dims": [[2049000]], "Input type": ["float"]}
+        },
+        {
+          "ph": "X", "cat": "cpu_op",
+          "name": "gloo:all_reduce", "pid": 23803, "tid": "23803",
+          "ts": 130, "dur": 16,
+          "args": {"External id": 2516, "Input Dims": [[2049000]], "Input type": ["float"]}
+        }
+        ]
+        """
+
+        profile0 = parse_json_trace(json_content0, "worker0")
+        dist_data0 = DistributedRunProfileData(profile0)
+        self.assertTrue(profile0.has_communication)
+        self.assertEqual(len(profile0.comm_node_list), 5)
+        self.assertEqual(profile0.steps_costs[0].costs, [0, 0, 0, 109, 0, 0, 47, 0, 156])
+
+        profile1 = parse_json_trace(json_content1, "worker1")
+        dist_data1 = DistributedRunProfileData(profile1)
+        self.assertTrue(profile1.has_communication)
+        self.assertEqual(len(profile1.comm_node_list), 5)
+        self.assertEqual(profile1.steps_costs[0].costs, [0, 0, 0, 98, 0, 0, 36, 12, 146])
+
+        loader = RunLoader("test_gloo_cpu", "", None)
+        dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [47, 74, 35, 0])
+        self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [36, 64, 34, 12])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [75, 34])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [78, 20])
+        self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14], ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
+        self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
+            [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
+
+
+class TestMemoryCurve(unittest.TestCase):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.event_data_cpu = [
+            [1, 0, 0, 1, 4, 4, 0],         # alloc 1
+            [20, 0, 0, 1, -4, 0, 0],       # free  1
+            [100, 0, 0, 2, 8000, 8000, 0], # alloc 2
+            [200, 0, 0, 2, -8000, 0, 0],   # free  2
+            [300, 0, 0, 3, 4, 4, 0],       # alloc 3
+            [400, 0, 0, 4, 16, 20, 0],     # alloc 4
+            [500, 0, 0, 5, 4000, 4020, 0], # alloc 5
+            [600, 0, 0, 4, -16, 4004, 0],  # free  4
+            [700, 0, 0, 7, 80, 4084, 0],   # alloc 7
+            [800, 0, 0, 3, -4, 4080, 0],   # free  3
+            [900, 0, 0, 7, -80, 4000, 0],  # free  7
+            [905, 0, 0, 4, -4000, 0, 0],   # free  5
+        ]
+
+        self.event_data_gpu = [
+            [2, 1, 0, 11, 400, 400, 512],        # alloc 11
+            [22, 1, 0, 11, -400, 0, 512],        # free  11
+            [105, 1, 0, 12, 5000, 5000, 10240],  # alloc 12
+            [106, 1, 0, 13, 3000, 8000, 10240],  # alloc 13
+            [205, 1, 0, 12, -5000, 3000, 10240], # free  12
+            [401, 1, 0, 14, 1024, 4024, 10240],  # alloc 14
+            [499, 1, 0, 15, 4, 4028, 10240],     # alloc 15
+            [501, 1, 0, 13, -3000, 1028, 10240], # free  13
+            [502, 1, 0, 15, -4, 1024, 10240],    # free  15
+            [906, 1, 0, 14, -1024, 0, 10240],    # free  14
+        ]
+
+        self.all_events = sorted(self.event_data_cpu + self.event_data_gpu, key=lambda e: e[0])
+
+    def entry(self, ts, dev, dev_id, addr, alloc_size, total_allocated, total_reserved):
+        return {
+            "ph": "i", "s": "t", "name": "[memory]", "pid": 0, "tid": 0, "ts": ts,
+            "args": {
+                "Device Type": dev,
+                "Device Id": dev_id,
+                "Addr": addr,
+                "Bytes": alloc_size,
+                "Total Allocated": total_allocated,
+                "Total Reserved": total_reserved,
+            },
+        }
+
+    def test_memory_curve_no_step_plot(self):
+        json_content = json.dumps([self.entry(*data) for data in self.all_events])
+
+        profile = parse_json_trace(json_content)
+        profile.process()
+        result = RunProfile.get_memory_curve(profile, time_metric="us", memory_metric="B", patch_for_step_plot=False)
+
+        start_ts = profile.profiler_start_ts
+        self.assertEqual(1, start_ts)
+
+        curves = result["rows"]
+
+        self.assertIn("CPU", curves)
+        self.assertIn("GPU0", curves)
+
+        self.assertEqual(len(self.event_data_cpu), len(curves["CPU"]))
+        for i in range(len(self.event_data_cpu)):
+            # adjusted timestamp
+            self.assertEqual(self.event_data_cpu[i][0] - start_ts,  curves["CPU"][i][0])
+            # total allocated
+            self.assertEqual(self.event_data_cpu[i][-2], curves["CPU"][i][1])
+            # total reserved
+            self.assertEqual(self.event_data_cpu[i][-1], curves["CPU"][i][2])
+
+        self.assertEqual(len(self.event_data_gpu), len(curves["GPU0"]))
+        for i in range(len(self.event_data_gpu)):
+            self.assertEqual(self.event_data_gpu[i][0] - start_ts,  curves["GPU0"][i][0])
+            self.assertEqual(self.event_data_gpu[i][-2], curves["GPU0"][i][1])
+            self.assertEqual(self.event_data_gpu[i][-1], curves["GPU0"][i][2])
+
+    def test_memory_curve_step_plot(self):
+        json_content = json.dumps([self.entry(*data) for data in self.all_events])
+
+        profile = parse_json_trace(json_content)
+        profile.process()
+        result = RunProfile.get_memory_curve(profile, time_metric="us", memory_metric="B", patch_for_step_plot=True)
+
+        start_ts = profile.profiler_start_ts
+        self.assertEqual(1, start_ts)
+
+        curves = result["rows"]
+
+        self.assertIn("CPU", curves)
+        self.assertIn("GPU0", curves)
+
+        self.assertEqual(2 * len(self.event_data_cpu) - 1, len(curves["CPU"]))
+        for i in range(len(curves["CPU"])):
+            if i % 2 == 0: # original values
+                # adjusted timestamp
+                self.assertEqual(self.event_data_cpu[i//2][0] - start_ts,  curves["CPU"][i][0])
+                # total allocated
+                self.assertEqual(self.event_data_cpu[i//2][-2], curves["CPU"][i][1])
+                # total reserved
+                self.assertEqual(self.event_data_cpu[i//2][-1], curves["CPU"][i][2])
+            else: # interpolated values
+                self.assertEqual(self.event_data_cpu[i//2+1][0] - start_ts,  curves["CPU"][i][0])
+                self.assertEqual(self.event_data_cpu[i//2][-2], curves["CPU"][i][1])
+                self.assertEqual(self.event_data_cpu[i//2][-1], curves["CPU"][i][2])
+
+        self.assertEqual(2 * len(self.event_data_gpu) - 1, len(curves["GPU0"]))
+        for i in range(len(self.event_data_gpu)):
+            if i % 2 == 0: # original values
+                self.assertEqual(self.event_data_gpu[i//2][0] - start_ts,  curves["GPU0"][i][0])
+                self.assertEqual(self.event_data_gpu[i//2][-2], curves["GPU0"][i][1])
+                self.assertEqual(self.event_data_gpu[i//2][-1], curves["GPU0"][i][2])
+            else: # interpolated values
+                self.assertEqual(self.event_data_gpu[i//2+1][0] - start_ts,  curves["GPU0"][i][0])
+                self.assertEqual(self.event_data_gpu[i//2][-2], curves["GPU0"][i][1])
+                self.assertEqual(self.event_data_gpu[i//2][-1], curves["GPU0"][i][2])
 
 if __name__ == '__main__':
     unittest.main()

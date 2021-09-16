@@ -30,11 +30,14 @@ using namespace libkineto;
 namespace KINETO_NAMESPACE {
 
 static constexpr int kSchemaVersion = 1;
+static constexpr char kFlowStart = 's';
+static constexpr char kFlowEnd = 'f';
+
 #ifdef __linux__
-static const std::string kDefaultLogFileFmt =
+static constexpr char kDefaultLogFileFmt[] =
     "/tmp/libkineto_activities_{}.json";
 #else
-static const std::string kDefaultLogFileFmt = "libkineto_activities_{}.json";
+static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 #endif
 
 void ChromeTraceLogger::handleTraceStart(
@@ -83,8 +86,8 @@ static int64_t us(int64_t timestamp) {
   return timestamp / 1000;
 }
 
-void ChromeTraceLogger::handleProcessInfo(
-    const ProcessInfo& processInfo,
+void ChromeTraceLogger::handleDeviceInfo(
+    const DeviceInfo& info,
     uint64_t time) {
   if (!traceOf_) {
     return;
@@ -105,16 +108,24 @@ void ChromeTraceLogger::handleProcessInfo(
     "args": {{
       "labels": "{}"
     }}
+  }},
+  {{
+    "name": "process_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": 0,
+    "args": {{
+      "sort_index": {}
+    }}
   }},)JSON",
-      time, processInfo.pid,
-      processInfo.name,
-      time, processInfo.pid,
-      processInfo.label);
+      time, info.id,
+      info.name,
+      time, info.id,
+      info.label,
+      time, info.id,
+      info.id < 8 ? info.id + 0x1000000ll : info.id);
   // clang-format on
 }
 
-void ChromeTraceLogger::handleThreadInfo(
-    const ThreadInfo& threadInfo,
+void ChromeTraceLogger::handleResourceInfo(
+    const ResourceInfo& info,
     int64_t time) {
   if (!traceOf_) {
     return;
@@ -125,13 +136,21 @@ void ChromeTraceLogger::handleThreadInfo(
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
-    "name": "thread_name", "ph": "M", "ts": {}, "pid": {}, "tid": "{}",
+    "name": "thread_name", "ph": "M", "ts": {}, "pid": {}, "tid": {},
     "args": {{
-      "name": "thread {} ({})"
+      "name": "{}"
+    }}
+  }},
+  {{
+    "name": "thread_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": {},
+    "args": {{
+      "sort_index": {}
     }}
   }},)JSON",
-      time, processId(), threadInfo.tid,
-      threadInfo.tid, threadInfo.name);
+      time, info.deviceId, info.id,
+      info.name,
+      time, info.deviceId, info.id,
+      info.id);
   // clang-format on
 }
 
@@ -144,16 +163,26 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Trace", "ts": {}, "dur": {},
-    "pid": "Traces", "tid": "{}",
+    "pid": "Spans", "tid": "{}",
     "name": "{}{} ({})",
     "args": {{
       "Op count": {}
+    }}
+  }},
+  {{
+    "name": "process_sort_index", "ph": "M", "ts": {},
+    "pid": "Spans", "tid": 0,
+    "args": {{
+      "sort_index": {}
     }}
   }},)JSON",
       span.startTime, span.endTime - span.startTime,
       span.name,
       span.prefix, span.name, span.iteration,
-      span.opCount);
+      span.opCount,
+      span.startTime,
+      // Large sort index to appear at the bottom
+      0x20000000ll);
   // clang-format on
 
   if (span.tracked) {
@@ -177,13 +206,12 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
   // clang-format on
 }
 
-static std::string traceActivityJson(
-    const TraceActivity& activity, std::string tid) {
+static std::string traceActivityJson(const TraceActivity& activity) {
   // clang-format off
   return fmt::format(R"JSON(
-    "name": "{}", "pid": {}, "tid": "{}",
+    "name": "{}", "pid": {}, "tid": {},
     "ts": {}, "dur": {})JSON",
-      activity.name(), activity.deviceId(), tid,
+      activity.name(), activity.deviceId(), activity.resourceId(),
       activity.timestamp(), activity.duration());
   // clang-format on
 }
@@ -244,9 +272,9 @@ void ChromeTraceLogger::handleGenericActivity(
             {}
           }}
         }},)JSON",
-            traceActivityJson(op, fmt::format("{}", op.resourceId())), 
+            traceActivityJson(op), 
             op_metadata);
-        handleLinkStart(op);
+        handleLink(kFlowStart, op, op.correlationId(), "async_gpu", "async_gpu");
       }
       break;
     case ActivityType::CONCURRENT_KERNEL:
@@ -258,9 +286,9 @@ void ChromeTraceLogger::handleGenericActivity(
             {}
           }}
         }},)JSON",
-            traceActivityJson(op, streamName(op)), 
+            traceActivityJson(op), 
             op_metadata);
-        handleLinkEnd(op);
+        handleLink(kFlowEnd, op, op.correlationId(), "async_gpu", "async_gpu");
       }
       break;
     default:
@@ -274,19 +302,34 @@ void ChromeTraceLogger::handleGenericActivity(
              {}
           }}
         }},)JSON",
-            toString(op.type()), traceActivityJson(op, tid),
+            toString(op.type()), traceActivityJson(op),
             // args
             op.id,
             op.traceSpan()->name, op.traceSpan()->iteration, separator,
             op_metadata);
-            }
+      }
       break;
   }
   // clang-format on
+  if (op.flow.linkedActivity != nullptr) {
+    handleGenericLink(op);
+  }
 }
 
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-void ChromeTraceLogger::handleLinkStart(const TraceActivity& s) {
+void ChromeTraceLogger::handleGenericLink(const GenericTraceActivity& act) {
+  if (act.flow.type == kLinkFwdBwd) {
+    const auto& from_act = *act.flow.linkedActivity;
+    handleLink(kFlowStart, from_act, act.flow.id, "forward_backward", "fwd_bwd");
+    handleLink(kFlowEnd, act, act.flow.id, "forward_backward", "fwd_bwd");
+  }
+}
+
+void ChromeTraceLogger::handleLink(
+    char type,
+    const TraceActivity& e,
+    int64_t id,
+    const std::string& cat,
+    const std::string& name) {
   if (!traceOf_) {
     return;
   }
@@ -294,29 +337,12 @@ void ChromeTraceLogger::handleLinkStart(const TraceActivity& s) {
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
-    "ph": "s", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "async", "name": "launch"
+    "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
+    "cat": "{}", "name": "{}", "bp": "e"
   }},)JSON",
-      s.correlationId(), processId(), s.resourceId(), s.timestamp());
-  // clang-format on
-
-}
-
-void ChromeTraceLogger::handleLinkEnd(const TraceActivity& e) {
-  if (!traceOf_) {
-    return;
-  }
-
-  // clang-format off
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "f", "id": {}, "pid": {}, "tid": "stream {}", "ts": {},
-    "cat": "async", "name": "launch", "bp": "e"
-  }},)JSON",
-      e.correlationId(), e.deviceId(), e.resourceId(), e.timestamp());
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
   // clang-format on
 }
-#endif
 
 #ifdef HAS_CUPTI
 void ChromeTraceLogger::handleRuntimeActivity(
@@ -335,7 +361,7 @@ void ChromeTraceLogger::handleRuntimeActivity(
       "external id": {}, "external ts": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, fmt::format("{}", activity.resourceId())),
+      traceActivityJson(activity),
       // args
       cbid, activity.raw().correlationId,
       ext.correlationId(), ext.timestamp());
@@ -350,7 +376,8 @@ void ChromeTraceLogger::handleRuntimeActivity(
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
       cbid ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000) {
-    handleLinkStart(activity);
+    auto from_id = activity.correlationId();
+    handleLink(kFlowStart, activity, from_id, "async_gpu", activity.name());
   }
 }
 
@@ -401,7 +428,7 @@ void ChromeTraceLogger::handleGpuActivity(
       "est. achieved occupancy %": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, streamName(activity)),
+      traceActivityJson(activity),
       // args
       us(kernel->queued), kernel->deviceId, kernel->contextId,
       kernel->streamId, kernel->correlationId, ext.correlationId(),
@@ -414,7 +441,8 @@ void ChromeTraceLogger::handleGpuActivity(
       (int) (0.5 + occupancy * 100.0));
   // clang-format on
 
-  handleLinkEnd(activity);
+  auto to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaLaunchKernel");
 }
 
 static std::string bandwidth(uint64_t bytes, uint64_t duration) {
@@ -440,14 +468,15 @@ void ChromeTraceLogger::handleGpuActivity(
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, streamName(activity)),
+      traceActivityJson(activity),
       // args
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId, ext.correlationId(),
       memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
-  handleLinkEnd(activity);
+  int64_t to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemcpyAsync");
 }
 
 // GPU side memcpy activity
@@ -469,7 +498,7 @@ void ChromeTraceLogger::handleGpuActivity(
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, streamName(activity)),
+      traceActivityJson(activity),
       // args
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
@@ -477,7 +506,8 @@ void ChromeTraceLogger::handleGpuActivity(
       memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
-  handleLinkEnd(activity);
+  int64_t to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemcpyAsync");
 }
 
 void ChromeTraceLogger::handleGpuActivity(
@@ -497,14 +527,15 @@ void ChromeTraceLogger::handleGpuActivity(
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
-      traceActivityJson(activity, streamName(activity)),
+      traceActivityJson(activity),
       // args
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId, ext.correlationId(),
       memset.bytes, bandwidth(memset.bytes, memset.end - memset.start));
   // clang-format on
 
-  handleLinkEnd(activity);
+  int64_t to_id = activity.correlationId();
+  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemsetAsync");
 }
 #endif // HAS_CUPTI
 

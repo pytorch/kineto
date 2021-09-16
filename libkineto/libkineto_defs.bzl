@@ -20,6 +20,7 @@ def get_libkineto_cupti_srcs(with_api = True):
         "src/ConfigLoader.cpp",
         "src/CudaDeviceProperties.cpp",
         "src/CuptiActivityInterface.cpp",
+        "src/CuptiActivityPlatform.cpp",
         "src/CuptiEventInterface.cpp",
         "src/CuptiMetricInterface.cpp",
         "src/Demangle.cpp",
@@ -86,6 +87,8 @@ def get_libkineto_public_headers():
         "include/time_since_epoch.h",
     ]
 
+# kineto code should be updated to not have to
+# suppress these warnings.
 KINETO_COMPILER_FLAGS = [
     "-fexceptions",
     "-Wno-unused-function",

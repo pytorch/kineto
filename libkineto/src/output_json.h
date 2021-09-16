@@ -34,11 +34,11 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   // Note: the caller of these functions should handle concurrency
   // i.e., we these functions are not thread-safe
-  void handleProcessInfo(
-      const ProcessInfo& processInfo,
+  void handleDeviceInfo(
+      const DeviceInfo& info,
       uint64_t time) override;
 
-  void handleThreadInfo(const ThreadInfo& threadInfo, int64_t time) override;
+  void handleResourceInfo(const ResourceInfo& info, int64_t time) override;
 
   void handleTraceSpan(const TraceSpan& span) override;
 
@@ -68,15 +68,21 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
  private:
 
-  // Create a flow event to an external event
-  void handleLinkStart(const TraceActivity& s);
-  void handleLinkEnd(const TraceActivity& e);
+  // Create a flow event (arrow)
+  void handleLink(
+      char type,
+      const TraceActivity& e,
+      int64_t id,
+      const std::string& cat,
+      const std::string& name);
 
   void addIterationMarker(const TraceSpan& span);
 
   void openTraceFile();
 
   void handleGenericInstantEvent(const GenericTraceActivity& op);
+
+  void handleGenericLink(const GenericTraceActivity& activity);
 
   std::string fileName_;
   std::ofstream traceOf_;

@@ -124,7 +124,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       }
 
       return rows.filter((row) => {
-        return field(row) > size[0] && field(row) < size[1]
+        return field(row) >= size[0] && field(row) <= size[1]
       })
     }, [rows, size])
 
@@ -210,10 +210,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         if (hasMemoryEventsData === undefined) {
           setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
         }
-        setMaxSize(resp.metadata.max_size)
+        setMaxSize(Math.ceil(resp.metadata.max_size))
         setFilterEventSize([
-          resp.metadata.max_size / 4,
-          resp.metadata.max_size
+          Math.floor(resp.metadata.max_size / 4),
+          Math.ceil(resp.metadata.max_size)
         ])
         setMemoryEventsData(resp)
       })
@@ -322,7 +322,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                           inputProps={{
                             step: 100,
                             min: 0,
-                            max: maxSize,
+                            max: filterEventSize[1],
                             type: 'number',
                             'aria-labelledby': 'input-slider'
                           }}
@@ -346,7 +346,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                           onChange={onFilterEventMaxSizeInputChanged}
                           inputProps={{
                             step: 100,
-                            min: 0,
+                            min: filterEventSize[0],
                             max: maxSize,
                             type: 'number',
                             'aria-labelledby': 'input-slider'

@@ -44,8 +44,8 @@ public:
   void add(std::string apiName);
   void remove(std::string apiName);
   bool loadUserPrefs();
-
   bool contains(uint32_t apiId);
+  const std::unordered_map<uint32_t, uint32_t> &filterList() { return m_filter; }
 
 private:
   std::map<std::string, uint32_t> m_ids;

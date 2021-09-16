@@ -451,8 +451,37 @@ void RoctracerActivityInterface::enableActivities(
   if (m_registered == false) {
     roctracer_set_properties(ACTIVITY_DOMAIN_HIP_API, NULL);  // Magic encantation
 
+    // Set some api calls to ignore
+    m_loggedIds.setInvertMode(true);  // Omit the specified api
+    m_loggedIds.add("hipGetDevice");
+    m_loggedIds.add("hipSetDevice");
+    m_loggedIds.add("hipGetLastError");
+    m_loggedIds.add("__hipPushCallConfiguration");
+    m_loggedIds.add("__hipPopCallConfiguration");
+    m_loggedIds.add("hipCtxSetCurrent");
+    m_loggedIds.add("hipEventRecord");
+    m_loggedIds.add("hipEventQuery");
+    m_loggedIds.add("hipGetDeviceProperties");
+    m_loggedIds.add("hipPeekAtLastError");
+    m_loggedIds.add("hipModuleGetFunction");
+    m_loggedIds.add("hipEventCreateWithFlags");
+
     // Enable API callbacks
-    roctracer_enable_domain_callback(ACTIVITY_DOMAIN_HIP_API, api_callback, NULL);
+    if (m_loggedIds.invertMode() == true) {
+        // exclusion list - enable entire domain and turn off things in list
+        roctracer_enable_domain_callback(ACTIVITY_DOMAIN_HIP_API, api_callback, NULL);
+        const std::unordered_map<uint32_t, uint32_t> &filter = m_loggedIds.filterList();
+        for (auto it = filter.begin(); it != filter.end(); ++it) {
+            roctracer_disable_op_callback(ACTIVITY_DOMAIN_HIP_API, it->first);
+        }
+    }
+    else {
+        // inclusion list - only enable things in the list
+        const std::unordered_map<uint32_t, uint32_t> &filter = m_loggedIds.filterList();
+        for (auto it = filter.begin(); it != filter.end(); ++it) {
+            roctracer_enable_op_callback(ACTIVITY_DOMAIN_HIP_API, it->first, api_callback, NULL);
+        }
+    }
     //roctracer_enable_domain_callback(ACTIVITY_DOMAIN_ROCTX, api_callback, NULL);
 
     // Allocate default tracing pool
@@ -468,21 +497,6 @@ void RoctracerActivityInterface::enableActivities(
     hcc_cb_properties.buffer_callback_fun = activity_callback;
     roctracer_open_pool_expl(&hcc_cb_properties, &m_hccPool);
     roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, m_hccPool);
-
-    // Set some api calls to ignore
-    m_loggedIds.setInvertMode(true);  // Omit the specified api
-    m_loggedIds.add("hipGetDevice");
-    m_loggedIds.add("hipSetDevice");
-    m_loggedIds.add("hipGetLastError");
-    m_loggedIds.add("__hipPushCallConfiguration");
-    m_loggedIds.add("__hipPopCallConfiguration");
-    m_loggedIds.add("hipCtxSetCurrent");
-    m_loggedIds.add("hipEventRecord");
-    m_loggedIds.add("hipEventQuery");
-    m_loggedIds.add("hipGetDeviceProperties");
-    m_loggedIds.add("hipPeekAtLastError");
-    m_loggedIds.add("hipModuleGetFunction");
-    m_loggedIds.add("hipEventCreateWithFlags");
 
     m_registered = true;
   }

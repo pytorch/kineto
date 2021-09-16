@@ -128,7 +128,7 @@ class ModuleAggregator:
             for op in ops:
                 for rt in op.runtimes:
                     # "CallTreeRoot" & "dummy" kernels are launched out of profiler step, so don't count them.
-                    if op.name != "CallTreeRoot" and rt.name != "dummy":
+                    if not (op.name == "CallTreeRoot" and rt.name == "dummy"):
                         for k in rt.get_kernels():
                             sum_time += k.end_time - k.start_time
             return sum_time

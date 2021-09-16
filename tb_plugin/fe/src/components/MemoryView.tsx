@@ -25,6 +25,9 @@ const useStyles = makeStyles((theme) => ({
   root: {
     flexGrow: 1
   },
+  curve: {
+    marginBottom: 20
+  },
   verticalInput: {
     display: 'flex',
     alignItems: 'center'
@@ -158,7 +161,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const onRowSelected = (record?: object, rowIndex?: number) => {
     setSelectedRecord(record)
   }
-  
+
   const onFilterEventSizeChanged = (
     event: any,
     newValue: number | number[]
@@ -252,7 +255,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         <CardHeader title="Memory View" />
         <CardContent>
           <Grid direction="column" container spacing={1}>
-            <Grid item>
+            <Grid item className={classes.curve}>
               <DataLoading value={memoryCurveGraph}>
                 {(graph) => (
                   <Grid container direction="column">
@@ -312,7 +315,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                     </Grid>
                   </Grid>
                   <Grid item sm={6}>
-                    <Grid container direction='row' spacing={2}>
+                    <Grid container direction="row" spacing={2}>
                       <Grid item>
                         <TextField
                           className={classes.filterInput}

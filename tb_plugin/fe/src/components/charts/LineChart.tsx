@@ -112,14 +112,15 @@ export const LineChart: React.FC<IProps> = (props) => {
   }, [device, height, resizeEventDependency])
 
   React.useEffect(() => {
-    const compare_fn = (key: number, mid: Array<number>) => key - parseFloat(mid[0].toFixed(2))
+    const compare_fn = (key: number, mid: Array<number>) =>
+      key - parseFloat(mid[0].toFixed(2))
     if (chartObj) {
       if (record) {
         let startId = binarySearch(graph.rows, record.col2, compare_fn)
         let endId = binarySearch(graph.rows, record.col3, compare_fn)
         let selection = []
-        if (startId >= 0) selection.push({row: startId, column: 1})
-        if (endId >= 0) selection.push({row: endId, column: 1})
+        if (startId >= 0) selection.push({ row: startId, column: 1 })
+        if (endId >= 0) selection.push({ row: endId, column: 1 })
         chartObj.setSelection(selection)
       } else {
         chartObj.setSelection()

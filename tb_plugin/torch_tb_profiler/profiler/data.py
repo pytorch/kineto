@@ -238,21 +238,22 @@ class RunProfileData(object):
 
 
             # Memory related
-            for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
-                if dev_type == -1: # ignore cpu
-                    continue
-                total_mem = self.device_props[dev_id].get("totalGlobalMem")
-                if total_mem is not None and peak_mem > total_mem * 0.9:
-                    percentage = peak_mem / total_mem * 100
-                    total_mem_gb = total_mem / 1024 / 1024 / 1024
-                    ckp_url = "https://pytorch.org/docs/stable/checkpoint.html"
-                    amp_url = "https://pytorch.org/docs/stable/amp.html"
-                    self.recommendations.append(
-                        f"Device memory usage is at the limit of device memory capacity ({percentage:.1f}% of {total_mem_gb:.1f}GB " +
-                        f"on GPU{dev_id}). To get better value of your GPU or to use larger batch size for training, please " + 
-                        f"refer to {href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}."
-                    )
-                    break
+            if self.memory_parser:
+                for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
+                    if dev_type == -1: # ignore cpu
+                        continue
+                    total_mem = self.device_props[dev_id].get("totalGlobalMem")
+                    if total_mem is not None and peak_mem > total_mem * 0.9:
+                        percentage = peak_mem / total_mem * 100
+                        total_mem_gb = total_mem / 1024 / 1024 / 1024
+                        ckp_url = "https://pytorch.org/docs/stable/checkpoint.html"
+                        amp_url = "https://pytorch.org/docs/stable/amp.html"
+                        self.recommendations.append(
+                            f"Device memory usage is at the limit of device memory capacity ({percentage:.1f}% of {total_mem_gb:.1f}GB " +
+                            f"on GPU{dev_id}). To get better value of your GPU or to use larger batch size for training, please " + 
+                            f"refer to {href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}."
+                        )
+                        break
 
 
     def _analyze_distributed_metrics(self):

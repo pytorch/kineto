@@ -428,7 +428,6 @@ class RunProfile(object):
         alloc = {}  # allocation events may or may not have paired free event
         free = {}  # free events that does not have paired alloc event
         prev_ts = float("-inf")  # ensure ordered memory records is ordered
-        max_size = 0
         for i, r in enumerate(memory_records):
             if r.addr is None:
                 # profile json data prior to pytorch 1.10 do not have addr
@@ -446,11 +445,9 @@ class RunProfile(object):
                     alloc_r = memory_records[alloc[addr]]
                     alloc_ts = alloc_r.ts
                     free_ts = r.ts
-                    size = round(cano.convert_memory(-size))
-                    max_size = max(max_size, size)
                     events[alloc_r.device_name].append([
                         get_op_name_or_ctx(alloc_r),
-                        size,
+                        round(cano.convert_memory(-size)),
                         round(cano.convert_time(alloc_ts - profiler_start_ts)),
                         round(cano.convert_time(free_ts - profiler_start_ts)),
                         round(cano.convert_time(free_ts - alloc_ts)),
@@ -462,11 +459,9 @@ class RunProfile(object):
 
         for i in alloc.values():
             r = memory_records[i]
-            size = round(cano.convert_memory(r.bytes))
-            max_size = max(max_size, size)
             events[r.device_name].append([
                 get_op_name_or_ctx(r),
-                size,
+                round(cano.convert_memory(r.bytes)),
                 round(cano.convert_time(r.ts - profiler_start_ts)),
                 None,
                 None,
@@ -474,11 +469,9 @@ class RunProfile(object):
 
         for i in free.values():
             r = memory_records[i]
-            size = round(cano.convert_memory(-r.bytes))
-            max_size = max(max_size, size)
             events[r.device_name].append([
                 get_op_name_or_ctx(r),
-                size,
+                round(cano.convert_memory(-r.bytes)),
                 None,
                 round(cano.convert_time(r.ts - profiler_start_ts)),
                 None,
@@ -494,7 +487,6 @@ class RunProfile(object):
             "metadata": {
                 "title": "Memory Events",
                 "default_device": default_device,
-                "max_size": max_size
             },
             "columns": [
                 {"name": "Operator", "type": "string", "tooltip": ""},

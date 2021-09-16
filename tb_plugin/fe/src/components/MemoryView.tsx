@@ -62,6 +62,14 @@ export interface IProps {
 }
 
 export const MemoryView: React.FC<IProps> = React.memo((props) => {
+  interface EventSizeFilter {
+    [deviceName: string]: Array<number>
+  }
+
+  interface MaxEventSize {
+    [deviceName: string]: number
+  }
+
   const { run, worker, span } = props
   const classes = useStyles()
 
@@ -96,8 +104,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchEventOperatorName, setSearchEventOperatorName] = React.useState(
     ''
   )
-  const [filterEventSize, setFilterEventSize] = React.useState<number[]>([0, 0])
-  const [maxSize, setMaxSize] = React.useState(0)
+  const [filterEventSize, setFilterEventSize] = React.useState<EventSizeFilter>(
+    {}
+  )
+  const [maxSize, setMaxSize] = React.useState<MaxEventSize>({})
 
   const getSearchIndex = function () {
     if (!memoryData) {
@@ -146,7 +156,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchedEventsTableDataRows] = useSearchDirectly(
     searchEventOperatorName,
     getName,
-    filterByEventSize(memoryEventsData?.rows[device], filterEventSize) ?? []
+    filterByEventSize(
+      memoryEventsData?.rows[device],
+      filterEventSize[device]
+    ) ?? []
   )
 
   const onSearchOperatorChanged: TextFieldProps['onChange'] = (event) => {
@@ -166,19 +179,28 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     event: any,
     newValue: number | number[]
   ) => {
-    setFilterEventSize(newValue as number[])
+    setFilterEventSize({
+      ...filterEventSize,
+      [device]: newValue as number[]
+    })
   }
 
   const onFilterEventMinSizeInputChanged = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setFilterEventSize([Number(event.target.value), filterEventSize[1]])
+    setFilterEventSize({
+      ...filterEventSize,
+      [device]: [Number(event.target.value), filterEventSize[device][1]]
+    })
   }
 
   const onFilterEventMaxSizeInputChanged = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setFilterEventSize([filterEventSize[0], Number(event.target.value)])
+    setFilterEventSize({
+      ...filterEventSize,
+      [device]: [filterEventSize[device][0], Number(event.target.value)]
+    })
   }
 
   React.useEffect(() => {
@@ -210,21 +232,37 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         selectedRange?.endTs
       )
       .then((resp) => {
+        let curMaxSize: MaxEventSize = {}
+        let curFilterEventSize: EventSizeFilter = {}
+        for (let deviceName in resp.rows) {
+          curMaxSize[deviceName] = 0
+          for (let i = 0; i < resp.rows[deviceName].length; i++) {
+            curMaxSize[deviceName] = Math.max(
+              curMaxSize[deviceName],
+              resp.rows[deviceName][i][1]
+            )
+          }
+          curFilterEventSize[deviceName] = [
+            Math.floor(curMaxSize[deviceName] / 4),
+            Math.ceil(curMaxSize[deviceName])
+          ]
+          curMaxSize[deviceName] = Math.ceil(curMaxSize[deviceName])
+        }
+
+        if (device == '') setDevice(resp.metadata.default_device)
+        setMaxSize(curMaxSize)
+        setFilterEventSize(curFilterEventSize)
+
         if (hasMemoryEventsData === undefined) {
           setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
         }
-        setMaxSize(Math.ceil(resp.metadata.max_size))
-        setFilterEventSize([
-          Math.floor(resp.metadata.max_size / 4),
-          Math.ceil(resp.metadata.max_size)
-        ])
         setMemoryEventsData(resp)
       })
   }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      setDevice(resp.metadata.default_device)
+      if (device == '') setDevice(resp.metadata.default_device)
       if (hasMemoryCurveGraph === undefined) {
         setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
       }
@@ -320,12 +358,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         <TextField
                           className={classes.filterInput}
                           label="Min Size(KB)"
-                          value={filterEventSize[0]}
+                          value={filterEventSize[device][0]}
                           onChange={onFilterEventMinSizeInputChanged}
                           inputProps={{
                             step: 100,
                             min: 0,
-                            max: filterEventSize[1],
+                            max: filterEventSize[device][1],
                             type: 'number',
                             'aria-labelledby': 'input-slider'
                           }}
@@ -334,23 +372,23 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                       <Grid item>
                         <Slider
                           className={classes.filterSlider}
-                          value={filterEventSize}
+                          value={filterEventSize[device]}
                           onChange={onFilterEventSizeChanged}
                           aria-labelledby="input-slider"
                           min={0}
-                          max={maxSize}
+                          max={maxSize[device]}
                         />
                       </Grid>
                       <Grid item>
                         <TextField
                           className={classes.filterInput}
                           label="Max Size(KB)"
-                          value={filterEventSize[1]}
+                          value={filterEventSize[device][1]}
                           onChange={onFilterEventMaxSizeInputChanged}
                           inputProps={{
                             step: 100,
-                            min: filterEventSize[0],
-                            max: maxSize,
+                            min: filterEventSize[device][0],
+                            max: maxSize[device],
                             type: 'number',
                             'aria-labelledby': 'input-slider'
                           }}

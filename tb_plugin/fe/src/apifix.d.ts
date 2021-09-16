@@ -45,7 +45,7 @@ declare module './api/generated/api' {
   }
 
   export interface MemoryEventsTableMetadata {
-    max_size: MemoryEventsTableMetadata['maxSize']
+    default_device: MemoryEventsTableMetadata['defaultDevice']
   }
 
   export interface MemoryCurveMetadata {

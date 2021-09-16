@@ -361,7 +361,11 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                           value={filterEventSize[device][0]}
                           onChange={onFilterEventMinSizeInputChanged}
                           inputProps={{
-                            step: 100,
+                            step:
+                              10 **
+                              (parseInt(maxSize[device].toString()).toString()
+                                .length -
+                                3),
                             min: 0,
                             max: filterEventSize[device][1],
                             type: 'number',
@@ -377,6 +381,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                           aria-labelledby="input-slider"
                           min={0}
                           max={maxSize[device]}
+                          step={
+                            10 **
+                            (parseInt(maxSize[device].toString()).toString()
+                              .length -
+                              5)
+                          }
                         />
                       </Grid>
                       <Grid item>
@@ -386,7 +396,11 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                           value={filterEventSize[device][1]}
                           onChange={onFilterEventMaxSizeInputChanged}
                           inputProps={{
-                            step: 100,
+                            step:
+                              10 **
+                              (parseInt(maxSize[device].toString()).toString()
+                                .length -
+                                3),
                             min: filterEventSize[device][0],
                             max: maxSize[device],
                             type: 'number',

@@ -22,8 +22,6 @@ typedef uint64_t timestamp_t;
 static inline uint32_t getPid() { return syscall(__NR_getpid); }
 static inline uint32_t getTid() { return syscall(__NR_gettid); }
 
-static size_t BUFFERSIZE=1<<20;
-
 // C++ symbol demangle
 static inline const char* cxx_demangle(const char* symbol) {
   size_t funcnamesize;
@@ -41,10 +39,6 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-// TODO: do we want this to be configurable?
-// Set to 2MB to avoid constantly creating buffers (espeically for networks
-// that has many small memcpy such as sparseNN)
-// Consider putting this on huge pages?
 constexpr size_t kBufSize(2 * 1024 * 1024);
 
 RoctracerActivityInterface& RoctracerActivityInterface::singleton() {
@@ -53,7 +47,7 @@ RoctracerActivityInterface& RoctracerActivityInterface::singleton() {
 }
 
 RoctracerActivityInterface::RoctracerActivityInterface() {
-  gpuTraceBuffers_ = std::make_unique<std::list<RoctracerActivityBuffer>>();
+  m_gpuTraceBuffers = std::make_unique<std::list<RoctracerActivityBuffer>>();
 }
 
 RoctracerActivityInterface::~RoctracerActivityInterface() {
@@ -63,34 +57,22 @@ RoctracerActivityInterface::~RoctracerActivityInterface() {
 
 void RoctracerActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
-  if (!singleton().externalCorrelationEnabled_)
+  if (!singleton().m_externalCorrelationEnabled)
     return;
-  // FIXME: no type
-  roctracer_activity_push_external_correlation_id(id);
+  // placeholder
 #endif
 }
 
 void RoctracerActivityInterface::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
-  if (!singleton().externalCorrelationEnabled_)
+  if (!singleton().m_externalCorrelationEnabled)
     return;
-  // FIXME: no type
-  roctracer_activity_pop_external_correlation_id(nullptr);
+  // placeholder
 #endif
 }
 
-static int getSMCount() {
-  // FIXME
-  return -1;
-}
-
-int RoctracerActivityInterface::smCount() {
-  static int sm_count = getSMCount();
-  return sm_count;
-}
-
 void RoctracerActivityInterface::setMaxBufferSize(int size) {
-  maxGpuBufferCount_ = 1 + size / kBufSize;
+  m_maxGpuBufferCount = 1 + size / kBufSize;
 }
 
 int RoctracerActivityInterface::processActivities(
@@ -107,8 +89,6 @@ int RoctracerActivityInterface::processActivities(
 
   int count = 0;
   char buff[4096];
-
-  printf("processActivities: %lu items\n", m_rows.size());
 
   // Basic Api calls
 
@@ -221,7 +201,7 @@ int RoctracerActivityInterface::processActivities(
 
   // Async Ops
 
-  for (auto& buffer : *gpuTraceBuffers_) {
+  for (auto& buffer : *m_gpuTraceBuffers) {
     const roctracer_record_t* record = (const roctracer_record_t*)(buffer.data);
     const roctracer_record_t* end_record = (const roctracer_record_t*)(buffer.data + buffer.validSize);
     GenericTraceActivity a;
@@ -268,9 +248,6 @@ int RoctracerActivityInterface::processActivities(
         logger.handleGenericActivity(a);
         ++count;
       }
-      else if (record->domain == ACTIVITY_DOMAIN_EXT_API) {
-        //printf("%ul :: %d\n", record->correlation_id, record->external_id);
-      }
 
       roctracer_next_record(record, &record);     
     }
@@ -279,9 +256,7 @@ int RoctracerActivityInterface::processActivities(
 }
 
 void RoctracerActivityInterface::clearActivities() {
-  if (gpuTraceBuffers_) {
-    gpuTraceBuffers_->clear();
-  }
+  m_gpuTraceBuffers->clear();
   m_rows.clear();
   m_kernelRows.clear();
   m_copyRows.clear();
@@ -289,62 +264,8 @@ void RoctracerActivityInterface::clearActivities() {
   m_kernelLaunches.clear();
 }
 
-// FIXME remove me
-#if 0
-void RoctracerActivityInterface::addActivityBuffer(uint8_t* buffer, size_t validSize) {
-  if (!gpuTraceBuffers_) {
-    gpuTraceBuffers_ = std::make_unique<std::list<RoctracerActivityBuffer>>();
-  }
-  gpuTraceBuffers_->emplace_back(buffer, validSize);
-}
-#endif
-
 void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg)
 {
-#if 0
-  if (domain == ACTIVITY_DOMAIN_HIP_API) {
-    const hip_api_data_t* data = (const hip_api_data_t*)(callback_data);
-    if (data->phase == 0) {
-      std::string name;
-
-      switch (cid) {
-        case HIP_API_ID_hipLaunchKernel:
-          {
-            name = hipKernelNameRefByPtr(data->args.hipLaunchKernel.function_address, data->args.hipLaunchKernel.stream);
-          }
-          break;
-        case HIP_API_ID_hipExtLaunchKernel:
-          {
-            name = hipKernelNameRefByPtr(data->args.hipLaunchKernel.function_address, data->args.hipLaunchKernel.stream);
-          }
-          break;
-        case HIP_API_ID_hipHccModuleLaunchKernel:
-          name = cxx_demangle(hipKernelNameRef(data->args.hipHccModuleLaunchKernel.f));
-          break;
-        case HIP_API_ID_hipExtModuleLaunchKernel:
-          name = cxx_demangle(hipKernelNameRef(data->args.hipExtModuleLaunchKernel.f));
-          break;
-        case HIP_API_ID_hipModuleLaunchKernel:
-          name = cxx_demangle(hipKernelNameRef(data->args.hipModuleLaunchKernel.f));
-          break;
-        default:
-          break;
-      }
-
-      if (name.empty() == false) {
-        RoctracerActivityInterface *dis = &singleton();
-        uint32_t string_id = dis->m_reverseStrings[name];
-        if (string_id == 0) {
-          string_id = dis->m_nextStringId++;
-          dis->m_reverseStrings[name] = string_id;
-          dis->m_strings[string_id] = name;
-        }
-        dis->m_kernelNames[data->correlation_id] = string_id;
-      }
-    }
-  }
-#endif
-
   RoctracerActivityInterface *dis = &singleton();
 
   if (domain == ACTIVITY_DOMAIN_HIP_API && dis->m_loggedIds.contains(cid)) {
@@ -352,7 +273,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
 
     // Pack callbacks into row structures
 
-    static timespec timestamp;	// FIXME check thread safety
+    static timespec timestamp;	// FIXME verify thread safety
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
       clock_gettime(CLOCK_MONOTONIC, &timestamp);  // record proper clock
@@ -519,7 +440,7 @@ void RoctracerActivityInterface::activity_callback(const char* begin, const char
 {
   size_t size = end - begin;
   uint8_t *buffer = (uint8_t*) malloc(size);
-  auto &gpuTraceBuffers = singleton().gpuTraceBuffers_;
+  auto &gpuTraceBuffers = singleton().m_gpuTraceBuffers;
   memcpy(buffer, begin, size);
   gpuTraceBuffers->emplace_back(buffer, size);
 }
@@ -545,9 +466,8 @@ void RoctracerActivityInterface::enableActivities(
     memset(&hcc_cb_properties, 0, sizeof(roctracer_properties_t));
     hcc_cb_properties.buffer_size = 0x4000;
     hcc_cb_properties.buffer_callback_fun = activity_callback;
-    roctracer_open_pool_expl(&hcc_cb_properties, &hccPool_);
-    roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, hccPool_);
-    //roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_EXT_API, hccPool_);
+    roctracer_open_pool_expl(&hcc_cb_properties, &m_hccPool);
+    roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, m_hccPool);
 
     // Set some api calls to ignore
     m_loggedIds.setInvertMode(true);  // Omit the specified api
@@ -569,7 +489,7 @@ void RoctracerActivityInterface::enableActivities(
 
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
-        roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_EXT_API, hccPool_);
+        m_externalCorrelationEnabled = true;
     }
   }
 
@@ -581,7 +501,13 @@ void RoctracerActivityInterface::disableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   roctracer_stop();
-  roctracer_flush_activity_expl(hccPool_);
+  roctracer_flush_activity_expl(m_hccPool);
+
+  for (const auto& activity : selected_activities) {
+    if (activity == ActivityType::EXTERNAL_CORRELATION) {
+        m_externalCorrelationEnabled = false;
+    }
+  }
 #endif
 }
 
@@ -590,9 +516,8 @@ void RoctracerActivityInterface::endTracing() {
     roctracer_disable_domain_callback(ACTIVITY_DOMAIN_HIP_API);
     //roctracer_disable_domain_callback(ACTIVITY_DOMAIN_ROCTX);
 
-    roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HIP_API);
     roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HCC_OPS);
-    roctracer_close_pool_expl(hccPool_);
+    roctracer_close_pool_expl(m_hccPool);
   }
 }
 
@@ -618,7 +543,7 @@ void ApiIdList::remove(std::string apiName)
 
 bool ApiIdList::loadUserPrefs()
 {
-  // FIXME: check an ENV variable that points to an exclude file
+  // placeholder
   return false;
 }
 bool ApiIdList::contains(uint32_t apiId)

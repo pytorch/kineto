@@ -8,8 +8,8 @@
 #pragma once
 
 #include "ActivityType.h"
-#include "RoctracerActivityBuffer.h"	// FIXME remove me
 #include "GenericTraceActivity.h"
+#include "RoctracerActivityBuffer.h"
 
 #include <atomic>
 #ifdef HAS_ROCTRACER
@@ -131,7 +131,6 @@ class RoctracerActivityInterface {
 
   static RoctracerActivityInterface& singleton();
 
-  virtual int smCount();
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
@@ -141,26 +140,18 @@ class RoctracerActivityInterface {
     const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
-  //void addActivityBuffer(uint8_t* buffer, size_t validSize);
-  //virtual std::unique_ptr<std::list<RoctracerActivityBuffer>> activityBuffers();
-
-  //virtual const std::pair<int, int> processActivities(
-  //    std::list<CuptiActivityBuffer>& buffers,
-  //    std::function<void(const CUpti_Activity*)> handler);
-
   int processActivities(ActivityLogger& logger);
 
   void setMaxBufferSize(int size);
 
   std::atomic_bool stopCollection{false};
-  int64_t flushOverhead{0};
 
  private:
   bool m_registered{false};
   void endTracing();
 
 #ifdef HAS_ROCTRACER
-  roctracer_pool_t *hccPool_{NULL};
+  roctracer_pool_t *m_hccPool{NULL};
   static void api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg);
   static void activity_callback(const char* begin, const char* end, void* arg);
 
@@ -180,9 +171,9 @@ class RoctracerActivityInterface {
   std::map<activity_correlation_id_t, GenericTraceActivity> m_kernelLaunches;
 #endif
 
-  int maxGpuBufferCount_{0};	// FIXME: enforce this?
-  std::unique_ptr<std::list<RoctracerActivityBuffer>> gpuTraceBuffers_;
-  bool externalCorrelationEnabled_{true};
+  int m_maxGpuBufferCount{0};
+  std::unique_ptr<std::list<RoctracerActivityBuffer>> m_gpuTraceBuffers;
+  bool m_externalCorrelationEnabled{true};
 };
 
 } // namespace KINETO_NAMESPACE

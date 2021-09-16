@@ -27,8 +27,6 @@
 #include "CuptiActivityInterface.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-// FIXME
-// FIXME
 #include "RoctracerActivityInterface.h"
 #endif
 #include "output_base.h"
@@ -227,7 +225,6 @@ inline void ActivityProfiler::handleCorrelationActivity(
         correlation->externalId, correlation->correlationId);
 }
 #endif // HAS_CUPTI
-// FIXME: rocprofiler
 
 const libkineto::GenericTraceActivity&
 ActivityProfiler::ExternalEventMap::correlatedActivity(uint32_t id) {
@@ -518,7 +515,7 @@ void ActivityProfiler::configure(
   // Ensure we're starting in a clean state
   resetTraceData();
 
-#ifdef HAS_CUPTI
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     // Enabling CUPTI activity tracing incurs a larger perf hit at first,
     // presumably because structures are allocated and initialized, callbacks
@@ -531,22 +528,18 @@ void ActivityProfiler::configure(
     if (VLOG_IS_ON(1)) {
       timestamp = system_clock::now();
     }
+#ifdef HAS_CUPTI
     cupti_.enableCuptiActivities(config_->selectedActivityTypes());
+#else
+    cupti_.enableActivities(config_->selectedActivityTypes());
+#endif
     if (VLOG_IS_ON(1)) {
       auto t2 = system_clock::now();
       addOverheadSample(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
-#endif // HAS_CUPTI
-#ifdef HAS_ROCTRACER
-  if (!cpuOnly_) {
-    LOG(INFO) << "Enabling GPU tracing";
-    cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
-    cupti_.enableActivities(config_->selectedActivityTypes());
-    // FIXME: overhead sample?
-  }
-#endif // HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER
 
   profileStartTime_ = config_->requestTimestamp();
 
@@ -581,26 +574,24 @@ void ActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
   if (captureWindowEndTime_ == 0) {
     captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
   }
-#ifdef HAS_CUPTI
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
       timestamp = system_clock::now();
     }
+#ifdef HAS_CUPTI
     cupti_.disableCuptiActivities(config_->selectedActivityTypes());
+#else
+    cupti_.disableActivities(config_->selectedActivityTypes());
+#endif
     if (VLOG_IS_ON(1)) {
       auto t2 = system_clock::now();
       addOverheadSample(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
-#endif // HAS_CUPTI
-#ifdef HAS_ROCTRACER
-  if (!cpuOnly_) {
-    cupti_.disableActivities(config_->selectedActivityTypes());
-    // FIXME: overhead sample?
-  }
-#endif // HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER
 
   if (currentRunloopState_ == RunloopState::CollectTrace) {
     VLOG(0) << "CollectTrace -> ProcessTrace";
@@ -632,7 +623,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
 
     case RunloopState::Warmup:
       VLOG(1) << "State: Warmup";
-#ifdef HAS_CUPTI
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && nextWakeupTime < profileStartTime_) {
         cupti_.clearActivities();
@@ -647,7 +638,7 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
         VLOG(0) << "Warmup -> WaitForRequest";
         break;
       }
-#endif // HAS_CUPTI
+#endif // HAS_CUPTI || HAS_ROCTRACER
 
       if (now >= profileStartTime_) {
         if (now > profileStartTime_ + milliseconds(10)) {
@@ -681,9 +672,9 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
       }
 
       if (now >= profileEndTime_ || stopCollection_.exchange(false)
-#ifdef HAS_CUPTI
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
           || cupti_.stopCollection
-#endif
+#endif // HAS_CUPTI || HAS_ROCTRACER
       ){
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete";
@@ -761,16 +752,11 @@ void ActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logge
 }
 
 void ActivityProfiler::resetTraceData() {
-#ifdef HAS_CUPTI
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     cupti_.clearActivities();
   }
-#endif // HAS_CUPTI
-#ifdef HAS_ROCTRACER
-  if (!cpuOnly_) {
-    cupti_.clearActivities();
-  }
-#endif // HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER
   externalEvents_.clear();
   gpuUserEventMap_.clear();
   traceSpans_.clear();

@@ -23,9 +23,7 @@ namespace libkineto {
 class GenericTraceActivity : public TraceActivity {
 
  public:
-  // FIXME
-  //GenericTraceActivity() = delete;
-  GenericTraceActivity() : traceSpan_(NULL) {}
+  GenericTraceActivity() : activityType(ActivityType::ENUM_COUNT), traceSpan_(NULL) {}
 
   GenericTraceActivity(
       const TraceSpan& trace, ActivityType type, const std::string& name)

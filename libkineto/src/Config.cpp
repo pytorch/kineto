@@ -421,9 +421,8 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << std::endl;
   if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    std::tm tm;
     LOG(INFO) << "Trace start time: "
-              << std::put_time(localtime_r(&t_c, &tm), "%F %T");
+              << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c));
   }
   s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
     << std::endl;

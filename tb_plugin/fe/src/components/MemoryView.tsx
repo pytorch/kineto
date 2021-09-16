@@ -248,8 +248,6 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
           ]
           curMaxSize[deviceName] = Math.ceil(curMaxSize[deviceName])
         }
-
-        if (device == '') setDevice(resp.metadata.default_device)
         setMaxSize(curMaxSize)
         setFilterEventSize(curFilterEventSize)
 
@@ -262,7 +260,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      if (device == '') setDevice(resp.metadata.default_device)
+      setDevice(resp.metadata.default_device)
       if (hasMemoryCurveGraph === undefined) {
         setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
       }

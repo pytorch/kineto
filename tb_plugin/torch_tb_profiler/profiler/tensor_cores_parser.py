@@ -7,8 +7,7 @@ from .. import consts
 class TensorCoresParser:
     def __init__(self):
         self.tc_eligible_ops_kernel_ratio = 0.0
-        # For calculating Tensor Cores time ratio.
-        self.kernel_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
+        # For calculating Tensor Cores time ratio per GPU.
         self.tc_ratio = [None] * consts.MAX_GPU_PER_NODE
 
     def parse_events(self, tid2tree, ops, gpu_ids):

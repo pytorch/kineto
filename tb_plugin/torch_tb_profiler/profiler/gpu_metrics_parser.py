@@ -164,7 +164,7 @@ class GPUMetricsParser(object):
     def parse_event(self, event):
         ts = event.ts
         dur = event.duration
-        gpu_id = event.args.get("device", None)
+        gpu_id = event.device
         if gpu_id != event.pid:
             logger.warning("pid '{}' is not equal to args.device '{}' on event with ts '{}'".format(
                 event.pid, gpu_id, event.ts))

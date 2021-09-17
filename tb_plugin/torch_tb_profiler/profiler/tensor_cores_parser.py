@@ -2,8 +2,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 from .. import consts
-from .trace import EventTypes
-from .tensor_core import TC_Allowlist
 
 
 class TensorCoresParser:
@@ -13,38 +11,30 @@ class TensorCoresParser:
         self.kernel_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.tc_ratio = [None] * consts.MAX_GPU_PER_NODE
 
-    def parse_events(self, events, gpu_ids, steps_start_time, steps_end_time, tid2tree, ops):
-        for event in events:
-            if event.type == EventTypes.KERNEL:
-                self._parse_event(event)
-        self.tc_ratio = self._calculate_tc_ratio(gpu_ids, steps_start_time, steps_end_time)
+    def parse_events(self, tid2tree, ops, gpu_ids):
+        self.tc_ratio = self._calculate_tc_ratio(ops, gpu_ids)
         self.tc_eligible_ops_kernel_ratio = self._get_tc_eligible_ops_kernel_ratio(tid2tree, ops)
 
-    def _parse_event(self, event):
-        ts = event.ts
-        dur = event.duration
-        gpu_id = event.args.get("device", None)
-        self.kernel_per_device[gpu_id].append((ts, ts + dur, event.name in TC_Allowlist))
-
-    def _calculate_tc_ratio(self, gpu_ids, steps_start_time, steps_end_time):
+    def _calculate_tc_ratio(self, ops, gpu_ids):
         tc_ratio = [None] * consts.MAX_GPU_PER_NODE
-        kernels_num = sum(len(self.kernel_per_device[gpu_id]) for gpu_id in gpu_ids)
-        if kernels_num > 0: # If no kernel, then keep all self.tc_ratio as None.
-            for gpu_id in gpu_ids:
-                tc_time = 0
-                total_time = 0
-                kernels = self.kernel_per_device[gpu_id]
-                for r in kernels:
-                    min_time = max(r[0], steps_start_time)
-                    max_time = min(r[1], steps_end_time)
-                    if min_time < max_time:
-                        dur = max_time - min_time
-                        is_tc_used = r[2]
+        tc_time = [0] * consts.MAX_GPU_PER_NODE
+        total_time = [0] * consts.MAX_GPU_PER_NODE
+        has_kernel = False
+        for op in ops:
+            for rt in op.runtimes:
+                # "CallTreeRoot" & "dummy" kernels are launched out of profiler step, so don't count them.
+                if not (op.name == "CallTreeRoot" and rt.name == "dummy"):
+                    for k in rt.get_kernels():
+                        has_kernel = True
+                        dur = k.end_time - k.start_time
+                        is_tc_used = k.tc_used
                         if is_tc_used:
-                            tc_time += dur
-                        total_time += dur
-                if total_time > 0:
-                    tc_ratio[gpu_id] = tc_time / total_time
+                            tc_time[k.device_id] += dur
+                        total_time[k.device_id] += dur
+        if has_kernel: # If no kernel, then keep all self.tc_ratio as None.
+            for gpu_id in gpu_ids:
+                if total_time[gpu_id] > 0:
+                    tc_ratio[gpu_id] = tc_time[k.device_id] / total_time[k.device_id]
                 else:
                     tc_ratio[gpu_id] = 0.0
         return tc_ratio

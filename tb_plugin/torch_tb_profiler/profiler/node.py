@@ -6,7 +6,7 @@ from collections import defaultdict
 from enum import IntEnum
 
 from .. import utils
-from .tensor_core import TC_OP_Allowlist
+from .tensor_core import TC_Allowlist, TC_OP_Allowlist
 from .trace import EventTypes
 
 logger = utils.get_logger()
@@ -196,7 +196,7 @@ class RuntimeNode(HostNode):
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None,
                  blocks_per_sm=None, occupancy=None,
-                 grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False):
+                 grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False, device_id=None):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.op_node = None # The cpu operator that launched it.
         self.blocks_per_sm = blocks_per_sm
@@ -205,7 +205,8 @@ class DeviceNode(BaseNode):
         self.block = block
         self.regs_per_thread = regs_per_thread
         self.shared_memory = shared_memory
-        self.tc_used = tc_used
+        self.tc_used = self.name in TC_Allowlist
+        self.device_id = device_id
 
     @classmethod
     def create(cls, event):
@@ -217,7 +218,7 @@ class DeviceNode(BaseNode):
             kwargs["block"] = event.block
             kwargs["regs_per_thread"] = event.regs_per_thread
             kwargs["shared_memory"] = event.shared_memory
-            kwargs["tc_used"] = event.tc_used
+            kwargs["device_id"] = event.device_id
         return cls(**kwargs)
 
 def is_operator_node(node):

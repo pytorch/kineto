@@ -201,9 +201,7 @@ class RunProfileData(object):
 
         logger.debug("TensorCoresParser")
         tensorcores_parser = TensorCoresParser()
-        tensorcores_parser.parse_events(self.events, gpu_metrics_parser.gpu_ids,
-                                        parser.steps[0][0], parser.steps[-1][1],
-                                        self.tid2tree, module_aggregator.ops)
+        tensorcores_parser.parse_events(self.tid2tree, module_aggregator.ops, gpu_metrics_parser.gpu_ids)
         self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
         self.tc_ratio = tensorcores_parser.tc_ratio
 

@@ -121,6 +121,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     return -1
   }
 
+  const getStep = (size: number, indexBias: number) => {
+    return 10 ** (Math.floor(Math.log10(size != 0 ? size : 1)) - indexBias)
+  }
+
   const filterByEventSize = <T,>(
     rows: T[] | undefined,
     size: Array<number>
@@ -158,7 +162,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     getName,
     filterByEventSize(
       memoryEventsData?.rows[device],
-      filterEventSize[device]
+      filterEventSize[device] ?? [0, Infinity]
     ) ?? []
   )
 
@@ -243,10 +247,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
             )
           }
           curFilterEventSize[deviceName] = [
-            Math.floor(curMaxSize[deviceName] / 4),
-            Math.ceil(curMaxSize[deviceName])
+            curMaxSize[deviceName] / 4,
+            curMaxSize[deviceName]
           ]
-          curMaxSize[deviceName] = Math.ceil(curMaxSize[deviceName])
+          curMaxSize[deviceName] = curMaxSize[deviceName]
         }
         setMaxSize(curMaxSize)
         setFilterEventSize(curFilterEventSize)
@@ -356,16 +360,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         <TextField
                           className={classes.filterInput}
                           label="Min Size(KB)"
-                          value={filterEventSize[device][0]}
+                          value={filterEventSize[device]?.[0] ?? 0}
                           onChange={onFilterEventMinSizeInputChanged}
                           inputProps={{
-                            step:
-                              10 **
-                              (parseInt(maxSize[device].toString()).toString()
-                                .length -
-                                3),
+                            step: getStep(maxSize[device] ?? 0, 3),
                             min: 0,
-                            max: filterEventSize[device][1],
+                            max: filterEventSize[device]?.[1] ?? 0,
                             type: 'number',
                             'aria-labelledby': 'input-slider'
                           }}
@@ -374,33 +374,24 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                       <Grid item>
                         <Slider
                           className={classes.filterSlider}
-                          value={filterEventSize[device]}
+                          value={filterEventSize[device] ?? [0, 0]}
                           onChange={onFilterEventSizeChanged}
                           aria-labelledby="input-slider"
                           min={0}
-                          max={maxSize[device]}
-                          step={
-                            10 **
-                            (parseInt(maxSize[device].toString()).toString()
-                              .length -
-                              5)
-                          }
+                          max={maxSize[device] ?? 0}
+                          step={getStep(maxSize[device] ?? 0, 5)}
                         />
                       </Grid>
                       <Grid item>
                         <TextField
                           className={classes.filterInput}
                           label="Max Size(KB)"
-                          value={filterEventSize[device][1]}
+                          value={filterEventSize[device]?.[1] ?? 0}
                           onChange={onFilterEventMaxSizeInputChanged}
                           inputProps={{
-                            step:
-                              10 **
-                              (parseInt(maxSize[device].toString()).toString()
-                                .length -
-                                3),
-                            min: filterEventSize[device][0],
-                            max: maxSize[device],
+                            step: getStep(maxSize[device] ?? 0, 3),
+                            min: filterEventSize[device]?.[0] ?? 0,
+                            max: maxSize[device] ?? 0,
                             type: 'number',
                             'aria-labelledby': 'input-slider'
                           }}

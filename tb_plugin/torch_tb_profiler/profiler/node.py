@@ -157,16 +157,6 @@ class OperatorNode(HostNode):
 
         return ops, kernels
 
-    def get_bottom_tc_eligible_operators(self):
-        ops = []
-        for child in self.children:
-            child_ops = child.get_bottom_tc_eligible_operators()
-            ops.extend(child_ops)
-        # TC-eligible ops which have children TC-eligible ops will not be regarded as "bottom".
-        if self.tc_eligible and len(ops) == 0:
-            ops.append(self)
-        return ops
-
     @classmethod
     def create(cls, event):
         kwargs = BaseNode.get_node_argument(event)

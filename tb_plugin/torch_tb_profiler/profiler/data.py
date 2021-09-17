@@ -21,6 +21,7 @@ from .kernel_parser import KernelParser
 from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
 from .memory_parser import MemoryParser
+from .tensor_cores_parser import TensorCoresParser
 
 logger = utils.get_logger()
 
@@ -54,15 +55,15 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
-        self.tc_ratio = None
         self.tid2tree = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
-        self.tc_eligible_ops_kernel_ratio = None
         self.kernel_stat = None
+        self.tc_ratio = None
+        self.tc_eligible_ops_kernel_ratio = None
         self.tc_used_ratio = None # If it's a pure CPU run, then this keeps as None.
         self.recommendations = []
         self.comm_node_list = None
@@ -176,7 +177,6 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
         self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
         self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
-        self.tc_eligible_ops_kernel_ratio = module_aggregator.tc_eligible_ops_kernel_ratio
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -198,7 +198,14 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = gpu_metrics_parser.approximated_sm_efficiency_ranges
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
-        self.tc_ratio = gpu_metrics_parser.tc_ratio
+
+        logger.debug("TensorCoresParser")
+        tensorcores_parser = TensorCoresParser()
+        tensorcores_parser.parse_events(self.events, gpu_metrics_parser.gpu_ids,
+                                        parser.steps[0][0], parser.steps[-1][1],
+                                        self.tid2tree, module_aggregator.ops)
+        self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
+        self.tc_ratio = tensorcores_parser.tc_ratio
 
         if self.has_kernel:
             logger.debug("KernelParser")

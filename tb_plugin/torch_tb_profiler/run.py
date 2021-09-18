@@ -183,6 +183,7 @@ class RunProfile(object):
             gpu_metrics_data = []
             has_sm_efficiency = False
             has_occupancy = False
+            has_tc = False
             is_first = True
             gpu_info_columns = ["Name", "Memory", "Compute Capability"]
             for gpu_id in profile.gpu_ids:
@@ -212,20 +213,26 @@ class RunProfile(object):
                     gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True
+                if profile.tc_ratio[gpu_id] is not None:
+                    gpu_metrics_data.append({"title": "Kernel Time using Tensor Cores",
+                                             "value": "{} %".format(round(profile.tc_ratio[gpu_id] * 100, 2))})
+                    has_tc = True
                 is_first = False
-            return gpu_metrics_data, has_occupancy, has_sm_efficiency
+            return gpu_metrics_data, has_occupancy, has_sm_efficiency, has_tc
 
-        def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy):
+        def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy, has_tc):
             tooltip_summary = "The GPU usage metrics:\n"
             tooltip = "{}\n{}".format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
             if has_sm_efficiency:
                 tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
             if has_occupancy:
                 tooltip += "\n" + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
+            if has_tc:
+                tooltip += "\n" + consts.TOOLTIP_TENSOR_CORES
             return tooltip
 
-        data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)
-        tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency)
+        data, has_occupancy, has_sm_efficiency, has_tc = get_gpu_metrics_data(self)
+        tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency, has_tc)
         return data, tooltip
 
     @staticmethod

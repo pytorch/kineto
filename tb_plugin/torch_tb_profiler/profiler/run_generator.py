@@ -56,6 +56,7 @@ class RunGenerator(object):
         profile_run.gpu_utilization = self.profile_data.gpu_utilization
         profile_run.sm_efficiency = self.profile_data.sm_efficiency
         profile_run.occupancy = self.profile_data.occupancy
+        profile_run.tc_ratio = self.profile_data.tc_ratio
 
         if self.profile_data.memory_parser:
             profile_run.views.append(consts.MEMORY_VIEW)

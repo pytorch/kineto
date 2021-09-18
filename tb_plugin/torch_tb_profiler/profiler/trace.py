@@ -113,18 +113,10 @@ class MemoryEvent(BaseEvent):
 
     @property
     def total_allocated(self):
-        # TODO: Allocated Bytes to be renamed to Total Allocated
-        old = self.args.get("Allocated Bytes")
-        if old is not None:
-            return old
         return self.args.get("Total Allocated", float("nan"))
 
     @property
     def total_reserved(self):
-        # TODO: Reserved Bytes to be rename to Total Reserved
-        old = self.args.get("Reserved Bytes")
-        if old is not None:
-            return old
         return self.args.get("Total Reserved", float("nan"))
 
 def create_event(event):

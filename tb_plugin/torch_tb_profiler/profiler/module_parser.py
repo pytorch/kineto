@@ -120,7 +120,7 @@ class ModuleAggregator:
         self.kernel_list_groupby_name_op: Dict[str, KernelAggByNameOp] = None  # For Kernel-view.
         self.stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = None
         self.stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = None
-        self.tc_eligible_ops = None
+        self.ops = None
 
     def aggregate(self, tid2tree):
         # get the operators and kernels recursively by traverse the node tree root.
@@ -157,4 +157,4 @@ class ModuleAggregator:
         self.op_list_groupby_name_input = list(agg_result[1].values())
         self.stack_lists_group_by_name = stack_lists_group_by_name
         self.stack_lists_group_by_name_input = stack_lists_group_by_name_input
-        self.tc_eligible_ops = sum([1 if op.tc_eligible else 0 for op in ops])
+        self.ops = ops

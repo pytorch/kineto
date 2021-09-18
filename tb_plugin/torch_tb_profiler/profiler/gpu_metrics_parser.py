@@ -164,7 +164,7 @@ class GPUMetricsParser(object):
     def parse_event(self, event):
         ts = event.ts
         dur = event.duration
-        gpu_id = event.args.get("device", None)
+        gpu_id = event.device_id
         if gpu_id != event.pid:
             logger.warning("pid '{}' is not equal to args.device '{}' on event with ts '{}'".format(
                 event.pid, gpu_id, event.ts))
@@ -179,7 +179,6 @@ class GPUMetricsParser(object):
                 else:
                     # Workaround for negative value input.
                     logger.warning("blocks per SM {} with ts {} is not positive!".format(event.blocks_per_sm, ts))
-
             if event.occupancy is not None:
                 if event.occupancy >= 0.0:
                     self.occupancy_per_device[gpu_id].append((ts, ts + dur, event.occupancy))

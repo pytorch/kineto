@@ -2016,6 +2016,9 @@ class TestProfiler(unittest.TestCase):
             self.assertEqual(agg_kernel.tc_used, expected_agg_kernel["tc_used"])
             self.assertEqual(agg_kernel.op_tc_eligible, expected_agg_kernel["op_tc_eligible"])
 
+        self.assertAlmostEqual(profile.tc_ratio[0], 15 / (15 + 10))
+        self.assertAlmostEqual(profile.tc_eligible_ops_kernel_ratio, 15 / (15 + 10))
+
     def test_distributed_nccl(self):
         json_content0 = """
         [

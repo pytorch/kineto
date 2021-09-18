@@ -151,7 +151,8 @@ An example of overall view:
 
 The 'GPU Summary' panel shows GPU information and usage metrics of this run, include name, global memory, compute capability of this GPU.
 The 'GPU Utilization', 'Est. SM Efficiency' and 'Est. Achieved Occupancy' shows GPU usage efficiency of this run at different levels.
-The detailed information about these three metrics can be found at [gpu_utilization](./docs/gpu_utilization.md).
+The 'Kernel Time using Tensor Cores' shows percent of the time Tensor Core kernels are active.
+The detailed information about the above four metrics can be found at [gpu_utilization](./docs/gpu_utilization.md).
 
 
 The 'Step Time Breakdown' panel shows the performance summary. We regard each iteration (usually a mini-batch) as a step.
@@ -209,6 +210,13 @@ Host Self Duration: The accumulated time spent on Host, not including this opera
 
 Host Total Duration: The accumulated time spent on Host, including this operator’s child operators.
 
+Tensor Cores Eligible: Whether this operator is eligible to use Tensor Cores.
+
+Tensor Cores Self (%): Time of self-kernels with Tensor Cores / Time of self-kernels.
+                       Self-kernels don't include kernels launched by this operator’s child operators.
+
+Tensor Cores Total (%): Time of kernels with Tensor Cores / Time of kernels.
+
 CallStack: All call stacks of this operator if it has been recorded in profiling trace file.
            To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API.
            The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code as below:
@@ -243,6 +251,8 @@ the following 7 ones are scalar variables.
 
     ![Alt text](./docs/images/kernel_view.PNG)
 
+    * Tensor Cores Used: Whether this kernel uses Tensor Cores.
+
     * Total Duration: The accumulated time of all calls of this kernel.
 
     * Mean Duration: The average time duration of all calls. That's "Total Duration" divided by "Calls".
@@ -264,15 +274,32 @@ the following 7 ones are scalar variables.
     * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](./docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
 
 
-
-The top pie chart is a visualization of "Total Duration" column.
+The top left pie chart is a visualization of "Total Duration" column.
 It makes the breakdowns visible at a glance.
 Only the top N kernels sorted by accumulated time (configurable in the text box) will be shown in the pie chart.
+
+The top right pie chart is percent of the kernel time using and without using Tensor Cores.
 
 The search box enables searching kernels by name.
 
 "Group By" could choose between "Kernel Name" and "Kernel Properties + Op Name".
-The "Operator" is the PyTorch operator which launches this kernel.
+
+"Kernel Name" will group kernels by kernel name.
+
+"Kernel Properties + Op Name" will group kernels by combination of kernel name, launching operator name,
+grid, block, registers per thread, and shared memory.
+
+![Alt text](./docs/images/trace_view.PNG)
+
+    * Operator: The name of PyTorch operator which launches this kernel.
+
+    * Grid: Grid size of this kernel.
+
+    * Block: Block size of this kernel.
+
+    * Register Per Thread: Number of registers required for each thread executing the kernel.
+
+    * Shared Memory: Sum of dynamic shared memory reserved, and static shared memory allocated for this kernel.
 
 * Trace View
 
@@ -308,6 +335,12 @@ you can see the relationship between an operator and its launched kernels.
 You can also view the gpu utilization and Est. SM Efficiency in the trace view. They are drawn alongside the timeline:
 
 ![Alt text](./docs/images/trace_view_gpu_utilization.PNG)
+
+When you select the top-right corner's "Flow events" to "fwd_bwd_correlation",
+you can see the relationship between forward operator and its launched backward operator.
+Note: Only the backward operator's direct launching forward operator will be connected by line,
+its ancestor operators which call this operator as child will not be connected.
+![Alt text](./docs/images/trace_view_fwd_bwd_correlation.PNG)
 
 * Memory View
 

@@ -1,6 +1,6 @@
 # PyTorch Profiler TensorBoard Plugin
 
-This is a Tensoboard Plugin that provides visualization of PyTorch profiling.
+This is a TensorBoard Plugin that provides visualization of PyTorch profiling.
 It can parse, process and visualize the PyTorch Profiler's dumped profiling result,
 and give optimization recommendations.
 
@@ -16,9 +16,9 @@ and give optimization recommendations.
 
   `git clone https://github.com/pytorch/kineto.git`
 
-  Navigate to the kineto/tb_plugin directory.
+  Navigate to the `kineto/tb_plugin` directory.
 
-  Install with cmd:
+  Install with command:
 
   `pip install .`
 
@@ -31,18 +31,18 @@ and give optimization recommendations.
 
 * Prepare profiling data
 
-  We have prepared some sample profiling data at [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/main/tb_plugin/samples)
+  We have prepared some sample profiling data at [kineto/tb_plugin/samples](https://github.com/pytorch/kineto/tree/main/tb_plugin/samples).
   You can download it directly.
   Or you can generate these profiling samples yourself by running
   [kineto/tb_plugin/examples/resnet50_profiler_api.py](https://github.com/pytorch/kineto/blob/main/tb_plugin/examples/resnet50_profiler_api.py).
-  Also you can learn how to profile your model and generate profiling data from [PyTorch Profiler](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
+  Also you can learn how to profile your model and generate profiling data from the [PyTorch Profiler Tutorial](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html?highlight=tensorboard).
 
   Note: The recommended way to produce profiling data is assigning `torch.profiler.tensorboard_trace_handler`
   to `on_trace_ready` on creation of `torch.profiler.profile`.
 
 * Start TensorBoard
 
-  Specify the profiling data folder to `logdir` in Tensorboard. If you use the above samples data, start TensorBoard with:
+  Specify the profiling data folder to `logdir` in TensorBoard. If you use the above samples data, start TensorBoard with:
 
   `tensorboard --logdir=./samples`
 
@@ -58,20 +58,21 @@ and give optimization recommendations.
   Open URL `http://localhost:6006` in the browser.
   If you use `--bind_all` in tensorboard start command, the hostname may not be 'localhost'. You may find it in the log printed after the cmd.
 
-* Navigate to PYTORCH_PROFILER tab
+* Navigate to the PYTORCH_PROFILER tab
 
   If the files under `--logdir` are too big or too many,
   please wait a while and refresh the browser to check latest loaded result.
 
-* Loading profiling data from cloud
-  * S3 (S3://)
+* Loading profiling data from the cloud
+  * AWS S3 (S3://)
 
-    install `boto3`. set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
+    Install `boto3`. Set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
     For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
-    For example, the following command can be used to create minio storage after following guides: 
+    Follow these guides to get set-up with minio:
     * Server: https://docs.min.io/docs/minio-quickstart-guide.html
     * MC Client: https://docs.min.io/docs/minio-client-quickstart-guide.html
 
+    For example, the following commands can be used to create minio storage:
   ```bash
      ./mc alias set s3  http://10.150.148.189:9000 minioadmin  minioadmin
      ./mc mb s3/profiler --region=us-east-1
@@ -85,26 +86,26 @@ and give optimization recommendations.
      tensorboard --logdir=s3://profiler/version_2/ --bind_all
   ```
 
-  * Azure blob (https://\<account\>.blob.core.windows.net)
+  * Azure Blob (https://\<account\>.blob.core.windows.net)
 
-    install `azure-storage-blob`. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`
+    Install `azure-storage-blob`. Optionally, set environment variable `AZURE_STORAGE_CONNECTION_STRING`.
 
   * Google Cloud (GS://)
 
-    install `google-cloud-storage`.
+    Install `google-cloud-storage`.
 
   ---
-  > **_NOTES:_** For AWS, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
+  > **_NOTES:_** For AWS S3, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
   ---
 
-  We prepared some sample data in blob, you can also access it using cmd 
-  
+  We prepared some sample data in blob, you can also access it using the command
+
       tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all
-  
-  and open tensorboard in browser to see all the views described below.
- 
-  Note: for accessing data in azure blob, you need to install torch-tb-profiler with `pip install torch-tb-profiler[blob]`
-  
+
+  and open TensorBoard your browser to see all the views described below.
+
+  Note: for accessing data in Azure Blob, you need to install torch-tb-profiler with `pip install torch-tb-profiler[blob]`
+
 ### Quick Usage Instructions
 
 We regard each running with profiler enabled as a "run".
@@ -209,9 +210,9 @@ Host Self Duration: The accumulated time spent on Host, not including this opera
 Host Total Duration: The accumulated time spent on Host, including this operator’s child operators.
 
 CallStack: All call stacks of this operator if it has been recorded in profiling trace file.
-           To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API. 
+           To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API.
            The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code as below:
-           
+
    ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/vscode_stack.PNG)
 
 Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
@@ -250,7 +251,7 @@ the following 7 ones are scalar variables.
 
     * Min Duration: The minimum time duration among all calls.
 
-      Note: These duration only includes a kernel's elapsed time on GPU device.
+      Note: These durations only include a kernel's elapsed time on GPU device.
       It does not mean the GPU is fully busy executing instructions during this time interval.
       Some of the GPU cores may be idle due to reasons such as memory access latency or insufficient parallelism.
       For example, there may be insufficient number of available warps per SM for the GPU to effectively
@@ -260,7 +261,7 @@ the following 7 ones are scalar variables.
 
     * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. “Mean Blocks per SM” is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
-    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
+    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can be found in [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md). It is the weighted average of all runs of this kernel name, using each run’s duration as weight.
 
 
 
@@ -310,27 +311,27 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 
 * Memory View
 
-    Pytorch profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
+    The PyTorch Profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
     inside its life span.
 
     ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/memory_view.PNG)
 
-    The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs. 
+    The memory kind could be selected in “Device” selection box. For example, “GPU0” means the following table only shows each operator’s memory usage on GPU 0, not including CPU or other GPUs.
 
     Definition of each field in the table:
 
 
-    * Calls: How many times this operator is called. 
+    * Calls: How many times this operator is called.
 
-    * Size Increase: The memory increase size include all children operators. It sums up all allocation bytes and minus all the memory release bytes. 
+    * Size Increase: The memory increase size includes all children operators. It sums up all allocation bytes and minus all the memory release bytes.
 
-    * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes. 
+    * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes.
 
-    * Allocation Count: The allocation count including all children operators. 
+    * Allocation Count: The allocation count including all children operators.
 
-    * Self Allocation Count: The allocation count belonging to the operator itself excluding its chilren. 
+    * Self Allocation Count: The allocation count belonging to the operator itself excluding its children.
 
-    * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free. 
+    * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free.
 
     * Self Allocation Size: The allocation size belonging to the operator itself. It sums up all allocation bytes without considering the memory free.
 
@@ -338,38 +339,38 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 * Distributed View
 
     This view will appear automatically only for DDP jobs that use nccl for communication.
-    There are four panels in this view: 
+    There are four panels in this view:
 
     ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/distributed_view.PNG)
 
     *   The top panel shows the information about nodes/processes/GPU hierarchy of this job.
-    
+
     *   The left panel in the middle is 'Computation/Communication Overview'. Definition of each legend:
-        * Computation: the sum of kernel time on GPU minus the overlapping time
-        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the communication could be totally overlapped with computation. 
-        * Communication: the total communication time minus the overlapping time 
-        * Other: step time minus computation and communication time. Maybe includes initialization, data loader, CPU computation, and so on. 
-   
-        From this view, you can know computation-to-communication ratio of each worker and load balance between workers. For example, if the computation + overlapping time of 
+        * Computation: the sum of kernel time on GPU minus the overlapping time.
+        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the communication would be totally overlapped with computation.
+        * Communication: the total communication time minus the overlapping time.
+        * Other: step time minus computation and communication time. Maybe includes initialization, data loader, CPU computation, and so on.
+
+        From this view, you can know computation-to-communication ratio of each worker and load balance between workers. For example, if the computation + overlapping time of
 one worker is much larger than others, there may be a problem of loading balance or this worker may be a straggler.
 
     *   The right panel in the middle is 'Synchronizing/Communication Overview'. Definition of each legend:
-        * Data Transfer Time: part in the total communication time for actual data exchanging 
-        * Synchronizing Time: part in the total communication time for waiting and synchronizing with other workers. 
-        
-        From this view, you can know the efficiency of communication (how much ratio of total communication time is really used for exchanging data and how much is just waiting for data from other workers) 
+        * Data Transfer Time: part in the total communication time for actual data exchanging.
+        * Synchronizing Time: part in the total communication time for waiting and synchronizing with other workers.
+
+        From this view, you can know the efficiency of communication (how much ratio of total communication time is really used for exchanging data and how much is just waiting for data from other workers)
 
     *   The 'Communication Operations Stats' summarizes the detailed statistics of all communication ops in each worker. Definition of each field:
         * Calls: How many times this operator is called in this run.
-        * Total Size (bytes): Total data size transfered in operators of this type.
-        * Avg Size (bytes): Average data size transfered in each operator of this type.
+        * Total Size (bytes): Total data size transferred in operators of this type.
+        * Avg Size (bytes): Average data size transferred in each operator of this type.
         * Total Latency (us): Total latency of all operators of this type.
         * Avg Latency (us): Average latency of each operator of this type.
         * Data Transfer Time (us): Total time actually used for data transfer in operator of this type.
         * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
-        
+
 ### PyTorch Profiler TensorBoard Plugin 0.2 Release Notes
 
 Known Issues: This software does not support Python 3.9.0, 3.9.1, 3.9.2.
-If the tensorboard launching reports error message "ImportError" and "circular import",
+If the TensorBoard launching reports error message "ImportError" and "circular import",
 please update your Python to higher version.

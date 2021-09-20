@@ -5,21 +5,21 @@ Kineto is part of the PyTorch Profiler.
 The Kineto project was started to help enable
 - **performance observability and diagnostics** across common ML bottleneck components
 - **actionable recommendations** for common issues
-- Integration of external system-level profiling tools
-- Integration with popular visualization platforms and analysis pipelines
+- integration of external system-level profiling tools
+- integration with popular visualization platforms and analysis pipelines
 
 A central component is libkineto, a profiling library with special focus on low-overhead GPU timeline tracing.
 
-The PyTorch Profiler Tensorboard plugin provides powerful and intuitive visualizations of profiling results, as well asactionable recommendations, and is the best way to experience the new PyTorch Profiler.
+The PyTorch Profiler TensorBoard plugin provides powerful and intuitive visualizations of profiling results, as well as actionable recommendations, and is the best way to experience the new PyTorch Profiler.
 
-## libkineto
-Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the libkineto folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
+## Libkineto
+Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the `libkineto` folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
 
-## PyTorch Tensorboard Profiler
-The goal of the PyTorch Profiler is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the Tensorboard UI.
+## PyTorch TensorBoard Profiler
+The goal of the PyTorch TensorBoard Profiler is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the TensorBoard UI.
 Please refer to the [README](tb_plugin/README.md) file in the `tb_plugin` folder.
 
-## Future development direction:
+## Future Development Direction:
 Some areas we're currently working on:
 - Support for tracing distributed workloads
 - Trace processing, analysis and recommendation engine
@@ -27,7 +27,7 @@ Some areas we're currently working on:
 - Profiling and monitoring daemon for larger scale deployments
 
 ## Releases and Contributing
-We will follow the PyTorch release schedule which roughly happens on an every 3 month basis.
+We will follow the PyTorch release schedule which roughly happens on a 3 month basis.
 
 We appreciate all contributions. If you are planning to contribute back bug-fixes, please do so without any further discussion.
 

@@ -12,21 +12,21 @@ Currently only NVIDIA GPUs are supported.
 Libkineto uses the standard CMAKE-based build flow.
 
 ### Dependencies
-Libkineto requires gcc 5+.
+Libkineto requires gcc 5+ and:
 
-- CUDA: Libkineto uses CUPTI to collect traces and metrics from NVIDIA GPUs.
+- NVIDIA CUPTI: used to collect traces and metrics from NVIDIA GPUs.
 - fmt: used for its convenient and lightweight string formatting functionality.
-- googletest: required to build and run Kineto's tests. **googletest is not
-required** if you don't want to run Kineto tests. By default, building of tests
-is **on**. Turn it off by setting KINETO\_BUILD\_TESTS to off.
+- googletest: required to build and run Kineto's tests.
+  - **googletest is not required** if you don't want to run Kineto tests.
+By default, building of tests is **on**. Turn it off by setting `KINETO_BUILD_TESTS` to **off**.
 
-You can download [CUDA][1], [fmt][2], [googletest][3] and set
-CUDA\_SOURCE\_DIR, FMT\_SOURCE\_DIR, GOOGLETEST\_SOURCE\_DIR respectively for
+You can download [NVIDIA CUPTI][1], [fmt][2], [googletest][3] and set
+`CUDA_SOURCE_DIR`, `FMT_SOURCE_DIR`, `GOOGLETEST_SOURCE_DIR` respectively for
 cmake to find these libraries. If the fmt and googletest variables are not set, cmake will
-build the git submodules found in the third\_party directory.
-If CUDA\_SOURCE\_DIR is not set, libkineto will fail to build.
+build the git submodules found in the `third_party` directory.
+If `CUDA_SOURCE_DIR` is not set, libkineto will fail to build.
 
-General build instructions are as follows:
+### Building Libkineto
 
 ```
 # Check out repo and sub modules
@@ -44,7 +44,7 @@ command:
 make test
 ```
 
-## Installing Libkineto
+### Installing Libkineto
 ```
 make install
 ```
@@ -54,7 +54,7 @@ We will provide a high-level overview, design philosophy and brief descriptions 
 parts of Libkineto in upcoming blogs.
 
 ## Full documentation
-We strive to keep our source files readable. The best and up-do-date
+We strive to keep our source files readable. The best and up-to-date
 documentation is available in the source files.
 
 ## License

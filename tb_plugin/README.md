@@ -68,10 +68,11 @@ and give optimization recommendations.
 
     Install `boto3`. Set environment variables:  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Optionally, `S3_ENDPOINT` can be set as well.\
     For minio, the S3 url should start with the bucket name `s3://<bucket>/<folder>/` instead of minio prefix `s3://minio/<bucket>/<folder>`. At the same time, the `S3_ENDPOINT` is needed as well. \
-    For example, the following command can be used to create minio storage after following guides:
+    Follow these guides to get set-up with minio:
     * Server: https://docs.min.io/docs/minio-quickstart-guide.html
     * MC Client: https://docs.min.io/docs/minio-client-quickstart-guide.html
 
+    For example, the following commands can be used to create minio storage:
   ```bash
      ./mc alias set s3  http://10.150.148.189:9000 minioadmin  minioadmin
      ./mc mb s3/profiler --region=us-east-1
@@ -97,11 +98,11 @@ and give optimization recommendations.
   > **_NOTES:_** For AWS S3, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.
   ---
 
-  We prepared some sample data in blob, you can also access it using command
+  We prepared some sample data in blob, you can also access it using the command
 
       tensorboard --logdir=https://torchtbprofiler.blob.core.windows.net/torchtbprofiler/demo/ --bind_all
 
-  and open TensorBoard in browser to see all the views described below.
+  and open TensorBoard your browser to see all the views described below.
 
   Note: for accessing data in Azure Blob, you need to install torch-tb-profiler with `pip install torch-tb-profiler[blob]`
 
@@ -260,7 +261,7 @@ the following 7 ones are scalar variables.
 
     * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. “Mean Blocks per SM” is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
-    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight.
+    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can be found in [gpu_utilization](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/gpu_utilization.md). It is the weighted average of all runs of this kernel name, using each run’s duration as weight.
 
 
 
@@ -310,7 +311,7 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 
 * Memory View
 
-    PyTorch profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
+    The PyTorch Profiler records all memory allocation/release events during profiling. For each operator, the plugin aggregates all the events
     inside its life span.
 
     ![Alt text](https://github.com/pytorch/kineto/blob/plugin/0.2/tb_plugin/docs/images/memory_view.PNG)
@@ -346,7 +347,7 @@ You can also view the gpu utilization and Est. SM Efficiency in the trace view. 
 
     *   The left panel in the middle is 'Computation/Communication Overview'. Definition of each legend:
         * Computation: the sum of kernel time on GPU minus the overlapping time.
-        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the communication could be totally overlapped with computation.
+        * Overlapping: the overlapping time of computation and communication. More overlapping represents better parallelism between computation and communication. Ideally the communication would be totally overlapped with computation.
         * Communication: the total communication time minus the overlapping time.
         * Other: step time minus computation and communication time. Maybe includes initialization, data loader, CPU computation, and so on.
 

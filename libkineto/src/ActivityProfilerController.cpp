@@ -13,7 +13,9 @@
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
+#ifdef HAS_ROCTRACER
 #include "RoctracerActivityInterface.h"
+#endif
 #include "ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"

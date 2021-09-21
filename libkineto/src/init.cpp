@@ -136,12 +136,6 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
   }
 #endif // HAS_CUPTI
 
-#ifdef HAS_ROCTRACER
-  if (!cpuOnly) {
-
-  }
-#endif // HAS_ROCTRACER
-
   ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));

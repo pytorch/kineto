@@ -3,15 +3,14 @@ import time
 import unittest
 import pytest
 import torch
-import torch.nn as nn
-import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-import torchvision
-import torchvision.transforms as T
-import torchvision.models as models
 import torch_tb_profiler.io as io
 from torch_tb_profiler.profiler import RunLoader
+
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from integration_test_payload import get_train_func
 
 def create_log_dir():
     log_dir_name='./log{}'.format(str(int(time.time()*1000)))
@@ -168,46 +167,6 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
 
     return result_dict
 
-def get_train_func(use_gpu=True):
-    model = models.resnet50(pretrained=True)
-    if use_gpu:
-        model.cuda()
-    cudnn.benchmark = True
-
-    transform = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor()])
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=2,
-                                              shuffle=True, num_workers=0)
-
-    if use_gpu:
-        criterion = nn.CrossEntropyLoss().cuda()
-    else:
-        criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    if use_gpu:
-        device = torch.device("cuda:0")
-    else:
-        device = torch.device("cpu")
-    model.train()
-
-    def train(train_step, prof=None):
-        for step, data in enumerate(trainloader, 0):
-            print("step:{}".format(step))
-            inputs, labels = data[0].to(device=device), data[1].to(device=device)
-
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            if prof is not None:
-                prof.step()
-            if step >= train_step:
-                break
-    return train
-
 def get_output_fn(dir_name, profilers_dict):
     def output_fn(p):
         # In current torch.profiler.profile, at beginning of each span, a new p.profiler will be created.
@@ -292,4 +251,3 @@ class TestCompareWithAutogradResult(unittest.TestCase):
         ):
             get_train_func()(7)
         self.compare_results(log_dir, profilers_dict)
-

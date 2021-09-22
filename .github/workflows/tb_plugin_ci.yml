@@ -34,24 +34,39 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJSON(needs.generate-matrix.outputs.matrix)}}
+    env:
+      CUDA_VERSION: ${{ matrix.cuda-version }}
+      PYTORCH_VERSION: ${{ matrix.pytorch-version }}
+      TORCH_PROFILER_LOG_LEVEL: DEBUG
+      TORCH_PROFILER_TEST_DATA_ROOT: /home/runner/.cache/torch/data
     steps:
       - uses: actions/checkout@v2
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: 'x64'
+      - name: Install Dependencies
+        run: |
+          cd tb_plugin
+          sh ./ci_scripts/install_env.sh
+          pip install .[gs]
+
+      - uses: actions/cache@v2
+        id: cache-model-data
+        with:
+          path: /home/runner/.cache/torch
+          key: torch-${{ hashFiles('tb_plugin/test/integration_test_payload.py') }}
+      - name: Cache pytorch model and data for tests
+        if: steps.cache-model-data.outputs.cache-hit != 'true'
+        run: |
+          python tb_plugin/test/integration_test_payload.py
+
       - name: Test
         env:
-          CUDA_VERSION: ${{ matrix.cuda-version }}
-          PYTORCH_VERSION: ${{ matrix.pytorch-version }}
-          TORCH_PROFILER_LOG_LEVEL: DEBUG
           GRPC_VERBOSITY: DEBUG
           GRPC_ENABLE_FORK_SUPPORT: 'False'
         run: |
           set -e
-          cd tb_plugin
-          sh ./ci_scripts/install_env.sh
-          pip install .[gs]
-          cd test
+          cd tb_plugin/test
           pytest

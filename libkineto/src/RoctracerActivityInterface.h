@@ -51,8 +51,6 @@ private:
   std::map<std::string, uint32_t> m_ids;
   std::unordered_map<uint32_t, uint32_t> m_filter;
   bool m_invert;
-
-  void loadApiNames();
 };
 
 struct roctracerRow {

@@ -11,6 +11,7 @@ import tempfile
 from json.decoder import JSONDecodeError
 
 from .. import io, utils
+from ..utils import href
 from . import trace
 from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
@@ -20,6 +21,7 @@ from .kernel_parser import KernelParser
 from .module_parser import ModuleAggregator
 from .overall_parser import OverallParser
 from .memory_parser import MemoryParser
+from .tensor_cores_parser import TensorCoresParser
 
 logger = utils.get_logger()
 
@@ -59,9 +61,10 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
-        self.tc_eligible_ops = None
         self.kernel_stat = None
-        self.tc_used_ratio = None
+        self.tc_ratio = None
+        self.tc_eligible_ops_kernel_ratio = None
+        self.tc_used_ratio = None # If it's a pure CPU run, then this keeps as None.
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
@@ -174,7 +177,6 @@ class RunProfileData(object):
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
         self.stack_lists_group_by_name_input = module_aggregator.stack_lists_group_by_name_input
         self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
-        self.tc_eligible_ops = module_aggregator.tc_eligible_ops
 
         logger.debug("OverallParser")
         overall_parser = OverallParser()
@@ -197,6 +199,12 @@ class RunProfileData(object):
         self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
         self.occupancy_count = gpu_metrics_parser.occupancy_count
 
+        logger.debug("TensorCoresParser")
+        tensorcores_parser = TensorCoresParser()
+        tensorcores_parser.parse_events(self.tid2tree, module_aggregator.ops, gpu_metrics_parser.gpu_ids)
+        self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
+        self.tc_ratio = tensorcores_parser.tc_ratio
+
         if self.has_kernel:
             logger.debug("KernelParser")
             kernel_parser = KernelParser()
@@ -213,41 +221,55 @@ class RunProfileData(object):
 
         dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
         if dataloader_ratio > 0.05:
-            text = "This run has high time cost on input data loading. " \
-                   "{}% of the step time is in DataLoader. You could " \
-                   "try to set num_workers on DataLoader's construction " \
-                   "and enable multi-processes on data loading. " \
-                   "Reference: <a href =\"{}\" target=\"_blank\">Single- and Multi-process Data Loading</a>".format(
-                       round(dataloader_ratio * 100, 1),
-                       "https://pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading"
-                   )
-            self.recommendations.append(text)
+            percentage = dataloader_ratio * 100
+            url = "https://pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading"
+            self.recommendations.append(
+                f"This run has high time cost on input data loading. {percentage:.1f}% of the step " +
+                "time is in DataLoader. You could try to set num_workers on DataLoader's construction " +
+                f"and {href('enable multi-processes on data loading', url)}."
+            )
 
         self._analyze_distributed_metrics()
         self._analyze_gpu_metrics()
 
-        # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
-        # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
         if self.device_props:
+            # Tensor Cores feature is available on GPU cards with compute capability >= 7.0
+            # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
             major = self.device_props[0].get("computeMajor")
-            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops > 0:
-                text = "{} operator callings are eligible to use Tensor Cores but none uses it. " \
-                       "You could enable AMP to speedup by using FP16. " \
-                       "Reference: <a href =\"{}\" target=\"_blank\">" \
-                       "Automatic Mixed Precision Package - torch.cuda.amp</a>".format(
-                    self.tc_eligible_ops,
-                    "https://pytorch.org/docs/stable/amp.html"
+            # If it's a pure CPU run, then self.tc_used_ratio is None, this rule will not be triggered.
+            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops_kernel_ratio > 0.0:
+                url = "https://pytorch.org/docs/stable/amp.html"
+                self.recommendations.append(
+                    f"Kernels with {round(self.tc_eligible_ops_kernel_ratio * 100)}% time are launched by Tensor Cores eligible operators. " +
+                    f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16."
                 )
-                self.recommendations.append(text)
+
+
+            # Memory related
+            if self.memory_parser:
+                for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
+                    if dev_type == -1: # ignore cpu
+                        continue
+                    total_mem = self.device_props[dev_id].get("totalGlobalMem")
+                    if total_mem is not None and peak_mem > total_mem * 0.9:
+                        percentage = peak_mem / total_mem * 100
+                        total_mem_gb = total_mem / 1024 / 1024 / 1024
+                        ckp_url = "https://pytorch.org/docs/stable/checkpoint.html"
+                        amp_url = "https://pytorch.org/docs/stable/amp.html"
+                        self.recommendations.append(
+                            f"Device memory usage is at the limit of device memory capacity ({percentage:.1f}% of {total_mem_gb:.1f}GB " +
+                            f"on GPU{dev_id}). To get better value of your GPU or to use larger batch size for training, please " + 
+                            f"refer to {href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}."
+                        )
+                        break
 
 
     def _analyze_distributed_metrics(self):
         if self.use_dp and len(self.used_devices) > 1:
-            text = "It is recommended to use DistributedDataParallel, instead of DataParallel to do multi-GPU training." \
-                   "Reference: <a href = \"{}\" target=\"_blank\">Use DistributedDataParallel instead of DataParallel</a>".format(
-                       "https://pytorch.org/docs/stable/notes/cuda.html#cuda-nn-ddp-instead"
-                   )
-            self.recommendations.append(text)
+            url = "https://pytorch.org/docs/stable/notes/cuda.html#cuda-nn-ddp-instead"
+            self.recommendations.append(
+                f"It is recommended to {href('use DistributedDataParallel instead of DataParallel', url)} to do multi-GPU training."
+            )
 
         if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
@@ -263,17 +285,16 @@ class RunProfileData(object):
 
         communication_ratio = self.avg_costs.costs[ProfileRole.Communication] / self.avg_costs.costs[ProfileRole.Total]
         if communication_ratio > 0.1:
-            text = "This run has high time cost on communication. " \
-                   "{}% of the step time is in communication. You could " \
-                   "try <a href = \"{}\" target=\"_blank\">Gradient Compression</a> or "\
-                   "<a href = \"{}\" target=\"_blank\">Gradient Accumulation</a> or increase the batch size. " \
-                   "Note: Gradient accumulation will increase global effective batch size, which may hurt model convergence and accuracy. " \
-                   "For such case, you may want to evaluate <a href = \"{}\" target=\"_blank\">LAMB optimizer</a>".format(
-                       round(communication_ratio * 100, 1),
-                       "https://pytorch.org/docs/stable/ddp_comm_hooks.html",
-                       "https://towardsdatascience.com/what-is-gradient-accumulation-in-deep-learning-ec034122cfa",
-                       "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB")
-            self.recommendations.append(text)
+            percentage = communication_ratio * 100
+            compress_url = "https://pytorch.org/docs/stable/ddp_comm_hooks.html",
+            grad_acc_url = "https://towardsdatascience.com/what-is-gradient-accumulation-in-deep-learning-ec034122cfa"
+            lamb_url = "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB"
+            self.recommendations.append(
+                f"This run has high time cost on communication. {percentage:.1f}% of the step time is in communication. " +
+                f"You could try {href('Gradient Compression', compress_url)} or {href('Gradient Accumulation', grad_acc_url)} or " +
+                "increase the batch size. Note: Gradient accumulation will increase global effective batch size, which may hurt " +
+                f"model convergence and accuracy. For such case, you may want to evaluate {href('LAMB optimizer', lamb_url)}."
+            )
 
     def _memory_events(self) -> List[MemoryEvent]:
         memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]

@@ -3,26 +3,13 @@
 # --------------------------------------------------------------------------
 from typing import List, Optional, Union
 
-from collections import OrderedDict, defaultdict
-from math import pow
+from collections import defaultdict
 
 from . import consts
 from .profiler.data import RunProfileData
-from .profiler.memory_parser import MemoryParser
+from .profiler.memory_parser import MemoryParser, MemoryRecord
 from .profiler.node import MemoryMetrics
-from .profiler.trace import DeviceType, MemoryEvent
-
-
-def dev_name(dev_type: DeviceType, dev_id: Optional[int]):
-    if dev_type == DeviceType.CPU:
-        return "CPU"
-    elif dev_type == DeviceType.CUDA:
-        return f"GPU{dev_id}"
-    else:
-        raise ValueError
-
-def op_name(name: Optional[str]):
-    return name if name else "<unknown>"
+from .utils import Canonicalizer, DisplayRounder
 
 
 class Run(object):
@@ -196,6 +183,7 @@ class RunProfile(object):
             gpu_metrics_data = []
             has_sm_efficiency = False
             has_occupancy = False
+            has_tc = False
             is_first = True
             gpu_info_columns = ["Name", "Memory", "Compute Capability"]
             for gpu_id in profile.gpu_ids:
@@ -225,20 +213,26 @@ class RunProfile(object):
                     gpu_metrics_data.append({"title": "Est. Achieved Occupancy",
                                              "value": "{} %".format(round(profile.occupancy[gpu_id], 2))})
                     has_occupancy = True
+                if profile.tc_ratio[gpu_id] is not None:
+                    gpu_metrics_data.append({"title": "Kernel Time using Tensor Cores",
+                                             "value": "{} %".format(round(profile.tc_ratio[gpu_id] * 100, 2))})
+                    has_tc = True
                 is_first = False
-            return gpu_metrics_data, has_occupancy, has_sm_efficiency
+            return gpu_metrics_data, has_occupancy, has_sm_efficiency, has_tc
 
-        def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy):
+        def get_gpu_metrics_tooltip(has_sm_efficiency, has_occupancy, has_tc):
             tooltip_summary = "The GPU usage metrics:\n"
             tooltip = "{}\n{}".format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
             if has_sm_efficiency:
                 tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
             if has_occupancy:
                 tooltip += "\n" + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
+            if has_tc:
+                tooltip += "\n" + consts.TOOLTIP_TENSOR_CORES
             return tooltip
 
-        data, has_occupancy, has_sm_efficiency = get_gpu_metrics_data(self)
-        tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency)
+        data, has_occupancy, has_sm_efficiency, has_tc = get_gpu_metrics_data(self)
+        tooltip = get_gpu_metrics_tooltip(has_occupancy, has_sm_efficiency, has_tc)
         return data, tooltip
 
     @staticmethod
@@ -254,7 +248,10 @@ class RunProfile(object):
         return events
 
     @staticmethod
-    def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+    def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None, memory_metric="K"):
+        cano = Canonicalizer(memory_metric=memory_metric)
+        round = DisplayRounder(ndigits=2)
+
         stats = profile.memory_parser.get_memory_statistics(start_ts=start_ts, end_ts=end_ts)
 
         result = {
@@ -262,22 +259,22 @@ class RunProfile(object):
                 "title": "Memory View",
                 "default_device": "CPU",
                 "search": "Operator Name",
-                "sort": "Self Size Increase (KB)"
+                "sort": f"Self Size Increase ({cano.memory_metric})"
             },
             "columns": [
                 {"name": "Operator Name", "type": "string"},
                 {"name": "Calls", "type": "number", "tooltip": "# of calls of the operator."},
-                {"name": "Size Increase (KB)", "type": "number",
+                {"name": f"Size Increase ({cano.memory_metric})", "type": "number",
                  "tooltip": "The memory increase size include all children operators."},
-                {"name": "Self Size Increase (KB)", "type": "number",
+                {"name": f"Self Size Increase ({cano.memory_metric})", "type": "number",
                  "tooltip": "The memory increase size associated with the operator itself."},
                 {"name": "Allocation Count", "type": "number",
                     "tooltip": "The allocation count including all chidren operators."},
                 {"name": "Self Allocation Count", "type": "number",
                  "tooltip": "The allocation count belonging to the operator itself."},
-                {"name": "Allocation Size (KB)", "type": "number",
+                {"name": f"Allocation Size ({cano.memory_metric})", "type": "number",
                  "tooltip": "The allocation size including all children operators."},
-                {"name": "Self Allocation Size (KB)", "type": "number",
+                {"name": f"Self Allocation Size ({cano.memory_metric})", "type": "number",
                  "tooltip": "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free."},
             ],
             "rows": {}
@@ -292,55 +289,60 @@ class RunProfile(object):
                 these_rows.append([
                     op_name,
                     stat[6],
-                    round(stat[MemoryMetrics.IncreaseSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfIncreaseSize] / 1024, 2),
+                    round(cano.convert_memory(stat[MemoryMetrics.IncreaseSize])),
+                    round(cano.convert_memory(stat[MemoryMetrics.SelfIncreaseSize])),
                     stat[MemoryMetrics.AllocationCount],
                     stat[MemoryMetrics.SelfAllocationCount],
-                    round(stat[MemoryMetrics.AllocationSize] / 1024, 2),
-                    round(stat[MemoryMetrics.SelfAllocationSize] / 1024, 2)
+                    round(cano.convert_memory(stat[MemoryMetrics.AllocationSize])),
+                    round(cano.convert_memory(stat[MemoryMetrics.SelfAllocationSize])),
                 ])
+
+        for dev_name in sorted(stats.keys()):
+            if dev_name.startswith("GPU"):
+                result["metadata"]["default_device"] = dev_name
+                break
 
         return result
 
     @staticmethod
     def get_memory_curve(
-        profile: Union["RunProfile", RunProfileData],
-        time_metric: str = "",
-        memory_metric: str = "G",
-        patch_for_step_plot=True,
-    ):
-        def get_curves_and_peaks(memory_events: List[MemoryEvent], time_factor, memory_factor):
-            """For example:
+            profile: Union["RunProfile", RunProfileData],
+            time_metric: str = "ms",
+            memory_metric: str = "K",
+            patch_for_step_plot=True,
+        ):
+        def get_curves_and_peaks(records: List[MemoryRecord], cano: Canonicalizer):
+            """Inputs:
+                records: Sorted list of MemoryRecord
+
+            For example:
             ```py
             {
-                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory
-                    [1, 4, 4, 1000000],
-                    [2, 16, 16, 1000000],
-                    [4, 4, 16, 1000000],
+                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory, operator
+                    [1, 4, 4, 1000000, "aten::add"],
+                    [2, 16, 16, 1000000, "aten::empty],
+                    [4, 4, 16, 1000000, "..."],
                 ],
                 "GPU0": ...
             }
             ```"""
             curves = defaultdict(list)
             peaks = defaultdict(float)
-            for e in memory_events:
-                if e.device_type == DeviceType.CPU:
-                    dev = "CPU"
-                elif e.device_type == DeviceType.CUDA:
-                    dev = f"GPU{e.device_id}"
-                else:
-                    raise NotImplementedError("Unknown device type for memory curve")
-                ts = e.ts
-                ta = e.total_allocated
-                tr = e.total_reserved
+            for r in records:
+                if r.addr == None:
+                    continue
+                dev = r.device_name
+                ts = r.ts
+                ta = r.total_allocated
+                tr = r.total_reserved
 
                 if ta != ta or tr != tr: # isnan
                     continue
 
                 curves[dev].append([
-                    (ts - profile.profiler_start_ts) * time_factor,
-                    ta * memory_factor,
-                    tr * memory_factor,
+                    cano.convert_time(ts - profile.profiler_start_ts),
+                    cano.convert_memory(ta),
+                    cano.convert_memory(tr),
                 ])
                 peaks[dev] = max(peaks[dev], ta)
 
@@ -351,6 +353,7 @@ class RunProfile(object):
 
             return curves, peaks
 
+        # NOTE: this should have been occured in frontend
         def patch_curves_for_step_plot(curves):
             # For example, if a curve is [(0, 0), (1, 1), (2,2)], the line plot
             # is a stright line. Interpolating it as [(0, 0), (1, 0), (1, 1),
@@ -365,80 +368,68 @@ class RunProfile(object):
                 new_curves[dev] = new_curve
             return new_curves
 
-        # canonicalize the memory metric to a string
-        canonical_time_metrics = {
-            "micro": "us", "microsecond": "us", "us": "us",
-            "milli": "ms", "millisecond": "ms", "ms": "ms",
-                 "":  "s",      "second":  "s",  "s":  "s",
-        }
-        # canonicalize the memory metric to a string
-        canonical_memory_metrics = {
-             "":  "B",  "B":  "B",
-            "K": "KB", "KB": "KB",
-            "M": "MB", "MB": "MB",
-            "G": "GB", "GB": "GB",
-        }
+        cano = Canonicalizer(time_metric, memory_metric)
 
-        time_metric = canonical_time_metrics[time_metric]
-        memory_metric = canonical_memory_metrics[memory_metric]
-
-        # raw timestamp is in microsecond
-        # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
-        time_metric_to_factor = {
-            "us": 1,
-            "ms": 1e-3,
-            "s":  1e-6,
-        }
-        # raw memory is in bytes
-        memory_metric_to_factor = {
-            "B":  pow(1024,  0),
-            "KB": pow(1024, -1),
-            "MB": pow(1024, -2),
-            "GB": pow(1024, -3),
-        }
-
-        time_factor = time_metric_to_factor[time_metric]
-        memory_factor = memory_metric_to_factor[memory_metric]
-        curves, peaks = get_curves_and_peaks(profile.memory_parser.memory_events, time_factor, memory_factor)
+        curves, peaks = get_curves_and_peaks(profile.memory_parser.all_records, cano)
         if patch_for_step_plot:
             curves = patch_curves_for_step_plot(curves)
         peaks_formatted = {}
         totals = {}
         for dev, value in peaks.items():
-            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(value * memory_factor, memory_metric)
+            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(cano.convert_memory(value), cano.memory_metric)
             if dev != "CPU":
                 try:
-                    totals[dev] = profile.gpu_infos[int(dev[3:])]["Memory Raw"] * memory_factor
+                    totals[dev] = cano.convert_memory(profile.gpu_infos[int(dev[3:])]["Memory Raw"])
                 except BaseException:
                     pass
 
-        devices = list(curves.keys())
+        devices = sorted(list(curves.keys()))
+        default_device = "CPU"
+        for dev in devices:
+            if dev.startswith("GPU"):
+                default_device = dev
+                break
+
         return {
             "metadata": {
-                "default_device": "CPU",
+                "default_device": default_device,
                 "devices": devices,
                 "peaks": peaks_formatted,
                 "totals": totals,
                 "first_ts": profile.profiler_start_ts,
-                "time_metric": time_metric,
-                "memory_metric": memory_metric,
-                "time_factor": time_factor,
-                "memory_factor": memory_factor,
+                "time_metric": cano.time_metric,
+                "memory_metric": cano.memory_metric,
+                "time_factor": cano.time_factor,
+                "memory_factor": cano.memory_factor,
             },
             "columns": [
-                { "name": f"Time ({time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
-                { "name": f"Allocated ({memory_metric})", "type": "number", "tooltip": "Total memory in use." },
-                { "name": f"Reserved ({memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
-                # { "name": f"Total ({memory_metric})", "type": "number", "tooltip": "Total Memory the device have."},
+                { "name": f"Time ({cano.time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
+                { "name": f"Allocated ({cano.memory_metric})", "type": "number", "tooltip": "Total memory in use." },
+                { "name": f"Reserved ({cano.memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
             ],
             "rows": curves,
         }
 
     @staticmethod
-    def get_memory_events(p: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None):
+    def get_memory_events(
+            p: Union["RunProfile", RunProfileData],
+            start_ts=None,
+            end_ts=None,
+            time_metric: str = "ms",
+            memory_metric: str = "K",
+        ):
+        def get_op_name_or_ctx(record: MemoryRecord):
+            name = record.op_name_or_unknown
+            if name.startswith("aten::empty") and record.parent_op_name:
+                # aten::empty can be treated as the "malloc" in pytorch
+                name = f"{record.parent_op_name} ({name})"
+            return name
+
+        cano = Canonicalizer(time_metric=time_metric, memory_metric=memory_metric)
+        round = DisplayRounder(ndigits=2)
+
         profiler_start_ts = p.profiler_start_ts
-        memory_records = sorted(p.memory_parser.staled_records + p.memory_parser.processed_records, key=lambda r: r.ts)
-        memory_records = RunProfile._filtered_by_ts(memory_records, start_ts, end_ts)
+        memory_records = RunProfile._filtered_by_ts(p.memory_parser.all_records, start_ts, end_ts)
 
         events = defaultdict(list)
         alloc = {}  # allocation events may or may not have paired free event
@@ -453,19 +444,20 @@ class RunProfile(object):
             prev_ts = r.ts
             addr = r.addr
             size = r.bytes
-            if size > 0:
-                # Allocation event, to be matched with a Release event
+            if r.is_allocation:
+                # to be matched with a release event
                 alloc[addr] = i
             else:
                 if addr in alloc:
-                    alloc_ts = memory_records[alloc[addr]].ts
+                    alloc_r = memory_records[alloc[addr]]
+                    alloc_ts = alloc_r.ts
                     free_ts = r.ts
-                    events[dev_name(r.device_type, r.device_id)].append([
-                        op_name(r.op_name),
-                        -size,
-                        alloc_ts - profiler_start_ts,
-                        free_ts - profiler_start_ts,
-                        free_ts - alloc_ts,
+                    events[alloc_r.device_name].append([
+                        get_op_name_or_ctx(alloc_r),
+                        round(cano.convert_memory(-size)),
+                        round(cano.convert_time(alloc_ts - profiler_start_ts)),
+                        round(cano.convert_time(free_ts - profiler_start_ts)),
+                        round(cano.convert_time(free_ts - alloc_ts)),
                     ])
                     del alloc[addr]
                 else:
@@ -474,25 +466,41 @@ class RunProfile(object):
 
         for i in alloc.values():
             r = memory_records[i]
-            events[dev_name(r.device_type, r.device_id)].append(
-                [op_name(r.op_name), r.bytes, r.ts - profiler_start_ts, None, None])
+            events[r.device_name].append([
+                get_op_name_or_ctx(r),
+                round(cano.convert_memory(r.bytes)),
+                round(cano.convert_time(r.ts - profiler_start_ts)),
+                None,
+                None,
+            ])
 
         for i in free.values():
             r = memory_records[i]
-            events[dev_name(r.device_type, r.device_id)].append(
-                [op_name(r.op_name), -r.bytes, None, r.ts - profiler_start_ts, None])
+            events[r.device_name].append([
+                get_op_name_or_ctx(r),
+                round(cano.convert_memory(-r.bytes)),
+                None,
+                round(cano.convert_time(r.ts - profiler_start_ts)),
+                None,
+            ])
+
+        default_device = "CPU"
+        for dev_name in sorted(events.keys()):
+            if dev_name.startswith("GPU"):
+                default_device = dev_name
+                break
 
         return {
             "metadata": {
                 "title": "Memory Events",
-                "default_device": "CPU",
+                "default_device": default_device,
             },
             "columns": [
                 {"name": "Operator", "type": "string", "tooltip": ""},
-                {"name": "Size", "type": "number", "tooltip": ""},
-                {"name": "Allocation Time", "type": "number", "tooltip": ""},
-                {"name": "Release Time", "type": "number", "tooltip": ""},
-                {"name": "Duration", "type": "number", "tooltip": ""},
+                {"name": f"Size ({cano.memory_metric})", "type": "number", "tooltip": ""},
+                {"name": f"Allocation Time ({cano.time_metric})", "type": "number", "tooltip": ""},
+                {"name": f"Release Time ({cano.time_metric})", "type": "number", "tooltip": ""},
+                {"name": f"Duration ({cano.time_metric})", "type": "number", "tooltip": ""},
             ],
             "rows": events,  # in the form of { "CPU": [...], "GPU0": [...], ... }
         }

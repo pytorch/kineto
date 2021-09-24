@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List
 
 from collections import defaultdict
 
@@ -25,6 +25,7 @@ class MemoryRecord:
         self.total_allocated = total_allocated
         self.total_reserved = total_reserved
         self.op_name: Optional[str] = None
+        self.parent_op_name: Optional[str] = None
 
     @property
     def device_name(self):
@@ -34,6 +35,14 @@ class MemoryRecord:
             return "GPU{}".format(self.device_id)
         else:
             return None
+
+    @property
+    def is_allocation(self):
+        return self.bytes > 0
+
+    @property
+    def op_name_or_unknown(self):
+        return self.op_name if self.op_name else "<unknown>"
 
     @staticmethod
     def from_event(event: MemoryEvent):
@@ -47,11 +56,10 @@ class MemoryRecord:
 class MemoryParser:
     def __init__(self, tid2tree, memory_events: Iterable[MemoryEvent]):
         self.tid2tree = tid2tree
-        self.memory_events = memory_events
 
         # statistics purpose
-        self.staled_records = []
-        self.processed_records = []
+        self.staled_records: List[MemoryRecord] = []
+        self.processed_records: List[MemoryRecord] = []
 
         # the visited node times from parent to child
         # troubleshooting issue purpose.
@@ -59,11 +67,21 @@ class MemoryParser:
         self.unreached_node = defaultdict(list)
 
         records_by_tid = defaultdict(list)
-        for event in self.memory_events:
+        for event in memory_events:
             record = MemoryRecord.from_event(event)
             records_by_tid[record.tid].append(record)
 
         self.update_node(records_by_tid)
+        # for memory events requests
+        self.all_records = self.get_preprocessed_records()
+        self.peaks = self.get_peak_memory()
+
+    def get_peak_memory(self):
+        peaks = defaultdict(int)
+        for r in self.all_records:
+            if r.total_allocated == r.total_allocated: # !isnan
+                peaks[(r.device_type, r.device_id)] = max(peaks[(r.device_type, r.device_id)], r.total_allocated)
+        return peaks
 
     def get_memory_statistics(self, start_ts=None, end_ts=None):
         metric_length = len(MemoryMetrics)
@@ -93,7 +111,7 @@ class MemoryParser:
                 # since the node has not been visited for insert memory records, just ignore all childrens
                 return
             elif is_op:
-                node_memory_metrics = node.get_memory_metrics()
+                node_memory_metrics = node.get_memory_metrics(start_ts, end_ts)
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
                     # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]
@@ -226,7 +244,12 @@ class MemoryParser:
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
                     current_node.add_memory_record(record)
-                    record.op_name = current_node.name
+                    # NOTE: only allocation record can be associated with op. Because deallocation happens at the end 
+                    # of a tensor's lifetime which is not deterministic.
+                    if record.is_allocation:
+                        record.op_name = current_node.name
+                        if len(node_stack) > 0:
+                            record.parent_op_name = node_stack[-1][0].name
                     self.processed_records.append(record)
                 else:
                     self.staled_records.append(record)
@@ -240,3 +263,35 @@ class MemoryParser:
                 len(self.staled_records), self.record_length(records_by_tid), len(self.processed_records)))
         if tree_height > 0:
             logger.debug("max tree height is {}".format(tree_height))
+
+    def get_preprocessed_records(self):
+        memory_records = sorted(self.staled_records + self.processed_records, key=lambda r: r.ts)
+
+        alloc = {}  # allocation events may or may not have paired free event
+        free = {}  # free events that does not have paired alloc event
+        prev_ts = float("-inf")  # ensure ordered memory records is ordered
+        for i, r in enumerate(memory_records):
+            if r.addr is None:
+                # profile json data prior to pytorch 1.10 do not have addr
+                # we should ignore them
+                continue
+            assert prev_ts < r.ts
+            prev_ts = r.ts
+            addr = r.addr
+            size = r.bytes
+            if size > 0:
+                # Allocation event, to be matched with a Release event
+                alloc[addr] = i
+            else:
+                # Processing a Release event
+                if addr in alloc:
+                    alloc_r = memory_records[alloc[addr]]
+                    r.op_name = alloc_r.op_name
+                    r.parent_op_name = alloc_r.parent_op_name
+                    del alloc[addr]
+                else:
+                    assert addr not in free
+                    free[addr] = i
+
+        logger.warning(f"{len(free)} memory records do not have associated operator.")
+        return memory_records

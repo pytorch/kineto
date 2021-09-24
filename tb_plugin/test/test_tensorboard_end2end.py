@@ -140,19 +140,29 @@ class TestEnd2End(unittest.TestCase):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
 
-        with open('result_check_file.txt', 'r') as f:
-            lines=f.readlines()
-            i = 0
-            print("starting testing...")
-            for link in links:
-                try:
+        if os.environ.get("TORCH_PROFILER_REGEN_RESULT_CHECK") == "1":
+            with open('result_check_file.txt', 'w', encoding="utf-8") as f:
+                # NOTE: result_check_file.txt is manually generated and verified.
+                # And then checked-in so that we can make sure that frontend 
+                # content change can be detected on code change.
+                for link in links:
                     response = urllib.request.urlopen(link)
-                    self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
-                    i = i + 1
-                except HTTPError as e:
-                    self.fail(e)
-        self.assertEqual(i, 10)
-        print("ending testing...")
+                    f.write(response.read().decode('utf-8'))
+                    f.write("\n")
+        else:
+            with open('result_check_file.txt', 'r') as f:
+                lines=f.readlines()
+                i = 0
+                print("starting testing...")
+                for link in links:
+                    try:
+                        response = urllib.request.urlopen(link)
+                        self.assertEqual(response.read(), lines[i].strip().encode(encoding="utf-8"))
+                        i = i + 1
+                    except HTTPError as e:
+                        self.fail(e)
+            self.assertEqual(i, 10)
+            print("ending testing...")
 
 if __name__ == '__main__':
     unittest.main()

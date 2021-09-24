@@ -4,7 +4,6 @@
 from enum import IntEnum
 
 from .. import utils
-from .tensor_core import TC_Allowlist
 
 __all__ = ["EventTypes", "create_event"]
 
@@ -69,7 +68,7 @@ class KernelEvent(DurationEvent):
         self.block = self.args.get("block")
         self.regs_per_thread = self.args.get("registers per thread")
         self.shared_memory = self.args.get("shared memory")
-        self.tc_used = self.name in TC_Allowlist
+        self.device_id = self.args.get("device")
 
 
 class OperatorEvent(DurationEvent):
@@ -114,18 +113,10 @@ class MemoryEvent(BaseEvent):
 
     @property
     def total_allocated(self):
-        # TODO: Allocated Bytes to be renamed to Total Allocated
-        old = self.args.get("Allocated Bytes")
-        if old is not None:
-            return old
         return self.args.get("Total Allocated", float("nan"))
 
     @property
     def total_reserved(self):
-        # TODO: Reserved Bytes to be rename to Total Reserved
-        old = self.args.get("Reserved Bytes")
-        if old is not None:
-            return old
         return self.args.get("Total Reserved", float("nan"))
 
 def create_event(event):

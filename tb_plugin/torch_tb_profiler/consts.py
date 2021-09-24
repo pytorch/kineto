@@ -47,7 +47,10 @@ TOOLTIP_OCCUPANCY_COMMON = \
 TOOLTIP_OCCUPANCY_OVERVIEW = \
     "This overall number is the weighted average of all kernels' OCC_K " \
     "using kernel's execution duration as weight. " \
-    "It shows fine-grained low-level GPU utilization."
+    "It shows fine-grained low-level GPU utilization.\n"
+TOOLTIP_TENSOR_CORES = \
+    "Kernel using Tensor Cores:\n" \
+    "Total GPU Time for Tensor Core kernels / Total GPU Time for all kernels.\n"
 TOOLTIP_OCCUPANCY_TABLE = \
     "This \"Mean\" number is the weighted average of all calls' OCC_K of the kernel, " \
     "using each call's execution duration as weight. " \

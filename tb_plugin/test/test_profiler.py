@@ -1467,7 +1467,7 @@ class TestProfiler(unittest.TestCase):
           {
             "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
-            "ts": 795,
+            "ts": 796,
             "args": {
                 "Device Type": 1, "Device Id": 0, "Addr": 515, "Bytes": -100
             }
@@ -2015,6 +2015,9 @@ class TestProfiler(unittest.TestCase):
             self.assertEqual(agg_kernel.op_name, expected_agg_kernel["op_name"])
             self.assertEqual(agg_kernel.tc_used, expected_agg_kernel["tc_used"])
             self.assertEqual(agg_kernel.op_tc_eligible, expected_agg_kernel["op_tc_eligible"])
+
+        self.assertAlmostEqual(profile.tc_ratio[0], 15 / (15 + 10))
+        self.assertAlmostEqual(profile.tc_eligible_ops_kernel_ratio, 15 / (15 + 10))
 
     def test_distributed_nccl(self):
         json_content0 = """

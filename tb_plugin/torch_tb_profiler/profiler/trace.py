@@ -37,6 +37,9 @@ EventTypeMap = {
     "Memory" : EventTypes.MEMORY
 }
 
+NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
+GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
+
 class BaseEvent(object):
     def __init__(self, type, data):
         self.type = type
@@ -81,6 +84,11 @@ class OperatorEvent(DurationEvent):
             shape = self.args.get("Input dims")
         self.input_shape = shape
 
+class CommunicationEvent(OperatorEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.comm_id = self.args.get("Communication Id")
+
 class ProfilerStepEvent(OperatorEvent):
     def __init__(self, data):
         super().__init__(EventTypes.PROFILER_STEP, data)
@@ -124,6 +132,8 @@ def create_trace_event(event):
         name = event.get("name")
         if name and name.startswith("ProfilerStep#"):
             return ProfilerStepEvent(event)
+        elif name in NcclOpNameSet or name in GlooOpNameSet:
+            return CommunicationEvent(event_type, event)
         else:
             return OperatorEvent(event_type, event)
     elif event_type == EventTypes.PYTHON:

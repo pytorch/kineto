@@ -136,7 +136,12 @@ class RunLoader(object):
                 break
         if has_communication:
             for i in range(len(comm_node_lists)):
-                comm_node_lists[i] = [comm_node for comm_node in comm_node_lists[i] if min_id <= comm_node.comm_id <= max_id]
+                j = 0
+                while j < len(comm_node_lists[i]):
+                    if min_id <= comm_node_lists[i][j].comm_id <= max_id:
+                        j += 1
+                    else:
+                        comm_node_lists[i].pop(j)
                 if len(comm_node_lists[i]) != len(comm_node_lists[0]):
                     logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
                     has_communication = False

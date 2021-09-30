@@ -73,7 +73,8 @@ class GenericTraceActivity : public TraceActivity {
 
   //Encode client side metadata as a key/value string.
   void addMetadata(const std::string& key, const std::string& value) {
-    if (!value.empty() && value.find_first_not_of("-0123456789") == std::string::npos)
+    if (!value.empty() && (value.find_first_not_of("-0123456789") == std::string::npos
+                          || (value.front() == '\"' && value.back() == '\"')))
       metadata_.push_back(fmt::format("\"{}\": {}", key, value));
     else
       metadata_.push_back(fmt::format("\"{}\": \"{}\"", key, value));

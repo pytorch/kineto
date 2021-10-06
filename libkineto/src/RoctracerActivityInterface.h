@@ -7,20 +7,6 @@
 
 #pragma once
 
-#include "ActivityType.h"
-#include "GenericTraceActivity.h"
-#include "RoctracerActivityBuffer.h"
-
-#include <atomic>
-#ifdef HAS_ROCTRACER
-#define __HIP_PLATFORM_AMD__
-#include <roctracer.h>
-#include <roctracer_hcc.h>
-#include <roctracer_hip.h>
-#include <roctracer_ext.h>
-#include <roctracer_roctx.h>
-
-#endif
 #include <functional>
 #include <list>
 #include <memory>
@@ -29,6 +15,20 @@
 #include <map>
 #include <unordered_map>
 #include <deque>
+#include <atomic>
+
+#ifdef HAS_ROCTRACER
+#define __HIP_PLATFORM_AMD__
+#include <roctracer.h>
+#include <roctracer_hcc.h>
+#include <roctracer_hip.h>
+#include <roctracer_ext.h>
+#include <roctracer_roctx.h>
+#endif
+
+#include "ActivityType.h"
+#include "GenericTraceActivity.h"
+#include "RoctracerActivityBuffer.h"
 
 
 namespace KINETO_NAMESPACE {
@@ -48,7 +48,6 @@ public:
   const std::unordered_map<uint32_t, uint32_t> &filterList() { return m_filter; }
 
 private:
-  std::map<std::string, uint32_t> m_ids;
   std::unordered_map<uint32_t, uint32_t> m_filter;
   bool m_invert;
 };

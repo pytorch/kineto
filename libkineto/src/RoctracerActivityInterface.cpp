@@ -562,7 +562,7 @@ bool ApiIdList::loadUserPrefs()
 }
 bool ApiIdList::contains(uint32_t apiId)
 {
-  return (m_filter.count(apiId) > 0) ? !m_invert : m_invert;  // XOR
+  return (m_filter.find(apiId) != m_filter.end()) ? !m_invert : m_invert;  // XOR
 }
 
 } // namespace KINETO_NAMESPACE

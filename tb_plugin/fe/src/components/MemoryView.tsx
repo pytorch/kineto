@@ -222,6 +222,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
           // setDevices only execute on view load. Since selection on curve
           // might filter all events later, some devices might is missing.
           setDevices(Object.keys(resp.rows))
+          setDevice(resp.metadata.default_device)
         }
       })
   }, [run, worker, span, selectedRange])
@@ -264,7 +265,6 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      setDevice(resp.metadata.default_device)
       if (hasMemoryCurveGraph === undefined) {
         setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
       }

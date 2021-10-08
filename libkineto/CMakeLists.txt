@@ -67,7 +67,7 @@ set_target_properties(kineto_base kineto_api PROPERTIES
       CXX_STANDARD 14
       CXX_STANDARD_REQUIRED YES
       CXX_EXTENSIONS NO
-      CXX_VISIBILITY_PRESET hidden)
+      CXX_VISIBILITY_PRESET default)
 
 set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
 list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
@@ -139,7 +139,7 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
     $<TARGET_OBJECTS:kineto_base>)
   set_property(TARGET kineto_base PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_target_properties(kineto PROPERTIES
-    CXX_VISIBILITY_PRESET hidden)
+    CXX_VISIBILITY_PRESET default)
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()

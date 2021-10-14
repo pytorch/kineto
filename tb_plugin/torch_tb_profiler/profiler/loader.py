@@ -153,6 +153,20 @@ class RunLoader(object):
             return None
 
         worker_num = len(comm_node_lists)
+        i = len(comm_node_lists[0]) - 1
+        while i >= 0:
+            ragged_kernel = False
+            for j in range(1, worker_num):
+                if len(comm_node_lists[0][i].kernel_ranges) != len(comm_node_lists[j][i].kernel_ranges):
+                    ragged_kernel = True
+                    break
+            if ragged_kernel:
+                for j in range(worker_num):
+                    comm_node_lists[j].pop(i)
+            else:
+                break
+            i -= 1
+
         for i, node in enumerate(comm_node_lists[0]):
             kernel_range_size = len(node.kernel_ranges)
             # loop for all communication kernel ranges in order

@@ -322,6 +322,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                               columns: graph.columns,
                               rows: graph.rows[device] ?? []
                             }}
+                            span={span}
                             device={device}
                             onSelectionChanged={onSelectedRangeChanged}
                             explorerOptions={{

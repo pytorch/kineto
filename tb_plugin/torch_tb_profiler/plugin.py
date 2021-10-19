@@ -71,8 +71,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
+        If there is no any pending run, hide the plugin
         """
-        return True
+        if self.is_loading:
+            return True
+        else:
+            return bool(self._runs)
 
     def get_plugin_apps(self):
         return {
@@ -109,12 +113,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         with self._runs_lock:
             names = list(self._runs.keys())
 
-        with self._load_lock:
-            loading = bool(self._load_threads)
-
         data = {
             "runs": names,
-            "loading": loading
+            "loading": self.is_loading
         }
         return self.respond_as_json(data)
 
@@ -334,6 +335,11 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def respond_as_json(obj):
         content = json.dumps(obj)
         return werkzeug.Response(content, content_type="application/json", headers=TorchProfilerPlugin.headers)
+
+    @property
+    def is_loading(self):
+        with self._load_lock:
+            return bool(self._load_threads)
 
     def _monitor_runs(self):
         logger.info("Monitor runs begin")

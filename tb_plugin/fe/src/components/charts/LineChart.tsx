@@ -10,6 +10,7 @@ import { binarySearch } from '../../utils/binarysearch'
 
 interface IProps {
   graph: Graph
+  span: string
   device: string
   height?: number
   hAxisTitle?: string
@@ -28,6 +29,7 @@ const useStyles = makeStyles(() => ({
 export const LineChart: React.FC<IProps> = (props) => {
   const {
     graph,
+    span,
     device,
     height = 400,
     hAxisTitle,
@@ -109,7 +111,11 @@ export const LineChart: React.FC<IProps> = (props) => {
 
     chart.draw(data, options)
     setChartObj(chart)
-  }, [device, height, resizeEventDependency])
+
+    // FIXME: Using `graph` here will cause repeatly reloading. The graph data
+    // changes iff `run`, `span` or `device` changes. Changing `run` will cuase
+    // the view being refresh as a whole. So only span and device is needed.
+  }, [span, device, height, resizeEventDependency])
 
   React.useEffect(() => {
     const compare_fn = (key: number, mid: Array<number>) =>

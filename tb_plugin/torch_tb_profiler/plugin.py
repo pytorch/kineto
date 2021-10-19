@@ -76,7 +76,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if self.is_loading:
             return True
         else:
-            return bool(self._runs)
+            with self._runs_lock:
+                return bool(self._runs)
 
     def get_plugin_apps(self):
         return {

@@ -13,12 +13,12 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryCurve, Graph, MemoryData, MemoryEventsData } from '../api'
+import { MemoryCurve, Graph, MemoryStatsData, MemoryEventsData } from '../api'
 import { useSearchDirectly } from '../utils/search'
 import { AntTableChart } from './charts/AntTableChart'
 import { LineChart } from './charts/LineChart'
 import { DataLoading } from './DataLoading'
-import { MemoryTable } from './tables/MemoryTable'
+import { MemoryStatsTable } from './tables/MemoryStatsTable'
 import Slider from '@material-ui/core/Slider'
 
 const useStyles = makeStyles((theme) => ({
@@ -73,9 +73,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const { run, worker, span } = props
   const classes = useStyles()
 
-  const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
-    undefined
-  )
+  const [memoryStatsData, setMemoryStatsData] = React.useState<
+    MemoryStatsData | undefined
+  >(undefined)
   const [showEvents, setShowEvents] = React.useState<boolean | undefined>(
     undefined
   )
@@ -113,11 +113,11 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [maxSize, setMaxSize] = React.useState<MaxEventSize>({})
 
   const getSearchIndex = function () {
-    if (!memoryData) {
+    if (!memoryStatsData) {
       return -1
     }
-    for (let i = 0; i < memoryData.columns.length; i++) {
-      if (memoryData.columns[i].name == memoryData.metadata.search) {
+    for (let i = 0; i < memoryStatsData.columns.length; i++) {
+      if (memoryStatsData.columns[i].name == memoryStatsData.metadata.search) {
         return i
       }
     }
@@ -158,7 +158,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchedTableDataRows] = useSearchDirectly(
     searchOperatorName,
     getName,
-    memoryData?.rows[device] ?? []
+    memoryStatsData?.rows[device] ?? []
   )
   const [searchedEventsTableDataRows] = useSearchDirectly(
     searchEventOperatorName,
@@ -220,7 +220,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         selectedRange?.endTs
       )
       .then((resp) => {
-        setMemoryData(resp)
+        setMemoryStatsData(resp)
         if (!devices || devices.length == 0) {
           // setDevices only execute on view load. Since selection on curve
           // might filter all events later, some devices might is missing.
@@ -439,14 +439,14 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 </Grid>
               </Grid>
               <Grid item direction="column">
-                <DataLoading value={memoryData}>
+                <DataLoading value={memoryStatsData}>
                   {(data) => (
-                    <MemoryTable
+                    <MemoryStatsTable
                       data={{
                         rows: searchedTableDataRows,
                         columns: data.columns
                       }}
-                      sort={memoryData!.metadata.sort}
+                      sort={memoryStatsData!.metadata.sort}
                     />
                   )}
                 </DataLoading>

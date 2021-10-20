@@ -525,31 +525,6 @@ export interface MemoryCurveMetadata {
 /**
  *
  * @export
- * @interface MemoryData
- */
-export interface MemoryData {
-  /**
-   *
-   * @type {MemoryTableMetadata}
-   * @memberof MemoryData
-   */
-  metadata: MemoryTableMetadata
-  /**
-   *
-   * @type {Array<GraphColumn>}
-   * @memberof MemoryData
-   */
-  columns: Array<GraphColumn>
-  /**
-   *
-   * @type {any}
-   * @memberof MemoryData
-   */
-  rows: any
-}
-/**
- *
- * @export
  * @interface MemoryEventsData
  */
 export interface MemoryEventsData {
@@ -606,31 +581,56 @@ export interface MemoryEventsTableMetadata {
 /**
  *
  * @export
- * @interface MemoryTableMetadata
+ * @interface MemoryStatsData
  */
-export interface MemoryTableMetadata {
+export interface MemoryStatsData {
+  /**
+   *
+   * @type {MemoryStatsTableMetadata}
+   * @memberof MemoryStatsData
+   */
+  metadata: MemoryStatsTableMetadata
+  /**
+   *
+   * @type {Array<GraphColumn>}
+   * @memberof MemoryStatsData
+   */
+  columns: Array<GraphColumn>
+  /**
+   *
+   * @type {any}
+   * @memberof MemoryStatsData
+   */
+  rows: any
+}
+/**
+ *
+ * @export
+ * @interface MemoryStatsTableMetadata
+ */
+export interface MemoryStatsTableMetadata {
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   title: string
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   defaultDevice: string
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   search: string
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   sort: string
 }
@@ -2611,7 +2611,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       startTs?: number,
       endTs?: number,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryData> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryStatsData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).memoryGet(run, worker, span, startTs, endTs, options)

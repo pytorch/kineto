@@ -13,7 +13,12 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryCurve, Graph, MemoryStatsData, MemoryEventsData } from '../api'
+import {
+  MemoryCurveData,
+  Graph,
+  MemoryStatsData,
+  MemoryEventsData
+} from '../api'
 import { useSearchDirectly } from '../utils/search'
 import { AntTableChart } from './charts/AntTableChart'
 import { LineChart } from './charts/LineChart'
@@ -86,8 +91,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [showCurve, setShowCurve] = React.useState<boolean | undefined>(
     undefined
   )
-  const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
-    MemoryCurve | undefined
+  const [memoryCurveData, setMemoryCurveData] = React.useState<
+    MemoryCurveData | undefined
   >(undefined)
 
   const [graphData, setGraphData] = React.useState<Graph | undefined>(undefined)
@@ -271,19 +276,19 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
       if (showCurve === undefined) {
         setShowCurve(Object.keys(resp.rows).length != 0)
       }
-      setMemoryCurveGraph(resp)
+      setMemoryCurveData(resp)
     })
   }, [run, worker, span])
 
   React.useEffect(() => {
-    if (memoryCurveGraph !== undefined) {
+    if (memoryCurveData !== undefined) {
       setGraphData({
-        title: memoryCurveGraph.metadata.peaks[device],
-        columns: memoryCurveGraph.columns,
-        rows: memoryCurveGraph.rows[device] ?? []
+        title: memoryCurveData.metadata.peaks[device],
+        columns: memoryCurveData.columns,
+        rows: memoryCurveData.rows[device] ?? []
       })
     }
-  }, [memoryCurveGraph, device])
+  }, [memoryCurveData, device])
 
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)
@@ -291,8 +296,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   }
 
   const onSelectedRangeChanged = (start: number, end: number) => {
-    let bias = memoryCurveGraph?.metadata.first_ts ?? 0
-    let scale = 1 / (memoryCurveGraph?.metadata.time_factor ?? 1)
+    let bias = memoryCurveData?.metadata.first_ts ?? 0
+    let scale = 1 / (memoryCurveData?.metadata.time_factor ?? 1)
     let startTs = Math.round(start * scale + bias)
     let endTs = Math.round(end * scale + bias)
     if (startTs == endTs) {
@@ -309,7 +314,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         <CardContent>
           <Grid direction="column" container spacing={1}>
             <Grid item className={classes.curve}>
-              <DataLoading value={memoryCurveGraph}>
+              <DataLoading value={memoryCurveData}>
                 {(graph) => (
                   <Grid container direction="column">
                     <Grid item>

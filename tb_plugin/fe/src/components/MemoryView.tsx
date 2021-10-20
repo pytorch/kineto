@@ -83,17 +83,17 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   >(undefined)
 
   // for backward compatability, old profile do not have events to show
-  const [showEvents, setShowEvents] = React.useState<boolean | undefined>(
-    undefined
-  )
+  const showEvents = () => {
+    return memoryEventsData && Object.keys(memoryEventsData.rows).length != 0
+  }
   const [memoryEventsData, setMemoryEventsData] = React.useState<
     MemoryEventsData | undefined
   >(undefined)
 
   // for backward compatability, old profile do not have curve to show
-  const [showCurve, setShowCurve] = React.useState<boolean | undefined>(
-    undefined
-  )
+  const showCurve = () => {
+    return memoryCurveData && Object.keys(memoryCurveData.rows).length != 0
+  }
   const [memoryCurveData, setMemoryCurveData] = React.useState<
     MemoryCurveData | undefined
   >(undefined)
@@ -268,19 +268,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         }
         setMaxSize(curMaxSize)
         setFilterEventSize(curFilterEventSize)
-
-        if (showEvents === undefined) {
-          setShowEvents(Object.keys(resp.rows).length != 0)
-        }
         setMemoryEventsData(resp)
       })
   }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      if (showCurve === undefined) {
-        setShowCurve(Object.keys(resp.rows).length != 0)
-      }
       setMemoryCurveData(resp)
     })
   }, [run, worker, span])
@@ -334,7 +327,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         ))}
                       </Select>
                     </Grid>
-                    {showCurve && lineChartData && (
+                    {showCurve() && lineChartData && (
                       <Grid item>
                         <div>
                           <LineChart
@@ -358,7 +351,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 )}
               </DataLoading>
             </Grid>
-            {showEvents && (
+            {showEvents() && (
               <>
                 <Grid container>
                   <Grid item container sm={6} justify="space-around">

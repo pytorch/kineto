@@ -76,9 +76,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
     undefined
   )
-  const [hasMemoryEventsData, setHasMemoryEventsData] = React.useState<
-    boolean | undefined
-  >(undefined)
+  const [showEvents, setShowEvents] = React.useState<boolean | undefined>(
+    undefined
+  )
   const [memoryEventsData, setMemoryEventsData] = React.useState<
     MemoryEventsData | undefined
   >(undefined)
@@ -259,8 +259,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         setMaxSize(curMaxSize)
         setFilterEventSize(curFilterEventSize)
 
-        if (hasMemoryEventsData === undefined) {
-          setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
+        if (showEvents === undefined) {
+          setShowEvents(Object.keys(resp.rows).length != 0)
         }
         setMemoryEventsData(resp)
       })
@@ -348,7 +348,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 )}
               </DataLoading>
             </Grid>
-            {hasMemoryEventsData && (
+            {showEvents && (
               <>
                 <Grid container>
                   <Grid item container sm={6} justify="space-around">

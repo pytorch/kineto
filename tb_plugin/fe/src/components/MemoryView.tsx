@@ -95,7 +95,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     MemoryCurveData | undefined
   >(undefined)
 
-  const [graphData, setGraphData] = React.useState<Graph | undefined>(undefined)
+  const [lineChartData, setLineChartData] = React.useState<Graph | undefined>(
+    undefined
+  )
 
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
@@ -282,7 +284,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   React.useEffect(() => {
     if (memoryCurveData !== undefined) {
-      setGraphData({
+      setLineChartData({
         title: memoryCurveData.metadata.peaks[device],
         columns: memoryCurveData.columns,
         rows: memoryCurveData.rows[device] ?? []
@@ -329,13 +331,13 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         ))}
                       </Select>
                     </Grid>
-                    {showCurve && graphData && (
+                    {showCurve && lineChartData && (
                       <Grid item>
                         <div>
                           <LineChart
                             hAxisTitle={`Time (${graph.metadata.time_metric})`}
                             vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
-                            graph={graphData}
+                            graph={lineChartData}
                             onSelectionChanged={onSelectedRangeChanged}
                             explorerOptions={{
                               actions: ['dragToZoom', 'rightClickToReset'],

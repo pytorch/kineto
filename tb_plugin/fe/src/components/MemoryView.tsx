@@ -14,10 +14,10 @@ import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
 import {
-  MemoryCurveData,
   Graph,
-  MemoryStatsData,
-  MemoryEventsData
+  MemoryCurveData,
+  MemoryEventsData,
+  MemoryStatsData
 } from '../api'
 import { useSearchDirectly } from '../utils/search'
 import { AntTableChart } from './charts/AntTableChart'
@@ -81,6 +81,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [memoryStatsData, setMemoryStatsData] = React.useState<
     MemoryStatsData | undefined
   >(undefined)
+
+  // for backward compatability, old profile do not have events to show
   const [showEvents, setShowEvents] = React.useState<boolean | undefined>(
     undefined
   )
@@ -88,6 +90,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     MemoryEventsData | undefined
   >(undefined)
 
+  // for backward compatability, old profile do not have curve to show
   const [showCurve, setShowCurve] = React.useState<boolean | undefined>(
     undefined
   )

@@ -83,9 +83,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     MemoryEventsData | undefined
   >(undefined)
 
-  const [hasMemoryCurveGraph, setHasMemoryCurveGraph] = React.useState<
-    boolean | undefined
-  >(undefined)
+  const [showCurve, setShowCurve] = React.useState<boolean | undefined>(
+    undefined
+  )
   const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
     MemoryCurve | undefined
   >(undefined)
@@ -268,8 +268,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      if (hasMemoryCurveGraph === undefined) {
-        setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
+      if (showCurve === undefined) {
+        setShowCurve(Object.keys(resp.rows).length != 0)
       }
       setMemoryCurveGraph(resp)
     })
@@ -324,7 +324,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         ))}
                       </Select>
                     </Grid>
-                    {hasMemoryCurveGraph && graphData && (
+                    {showCurve && graphData && (
                       <Grid item>
                         <div>
                           <LineChart

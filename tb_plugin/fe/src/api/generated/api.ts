@@ -439,113 +439,88 @@ export interface KernelGraph {
 /**
  *
  * @export
- * @interface MemoryCurve
+ * @interface MemoryCurveData
  */
-export interface MemoryCurve {
+export interface MemoryCurveData {
   /**
    *
-   * @type {MemoryCurveMetadata}
-   * @memberof MemoryCurve
+   * @type {MemoryCurveDataMetadata}
+   * @memberof MemoryCurveData
    */
-  metadata: MemoryCurveMetadata
+  metadata: MemoryCurveDataMetadata
   /**
    *
    * @type {Array<GraphColumn>}
-   * @memberof MemoryCurve
+   * @memberof MemoryCurveData
    */
   columns: Array<GraphColumn>
   /**
    *
    * @type {any}
-   * @memberof MemoryCurve
+   * @memberof MemoryCurveData
    */
   rows: any
 }
 /**
  *
  * @export
- * @interface MemoryCurveMetadata
+ * @interface MemoryCurveDataMetadata
  */
-export interface MemoryCurveMetadata {
+export interface MemoryCurveDataMetadata {
   /**
    *
    * @type {string}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   defaultDevice: string
   /**
    *
    * @type {Array<string>}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   devices: Array<string>
   /**
    *
    * @type {any}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   peaks: any
   /**
    *
    * @type {any}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   totals: any
   /**
    *
    * @type {number}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   firstTs: number
   /**
    *
    * @type {string}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   timeMetric: string
   /**
    *
    * @type {string}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   memoryMetric: string
   /**
    *
    * @type {number}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   timeFactor: number
   /**
    *
    * @type {number}
-   * @memberof MemoryCurveMetadata
+   * @memberof MemoryCurveDataMetadata
    */
   memoryFactor: number
-}
-/**
- *
- * @export
- * @interface MemoryData
- */
-export interface MemoryData {
-  /**
-   *
-   * @type {MemoryTableMetadata}
-   * @memberof MemoryData
-   */
-  metadata: MemoryTableMetadata
-  /**
-   *
-   * @type {Array<GraphColumn>}
-   * @memberof MemoryData
-   */
-  columns: Array<GraphColumn>
-  /**
-   *
-   * @type {any}
-   * @memberof MemoryData
-   */
-  rows: any
 }
 /**
  *
@@ -606,31 +581,56 @@ export interface MemoryEventsTableMetadata {
 /**
  *
  * @export
- * @interface MemoryTableMetadata
+ * @interface MemoryStatsData
  */
-export interface MemoryTableMetadata {
+export interface MemoryStatsData {
+  /**
+   *
+   * @type {MemoryStatsTableMetadata}
+   * @memberof MemoryStatsData
+   */
+  metadata: MemoryStatsTableMetadata
+  /**
+   *
+   * @type {Array<GraphColumn>}
+   * @memberof MemoryStatsData
+   */
+  columns: Array<GraphColumn>
+  /**
+   *
+   * @type {any}
+   * @memberof MemoryStatsData
+   */
+  rows: any
+}
+/**
+ *
+ * @export
+ * @interface MemoryStatsTableMetadata
+ */
+export interface MemoryStatsTableMetadata {
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   title: string
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   defaultDevice: string
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   search: string
   /**
    *
    * @type {string}
-   * @memberof MemoryTableMetadata
+   * @memberof MemoryStatsTableMetadata
    */
   sort: string
 }
@@ -2537,7 +2537,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       worker: string,
       span: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryCurve> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryCurveData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).memoryCurveGet(run, worker, span, options)
@@ -2611,7 +2611,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       startTs?: number,
       endTs?: number,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryData> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryStatsData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).memoryGet(run, worker, span, startTs, endTs, options)

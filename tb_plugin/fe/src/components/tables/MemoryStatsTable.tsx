@@ -3,16 +3,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as React from 'react'
-import {
-  MemoryData,
-  OperationTableData,
-  OperationTableDataInner
-} from '../../api'
-import { OperationGroupBy } from '../../constants/groupBy'
-import { attachId, getCommonOperationColumns } from './common'
-import { Table, TablePaginationConfig, TableProps } from 'antd'
-import { makeExpandIcon } from './ExpandIcon'
-import { CallStackTable } from './CallStackTable'
+import { Table } from 'antd'
 import { makeStyles } from '@material-ui/core'
 
 export interface IProps {
@@ -26,7 +17,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }))
 
-const getMemoryTableColumns = function (
+const getMemoryStatsTableColumns = function (
   columns: any,
   sort: string,
   tooltipClass: string
@@ -49,7 +40,7 @@ const getMemoryTableColumns = function (
   })
 }
 
-const getMemoryTableRows = function (rows: any) {
+const getMemoryStatsTableRows = function (rows: any) {
   return rows.map(function (row: any) {
     let i = 0
     const res: any = {}
@@ -60,14 +51,16 @@ const getMemoryTableRows = function (rows: any) {
   })
 }
 
-export const MemoryTable = (props: IProps) => {
+export const MemoryStatsTable = (props: IProps) => {
   const { data, sort } = props
   const classes = useStyles()
 
-  const rows = React.useMemo(() => getMemoryTableRows(data.rows), [data.rows])
+  const rows = React.useMemo(() => getMemoryStatsTableRows(data.rows), [
+    data.rows
+  ])
 
   const columns = React.useMemo(
-    () => getMemoryTableColumns(data.columns, sort, classes.tooltip),
+    () => getMemoryStatsTableColumns(data.columns, sort, classes.tooltip),
     [data.columns, sort, classes.tooltip]
   )
 

@@ -13,7 +13,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryCurve, MemoryData, MemoryEventsData } from '../api'
+import { MemoryCurve, Graph, MemoryData, MemoryEventsData } from '../api'
 import { useSearchDirectly } from '../utils/search'
 import { AntTableChart } from './charts/AntTableChart'
 import { LineChart } from './charts/LineChart'
@@ -89,6 +89,9 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
     MemoryCurve | undefined
   >(undefined)
+
+  const [graphData, setGraphData] = React.useState<Graph | undefined>(undefined)
+
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
   interface SelectedRange {
@@ -272,6 +275,16 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     })
   }, [run, worker, span])
 
+  React.useEffect(() => {
+    if (memoryCurveGraph !== undefined) {
+      setGraphData({
+        title: memoryCurveGraph.metadata.peaks[device],
+        columns: memoryCurveGraph.columns,
+        rows: memoryCurveGraph.rows[device] ?? []
+      })
+    }
+  }, [memoryCurveGraph, device])
+
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)
     setSelectedRange(undefined)
@@ -311,19 +324,13 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         ))}
                       </Select>
                     </Grid>
-                    {hasMemoryCurveGraph && (
+                    {hasMemoryCurveGraph && graphData && (
                       <Grid item>
                         <div>
                           <LineChart
                             hAxisTitle={`Time (${graph.metadata.time_metric})`}
                             vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
-                            graph={{
-                              title: graph.metadata.peaks[device],
-                              columns: graph.columns,
-                              rows: graph.rows[device] ?? []
-                            }}
-                            span={span}
-                            device={device}
+                            graph={graphData}
                             onSelectionChanged={onSelectedRangeChanged}
                             explorerOptions={{
                               actions: ['dragToZoom', 'rightClickToReset'],

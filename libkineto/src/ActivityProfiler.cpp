@@ -630,6 +630,9 @@ const time_point<system_clock> ActivityProfiler::performRunLoopStep(
         if (libkineto::api().client()) {
           libkineto::api().client()->start();
         }
+        if (nextWakeupTime > profileEndTime_) {
+          new_wakeup_time = profileEndTime_;
+        }
       } else if (nextWakeupTime > profileStartTime_) {
         new_wakeup_time = profileStartTime_;
       }

@@ -179,7 +179,9 @@ class RuntimeNode(HostNode):
     def fill_stats(self, op_node=None):
         if self.device_nodes:
             for device_node in self.device_nodes:
-                device_node.op_node = op_node
+                if op_node:
+                    device_node.op_name = op_node.name
+                    device_node.op_tc_eligible = op_node.tc_eligible
                 device_duration = device_node.end_time - device_node.start_time
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
@@ -198,7 +200,8 @@ class DeviceNode(BaseNode):
                  blocks_per_sm=None, occupancy=None,
                  grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False, device_id=None):
         super().__init__(name, start_time, end_time, type, tid, external_id)
-        self.op_node = None # The cpu operator that launched it.
+        self.op_tc_eligible = False
+        self.op_name = None
         self.blocks_per_sm = blocks_per_sm
         self.occupancy = occupancy
         self.grid = grid

@@ -10,7 +10,6 @@ import { binarySearch } from '../../utils/binarysearch'
 
 interface IProps {
   graph: Graph
-  device: string
   height?: number
   hAxisTitle?: string
   vAxisTitle?: string
@@ -28,7 +27,6 @@ const useStyles = makeStyles(() => ({
 export const LineChart: React.FC<IProps> = (props) => {
   const {
     graph,
-    device,
     height = 400,
     hAxisTitle,
     vAxisTitle,
@@ -109,7 +107,7 @@ export const LineChart: React.FC<IProps> = (props) => {
 
     chart.draw(data, options)
     setChartObj(chart)
-  }, [device, height, resizeEventDependency])
+  }, [graph, height, resizeEventDependency])
 
   React.useEffect(() => {
     const compare_fn = (key: number, mid: Array<number>) =>
@@ -126,7 +124,7 @@ export const LineChart: React.FC<IProps> = (props) => {
         chartObj.setSelection()
       }
     }
-  }, [record, chartObj])
+  }, [graph, record, chartObj])
 
   return (
     <div className={classes.root}>

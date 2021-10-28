@@ -73,10 +73,6 @@ def example(rank, use_gpu=True):
             if step + 1 >= 10:
                 break
 
-def main():
-    world_size=4
-    mp.spawn(example, args=(world_size,), nprocs=world_size, join=True)
-
 def init_process(rank, size, fn, backend='nccl'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = '127.0.0.1'

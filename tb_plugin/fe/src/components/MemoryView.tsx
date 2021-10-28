@@ -13,12 +13,17 @@ import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
 import * as api from '../api'
-import { MemoryCurve, MemoryData, MemoryEventsData } from '../api'
+import {
+  Graph,
+  MemoryCurveData,
+  MemoryEventsData,
+  MemoryStatsData
+} from '../api'
 import { useSearchDirectly } from '../utils/search'
 import { AntTableChart } from './charts/AntTableChart'
 import { LineChart } from './charts/LineChart'
 import { DataLoading } from './DataLoading'
-import { MemoryTable } from './tables/MemoryTable'
+import { MemoryStatsTable } from './tables/MemoryStatsTable'
 import Slider from '@material-ui/core/Slider'
 
 const useStyles = makeStyles((theme) => ({
@@ -73,22 +78,30 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const { run, worker, span } = props
   const classes = useStyles()
 
-  const [memoryData, setMemoryData] = React.useState<MemoryData | undefined>(
-    undefined
-  )
-  const [hasMemoryEventsData, setHasMemoryEventsData] = React.useState<
-    boolean | undefined
+  const [memoryStatsData, setMemoryStatsData] = React.useState<
+    MemoryStatsData | undefined
   >(undefined)
+
+  // for backward compatability, old profile do not have events to show
+  const showEvents = () => {
+    return memoryEventsData && Object.keys(memoryEventsData.rows).length != 0
+  }
   const [memoryEventsData, setMemoryEventsData] = React.useState<
     MemoryEventsData | undefined
   >(undefined)
 
-  const [hasMemoryCurveGraph, setHasMemoryCurveGraph] = React.useState<
-    boolean | undefined
+  // for backward compatability, old profile do not have curve to show
+  const showCurve = () => {
+    return memoryCurveData && Object.keys(memoryCurveData.rows).length != 0
+  }
+  const [memoryCurveData, setMemoryCurveData] = React.useState<
+    MemoryCurveData | undefined
   >(undefined)
-  const [memoryCurveGraph, setMemoryCurveGraph] = React.useState<
-    MemoryCurve | undefined
-  >(undefined)
+
+  const [lineChartData, setLineChartData] = React.useState<Graph | undefined>(
+    undefined
+  )
+
   const [devices, setDevices] = React.useState<string[]>([])
   const [device, setDevice] = React.useState('')
   interface SelectedRange {
@@ -110,11 +123,11 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [maxSize, setMaxSize] = React.useState<MaxEventSize>({})
 
   const getSearchIndex = function () {
-    if (!memoryData) {
+    if (!memoryStatsData) {
       return -1
     }
-    for (let i = 0; i < memoryData.columns.length; i++) {
-      if (memoryData.columns[i].name == memoryData.metadata.search) {
+    for (let i = 0; i < memoryStatsData.columns.length; i++) {
+      if (memoryStatsData.columns[i].name == memoryStatsData.metadata.search) {
         return i
       }
     }
@@ -155,7 +168,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   const [searchedTableDataRows] = useSearchDirectly(
     searchOperatorName,
     getName,
-    memoryData?.rows[device] ?? []
+    memoryStatsData?.rows[device] ?? []
   )
   const [searchedEventsTableDataRows] = useSearchDirectly(
     searchEventOperatorName,
@@ -217,11 +230,12 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         selectedRange?.endTs
       )
       .then((resp) => {
-        setMemoryData(resp)
+        setMemoryStatsData(resp)
         if (!devices || devices.length == 0) {
           // setDevices only execute on view load. Since selection on curve
           // might filter all events later, some devices might is missing.
           setDevices(Object.keys(resp.rows))
+          setDevice(resp.metadata.default_device)
         }
       })
   }, [run, worker, span, selectedRange])
@@ -254,23 +268,25 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         }
         setMaxSize(curMaxSize)
         setFilterEventSize(curFilterEventSize)
-
-        if (hasMemoryEventsData === undefined) {
-          setHasMemoryEventsData(Object.keys(resp.rows).length != 0)
-        }
         setMemoryEventsData(resp)
       })
   }, [run, worker, span, selectedRange])
 
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
-      setDevice(resp.metadata.default_device)
-      if (hasMemoryCurveGraph === undefined) {
-        setHasMemoryCurveGraph(Object.keys(resp.rows).length != 0)
-      }
-      setMemoryCurveGraph(resp)
+      setMemoryCurveData(resp)
     })
   }, [run, worker, span])
+
+  React.useEffect(() => {
+    if (memoryCurveData !== undefined) {
+      setLineChartData({
+        title: memoryCurveData.metadata.peaks[device],
+        columns: memoryCurveData.columns,
+        rows: memoryCurveData.rows[device] ?? []
+      })
+    }
+  }, [memoryCurveData, device])
 
   const onDeviceChanged: SelectProps['onChange'] = (event) => {
     setDevice(event.target.value as string)
@@ -278,8 +294,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   }
 
   const onSelectedRangeChanged = (start: number, end: number) => {
-    let bias = memoryCurveGraph?.metadata.first_ts ?? 0
-    let scale = 1 / (memoryCurveGraph?.metadata.time_factor ?? 1)
+    let bias = memoryCurveData?.metadata.first_ts ?? 0
+    let scale = 1 / (memoryCurveData?.metadata.time_factor ?? 1)
     let startTs = Math.round(start * scale + bias)
     let endTs = Math.round(end * scale + bias)
     if (startTs == endTs) {
@@ -296,7 +312,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
         <CardContent>
           <Grid direction="column" container spacing={1}>
             <Grid item className={classes.curve}>
-              <DataLoading value={memoryCurveGraph}>
+              <DataLoading value={memoryCurveData}>
                 {(graph) => (
                   <Grid container direction="column">
                     <Grid item>
@@ -311,18 +327,13 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                         ))}
                       </Select>
                     </Grid>
-                    {hasMemoryCurveGraph && (
+                    {showCurve() && lineChartData && (
                       <Grid item>
                         <div>
                           <LineChart
                             hAxisTitle={`Time (${graph.metadata.time_metric})`}
                             vAxisTitle={`Memory Usage (${graph.metadata.memory_metric})`}
-                            graph={{
-                              title: graph.metadata.peaks[device],
-                              columns: graph.columns,
-                              rows: graph.rows[device] ?? []
-                            }}
-                            device={device}
+                            graph={lineChartData}
                             onSelectionChanged={onSelectedRangeChanged}
                             explorerOptions={{
                               actions: ['dragToZoom', 'rightClickToReset'],
@@ -340,7 +351,7 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 )}
               </DataLoading>
             </Grid>
-            {hasMemoryEventsData && (
+            {showEvents() && (
               <>
                 <Grid container>
                   <Grid item container sm={6} justify="space-around">
@@ -431,14 +442,14 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
                 </Grid>
               </Grid>
               <Grid item direction="column">
-                <DataLoading value={memoryData}>
+                <DataLoading value={memoryStatsData}>
                   {(data) => (
-                    <MemoryTable
+                    <MemoryStatsTable
                       data={{
                         rows: searchedTableDataRows,
                         columns: data.columns
                       }}
-                      sort={memoryData!.metadata.sort}
+                      sort={memoryStatsData!.metadata.sort}
                     />
                   )}
                 </DataLoading>

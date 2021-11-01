@@ -28,7 +28,7 @@ constexpr milliseconds kProfilerIntervalMsecs(1000);
 ActivityProfilerController::ActivityProfilerController(
     ConfigLoader& configLoader, bool cpuOnly)
     : configLoader_(configLoader) {
-  profiler_ = std::make_unique<ActivityProfiler>(
+  profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityInterface::singleton(), cpuOnly);
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 }

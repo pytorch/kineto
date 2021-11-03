@@ -221,7 +221,7 @@ static std::string streamName(const TraceActivity& act) {
 }
 
 void ChromeTraceLogger::handleGenericInstantEvent(
-    const libkineto::GenericTraceActivity& op) {
+    const GenericTraceActivity& op) {
   if (!traceOf_) {
     return;
   }

@@ -39,17 +39,17 @@ class ApiIdList
 {
 public:
   ApiIdList();
-  bool invertMode() { return m_invert; }
-  void setInvertMode(bool invert) { m_invert = invert; }
+  bool invertMode() { return invert_; }
+  void setInvertMode(bool invert) { invert_ = invert; }
   void add(std::string apiName);
   void remove(std::string apiName);
   bool loadUserPrefs();
   bool contains(uint32_t apiId);
-  const std::unordered_map<uint32_t, uint32_t> &filterList() { return m_filter; }
+  const std::unordered_map<uint32_t, uint32_t> &filterList() { return filter_; }
 
 private:
-  std::unordered_map<uint32_t, uint32_t> m_filter;
-  bool m_invert;
+  std::unordered_map<uint32_t, uint32_t> filter_;
+  bool invert_;
 };
 
 struct roctracerRow {
@@ -144,33 +144,33 @@ class RoctracerActivityInterface {
   std::atomic_bool stopCollection{false};
 
  private:
-  bool m_registered{false};
+  bool registered_{false};
   void endTracing();
 
 #ifdef HAS_ROCTRACER
-  roctracer_pool_t *m_hccPool{NULL};
+  roctracer_pool_t *hccPool_{NULL};
   static void api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg);
   static void activity_callback(const char* begin, const char* end, void* arg);
 
   //Name cache
-  uint32_t m_nextStringId{2};
-  std::map<uint32_t, std::string> m_strings;
-  std::map<std::string, uint32_t> m_reverseStrings;
-  std::map<activity_correlation_id_t, uint32_t> m_kernelNames;
+  uint32_t nextStringId_{2};
+  std::map<uint32_t, std::string> strings_;
+  std::map<std::string, uint32_t> reverseStrings_;
+  std::map<activity_correlation_id_t, uint32_t> kernelNames_;
 
-  ApiIdList m_loggedIds;
+  ApiIdList loggedIds_;
 
   // Api callback data
-  std::deque<roctracerRow> m_rows;
-  std::deque<kernelRow> m_kernelRows;
-  std::deque<copyRow> m_copyRows;
-  std::deque<mallocRow> m_mallocRows;
-  std::map<activity_correlation_id_t, GenericTraceActivity> m_kernelLaunches;
+  std::deque<roctracerRow> rows_;
+  std::deque<kernelRow> kernelRows_;
+  std::deque<copyRow> copyRows_;
+  std::deque<mallocRow> mallocRows_;
+  std::map<activity_correlation_id_t, GenericTraceActivity> kernelLaunches_;
 #endif
 
-  int m_maxGpuBufferCount{0};
-  std::unique_ptr<std::list<RoctracerActivityBuffer>> m_gpuTraceBuffers;
-  bool m_externalCorrelationEnabled{true};
+  int maxGpuBufferCount_{0};
+  std::unique_ptr<std::list<RoctracerActivityBuffer>> gpuTraceBuffers_;
+  bool externalCorrelationEnabled_{true};
 };
 
 } // namespace KINETO_NAMESPACE

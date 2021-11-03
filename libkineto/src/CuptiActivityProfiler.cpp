@@ -118,9 +118,9 @@ bool CuptiActivityProfiler::applyNetFilterInternal(const std::string& name) {
 
 // This has dependence on CuptiActivityInterface
 #ifdef HAS_ROCTRACER
-CuptiActivityProfiler::ActivityProfiler(RoctracerActivityInterface& cupti, bool cpuOnly)
+CuptiActivityProfiler::CuptiActivityProfiler(RoctracerActivityInterface& cupti, bool cpuOnly)
 #else
-CuptiActivityProfiler::ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
+CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
 #endif
     : cupti_(cupti),
       flushOverhead_{0, 0},

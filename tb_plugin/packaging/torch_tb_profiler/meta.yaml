@@ -1,6 +1,8 @@
+{% set data = load_setup_py_data(setup_file='../../setup.py', from_recipe_dir=True) %}
+
 package:
   name: torch_tb_profiler
-  version: "{{ environ.get('BUILD_VERSION', '0.2.0') }}"
+  version: "{{ data.get('version') }}"
 
 source:
  path: "{{ environ.get('SOURCE_ROOT_DIR', '../..') }}"

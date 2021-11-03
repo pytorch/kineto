@@ -19,7 +19,7 @@
 #endif
 
 #include "include/libkineto.h"
-#include "src/ActivityProfiler.h"
+#include "src/CuptiActivityProfiler.h"
 #include "src/ActivityTrace.h"
 #include "src/Config.h"
 #include "src/CuptiActivityInterface.h"
@@ -163,10 +163,10 @@ class MockCuptiActivities : public CuptiActivityInterface {
 
 
 // Common setup / teardown and helper functions
-class ActivityProfilerTest : public ::testing::Test {
+class CuptiActivityProfilerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    profiler_ = std::make_unique<ActivityProfiler>(
+    profiler_ = std::make_unique<CuptiActivityProfiler>(
         cuptiActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
     cfg_->validate(std::chrono::system_clock::now());
@@ -177,18 +177,18 @@ class ActivityProfilerTest : public ::testing::Test {
 
   std::unique_ptr<Config> cfg_;
   MockCuptiActivities cuptiActivities_;
-  std::unique_ptr<ActivityProfiler> profiler_;
+  std::unique_ptr<CuptiActivityProfiler> profiler_;
   ActivityLoggerFactory loggerFactory;
 };
 
 
-TEST(ActivityProfiler, AsyncTrace) {
+TEST(CuptiActivityProfiler, AsyncTrace) {
   std::vector<std::string> log_modules(
-      {"ActivityProfiler.cpp", "output_json.cpp"});
+      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
   MockCuptiActivities activities;
-  ActivityProfiler profiler(activities, /*cpu only*/ true);
+  CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);
@@ -259,17 +259,17 @@ TEST(ActivityProfiler, AsyncTrace) {
 }
 
 
-TEST_F(ActivityProfilerTest, SyncTrace) {
+TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   using ::testing::Return;
   using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
-      {"ActivityProfiler.cpp"});
+      {"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  ActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
   int64_t start_time_us = 100;
   int64_t duration_us = 300;
   auto start_time = time_point<system_clock>(microseconds(start_time_us));
@@ -348,14 +348,14 @@ TEST_F(ActivityProfilerTest, SyncTrace) {
 #endif
 }
 
-TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
+TEST_F(CuptiActivityProfilerTest, CorrelatedTimestampTest) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
-      {"ActivityProfiler.cpp"});
+      {"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  ActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
   int64_t start_time_us = 100;
   int64_t duration_us = 300;
   auto start_time = time_point<system_clock>(microseconds(start_time_us));
@@ -396,13 +396,13 @@ TEST_F(ActivityProfilerTest, CorrelatedTimestampTest) {
   EXPECT_EQ(counts["launchKernel"], 1);
 }
 
-TEST_F(ActivityProfilerTest, SubActivityProfilers) {
+TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   using ::testing::Return;
   using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
-      {"ActivityProfiler.cpp"});
+      {"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Setup example events to test
@@ -429,7 +429,7 @@ TEST_F(ActivityProfilerTest, SubActivityProfilers) {
     std::make_unique<MockActivityProfiler>(test_activities);
 
   MockCuptiActivities activities;
-  ActivityProfiler profiler(activities, /*cpu only*/ true);
+  CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
   profiler.addChildActivityProfiler(
       std::move(mock_activity_profiler));
 
@@ -469,8 +469,8 @@ TEST_F(ActivityProfilerTest, SubActivityProfilers) {
   EXPECT_GT(buf.st_size, 100);
 }
 
-TEST_F(ActivityProfilerTest, BufferSizeLimitTestWarmup) {
-  ActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
 
   auto now = system_clock::now();
   auto startTime = now + seconds(10);

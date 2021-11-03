@@ -71,8 +71,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def is_active(self):
         """Returns whether there is relevant data for the plugin to process.
+        If there is no any pending run, hide the plugin
         """
-        return True
+        if self.is_loading:
+            return True
+        else:
+            with self._runs_lock:
+                return bool(self._runs)
 
     def get_plugin_apps(self):
         return {
@@ -109,12 +114,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         with self._runs_lock:
             names = list(self._runs.keys())
 
-        with self._load_lock:
-            loading = bool(self._load_threads)
-
         data = {
             "runs": names,
-            "loading": loading
+            "loading": self.is_loading
         }
         return self.respond_as_json(data)
 
@@ -279,17 +281,18 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = self._get_profile_for_request(request)
         start_ts = request.args.get("start_ts", None)
         end_ts = request.args.get("end_ts", None)
+        memory_metric = request.args.get("memory_metric", "KB")
         if start_ts is not None:
             start_ts = int(start_ts)
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        return self.respond_as_json(RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts))
+        return self.respond_as_json(RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def memory_curve_route(self, request):
         profile = self._get_profile_for_request(request)
-        time_metric = request.args.get("time_metric", "second")
+        time_metric = request.args.get("time_metric", "ms")
         memory_metric = request.args.get("memory_metric", "MB")
         return self.respond_as_json(RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
 
@@ -298,12 +301,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         profile = self._get_profile_for_request(request)
         start_ts = request.args.get("start_ts", None)
         end_ts = request.args.get("end_ts", None)
+        time_metric = request.args.get("time_metric", "ms")
+        memory_metric = request.args.get("memory_metric", "KB")
         if start_ts is not None:
             start_ts = int(start_ts)
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts))
+        return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts, time_metric=time_metric, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def static_file_route(self, request):
@@ -331,6 +336,11 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def respond_as_json(obj):
         content = json.dumps(obj)
         return werkzeug.Response(content, content_type="application/json", headers=TorchProfilerPlugin.headers)
+
+    @property
+    def is_loading(self):
+        with self._load_lock:
+            return bool(self._load_threads)
 
     def _monitor_runs(self):
         logger.info("Monitor runs begin")

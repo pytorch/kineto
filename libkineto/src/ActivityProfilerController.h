@@ -13,7 +13,7 @@
 #include <thread>
 
 #include "ActivityLoggerFactory.h"
-#include "ActivityProfiler.h"
+#include "CuptiActivityProfiler.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
 #include "ConfigLoader.h"
@@ -78,7 +78,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   std::unique_ptr<Config> asyncRequestConfig_;
   std::mutex asyncConfigLock_;
-  std::unique_ptr<ActivityProfiler> profiler_;
+  std::unique_ptr<CuptiActivityProfiler> profiler_;
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};

@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 
+from .tensor_core import TC_Allowlist
 from .trace import EventTypes
 
 
@@ -16,6 +17,7 @@ class KernelParser:
         events = [vars(event) for event in events if event.type == EventTypes.KERNEL]
         events = pd.DataFrame(events)
         events = events.astype({"type": "category", "name": "string"}, copy=False)
+        events["tc_used"] = events["name"].map(lambda name: name in TC_Allowlist)
 
         def weighted_avg(x):
             try:

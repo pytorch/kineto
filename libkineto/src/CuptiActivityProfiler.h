@@ -34,12 +34,12 @@ class Config;
 class CuptiActivityInterface;
 class RoctracerActivityInterface;
 
-class ActivityProfiler {
+class CuptiActivityProfiler {
  public:
-  ActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly);
-  ActivityProfiler(RoctracerActivityInterface& rai, bool cpuOnly);
-  ActivityProfiler(const ActivityProfiler&) = delete;
-  ActivityProfiler& operator=(const ActivityProfiler&) = delete;
+  CuptiActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly);
+  CuptiActivityProfiler(RoctracerActivityInterface& rai, bool cpuOnly);
+  CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
+  CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
 
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;

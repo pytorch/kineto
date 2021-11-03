@@ -32,10 +32,10 @@ ActivityProfilerController::ActivityProfilerController(
     ConfigLoader& configLoader, bool cpuOnly)
     : configLoader_(configLoader) {
 #ifdef HAS_ROCTRACER
-  profiler_ = std::make_unique<ActivityProfiler>(
+  profiler_ = std::make_unique<CuptiActivityProfiler>(
       RoctracerActivityInterface::singleton(), cpuOnly);
 #else
-  profiler_ = std::make_unique<ActivityProfiler>(
+  profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityInterface::singleton(), cpuOnly);
 #endif
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);

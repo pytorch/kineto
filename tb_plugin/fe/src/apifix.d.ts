@@ -40,16 +40,16 @@ declare module './api/generated/api' {
     gpu_metrics: Overview['gpuMetrics']
   }
 
-  export interface MemoryTableMetadata {
-    default_device: MemoryTableMetadata['defaultDevice']
+  export interface MemoryStatsTableMetadata {
+    default_device: MemoryStatsTableMetadata['defaultDevice']
   }
 
-  export interface MemoryCurveMetadata {
-    default_device: MemoryCurveMetadata['defaultDevice']
-    first_ts: MemoryCurveMetadata['firstTs']
-    time_metric: MemoryCurveMetadata['timeMetric']
-    memory_metric: MemoryCurveMetadata['memoryMetric']
-    time_factor: MemoryCurveMetadata['timeFactor']
-    memory_factor: MemoryCurveMetadata['memoryFactor']
+  export interface MemoryCurveDataMetadata {
+    default_device: MemoryCurveDataMetadata['defaultDevice']
+    first_ts: MemoryCurveDataMetadata['firstTs']
+    time_metric: MemoryCurveDataMetadata['timeMetric']
+    memory_metric: MemoryCurveDataMetadata['memoryMetric']
+    time_factor: MemoryCurveDataMetadata['timeFactor']
+    memory_factor: MemoryCurveDataMetadata['memoryFactor']
   }
 }

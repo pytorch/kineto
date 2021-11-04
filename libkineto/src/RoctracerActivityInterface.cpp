@@ -103,7 +103,7 @@ int RoctracerActivityInterface::processActivities(
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
 
-    a.addMetadata("ptr", fmt::format("%p", item.ptr));
+    a.addMetadata("ptr", fmt::format("{}", item.ptr));
     if (item.cid == HIP_API_ID_hipMalloc) {
       a.addMetadata("size", std::to_string(item.size));
     }
@@ -123,12 +123,12 @@ int RoctracerActivityInterface::processActivities(
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
 
-    a.addMetadata("src", fmt::format("%p", item.src));
-    a.addMetadata("dst", fmt::format("%p", item.dst));
+    a.addMetadata("src", fmt::format("{}", item.src));
+    a.addMetadata("dst", fmt::format("{}", item.dst));
     a.addMetadata("size", std::to_string(item.size));
     a.addMetadata("kind", std::to_string(item.kind));
     if ((item.cid == HIP_API_ID_hipMemcpyAsync) || (item.cid == HIP_API_ID_hipMemcpyWithStream)) {
-      a.addMetadata("stream", fmt::format("%p", reinterpret_cast<void*>(item.stream)));
+      a.addMetadata("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
     }
 
     logger.handleGenericActivity(a);
@@ -153,10 +153,10 @@ int RoctracerActivityInterface::processActivities(
     else if (item.function != nullptr) {
       a.addMetadata("kernel", hipKernelNameRef(item.function));
     }
-    a.addMetadata("grid dim", fmt::format("(%d, %d, %d)", item.gridX, item.gridY, item.gridZ));
-    a.addMetadata("block dim", fmt::format("(%d, %d, %d)", item.workgroupX, item.workgroupY, item.workgroupZ));
+    a.addMetadata("grid dim", fmt::format("({}, {}, {})", item.gridX, item.gridY, item.gridZ));
+    a.addMetadata("block dim", fmt::format("({}, {}, {})", item.workgroupX, item.workgroupY, item.workgroupZ));
     a.addMetadata("shared size", std::to_string(item.groupSegmentSize));
-    a.addMetadata("stream", fmt::format("%p", reinterpret_cast<void*>(item.stream)));
+    a.addMetadata("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
 
     // Stash launches to tie to the async ops
     kernelLaunches_[a.id] = a;
@@ -277,7 +277,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               args.function_address,
@@ -302,7 +302,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               nullptr,
@@ -327,7 +327,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               args.function_address,
@@ -349,7 +349,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               data->args.hipMalloc.ptr__val,
@@ -361,7 +361,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               data->args.hipFree.ptr,
@@ -375,7 +375,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               args.src,
@@ -394,7 +394,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime),
                               args.src,
@@ -410,7 +410,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
                               domain,
                               cid,
                               processId(),
-                              threadId(),
+                              systemThreadId(),
                               timespec_to_ns(startTime),
                               timespec_to_ns(endTime)
                               );

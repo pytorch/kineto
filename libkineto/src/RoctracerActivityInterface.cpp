@@ -11,6 +11,7 @@
 #include <chrono>
 #include <time.h>
 
+#include "Demangle.h"
 #include "output_base.h"
 #include "ThreadUtil.h"
 
@@ -148,10 +149,10 @@ int RoctracerActivityInterface::processActivities(
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
 
     if (item.functionAddr != nullptr) {
-      a.addMetadata("kernel", hipKernelNameRefByPtr(item.functionAddr, item.stream));
+      a.addMetadata("kernel", demangle(hipKernelNameRefByPtr(item.functionAddr, item.stream)));
     }
     else if (item.function != nullptr) {
-      a.addMetadata("kernel", hipKernelNameRef(item.function));
+      a.addMetadata("kernel", demangle(hipKernelNameRef(item.function)));
     }
     a.addMetadata("grid dim", fmt::format("({}, {}, {})", item.gridX, item.gridY, item.gridZ));
     a.addMetadata("block dim", fmt::format("({}, {}, {})", item.workgroupX, item.workgroupY, item.workgroupZ));
@@ -164,10 +165,10 @@ int RoctracerActivityInterface::processActivities(
     // Stash kernel names to tie to the async ops
     std::string name;
     if (item.functionAddr != nullptr) {
-      name = hipKernelNameRefByPtr(item.functionAddr, item.stream);
+      name = demangle(hipKernelNameRefByPtr(item.functionAddr, item.stream));
     }
     else if (item.function != nullptr) {
-      name = hipKernelNameRef(item.function);
+      name = demangle(hipKernelNameRef(item.function));
     }
     if (!name.empty()) {
       uint32_t string_id = reverseStrings_[name];

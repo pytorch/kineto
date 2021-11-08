@@ -7,18 +7,20 @@
 
 #pragma once
 
-#include "ActivityType.h"
-#include "CuptiActivityBuffer.h"
-
 #include <atomic>
-#ifdef HAS_CUPTI
-#include <cupti.h>
-#endif
 #include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <set>
+
+#ifdef HAS_CUPTI
+#include <cupti.h>
+#endif
+
+#include "ActivityType.h"
+#include "CuptiActivityBuffer.h"
+
 
 namespace KINETO_NAMESPACE {
 

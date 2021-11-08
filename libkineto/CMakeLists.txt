@@ -40,18 +40,30 @@ if (NOT CUDA_SOURCE_DIR)
     message(INFO " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
 endif()
 
+if (NOT ROCM_SOURCE_DIR)
+    set(ROCM_SOURCE_DIR "$ENV{ROCM_SOURCE_DIR}")
+    message(INFO " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
+endif()
+
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
 # Otherwise, CUPTI is disabled if not found
 IF (NOT CUDA_SOURCE_DIR OR NOT CUPTI_INCLUDE_DIR OR NOT CUDA_cupti_LIBRARY)
     set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
 endif()
 
+IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
+    set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
+endif()
+
 # Define file lists
-if (LIBKINETO_NOCUPTI)
+if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER)
     get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " CUPTI unavailable or disabled - not building GPU profilers")
+elseif(NOT LIBKINETO_NOROCTRACER)
+    get_filelist("get_libkineto_roctracer_srcs()" LIBKINETO_SRCS)
+    message(INFO " Building with roctracer")
 else()
-    get_filelist("get_libkineto_srcs(with_api=False)" LIBKINETO_SRCS)
+    get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
 endif()
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
 get_filelist("get_libkineto_api_srcs()" LIBKINETO_API_SRCS)
@@ -80,6 +92,9 @@ else()
 endif()
 if (NOT LIBKINETO_NOCUPTI)
     list(APPEND KINETO_COMPILE_OPTIONS "-DHAS_CUPTI")
+endif()
+if (NOT LIBKINETO_NOROCTRACER)
+    target_compile_options(kineto_base PRIVATE "-DHAS_ROCTRACER")
 endif()
 
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
@@ -112,15 +127,24 @@ endif()
 if (NOT CUDA_INCLUDE_DIRS)
     set(CUDA_INCLUDE_DIRS "${CUDA_SOURCE_DIR}/include")
 endif()
+if (NOT ROCTRACER_INCLUDE_DIR)
+    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/roctracer/include")
+endif()
+if (NOT ROCM_INCLUDE_DIRS)
+    set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
+endif()
 
 message(INFO " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
+message(INFO " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${CUPTI_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>)
+      $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>
+      $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
+      $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
 
 target_include_directories(kineto_api PUBLIC
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
@@ -142,6 +166,13 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
     CXX_VISIBILITY_PRESET hidden)
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
+endif()
+
+if(NOT LIBKINETO_NOROCTRACER)
+  find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS /opt/rocm/roctracer/lib)
+  target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
+  find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS /opt/rocm/lib)
+  target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
 endif()
 
 if(NOT LIBKINETO_NOCUPTI)

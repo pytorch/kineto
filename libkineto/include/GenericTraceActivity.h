@@ -26,7 +26,7 @@ constexpr unsigned int kLinkFwdBwd = 1;
 class GenericTraceActivity : public TraceActivity {
 
  public:
-  GenericTraceActivity() = delete;
+  GenericTraceActivity() : activityType(ActivityType::ENUM_COUNT), traceSpan_(NULL) {}
 
   GenericTraceActivity(
       const TraceSpan& trace, ActivityType type, const std::string& name)
@@ -72,8 +72,13 @@ class GenericTraceActivity : public TraceActivity {
   void log(ActivityLogger& logger) const override;
 
   //Encode client side metadata as a key/value string.
-  void addMetadata(const std::string& key, const std::string& value) {
+  template<typename T>
+  void addMetadata(const std::string& key, T value) {
     metadata_.push_back(fmt::format("\"{}\": {}", key, value));
+  }
+
+  void addMetadataQuoted(const std::string& key, const std::string& value) {
+    metadata_.push_back(fmt::format("\"{}\": \"{}\"", key, value));
   }
 
   const std::string getMetadata() const {

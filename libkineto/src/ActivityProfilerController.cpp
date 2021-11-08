@@ -13,6 +13,9 @@
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
 #include "CuptiActivityInterface.h"
+#ifdef HAS_ROCTRACER
+#include "RoctracerActivityInterface.h"
+#endif
 #include "ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"
@@ -28,8 +31,13 @@ constexpr milliseconds kProfilerIntervalMsecs(1000);
 ActivityProfilerController::ActivityProfilerController(
     ConfigLoader& configLoader, bool cpuOnly)
     : configLoader_(configLoader) {
+#ifdef HAS_ROCTRACER
+  profiler_ = std::make_unique<CuptiActivityProfiler>(
+      RoctracerActivityInterface::singleton(), cpuOnly);
+#else
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityInterface::singleton(), cpuOnly);
+#endif
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 }
 

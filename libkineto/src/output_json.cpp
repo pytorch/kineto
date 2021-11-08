@@ -217,7 +217,7 @@ static std::string traceActivityJson(const TraceActivity& activity) {
 }
 
 void ChromeTraceLogger::handleGenericInstantEvent(
-    const libkineto::GenericTraceActivity& op) {
+    const GenericTraceActivity& op) {
   if (!traceOf_) {
     return;
   }
@@ -236,7 +236,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
 }
 
 void ChromeTraceLogger::handleGenericActivity(
-    const libkineto::GenericTraceActivity& op) {
+    const GenericTraceActivity& op) {
   if (!traceOf_) {
     return;
   }
@@ -257,7 +257,39 @@ void ChromeTraceLogger::handleGenericActivity(
       fmt::format("{}", op.resourceId());
 
   // clang-format off
-  traceOf_ << fmt::format(R"JSON(
+
+  switch (op.type()) {
+    case ActivityType::CUDA_RUNTIME:
+      {
+        traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "X", "cat": "Runtime", {},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+            traceActivityJson(op),
+            op_metadata);
+        handleLink(kFlowStart, op, op.correlationId(), "async_gpu", "async_gpu");
+      }
+      break;
+    case ActivityType::CONCURRENT_KERNEL:
+      {
+        traceOf_ << fmt::format(R"JSON(
+  {{
+    "ph": "X", "cat": "Kernel", {},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+            traceActivityJson(op),
+            op_metadata);
+        handleLink(kFlowEnd, op, op.correlationId(), "async_gpu", "async_gpu");
+      }
+      break;
+    default:
+      {
+        traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", {},
     "args": {{
@@ -267,12 +299,14 @@ void ChromeTraceLogger::handleGenericActivity(
     }}
   }},)JSON",
       toString(op.type()), traceActivityJson(op),
-      // args
-      op.id,
-      op.traceSpan()->name, op.traceSpan()->iteration, separator,
-      op_metadata);
+            // args
+            op.id,
+            op.traceSpan()->name, op.traceSpan()->iteration, separator,
+            op_metadata);
+      }
+      break;
+  }
   // clang-format on
-
   if (op.flow.linkedActivity != nullptr) {
     handleGenericLink(op);
   }
@@ -305,7 +339,6 @@ void ChromeTraceLogger::handleLink(
       type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
   // clang-format on
 }
-
 
 #ifdef HAS_CUPTI
 void ChromeTraceLogger::handleRuntimeActivity(

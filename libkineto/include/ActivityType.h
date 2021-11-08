@@ -23,6 +23,7 @@ enum class ActivityType {
     CUDA_RUNTIME, // host side cuda runtime events
     GLOW_RUNTIME, // host side glow runtime events
     CPU_INSTANT_EVENT, // host side point-like events
+    PYTHON_FUNCTION,
     ENUM_COUNT
 };
 

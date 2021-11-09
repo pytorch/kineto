@@ -15,10 +15,10 @@ namespace KINETO_NAMESPACE {
 
 // C++ interface to CUPTI Events C API.
 // Virtual methods are here mainly to allow easier testing.
-class CuptiEventInterface {
+class CuptiEventApi {
  public:
-  explicit CuptiEventInterface(CUcontext context_);
-  virtual ~CuptiEventInterface() {}
+  explicit CuptiEventApi(CUcontext context_);
+  virtual ~CuptiEventApi() {}
 
   CUdevice device() {
     return device_;
@@ -44,7 +44,7 @@ class CuptiEventInterface {
 
  protected:
   // Unit testing
-  CuptiEventInterface() : context_(nullptr), device_(0) {}
+  CuptiEventApi() : context_(nullptr), device_(0) {}
 
  private:
   CUcontext context_;

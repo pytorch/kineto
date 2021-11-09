@@ -30,20 +30,20 @@ using namespace libkineto;
 using CUpti_Activity = void;
 #endif
 
-class CuptiActivityInterface {
+class CuptiActivityApi {
  public:
   enum CorrelationFlowType {
     Default,
     User
   };
 
-  CuptiActivityInterface() = default;
-  CuptiActivityInterface(const CuptiActivityInterface&) = delete;
-  CuptiActivityInterface& operator=(const CuptiActivityInterface&) = delete;
+  CuptiActivityApi() = default;
+  CuptiActivityApi(const CuptiActivityApi&) = delete;
+  CuptiActivityApi& operator=(const CuptiActivityApi&) = delete;
 
-  virtual ~CuptiActivityInterface() {}
+  virtual ~CuptiActivityApi() {}
 
-  static CuptiActivityInterface& singleton();
+  static CuptiActivityApi& singleton();
 
   virtual int smCount();
   static void pushCorrelationID(int id, CorrelationFlowType type);

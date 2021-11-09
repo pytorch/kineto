@@ -16,7 +16,7 @@
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 #include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "Demangle.h"

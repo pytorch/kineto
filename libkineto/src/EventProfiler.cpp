@@ -22,7 +22,7 @@
 
 #include <cupti.h>
 
-#include "CuptiEventInterface.h"
+#include "CuptiEventApi.h"
 #include "Logger.h"
 
 using namespace std::chrono;
@@ -102,7 +102,7 @@ Metric::Metric(
     CUpti_MetricID id,
     vector<CUpti_EventID> events,
     CUpti_MetricEvaluationMode eval_mode,
-    CuptiMetricInterface& cupti_metrics)
+    CuptiMetricApi& cupti_metrics)
     : name(std::move(name)),
       id_(id),
       events_(std::move(events)),
@@ -160,7 +160,7 @@ void Metric::printDescription(ostream& s) const {
 EventGroupSet::EventGroupSet(
     CUpti_EventGroupSet& set,
     map<CUpti_EventID, Event>& events,
-    CuptiEventInterface& cupti)
+    CuptiEventApi& cupti)
     : set_(set), events_(events), cuptiEvents_(cupti), enabled_(false) {
   for (int g = 0; g < set.numEventGroups; g++) {
     CUpti_EventGroup grp = set.eventGroups[g];
@@ -432,8 +432,8 @@ static void adjustConfig(Config& config, int num_sets) {
 
 // Prepare profiler
 EventProfiler::EventProfiler(
-    std::unique_ptr<CuptiEventInterface> cupti_events,
-    std::unique_ptr<CuptiMetricInterface> cupti_metrics,
+    std::unique_ptr<CuptiEventApi> cupti_events,
+    std::unique_ptr<CuptiMetricApi> cupti_metrics,
     vector<unique_ptr<SampleListener>>& loggers,
     vector<unique_ptr<SampleListener>>& onDemandLoggers)
     : cuptiEvents_(std::move(cupti_events)),

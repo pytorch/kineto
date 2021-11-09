@@ -9,7 +9,7 @@
 
 #include "ActivityProfilerController.h"
 #include "Config.h"
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 #include <chrono>
 
 namespace KINETO_NAMESPACE {
@@ -62,23 +62,23 @@ bool ActivityProfilerProxy::isActive() {
 }
 
 void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
-  CuptiActivityInterface::pushCorrelationID(id,
-    CuptiActivityInterface::CorrelationFlowType::Default);
+  CuptiActivityApi::pushCorrelationID(id,
+    CuptiActivityApi::CorrelationFlowType::Default);
 }
 
 void ActivityProfilerProxy::popCorrelationId() {
-  CuptiActivityInterface::popCorrelationID(
-    CuptiActivityInterface::CorrelationFlowType::Default);
+  CuptiActivityApi::popCorrelationID(
+    CuptiActivityApi::CorrelationFlowType::Default);
 }
 
 void ActivityProfilerProxy::pushUserCorrelationId(uint64_t id) {
-  CuptiActivityInterface::pushCorrelationID(id,
-    CuptiActivityInterface::CorrelationFlowType::User);
+  CuptiActivityApi::pushCorrelationID(id,
+    CuptiActivityApi::CorrelationFlowType::User);
 }
 
 void ActivityProfilerProxy::popUserCorrelationId() {
-  CuptiActivityInterface::popCorrelationID(
-    CuptiActivityInterface::CorrelationFlowType::User);
+  CuptiActivityApi::popCorrelationID(
+    CuptiActivityApi::CorrelationFlowType::User);
 }
 
 void ActivityProfilerProxy::transferCpuTrace(

@@ -12,9 +12,11 @@ def get_libkineto_api_srcs():
 def get_libkineto_cupti_srcs(with_api = True):
     return [
         "src/CudaDeviceProperties.cpp",
+        "src/CuptiActivityApi.cpp",
         "src/CuptiActivityPlatform.cpp",
-        "src/CuptiEventInterface.cpp",
-        "src/CuptiMetricInterface.cpp",
+        "src/CuptiEventApi.cpp",
+        "src/CuptiMetricApi.cpp",
+        "src/Demangle.cpp",
         "src/EventProfiler.cpp",
         "src/EventProfilerController.cpp",
         "src/WeakSymbols.cpp",
@@ -23,7 +25,7 @@ def get_libkineto_cupti_srcs(with_api = True):
 
 def get_libkineto_roctracer_srcs(with_api = True):
     return [
-        "src/RoctracerActivityInterface.cpp",
+        "src/RoctracerActivityApi.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
 def get_libkineto_cpu_only_srcs(with_api = True):
@@ -35,7 +37,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/ActivityType.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
-        "src/CuptiActivityInterface.cpp",
+        "src/CuptiActivityApi.cpp",
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",

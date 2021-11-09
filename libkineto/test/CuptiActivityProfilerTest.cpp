@@ -22,7 +22,7 @@
 #include "src/CuptiActivityProfiler.h"
 #include "src/ActivityTrace.h"
 #include "src/Config.h"
-#include "src/CuptiActivityInterface.h"
+#include "src/CuptiActivityApi.h"
 #include "src/output_base.h"
 #include "src/output_json.h"
 #include "src/output_membuf.h"
@@ -129,8 +129,8 @@ struct MockCuptiActivityBuffer {
   std::vector<CUpti_Activity*> activities;
 };
 
-// Mock parts of the CuptiActivityInterface
-class MockCuptiActivities : public CuptiActivityInterface {
+// Mock parts of the CuptiActivityApi
+class MockCuptiActivities : public CuptiActivityApi {
  public:
   virtual int smCount() override {
     return 10;

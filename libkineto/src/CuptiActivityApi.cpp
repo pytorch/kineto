@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 
 #include <assert.h>
 #include <chrono>
@@ -23,12 +23,12 @@ namespace KINETO_NAMESPACE {
 // Consider putting this on huge pages?
 constexpr size_t kBufSize(2 * 1024 * 1024);
 
-CuptiActivityInterface& CuptiActivityInterface::singleton() {
-  static CuptiActivityInterface instance;
+CuptiActivityApi& CuptiActivityApi::singleton() {
+  static CuptiActivityApi instance;
   return instance;
 }
 
-void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
+void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_CUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
@@ -46,7 +46,7 @@ void CuptiActivityInterface::pushCorrelationID(int id, CorrelationFlowType type)
 #endif
 }
 
-void CuptiActivityInterface::popCorrelationID(CorrelationFlowType type) {
+void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_CUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
@@ -93,7 +93,7 @@ static int getSMCount() {
   return -1;
 }
 
-int CuptiActivityInterface::smCount() {
+int CuptiActivityApi::smCount() {
   static int sm_count = getSMCount();
   return sm_count;
 }
@@ -115,19 +115,19 @@ static bool nextActivityRecord(
   return record != nullptr;
 }
 
-void CuptiActivityInterface::setMaxBufferSize(int size) {
+void CuptiActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
 #ifdef HAS_CUPTI
-void CUPTIAPI CuptiActivityInterface::bufferRequestedTrampoline(
+void CUPTIAPI CuptiActivityApi::bufferRequestedTrampoline(
     uint8_t** buffer,
     size_t* size,
     size_t* maxNumRecords) {
   singleton().bufferRequested(buffer, size, maxNumRecords);
 }
 
-void CuptiActivityInterface::bufferRequested(
+void CuptiActivityApi::bufferRequested(
     uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
   std::lock_guard<std::mutex> guard(mutex_);
   if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
@@ -149,7 +149,7 @@ void CuptiActivityInterface::bufferRequested(
 #endif
 
 std::unique_ptr<CuptiActivityBufferMap>
-CuptiActivityInterface::activityBuffers() {
+CuptiActivityApi::activityBuffers() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
@@ -177,7 +177,7 @@ CuptiActivityInterface::activityBuffers() {
 }
 
 #ifdef HAS_CUPTI
-int CuptiActivityInterface::processActivitiesForBuffer(
+int CuptiActivityApi::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
     std::function<void(const CUpti_Activity*)> handler) {
@@ -193,7 +193,7 @@ int CuptiActivityInterface::processActivitiesForBuffer(
 }
 #endif
 
-const std::pair<int, int> CuptiActivityInterface::processActivities(
+const std::pair<int, int> CuptiActivityApi::processActivities(
     CuptiActivityBufferMap& buffers,
     std::function<void(const CUpti_Activity*)> handler) {
   std::pair<int, int> res{0, 0};
@@ -208,7 +208,7 @@ const std::pair<int, int> CuptiActivityInterface::processActivities(
   return res;
 }
 
-void CuptiActivityInterface::clearActivities() {
+void CuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
@@ -228,7 +228,7 @@ void CuptiActivityInterface::clearActivities() {
 }
 
 #ifdef HAS_CUPTI
-void CUPTIAPI CuptiActivityInterface::bufferCompletedTrampoline(
+void CUPTIAPI CuptiActivityApi::bufferCompletedTrampoline(
     CUcontext ctx,
     uint32_t streamId,
     uint8_t* buffer,
@@ -237,7 +237,7 @@ void CUPTIAPI CuptiActivityInterface::bufferCompletedTrampoline(
   singleton().bufferCompleted(ctx, streamId, buffer, 0, validSize);
 }
 
-void CuptiActivityInterface::bufferCompleted(
+void CuptiActivityApi::bufferCompleted(
     CUcontext ctx,
     uint32_t streamId,
     uint8_t* buffer,
@@ -273,7 +273,7 @@ void CuptiActivityInterface::bufferCompleted(
 }
 #endif
 
-void CuptiActivityInterface::enableCuptiActivities(
+void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
   static bool registered = false;
@@ -307,7 +307,7 @@ void CuptiActivityInterface::enableCuptiActivities(
   stopCollection = false;
 }
 
-void CuptiActivityInterface::disableCuptiActivities(
+void CuptiActivityApi::disableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
   for (const auto& activity : selected_activities) {

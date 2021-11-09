@@ -113,20 +113,20 @@ struct mallocRow : public roctracerRow {
 };
 
 
-class RoctracerActivityInterface {
+class RoctracerActivityApi {
  public:
   enum CorrelationFlowType {
     Default,
     User
   };
 
-  RoctracerActivityInterface();
-  RoctracerActivityInterface(const RoctracerActivityInterface&) = delete;
-  RoctracerActivityInterface& operator=(const RoctracerActivityInterface&) = delete;
+  RoctracerActivityApi();
+  RoctracerActivityApi(const RoctracerActivityApi&) = delete;
+  RoctracerActivityApi& operator=(const RoctracerActivityApi&) = delete;
 
-  virtual ~RoctracerActivityInterface();
+  virtual ~RoctracerActivityApi();
 
-  static RoctracerActivityInterface& singleton();
+  static RoctracerActivityApi& singleton();
 
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);

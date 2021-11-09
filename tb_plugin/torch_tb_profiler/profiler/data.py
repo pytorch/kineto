@@ -1,27 +1,26 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import List, Optional
-
 import gzip
 import io as sysio
 import json
 import re
 import tempfile
 from json.decoder import JSONDecodeError
+from typing import List, Optional
 
 from .. import io, utils
 from ..utils import href
 from . import trace
-from .trace import EventTypes, BaseEvent, MemoryEvent
 from .communication import analyze_communication_nodes
-from .event_parser import EventParser, ProfileRole, CommLibTypes
+from .event_parser import CommLibTypes, EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
-from .module_parser import ModuleAggregator
-from .overall_parser import OverallParser
 from .memory_parser import MemoryParser
+from .op_agg import ModuleAggregator
+from .overall_parser import OverallParser
 from .tensor_cores_parser import TensorCoresParser
+from .trace import BaseEvent, EventTypes, MemoryEvent
 
 logger = utils.get_logger()
 

@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from .. import utils
 from .communication import generate_communication_nodes
-from .node import (CommunicationNode, DeviceNode, OperatorNode,
+from .node import (CommunicationNode, DeviceNode, ModuleNode, OperatorNode,
                    ProfilerStepNode, RuntimeNode)
 from .range_utils import merge_ranges
 from .trace import EventTypes
@@ -26,9 +26,10 @@ class ProfileRole(IntEnum):
     Communication = 3
     Runtime = 4
     DataLoader = 5
-    CpuOp = 6
-    Other = 7
-    Total = 8
+    Module = 6
+    CpuOp = 7
+    Other = 8
+    Total = 9
 
 
 class NodeParserMixin:
@@ -132,9 +133,11 @@ class NodeParserMixin:
                     if rt_node.external_id != device_node.external_id:
                         logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (rt external_id, device external_id): (%s, %s)" % 
                             (corrid, rt_node.external_id, device_node.external_id))
-        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP, EventTypes.MODULE]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event)
+            elif event.type == EventTypes.MODULE:
+                op_node = ModuleNode.create(event)
             else:
                 op_node = OperatorNode.create(event)
             if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
@@ -319,6 +322,8 @@ class StepParser:
         elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
                 and event.name.endswith(".__next__"):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
+        elif evt_type == EventTypes.MODULE:
+            self.role_ranges[ProfileRole.Module].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))

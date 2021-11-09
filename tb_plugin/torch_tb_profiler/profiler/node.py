@@ -167,6 +167,22 @@ class ProfilerStepNode(OperatorNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+class ModuleNode(OperatorNode):
+    def __init__(self, module_id, python_id, python_parent_id, **kwargs):
+        super().__init__(**kwargs)
+        self.module_id = module_id
+        self.python_id = python_id
+        self.python_parent_id = python_parent_id
+
+    @classmethod
+    def create(cls, event):
+        kwargs = BaseNode.get_node_argument(event)
+        kwargs["input_shape"] = event.input_shape
+        kwargs["input_type"] = event.input_type
+        kwargs["module_id"] = event.module_id
+        kwargs["python_id"] = event.python_id
+        kwargs["python_parent_id"] = event.python_parent_id
+        return cls(**kwargs)
 
 class RuntimeNode(HostNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
@@ -223,6 +239,7 @@ class DeviceNode(BaseNode):
             kwargs["shared_memory"] = event.shared_memory
             kwargs["device_id"] = event.device_id
         return cls(**kwargs)
+
 
 def is_operator_node(node):
     if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \

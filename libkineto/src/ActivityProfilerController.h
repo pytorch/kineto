@@ -17,7 +17,7 @@
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
 #include "ConfigLoader.h"
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 
 namespace KINETO_NAMESPACE {
 

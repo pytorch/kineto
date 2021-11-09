@@ -113,9 +113,9 @@ TEST(EventTest, Percentiles) {
   EXPECT_EQ(pct[2].second.getInt(), 444);
 }
 
-class MockCuptiMetrics : public CuptiMetricInterface {
+class MockCuptiMetrics : public CuptiMetricApi {
  public:
-  MockCuptiMetrics() : CuptiMetricInterface(0) {}
+  MockCuptiMetrics() : CuptiMetricApi(0) {}
   MOCK_METHOD1(idFromName, CUpti_MetricID(const std::string& name));
   MOCK_METHOD1(
       events,
@@ -209,7 +209,7 @@ TEST(MetricTest, Calculate) {
   EXPECT_EQ(v.total.getDouble(), 0.27);
 }
 
-class MockCuptiEvents : public CuptiEventInterface {
+class MockCuptiEvents : public CuptiEventApi {
  public:
   MOCK_METHOD1(
       createGroupSets,

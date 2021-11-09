@@ -24,10 +24,10 @@
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.tpp"
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-#include "RoctracerActivityInterface.h"
+#include "RoctracerActivityApi.h"
 #endif
 #include "output_base.h"
 
@@ -116,11 +116,10 @@ bool CuptiActivityProfiler::applyNetFilterInternal(const std::string& name) {
   return false;
 }
 
-// This has dependence on CuptiActivityInterface
 #ifdef HAS_ROCTRACER
-CuptiActivityProfiler::CuptiActivityProfiler(RoctracerActivityInterface& cupti, bool cpuOnly)
+CuptiActivityProfiler::CuptiActivityProfiler(RoctracerActivityApi& cupti, bool cpuOnly)
 #else
-CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly)
+CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly)
 #endif
     : cupti_(cupti),
       flushOverhead_{0, 0},

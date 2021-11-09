@@ -12,9 +12,9 @@
 
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 #ifdef HAS_ROCTRACER
-#include "RoctracerActivityInterface.h"
+#include "RoctracerActivityApi.h"
 #endif
 #include "ThreadUtil.h"
 #include "output_json.h"
@@ -33,10 +33,10 @@ ActivityProfilerController::ActivityProfilerController(
     : configLoader_(configLoader) {
 #ifdef HAS_ROCTRACER
   profiler_ = std::make_unique<CuptiActivityProfiler>(
-      RoctracerActivityInterface::singleton(), cpuOnly);
+      RoctracerActivityApi::singleton(), cpuOnly);
 #else
   profiler_ = std::make_unique<CuptiActivityProfiler>(
-      CuptiActivityInterface::singleton(), cpuOnly);
+      CuptiActivityApi::singleton(), cpuOnly);
 #endif
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 }

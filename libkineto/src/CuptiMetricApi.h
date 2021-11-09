@@ -18,10 +18,10 @@ namespace KINETO_NAMESPACE {
 
 // C++ interface to CUPTI Metrics C API.
 // Virtual methods are here mainly to allow easier testing.
-class CuptiMetricInterface {
+class CuptiMetricApi {
  public:
-  explicit CuptiMetricInterface(CUdevice device) : device_(device) {}
-  virtual ~CuptiMetricInterface() {}
+  explicit CuptiMetricApi(CUdevice device) : device_(device) {}
+  virtual ~CuptiMetricApi() {}
 
   virtual CUpti_MetricID idFromName(const std::string& name);
   virtual std::map<CUpti_EventID, std::string> events(CUpti_MetricID metric_id);

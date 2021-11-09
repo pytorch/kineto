@@ -23,6 +23,8 @@ class EventTypes(object):
     MEMSET = "Memset"
     PYTHON = "Python"
     MEMORY = "Memory"
+    PYTHON_FUNCTION = "python_function"
+    MODULE = "Module"
 
 EventTypeMap = {
     "Trace" : EventTypes.TRACE,
@@ -35,7 +37,8 @@ EventTypeMap = {
     "Memset" : EventTypes.MEMSET,
     "gpu_memset" : EventTypes.MEMSET,
     "Python" : EventTypes.PYTHON,
-    "Memory" : EventTypes.MEMORY
+    "Memory" : EventTypes.MEMORY,
+    "python_function": EventTypes.PYTHON_FUNCTION
 }
 
 class BaseEvent(object):
@@ -119,6 +122,13 @@ class MemoryEvent(BaseEvent):
     def total_reserved(self):
         return self.args.get("Total Reserved", float("nan"))
 
+class ModuleEvent(OperatorEvent):
+    def __init__(self, data):
+        super().__init__(EventTypes.MODULE, data)
+        self.module_id = self.args.get("Python module id")
+        self.python_id = self.args.get("Python id")
+        self.python_parent_id = self.args.get("Python parent id")
+
 def create_event(event):
     try:
         type = event.get("ph")
@@ -145,6 +155,12 @@ def create_trace_event(event):
         return OperatorEvent(event_type, event)
     elif event_type == EventTypes.KERNEL:
         return KernelEvent(event_type, event)
+    elif event_type == EventTypes.PYTHON_FUNCTION:
+        args = event.get("args")
+        if args and args.get("Python module id") is not None:
+            return ModuleEvent(event)
+        else:
+            return DurationEvent(event_type, event)
     elif event_type is not None:
         return DurationEvent(event_type, event)
     else:

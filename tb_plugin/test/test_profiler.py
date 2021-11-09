@@ -2107,7 +2107,7 @@ class TestDistributed(unittest.TestCase):
         dist_data0 = DistributedRunProfileData(profile0)
         self.assertTrue(profile0.has_communication)
         self.assertEqual(len(profile0.comm_node_list), 2)
-        self.assertEqual(profile0.steps_costs[0].costs, [105, 0, 0, 16, 0, 0, 0, 79, 35, 235])
+        self.assertEqual(profile0.steps_costs[0].costs, [105, 0, 0, 16, 0, 0, 79, 35, 235])
 
         profile1 = parse_json_trace(json_content1, "worker1")
         dist_data1 = DistributedRunProfileData(profile1)
@@ -2224,13 +2224,13 @@ class TestDistributed(unittest.TestCase):
         dist_data0 = DistributedRunProfileData(profile0)
         self.assertTrue(profile0.has_communication)
         self.assertEqual(len(profile0.comm_node_list), 5)
-        self.assertEqual(profile0.steps_costs[0].costs, [101, 0, 0, 39, 0, 0, 0, 16, 0, 156])
+        self.assertEqual(profile0.steps_costs[0].costs, [101, 0, 0, 39, 0, 0, 16, 0, 156])
 
         profile1 = parse_json_trace(json_content1, "worker1")
         dist_data1 = DistributedRunProfileData(profile1)
         self.assertTrue(profile1.has_communication)
         self.assertEqual(len(profile1.comm_node_list), 5)
-        self.assertEqual(profile1.steps_costs[0].costs, [70, 0, 0, 44, 0, 0, 0, 20, 12, 146])
+        self.assertEqual(profile1.steps_costs[0].costs, [70, 0, 0, 44, 0, 0, 20, 12, 146])
 
         loader = RunLoader("test_gloo_gpu", "", None)
         dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
@@ -2341,13 +2341,13 @@ class TestDistributed(unittest.TestCase):
         dist_data0 = DistributedRunProfileData(profile0)
         self.assertTrue(profile0.has_communication)
         self.assertEqual(len(profile0.comm_node_list), 5)
-        self.assertEqual(profile0.steps_costs[0].costs, [0, 0, 0, 109, 0, 0, 0, 47, 0, 156])
+        self.assertEqual(profile0.steps_costs[0].costs, [0, 0, 0, 109, 0, 0, 47, 0, 156])
 
         profile1 = parse_json_trace(json_content1, "worker1")
         dist_data1 = DistributedRunProfileData(profile1)
         self.assertTrue(profile1.has_communication)
         self.assertEqual(len(profile1.comm_node_list), 5)
-        self.assertEqual(profile1.steps_costs[0].costs, [0, 0, 0, 98, 0, 0, 0, 36, 12, 146])
+        self.assertEqual(profile1.steps_costs[0].costs, [0, 0, 0, 98, 0, 0, 36, 12, 146])
 
         loader = RunLoader("test_gloo_cpu", "", None)
         dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
@@ -2478,6 +2478,7 @@ class TestMemoryCurve(unittest.TestCase):
                 self.assertEqual(self.event_data_gpu[i//2+1][0] - start_ts,  curves["GPU0"][i][0])
                 self.assertEqual(self.event_data_gpu[i//2][-2], curves["GPU0"][i][1])
                 self.assertEqual(self.event_data_gpu[i//2][-1], curves["GPU0"][i][2])
+
 
 if __name__ == '__main__':
     unittest.main()

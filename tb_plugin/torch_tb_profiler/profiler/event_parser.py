@@ -26,10 +26,9 @@ class ProfileRole(IntEnum):
     Communication = 3
     Runtime = 4
     DataLoader = 5
-    Module = 6
-    CpuOp = 7
-    Other = 8
-    Total = 9
+    CpuOp = 6
+    Other = 7
+    Total = 8
 
 
 class NodeParserMixin:
@@ -322,8 +321,6 @@ class StepParser:
         elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
                 and event.name.endswith(".__next__"):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
-        elif evt_type == EventTypes.MODULE:
-            self.role_ranges[ProfileRole.Module].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))

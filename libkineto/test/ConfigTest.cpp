@@ -86,6 +86,7 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_EQ(cfg.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::CPU_OP,
                             ActivityType::CPU_INSTANT_EVENT,
+                            ActivityType::PYTHON_FUNCTION,
                             ActivityType::USER_ANNOTATION,
                             ActivityType::GPU_USER_ANNOTATION,
                             ActivityType::GPU_MEMCPY,

@@ -122,12 +122,16 @@ class MemoryEvent(BaseEvent):
     def total_reserved(self):
         return self.args.get("Total Reserved", float("nan"))
 
-class ModuleEvent(OperatorEvent):
+class PythonFunctionEvent(DurationEvent):
+    def __init__(self, type, data):
+        super().__init__(type, data)
+        self.python_id = self.args.get("Python id")
+        self.python_parent_id = self.args.get("Python parent id")
+
+class ModuleEvent(PythonFunctionEvent):
     def __init__(self, data):
         super().__init__(EventTypes.MODULE, data)
         self.module_id = self.args.get("Python module id")
-        self.python_id = self.args.get("Python id")
-        self.python_parent_id = self.args.get("Python parent id")
 
 def create_event(event):
     try:
@@ -160,7 +164,7 @@ def create_trace_event(event):
         if args and args.get("Python module id") is not None:
             return ModuleEvent(event)
         else:
-            return DurationEvent(event_type, event)
+            return PythonFunctionEvent(event_type, event)
     elif event_type is not None:
         return DurationEvent(event_type, event)
     else:

@@ -177,8 +177,6 @@ class ModuleNode(OperatorNode):
     @classmethod
     def create(cls, event):
         kwargs = BaseNode.get_node_argument(event)
-        kwargs["input_shape"] = event.input_shape
-        kwargs["input_type"] = event.input_type
         kwargs["module_id"] = event.module_id
         kwargs["python_id"] = event.python_id
         kwargs["python_parent_id"] = event.python_parent_id

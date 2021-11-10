@@ -50,28 +50,35 @@ class MemoryTraceLogger : public ActivityLogger {
     // Handled separately
   }
 
-  void handleGenericActivity(const GenericTraceActivity& activity) override {
-    activities_.push_back(
-        std::make_unique<GenericTraceActivity>(activity));
+  // Just add the pointer to the list - ownership of the underlying
+  // objects must be transferred in ActivityBuffers via finalizeTrace
+  void handleGenericActivity(const ITraceActivity& activity) override {
+    activities_.push_back(&activity);
   }
 
 #ifdef HAS_CUPTI
+  template<class T>
+  void addActivityWrapper(const T& act) {
+    wrappers_.push_back(std::make_unique<T>(act));
+    activities_.push_back(wrappers_.back().get());
+  }
+
   void handleRuntimeActivity(
       const RuntimeActivity& activity) override {
-    activities_.push_back(std::make_unique<RuntimeActivity>(activity));
+    addActivityWrapper(activity);
   }
 
   void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityKernel4>>(activity));
+    addActivityWrapper(activity);
   }
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemcpy>>(activity));
+    addActivityWrapper(activity);
   }
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemcpy2>>(activity));
+    addActivityWrapper(activity);
   }
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemset>>(activity));
+    addActivityWrapper(activity);
   }
 #endif // HAS_CUPTI
 
@@ -88,7 +95,7 @@ class MemoryTraceLogger : public ActivityLogger {
     endTime_ = endTime;
   }
 
-  const std::vector<std::unique_ptr<TraceActivity>>* traceActivities() {
+  const std::vector<const ITraceActivity*>* traceActivities() {
     return &activities_;
   }
 
@@ -114,7 +121,8 @@ class MemoryTraceLogger : public ActivityLogger {
 
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
-  std::vector<std::unique_ptr<TraceActivity>> activities_;
+  std::vector<const ITraceActivity*> activities_;
+  std::vector<std::unique_ptr<const ITraceActivity>> wrappers_;
   std::vector<std::pair<DeviceInfo, int64_t>> deviceInfoList_;
   std::vector<std::pair<ResourceInfo, int64_t>> resourceInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;

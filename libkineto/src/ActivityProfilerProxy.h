@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "ActivityType.h"
-#include "TraceActivity.h"
+#include "ITraceActivity.h"
 
 namespace libkineto {
   // previous declaration is struct so this one must be too.

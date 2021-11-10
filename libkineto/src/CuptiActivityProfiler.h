@@ -180,8 +180,8 @@ class CuptiActivityProfiler {
     // Insert a user defined event which maps to the gpu trace activity.
     // If the user defined event mapping already exists this will update the
     // gpu side span to include the span of gpuTraceActivity.
-    void insertOrExtendEvent(const TraceActivity& cpuTraceActivity,
-      const TraceActivity& gpuTraceActivity);
+    void insertOrExtendEvent(const ITraceActivity& cpuTraceActivity,
+      const ITraceActivity& gpuTraceActivity);
     // Log out the events to the logger
     void logEvents(ActivityLogger *logger);
 
@@ -259,13 +259,13 @@ class CuptiActivityProfiler {
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
 
   // Process specific GPU activity types
-  void updateGpuNetSpan(const TraceActivity& gpuOp);
-  bool outOfRange(const TraceActivity& act);
+  void updateGpuNetSpan(const ITraceActivity& gpuOp);
+  bool outOfRange(const ITraceActivity& act);
   void handleCorrelationActivity(
       const CUpti_ActivityExternalCorrelation* correlation);
   void handleRuntimeActivity(
       const CUpti_ActivityAPI* activity, ActivityLogger* logger);
-  void handleGpuActivity(const TraceActivity& act,
+  void handleGpuActivity(const ITraceActivity& act,
       ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
@@ -273,7 +273,7 @@ class CuptiActivityProfiler {
 
   // Is logging disabled for this event?
   // Logging can be disabled due to operator count, net name filter etc.
-  inline bool loggingDisabled(const libkineto::TraceActivity& act) const {
+  inline bool loggingDisabled(const libkineto::ITraceActivity& act) const {
     const auto& it = clientActivityTraceMap_.find(act.correlationId());
     return it != clientActivityTraceMap_.end() &&
         disabledTraceSpans_.find(it->second->first.name) !=

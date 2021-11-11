@@ -45,6 +45,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         super(TorchProfilerPlugin, self).__init__(context)
         self.logdir = io.abspath(context.logdir.rstrip('/'))
 
+        self._temp_graph_event_files = []
+        if isinstance(io.get_filesystem(self.logdir), io.file.LocalFileSystem):
+            for root, _, files in io.walk(self.logdir):
+                for file in files:
+                    if file.endswith('.pbtxt'):
+                        graph_file = utils.convert_graph(root, file)
+                        self._temp_graph_event_files.append(graph_file)
+
         self._load_lock = threading.Lock()
         self._load_threads = []
 
@@ -65,6 +73,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             self._cache.__exit__(*sys.exc_info())
             for temp_file in self._gpu_metrics_file_dict.values():
                 logger.info("remove temporary file %s with gpu metrics" % temp_file)
+                os.remove(temp_file)
+            for temp_file in self._temp_graph_event_files:
+                logger.info("remove temporary graph event file %s" % temp_file)
                 os.remove(temp_file)
 
         atexit.register(clean)

@@ -6,6 +6,11 @@ import os
 import math
 from math import pow
 
+from google.protobuf import text_format
+from tensorboard.compat.proto import graph_pb2
+from tensorboard.compat.proto import event_pb2
+from tensorboard.summary.writer import event_file_writer
+
 from . import consts
 
 
@@ -36,6 +41,23 @@ def href(text, url):
     """
     return f'<a href ="{url}" target="_blank">{text}</a>'
 
+def convert_graph(root, file):
+    """Convert file of pbtxt format to event format,
+       thus the Tensorboard graph plugin can recognize it automatically
+    """
+    filename = os.path.join(root, file)
+    graph_event_files = None
+    with open(filename) as f:
+        content = f.read()
+        graph_def = graph_pb2.GraphDef()
+        text_format.Merge(content, graph_def)
+        graph_bytes = graph_def.SerializeToString()
+        event = event_pb2.Event(graph_def=graph_bytes)
+        writer = event_file_writer.EventFileWriter(root)
+        writer.add_event(event)
+        graph_event_file = writer._file_name
+        writer.close()
+    return graph_event_file
 
 class Canonicalizer:
     def __init__(

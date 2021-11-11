@@ -86,10 +86,6 @@ void ActivityProfilerProxy::transferCpuTrace(
   controller_->transferCpuTrace(std::move(traceBuffer));
 }
 
-bool ActivityProfilerProxy::enableForRegion(const std::string& match) {
-  return controller_->traceInclusionFilter(match);
-}
-
 void ActivityProfilerProxy::addMetadata(
     const std::string& key, const std::string& value) {
   controller_->addMetadata(key, value);

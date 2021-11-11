@@ -60,8 +60,6 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   void transferCpuTrace(
      std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
 
-  bool enableForRegion(const std::string& match) override;
-
   void addMetadata(const std::string& key, const std::string& value) override;
 
   virtual void addChildActivityProfiler(

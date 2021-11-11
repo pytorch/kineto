@@ -176,39 +176,19 @@ class Config : public AbstractConfig {
   }
 
   // Trace for this long
-  std::chrono::milliseconds activitiesOnDemandDuration() const {
-    return activitiesOnDemandDuration_;
+  std::chrono::milliseconds activitiesDuration() const {
+    return activitiesDuration_;
   }
 
-  std::chrono::milliseconds activitiesOnDemandDurationDefault() const;
+  std::chrono::milliseconds activitiesDurationDefault() const;
 
-  void setActivitiesOnDemandDuration(std::chrono::milliseconds duration) {
-    activitiesOnDemandDuration_ = duration;
+  void setActivitiesDuration(std::chrono::milliseconds duration) {
+    activitiesDuration_ = duration;
   }
 
   // Trace for this many iterations, determined by external API
-  int activitiesOnDemandExternalIterations() const {
+  int activitiesExternalIterations() const {
     return activitiesExternalAPIIterations_;
-  }
-
-  const std::string& activitiesOnDemandExternalTarget() const {
-    return activitiesExternalAPIIterationsTarget_;
-  }
-
-  const std::vector<std::string>& activitiesOnDemandExternalFilter() const {
-    return activitiesExternalAPIFilter_;
-  }
-
-  // Only profile nets with at least this many operators.
-  // Controlled by external API.
-  int activitiesOnDemandExternalNetSizeThreshold() const {
-    return activitiesExternalAPINetSizeThreshold_;
-  }
-
-  // Only profile nets with at least this many GPU operators.
-  // Controlled by external API.
-  int activitiesOnDemandExternalGpuOpCountThreshold() const {
-    return activitiesExternalAPIGpuOpCountThreshold_;
   }
 
   int activitiesMaxGpuBufferSize() const {
@@ -361,7 +341,7 @@ class Config : public AbstractConfig {
   std::chrono::seconds activitiesWarmupDuration_;
 
   // Profile for specified iterations and duration
-  std::chrono::milliseconds activitiesOnDemandDuration_;
+  std::chrono::milliseconds activitiesDuration_;
   int activitiesExternalAPIIterations_;
   // Use this net name for iteration count
   std::string activitiesExternalAPIIterationsTarget_;

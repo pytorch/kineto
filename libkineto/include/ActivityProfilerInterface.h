@@ -74,11 +74,6 @@ class ActivityProfilerInterface {
   virtual void pushUserCorrelationId(uint64_t){}
   virtual void popUserCorrelationId(){}
 
-  // Include regions with this name
-  virtual bool enableForRegion(const std::string& match) {
-    return true;
-  }
-
   // Saves information for the current thread to be used in profiler output
   // Client must record any new kernel thread where the activity has occured.
   virtual void recordThreadInfo() {}

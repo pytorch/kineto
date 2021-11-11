@@ -12,12 +12,12 @@
 
 namespace libkineto {
 
-struct TraceActivity;
+struct ITraceActivity;
 
 class ActivityTraceInterface {
  public:
   virtual ~ActivityTraceInterface() {}
-  virtual const std::vector<std::unique_ptr<TraceActivity>>* activities() {
+  virtual const std::vector<const ITraceActivity*>* activities() {
     return nullptr;
   }
   virtual void save(const std::string& path) {}

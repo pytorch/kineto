@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "ThreadUtil.h"
-#include "TraceActivity.h"
+#include "ITraceActivity.h"
 #include "TraceSpan.h"
 
 namespace libkineto {
@@ -23,7 +23,7 @@ constexpr unsigned int kLinkFwdBwd = 1;
 
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
-class GenericTraceActivity : public TraceActivity {
+class GenericTraceActivity : public ITraceActivity {
 
  public:
   GenericTraceActivity() : activityType(ActivityType::ENUM_COUNT), traceSpan_(NULL) {}
@@ -57,11 +57,19 @@ class GenericTraceActivity : public TraceActivity {
     return activityType;
   }
 
+  int flowType() const override {
+    return flow.type;
+  }
+
+  int flowId() const override {
+    return flow.id;
+  }
+
   const std::string name() const override {
     return activityName;
   }
 
-  const TraceActivity* linkedActivity() const override {
+  const ITraceActivity* linkedActivity() const override {
     return flow.linkedActivity;
   }
 
@@ -81,7 +89,7 @@ class GenericTraceActivity : public TraceActivity {
     metadata_.push_back(fmt::format("\"{}\": \"{}\"", key, value));
   }
 
-  const std::string getMetadata() const {
+  const std::string metadataJson() const override {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
@@ -96,7 +104,7 @@ class GenericTraceActivity : public TraceActivity {
   std::string activityName;
   struct Flow {
     Flow(): linkedActivity(nullptr), id(0), type(0) {}
-    TraceActivity* linkedActivity; // Only set in destination side.
+    ITraceActivity* linkedActivity; // Only set in destination side.
     // Ids must be unique within each type
     uint32_t id : 28;
     // Type will be used to connect flows between profilers, as

@@ -20,12 +20,12 @@
 #include <vector>
 
 #include "ActivityProfilerInterface.h"
-#include "ActivityTraceInterface.h"
 #include "ActivityType.h"
 #include "ClientInterface.h"
 #include "GenericTraceActivity.h"
 #include "TraceSpan.h"
 #include "IActivityProfiler.h"
+#include "ActivityTraceInterface.h"
 
 #include "ThreadUtil.h"
 

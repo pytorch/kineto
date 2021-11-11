@@ -26,7 +26,7 @@ class ActivityTrace : public ActivityTraceInterface {
       loggerFactory_(factory) {
   }
 
-  const std::vector<std::unique_ptr<TraceActivity>>* activities() override {
+  const std::vector<const ITraceActivity*>* activities() override {
     return memLogger_->traceActivities();
   };
 

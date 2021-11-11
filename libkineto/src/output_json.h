@@ -42,7 +42,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleTraceSpan(const TraceSpan& span) override;
 
-  void handleGenericActivity(const GenericTraceActivity& activity) override;
+  void handleGenericActivity(const ITraceActivity& activity) override;
 
 #ifdef HAS_CUPTI
   void handleRuntimeActivity(
@@ -71,7 +71,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // Create a flow event (arrow)
   void handleLink(
       char type,
-      const TraceActivity& e,
+      const ITraceActivity& e,
       int64_t id,
       const std::string& cat,
       const std::string& name);
@@ -80,9 +80,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void openTraceFile();
 
-  void handleGenericInstantEvent(const GenericTraceActivity& op);
+  void handleGenericInstantEvent(const ITraceActivity& op);
 
-  void handleGenericLink(const GenericTraceActivity& activity);
+  void handleGenericLink(const ITraceActivity& activity);
 
   std::string fileName_;
   std::ofstream traceOf_;

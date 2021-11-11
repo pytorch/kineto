@@ -75,4 +75,13 @@ inline void GpuActivity<T>::log(ActivityLogger& logger) const {
   logger.handleGpuActivity(*this);
 }
 
+inline const std::string RuntimeActivity::metadataJson() const {
+  return "";
+}
+
+template<class T>
+inline const std::string GpuActivity<T>::metadataJson() const {
+  return "";
+}
+
 } // namespace KINETO_NAMESPACE

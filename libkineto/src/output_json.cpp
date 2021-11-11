@@ -206,7 +206,7 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
   // clang-format on
 }
 
-static std::string traceActivityJson(const TraceActivity& activity) {
+static std::string traceActivityJson(const ITraceActivity& activity) {
   // clang-format off
   return fmt::format(R"JSON(
     "name": "{}", "pid": {}, "tid": {},
@@ -217,7 +217,7 @@ static std::string traceActivityJson(const TraceActivity& activity) {
 }
 
 void ChromeTraceLogger::handleGenericInstantEvent(
-    const GenericTraceActivity& op) {
+    const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
   }
@@ -232,21 +232,21 @@ void ChromeTraceLogger::handleGenericInstantEvent(
     }}
   }},)JSON",
       op.name(), op.deviceId(), op.resourceId(),
-      op.timestamp(), op.getMetadata());
+      op.timestamp(), op.metadataJson());
 }
 
 void ChromeTraceLogger::handleGenericActivity(
-    const GenericTraceActivity& op) {
+    const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
   }
 
-  if (op.activityType == ActivityType::CPU_INSTANT_EVENT) {
+  if (op.type() == ActivityType::CPU_INSTANT_EVENT) {
     handleGenericInstantEvent(op);
     return;
   }
 
-  auto op_metadata = op.getMetadata();
+  const std::string op_metadata = op.metadataJson();
   std::string separator = "";
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
     separator = ",";
@@ -300,29 +300,29 @@ void ChromeTraceLogger::handleGenericActivity(
   }},)JSON",
       toString(op.type()), traceActivityJson(op),
             // args
-            op.id,
+            op.correlationId(),
             op.traceSpan()->name, op.traceSpan()->iteration, separator,
             op_metadata);
       }
       break;
   }
   // clang-format on
-  if (op.flow.linkedActivity != nullptr) {
+  if (op.linkedActivity() != nullptr) {
     handleGenericLink(op);
   }
 }
 
-void ChromeTraceLogger::handleGenericLink(const GenericTraceActivity& act) {
-  if (act.flow.type == kLinkFwdBwd) {
-    const auto& from_act = *act.flow.linkedActivity;
-    handleLink(kFlowStart, from_act, act.flow.id, "forward_backward", "fwd_bwd");
-    handleLink(kFlowEnd, act, act.flow.id, "forward_backward", "fwd_bwd");
+void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
+  if (act.flowType() == kLinkFwdBwd) {
+    const auto& from_act = *act.linkedActivity();
+    handleLink(kFlowStart, from_act, act.flowId(), "forward_backward", "fwd_bwd");
+    handleLink(kFlowEnd, act, act.flowId(), "forward_backward", "fwd_bwd");
   }
 }
 
 void ChromeTraceLogger::handleLink(
     char type,
-    const TraceActivity& e,
+    const ITraceActivity& e,
     int64_t id,
     const std::string& cat,
     const std::string& name) {
@@ -348,7 +348,7 @@ void ChromeTraceLogger::handleRuntimeActivity(
   }
 
   const CUpti_CallbackId cbid = activity.raw().cbid;
-  const TraceActivity& ext = *activity.linkedActivity();
+  const ITraceActivity& ext = *activity.linkedActivity();
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Runtime", {},
@@ -384,7 +384,7 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityKernel4* kernel = &activity.raw();
-  const TraceActivity& ext = *activity.linkedActivity();
+  const ITraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
   float blocks_per_sm = -1.0;
   float warps_per_sm = -1.0;
@@ -452,7 +452,7 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityMemcpy& memcpy = activity.raw();
-  const TraceActivity& ext = *activity.linkedActivity();
+  const ITraceActivity& ext = *activity.linkedActivity();
   VLOG(2) << memcpy.correlationId << ": MEMCPY";
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
@@ -482,7 +482,7 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityMemcpy2& memcpy = activity.raw();
-  const TraceActivity& ext = *activity.linkedActivity();
+  const ITraceActivity& ext = *activity.linkedActivity();
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -512,7 +512,7 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityMemset& memset = activity.raw();
-  const TraceActivity& ext = *activity.linkedActivity();
+  const ITraceActivity& ext = *activity.linkedActivity();
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{

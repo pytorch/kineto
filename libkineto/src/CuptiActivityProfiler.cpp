@@ -255,8 +255,8 @@ void CuptiActivityProfiler::ExternalEventMap::addCorrelation(
 }
 
 static GenericTraceActivity createUserGpuSpan(
-    const libkineto::TraceActivity& cpuTraceActivity,
-    const libkineto::TraceActivity& gpuTraceActivity) {
+    const libkineto::ITraceActivity& cpuTraceActivity,
+    const libkineto::ITraceActivity& gpuTraceActivity) {
   GenericTraceActivity res(
       *cpuTraceActivity.traceSpan(),
       ActivityType::GPU_USER_ANNOTATION,
@@ -271,9 +271,9 @@ static GenericTraceActivity createUserGpuSpan(
 }
 
 void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
-    const TraceActivity&,
-    const TraceActivity& gpuActivity) {
-  const TraceActivity& cpuActivity = *gpuActivity.linkedActivity();
+    const ITraceActivity&,
+    const ITraceActivity& gpuActivity) {
+  const ITraceActivity& cpuActivity = *gpuActivity.linkedActivity();
   StreamKey key(gpuActivity.deviceId(), gpuActivity.resourceId());
   CorrelationSpanMap& correlationSpanMap = streamSpanMap_[key];
   auto it = correlationSpanMap.find(cpuActivity.correlationId());
@@ -308,7 +308,7 @@ void CuptiActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger *logger) {
 }
 
 #ifdef HAS_CUPTI
-inline bool CuptiActivityProfiler::outOfRange(const TraceActivity& act) {
+inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
   bool out_of_range = act.timestamp() < captureWindowStartTime_ ||
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
   if (out_of_range) {
@@ -349,7 +349,7 @@ inline void CuptiActivityProfiler::handleRuntimeActivity(
   }
 }
 
-inline void CuptiActivityProfiler::updateGpuNetSpan(const TraceActivity& gpuOp) {
+inline void CuptiActivityProfiler::updateGpuNetSpan(const ITraceActivity& gpuOp) {
   const auto& it = clientActivityTraceMap_.find(
       gpuOp.linkedActivity()->correlationId());
   if (it == clientActivityTraceMap_.end()) {
@@ -367,8 +367,8 @@ inline void CuptiActivityProfiler::updateGpuNetSpan(const TraceActivity& gpuOp) 
 
 // I've observed occasional broken timestamps attached to GPU events...
 static bool timestampsInCorrectOrder(
-    const TraceActivity& ext,
-    const TraceActivity& gpuOp) {
+    const ITraceActivity& ext,
+    const ITraceActivity& gpuOp) {
   if (ext.timestamp() > gpuOp.timestamp()) {
     LOG(WARNING) << "GPU op timestamp (" << gpuOp.timestamp()
                  << ") < runtime timestamp (" << ext.timestamp() << ") by "
@@ -382,9 +382,9 @@ static bool timestampsInCorrectOrder(
 }
 
 inline void CuptiActivityProfiler::handleGpuActivity(
-    const TraceActivity& act,
+    const ITraceActivity& act,
     ActivityLogger* logger) {
-  const TraceActivity& ext = *act.linkedActivity();
+  const ITraceActivity& ext = *act.linkedActivity();
   if (ext.timestamp() == 0 && outOfRange(act)) {
     return;
   }

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "GenericTraceActivity.h"
-#include "ActivityTraceInterface.h"
 
 /* This file includes an abstract base class for an activity profiler
  * that can be implemented by multiple tracing agents in the application.

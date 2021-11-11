@@ -18,6 +18,7 @@
 #include <set>
 #include <thread>
 #include <vector>
+#include <deque>
 
 #include "ActivityProfilerInterface.h"
 #include "ActivityType.h"
@@ -43,7 +44,7 @@ class ConfigLoader;
 struct CpuTraceBuffer {
   TraceSpan span{0, 0, "none"};
   int gpuOpCount;
-  std::vector<GenericTraceActivity> activities;
+  std::deque<GenericTraceActivity> activities;
 };
 
 using ChildActivityProfilerFactory =

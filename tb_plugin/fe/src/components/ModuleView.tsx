@@ -33,7 +33,7 @@ const getKeyedTableColumns = function (columns: any) {
 
 const getTableRows = function (key: number, rows: any) {
   return rows.map(function (row: any) {
-    return {
+    const data = {
       key: key++,
       name: row.name,
       occurences: row.occurences,
@@ -44,6 +44,11 @@ const getTableRows = function (key: number, rows: any) {
       self_device_duration: row.self_device_duration,
       children: getTableRows(key, row.children)
     }
+    if (data.children.length == 0){
+      delete data.children
+    }
+
+    return data
   })
 }
 
@@ -83,7 +88,12 @@ export const ModuleView: React.FC<IProps> = (props) => {
       <Card variant="outlined">
         <CardHeader title="Module View" />
 
-        <Table
+        {/* defaultExpandAllRows will only valid when first render the Table
+          if row is null, then it will be ignored so all data will be collapse.
+          see https://segmentfault.com/a/1190000007830998 for more information.
+          */}
+        {rows && rows.length > 0 &&
+          <Table
           size="small"
           bordered
           columns={columns}
@@ -91,7 +101,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
           expandable={{
             defaultExpandAllRows: true
           }}
-        />
+        />}
       </Card>
     </div>
   )

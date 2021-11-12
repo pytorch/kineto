@@ -90,16 +90,6 @@ class LibkinetoApi {
     return activityProfiler_ != nullptr;
   }
 
-  void setNetSizeThreshold(int gpu_ops) {
-    netSizeThreshold_ = gpu_ops;
-  }
-
-  // Include traces with at least this many ops
-  // FIXME: Rename and move elsewhere
-  int netSizeThreshold() {
-    return netSizeThreshold_;
-  }
-
   void suppressLogMessages() {
     suppressLibkinetoLogMessages();
   }
@@ -139,7 +129,6 @@ class LibkinetoApi {
   int32_t clientRegisterThread_{0};
 
   bool isLoaded_{false};
-  std::atomic_int netSizeThreshold_{};
   std::vector<ChildActivityProfilerFactory> childProfilerFactories_;
 };
 

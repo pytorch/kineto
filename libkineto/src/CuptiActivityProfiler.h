@@ -91,15 +91,6 @@ class CuptiActivityProfiler {
   void transferCpuTrace(
       std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 
-  // Registered with external API so that CPU-side tracer can filter which nets
-  // to trace
-  bool applyNetFilter(const std::string& name) {
-    std::lock_guard<std::mutex> guard(mutex_);
-    return applyNetFilterInternal(name);
-  }
-
-  bool applyNetFilterInternal(const std::string& name);
-
   Config& config() {
     return *config_;
   }
@@ -224,14 +215,7 @@ class CuptiActivityProfiler {
   // Process a single CPU trace
   void processCpuTrace(
       libkineto::CpuTraceBuffer& cpuTrace,
-      ActivityLogger& logger,
-      bool logNet);
-
-  bool inline passesGpuOpCountThreshold(
-      const libkineto::CpuTraceBuffer& cpuTrace) {
-    return cpuOnly_ || cpuTrace.gpuOpCount < 0 ||
-        cpuTrace.gpuOpCount >= netGpuOpCountThreshold_;
-  }
+      ActivityLogger& logger);
 
   // Create resource names for streams
   inline void recordStream(int device, int id) {
@@ -270,15 +254,6 @@ class CuptiActivityProfiler {
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
 #endif // HAS_CUPTI
-
-  // Is logging disabled for this event?
-  // Logging can be disabled due to operator count, net name filter etc.
-  inline bool loggingDisabled(const libkineto::ITraceActivity& act) const {
-    const auto& it = clientActivityTraceMap_.find(act.correlationId());
-    return it != clientActivityTraceMap_.end() &&
-        disabledTraceSpans_.find(it->second->first.name) !=
-        disabledTraceSpans_.end();
-  }
 
   void resetTraceData();
 
@@ -336,12 +311,6 @@ class CuptiActivityProfiler {
       std::pair<int64_t, int64_t>,
       ActivityLogger::ResourceInfo> resourceInfo_;
 
-  // Which trace spans are disabled. Together with the operator -> net id map
-  // this allows us to determine whether a GPU or CUDA API event should
-  // be included in the trace.
-  // If a CUDA event cannot be mapped to a net it will always be included.
-  std::unordered_set<std::string> disabledTraceSpans_;
-
   // the overhead to flush the activity buffer
   profilerOverhead flushOverhead_;
   // the overhead to enable/disable activity tracking
@@ -369,17 +338,8 @@ class CuptiActivityProfiler {
   // Similarly, all CUDA API events after the last net event will be removed
   int64_t captureWindowEndTime_{0};
 
-  // net name -> iteration count
-  std::map<std::string, int> netIterationCountMap_;
-  // Sub-strings used to filter nets by name
-  std::vector<std::string> netNameFilter_;
-  // Filter by GPU op count
-  int netGpuOpCountThreshold_{0};
-  // Net used to track iterations
-  std::string netIterationsTarget_;
-  // Number of iterations to track
-  int netIterationsTargetCount_{0};
-
+  // span name -> iteration count
+  std::map<std::string, int> iterationCountMap_;
   // Flag used to stop tracing from external api callback.
   // Needs to be atomic since it's set from a different thread.
   std::atomic_bool stopCollection_{false};

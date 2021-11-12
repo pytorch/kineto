@@ -53,10 +53,6 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
     return profiler_->isActive();
   }
 
-  bool traceInclusionFilter(const std::string& match) {
-    return profiler_->applyNetFilter(match);
-  }
-
   void transferCpuTrace(
       std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
     return profiler_->transferCpuTrace(std::move(cpuTrace));

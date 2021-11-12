@@ -17,6 +17,7 @@ def get_libkineto_cupti_srcs(with_api = True):
         "src/CuptiCallbackApi.cpp",
         "src/CuptiEventApi.cpp",
         "src/CuptiMetricApi.cpp",
+        "src/CuptiRangeProfilerApi.cpp",
         "src/Demangle.cpp",
         "src/EventProfiler.cpp",
         "src/EventProfilerController.cpp",

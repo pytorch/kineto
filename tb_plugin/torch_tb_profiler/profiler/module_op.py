@@ -24,7 +24,7 @@ class Module:
                 self.module_id == o.module_id and
                 self.children == o.children)
 
-class ModuleStatsItem:
+class ModuleStats:
     def __init__(self, name, module_id):
         self.name = name
         self.module_id = module_id
@@ -35,8 +35,24 @@ class ModuleStatsItem:
         self.self_host_duration = 0
         self.self_device_duration = 0
 
+    @property
+    def avg_host_duration(self):
+        return self.host_duration / self.occurences
 
-def get_module_hierarchy(events):
+    @property
+    def avg_device_duration(self):
+        return self.device_duration / self.occurences
+
+
+def aggegate_module_view(tid2tree, events):
+    roots = _build_module_hierarchy(events)
+    modules = _get_module_list(tid2tree)
+    if modules and roots:
+        return _process_module_statistics(modules, roots)
+    else:
+        return None
+
+def _build_module_hierarchy(events):
     '''Get the module hierarchy from the chome trace events
     '''
     python_events = [e for e in events if e.type in (EventTypes.PYTHON_FUNCTION, EventTypes.MODULE)]
@@ -101,7 +117,28 @@ def get_module_hierarchy(events):
     return list(unique_modules)
 
 
-def get_module_list(tid2tree):
+def _aggregate_modules(modules):
+    '''Aggregate the modules based on the name and module_id'''
+    module_aggs = {}
+    for m in modules:
+        key = (m.name, m.module_id)
+        if key not in module_aggs:
+            module_aggs[key] = ModuleStats(m.name, m.module_id)
+        agg = module_aggs[key]
+        agg.occurences += 1
+
+        ops = m.get_operator()
+        agg.operators += len(ops)
+
+        agg.self_host_duration += m.self_host_duration
+        agg.self_device_duration += m.self_device_duration
+        agg.device_duration += m.device_duration
+        agg.host_duration += m.end_time - m.start_time
+
+    return module_aggs
+
+
+def _get_module_list(tid2tree):
     '''Get all ModuleNode from the operator tree'''
     modules = []
 
@@ -122,55 +159,29 @@ def get_module_list(tid2tree):
     return modules
 
 
-def aggregate_modules(modules):
-    '''Aggregate the modules based on the name and module_id'''
-    module_aggs = {}
-    for m in modules:
-        key = (m.name, m.module_id)
-        if key not in module_aggs:
-            module_aggs[key] = ModuleStatsItem(m.name, m.module_id)
-        agg = module_aggs[key]
-        agg.occurences += 1
-
-        ops = m.get_operator()
-        agg.operators += len(ops)
-
-        agg.self_host_duration += m.self_host_duration
-        agg.self_device_duration += m.self_device_duration
-        agg.device_duration += m.device_duration
-        agg.host_duration += m.end_time - m.start_time
-
-    return module_aggs
-
-
-def get_module_statistics(modules, hierarchy):
+def _process_module_statistics(modules, hierarchy):
     '''Get the module statistics from the ModuleNode(s) and the hierarchy
     '''
-    module_aggs = aggregate_modules(modules)
-
-    outputs = []
-    def process_modules(level, modules):
+    module_aggs = _aggregate_modules(modules)
+    def process_modules(modules):
+        modules_stats = []
         for m in modules:
-            name = f"{'  ' * level}{m.name.replace('nn.Module: ', '')}"
+            qual_name = f"{m.name.replace('nn.Module: ', '')}_{m.module_id}"
             stats = module_aggs[(m.name, m.module_id)]
-            outputs.append((name,
+
+            child_stats = process_modules(m.children)
+            modules_stats.append((qual_name,
                 stats.occurences,
                 stats.operators,
                 stats.host_duration,
                 stats.self_host_duration,
                 stats.device_duration,
-                stats.self_device_duration))
-            process_modules(level + 1, m.children)
+                stats.self_device_duration,
+                stats.avg_host_duration,
+                child_stats))
+        return modules_stats
 
-    process_modules(0, hierarchy)
-    return outputs
-
-
-def aggegate_module_view(tid2tree, events):
-    modules = get_module_list(tid2tree)
-    roots = get_module_hierarchy(events)
-
-    return get_module_statistics(modules, roots)
+    return process_modules(hierarchy)
 
 
 def get_module_tree(tid2tree):
@@ -205,5 +216,5 @@ def get_module_tree(tid2tree):
 def dump_modules(level, modules):
     '''testing purpose'''
     for module in modules:
-        print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}")
+        print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}: {module.stats.avg_host_duration}")
         dump_modules(level + 1, module.children)

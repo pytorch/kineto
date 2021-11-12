@@ -16,9 +16,9 @@ import ListSubheader from '@material-ui/core/ListSubheader'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
+import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
-import Typography from '@material-ui/core/Typography'
 import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
@@ -29,6 +29,7 @@ import { DistributedView } from './components/DistributedView'
 import { FullCircularProgress } from './components/FullCircularProgress'
 import { Kernel } from './components/Kernel'
 import { MemoryView } from './components/MemoryView'
+import { ModuleView } from './components/ModuleView'
 import { Operator } from './components/Operator'
 import { Overview } from './components/Overview'
 import { TraceView } from './components/TraceView'
@@ -42,7 +43,8 @@ export enum Views {
   Kernel = 'Kernel',
   Trace = 'Trace',
   Distributed = 'Distributed',
-  Memory = 'Memory'
+  Memory = 'Memory',
+  Module = 'Module'
 }
 
 const ViewNames = {
@@ -51,7 +53,8 @@ const ViewNames = {
   [Views.Kernel]: 'GPU Kernel',
   [Views.Trace]: Views.Trace,
   [Views.Distributed]: Views.Distributed,
-  [Views.Memory]: Views.Memory
+  [Views.Memory]: Views.Memory,
+  [Views.Module]: Views.Module
 }
 
 const drawerWidth = 340
@@ -289,6 +292,8 @@ export const App = () => {
         return <DistributedView run={run} worker={worker} span={span} />
       case Views.Memory:
         return <MemoryView run={run} worker={worker} span={span} />
+      case Views.Module:
+        return <ModuleView run={run} worker={worker} span={span} />
     }
   }
 

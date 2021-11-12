@@ -1,17 +1,13 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import List
-
 from collections import OrderedDict
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .data import RunProfileData
-
+from .module_op import aggegate_module_view
 from .overall_parser import ProfileRole
-from .memory_parser import MemoryParser
-
 
 logger = utils.get_logger()
 
@@ -67,6 +63,10 @@ class RunGenerator(object):
             gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
             if gpu_info is not None:
                 profile_run.gpu_infos[gpu_id] = gpu_info
+
+        profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
+        if profile_run.module_stats:
+            profile_run.views.append(consts.MODULE_VIEW)
 
         return profile_run
 
@@ -432,7 +432,6 @@ class RunGenerator(object):
             gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
 
         return gpu_info
-
 
 class DistributedRunGenerator(object):
     def __init__(self, all_profile_data, span):

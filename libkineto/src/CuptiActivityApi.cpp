@@ -217,7 +217,9 @@ void CuptiActivityApi::clearActivities() {
   }
   // Can't hold mutex_ during this call, since bufferCompleted
   // will be called by libcupti and mutex_ is acquired there.
+#ifdef HAS_CUPTI
   CUPTI_CALL(cuptiActivityFlushAll(0));
+#endif
   // FIXME: We might want to make sure we reuse
   // the same memory during warmup and tracing.
   // Also, try to use the amount of memory required

@@ -32,7 +32,7 @@
 
 #else
 
-#define CUPTI_CALL(call)
-#define CUPTI_CALL_NOWARN(call)
+#define CUPTI_CALL(call) call
+#define CUPTI_CALL_NOWARN(call) call
 
 #endif // HAS_CUPTI

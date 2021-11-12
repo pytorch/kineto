@@ -560,6 +560,31 @@ paths:
             '*/*':
               schema:
                 type: object
+  /module:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ModuleStats'
 components:
   schemas:
     Runs:
@@ -959,3 +984,60 @@ components:
             $ref: '#/components/schemas/GraphColumn'
         rows:
           type: object
+    KeyedColumn:
+      type: object
+      required:
+        - type
+        - name
+        - key
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+    ModuleStats:
+      type: object
+      required:
+        - columns
+        - data
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeyedColumn'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleStatsTree'
+    ModuleStatsTree:
+      type: object
+      required:
+        - name
+        - occurences
+        - operators
+        - host_duration
+        - self_host_duration
+        - device_duration
+        - self_device_duration
+        - children
+      properties:
+        name:
+          type: string
+        occurences:
+          type: number
+        operators:
+          type: number
+        host_duration:
+          type: number
+        self_host_duration:
+          type: number
+        device_duration:
+          type: number
+        self_device_duration:
+          type: number
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleStatsTree'

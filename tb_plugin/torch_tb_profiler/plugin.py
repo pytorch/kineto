@@ -104,6 +104,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/memory": self.memory_route,
             "/memory_curve": self.memory_curve_route,
             "/memory_events": self.memory_events_route,
+            "/module": self.module_route,
         }
 
     def frontend_metadata(self):
@@ -309,6 +310,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             end_ts = int(end_ts)
 
         return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts, time_metric=time_metric, memory_metric=memory_metric))
+
+    @wrappers.Request.application
+    def module_route(self, request):
+        profile = self._get_profile_for_request(request)
+        content = profile.get_module_view()
+        return self.respond_as_json(content)
 
     @wrappers.Request.application
     def static_file_route(self, request):

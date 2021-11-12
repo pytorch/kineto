@@ -47,4 +47,8 @@ std::string demangle(const char* name) {
 #endif
 }
 
+std::string demangle(const std::string& name) {
+  return demangle(name.c_str());
+}
+
 } // namespace KINETO_NAMESPACE

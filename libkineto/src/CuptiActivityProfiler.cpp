@@ -487,12 +487,22 @@ void CuptiActivityProfiler::configure(
     LOG(ERROR) << "CuptiActivityProfiler already busy, terminating";
     return;
   }
+
   config_ = config.clone();
 
   if (config_->activitiesOnDemandDuration().count() == 0) {
     // Use default if not specified
     config_->setActivitiesOnDemandDuration(
         config_->activitiesOnDemandDurationDefault());
+  }
+
+  profileStartTime_ = config_->requestTimestamp();
+  if (profileStartTime_ < now) {
+    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
+    return;
+  } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
+    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
+    return;
   }
 
   if (LOG_IS_ON(INFO)) {
@@ -541,23 +551,15 @@ void CuptiActivityProfiler::configure(
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
-  profileStartTime_ = config_->requestTimestamp();
-
-  if (profileStartTime_ < now) {
-    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
-  } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
-    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
-  } else {
-    if (profilers_.size() > 0) {
-      configureChildProfilers();
-    }
-    LOG(INFO) << "Tracing starting in "
-              << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
-
-    traceBuffers_ = std::make_unique<ActivityBuffers>();
-    captureWindowStartTime_ = captureWindowEndTime_ = 0;
-    currentRunloopState_ = RunloopState::Warmup;
+  if (profilers_.size() > 0) {
+    configureChildProfilers();
   }
+  LOG(INFO) << "Tracing starting in "
+            << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
+
+  traceBuffers_ = std::make_unique<ActivityBuffers>();
+  captureWindowStartTime_ = captureWindowEndTime_ = 0;
+  currentRunloopState_ = RunloopState::Warmup;
 }
 
 void CuptiActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {

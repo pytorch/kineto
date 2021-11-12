@@ -31,6 +31,7 @@
 #include "ActivityProfilerProxy.h"
 #include "Config.h"
 #ifdef HAS_CUPTI
+#include "CuptiCallbackApi.h"
 #include "EventProfilerController.h"
 #endif
 #include "cupti_call.h"
@@ -44,8 +45,16 @@ namespace KINETO_NAMESPACE {
 static bool initialized = false;
 static std::mutex initMutex;
 
-static void initProfilers(CUcontext ctx) {
+static void initProfilers(
+    CUpti_CallbackDomain /*domain*/,
+    CUpti_CallbackId /*cbid*/,
+    const CUpti_CallbackData* cbInfo) {
+  CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
+  CUcontext ctx = d->context;
+
+  VLOG(0) << "CUDA Context created";
   std::lock_guard<std::mutex> lock(initMutex);
+
   if (!initialized) {
     libkineto::api().initProfilerIfRegistered();
     initialized = true;
@@ -60,7 +69,14 @@ static void initProfilers(CUcontext ctx) {
   }
 }
 
-static void stopProfiler(CUcontext ctx) {
+static void stopProfiler(
+    CUpti_CallbackDomain /*domain*/,
+    CUpti_CallbackId /*cbid*/,
+    const CUpti_CallbackData* cbInfo) {
+  CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
+  CUcontext ctx = d->context;
+
+  LOG(INFO) << "CUDA Context destroyed";
   std::lock_guard<std::mutex> lock(initMutex);
   EventProfilerController::stop(ctx);
 }
@@ -72,61 +88,37 @@ static void stopProfiler(CUcontext ctx) {
 using namespace KINETO_NAMESPACE;
 extern "C" {
 
-#ifdef HAS_CUPTI
-static void CUPTIAPI callback(
-    void* /* unused */,
-    CUpti_CallbackDomain domain,
-    CUpti_CallbackId cbid,
-    const CUpti_CallbackData* cbInfo) {
-  VLOG(0) << "Callback: domain = " << domain << ", cbid = " << cbid;
-
-  if (domain == CUPTI_CB_DOMAIN_RESOURCE) {
-    CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
-    if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_CREATED) {
-      VLOG(0) << "CUDA Context created";
-      initProfilers(d->context);
-    } else if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING) {
-      VLOG(0) << "CUDA Context destroyed";
-      stopProfiler(d->context);
-    }
-  }
-}
-#endif // HAS_CUPTI
-
 // Return true if no CUPTI errors occurred during init
 bool libkineto_init(bool cpuOnly, bool logOnError) {
   bool success = true;
 #ifdef HAS_CUPTI
   if (!cpuOnly) {
-    CUpti_SubscriberHandle subscriber;
-    CUptiResult status = CUPTI_ERROR_UNKNOWN;
     // libcupti will be lazily loaded on this call.
     // If it is not available (e.g. CUDA is not installed),
     // then this call will return an error and we just abort init.
-    status = CUPTI_CALL_NOWARN(
-        cuptiSubscribe(&subscriber, (CUpti_CallbackFunc)callback, nullptr));
-    if (status == CUPTI_SUCCESS) {
-      status = CUPTI_CALL_NOWARN(
-          cuptiEnableCallback(
-              1,
-              subscriber,
-              CUPTI_CB_DOMAIN_RESOURCE,
-              CUPTI_CBID_RESOURCE_CONTEXT_CREATED));
+    auto& cbapi = CuptiCallbackApi::singleton();
+    bool status = false;
 
-      if (status == CUPTI_SUCCESS) {
-        status = CUPTI_CALL_NOWARN(
-            cuptiEnableCallback(
-                1,
-                subscriber,
-                CUPTI_CB_DOMAIN_RESOURCE,
-                CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING));
+    if (cbapi.initSuccess()){
+      const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
+      status = cbapi.registerCallback(
+          domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, initProfilers);
+      status = status && cbapi.registerCallback(
+          domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, stopProfiler);
+
+      if (status) {
+        status = cbapi.enableCallback(
+            domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
+        status = status && cbapi.enableCallback(
+            domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED);
         }
     }
-    if (status != CUPTI_SUCCESS) {
+
+    if (!cbapi.initSuccess() || !status) {
       success = false;
       cpuOnly = true;
       if (logOnError) {
-        CUPTI_CALL(status);
+        CUPTI_CALL(cbapi.getCuptiStatus());
         LOG(WARNING) << "CUPTI initialization failed - "
                      << "CUDA profiler activities will be missing";
         LOG(INFO) << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "

@@ -703,7 +703,7 @@ components:
     OperatorGraph:
       type: object
       required:
-        - device_total_timeA
+        - device_total_time
         - device_self_time
         - host_total_time
         - host_self_time
@@ -1021,6 +1021,7 @@ components:
         - self_host_duration
         - device_duration
         - self_device_duration
+        - avg_duration
         - children
       properties:
         name:
@@ -1036,6 +1037,8 @@ components:
         device_duration:
           type: number
         self_device_duration:
+          type: number
+        avg_duration:
           type: number
         children:
           type: array

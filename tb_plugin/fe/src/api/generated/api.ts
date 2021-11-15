@@ -728,6 +728,12 @@ export interface ModuleStatsTree {
   selfDeviceDuration: number
   /**
    *
+   * @type {number}
+   * @memberof ModuleStatsTree
+   */
+  avgDuration: number
+  /**
+   *
    * @type {Array<ModuleStatsTree>}
    * @memberof ModuleStatsTree
    */
@@ -823,7 +829,7 @@ export interface OperatorGraph {
    * @type {Graph}
    * @memberof OperatorGraph
    */
-  deviceTotalTime?: Graph
+  deviceTotalTime: Graph
   /**
    *
    * @type {Graph}

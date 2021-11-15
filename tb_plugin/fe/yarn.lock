@@ -36,6 +36,13 @@
     lodash "^4.17.21"
     resize-observer-polyfill "^1.5.0"
 
+"@babel/runtime@^7.0.0":
+  version "7.16.3"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.16.3.tgz#b86f0db02a04187a3c17caa77de69840165d42d5"
+  integrity sha512-WBwekcqacdY2e9AF/Q7WLFUWmdJGJTkbjqTjoMDgXkVZ3ZRUvOPsLb5KdwISoQVsbP+DQzVZW4Zhci0DvpbNTQ==
+  dependencies:
+    regenerator-runtime "^0.13.4"
+
 "@babel/runtime@^7.10.1", "@babel/runtime@^7.10.2", "@babel/runtime@^7.10.4", "@babel/runtime@^7.11.1", "@babel/runtime@^7.11.2", "@babel/runtime@^7.12.5", "@babel/runtime@^7.13.10", "@babel/runtime@^7.3.1", "@babel/runtime@^7.4.4", "@babel/runtime@^7.5.5", "@babel/runtime@^7.8.3", "@babel/runtime@^7.8.4", "@babel/runtime@^7.8.7":
   version "7.13.10"
   resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.13.10.tgz#47d42a57b6095f4468da440388fdbad8bebf0d7d"
@@ -1539,6 +1546,11 @@ find-up@^4.0.0:
     locate-path "^5.0.0"
     path-exists "^4.0.0"
 
+flow-bin@^0.118.0:
+  version "0.118.0"
+  resolved "https://registry.yarnpkg.com/flow-bin/-/flow-bin-0.118.0.tgz#fb706364a58c682d67a2ca7df39396467dc397d1"
+  integrity sha512-jlbUu0XkbpXeXhan5xyTqVK1jmEKNxE8hpzznI3TThHTr76GiFwK0iRzhDo4KNy+S9h/KxHaqVhTP86vA6wHCg==
+
 follow-redirects@^1.0.0:
   version "1.13.3"
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.13.3.tgz#e5598ad50174c1bc4e872301e82ac2cd97f90267"
@@ -2358,6 +2370,16 @@ media-typer@0.3.0:
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/media-typer/-/media-typer-0.3.0.tgz#8710d7af0aa626f8fffa1ce00168545263255748"
   integrity sha1-hxDXrwqmJvj/+hzgAWhUUmMlV0g=
+
+"memoize-one@>=3.1.1 <6":
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/memoize-one/-/memoize-one-5.2.1.tgz#8337aa3c4335581839ec01c3d594090cebe8f00e"
+  integrity sha512-zYiwtZUcYyXKo/np96AGZAckk+FWWsUdJ3cHGGmld7+AhvcWmQyGCYUh1hc4Q/pkOhb65dQR/pqCyK0cOaHz4Q==
+
+memoize-one@^3.1.1:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/memoize-one/-/memoize-one-3.1.1.tgz#ef609811e3bc28970eac2884eece64d167830d17"
+  integrity sha512-YqVh744GsMlZu6xkhGslPSqSurOv6P+kLN2J3ysBZfagLcL5FdRK/0UpgLoL8hwjjEvvAVkjJZyFP+1T6p1vgA==
 
 memory-fs@^0.4.1:
   version "0.4.1"
@@ -3383,6 +3405,15 @@ react-dom@^16.13.1:
     prop-types "^15.6.2"
     scheduler "^0.19.1"
 
+react-flame-graph@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/react-flame-graph/-/react-flame-graph-1.4.0.tgz#52d118cc94348f630a812fc0ec530a5b73c30cdb"
+  integrity sha512-DaCK9ZX+xK0mNca72kUE5cu6T8hGe/KLsefQWf+eT9sVt+0WP1dVxZCGD8Svfn2KrZB9Mv011Intg/yG2YWSxA==
+  dependencies:
+    flow-bin "^0.118.0"
+    memoize-one "^3.1.1"
+    react-window "^1"
+
 react-is@^16.12.0, react-is@^16.7.0, react-is@^16.8.1:
   version "16.13.1"
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
@@ -3402,6 +3433,14 @@ react-transition-group@^4.4.0:
     dom-helpers "^5.0.1"
     loose-envify "^1.4.0"
     prop-types "^15.6.2"
+
+react-window@^1:
+  version "1.8.6"
+  resolved "https://registry.yarnpkg.com/react-window/-/react-window-1.8.6.tgz#d011950ac643a994118632665aad0c6382e2a112"
+  integrity sha512-8VwEEYyjz6DCnGBsd+MgkD0KJ2/OXFULyDtorIiTz+QzwoP94tBoA7CnbtyXMm+cCeAUER5KJcPtWl9cpKbOBg==
+  dependencies:
+    "@babel/runtime" "^7.0.0"
+    memoize-one ">=3.1.1 <6"
 
 react@^16.13.1:
   version "16.14.0"

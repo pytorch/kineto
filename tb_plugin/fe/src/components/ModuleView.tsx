@@ -11,8 +11,7 @@ import { Table } from 'antd'
 import * as React from 'react'
 // @ts-ignore
 import { FlameGraph } from 'react-flame-graph'
-import * as api from '../api'
-import { ModuleStats } from '../api'
+import { defaultApi, KeyedColumn, ModuleStats, ModuleStatsTree } from '../api'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -29,8 +28,8 @@ export interface IProps {
   span: string
 }
 
-const getKeyedTableColumns = function (columns: any) {
-  return columns.map(function (col: any) {
+const getKeyedTableColumns = function (columns: KeyedColumn[]): any {
+  return columns.map(function (col: KeyedColumn) {
     return {
       dataIndex: col.key,
       key: col.key,
@@ -39,8 +38,8 @@ const getKeyedTableColumns = function (columns: any) {
   })
 }
 
-const getTableRows = function (key: number, rows: any) {
-  return rows.map(function (row: any) {
+const getTableRows = function (key: number, rows: ModuleStatsTree[]): any {
+  return rows.map(function (row: ModuleStatsTree) {
     const data = {
       key: key++,
       name: row.name,
@@ -60,11 +59,12 @@ const getTableRows = function (key: number, rows: any) {
   })
 }
 
-const getFlameGraphData = function (rows: any) {
-  return rows.map(function (row: any) {
+const getFlameGraphData = function (rows: ModuleStatsTree[]): any {
+  return rows.map(function (row: ModuleStatsTree) {
     const data = {
       name: row.name,
       value: row.avg_duration,
+      tooltip: `${row.name}: ${row.avg_duration} us`,
       children: getFlameGraphData(row.children)
     }
 
@@ -87,29 +87,22 @@ export const ModuleView: React.FC<IProps> = (props) => {
   const [modules, setModules] = React.useState<number[]>([])
   const [module, setModule] = React.useState<number>(0)
 
-  const rows = React.useMemo(() => {
-    if (moduleView) {
-      return getTableRows(1, moduleView.data)
-    } else {
-      return undefined
-    }
-  }, [moduleView])
+  const [columns, setColumns] = React.useState([])
+  const [rows, setRows] = React.useState([])
 
-  const columns = React.useMemo(() => {
-    if (moduleView) {
-      return getKeyedTableColumns(moduleView.columns)
-    } else {
-      return undefined
-    }
-  }, [moduleView])
   React.useEffect(() => {
-    api.defaultApi.moduleGet(run, worker, span).then((resp) => {
+    defaultApi.moduleGet(run, worker, span).then((resp) => {
       setModuleView(resp)
       if (resp) {
+        // set the flamegraph data
         const flameData = getFlameGraphData(resp.data)
         setFlameData(flameData)
         setModules(Array.from(Array(flameData.length).keys()))
         setModule(0)
+
+        // set the tree table data
+        setColumns(getKeyedTableColumns(resp.columns))
+        setRows(getTableRows(1, resp.data))
       }
     })
   }, [run, worker, span])

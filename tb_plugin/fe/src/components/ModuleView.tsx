@@ -11,7 +11,7 @@ import { Table } from 'antd'
 import * as React from 'react'
 // @ts-ignore
 import { FlameGraph } from 'react-flame-graph'
-import { defaultApi, KeyedColumn, ModuleStats, ModuleStatsTree } from '../api'
+import { defaultApi, KeyedColumn, ModuleStats, ModuleViewData } from '../api'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -38,8 +38,8 @@ const getKeyedTableColumns = function (columns: KeyedColumn[]): any {
   })
 }
 
-const getTableRows = function (key: number, rows: ModuleStatsTree[]): any {
-  return rows.map(function (row: ModuleStatsTree) {
+const getTableRows = function (key: number, rows: ModuleStats[]): any {
+  return rows.map(function (row: ModuleStats) {
     const data = {
       key: key++,
       name: row.name,
@@ -59,8 +59,8 @@ const getTableRows = function (key: number, rows: ModuleStatsTree[]): any {
   })
 }
 
-const getFlameGraphData = function (rows: ModuleStatsTree[]): any {
-  return rows.map(function (row: ModuleStatsTree) {
+const getFlameGraphData = function (rows: ModuleStats[]): any {
+  return rows.map(function (row: ModuleStats) {
     const data = {
       name: row.name,
       value: row.avg_duration,
@@ -80,9 +80,9 @@ export const ModuleView: React.FC<IProps> = (props) => {
   const { run, worker, span } = props
   const classes = useStyles()
 
-  const [moduleView, setModuleView] = React.useState<ModuleStats | undefined>(
-    undefined
-  )
+  const [moduleView, setModuleView] = React.useState<
+    ModuleViewData | undefined
+  >(undefined)
   const [flameData, setFlameData] = React.useState([])
   const [modules, setModules] = React.useState<number[]>([])
   const [module, setModule] = React.useState<number>(0)

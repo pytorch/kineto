@@ -667,77 +667,77 @@ export interface MemoryStatsTableMetadata {
 export interface ModuleStats {
   /**
    *
-   * @type {Array<KeyedColumn>}
-   * @memberof ModuleStats
-   */
-  columns: Array<KeyedColumn>
-  /**
-   *
-   * @type {Array<ModuleStatsTree>}
-   * @memberof ModuleStats
-   */
-  data: Array<ModuleStatsTree>
-}
-/**
- *
- * @export
- * @interface ModuleStatsTree
- */
-export interface ModuleStatsTree {
-  /**
-   *
    * @type {string}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   name: string
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   occurences: number
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   operators: number
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   host_duration: number
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   self_host_duration: number
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   device_duration: number
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   self_device_duration: number
   /**
    *
    * @type {number}
-   * @memberof ModuleStatsTree
+   * @memberof ModuleStats
    */
   avg_duration: number
   /**
    *
-   * @type {Array<ModuleStatsTree>}
-   * @memberof ModuleStatsTree
+   * @type {Array<ModuleStats>}
+   * @memberof ModuleStats
    */
-  children: Array<ModuleStatsTree>
+  children: Array<ModuleStats>
+}
+/**
+ *
+ * @export
+ * @interface ModuleViewData
+ */
+export interface ModuleViewData {
+  /**
+   *
+   * @type {Array<KeyedColumn>}
+   * @memberof ModuleViewData
+   */
+  columns: Array<KeyedColumn>
+  /**
+   *
+   * @type {Array<ModuleStats>}
+   * @memberof ModuleViewData
+   */
+  data: Array<ModuleStats>
 }
 /**
  *
@@ -2821,7 +2821,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       worker: string,
       span: string,
       options?: any
-    ): (fetch?: FetchAPI, basePath?: string) => Promise<ModuleStats> {
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<ModuleViewData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
       ).moduleGet(run, worker, span, options)

@@ -40,16 +40,19 @@ static constexpr char kDefaultLogFileFmt[] =
 static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 #endif
 
+void ChromeTraceLogger::metadataToJSON(
+    const std::unordered_map<std::string, std::string>& metadata) {
+  for (const auto& kv : metadata) {
+    traceOf_ << fmt::format(R"JSON(
+  "{}": {},)JSON", kv.first, kv.second);
+  }
+}
+
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata) {
   traceOf_ << fmt::format(R"JSON(
 {{
   "schemaVersion": {},)JSON", kSchemaVersion);
-
-  for (const auto& kv : metadata) {
-    traceOf_ << fmt::format(R"JSON(
-  "{}": {},)JSON", kv.first, kv.second);
-  }
 
 #ifdef HAS_CUPTI
   traceOf_ << fmt::format(R"JSON(
@@ -57,6 +60,7 @@ void ChromeTraceLogger::handleTraceStart(
   ],)JSON", devicePropertiesJson());
 #endif
 
+  metadataToJSON(metadata);
   traceOf_ << R"JSON(
   "traceEvents": [)JSON";
 }
@@ -538,23 +542,54 @@ void ChromeTraceLogger::handleGpuActivity(
 void ChromeTraceLogger::finalizeTrace(
     const Config& /*unused*/,
     std::unique_ptr<ActivityBuffers> /*unused*/,
-    int64_t endTime) {
+    int64_t endTime,
+    std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   if (!traceOf_) {
     LOG(ERROR) << "Failed to write to log file!";
     return;
   }
+  LOG(INFO) << "Chrome Trace written to " << fileName_;
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "Record Window End", "ph": "i", "s": "g",
     "pid": "", "tid": "", "ts": {}
   }}
-]}})JSON",
+  ],)JSON",
       endTime);
+
+#if !USE_GOOGLE_LOG
+  std::unordered_map<std::string, std::string> PreparedMetadata;
+  for (const auto& kv : metadata) {
+    // Skip empty log buckets, ex. skip ERROR if its empty.
+    if (!kv.second.empty()) {
+      std::string value = "[";
+      // Ex. Each metadata from logger is a list of strings, expressed in JSON as
+      //   "ERROR": ["Error 1", "Error 2"],
+      //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
+      //   ...
+      int mdv_count = kv.second.size();
+      for (const auto& v : kv.second) {
+        value.append("\"" + v + "\"");
+        if(mdv_count > 1) {
+          value.append(",");
+          mdv_count--;
+        }
+      }
+      value.append("]");
+      PreparedMetadata[kv.first] = value;
+    }
+  }
+  metadataToJSON(PreparedMetadata);
+#endif // !USE_GOOGLE_LOG
+
+  // Putting this here because the last entry MUST not end with a comma.
+  traceOf_ << fmt::format(R"JSON(
+  "traceName": "{}"
+}})JSON", fileName_);
   // clang-format on
 
   traceOf_.close();
-  LOG(INFO) << "Chrome Trace written to " << fileName_;
 }
 
 } // namespace KINETO_NAMESPACE

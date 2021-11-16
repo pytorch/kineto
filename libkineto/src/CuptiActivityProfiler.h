@@ -21,12 +21,15 @@
 #include <unordered_set>
 #include <vector>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"
 #include "output_base.h"
 #include "GenericTraceActivity.h"
 #include "IActivityProfiler.h"
+#include "LoggerCollector.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -355,6 +358,9 @@ class CuptiActivityProfiler {
 
   // a vector of active profiler plugin sessions
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
+
+  // LoggerObserver to collect all LOGs during the trace
+  std::unique_ptr<LoggerCollector> loggerCollectorMetadata_;
 };
 
 } // namespace KINETO_NAMESPACE

@@ -19,7 +19,7 @@
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 
-namespace libkineto {
+namespace KINETO_NAMESPACE {
   // Previous declaration of TraceSpan is struct. Must match the same here.
   struct TraceSpan;
 }
@@ -60,7 +60,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
-      int64_t endTime) override;
+      int64_t endTime,
+      std::unordered_map<std::string, std::vector<std::string>>& metadata) override;
 
   std::string traceFileName() const {
     return fileName_;
@@ -83,6 +84,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGenericInstantEvent(const ITraceActivity& op);
 
   void handleGenericLink(const ITraceActivity& activity);
+
+  void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
 
   std::string fileName_;
   std::ofstream traceOf_;

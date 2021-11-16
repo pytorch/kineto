@@ -404,6 +404,12 @@ void CuptiActivityProfiler::configure(
     return;
   }
 
+#if !USE_GOOGLE_LOG
+  // Add a LoggerObserverCollector to collect all logs during the trace.
+  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
+  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
+#endif // !USE_GOOGLE_LOG
+
   config_ = config.clone();
 
   if (config_->activitiesDuration().count() == 0) {
@@ -660,7 +666,16 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
 
   gpuUserEventMap_.logEvents(&logger);
 
-  logger.finalizeTrace(config, std::move(traceBuffers_), captureWindowEndTime_);
+#if !USE_GOOGLE_LOG
+  // Save logs from LoggerCollector objects into Trace metadata.
+  auto LoggerMD = loggerCollectorMetadata_->extractCollectorMetadata();
+  std::unordered_map<std::string, std::vector<std::string>> LoggerMDString;
+  for (auto& md : LoggerMD) {
+    LoggerMDString[toString(md.first)] = md.second;
+  }
+#endif // !USE_GOOGLE_LOG
+
+  logger.finalizeTrace(config, std::move(traceBuffers_), captureWindowEndTime_, LoggerMDString);
 }
 
 void CuptiActivityProfiler::resetTraceData() {
@@ -676,6 +691,9 @@ void CuptiActivityProfiler::resetTraceData() {
   traceBuffers_ = nullptr;
   metadata_.clear();
   sessions_.clear();
+#if !USE_GOOGLE_LOG
+  Logger::removeLoggerObserver(loggerCollectorMetadata_.get());
+#endif // !USE_GOOGLE_LOG
 }
 
 

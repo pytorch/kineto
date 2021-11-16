@@ -584,7 +584,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/ModuleStats'
+                $ref: '#/components/schemas/ModuleViewData'
 components:
   schemas:
     Runs:
@@ -997,7 +997,7 @@ components:
           type: string
         key:
           type: string
-    ModuleStats:
+    ModuleViewData:
       type: object
       required:
         - columns
@@ -1010,8 +1010,8 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/ModuleStatsTree'
-    ModuleStatsTree:
+            $ref: '#/components/schemas/ModuleStats'
+    ModuleStats:
       type: object
       required:
         - name
@@ -1043,4 +1043,4 @@ components:
         children:
           type: array
           items:
-            $ref: '#/components/schemas/ModuleStatsTree'
+            $ref: '#/components/schemas/ModuleStats'

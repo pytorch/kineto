@@ -90,7 +90,8 @@ class MemoryTraceLogger : public ActivityLogger {
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
-      int64_t endTime) override {
+      int64_t endTime,
+      std::unordered_map<std::string, std::vector<std::string>>& metadata) override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
   }
@@ -114,7 +115,7 @@ class MemoryTraceLogger : public ActivityLogger {
       logger.handleTraceSpan(cpu_trace_buffer->span);
     }
     // Hold on to the buffers
-    logger.finalizeTrace(*config_, nullptr, endTime_);
+    logger.finalizeTrace(*config_, nullptr, endTime_, loggerMetadata_);
   }
 
  private:
@@ -127,6 +128,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::vector<std::pair<ResourceInfo, int64_t>> resourceInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;
+  std::unordered_map<std::string, std::vector<std::string>> loggerMetadata_;
   int64_t endTime_{0};
 };
 

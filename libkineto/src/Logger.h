@@ -30,22 +30,22 @@
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
 #include <atomic>
+#include <map>
 #include <ostream>
 #include <string>
 #include <sstream>
 #include <vector>
+
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "ILoggerObserver.h"
 
 #ifdef _MSC_VER
 // unset a predefined ERROR (windows)
 #undef ERROR
 #endif // _MSC_VER
 
-namespace libkineto {
-
-constexpr int VERBOSE = 0;
-constexpr int INFO = 1;
-constexpr int WARNING = 2;
-constexpr int ERROR = 3;
+namespace KINETO_NAMESPACE {
 
 class Logger {
  public:
@@ -101,10 +101,15 @@ class Logger {
     return verboseLogModules_;
   }
 
+  static void addLoggerObserver(ILoggerObserver* observer);
+
+  static void removeLoggerObserver(ILoggerObserver* observer);
+
  private:
   std::stringstream buf_;
   std::ostream& out_;
   int errnum_;
+  int messageSeverity_;
   static std::atomic_int severityLevel_;
   static std::atomic_int verboseLogLevel_;
   static std::atomic<uint64_t> verboseLogModules_;
@@ -116,7 +121,7 @@ class VoidLogger {
   void operator&(std::ostream&) {}
 };
 
-} // namespace libkineto
+} // namespace KINETO_NAMESPACE
 
 #ifdef LOG // Undefine in case these are already defined (quite likely)
 #undef LOG

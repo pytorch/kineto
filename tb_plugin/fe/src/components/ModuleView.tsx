@@ -64,7 +64,7 @@ const getFlameGraphData = function (rows: ModuleStats[]): any {
     const data = {
       name: row.name,
       value: row.avg_duration,
-      tooltip: `${row.name}: ${row.avg_duration} us`,
+      tooltip: `${row.name} (module id: ${row.id}): ${row.avg_duration} us`,
       children: getFlameGraphData(row.children)
     }
 
@@ -123,7 +123,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
       </React.Fragment>
     )
 
-    if (!modules || modules.length <= 2) {
+    if (!modules || modules.length <= 1) {
       return <div className={classes.hide}>{moduleFragment}</div>
     } else {
       return moduleFragment

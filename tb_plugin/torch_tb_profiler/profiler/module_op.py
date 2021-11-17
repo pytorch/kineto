@@ -1,6 +1,6 @@
 from copy import copy
 
-from .node import ModuleNode, ProfilerStepNode
+from .node import ModuleNode, ProfilerStepNode, is_operator_node
 from .trace import EventTypes
 
 
@@ -127,13 +127,14 @@ def _aggregate_modules(modules):
         agg = module_aggs[key]
         agg.occurences += 1
 
-        ops = m.get_operator()
+        ops = [child for child in m.children if is_operator_node(child)]
         agg.operators += len(ops)
 
         agg.self_host_duration += m.self_host_duration
+        agg.host_duration += m.end_time - m.start_time
+
         agg.self_device_duration += m.self_device_duration
         agg.device_duration += m.device_duration
-        agg.host_duration += m.end_time - m.start_time
 
     return module_aggs
 
@@ -166,18 +167,19 @@ def _process_module_statistics(modules, hierarchy):
     def process_modules(modules):
         modules_stats = []
         for m in modules:
-            qual_name = f"{m.name.replace('nn.Module: ', '')}_{m.module_id}"
+            name = m.name.replace('nn.Module: ', '')
             stats = module_aggs[(m.name, m.module_id)]
 
             child_stats = process_modules(m.children)
-            modules_stats.append((qual_name,
+            modules_stats.append((name,
+                m.module_id,
                 stats.occurences,
                 stats.operators,
                 stats.host_duration,
                 stats.self_host_duration,
                 stats.device_duration,
                 stats.self_device_duration,
-                stats.avg_host_duration,
+                stats.avg_device_duration if stats.avg_device_duration > 0 else stats.avg_host_duration,
                 child_stats))
         return modules_stats
 

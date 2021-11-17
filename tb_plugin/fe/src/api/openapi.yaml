@@ -1015,6 +1015,7 @@ components:
       type: object
       required:
         - name
+        - id
         - occurences
         - operators
         - host_duration
@@ -1025,6 +1026,8 @@ components:
         - children
       properties:
         name:
+          type: string
+        id:
           type: string
         occurences:
           type: number

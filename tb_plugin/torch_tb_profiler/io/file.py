@@ -256,22 +256,18 @@ class S3FileSystem(RemotePath, BaseFileSystem):
             file_content = as_bytes(file_content)
         client.put_object(Body=file_content, Bucket=bucket, Key=path)
 
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile(
-            'w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-
+    def download_file(self, file_to_download, file_to_save):
         logger.info("s3: starting downloading file %s as %s" %
-                    (filename, fp.name))
+                    (file_to_download, file_to_save))
         # Use boto3.resource instead of boto3.client('s3') to support minio.
         # https://docs.min.io/docs/how-to-use-aws-sdk-for-python-with-minio-server.html
         # To support minio, the S3_ENDPOINT need to be set like: S3_ENDPOINT=http://localhost:9000
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
-        bucket, path = self.bucket_and_path(filename)
-        s3.Bucket(bucket).download_file(path, fp.name)
+        bucket, path = self.bucket_and_path(file_to_download)
+        s3.Bucket(bucket).download_file(path, file_to_save)
         logger.info("s3: file %s is downloaded as %s" %
-                        (filename, fp.name))
-        return fp.name
+                        (file_to_download, file_to_save))
+        return
 
     def glob(self, filename):
         """Returns a list of files that match the given pattern(s)."""
@@ -527,13 +523,17 @@ def relpath(path, start):
 def join(path, *paths):
     return get_filesystem(path).join(path, *paths)
 
-def download_file(filename):
+def download_file(file_to_download, file_to_save):
     """Downloads the file, returning a temporary path to the file after finishing."""
-    return get_filesystem(filename).download_file(filename)
+    get_filesystem(file_to_download).download_file(file_to_download, file_to_save)
 
 def glob(filename):
     """Returns a list of files that match the given pattern(s)."""
     return get_filesystem(filename).glob(filename)
+
+def is_local(path):
+    """Returns whether the path is a local path"""
+    return isinstance(get_filesystem(path), LocalFileSystem)
 
 def isdir(dirname):
     """Returns whether the path is a directory or not."""

@@ -71,8 +71,8 @@ class RunProfileData(object):
         self.memory_parser: Optional[MemoryParser] = None
 
     @staticmethod
-    def parse(worker, span, path):
-        trace_path, trace_json = RunProfileData._preprocess_file(path)
+    def parse(worker, span, path, cache_dir):
+        trace_path, trace_json = RunProfileData._preprocess_file(path, cache_dir)
 
         profile = RunProfileData.from_json(worker, span, trace_json)
         profile.trace_file_path = trace_path
@@ -99,7 +99,7 @@ class RunProfileData(object):
         return profile
 
     @staticmethod
-    def _preprocess_file(trace_path):
+    def _preprocess_file(trace_path, cache_dir):
         if not io.exists(trace_path):
             raise FileNotFoundError(trace_path)
 
@@ -143,7 +143,7 @@ class RunProfileData(object):
                 json_reencode = True
 
         if json_reencode:
-            fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', delete=False)
+            fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', dir=cache_dir, delete=False)
             fp.close()
             with gzip.open(fp.name, mode='wt') as fzip:
                 fzip.write(json.dumps(trace_json))

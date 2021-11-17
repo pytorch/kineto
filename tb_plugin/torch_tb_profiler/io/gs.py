@@ -34,15 +34,12 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
     def glob(self, filename):
         raise NotImplementedError
 
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-        bucket_name, path = self.bucket_and_path(filename)
+    def download_file(self, file_to_download, file_to_save):
+        bucket_name, path = self.bucket_and_path(file_to_download)
         client = self.create_google_cloud_client()
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(path)
-        blob.download_to_filename(fp.name)
-        return fp.name
+        blob.download_to_filename(file_to_save)
 
     def isdir(self, dirname):
         """Returns whether the path is a directory or not."""

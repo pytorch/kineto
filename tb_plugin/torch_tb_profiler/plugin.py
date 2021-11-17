@@ -315,7 +315,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def module_route(self, request):
         profile = self._get_profile_for_request(request)
         content = profile.get_module_view()
-        return self.respond_as_json(content)
+        if content:
+            return self.respond_as_json(content)
+        else:
+            name = request.args.get("run")
+            worker = request.args.get("worker")
+            span = request.args.get("span")
+            raise exceptions.NotFound("could not find the run for %s/%s/%s" %(name, worker, span))
 
     @wrappers.Request.application
     def static_file_route(self, request):

@@ -7,7 +7,6 @@ from typing import List, Optional, Tuple, Union
 from . import consts
 from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryParser, MemoryRecord
-from .profiler.module_op import Module
 from .profiler.node import MemoryMetrics
 from .utils import Canonicalizer, DisplayRounder
 
@@ -508,6 +507,9 @@ class RunProfile(object):
         }
 
     def get_module_view(self):
+        if not self.module_stats:
+            return None
+
         result = {
             "columns": [
                 {"name": "Module Name", "type": "string", "key": "name"},
@@ -522,20 +524,20 @@ class RunProfile(object):
         }
 
         def process_modules_stats(parent, modules_stats):
-          for stats in modules_stats:
-            d = {
-              "name": stats[0],
-              "occurences": stats[1],
-              "operators": stats[2],
-              "host_duration": stats[3],
-              "self_host_duration": stats[4],
-              "device_duration": stats[5],
-              "self_device_duration": stats[6],
-              "avg_duration": stats[7],
-              "children": []
-            }
-            parent.append(d)
-            process_modules_stats(d["children"], stats[8])
+            for stats in modules_stats:
+                d = {
+                    "name": stats[0],
+                    "occurences": stats[1],
+                    "operators": stats[2],
+                    "host_duration": stats[3],
+                    "self_host_duration": stats[4],
+                    "device_duration": stats[5],
+                    "self_device_duration": stats[6],
+                    "avg_duration": stats[7],
+                    "children": []
+                }
+                parent.append(d)
+                process_modules_stats(d["children"], stats[8])
 
         process_modules_stats(result["data"], self.module_stats)
         return result

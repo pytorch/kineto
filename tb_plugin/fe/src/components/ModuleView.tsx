@@ -28,8 +28,8 @@ export interface IProps {
   span: string
 }
 
-const getKeyedTableColumns = function (columns: KeyedColumn[]): any {
-  return columns.map(function (col: KeyedColumn) {
+const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
+  return columns.map((col: KeyedColumn) => {
     return {
       dataIndex: col.key,
       key: col.key,

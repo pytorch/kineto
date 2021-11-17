@@ -673,6 +673,12 @@ export interface ModuleStats {
   name: string
   /**
    *
+   * @type {string}
+   * @memberof ModuleStats
+   */
+  id: string
+  /**
+   *
    * @type {number}
    * @memberof ModuleStats
    */

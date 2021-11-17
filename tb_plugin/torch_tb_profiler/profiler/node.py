@@ -174,17 +174,13 @@ class ModuleNode(OperatorNode):
         self.python_id = python_id
         self.python_parent_id = python_parent_id
 
-    def get_operator(self):
-        ops = []
-        # kernels = []
+    def fill_stats(self):
+        super().fill_stats()
+
         for child in self.children:
             if is_operator_node(child):
-                child_ops, _ = child.get_operator_and_kernels()
-                ops.extend(child_ops)
-            # kernels.extend(child_kernels)
-        # for rt in self.runtimes:
-        #     kernels.extend(rt.get_kernels())
-        return ops
+                # treat the child ops as the device duration
+                self.self_device_duration += child.device_duration
 
     @classmethod
     def create(cls, event):

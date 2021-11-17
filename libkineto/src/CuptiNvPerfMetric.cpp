@@ -35,6 +35,11 @@ namespace nvperf {
 // code from NVIDIA. Since most of the programmability comes from
 // the CUPTI profiler metric names this should be okay.
 
+// Only supported on CUDA RT Version between 10.0 and 11.04.
+// After CUDA RT 11.04, the structure has changed.
+// TODO update the structure NVPA_RawMetricsConfig to support 11.04
+#if defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
+
 bool getRawMetricRequests(
     NVPA_MetricsContext* metricsContext,
     std::vector<std::string> metricNames,
@@ -466,6 +471,32 @@ CuptiProfilerResult evalMetricValues(
   return result;
 }
 
+#else
+
+bool getProfilerConfigImage(
+    const std::string& /*chipName*/,
+    const std::vector<std::string>& /*metricNames*/,
+    std::vector<uint8_t>& /*configImage*/,
+    const uint8_t* /*counterAvailabilityImage*/) {
+  return false;
+}
+
+bool getCounterDataPrefixImage(
+    const std::string& /*chipName*/,
+    const std::vector<std::string>& /*metricNames*/,
+    std::vector<uint8_t>& /*counterDataImagePrefix*/) {
+  return false;
+}
+
+CuptiProfilerResult evalMetricValues(
+    const std::string& /*chipName*/,
+    const std::vector<uint8_t>& /*counterDataImage*/,
+    const std::vector<std::string>& /*metricNames*/,
+    bool /*verbose*/) {
+  return {};
+}
+
+#endif // cuda version > 10.00 and < 11.04
 
 } // namespace nvperf
 } // namespace KINETO_NAMESPACE

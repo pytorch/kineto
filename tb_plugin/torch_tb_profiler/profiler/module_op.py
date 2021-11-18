@@ -1,3 +1,4 @@
+from collections import namedtuple
 from copy import copy
 
 from .node import ModuleNode, ProfilerStepNode, is_operator_node
@@ -141,24 +142,31 @@ def _aggregate_modules(modules):
 
 def _get_module_list(tid2tree):
     '''Get all ModuleNode from the operator tree'''
-    modules = []
-
     def traverse_node(node):
         if type(node) not in (ProfilerStepNode, ModuleNode):
             return
 
         if isinstance(node, ModuleNode):
-            modules.append(node)
+            yield node
 
         for child in node.children:
-            traverse_node(child)
+            yield from traverse_node(child)
 
     for _, root in tid2tree.items():
         for child in root.children:
-            traverse_node(child)
+            yield from traverse_node(child)
 
-    return modules
-
+Stats = namedtuple('Stats', [
+    'name',
+    'id',
+    'occurences',
+    'operators',
+    'host_duration',
+    'self_host_duration',
+    'device_duration',
+    'self_device_duration',
+    'avg_duration',
+    'children'])
 
 def _process_module_statistics(modules, hierarchy):
     '''Get the module statistics from the ModuleNode(s) and the hierarchy
@@ -171,7 +179,7 @@ def _process_module_statistics(modules, hierarchy):
             stats = module_aggs[(m.name, m.module_id)]
 
             child_stats = process_modules(m.children)
-            modules_stats.append((name,
+            modules_stats.append(Stats(name,
                 m.module_id,
                 stats.occurences,
                 stats.operators,

@@ -526,19 +526,19 @@ class RunProfile(object):
         def process_modules_stats(parent, modules_stats):
             for stats in modules_stats:
                 d = {
-                    "name": stats[0],
-                    "id": stats[1],
-                    "occurences": stats[2],
-                    "operators": stats[3],
-                    "host_duration": stats[4],
-                    "self_host_duration": stats[5],
-                    "device_duration": stats[6],
-                    "self_device_duration": stats[7],
-                    "avg_duration": stats[8],
+                    "name": stats.name,
+                    "id": stats.id,
+                    "occurences": stats.occurences,
+                    "operators": stats.operators,
+                    "host_duration": stats.host_duration,
+                    "self_host_duration": stats.self_host_duration,
+                    "device_duration": stats.device_duration,
+                    "self_device_duration": stats.self_device_duration,
+                    "avg_duration": stats.avg_duration,
                     "children": []
                 }
                 parent.append(d)
-                process_modules_stats(d["children"], stats[9])
+                process_modules_stats(d["children"], stats.children)
 
         process_modules_stats(result["data"], self.module_stats)
         return result

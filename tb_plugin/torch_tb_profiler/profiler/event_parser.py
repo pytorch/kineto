@@ -192,7 +192,7 @@ class OpTreeBuilder:
                 # Note: Although kernels of this dummy runtime is put under main thread's tree, 
                 # we don't know which thread launches them. 
                 # TODO: Don't make belonging thread assumption on future usage if we need special handling
-                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
+                dummpy_rt.append(RuntimeNode("dummy", None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
                 dummpy_rt[0].fill_stats()
             node_stack = []
             root_node = OperatorNode(
@@ -240,8 +240,11 @@ class OpTreeBuilder:
 
         root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
         remove_dup_nodes(root_node)
-        root_node.replace_time_by_children()
         root_node.fill_stats()
+
+        # replace the root_node start_time/end_time
+        root_node.start_time = next((child.start_time for child in root_node.children if child.start_time is not None), None)
+        root_node.end_time = next((child.end_time for child in reversed(root_node.children) if child.end_time is not None), None)
         return root_node
 
 

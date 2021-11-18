@@ -65,8 +65,6 @@ class ActivityLogger {
       const libkineto::ITraceActivity& activity) = 0;
 
 #ifdef HAS_CUPTI
-  virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
-
   virtual void handleGpuActivity(
       const GpuActivity<CUpti_ActivityKernel4>& activity) = 0;
   virtual void handleGpuActivity(

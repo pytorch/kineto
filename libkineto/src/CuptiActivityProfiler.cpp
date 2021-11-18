@@ -143,9 +143,8 @@ void CuptiActivityProfiler::processCpuTrace(
     if (config_->selectedActivityTypes().count(act.type())) {
       act.log(logger);
     }
-    // Stash event so we can look it up later when processing GPU trace
-    externalEvents_.insertEvent(&act);
     clientActivityTraceMap_[act.correlationId()] = &span_pair;
+    activityMap_[act.correlationId()] = &act;
   }
   logger.handleTraceSpan(cpu_span);
 }
@@ -153,39 +152,9 @@ void CuptiActivityProfiler::processCpuTrace(
 #ifdef HAS_CUPTI
 inline void CuptiActivityProfiler::handleCorrelationActivity(
     const CUpti_ActivityExternalCorrelation* correlation) {
-    externalEvents_.addCorrelation(
-        correlation->externalId, correlation->correlationId);
+  cpuCorrelationMap_[correlation->correlationId] = correlation->externalId;
 }
 #endif // HAS_CUPTI
-
-const libkineto::GenericTraceActivity&
-CuptiActivityProfiler::ExternalEventMap::correlatedActivity(uint32_t id) {
-  static const libkineto::GenericTraceActivity nullOp_(
-      defaultTraceSpan().first, ActivityType::CPU_OP, "NULL");
-
-  auto* res = events_[correlationMap_[id]];
-  if (res == nullptr) {
-    // Entry may be missing because cpu trace hasn't been processed yet
-    // Insert a dummy element so that we can check for this in insertEvent
-    events_[correlationMap_[id]] = &nullOp_;
-    res = &nullOp_;
-  }
-  return *res;
-}
-
-void CuptiActivityProfiler::ExternalEventMap::insertEvent(
-    const libkineto::GenericTraceActivity* op) {
-  if (events_[op->correlationId()] != nullptr) {
-    LOG_EVERY_N(WARNING, 100)
-        << "Events processed out of order - link will be missing";
-  }
-  events_[op->correlationId()] = op;
-}
-
-void CuptiActivityProfiler::ExternalEventMap::addCorrelation(
-    uint64_t external_id, uint32_t cuda_id) {
-  correlationMap_[cuda_id] = external_id;
-}
 
 static GenericTraceActivity createUserGpuSpan(
     const libkineto::ITraceActivity& cpuTraceActivity,
@@ -206,6 +175,10 @@ static GenericTraceActivity createUserGpuSpan(
 void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
     const ITraceActivity&,
     const ITraceActivity& gpuActivity) {
+  if (!gpuActivity.linkedActivity()) {
+    VLOG(0) << "Missing linked activity";
+    return;
+  }
   const ITraceActivity& cpuActivity = *gpuActivity.linkedActivity();
   StreamKey key(gpuActivity.deviceId(), gpuActivity.resourceId());
   CorrelationSpanMap& correlationSpanMap = streamSpanMap_[key];
@@ -252,7 +225,7 @@ inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
   return out_of_range;
 }
 
-inline void CuptiActivityProfiler::handleRuntimeActivity(
+void CuptiActivityProfiler::handleRuntimeActivity(
     const CUpti_ActivityAPI* activity,
     ActivityLogger* logger) {
   // Some CUDA calls that are very frequent and also not very interesting.
@@ -266,23 +239,30 @@ inline void CuptiActivityProfiler::handleRuntimeActivity(
   VLOG(2) << activity->correlationId
           << ": CUPTI_ACTIVITY_KIND_RUNTIME, cbid=" << activity->cbid
           << " tid=" << activity->threadId;
-  const GenericTraceActivity& ext =
-      externalEvents_.correlatedActivity(activity->correlationId);
   int32_t tid = activity->threadId;
   const auto& it = resourceInfo_.find({processId(), tid});
   if (it != resourceInfo_.end()) {
     tid = it->second.id;
   }
-  RuntimeActivity runtimeActivity(activity, ext, tid);
-  if (ext.correlationId() == 0 && outOfRange(runtimeActivity)) {
+  const ITraceActivity* linked = linkedActivity(
+      activity->correlationId, cpuCorrelationMap_);
+  const auto& runtime_activity =
+      traceBuffers_->addActivityWrapper(RuntimeActivity(activity, linked, tid));
+  checkTimestampOrder(&runtime_activity);
+  if (outOfRange(runtime_activity)) {
     return;
   }
-  runtimeActivity.log(*logger);
+  runtime_activity.log(*logger);
 }
 
-inline void CuptiActivityProfiler::updateGpuNetSpan(const ITraceActivity& gpuOp) {
+inline void CuptiActivityProfiler::updateGpuNetSpan(
+    const ITraceActivity& gpuOp) {
+  if (!gpuOp.linkedActivity()) {
+    VLOG(0) << "Missing linked activity";
+    return;
+  }
   const auto& it = clientActivityTraceMap_.find(
-      gpuOp.linkedActivity()->correlationId());
+     gpuOp.linkedActivity()->correlationId());
   if (it == clientActivityTraceMap_.end()) {
     // No correlation id mapping?
     return;
@@ -297,50 +277,69 @@ inline void CuptiActivityProfiler::updateGpuNetSpan(const ITraceActivity& gpuOp)
 }
 
 // I've observed occasional broken timestamps attached to GPU events...
-static bool timestampsInCorrectOrder(
-    const ITraceActivity& ext,
-    const ITraceActivity& gpuOp) {
-  if (ext.timestamp() > gpuOp.timestamp()) {
-    LOG(WARNING) << "GPU op timestamp (" << gpuOp.timestamp()
-                 << ") < runtime timestamp (" << ext.timestamp() << ") by "
-                 << ext.timestamp() - gpuOp.timestamp() << "us";
-    LOG(WARNING) << "Name: " << gpuOp.name()
-                 << " Device: " << gpuOp.deviceId()
-                 << " Stream: " << gpuOp.resourceId();
-    return false;
+void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
+  // Correlated GPU runtime activity cannot
+  // have timestamp greater than the GPU activity's
+  const auto& it = correlatedCudaActivities_.find(act1->correlationId());
+  if (it == correlatedCudaActivities_.end()) {
+    correlatedCudaActivities_.insert({act1->correlationId(), act1});
+    return;
   }
-  return true;
+
+  // Activities may be appear in the buffers out of order.
+  // If we have a runtime activity in the map, it should mean that we
+  // have a GPU activity passed in, and vice versa.
+  const ITraceActivity* act2 = it->second;
+  if (act2->type() == ActivityType::CUDA_RUNTIME) {
+    // Buffer is out-of-order.
+    // Swap so that runtime activity is first for the comparison below.
+    std::swap(act1, act2);
+  }
+  if (act1->timestamp() > act2->timestamp()) {
+    LOG(WARNING) << "GPU op timestamp (" << act2->timestamp()
+                 << ") < runtime timestamp (" << act1->timestamp() << ") by "
+                 << act1->timestamp() - act2->timestamp() << "us";
+    LOG(WARNING) << "Name: " << act2->name()
+                 << " Device: " << act2->deviceId()
+                 << " Stream: " << act2->resourceId();
+  }
 }
 
 inline void CuptiActivityProfiler::handleGpuActivity(
     const ITraceActivity& act,
     ActivityLogger* logger) {
-  const ITraceActivity& ext = *act.linkedActivity();
-  if (ext.timestamp() == 0 && outOfRange(act)) {
+  if (outOfRange(act)) {
     return;
   }
-  // Correlated GPU runtime activity cannot have timestamp greater than the GPU activity's
-  if (!timestampsInCorrectOrder(ext, act)) {
-    return;
-  }
-
-  VLOG(2) << ext.correlationId() << "," << act.correlationId() << ": "
+  checkTimestampOrder(&act);
+  VLOG(2) << act.correlationId() << ": "
           << act.name();
   recordStream(act.deviceId(), act.resourceId());
   act.log(*logger);
   updateGpuNetSpan(act);
-  if (config_->selectedActivityTypes().count(ActivityType::GPU_USER_ANNOTATION) &&
-      act.linkedActivity() &&
-      act.linkedActivity()->type() == ActivityType::USER_ANNOTATION) {
+}
+
+const ITraceActivity* CuptiActivityProfiler::linkedActivity(
+    int32_t correlationId,
+    const std::unordered_map<int64_t, int64_t>& correlationMap) {
+  const auto& it = correlationMap.find(correlationId);
+  if (it != correlationMap.end()) {
+    const auto& it2 = activityMap_.find(it->second);
+    if (it2 != activityMap_.end()) {
+      return it2->second;
+    }
   }
+  return nullptr;
 }
 
 template <class T>
 inline void CuptiActivityProfiler::handleGpuActivity(
     const T* act, ActivityLogger* logger) {
-  const GenericTraceActivity& extDefault =
-      externalEvents_.correlatedActivity(act->correlationId);
-  handleGpuActivity(GpuActivity<T>(act, extDefault), logger);
+  const ITraceActivity* linked = linkedActivity(
+      act->correlationId, cpuCorrelationMap_);
+  const auto& gpu_activity =
+      traceBuffers_->addActivityWrapper(GpuActivity<T>(act, linked));
+  handleGpuActivity(gpu_activity, logger);
 }
 
 void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger) {
@@ -684,7 +683,9 @@ void CuptiActivityProfiler::resetTraceData() {
     cupti_.clearActivities();
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
-  externalEvents_.clear();
+  activityMap_.clear();
+  cpuCorrelationMap_.clear();
+  correlatedCudaActivities_.clear();
   gpuUserEventMap_.clear();
   traceSpans_.clear();
   clientActivityTraceMap_.clear();

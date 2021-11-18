@@ -189,9 +189,7 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
       0x20000000ll);
   // clang-format on
 
-  if (span.tracked) {
-    addIterationMarker(span);
-  }
+  addIterationMarker(span);
 }
 
 void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
@@ -253,7 +251,14 @@ void ChromeTraceLogger::handleGenericActivity(
   const std::string op_metadata = op.metadataJson();
   std::string separator = "";
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
-    separator = ",";
+    separator = ",\n      ";
+  }
+  std::string span = "";
+  if (op.traceSpan()) {
+    span = fmt::format(R"JSON(
+      "Trace name": "{}", "Trace iteration": {},)JSON",
+        op.traceSpan()->name,
+        op.traceSpan()->iteration);
   }
   const std::string tid =
       op.type() == ActivityType::GPU_USER_ANNOTATION ?
@@ -261,67 +266,46 @@ void ChromeTraceLogger::handleGenericActivity(
       fmt::format("{}", op.resourceId());
 
   // clang-format off
-
-  switch (op.type()) {
-    case ActivityType::CUDA_RUNTIME:
-      {
-        traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "Runtime", {},
-    "args": {{
-      {}
-    }}
-  }},)JSON",
-            traceActivityJson(op),
-            op_metadata);
-        handleLink(kFlowStart, op, op.correlationId(), "async_gpu", "async_gpu");
-      }
-      break;
-    case ActivityType::CONCURRENT_KERNEL:
-      {
-        traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "Kernel", {},
-    "args": {{
-      {}
-    }}
-  }},)JSON",
-            traceActivityJson(op),
-            op_metadata);
-        handleLink(kFlowEnd, op, op.correlationId(), "async_gpu", "async_gpu");
-      }
-      break;
-    default:
-      {
-        traceOf_ << fmt::format(R"JSON(
+  traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", {},
-    "args": {{
-       "External id": {},
-       "Trace name": "{}", "Trace iteration": {}{}
-       {}
+    "args": {{{}
+      "External id": {}{}{}
     }}
   }},)JSON",
-      toString(op.type()), traceActivityJson(op),
-            // args
-            op.correlationId(),
-            op.traceSpan()->name, op.traceSpan()->iteration, separator,
-            op_metadata);
-      }
-      break;
-  }
+          toString(op.type()), traceActivityJson(op),
+          // args
+          span,
+          op.correlationId(), separator, op_metadata);
   // clang-format on
-  if (op.linkedActivity() != nullptr) {
+  if (op.flowId() > 0) {
     handleGenericLink(op);
   }
 }
 
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
-  if (act.flowType() == kLinkFwdBwd) {
-    const auto& from_act = *act.linkedActivity();
-    handleLink(kFlowStart, from_act, act.flowId(), "forward_backward", "fwd_bwd");
-    handleLink(kFlowEnd, act, act.flowId(), "forward_backward", "fwd_bwd");
+  static struct {
+    int type;
+    char longName[24];
+    char shortName[16];
+  } flow_names[] = {
+    {kLinkFwdBwd, "forward_backward", "fwd_bwd"},
+    {kLinkAsyncCpuGpu, "async_cpu_to_gpu", "async_gpu"}
+  };
+  for (auto& flow : flow_names) {
+    if (act.flowType() == flow.type) {
+      // Link the activities via flow ID in source and destination.
+      // The source node must return true from flowStart()
+      // and the destination node false.
+      if (act.flowStart()) {
+        handleLink(kFlowStart, act, act.flowId(), flow.longName, flow.shortName);
+      } else {
+        handleLink(kFlowEnd, act, act.flowId(), flow.longName, flow.shortName);
+      }
+      return;
+    }
   }
+  LOG(ERROR) << "Unknown flow type: " << act.flowType();
 }
 
 void ChromeTraceLogger::handleLink(
@@ -345,42 +329,6 @@ void ChromeTraceLogger::handleLink(
 }
 
 #ifdef HAS_CUPTI
-void ChromeTraceLogger::handleRuntimeActivity(
-    const RuntimeActivity& activity) {
-  if (!traceOf_) {
-    return;
-  }
-
-  const CUpti_CallbackId cbid = activity.raw().cbid;
-  const ITraceActivity& ext = *activity.linkedActivity();
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "Runtime", {},
-    "args": {{
-      "cbid": {}, "correlation": {},
-      "external id": {}, "external ts": {}
-    }}
-  }},)JSON",
-      traceActivityJson(activity),
-      // args
-      cbid, activity.raw().correlationId,
-      ext.correlationId(), ext.timestamp());
-  // clang-format on
-
-  // FIXME: This is pretty hacky and it's likely that we miss some links.
-  // May need to maintain a map instead.
-  if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000 ||
-      (cbid >= CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020 &&
-       cbid <= CUPTI_RUNTIME_TRACE_CBID_cudaMemset2DAsync_v3020) ||
-      cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
-      cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000) {
-    auto from_id = activity.correlationId();
-    handleLink(kFlowStart, activity, from_id, "async_gpu", activity.name());
-  }
-}
-
 // GPU side kernel activity
 void ChromeTraceLogger::handleGpuActivity(
     const GpuActivity<CUpti_ActivityKernel4>& activity) {
@@ -388,7 +336,6 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityKernel4* kernel = &activity.raw();
-  const ITraceActivity& ext = *activity.linkedActivity();
   constexpr int threads_per_warp = 32;
   float blocks_per_sm = -1.0;
   float warps_per_sm = -1.0;
@@ -418,7 +365,7 @@ void ChromeTraceLogger::handleGpuActivity(
     "ph": "X", "cat": "Kernel", {},
     "args": {{
       "queued": {}, "device": {}, "context": {},
-      "stream": {}, "correlation": {}, "external id": {},
+      "stream": {}, "correlation": {},
       "registers per thread": {},
       "shared memory": {},
       "blocks per SM": {},
@@ -431,7 +378,7 @@ void ChromeTraceLogger::handleGpuActivity(
       traceActivityJson(activity),
       // args
       us(kernel->queued), kernel->deviceId, kernel->contextId,
-      kernel->streamId, kernel->correlationId, ext.correlationId(),
+      kernel->streamId, kernel->correlationId,
       kernel->registersPerThread,
       kernel->staticSharedMemory + kernel->dynamicSharedMemory,
       blocks_per_sm,
@@ -442,7 +389,7 @@ void ChromeTraceLogger::handleGpuActivity(
   // clang-format on
 
   auto to_id = activity.correlationId();
-  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaLaunchKernel");
+  handleLink(kFlowEnd, activity, to_id, "async_cpu_to_gpu", "async_gpu");
 }
 
 static std::string bandwidth(uint64_t bytes, uint64_t duration) {
@@ -456,7 +403,6 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityMemcpy& memcpy = activity.raw();
-  const ITraceActivity& ext = *activity.linkedActivity();
   VLOG(2) << memcpy.correlationId << ": MEMCPY";
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
@@ -464,19 +410,19 @@ void ChromeTraceLogger::handleGpuActivity(
     "ph": "X", "cat": "Memcpy", {},
     "args": {{
       "device": {}, "context": {},
-      "stream": {}, "correlation": {}, "external id": {},
+      "stream": {}, "correlation": {},
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
       traceActivityJson(activity),
       // args
       memcpy.deviceId, memcpy.contextId,
-      memcpy.streamId, memcpy.correlationId, ext.correlationId(),
+      memcpy.streamId, memcpy.correlationId,
       memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
   int64_t to_id = activity.correlationId();
-  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemcpyAsync");
+  handleLink(kFlowEnd, activity, to_id, "async_cpu_to_gpu", "async_gpu");
 }
 
 // GPU side memcpy activity
@@ -486,7 +432,6 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityMemcpy2& memcpy = activity.raw();
-  const ITraceActivity& ext = *activity.linkedActivity();
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -494,7 +439,7 @@ void ChromeTraceLogger::handleGpuActivity(
     "args": {{
       "fromDevice": {}, "inDevice": {}, "toDevice": {},
       "fromContext": {}, "inContext": {}, "toContext": {},
-      "stream": {}, "correlation": {}, "external id": {},
+      "stream": {}, "correlation": {},
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
@@ -502,12 +447,12 @@ void ChromeTraceLogger::handleGpuActivity(
       // args
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
-      memcpy.streamId, memcpy.correlationId, ext.correlationId(),
+      memcpy.streamId, memcpy.correlationId,
       memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
   // clang-format on
 
   int64_t to_id = activity.correlationId();
-  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemcpyAsync");
+  handleLink(kFlowEnd, activity, to_id, "async_cpu_to_gpu", "async_gpu");
 }
 
 void ChromeTraceLogger::handleGpuActivity(
@@ -516,26 +461,25 @@ void ChromeTraceLogger::handleGpuActivity(
     return;
   }
   const CUpti_ActivityMemset& memset = activity.raw();
-  const ITraceActivity& ext = *activity.linkedActivity();
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "Memset", {},
     "args": {{
       "device": {}, "context": {},
-      "stream": {}, "correlation": {}, "external id": {},
+      "stream": {}, "correlation": {},
       "bytes": {}, "memory bandwidth (GB/s)": {}
     }}
   }},)JSON",
       traceActivityJson(activity),
       // args
       memset.deviceId, memset.contextId,
-      memset.streamId, memset.correlationId, ext.correlationId(),
+      memset.streamId, memset.correlationId,
       memset.bytes, bandwidth(memset.bytes, memset.end - memset.start));
   // clang-format on
 
   int64_t to_id = activity.correlationId();
-  handleLink(kFlowEnd, activity, to_id, "async_gpu", "cudaMemsetAsync");
+  handleLink(kFlowEnd, activity, to_id, "async_cpu_to_gpu", "async_gpu");
 }
 #endif // HAS_CUPTI
 

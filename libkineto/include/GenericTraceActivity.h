@@ -20,6 +20,7 @@ namespace libkineto {
 
 // Link type, used in GenericTraceActivity.flow.type
 constexpr unsigned int kLinkFwdBwd = 1;
+constexpr unsigned int kLinkAsyncCpuGpu = 2;
 
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
@@ -57,6 +58,10 @@ class GenericTraceActivity : public ITraceActivity {
     return activityType;
   }
 
+  const ITraceActivity* linkedActivity() const override {
+    return nullptr;
+  }
+
   int flowType() const override {
     return flow.type;
   }
@@ -65,12 +70,12 @@ class GenericTraceActivity : public ITraceActivity {
     return flow.id;
   }
 
-  const std::string name() const override {
-    return activityName;
+  bool flowStart() const override {
+    return flow.start;
   }
 
-  const ITraceActivity* linkedActivity() const override {
-    return flow.linkedActivity;
+  const std::string name() const override {
+    return activityName;
   }
 
   const TraceSpan* traceSpan() const override {
@@ -103,13 +108,13 @@ class GenericTraceActivity : public ITraceActivity {
   ActivityType activityType;
   std::string activityName;
   struct Flow {
-    Flow(): linkedActivity(nullptr), id(0), type(0) {}
-    ITraceActivity* linkedActivity; // Only set in destination side.
+    Flow(): id(0), type(0), start(0) {}
     // Ids must be unique within each type
-    uint32_t id : 28;
+    uint32_t id : 27;
     // Type will be used to connect flows between profilers, as
     // well as look up flow information (name etc)
     uint32_t type : 4;
+    uint32_t start : 1;
   } flow;
 
  private:

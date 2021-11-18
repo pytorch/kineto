@@ -133,41 +133,6 @@ class CuptiActivityProfiler {
 
  private:
 
-  class ExternalEventMap {
-   public:
-
-    // The correlation id of the GPU activity
-    const libkineto::GenericTraceActivity& correlatedActivity(
-        uint32_t correlation_id);
-    void insertEvent(const libkineto::GenericTraceActivity* op);
-
-    void addCorrelation(uint64_t external_id, uint32_t cuda_id);
-
-    void clear() {
-      events_.clear();
-      correlationMap_.clear();
-    }
-
-   private:
-    // Map extern correlation ID to Operator info.
-    // This is a map of regular pointers which is generally a bad idea,
-    // but this class also fully owns the objects it is pointing to so
-    // it's not so bad. This is done for performance reasons and is an
-    // implementation detail of this class that might change.
-    std::unordered_map<int64_t, const libkineto::GenericTraceActivity*>
-        events_;
-
-    // Cuda correlation id -> external correlation id for default events
-    // CUPTI provides a mechanism for correlating Cuda events to arbitrary
-    // external events, e.g.operator events from Caffe2.
-    // It also marks GPU activities with the Cuda event correlation ID.
-    // So by connecting the two, we get the complete picture.
-    std::unordered_map<
-        uint32_t, // Cuda correlation ID
-        uint64_t> // External correlation ID
-        correlationMap_;
-  };
-
   // Map of gpu activities to user defined events
   class GpuUserEventMap {
    public:
@@ -194,6 +159,15 @@ class CuptiActivityProfiler {
   };
 
   GpuUserEventMap gpuUserEventMap_;
+  // id -> activity*
+  std::unordered_map<int64_t, const ITraceActivity*> activityMap_;
+  // cuda runtime id -> pytorch op id
+  // CUPTI provides a mechanism for correlating Cuda events to arbitrary
+  // external events, e.g.operator activities from PyTorch.
+  std::unordered_map<int64_t, int64_t> cpuCorrelationMap_;
+  // CUDA runtime <-> GPU Activity
+  std::unordered_map<int64_t, const ITraceActivity*>
+      correlatedCudaActivities_;
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
   struct profilerOverhead {
@@ -241,6 +215,10 @@ class CuptiActivityProfiler {
   // net name to id
   int netId(const std::string& netName);
 
+  const ITraceActivity* linkedActivity(
+      int32_t correlationId,
+      const std::unordered_map<int64_t, int64_t>& correlationMap);
+
 #ifdef HAS_CUPTI
   // Process generic CUPTI activity
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
@@ -271,6 +249,8 @@ class CuptiActivityProfiler {
     return counter.overhead / counter.cntr;
   }
 
+  void checkTimestampOrder(const ITraceActivity* act1);
+
   // On-demand request configuration
   std::unique_ptr<Config> config_;
 
@@ -295,7 +275,6 @@ class CuptiActivityProfiler {
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
   std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
 
-  ExternalEventMap externalEvents_;
 
   // All recorded trace spans, both CPU and GPU
   // Trace Id -> list of iterations.

@@ -348,54 +348,6 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 #endif
 }
 
-TEST_F(CuptiActivityProfilerTest, CorrelatedTimestampTest) {
-  // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules(
-      {"CuptiActivityProfiler.cpp"});
-  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
-
-  // Start and stop profiling
-  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_us = 100;
-  int64_t duration_us = 300;
-  auto start_time = time_point<system_clock>(microseconds(start_time_us));
-  profiler.configure(*cfg_, start_time);
-  profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + microseconds(duration_us));
-
-  // Scenario 1: Test mismatch in CPU and GPU events.
-  // When launching kernel, the CPU event should always precede the GPU event.
-  int64_t kernelLaunchTime = 120;
-
-  profiler.recordThreadInfo();
-
-  // set up CPU event
-  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
-      start_time_us, start_time_us + duration_us);
-  cpuOps->addOp("launchKernel", kernelLaunchTime, kernelLaunchTime + 10, 1);
-  profiler.transferCpuTrace(std::move(cpuOps));
-
-  // set up GPU event
-  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
-  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, 1);
-  gpuOps->addKernelActivity(kernelLaunchTime - 1, kernelLaunchTime + 10, 1);
-  cuptiActivities_.activityBuffer = std::move(gpuOps);
-
-  // process trace
-  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
-  profiler.processTrace(*logger);
-
-  ActivityTrace trace(std::move(logger), loggerFactory);
-  std::map<std::string, int> counts;
-  for (auto& activity : *trace.activities()) {
-    counts[activity->name()]++;
-  }
-
-  // The GPU launch kernel activities should have been dropped due to invalid timestamps
-  EXPECT_EQ(counts["cudaLaunchKernel"], 0);
-  EXPECT_EQ(counts["launchKernel"], 1);
-}
-
 TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   using ::testing::Return;
   using ::testing::ByMove;

@@ -36,8 +36,6 @@ struct TraceSpan {
   std::string name;
   // Prefix used to distinguish trace spans on the same timeline
   std::string prefix;
-  // Tracked by profiler for iteration trigger
-  bool tracked{false};
 };
 
 } // namespace libkineto

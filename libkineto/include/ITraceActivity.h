@@ -33,6 +33,7 @@ struct ITraceActivity {
   // Part of a flow, identified by flow id and type
   virtual int flowType() const = 0;
   virtual int flowId() const = 0;
+  virtual bool flowStart() const = 0;
   virtual ActivityType type() const = 0;
   virtual const std::string name() const = 0;
   // Optional linked activity

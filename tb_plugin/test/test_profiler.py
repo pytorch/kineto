@@ -2360,7 +2360,6 @@ class TestDistributed(unittest.TestCase):
         self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
             [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
 
-
 class TestMemoryCurve(unittest.TestCase):
     
     def __init__(self, *args, **kwargs):
@@ -2479,6 +2478,149 @@ class TestMemoryCurve(unittest.TestCase):
                 self.assertEqual(self.event_data_gpu[i//2][-2], curves["GPU0"][i][1])
                 self.assertEqual(self.event_data_gpu[i//2][-1], curves["GPU0"][i][2])
 
+
+class TestModuleView(unittest.TestCase):
+
+    def test_build_module_hierarchy(self):
+      from torch_tb_profiler.profiler import trace
+      from torch_tb_profiler.profiler.module_op import _build_module_hierarchy, aggegate_module_view
+
+      json_content = """[
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "test_root", "pid": 1908, "tid": 1908,
+          "ts": 1, "dur": 19367,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 1, "Python thread": 0
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
+          "ts": 2, "dur": 211,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 2, "Python parent id": 1, "Python module id": 0
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
+          "ts": 5, "dur": 62,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 3, "Python parent id": 2, "Python thread": 0, "Python module id": 1
+          }
+        },
+        {
+          "ph": "X", "cat": "cpu_op", 
+          "name": "aten::addmm", "pid": 1908, "tid": 1908,
+          "ts": 10, "dur": 31,
+          "args": {
+            "External id": 12182,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 3
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
+          "ts": 1000, "dur": 211,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 4, "Python parent id": 1, "Python module id": 0
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
+          "ts": 1001, "dur": 62,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 5, "Python parent id": 4, "Python thread": 0, "Python module id": 1
+          }
+        },
+        {
+          "ph": "X", "cat": "cpu_op", 
+          "name": "aten::addmm", "pid": 1908, "tid": 1908,
+          "ts": 1002, "dur": 32,
+          "args": {
+            "External id": 12182,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 5
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
+          "ts": 2000, "dur": 211,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 6, "Python parent id": 1, "Python module id": 0
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
+          "ts": 2001, "dur": 62,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 7, "Python parent id": 6, "Python thread": 0, "Python module id": 1
+          }
+        },
+        {
+          "ph": "X", "cat": "cpu_op", 
+          "name": "aten::addmm", "pid": 1908, "tid": 1908,
+          "ts": 2002, "dur": 33,
+          "args": {
+            "External id": 12182,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 7
+          }
+        },
+        {
+          "ph": "X", "cat": "python_function", 
+          "name": "nn.Module: Conv2", "pid": 1908, "tid": 1908,
+          "ts": 3000, "dur": 211,
+          "args": {
+            "External id": 0,
+            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+            "Python id": 8, "Python parent id": 1, "Python module id": 100
+          }
+        }
+      ]
+      """
+      data = parse_json_trace(json_content)
+      stats = aggegate_module_view(data.tid2tree, data.events)
+      stats.sort(key=lambda x: x.name)
+      self.assertEqual(2, len(stats))
+      self.assertEqual("Conv2", stats[0].name)
+      self.assertEqual("MyModule", stats[1].name)
+      self.assertEqual(1, len(stats[1].children))
+      self.assertEqual("Linear", stats[1].children[0].name)
+
+      content = json.loads(json_content)
+
+      events = []
+      for data in content:
+            event = trace.create_event(data)
+            events.append(event)
+
+      roots = _build_module_hierarchy(events)
+      roots.sort(key = lambda x: x.name)
+      self.assertEqual(2, len(roots))
+      self.assertEqual("nn.Module: Conv2", roots[0].name)
+      self.assertEqual("nn.Module: MyModule", roots[1].name)
+      self.assertEqual(1, len(roots[1].children))
+      self.assertEqual("nn.Module: Linear", roots[1].children[0].name)
 
 if __name__ == '__main__':
     unittest.main()

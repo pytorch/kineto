@@ -1,5 +1,4 @@
 from collections import namedtuple
-from copy import copy
 
 from .node import ModuleNode, ProfilerStepNode, is_operator_node
 from .trace import EventTypes
@@ -12,10 +11,7 @@ class Module:
         self.children = []
 
     def __hash__(self):
-        if self.children:
-            return hash((self.name, self.module_id, tuple(self.children)))
-        else:
-            return hash((self.name, self.module_id))
+        return hash((self.name, self.module_id, tuple(self.children)))
 
     def __eq__(self, o) -> bool:
         if not isinstance(o, Module):
@@ -57,7 +53,6 @@ def _build_module_hierarchy(events):
     '''Get the module hierarchy from the chome trace events
     '''
     python_events = [e for e in events if e.type in (EventTypes.PYTHON_FUNCTION, EventTypes.MODULE)]
-    python_events.sort(key=lambda e: e.python_id)
     id_to_event = {e.python_id: e for e in python_events}
 
     # Extract Python function topology.
@@ -196,6 +191,8 @@ def _process_module_statistics(modules, hierarchy):
 
 def get_module_tree(tid2tree):
     '''Get the module tree in timeline'''
+    from copy import copy
+
     modules = []
 
     def traverse_node(node, parent):

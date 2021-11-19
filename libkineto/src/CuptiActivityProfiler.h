@@ -111,6 +111,7 @@ class CuptiActivityProfiler {
           ActivityLogger::ResourceInfo(
               pid,
               sysTid,
+              sysTid,
               fmt::format("thread {} ({})", sysTid, getThreadName())));
     }
   }
@@ -168,6 +169,7 @@ class CuptiActivityProfiler {
   // CUDA runtime <-> GPU Activity
   std::unordered_map<int64_t, const ITraceActivity*>
       correlatedCudaActivities_;
+  std::unordered_map<int64_t, int64_t> userCorrelationMap_;
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
   struct profilerOverhead {
@@ -195,12 +197,13 @@ class CuptiActivityProfiler {
       ActivityLogger& logger);
 
   // Create resource names for streams
-  inline void recordStream(int device, int id) {
+  inline void recordStream(int device, int id, const char* postfix) {
     if (resourceInfo_.find({device, id}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(device, id),
           ActivityLogger::ResourceInfo(
-              device, id, fmt::format("stream {}", id)));
+              device, id, id, fmt::format(
+                  "stream {} {}", id, postfix)));
     }
   }
 
@@ -242,6 +245,7 @@ class CuptiActivityProfiler {
     counter.overhead += overhead;
     counter.cntr++;
   }
+
   int64_t getOverhead(const profilerOverhead& counter) {
     if (counter.cntr == 0) {
       return 0;

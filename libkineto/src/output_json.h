@@ -44,13 +44,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleGenericActivity(const ITraceActivity& activity) override;
 
-#ifdef HAS_CUPTI
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override;
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override;
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override;
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
-#endif // HAS_CUPTI
-
   void handleTraceStart(
       const std::unordered_map<std::string, std::string>& metadata) override;
 

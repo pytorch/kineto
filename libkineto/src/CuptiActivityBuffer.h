@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <vector>
 
+#include "ITraceActivity.h"
+
 namespace KINETO_NAMESPACE {
 
 class CuptiActivityBuffer {
@@ -44,6 +46,8 @@ class CuptiActivityBuffer {
 
   std::vector<uint8_t> buf_;
   size_t size_;
+
+  std::vector<std::unique_ptr<const ITraceActivity>> wrappers_;
 };
 
 using CuptiActivityBufferMap =

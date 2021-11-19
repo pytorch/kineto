@@ -63,11 +63,6 @@ class MemoryTraceLogger : public ActivityLogger {
     activities_.push_back(wrappers_.back().get());
   }
 
-  void handleRuntimeActivity(
-      const RuntimeActivity& activity) override {
-    addActivityWrapper(activity);
-  }
-
   void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override {
     addActivityWrapper(activity);
   }

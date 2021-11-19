@@ -30,7 +30,7 @@ struct TraceSpan;
 // Abstract base class, templated on Cupti activity type
 template<class T>
 struct CuptiActivity : public ITraceActivity {
-  explicit CuptiActivity(const T* activity, const ITraceActivity& linked)
+  explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
   int64_t timestamp() const override {
     return nsToUs(unixEpochTimestamp(activity_.start));
@@ -39,27 +39,28 @@ struct CuptiActivity : public ITraceActivity {
     return nsToUs(activity_.end - activity_.start);
   }
   int64_t correlationId() const override {return activity_.correlationId;}
-  int flowType() const override {return 0;}
-  int flowId() const override {return 0;}
+  const ITraceActivity* linkedActivity() const override {return linked_;}
+  int flowType() const override {return kLinkAsyncCpuGpu;}
+  int flowId() const override {return correlationId();}
   const T& raw() const {return activity_;}
-  const ITraceActivity* linkedActivity() const override {return &linked_;}
   const TraceSpan* traceSpan() const override {return nullptr;}
 
  protected:
   const T& activity_;
-  const ITraceActivity& linked_;
+  const ITraceActivity* linked_{nullptr};
 };
 
 // CUpti_ActivityAPI - CUDA runtime activities
 struct RuntimeActivity : public CuptiActivity<CUpti_ActivityAPI> {
   explicit RuntimeActivity(
       const CUpti_ActivityAPI* activity,
-      const ITraceActivity& linked,
+      const ITraceActivity* linked,
       int32_t threadId)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
   int64_t deviceId() const override {return processId();}
   int64_t resourceId() const override {return threadId_;}
   ActivityType type() const override {return ActivityType::CUDA_RUNTIME;}
+  bool flowStart() const override;
   const std::string name() const override {return runtimeCbidName(activity_.cbid);}
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
@@ -72,11 +73,12 @@ struct RuntimeActivity : public CuptiActivity<CUpti_ActivityAPI> {
 // Can also be instantiated directly.
 template<class T>
 struct GpuActivity : public CuptiActivity<T> {
-  explicit GpuActivity(const T* activity, const ITraceActivity& linked)
+  explicit GpuActivity(const T* activity, const ITraceActivity* linked)
       : CuptiActivity<T>(activity, linked) {}
   int64_t deviceId() const override {return raw().deviceId;}
   int64_t resourceId() const override {return raw().streamId;}
   ActivityType type() const override;
+  bool flowStart() const override {return false;}
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;

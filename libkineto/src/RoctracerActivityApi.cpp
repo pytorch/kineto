@@ -88,6 +88,9 @@ int RoctracerActivityApi::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     logger.handleGenericActivity(a);
     ++count;
@@ -103,6 +106,9 @@ int RoctracerActivityApi::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     a.addMetadata("ptr", item.ptr);
     if (item.cid == HIP_API_ID_hipMalloc) {
@@ -123,6 +129,9 @@ int RoctracerActivityApi::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     a.addMetadata("src", item.src);
     a.addMetadata("dst", item.dst);
@@ -147,6 +156,9 @@ int RoctracerActivityApi::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     if (item.functionAddr != nullptr) {
       a.addMetadataQuoted(
@@ -205,6 +217,9 @@ int RoctracerActivityApi::processActivities(
 
         a.activityType = ActivityType::CUDA_RUNTIME;
         a.activityName = std::string(name);
+        a.flow.id = item.id;
+        a.flow.type = kLinkAsyncCpuGpu;
+        a.flow.start = true;
 
         logger.handleGenericActivity(a);
         ++count;
@@ -226,6 +241,8 @@ int RoctracerActivityApi::processActivities(
 
         a.activityType = ActivityType::CONCURRENT_KERNEL;
         a.activityName = std::string(name);
+        a.flow.id = item.id;
+        a.flow.type = kLinkAsyncCpuGpu;
 
         auto it = kernelNames_.find(record->correlation_id);
         if (it != kernelNames_.end()) {

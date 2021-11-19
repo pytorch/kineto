@@ -348,6 +348,69 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 #endif
 }
 
+TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
+  // Verbose logging is useful for debugging
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  // Start and stop profiling
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_us = 100;
+  int64_t duration_us = 300;
+  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + microseconds(duration_us));
+
+  int64_t kernelLaunchTime = 120;
+  profiler.recordThreadInfo();
+
+  // set up CPU event
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_us, start_time_us + duration_us);
+  cpuOps->addOp("annotation", kernelLaunchTime, kernelLaunchTime + 10, 1);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  // set up a coiple of GPU events and correlate with above CPU event.
+  // CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1 is used for user annotations.
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, 1);
+  gpuOps->addKernelActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
+  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, 1);
+  gpuOps->addKernelActivity(kernelLaunchTime + 15, kernelLaunchTime + 25, 1);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  // process trace
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  std::map<std::string, int> counts;
+  for (auto& activity : *trace.activities()) {
+    counts[activity->name()]++;
+  }
+
+  // We should now have an additional annotation activity created
+  // on the GPU timeline.
+  EXPECT_EQ(counts["annotation"], 2);
+  EXPECT_EQ(counts["kernel"], 2);
+
+  auto& annotation = trace.activities()->at(0);
+  auto& kernel1 = trace.activities()->at(1);
+  auto& kernel2 = trace.activities()->at(2);
+  auto& gpu_annotation = trace.activities()->at(3);
+  EXPECT_EQ(gpu_annotation->type(), ActivityType::GPU_USER_ANNOTATION);
+  EXPECT_EQ(gpu_annotation->timestamp(), kernel1->timestamp());
+  EXPECT_EQ(
+      gpu_annotation->duration(),
+      kernel2->timestamp() + kernel2->duration() - kernel1->timestamp());
+  EXPECT_EQ(gpu_annotation->deviceId(), kernel1->deviceId());
+  EXPECT_EQ(gpu_annotation->resourceId(), kernel1->resourceId());
+  EXPECT_EQ(gpu_annotation->correlationId(), annotation->correlationId());
+  EXPECT_EQ(gpu_annotation->name(),  annotation->name());
+}
+
 TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   using ::testing::Return;
   using ::testing::ByMove;

@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from .. import utils
 from .communication import generate_communication_nodes
-from .node import (CommunicationNode, DeviceNode, OperatorNode,
+from .node import (CommunicationNode, DeviceNode, ModuleNode, OperatorNode,
                    ProfilerStepNode, RuntimeNode)
 from .range_utils import merge_ranges
 from .trace import EventTypes
@@ -132,9 +132,11 @@ class NodeParserMixin:
                     if rt_node.external_id != device_node.external_id:
                         logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (rt external_id, device external_id): (%s, %s)" % 
                             (corrid, rt_node.external_id, device_node.external_id))
-        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP, EventTypes.MODULE]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event)
+            elif event.type == EventTypes.MODULE:
+                op_node = ModuleNode.create(event)
             else:
                 op_node = OperatorNode.create(event)
             if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
@@ -190,7 +192,7 @@ class OpTreeBuilder:
                 # Note: Although kernels of this dummy runtime is put under main thread's tree, 
                 # we don't know which thread launches them. 
                 # TODO: Don't make belonging thread assumption on future usage if we need special handling
-                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
+                dummpy_rt.append(RuntimeNode("dummy", None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
                 dummpy_rt[0].fill_stats()
             node_stack = []
             root_node = OperatorNode(
@@ -238,8 +240,11 @@ class OpTreeBuilder:
 
         root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
         remove_dup_nodes(root_node)
-        root_node.replace_time_by_children()
         root_node.fill_stats()
+
+        # replace the root_node start_time/end_time
+        root_node.start_time = next((child.start_time for child in root_node.children if child.start_time is not None), None)
+        root_node.end_time = next((child.end_time for child in reversed(root_node.children) if child.end_time is not None), None)
         return root_node
 
 

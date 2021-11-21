@@ -22,6 +22,7 @@ KERNEL_VIEW = View(3, "kernel", "Kernel")
 TRACE_VIEW = View(4, "trace", "Trace")
 DISTRIBUTED_VIEW = View(5, "distributed", "Distributed")
 MEMORY_VIEW = View(6, "memory", "Memory")
+MODULE_VIEW = View(7, "module", "Module")
 
 TOOLTIP_GPU_UTIL = \
     "GPU Utilization:\n" \

@@ -108,7 +108,7 @@ export interface CallStackTableDataInner {
    * @type {string}
    * @memberof CallStackTableDataInner
    */
-  inputShape?: string
+  input_shape?: string
   /**
    *
    * @type {number}
@@ -120,49 +120,49 @@ export interface CallStackTableDataInner {
    * @type {number}
    * @memberof CallStackTableDataInner
    */
-  deviceSelfDuration?: number
+  device_self_duration?: number
   /**
    *
    * @type {number}
    * @memberof CallStackTableDataInner
    */
-  deviceTotalDuration?: number
+  device_total_duration?: number
   /**
    *
    * @type {number}
    * @memberof CallStackTableDataInner
    */
-  hostSelfDuration: number
+  host_self_duration: number
   /**
    *
    * @type {number}
    * @memberof CallStackTableDataInner
    */
-  hostTotalDuration: number
+  host_total_duration: number
   /**
    *
    * @type {string}
    * @memberof CallStackTableDataInner
    */
-  callStack?: string
+  call_stack?: string
   /**
    *
    * @type {string}
    * @memberof CallStackTableDataInner
    */
-  tcEligible?: string
+  tc_eligible?: string
   /**
    *
    * @type {number}
    * @memberof CallStackTableDataInner
    */
-  tcSelfRatio?: number
+  tc_self_ratio?: number
   /**
    *
    * @type {number}
    * @memberof CallStackTableDataInner
    */
-  tcTotalRatio?: number
+  tc_total_ratio?: number
 }
 /**
  *
@@ -439,6 +439,31 @@ export interface KernelGraph {
 /**
  *
  * @export
+ * @interface KeyedColumn
+ */
+export interface KeyedColumn {
+  /**
+   *
+   * @type {string}
+   * @memberof KeyedColumn
+   */
+  type: string
+  /**
+   *
+   * @type {string}
+   * @memberof KeyedColumn
+   */
+  name: string
+  /**
+   *
+   * @type {string}
+   * @memberof KeyedColumn
+   */
+  key: string
+}
+/**
+ *
+ * @export
  * @interface MemoryCurveData
  */
 export interface MemoryCurveData {
@@ -472,7 +497,7 @@ export interface MemoryCurveDataMetadata {
    * @type {string}
    * @memberof MemoryCurveDataMetadata
    */
-  defaultDevice: string
+  default_device: string
   /**
    *
    * @type {Array<string>}
@@ -496,31 +521,31 @@ export interface MemoryCurveDataMetadata {
    * @type {number}
    * @memberof MemoryCurveDataMetadata
    */
-  firstTs: number
+  first_ts: number
   /**
    *
    * @type {string}
    * @memberof MemoryCurveDataMetadata
    */
-  timeMetric: string
+  time_metric: string
   /**
    *
    * @type {string}
    * @memberof MemoryCurveDataMetadata
    */
-  memoryMetric: string
+  memory_metric: string
   /**
    *
    * @type {number}
    * @memberof MemoryCurveDataMetadata
    */
-  timeFactor: number
+  time_factor: number
   /**
    *
    * @type {number}
    * @memberof MemoryCurveDataMetadata
    */
-  memoryFactor: number
+  memory_factor: number
 }
 /**
  *
@@ -564,7 +589,7 @@ export interface MemoryEventsTableMetadata {
    * @type {string}
    * @memberof MemoryEventsTableMetadata
    */
-  defaultDevice: string
+  default_device: string
   /**
    *
    * @type {string}
@@ -620,7 +645,7 @@ export interface MemoryStatsTableMetadata {
    * @type {string}
    * @memberof MemoryStatsTableMetadata
    */
-  defaultDevice: string
+  default_device: string
   /**
    *
    * @type {string}
@@ -633,6 +658,92 @@ export interface MemoryStatsTableMetadata {
    * @memberof MemoryStatsTableMetadata
    */
   sort: string
+}
+/**
+ *
+ * @export
+ * @interface ModuleStats
+ */
+export interface ModuleStats {
+  /**
+   *
+   * @type {string}
+   * @memberof ModuleStats
+   */
+  name: string
+  /**
+   *
+   * @type {string}
+   * @memberof ModuleStats
+   */
+  id: string
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  occurences: number
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  operators: number
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  host_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  self_host_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  device_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  self_device_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof ModuleStats
+   */
+  avg_duration: number
+  /**
+   *
+   * @type {Array<ModuleStats>}
+   * @memberof ModuleStats
+   */
+  children: Array<ModuleStats>
+}
+/**
+ *
+ * @export
+ * @interface ModuleViewData
+ */
+export interface ModuleViewData {
+  /**
+   *
+   * @type {Array<KeyedColumn>}
+   * @memberof ModuleViewData
+   */
+  columns: Array<KeyedColumn>
+  /**
+   *
+   * @type {Array<ModuleStats>}
+   * @memberof ModuleViewData
+   */
+  data: Array<ModuleStats>
 }
 /**
  *
@@ -657,7 +768,7 @@ export interface OperationTableDataInner {
    * @type {string}
    * @memberof OperationTableDataInner
    */
-  inputShape?: string
+  input_shape?: string
   /**
    *
    * @type {number}
@@ -669,49 +780,49 @@ export interface OperationTableDataInner {
    * @type {number}
    * @memberof OperationTableDataInner
    */
-  deviceSelfDuration?: number
+  device_self_duration?: number
   /**
    *
    * @type {number}
    * @memberof OperationTableDataInner
    */
-  deviceTotalDuration?: number
+  device_total_duration?: number
   /**
    *
    * @type {number}
    * @memberof OperationTableDataInner
    */
-  hostSelfDuration: number
+  host_self_duration: number
   /**
    *
    * @type {number}
    * @memberof OperationTableDataInner
    */
-  hostTotalDuration: number
+  host_total_duration: number
   /**
    *
    * @type {boolean}
    * @memberof OperationTableDataInner
    */
-  hasCallStack: boolean
+  has_call_stack: boolean
   /**
    *
    * @type {string}
    * @memberof OperationTableDataInner
    */
-  tcEligible?: string
+  tc_eligible?: string
   /**
    *
    * @type {number}
    * @memberof OperationTableDataInner
    */
-  tcSelfRatio?: number
+  tc_self_ratio?: number
   /**
    *
    * @type {number}
    * @memberof OperationTableDataInner
    */
-  tcTotalRatio?: number
+  tc_total_ratio?: number
 }
 /**
  *
@@ -724,25 +835,25 @@ export interface OperatorGraph {
    * @type {Graph}
    * @memberof OperatorGraph
    */
-  deviceTotalTime?: Graph
+  device_total_time: Graph
   /**
    *
    * @type {Graph}
    * @memberof OperatorGraph
    */
-  deviceSelfTime: Graph
+  device_self_time: Graph
   /**
    *
    * @type {Graph}
    * @memberof OperatorGraph
    */
-  hostTotalTime: Graph
+  host_total_time: Graph
   /**
    *
    * @type {Graph}
    * @memberof OperatorGraph
    */
-  hostSelfTime: Graph
+  host_self_time: Graph
 }
 /**
  *
@@ -779,7 +890,7 @@ export interface Overview {
    * @type {GpuMetrics}
    * @memberof Overview
    */
-  gpuMetrics?: GpuMetrics
+  gpu_metrics?: GpuMetrics
 }
 /**
  *
@@ -1208,7 +1319,7 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1216,7 +1327,7 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1240,11 +1351,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter span was null or undefined when calling kernelGet.'
         )
       }
-      // verify required parameter 'groupBy' is not null or undefined
-      if (groupBy === null || groupBy === undefined) {
+      // verify required parameter 'group_by' is not null or undefined
+      if (group_by === null || group_by === undefined) {
         throw new RequiredError(
-          'groupBy',
-          'Required parameter groupBy was null or undefined when calling kernelGet.'
+          'group_by',
+          'Required parameter group_by was null or undefined when calling kernelGet.'
         )
       }
       const localVarPath = `/kernel`
@@ -1265,8 +1376,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (groupBy !== undefined) {
-        localVarQueryParameter['group_by'] = groupBy
+      if (group_by !== undefined) {
+        localVarQueryParameter['group_by'] = group_by
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1293,7 +1404,7 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} [groupBy] Group By
+     * @param {string} [group_by] Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1301,7 +1412,7 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      groupBy?: string,
+      group_by?: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1343,8 +1454,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (groupBy !== undefined) {
-        localVarQueryParameter['group_by'] = groupBy
+      if (group_by !== undefined) {
+        localVarQueryParameter['group_by'] = group_by
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1515,8 +1626,8 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {number} [startTs]
-     * @param {number} [endTs]
+     * @param {number} [start_ts]
+     * @param {number} [end_ts]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1524,8 +1635,8 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      startTs?: number,
-      endTs?: number,
+      start_ts?: number,
+      end_ts?: number,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1567,12 +1678,12 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (startTs !== undefined) {
-        localVarQueryParameter['start_ts'] = startTs
+      if (start_ts !== undefined) {
+        localVarQueryParameter['start_ts'] = start_ts
       }
 
-      if (endTs !== undefined) {
-        localVarQueryParameter['end_ts'] = endTs
+      if (end_ts !== undefined) {
+        localVarQueryParameter['end_ts'] = end_ts
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1599,8 +1710,8 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {number} [startTs]
-     * @param {number} [endTs]
+     * @param {number} [start_ts]
+     * @param {number} [end_ts]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1608,8 +1719,8 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      startTs?: number,
-      endTs?: number,
+      start_ts?: number,
+      end_ts?: number,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1651,12 +1762,12 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (startTs !== undefined) {
-        localVarQueryParameter['start_ts'] = startTs
+      if (start_ts !== undefined) {
+        localVarQueryParameter['start_ts'] = start_ts
       }
 
-      if (endTs !== undefined) {
-        localVarQueryParameter['end_ts'] = endTs
+      if (end_ts !== undefined) {
+        localVarQueryParameter['end_ts'] = end_ts
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1683,7 +1794,79 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    moduleGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling moduleGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling moduleGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling moduleGet.'
+        )
+      }
+      const localVarPath = `/module`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1691,7 +1874,7 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1715,11 +1898,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter span was null or undefined when calling operationGet.'
         )
       }
-      // verify required parameter 'groupBy' is not null or undefined
-      if (groupBy === null || groupBy === undefined) {
+      // verify required parameter 'group_by' is not null or undefined
+      if (group_by === null || group_by === undefined) {
         throw new RequiredError(
-          'groupBy',
-          'Required parameter groupBy was null or undefined when calling operationGet.'
+          'group_by',
+          'Required parameter group_by was null or undefined when calling operationGet.'
         )
       }
       const localVarPath = `/operation`
@@ -1740,8 +1923,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (groupBy !== undefined) {
-        localVarQueryParameter['group_by'] = groupBy
+      if (group_by !== undefined) {
+        localVarQueryParameter['group_by'] = group_by
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1768,9 +1951,9 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
-     * @param {string} opName
-     * @param {string} [inputShape]
+     * @param {string} group_by Group By
+     * @param {string} op_name
+     * @param {string} [input_shape]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1778,9 +1961,9 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
-      opName: string,
-      inputShape?: string,
+      group_by: string,
+      op_name: string,
+      input_shape?: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1804,18 +1987,18 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter span was null or undefined when calling operationStackGet.'
         )
       }
-      // verify required parameter 'groupBy' is not null or undefined
-      if (groupBy === null || groupBy === undefined) {
+      // verify required parameter 'group_by' is not null or undefined
+      if (group_by === null || group_by === undefined) {
         throw new RequiredError(
-          'groupBy',
-          'Required parameter groupBy was null or undefined when calling operationStackGet.'
+          'group_by',
+          'Required parameter group_by was null or undefined when calling operationStackGet.'
         )
       }
-      // verify required parameter 'opName' is not null or undefined
-      if (opName === null || opName === undefined) {
+      // verify required parameter 'op_name' is not null or undefined
+      if (op_name === null || op_name === undefined) {
         throw new RequiredError(
-          'opName',
-          'Required parameter opName was null or undefined when calling operationStackGet.'
+          'op_name',
+          'Required parameter op_name was null or undefined when calling operationStackGet.'
         )
       }
       const localVarPath = `/operation/stack`
@@ -1836,16 +2019,16 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (groupBy !== undefined) {
-        localVarQueryParameter['group_by'] = groupBy
+      if (group_by !== undefined) {
+        localVarQueryParameter['group_by'] = group_by
       }
 
-      if (opName !== undefined) {
-        localVarQueryParameter['op_name'] = opName
+      if (op_name !== undefined) {
+        localVarQueryParameter['op_name'] = op_name
       }
 
-      if (inputShape !== undefined) {
-        localVarQueryParameter['input_shape'] = inputShape
+      if (input_shape !== undefined) {
+        localVarQueryParameter['input_shape'] = input_shape
       }
 
       localVarUrlObj.query = Object.assign(
@@ -1872,7 +2055,7 @@ export const DefaultApiFetchParamCreator = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -1880,7 +2063,7 @@ export const DefaultApiFetchParamCreator = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options: any = {}
     ): FetchArgs {
       // verify required parameter 'run' is not null or undefined
@@ -1904,11 +2087,11 @@ export const DefaultApiFetchParamCreator = function (
           'Required parameter span was null or undefined when calling operationTableGet.'
         )
       }
-      // verify required parameter 'groupBy' is not null or undefined
-      if (groupBy === null || groupBy === undefined) {
+      // verify required parameter 'group_by' is not null or undefined
+      if (group_by === null || group_by === undefined) {
         throw new RequiredError(
-          'groupBy',
-          'Required parameter groupBy was null or undefined when calling operationTableGet.'
+          'group_by',
+          'Required parameter group_by was null or undefined when calling operationTableGet.'
         )
       }
       const localVarPath = `/operation/table`
@@ -1929,8 +2112,8 @@ export const DefaultApiFetchParamCreator = function (
         localVarQueryParameter['span'] = span
       }
 
-      if (groupBy !== undefined) {
-        localVarQueryParameter['group_by'] = groupBy
+      if (group_by !== undefined) {
+        localVarQueryParameter['group_by'] = group_by
       }
 
       localVarUrlObj.query = Object.assign(
@@ -2426,7 +2609,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2434,12 +2617,12 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<KernelGraph> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).kernelGet(run, worker, span, groupBy, options)
+      ).kernelGet(run, worker, span, group_by, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2461,7 +2644,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} [groupBy] Group By
+     * @param {string} [group_by] Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2469,12 +2652,12 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      groupBy?: string,
+      group_by?: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<TableData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).kernelTableGet(run, worker, span, groupBy, options)
+      ).kernelTableGet(run, worker, span, group_by, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2562,8 +2745,8 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {number} [startTs]
-     * @param {number} [endTs]
+     * @param {number} [start_ts]
+     * @param {number} [end_ts]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2571,13 +2754,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      startTs?: number,
-      endTs?: number,
+      start_ts?: number,
+      end_ts?: number,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryEventsData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).memoryEventsGet(run, worker, span, startTs, endTs, options)
+      ).memoryEventsGet(run, worker, span, start_ts, end_ts, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2599,8 +2782,8 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {number} [startTs]
-     * @param {number} [endTs]
+     * @param {number} [start_ts]
+     * @param {number} [end_ts]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2608,13 +2791,13 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      startTs?: number,
-      endTs?: number,
+      start_ts?: number,
+      end_ts?: number,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<MemoryStatsData> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).memoryGet(run, worker, span, startTs, endTs, options)
+      ).memoryGet(run, worker, span, start_ts, end_ts, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2636,7 +2819,40 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    moduleGet(
+      run: string,
+      worker: string,
+      span: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<ModuleViewData> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).moduleGet(run, worker, span, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2644,12 +2860,12 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<OperatorGraph> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).operationGet(run, worker, span, groupBy, options)
+      ).operationGet(run, worker, span, group_by, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -2671,9 +2887,9 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
-     * @param {string} opName
-     * @param {string} [inputShape]
+     * @param {string} group_by Group By
+     * @param {string} op_name
+     * @param {string} [input_shape]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2681,9 +2897,9 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
-      opName: string,
-      inputShape?: string,
+      group_by: string,
+      op_name: string,
+      input_shape?: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse2001> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
@@ -2692,9 +2908,9 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         run,
         worker,
         span,
-        groupBy,
-        opName,
-        inputShape,
+        group_by,
+        op_name,
+        input_shape,
         options
       )
       return (
@@ -2718,7 +2934,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -2726,12 +2942,12 @@ export const DefaultApiFp = function (configuration?: Configuration) {
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<InlineResponse200> {
       const localVarFetchArgs = DefaultApiFetchParamCreator(
         configuration
-      ).operationTableGet(run, worker, span, groupBy, options)
+      ).operationTableGet(run, worker, span, group_by, options)
       return (
         fetch: FetchAPI = portableFetch,
         basePath: string = BASE_PATH
@@ -3034,7 +3250,7 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3042,14 +3258,14 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).kernelGet(
         run,
         worker,
         span,
-        groupBy,
+        group_by,
         options
       )(fetch, basePath)
     },
@@ -3058,7 +3274,7 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} [groupBy] Group By
+     * @param {string} [group_by] Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3066,14 +3282,14 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      groupBy?: string,
+      group_by?: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).kernelTableGet(
         run,
         worker,
         span,
-        groupBy,
+        group_by,
         options
       )(fetch, basePath)
     },
@@ -3114,8 +3330,8 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {number} [startTs]
-     * @param {number} [endTs]
+     * @param {number} [start_ts]
+     * @param {number} [end_ts]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3123,16 +3339,16 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      startTs?: number,
-      endTs?: number,
+      start_ts?: number,
+      end_ts?: number,
       options?: any
     ) {
       return DefaultApiFp(configuration).memoryEventsGet(
         run,
         worker,
         span,
-        startTs,
-        endTs,
+        start_ts,
+        end_ts,
         options
       )(fetch, basePath)
     },
@@ -3141,8 +3357,8 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {number} [startTs]
-     * @param {number} [endTs]
+     * @param {number} [start_ts]
+     * @param {number} [end_ts]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3150,16 +3366,16 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      startTs?: number,
-      endTs?: number,
+      start_ts?: number,
+      end_ts?: number,
       options?: any
     ) {
       return DefaultApiFp(configuration).memoryGet(
         run,
         worker,
         span,
-        startTs,
-        endTs,
+        start_ts,
+        end_ts,
         options
       )(fetch, basePath)
     },
@@ -3168,7 +3384,23 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    moduleGet(run: string, worker: string, span: string, options?: any) {
+      return DefaultApiFp(configuration).moduleGet(
+        run,
+        worker,
+        span,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3176,14 +3408,14 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).operationGet(
         run,
         worker,
         span,
-        groupBy,
+        group_by,
         options
       )(fetch, basePath)
     },
@@ -3192,9 +3424,9 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
-     * @param {string} opName
-     * @param {string} [inputShape]
+     * @param {string} group_by Group By
+     * @param {string} op_name
+     * @param {string} [input_shape]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3202,18 +3434,18 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
-      opName: string,
-      inputShape?: string,
+      group_by: string,
+      op_name: string,
+      input_shape?: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).operationStackGet(
         run,
         worker,
         span,
-        groupBy,
-        opName,
-        inputShape,
+        group_by,
+        op_name,
+        input_shape,
         options
       )(fetch, basePath)
     },
@@ -3222,7 +3454,7 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
-     * @param {string} groupBy Group By
+     * @param {string} group_by Group By
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3230,14 +3462,14 @@ export const DefaultApiFactory = function (
       run: string,
       worker: string,
       span: string,
-      groupBy: string,
+      group_by: string,
       options?: any
     ) {
       return DefaultApiFp(configuration).operationTableGet(
         run,
         worker,
         span,
-        groupBy,
+        group_by,
         options
       )(fetch, basePath)
     },
@@ -3425,7 +3657,7 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {string} groupBy Group By
+   * @param {string} group_by Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3434,14 +3666,14 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    groupBy: string,
+    group_by: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).kernelGet(
       run,
       worker,
       span,
-      groupBy,
+      group_by,
       options
     )(this.fetch, this.basePath)
   }
@@ -3451,7 +3683,7 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {string} [groupBy] Group By
+   * @param {string} [group_by] Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3460,14 +3692,14 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    groupBy?: string,
+    group_by?: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).kernelTableGet(
       run,
       worker,
       span,
-      groupBy,
+      group_by,
       options
     )(this.fetch, this.basePath)
   }
@@ -3523,8 +3755,8 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {number} [startTs]
-   * @param {number} [endTs]
+   * @param {number} [start_ts]
+   * @param {number} [end_ts]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3533,16 +3765,16 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    startTs?: number,
-    endTs?: number,
+    start_ts?: number,
+    end_ts?: number,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).memoryEventsGet(
       run,
       worker,
       span,
-      startTs,
-      endTs,
+      start_ts,
+      end_ts,
       options
     )(this.fetch, this.basePath)
   }
@@ -3552,8 +3784,8 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {number} [startTs]
-   * @param {number} [endTs]
+   * @param {number} [start_ts]
+   * @param {number} [end_ts]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3562,16 +3794,16 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    startTs?: number,
-    endTs?: number,
+    start_ts?: number,
+    end_ts?: number,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).memoryGet(
       run,
       worker,
       span,
-      startTs,
-      endTs,
+      start_ts,
+      end_ts,
       options
     )(this.fetch, this.basePath)
   }
@@ -3581,7 +3813,25 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {string} groupBy Group By
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public moduleGet(run: string, worker: string, span: string, options?: any) {
+    return DefaultApiFp(this.configuration).moduleGet(
+      run,
+      worker,
+      span,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {string} group_by Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3590,14 +3840,14 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    groupBy: string,
+    group_by: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).operationGet(
       run,
       worker,
       span,
-      groupBy,
+      group_by,
       options
     )(this.fetch, this.basePath)
   }
@@ -3607,9 +3857,9 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {string} groupBy Group By
-   * @param {string} opName
-   * @param {string} [inputShape]
+   * @param {string} group_by Group By
+   * @param {string} op_name
+   * @param {string} [input_shape]
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3618,18 +3868,18 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    groupBy: string,
-    opName: string,
-    inputShape?: string,
+    group_by: string,
+    op_name: string,
+    input_shape?: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).operationStackGet(
       run,
       worker,
       span,
-      groupBy,
-      opName,
-      inputShape,
+      group_by,
+      op_name,
+      input_shape,
       options
     )(this.fetch, this.basePath)
   }
@@ -3639,7 +3889,7 @@ export class DefaultApi extends BaseAPI {
    * @param {string} run
    * @param {string} worker
    * @param {string} span
-   * @param {string} groupBy Group By
+   * @param {string} group_by Group By
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof DefaultApi
@@ -3648,14 +3898,14 @@ export class DefaultApi extends BaseAPI {
     run: string,
     worker: string,
     span: string,
-    groupBy: string,
+    group_by: string,
     options?: any
   ) {
     return DefaultApiFp(this.configuration).operationTableGet(
       run,
       worker,
       span,
-      groupBy,
+      group_by,
       options
     )(this.fetch, this.basePath)
   }

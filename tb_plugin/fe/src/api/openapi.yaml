@@ -560,6 +560,31 @@ paths:
             '*/*':
               schema:
                 type: object
+  /module:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ModuleViewData'
 components:
   schemas:
     Runs:
@@ -678,7 +703,7 @@ components:
     OperatorGraph:
       type: object
       required:
-        - device_total_timeA
+        - device_total_time
         - device_self_time
         - host_total_time
         - host_self_time
@@ -959,3 +984,66 @@ components:
             $ref: '#/components/schemas/GraphColumn'
         rows:
           type: object
+    KeyedColumn:
+      type: object
+      required:
+        - type
+        - name
+        - key
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+    ModuleViewData:
+      type: object
+      required:
+        - columns
+        - data
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeyedColumn'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleStats'
+    ModuleStats:
+      type: object
+      required:
+        - name
+        - id
+        - occurences
+        - operators
+        - host_duration
+        - self_host_duration
+        - device_duration
+        - self_device_duration
+        - avg_duration
+        - children
+      properties:
+        name:
+          type: string
+        id:
+          type: string
+        occurences:
+          type: number
+        operators:
+          type: number
+        host_duration:
+          type: number
+        self_host_duration:
+          type: number
+        device_duration:
+          type: number
+        self_device_duration:
+          type: number
+        avg_duration:
+          type: number
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleStats'

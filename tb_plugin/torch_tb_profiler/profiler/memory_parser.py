@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node
-from .module_parser import aggregate_ops
+from .op_agg import aggregate_ops
 from .trace import DeviceType, MemoryEvent
 
 logger = utils.get_logger()

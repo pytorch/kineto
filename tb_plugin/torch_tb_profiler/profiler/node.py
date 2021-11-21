@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+import sys
 from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
@@ -113,6 +114,9 @@ class OperatorNode(HostNode):
 
     def fill_stats(self):
         # TODO: Replace recursive by using a stack, in case of too deep callstack.
+        self.children.sort(key=lambda x: (x.start_time, -x.end_time))
+        self.runtimes.sort(key=lambda x: (x.start_time, -x.end_time) if x.start_time and x.end_time else (sys.maxsize, -sys.maxsize - 1))
+
         for child in self.children:
             child.fill_stats()
         for rt in self.runtimes:
@@ -129,7 +133,8 @@ class OperatorNode(HostNode):
         for rt in self.runtimes:
             # From PyTorch 1.8 RC1, cpu_self_time does not include runtime's time.
             # So here we keep consistent with it.
-            self.self_host_duration -= (rt.end_time - rt.start_time)
+            if rt.end_time is not None and rt.start_time is not None:
+                self.self_host_duration -= (rt.end_time - rt.start_time)
             self.device_duration += rt.device_duration
             self.self_device_duration += rt.device_duration
             self.tc_self_duration += rt.tc_duration
@@ -138,9 +143,32 @@ class OperatorNode(HostNode):
                 logger.warning("New Tensor Cores eligible operator found: '{}'!".format(self.name))
                 self.tc_eligible = True
 
-    def replace_time_by_children(self):
-            self.start_time = next((child.start_time for child in self.children if child.start_time is not None), None)
-            self.end_time = next((child.end_time for child in reversed(self.children) if child.end_time is not None), None)
+    @property
+    def device_start_time(self):
+        self_device_start_time = next((device.start_time for device in self.get_device_nodes()), None)
+        child_device_start_time = next((device.start_time for device in self.get_child_device_nodes()), None)
+        return min((v for v in [self_device_start_time, child_device_start_time] if v is not None), default=None)
+
+    @property
+    def device_end_time(self):
+        self_device_end_time = next((device.end_time for device in self.get_device_nodes(True)), None)
+        child_device_end_time = next((device.end_time for device in self.get_child_device_nodes(True)), None)
+        return max((v for v in [self_device_end_time, child_device_end_time] if v is not None), default=None)
+
+    def get_device_nodes(self, reverse=False):
+        '''Get the first/last device not if there are any'''
+        for r in reversed(self.runtimes) if reverse else self.runtimes:
+            # the runtime node "cudaDeviceSynchronize" would not have any associated kernels
+            for d in r.get_kernels(reverse):
+                yield d
+
+    def get_child_device_nodes(self, reverse=False):
+        '''Get the child device nodes'''
+        for child in reversed(self.children) if reverse else self.children:
+            for d in child.get_device_nodes(reverse):
+                yield d
+            for d in child.get_child_device_nodes(reverse):
+                yield d
 
     def get_operator_and_kernels(self):
         ops = []
@@ -150,7 +178,7 @@ class OperatorNode(HostNode):
             ops.extend(child_ops)
             kernels.extend(child_kernels)
         for rt in self.runtimes:
-            kernels.extend(rt.get_kernels())
+            kernels.extend(list(rt.get_kernels()))
 
         if is_operator_node(self):
             ops.append(self)
@@ -168,12 +196,36 @@ class ProfilerStepNode(OperatorNode):
         super().__init__(**kwargs)
 
 
+class ModuleNode(OperatorNode):
+    def __init__(self, module_id, python_id, python_parent_id, **kwargs):
+        super().__init__(**kwargs)
+        self.module_id = module_id
+        self.python_id = python_id
+        self.python_parent_id = python_parent_id
+
+    def fill_stats(self):
+        super().fill_stats()
+
+        for child in self.children:
+            if is_operator_node(child):
+                # treat the child ops as the device duration
+                self.self_device_duration += child.device_duration
+
+    @classmethod
+    def create(cls, event):
+        kwargs = BaseNode.get_node_argument(event)
+        kwargs["module_id"] = event.module_id
+        kwargs["python_id"] = event.python_id
+        kwargs["python_parent_id"] = event.python_parent_id
+        return cls(**kwargs)
+
+
 class RuntimeNode(HostNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
             device_nodes=None):
         super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
-        self.device_nodes = device_nodes
+        self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
         self.tc_duration = 0  # Time summarization of all its launched kernels.
 
     def fill_stats(self, op_node=None):
@@ -186,8 +238,11 @@ class RuntimeNode(HostNode):
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
-    def get_kernels(self):
-        return [n for n in self.device_nodes if n.type == EventTypes.KERNEL] if self.device_nodes else []
+    def get_kernels(self, reverse=False):
+        if self.device_nodes:
+            for d in reversed(self.device_nodes) if reverse else self.device_nodes:
+                if d.type == EventTypes.KERNEL:
+                    yield d
 
     @classmethod
     def create(cls, event, device_nodes):
@@ -223,6 +278,7 @@ class DeviceNode(BaseNode):
             kwargs["shared_memory"] = event.shared_memory
             kwargs["device_id"] = event.device_id
         return cls(**kwargs)
+
 
 def is_operator_node(node):
     if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \

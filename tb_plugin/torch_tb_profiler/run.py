@@ -1,9 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import List, Optional, Union
-
 from collections import defaultdict
+from typing import List, Optional, Tuple, Union
 
 from . import consts
 from .profiler.data import RunProfileData
@@ -119,6 +118,8 @@ class RunProfile(object):
 
         # for memory stats and curve
         self.memory_parser: Optional[MemoryParser] = None
+
+        self.module_stats: Optional[List(Tuple)] = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -505,6 +506,42 @@ class RunProfile(object):
             "rows": events,  # in the form of { "CPU": [...], "GPU0": [...], ... }
         }
 
+    def get_module_view(self):
+        if not self.module_stats:
+            return None
+
+        result = {
+            "columns": [
+                {"name": "Module Name", "type": "string", "key": "name"},
+                {"name": "Occurences", "type": "number", "key": "occurences"},
+                {"name": "Operators", "type": "number", "key": "operators"},
+                {"name": "Host Total Time", "type": "number", "key": "host_duration"},
+                {"name": "Host Self Time", "type": "number", "key": "self_host_duration"},
+                {"name": "Device Total Time", "type": "number", "key": "device_duration"},
+                {"name": "Device Self Time", "type": "number", "key": "self_device_duration"}
+            ],
+            "data": []
+        }
+
+        def process_modules_stats(parent, modules_stats):
+            for stats in modules_stats:
+                d = {
+                    "name": stats.name,
+                    "id": stats.id,
+                    "occurences": stats.occurences,
+                    "operators": stats.operators,
+                    "host_duration": stats.host_duration,
+                    "self_host_duration": stats.self_host_duration,
+                    "device_duration": stats.device_duration,
+                    "self_device_duration": stats.self_device_duration,
+                    "avg_duration": stats.avg_duration,
+                    "children": []
+                }
+                parent.append(d)
+                process_modules_stats(d["children"], stats.children)
+
+        process_modules_stats(result["data"], self.module_stats)
+        return result
 
 class DistributedRunProfile(object):
     """ Profiling all workers in a view.

@@ -59,10 +59,12 @@ Logger::~Logger() {
   }
 #endif
 
-  // Output to observers. Current Severity helps keep track of which bucket the output goes.
-  for (auto& observer : LoggerObservers()) {
+  {
     std::lock_guard<std::mutex> guard(mutex());
-    observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
+    // Output to observers. Current Severity helps keep track of which bucket the output goes.
+    for (auto& observer : LoggerObservers()) {
+      observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
+    }
   }
 
   // Finally, print to terminal or console.

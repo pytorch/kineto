@@ -11,7 +11,13 @@ import { Table } from 'antd'
 import * as React from 'react'
 // @ts-ignore
 import { FlameGraph } from 'react-flame-graph'
-import { defaultApi, KeyedColumn, ModuleStats, ModuleViewData } from '../api'
+import {
+  defaultApi,
+  KeyedColumn,
+  ModuleStats,
+  ModuleViewData,
+  OperatorNode
+} from '../api'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -39,7 +45,7 @@ const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
 }
 
 const getTableRows = function (key: number, rows: ModuleStats[]): any {
-  return rows.map(function (row: ModuleStats) {
+  const rows_data = rows.map(function (row: ModuleStats) {
     const data = {
       key: key++,
       name: row.name,
@@ -57,6 +63,9 @@ const getTableRows = function (key: number, rows: ModuleStats[]): any {
 
     return data
   })
+
+  rows_data.sort((a, b) => a.name.localeCompare(b.name))
+  return rows_data
 }
 
 const getFlameGraphData = function (rows: ModuleStats[]): any {
@@ -76,6 +85,38 @@ const getFlameGraphData = function (rows: ModuleStats[]): any {
   })
 }
 
+const getTreeHeight = (row: ModuleStats): number => {
+  if (row.children && row.children.length > 0) {
+    let max_child_height = 0
+    for (const child of row.children) {
+      const child_height = getTreeHeight(child)
+      if (max_child_height < child_height) {
+        max_child_height = child_height
+      }
+    }
+
+    return max_child_height + 1
+  } else {
+    return 1
+  }
+}
+
+const getOperatorTree = (level: number, row: OperatorNode, result: any[]) => {
+  const data = {
+    level: level,
+    name: row.name,
+    // type: row.type,
+    start: row.start_time,
+    end: row.end_time
+  }
+  result.push(data)
+  if (row.children.length > 0) {
+    for (const child of row.children) {
+      getOperatorTree(level + 1, child, result)
+    }
+  }
+}
+
 export const ModuleView: React.FC<IProps> = (props) => {
   const { run, worker, span } = props
   const classes = useStyles()
@@ -84,27 +125,88 @@ export const ModuleView: React.FC<IProps> = (props) => {
     ModuleViewData | undefined
   >(undefined)
   const [flameData, setFlameData] = React.useState([])
+  const [flameHeight, setFlameHeight] = React.useState<number>(0)
   const [modules, setModules] = React.useState<number[]>([])
   const [module, setModule] = React.useState<number>(0)
 
   const [columns, setColumns] = React.useState([])
   const [rows, setRows] = React.useState([])
 
-  React.useEffect(() => {
-    defaultApi.moduleGet(run, worker, span).then((resp) => {
-      setModuleView(resp)
-      if (resp) {
-        // set the flamegraph data
-        const flameData = getFlameGraphData(resp.data)
-        setFlameData(flameData)
-        setModules(Array.from(Array(flameData.length).keys()))
-        setModule(0)
+  const timelineRef = React.useRef<HTMLDivElement>(null)
 
-        // set the tree table data
-        setColumns(getKeyedTableColumns(resp.columns))
-        setRows(getTableRows(1, resp.data))
-      }
-    })
+  React.useEffect(() => {
+    defaultApi
+      .moduleGet(run, worker, span)
+      .then((resp) => {
+        setModuleView(resp)
+        if (resp) {
+          // set the flamegraph data
+          const flameData = getFlameGraphData(resp.data)
+          setFlameData(flameData)
+          let flameHeight = 0
+          for (const flame of flameData) {
+            const height = getTreeHeight(flame)
+            if (flameHeight < height) {
+              flameHeight = height
+            }
+          }
+          setFlameHeight(flameHeight * 25)
+          setModules(Array.from(Array(flameData.length).keys()))
+          setModule(0)
+
+          // set the tree table data
+          setColumns(getKeyedTableColumns(resp.columns))
+          setRows(getTableRows(1, resp.data))
+        }
+      })
+      .catch((e) => {
+        // console.error(e.statusText)
+        if (e.status == 404) {
+          setModules([])
+          setFlameData([])
+          setRows([])
+        }
+      })
+
+    if (timelineRef.current) {
+      defaultApi.treeGet(run, worker, span).then((resp) => {
+        if (resp) {
+          const data = new google.visualization.DataTable()
+          data.addColumn({ type: 'string', id: 'Layer' })
+          data.addColumn({ type: 'string', id: 'Name' })
+          data.addColumn({ type: 'string', role: 'tooltip' })
+          data.addColumn({ type: 'number', id: 'Start' })
+          data.addColumn({ type: 'number', id: 'End' })
+
+          let timeline_data: any[] = []
+          let max_level = 0
+          getOperatorTree(0, resp, timeline_data)
+          timeline_data.forEach((d) => {
+            if (max_level < d.level) {
+              max_level = d.level
+            }
+            data.addRow([
+              d.level.toString(),
+              d.name,
+              `${d.name} Duration: ${d.end - d.start} us`,
+              d.start / 1000.0, // the time unit is us returned from server, but the google charts only accept milliseconds here
+              d.end / 1000.0
+            ])
+          })
+
+          const chart = new google.visualization.Timeline(timelineRef.current)
+
+          // console.info(timeline_data)
+          const options = {
+            height: (max_level + 1) * 50,
+            tooltip: {
+              isHtml: true
+            }
+          }
+          chart.draw(data, options)
+        }
+      })
+    }
   }, [run, worker, span])
 
   const handleModuleChange: SelectProps['onChange'] = (event) => {
@@ -156,13 +258,15 @@ export const ModuleView: React.FC<IProps> = (props) => {
         {flameData && flameData.length > 0 && (
           <FlameGraph
             data={flameData[module]}
-            height={200}
+            height={flameHeight}
             width={800}
             onChange={(node: any) => {
               console.log(`"${node.name}" focused`)
             }}
           />
         )}
+
+        <div ref={timelineRef}></div>
       </Card>
     </div>
   )

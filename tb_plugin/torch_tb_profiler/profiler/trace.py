@@ -181,3 +181,26 @@ def create_trace_event(event):
         return DurationEvent(event_type, event)
     else:
         return None
+
+def create_association_events(events):
+    fwd_bwd_events = (e for e in events if e.get("cat") == 'forward_backward')
+
+    forward_map = {}
+    backward_map = {}
+
+    result = {}
+    for e in fwd_bwd_events:
+        ph = e.get('ph')
+        id = e['id']
+        ts = e['ts']
+        if ph == 's':
+            forward_map[id] = ts
+        elif ph == 'f':
+            backward_map[id] = ts
+
+    for id, ts in forward_map.items():
+        backward_ts = backward_map.get(id)
+        if backward_ts is not None:
+            result[ts] = backward_ts
+
+    return result

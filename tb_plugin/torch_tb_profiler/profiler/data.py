@@ -37,6 +37,7 @@ class RunProfileData(object):
         self.use_ddp = False
         self.comm_lib = None
         self.profiler_start_ts = float("inf")
+        self.forward_backward_events = None
         self.events: List[BaseEvent] = None
         self.trace_file_path = None
         self.has_runtime = False
@@ -94,6 +95,7 @@ class RunProfileData(object):
                 profile.profiler_start_ts = min(profile.profiler_start_ts, event.ts)
                 profile.events.append(event)
         profile.events.sort(key=lambda e: e.ts)
+        profile.forward_backward_events = trace.create_association_events(trace_json)
 
         profile.process()
         profile.analyze()
@@ -154,7 +156,7 @@ class RunProfileData(object):
 
     def process(self):
         parser = EventParser()
-        self.tid2tree = parser.parse(self.events)
+        self.tid2tree = parser.parse(self.events, self.forward_backward_events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
@@ -264,7 +266,6 @@ class RunProfileData(object):
                             f"({percentage:.1f}% of {total_mem_gb:.1f}GB on GPU{dev_id}). "
                             "To get better value of your GPU or to use larger batch size for training, please refer to "
                             f"{href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}.")
-
                         break
 
     def _analyze_distributed_metrics(self):

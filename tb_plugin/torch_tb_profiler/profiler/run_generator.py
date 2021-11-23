@@ -55,6 +55,8 @@ class RunGenerator(object):
         profile_run.occupancy = self.profile_data.occupancy
         profile_run.tc_ratio = self.profile_data.tc_ratio
 
+        profile_run.tid2tree = self.profile_data.tid2tree
+
         if self.profile_data.memory_parser:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.memory_parser = self.profile_data.memory_parser

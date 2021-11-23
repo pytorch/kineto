@@ -858,6 +858,49 @@ export interface OperatorGraph {
 /**
  *
  * @export
+ * @interface OperatorNode
+ */
+export interface OperatorNode {
+  /**
+   *
+   * @type {string}
+   * @memberof OperatorNode
+   */
+  name: string
+  /**
+   *
+   * @type {number}
+   * @memberof OperatorNode
+   */
+  start_time: number
+  /**
+   *
+   * @type {number}
+   * @memberof OperatorNode
+   */
+  end_time: number
+  /**
+   *
+   * @type {string}
+   * @memberof OperatorNode
+   */
+  type: string
+  /**
+   *
+   * @type {number}
+   * @memberof OperatorNode
+   */
+  tid: number
+  /**
+   *
+   * @type {Array<OperatorNode>}
+   * @memberof OperatorNode
+   */
+  children: Array<OperatorNode>
+}
+/**
+ *
+ * @export
  * @interface Overview
  */
 export interface Overview {
@@ -2368,6 +2411,78 @@ export const DefaultApiFetchParamCreator = function (
     /**
      *
      * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    treeGet(
+      run: string,
+      worker: string,
+      span: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling treeGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling treeGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling treeGet.'
+        )
+      }
+      const localVarPath = `/tree`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3091,6 +3206,39 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    treeGet(
+      run: string,
+      worker: string,
+      span: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<OperatorNode> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).treeGet(run, worker, span, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3521,6 +3669,22 @@ export const DefaultApiFactory = function (
      */
     traceGet(run: string, worker: string, span: string, options?: any) {
       return DefaultApiFp(configuration).traceGet(
+        run,
+        worker,
+        span,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    treeGet(run: string, worker: string, span: string, options?: any) {
+      return DefaultApiFp(configuration).treeGet(
         run,
         worker,
         span,
@@ -3968,6 +4132,24 @@ export class DefaultApi extends BaseAPI {
    */
   public traceGet(run: string, worker: string, span: string, options?: any) {
     return DefaultApiFp(this.configuration).traceGet(
+      run,
+      worker,
+      span,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public treeGet(run: string, worker: string, span: string, options?: any) {
+    return DefaultApiFp(this.configuration).treeGet(
       run,
       worker,
       span,

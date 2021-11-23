@@ -119,6 +119,7 @@ class RunProfile(object):
 
         # for memory stats and curve
         self.memory_parser: Optional[MemoryParser] = None
+        self.tid2tree = None
 
         self.module_stats: Optional[List(Tuple)] = None
 
@@ -538,6 +539,25 @@ class RunProfile(object):
 
         process_modules_stats(result["data"], self.module_stats)
         return result
+
+    def get_operator_tree(self):
+        root = next(iter(self.tid2tree.values()))
+
+        result = []
+        def traverse_node(parent, node):
+            d = {
+                "name": node.name,
+                "start_time": node.start_time,
+                "end_time": node.end_time,
+                "type": node.type,
+                "tid": node.tid,
+                "children": []
+            }
+            parent.append(d)
+            for child in node.children:
+                traverse_node(d["children"], child)
+        traverse_node(result, root)
+        return result[0]
 
 
 class DistributedRunProfile(object):

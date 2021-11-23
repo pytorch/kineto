@@ -193,7 +193,7 @@ class MemoryParser:
                 if len(node_stack) > tree_height:
                     tree_height = len(node_stack)
 
-                if current_node is None:
+                if current_node is None or current_node.start_time is None or current_node.end_time is None:
                     # 3. Ignore all remaining records.
                     logger.debug(
                         "could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (
@@ -205,7 +205,7 @@ class MemoryParser:
                 if record.ts < current_node.start_time:
                     # this should only happens for root node.
                     logger.debug("record timestamp %d is less that the start time of %s" %
-                                 (record.ts, current_node.name))
+                                    (record.ts, current_node.name))
                     # This record has no chance to be appended to following tree node.
                     self.staled_records.append(record)
                     record_index += 1

@@ -48,6 +48,13 @@ class BaseNode(ABC):
 
         return kwargs
 
+    @property
+    def duration(self):
+        if self.start_time is not None and self.end_time is not None:
+            return self.end_time - self.start_time
+        else:
+            return None
+
 
 class CommunicationNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id, input_shape, input_type):
@@ -223,6 +230,9 @@ class ModuleNode(OperatorNode):
         kwargs["python_parent_id"] = event.python_parent_id
         return cls(**kwargs)
 
+class BackwardNode(OperatorNode):
+    def __init__(self, name, start_time, end_time, type, tid):
+        super().__init__(name, start_time, end_time, type, tid)
 
 class RuntimeNode(HostNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,

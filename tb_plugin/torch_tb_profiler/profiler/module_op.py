@@ -192,7 +192,9 @@ def _process_module_statistics(modules, hierarchy):
                 child_stats))
         return modules_stats
 
-    return process_modules(hierarchy)
+    data = process_modules(hierarchy)
+    data.sort(key=lambda x: x.name)
+    return data
 
 
 def get_module_tree(tid2tree):

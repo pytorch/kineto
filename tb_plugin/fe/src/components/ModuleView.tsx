@@ -45,7 +45,7 @@ const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
 }
 
 const getTableRows = function (key: number, rows: ModuleStats[]): any {
-  const rows_data = rows.map(function (row: ModuleStats) {
+  return rows.map(function (row: ModuleStats) {
     const data = {
       key: key++,
       name: row.name,
@@ -63,9 +63,6 @@ const getTableRows = function (key: number, rows: ModuleStats[]): any {
 
     return data
   })
-
-  rows_data.sort((a, b) => a.name.localeCompare(b.name))
-  return rows_data
 }
 
 const getFlameGraphData = function (rows: ModuleStats[]): any {

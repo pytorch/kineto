@@ -9,7 +9,6 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
 import { Table } from 'antd'
 import * as React from 'react'
-// @ts-ignore
 import { FlameGraph } from 'react-flame-graph'
 import {
   defaultApi,
@@ -34,8 +33,8 @@ export interface IProps {
   span: string
 }
 
-const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
-  return columns.map((col: KeyedColumn) => {
+const getKeyedTableColumns = (columns: KeyedColumn[]) => {
+  return columns.map((col) => {
     return {
       dataIndex: col.key,
       key: col.key,
@@ -44,9 +43,9 @@ const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
   })
 }
 
-const getTableRows = function (key: number, rows: ModuleStats[]): any {
-  return rows.map(function (row: ModuleStats) {
-    const data = {
+const getTableRows = (key: number, rows: ModuleStats[]) => {
+  return rows.map((row) => {
+    const data: any = {
       key: key++,
       name: row.name,
       occurences: row.occurences,
@@ -54,28 +53,27 @@ const getTableRows = function (key: number, rows: ModuleStats[]): any {
       host_duration: row.host_duration,
       self_host_duration: row.self_host_duration,
       device_duration: row.device_duration,
-      self_device_duration: row.self_device_duration,
-      children: getTableRows(key, row.children)
+      self_device_duration: row.self_device_duration
     }
-    if (data.children.length == 0) {
-      delete data.children
+
+    if (row.children.length) {
+      data.children = getTableRows(key, row.children)
     }
 
     return data
   })
 }
 
-const getFlameGraphData = function (rows: ModuleStats[]): any {
-  return rows.map(function (row: ModuleStats) {
-    const data = {
+const getFlameGraphData = (rows: ModuleStats[]) => {
+  return rows.map((row) => {
+    const data: any = {
       name: row.name,
       value: row.avg_duration,
-      tooltip: `${row.name} (module id: ${row.id}): ${row.avg_duration} us`,
-      children: getFlameGraphData(row.children)
+      tooltip: `${row.name} (module id: ${row.id}): ${row.avg_duration} us`
     }
 
-    if (data.children.length == 0) {
-      delete data.children
+    if (row.children.length) {
+      data.children = getFlameGraphData(row.children)
     }
 
     return data
@@ -83,34 +81,26 @@ const getFlameGraphData = function (rows: ModuleStats[]): any {
 }
 
 const getTreeHeight = (row: ModuleStats): number => {
-  if (row.children && row.children.length > 0) {
-    let max_child_height = 0
-    for (const child of row.children) {
-      const child_height = getTreeHeight(child)
-      if (max_child_height < child_height) {
-        max_child_height = child_height
-      }
-    }
-
-    return max_child_height + 1
+  if (row.children && row.children.length) {
+    return 1 + Math.max(...row.children.map((child) => getTreeHeight(child)))
   } else {
     return 1
   }
 }
 
-const getOperatorTree = (level: number, row: OperatorNode, result: any[]) => {
-  const data = {
+const getOperatorTree = (
+  level: number,
+  row: OperatorNode,
+  result: object[]
+) => {
+  result.push({
     level: level,
     name: row.name,
-    // type: row.type,
     start: row.start_time,
     end: row.end_time
-  }
-  result.push(data)
-  if (row.children.length > 0) {
-    for (const child of row.children) {
-      getOperatorTree(level + 1, child, result)
-    }
+  })
+  if (row.children.length) {
+    row.children.forEach((child) => getOperatorTree(level + 1, child, result))
   }
 }
 
@@ -121,13 +111,13 @@ export const ModuleView: React.FC<IProps> = (props) => {
   const [moduleView, setModuleView] = React.useState<
     ModuleViewData | undefined
   >(undefined)
-  const [flameData, setFlameData] = React.useState([])
+  const [flameData, setFlameData] = React.useState<any[]>([])
   const [flameHeight, setFlameHeight] = React.useState<number>(0)
   const [modules, setModules] = React.useState<number[]>([])
   const [module, setModule] = React.useState<number>(0)
 
-  const [columns, setColumns] = React.useState([])
-  const [rows, setRows] = React.useState([])
+  const [columns, setColumns] = React.useState<any[]>([])
+  const [rows, setRows] = React.useState<any[]>([])
 
   const timelineRef = React.useRef<HTMLDivElement>(null)
 
@@ -138,15 +128,11 @@ export const ModuleView: React.FC<IProps> = (props) => {
         setModuleView(resp)
         if (resp) {
           // set the flamegraph data
-          const flameData = getFlameGraphData(resp.data)
+          const flameData: any[] = getFlameGraphData(resp.data)
           setFlameData(flameData)
-          let flameHeight = 0
-          for (const flame of flameData) {
-            const height = getTreeHeight(flame)
-            if (flameHeight < height) {
-              flameHeight = height
-            }
-          }
+          const flameHeight = Math.max(
+            ...flameData.map((x) => getTreeHeight(x))
+          )
           setFlameHeight(flameHeight * 25)
           setModules(Array.from(Array(flameData.length).keys()))
           setModule(0)
@@ -157,7 +143,6 @@ export const ModuleView: React.FC<IProps> = (props) => {
         }
       })
       .catch((e) => {
-        // console.error(e.statusText)
         if (e.status == 404) {
           setModules([])
           setFlameData([])

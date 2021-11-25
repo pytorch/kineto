@@ -381,7 +381,7 @@ class EventParser(NodeParserMixin, StepParser):
         result = self.parse_nodes(events)
 
         builder = OpTreeBuilder(*result)
-        root = builder.rebuild_tree(fwd_bwd_map)
+        tid2tree = builder.rebuild_tree(fwd_bwd_map)
         # Process steps
         self.parse_steps(events, self.communication_data)
         if len(self.comm_lib) > 1:
@@ -390,7 +390,7 @@ class EventParser(NodeParserMixin, StepParser):
             self.communication_data.clear()
         # Move the interleaved logic out of each NodeParser and StepParser
         self.update_device_steps(self.runtime_node_list)
-        return root
+        return tid2tree
 
     def generate_communication_nodes(self):
         return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)

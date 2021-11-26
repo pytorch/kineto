@@ -119,6 +119,10 @@ export const ModuleView: React.FC<IProps> = (props) => {
   const [columns, setColumns] = React.useState<any[]>([])
   const [rows, setRows] = React.useState<any[]>([])
 
+  const cardRef = React.useRef<HTMLDivElement>(null)
+  const [cardWidth, setCardWidth] = React.useState<number | undefined>(
+    undefined
+  )
   const timelineRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -150,6 +154,9 @@ export const ModuleView: React.FC<IProps> = (props) => {
         }
       })
 
+    if (cardRef.current) {
+      setCardWidth(cardRef.current.offsetWidth - 10)
+    }
     if (timelineRef.current) {
       defaultApi.treeGet(run, worker, span).then((resp) => {
         if (resp) {
@@ -161,12 +168,10 @@ export const ModuleView: React.FC<IProps> = (props) => {
           data.addColumn({ type: 'number', id: 'End' })
 
           let timeline_data: any[] = []
-          let max_level = 0
           getOperatorTree(0, resp, timeline_data)
+          timeline_data.sort((a, b) => a.level - b.level)
+          const max_level = timeline_data[timeline_data.length - 1].level
           timeline_data.forEach((d) => {
-            if (max_level < d.level) {
-              max_level = d.level
-            }
             data.addRow([
               d.level.toString(),
               d.name,
@@ -183,6 +188,9 @@ export const ModuleView: React.FC<IProps> = (props) => {
             height: (max_level + 1) * 50,
             tooltip: {
               isHtml: true
+            },
+            timeline: {
+              showRowLabels: false
             }
           }
           chart.draw(data, options)
@@ -216,7 +224,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
 
   return (
     <div className={classes.root}>
-      <Card variant="outlined">
+      <Card variant="outlined" ref={cardRef}>
         <CardHeader title="Module View" />
 
         {/* defaultExpandAllRows will only valid when first render the Table
@@ -241,7 +249,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
           <FlameGraph
             data={flameData[module]}
             height={flameHeight}
-            width={800}
+            width={cardWidth}
             onChange={(node: any) => {
               console.log(`"${node.name}" focused`)
             }}

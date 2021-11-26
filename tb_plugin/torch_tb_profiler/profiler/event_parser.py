@@ -380,8 +380,8 @@ class EventParser(NodeParserMixin, StepParser):
     def parse(self, events, fwd_bwd_map) ->  Dict[int, List[OperatorNode]]:
         result = self.parse_nodes(events)
 
-        builder = OpTreeBuilder(*result)
-        tid2tree = builder.rebuild_tree(fwd_bwd_map)
+        builder = OpTreeBuilder(*result, fwd_bwd_map=fwd_bwd_map)
+        tid2tree = builder.build_tree()
         # Process steps
         self.parse_steps(events, self.communication_data)
         if len(self.comm_lib) > 1:

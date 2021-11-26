@@ -12,28 +12,34 @@ class OpTreeBuilder:
     BACKWARD_ROOT_PREFIX = 'autograd::engine::evaluate_function:'
     BACKWARD_ACCUMULATE_GRAD = 'autograd::engine::evaluate_function: torch::autograd::AccumulateGrad'
 
-    def __init__(self, tid2list, tid2zero_rt_list, corrid_to_device):
+    def __init__(self, tid2list, tid2zero_rt_list, corrid_to_device, fwd_bwd_map):
+        self.tid2list = tid2list
+        self.tid2zero_rt_list = tid2zero_rt_list
+        self.corrid_to_device = corrid_to_device
+        self.fwd_bwd_map = fwd_bwd_map
         self.main_tid = None
-        self.tid2tree = self._build_tree(tid2list, tid2zero_rt_list, corrid_to_device)
-        self._set_main_tid()
+        self.tid2tree = None
 
-    def rebuild_tree(self, fwd_bwd_map):
+    def build_tree(self):
         '''Construct the BackwardNode and replace the original backward nodes
         '''
+        self.tid2tree = self._build_tree(self.tid2list, self.tid2zero_rt_list, self.corrid_to_device)
+        self._set_main_tid()
+
         modules, backward_nodes = self._get_modules()
         if not modules or not backward_nodes:
             return self.tid2tree
 
         _, ts2parent = OpTreeBuilder._get_node_parents(backward_nodes)
         agg_nodes = OpTreeBuilder._group_backward_nodes(backward_nodes)
-        fwd_bwd_root = self._get_backward_roots(fwd_bwd_map, ts2parent, agg_nodes)
+        fwd_bwd_root = self._get_backward_roots(self.fwd_bwd_map, ts2parent, agg_nodes)
         if len(agg_nodes) > 0:
             logger.warning("some nodes cannot find forward nodes")
 
         backward_modules = []
         for module in modules:
             OpTreeBuilder._build_backward_module(module, None, fwd_bwd_root, backward_modules)
-        OpTreeBuilder.insert_backward_modules(self.tid2tree[self.main_tid], backward_modules)
+        OpTreeBuilder._insert_backward_modules(self.tid2tree[self.main_tid], backward_modules)
         self.tid2tree = {tid:root for tid, root in self.tid2tree.items() if len(root.children) > 0}
 
         return self.tid2tree
@@ -260,7 +266,7 @@ class OpTreeBuilder:
             parent.tid = parent.children[0].tid
 
     @staticmethod
-    def insert_backward_modules(root, backward_modules):
+    def _insert_backward_modules(root, backward_modules):
         backward_modules.sort(key = lambda x: (x.start_time, -x.end_time))
 
         # each item is (parent_node, child_index) that it is visiting.

@@ -8,6 +8,7 @@ from .trace import EventTypes
 
 logger = utils.get_logger()
 
+
 class OpTreeBuilder:
     BACKWARD_ROOT_PREFIX = 'autograd::engine::evaluate_function:'
     BACKWARD_ACCUMULATE_GRAD = 'autograd::engine::evaluate_function: torch::autograd::AccumulateGrad'
@@ -40,7 +41,7 @@ class OpTreeBuilder:
         for module in modules:
             OpTreeBuilder._build_backward_module(module, None, fwd_bwd_root, backward_modules)
         OpTreeBuilder._insert_backward_modules(self.tid2tree[self.main_tid], backward_modules)
-        self.tid2tree = {tid:root for tid, root in self.tid2tree.items() if len(root.children) > 0}
+        self.tid2tree = {tid: root for tid, root in self.tid2tree.items() if len(root.children) > 0}
 
         return self.tid2tree
 
@@ -49,7 +50,7 @@ class OpTreeBuilder:
 
         staled_device_nodes = []
         for _, device_nodes in corrid_to_device.items():
-             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+            staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
 
         for tid, op_list in tid2list.items():
             zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
@@ -74,7 +75,10 @@ class OpTreeBuilder:
                 # there are multiple tids
                 backward_tid = self._find_backward_tid()
                 backward_tid = None
-                tid2len = {tid: root.end_time - root.start_time for tid, root in self.tid2tree.items() if tid != backward_tid or backward_tid is None}
+                tid2len = {
+                    tid: root.end_time - root.start_time for tid, root in self.tid2tree.items()
+                    if tid != backward_tid or backward_tid is None
+                }
                 # get the maximum length as the main thread
                 self.main_tid = max(tid2len, key=tid2len.get)
 
@@ -105,7 +109,7 @@ class OpTreeBuilder:
                 end_time=sys.maxsize,
                 type=EventTypes.PYTHON,
                 tid=tid,
-                runtimes=zero_rt_list + dummpy_rt) # Give the list of RuntimeNode with external_id=0 to root node.
+                runtimes=zero_rt_list + dummpy_rt)  # Give the list of RuntimeNode with external_id=0 to root node.
             node_stack.append(root_node)
             for node in host_node_list:
                 while True:  # break loop when the node is inserted.
@@ -117,10 +121,9 @@ class OpTreeBuilder:
                             node_stack.append(node)
                         else:
                             logger.error("Error in input data: ranges on the same thread should not intersect!"
-                                         "Father:({},{},{}) Child:({},{},{})".format(
-                                tail_node.name, tail_node.start_time, tail_node.end_time,
-                                node.name, node.start_time, node.end_time
-                            ))
+                                         "Father:({},{},{}) Child:({},{},{})"
+                                         .format(tail_node.name, tail_node.start_time, tail_node.end_time,
+                                                 node.name, node.start_time, node.end_time))
                         break
                     else:
                         node_stack.pop()
@@ -147,8 +150,10 @@ class OpTreeBuilder:
         root_node.fill_stats()
 
         # replace the root_node start_time/end_time
-        root_node.start_time = next((child.start_time for child in root_node.children if child.start_time is not None), None)
-        root_node.end_time = next((child.end_time for child in reversed(root_node.children) if child.end_time is not None), None)
+        root_node.start_time = next((child.start_time for child in root_node.children
+                                     if child.start_time is not None), None)
+        root_node.end_time = next((child.end_time for child in reversed(root_node.children)
+                                   if child.end_time is not None), None)
         return root_node
 
     def _get_modules(self):
@@ -220,7 +225,7 @@ class OpTreeBuilder:
 
         # return the root backward node -> aggregated backward nodes array
         # if there is no any AccumulateGrad accompanied with it, then the key:value is itself.
-        return {nodes[0]:nodes for nodes in grouped_bwd_nodes}
+        return {nodes[0]: nodes for nodes in grouped_bwd_nodes}
 
     @staticmethod
     def _get_backward_roots(fwd_bwd_map, ts2parent, backward_nodes):
@@ -267,7 +272,7 @@ class OpTreeBuilder:
 
     @staticmethod
     def _insert_backward_modules(root, backward_modules):
-        backward_modules.sort(key = lambda x: (x.start_time, -x.end_time))
+        backward_modules.sort(key=lambda x: (x.start_time, -x.end_time))
 
         # each item is (parent_node, child_index) that it is visiting.
         node_stack = []

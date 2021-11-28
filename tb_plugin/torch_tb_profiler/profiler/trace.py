@@ -182,6 +182,7 @@ def create_trace_event(event):
     else:
         return None
 
+
 def create_association_events(events):
     fwd_bwd_events = (e for e in events if e.get("cat") == 'forward_backward')
 

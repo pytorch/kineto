@@ -205,7 +205,7 @@ class MemoryParser:
                 if record.ts < current_node.start_time:
                     # this should only happens for root node.
                     logger.debug("record timestamp %d is less that the start time of %s" %
-                                    (record.ts, current_node.name))
+                                 (record.ts, current_node.name))
                     # This record has no chance to be appended to following tree node.
                     self.staled_records.append(record)
                     record_index += 1

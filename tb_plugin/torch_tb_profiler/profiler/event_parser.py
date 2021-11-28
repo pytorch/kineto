@@ -373,11 +373,12 @@ class StepParser:
                     self.steps = self.steps[:keep_steps]
                     self.steps_names = self.steps_names[:keep_steps]
 
+
 class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
 
-    def parse(self, events, fwd_bwd_map) ->  Dict[int, List[OperatorNode]]:
+    def parse(self, events, fwd_bwd_map) -> Dict[int, List[OperatorNode]]:
         result = self.parse_nodes(events)
 
         builder = OpTreeBuilder(*result, fwd_bwd_map=fwd_bwd_map)

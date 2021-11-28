@@ -544,6 +544,7 @@ class RunProfile(object):
         root = next(iter(self.tid2tree.values()))
 
         result = []
+
         def traverse_node(parent, node):
             d = {
                 "name": node.name,

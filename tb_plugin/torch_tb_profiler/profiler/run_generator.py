@@ -75,12 +75,12 @@ class RunGenerator(object):
 
     def _generate_overview(self):
         def build_part_time_str(part_cost, part_name):
-            format_str = '<div class="visualization-tooltip" style="white-space: nowrap;">' \
-                         'Step {}<br>' \
-                         'Total: {}us<br>' \
-                         '<b>{}: {}us</b><br>' \
-                         'Percentage: {}%' \
-                         '</div>'
+            format_str = ('<div class="visualization-tooltip" style="white-space: nowrap;">'
+                          'Step {}<br>'
+                          'Total: {}us<br>'
+                          '<b>{}: {}us</b><br>'
+                          'Percentage: {}%'
+                          '</div>')
             percentage = round(100 * part_cost / costs.costs[ProfileRole.Total], 2)
             return format_str.format(step_name, costs.costs[ProfileRole.Total], part_name, part_cost, percentage)
 

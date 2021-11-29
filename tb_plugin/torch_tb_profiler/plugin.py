@@ -6,6 +6,7 @@ import gzip
 import json
 import os
 import sys
+import shutil
 import tempfile
 import threading
 import time
@@ -51,7 +52,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._runs = OrderedDict()
         self._runs_lock = threading.Lock()
 
-        self._cache = io.Cache()
+        self._temp_dir = tempfile.mkdtemp()
+        self._cache = io.Cache(self._temp_dir)
         self._queue = Queue()
         self._gpu_metrics_file_dict = {}
         monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
@@ -63,9 +65,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         def clean():
             logger.debug("starting cleanup...")
             self._cache.__exit__(*sys.exc_info())
-            for temp_file in self._gpu_metrics_file_dict.values():
-                logger.info("remove temporary file %s with gpu metrics" % temp_file)
-                os.remove(temp_file)
+            logger.debug("remove temporary cache directory %s" % self._temp_dir)
+            shutil.rmtree(self._temp_dir)
 
         atexit.register(clean)
 
@@ -246,7 +247,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                 raw_data = profile.append_gpu_metrics(raw_data)
 
                 # write the data to temp file
-                fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', delete=False)
+                fp = tempfile.NamedTemporaryFile('w+b', suffix='.json.gz', dir=self._temp_dir, delete=False)
                 fp.close()
                 # Already compressed, no need to gzip.open
                 with open(fp.name, mode='wb') as file:

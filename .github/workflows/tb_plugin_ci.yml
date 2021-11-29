@@ -30,10 +30,13 @@ jobs:
           fi
 
   build:
-    needs: generate-matrix
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{fromJSON(needs.generate-matrix.outputs.matrix)}}
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        cuda-version: [cpu]
+        pytorch-version: [nightly, stable]
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}

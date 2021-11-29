@@ -16,8 +16,8 @@ class BaseFileSystem(ABC):
     def append(self, filename, file_content, binary_mode=False):
         pass
 
-    def download_file(self, filename):
-        return filename
+    def download_file(self, file_to_download, file_to_save):
+        pass
 
     @abstractmethod
     def exists(self, filename):

@@ -66,23 +66,19 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
             file_content = as_bytes(file_content)
         client.upload_blob(path, file_content)
 
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-
-        logger.info("azure blob: starting downloading file %s as %s" % (filename, fp.name))
-        account, container, path = self.container_and_path(filename)
+    def download_file(self, file_to_download, file_to_save):
+        logger.info("azure blob: starting downloading file %s as %s" % (file_to_download, file_to_save))
+        account, container, path = self.container_and_path(file_to_download)
         client = self.create_container_client(account, container)
         blob_client = client.get_blob_client(path)
         if not blob_client.exists():
             raise FileNotFoundError("file %s doesn't exist!" % path)
 
         downloader = blob_client.download_blob()
-        with open(fp.name, 'wb') as downloaded_file:
+        with open(file_to_save, 'wb') as downloaded_file:
             data = downloader.readall()
             downloaded_file.write(data)
-            logger.info("azure blob: file %s is downloaded as %s, size is %d" % (filename, fp.name, len(data)))
-            return fp.name
+            logger.info("azure blob: file %s is downloaded as %s, size is %d" % (file_to_download, file_to_save, len(data)))
 
     def glob(self, filename):
         """Returns a list of files that match the given pattern(s)."""

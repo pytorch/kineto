@@ -14,26 +14,14 @@ on:
       - plugin/**
 
 jobs:
-  generate-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - id: set-matrix
-        run: |
-          echo $GITHUB_BASE_REF
-          if [ $GITHUB_BASE_REF == "plugin/vnext" ]
-          then
-            echo "::set-output name=matrix::{\"python-version\":[3.6, 3.7, 3.8, 3.9], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\"]}"
-          else
-            echo "::set-output name=matrix::{\"python-version\":[3.6, 3.7, 3.8, 3.9], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\", \"1.9rc\", \"stable\"]}"
-          fi
-
   build:
-    needs: generate-matrix
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{fromJSON(needs.generate-matrix.outputs.matrix)}}
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        cuda-version: [cpu]
+        pytorch-version: [nightly, stable]
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}

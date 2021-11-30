@@ -238,7 +238,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
             columns={columns}
             dataSource={rows}
             expandable={{
-              defaultExpandAllRows: true
+              defaultExpandAllRows: false
             }}
           />
         )}
@@ -256,7 +256,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
           />
         )}
 
-        <div ref={timelineRef}></div>
+        <div ref={timelineRef} />
       </Card>
     </div>
   )

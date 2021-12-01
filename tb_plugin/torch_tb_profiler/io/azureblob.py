@@ -2,7 +2,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 import os
-import tempfile
 
 from azure.storage.blob import ContainerClient
 
@@ -78,7 +77,8 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         with open(file_to_save, 'wb') as downloaded_file:
             data = downloader.readall()
             downloaded_file.write(data)
-            logger.info("azure blob: file %s is downloaded as %s, size is %d" % (file_to_download, file_to_save, len(data)))
+            logger.info("azure blob: file %s is downloaded as %s, size is %d" %
+                        (file_to_download, file_to_save, len(data)))
 
     def glob(self, filename):
         """Returns a list of files that match the given pattern(s)."""
@@ -147,7 +147,8 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
             yield key, None, value
 
     def split_blob_path(self, blob_path):
-        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
+        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path).
+        Finally, split the relative path.
         return (basename(blob_path), [relative splitted paths])
         If blob_path doesn't exist, return (None, None)
         For example,

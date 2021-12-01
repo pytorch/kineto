@@ -77,7 +77,8 @@ class GPUMetricsParser(object):
                 current_range = self.kernel_ranges_per_device[gpu_id][current_range_index]
                 current_bucket_index = 0
                 current_bucket = buckets_ranges[0]
-                while current_range_index < len(self.kernel_ranges_per_device[gpu_id]) and current_bucket_index < buckets:
+                while (current_range_index < len(self.kernel_ranges_per_device[gpu_id])
+                       and current_bucket_index < buckets):
                     if current_bucket[1] <= current_range[0]:
                         current_bucket_index += 1
                         current_bucket = buckets_ranges[current_bucket_index] if current_bucket_index < buckets \

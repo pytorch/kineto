@@ -1,5 +1,6 @@
 '''
-This file is forked from https://github.com/tensorflow/tensorboard/blob/master/tensorboard/compat/tensorflow_stub/io/gfile.py.
+This file is forked from
+https://github.com/tensorflow/tensorboard/blob/master/tensorboard/compat/tensorflow_stub/io/gfile.py.
 The following functionalities are added after forking:
 * Check Azure Blob & Google Cloud available or not
 * get_filesystem changes to support Azure Blobs
@@ -165,6 +166,7 @@ class LocalFileSystem(LocalPath, BaseFileSystem):
         # [1] https://github.com/tensorflow/tensorboard/blob/master/README.md#logdir--logdir_spec-legacy-mode
         yield from os.walk(top, topdown, onerror, followlinks=True)
 
+
 class S3FileSystem(RemotePath, BaseFileSystem):
     """Provides filesystem access to S3."""
 
@@ -265,8 +267,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(file_to_download)
         s3.Bucket(bucket).download_file(path, file_to_save)
-        logger.info("s3: file %s is downloaded as %s" %
-                        (file_to_download, file_to_save))
+        logger.info("s3: file %s is downloaded as %s" % (file_to_download, file_to_save))
         return
 
     def glob(self, filename):
@@ -351,6 +352,7 @@ if GS_ENABLED:
     from .gs import GoogleBlobSystem
     register_filesystem("gs", GoogleBlobSystem())
 
+
 class File(object):
     def __init__(self, filename, mode):
         if mode not in ("r", "rb", "br", "w", "wb", "bw"):
@@ -384,7 +386,7 @@ class File(object):
         old_buff_offset = self.buff_offset
         read_size = min(len(self.buff), new_buff_offset) - old_buff_offset
         self.buff_offset += read_size
-        return self.buff[old_buff_offset : old_buff_offset + read_size]
+        return self.buff[old_buff_offset: old_buff_offset + read_size]
 
     def read(self, n=None):
         """Reads contents of file to a string.
@@ -414,7 +416,8 @@ class File(object):
 
         # read from filesystem
         read_size = max(self.buff_chunk_size, n) if n is not None else None
-        (self.buff, self.continuation_token) = self.fs.read(self.filename, self.binary_mode, read_size, self.continuation_token)
+        (self.buff, self.continuation_token) = self.fs.read(
+            self.filename, self.binary_mode, read_size, self.continuation_token)
         self.buff_offset = 0
 
         # add from filesystem
@@ -511,33 +514,42 @@ def exists(filename):
     """Determines whether a path exists or not."""
     return get_filesystem(filename).exists(filename)
 
+
 def abspath(path):
     return get_filesystem(path).abspath(path)
+
 
 def basename(path):
     return get_filesystem(path).basename(path)
 
+
 def relpath(path, start):
     return get_filesystem(path).relpath(path, start)
 
+
 def join(path, *paths):
     return get_filesystem(path).join(path, *paths)
+
 
 def download_file(file_to_download, file_to_save):
     """Downloads the file, returning a temporary path to the file after finishing."""
     get_filesystem(file_to_download).download_file(file_to_download, file_to_save)
 
+
 def glob(filename):
     """Returns a list of files that match the given pattern(s)."""
     return get_filesystem(filename).glob(filename)
+
 
 def is_local(path):
     """Returns whether the path is a local path"""
     return isinstance(get_filesystem(path), LocalFileSystem)
 
+
 def isdir(dirname):
     """Returns whether the path is a directory or not."""
     return get_filesystem(dirname).isdir(dirname)
+
 
 def listdir(dirname):
     """Returns a list of entries contained within a directory.
@@ -547,9 +559,11 @@ def listdir(dirname):
     """
     return get_filesystem(dirname).listdir(dirname)
 
+
 def makedirs(path):
     """Creates a directory and all parent/intermediate directories."""
     return get_filesystem(path).makedirs(path)
+
 
 def walk(top, topdown=True, onerror=None):
     """Recursive directory tree generator for directories.
@@ -597,9 +611,11 @@ def walk(top, topdown=True, onerror=None):
         if not topdown:
             yield here
 
+
 def stat(filename):
     """Returns file statistics for a given path."""
     return get_filesystem(filename).stat(filename)
+
 
 def read(file):
     with File(file, 'rb') as f:

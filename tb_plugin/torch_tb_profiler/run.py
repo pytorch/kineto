@@ -85,6 +85,7 @@ class Run(object):
         else:
             return self.profiles.values()
 
+
 class RunProfile(object):
     """ Cooked profiling result for a worker. For visualization purpose only.
     """
@@ -123,19 +124,15 @@ class RunProfile(object):
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
-            util_json = "{{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"GPU Utilization\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
+            util_json = ("{{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", "
+                         "\"pid\":{}, \"ts\":{}, "
+                         "\"args\":{{\"GPU Utilization\":{}}}}}").format(gpu_id, gpu_id, start_time, counter_value)
             return util_json
 
         def build_trace_counter_sm_efficiency(gpu_id, start_time, counter_value):
-            util_json = "{{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", " \
-                        "\"pid\":{}, \"ts\":{}, " \
-                        "\"args\":{{\"Est. SM Efficiency\":{}}}}}".format(
-                gpu_id, gpu_id, start_time, counter_value
-            )
+            util_json = ("{{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", "
+                         "\"pid\":{}, \"ts\":{}, "
+                         "\"args\":{{\"Est. SM Efficiency\":{}}}}}").format(gpu_id, gpu_id, start_time, counter_value)
             return util_json
 
         def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list):
@@ -177,7 +174,6 @@ class RunProfile(object):
         import gzip
         raw_data = gzip.compress(raw_data, 1)
         return raw_data
-
 
     def get_gpu_metrics_data_tooltip(self):
         def get_gpu_metrics_data(profile):
@@ -276,7 +272,8 @@ class RunProfile(object):
                 {"name": f"Allocation Size ({cano.memory_metric})", "type": "number",
                  "tooltip": "The allocation size including all children operators."},
                 {"name": f"Self Allocation Size ({cano.memory_metric})", "type": "number",
-                 "tooltip": "The allocation size belonging to the operator itself.\nIt will sum up all allocation bytes without considering the memory free."},
+                 "tooltip": ("The allocation size belonging to the operator itself.\n"
+                             "It will sum up all allocation bytes without considering the memory free.")},
             ],
             "rows": {}
         }
@@ -310,8 +307,7 @@ class RunProfile(object):
             profile: Union["RunProfile", RunProfileData],
             time_metric: str = "ms",
             memory_metric: str = "K",
-            patch_for_step_plot=True,
-        ):
+            patch_for_step_plot=True):
         def get_curves_and_peaks(records: List[MemoryRecord], cano: Canonicalizer):
             """Inputs:
                 records: Sorted list of MemoryRecord
@@ -330,14 +326,14 @@ class RunProfile(object):
             curves = defaultdict(list)
             peaks = defaultdict(float)
             for r in records:
-                if r.addr == None:
+                if r.addr is None:
                     continue
                 dev = r.device_name
                 ts = r.ts
                 ta = r.total_allocated
                 tr = r.total_reserved
 
-                if ta != ta or tr != tr: # isnan
+                if ta != ta or tr != tr:  # isnan
                     continue
 
                 curves[dev].append([
@@ -404,9 +400,10 @@ class RunProfile(object):
                 "memory_factor": cano.memory_factor,
             },
             "columns": [
-                { "name": f"Time ({cano.time_metric})", "type": "number", "tooltip": "Time since profiler starts." },
-                { "name": f"Allocated ({cano.memory_metric})", "type": "number", "tooltip": "Total memory in use." },
-                { "name": f"Reserved ({cano.memory_metric})", "type": "number", "tooltip": "Total reserved memory by allocator, both used and unused." },
+                {"name": f"Time ({cano.time_metric})", "type": "number", "tooltip": "Time since profiler starts."},
+                {"name": f"Allocated ({cano.memory_metric})", "type": "number", "tooltip": "Total memory in use."},
+                {"name": f"Reserved ({cano.memory_metric})", "type": "number",
+                 "tooltip": "Total reserved memory by allocator, both used and unused."},
             ],
             "rows": curves,
         }
@@ -417,8 +414,7 @@ class RunProfile(object):
             start_ts=None,
             end_ts=None,
             time_metric: str = "ms",
-            memory_metric: str = "K",
-        ):
+            memory_metric: str = "K"):
         def get_op_name_or_ctx(record: MemoryRecord):
             name = record.op_name_or_unknown
             if name.startswith("aten::empty") and record.parent_op_name:
@@ -542,6 +538,7 @@ class RunProfile(object):
 
         process_modules_stats(result["data"], self.module_stats)
         return result
+
 
 class DistributedRunProfile(object):
     """ Profiling all workers in a view.

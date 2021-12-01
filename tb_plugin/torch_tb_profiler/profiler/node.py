@@ -14,6 +14,7 @@ logger = utils.get_logger()
 
 ExcludeOpName = ["DataParallel.forward", "DistributedDataParallel.forward"]
 
+
 class MemoryMetrics(IntEnum):
     SelfIncreaseSize = 0
     SelfAllocationSize = 1
@@ -21,6 +22,7 @@ class MemoryMetrics(IntEnum):
     IncreaseSize = 3
     AllocationSize = 4
     AllocationCount = 5
+
 
 class BaseNode(ABC):
     def __init__(self, name, start_time, end_time, type, tid, external_id):
@@ -67,7 +69,7 @@ class CommunicationNode(BaseNode):
 class HostNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id, device_duration=0):
         super().__init__(name, start_time, end_time, type, tid, external_id)
-        self.device_duration = device_duration  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream?
+        self.device_duration = device_duration  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream? # noqa: E501
 
 
 class OperatorNode(HostNode):
@@ -75,10 +77,11 @@ class OperatorNode(HostNode):
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
-            children=None, runtimes=None, input_shape=None, input_type=None, callstack=None, self_host_duration=0, self_device_duration=0):
+                 children=None, runtimes=None, input_shape=None, input_type=None, callstack=None,
+                 self_host_duration=0, self_device_duration=0):
         super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
-        self.children = [] if children is None else children # OperatorNode and ProfilerStepNode.
-        self.runtimes = [] if runtimes is None else runtimes # RuntimeNode
+        self.children = [] if children is None else children  # OperatorNode and ProfilerStepNode.
+        self.runtimes = [] if runtimes is None else runtimes  # RuntimeNode
         self.input_shape = input_shape
         self.input_type = input_type
         self.callstack = callstack
@@ -115,7 +118,8 @@ class OperatorNode(HostNode):
     def fill_stats(self):
         # TODO: Replace recursive by using a stack, in case of too deep callstack.
         self.children.sort(key=lambda x: (x.start_time, -x.end_time))
-        self.runtimes.sort(key=lambda x: (x.start_time, -x.end_time) if x.start_time and x.end_time else (sys.maxsize, -sys.maxsize - 1))
+        self.runtimes.sort(key=lambda x: (x.start_time, -x.end_time)
+                           if x.start_time and x.end_time else (sys.maxsize, -sys.maxsize - 1))
 
         for child in self.children:
             child.fill_stats()
@@ -222,7 +226,7 @@ class ModuleNode(OperatorNode):
 
 class RuntimeNode(HostNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
-            device_nodes=None):
+                 device_nodes=None):
         super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
@@ -281,9 +285,9 @@ class DeviceNode(BaseNode):
 
 
 def is_operator_node(node):
-    if type(node) is OperatorNode and node.type == EventTypes.OPERATOR \
-        and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__")) \
-        and not node.name.startswith("Optimizer.") and node.name not in ExcludeOpName:
+    if (type(node) is OperatorNode and node.type == EventTypes.OPERATOR
+            and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__"))
+            and not node.name.startswith("Optimizer.") and node.name not in ExcludeOpName):
         return True
     else:
         return False

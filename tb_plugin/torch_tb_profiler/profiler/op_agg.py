@@ -96,8 +96,8 @@ def aggregate_kernels(kernel_list):
         dur = kernel.end_time - kernel.start_time
         op_name = "N/A" if kernel.op_name is None else kernel.op_name
         key = "###".join((kernel.name, op_name,
-                            str(kernel.grid), str(kernel.block),
-                            str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
+                          str(kernel.grid), str(kernel.block),
+                          str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
         if key not in name_op_to_agg:
             name_op_to_agg[key] = KernelAggByNameOp(kernel, op_name)
         agg = name_op_to_agg[key]

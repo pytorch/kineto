@@ -24,6 +24,7 @@ from .trace import BaseEvent, EventTypes, MemoryEvent
 
 logger = utils.get_logger()
 
+
 class RunProfileData(object):
     def __init__(self, worker, span=None):
         self.worker = worker
@@ -33,10 +34,10 @@ class RunProfileData(object):
         self.device_props = None
         self.used_devices = []
         self.use_dp = False
-        self.use_ddp =False
+        self.use_ddp = False
         self.comm_lib = None
         self.profiler_start_ts = float("inf")
-        self.events : List[BaseEvent] = None
+        self.events: List[BaseEvent] = None
         self.trace_file_path = None
         self.has_runtime = False
         self.has_kernel = False
@@ -63,7 +64,7 @@ class RunProfileData(object):
         self.kernel_stat = None
         self.tc_ratio = None
         self.tc_eligible_ops_kernel_ratio = None
-        self.tc_used_ratio = None # If it's a pure CPU run, then this keeps as None.
+        self.tc_used_ratio = None  # If it's a pure CPU run, then this keeps as None.
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
@@ -236,18 +237,19 @@ class RunProfileData(object):
             # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications
             major = self.device_props[0].get("computeMajor")
             # If it's a pure CPU run, then self.tc_used_ratio is None, this rule will not be triggered.
-            if major is not None and major >= 7 and self.tc_used_ratio == 0.0 and self.tc_eligible_ops_kernel_ratio > 0.0:
+            if (major is not None and major >= 7 and
+                    self.tc_used_ratio == 0.0 and
+                    self.tc_eligible_ops_kernel_ratio > 0.0):
                 url = "https://pytorch.org/docs/stable/amp.html"
                 self.recommendations.append(
-                    f"Kernels with {round(self.tc_eligible_ops_kernel_ratio * 100)}% time are launched by Tensor Cores eligible operators. " +
-                    f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16."
-                )
-
+                    f"Kernels with {round(self.tc_eligible_ops_kernel_ratio * 100)}%"
+                    " time are launched by Tensor Cores eligible operators. "
+                    f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16.")
 
             # Memory related
             if self.memory_parser:
                 for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
-                    if dev_type == -1: # ignore cpu
+                    if dev_type == -1:  # ignore cpu
                         continue
                     total_mem = self.device_props[dev_id].get("totalGlobalMem")
                     if total_mem is not None and peak_mem > total_mem * 0.9:
@@ -256,19 +258,19 @@ class RunProfileData(object):
                         ckp_url = "https://pytorch.org/docs/stable/checkpoint.html"
                         amp_url = "https://pytorch.org/docs/stable/amp.html"
                         self.recommendations.append(
-                            f"Device memory usage is at the limit of device memory capacity ({percentage:.1f}% of {total_mem_gb:.1f}GB " +
-                            f"on GPU{dev_id}). To get better value of your GPU or to use larger batch size for training, please " + 
-                            f"refer to {href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}."
-                        )
-                        break
+                            f"Device memory usage is at the limit of device memory capacity "
+                            f"({percentage:.1f}% of {total_mem_gb:.1f}GB on GPU{dev_id}). "
+                            "To get better value of your GPU or to use larger batch size for training, please refer to "
+                            f"{href('Gradient Checkpoint', ckp_url)} or {href('Automatic Mixed Precision', amp_url)}.")
 
+                        break
 
     def _analyze_distributed_metrics(self):
         if self.use_dp and len(self.used_devices) > 1:
             url = "https://pytorch.org/docs/stable/notes/cuda.html#cuda-nn-ddp-instead"
             self.recommendations.append(
-                f"It is recommended to {href('use DistributedDataParallel instead of DataParallel', url)} to do multi-GPU training."
-            )
+                f"It is recommended to {href('use DistributedDataParallel instead of DataParallel', url)}"
+                " to do multi-GPU training.")
 
         if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
@@ -278,7 +280,9 @@ class RunProfileData(object):
                     continue
                 compute_capability = "{}.{}".format(major, minor)
                 if float(compute_capability) >= 3.5:
-                    text = "Nccl backend is currently the fastest and highly recommended backend when using DDP for training."
+                    text = (
+                        "Nccl backend is currently the fastest and highly recommended backend"
+                        " when using DDP for training.")
                     self.recommendations.append(text)
                     break
 
@@ -289,10 +293,11 @@ class RunProfileData(object):
             grad_acc_url = "https://towardsdatascience.com/what-is-gradient-accumulation-in-deep-learning-ec034122cfa"
             lamb_url = "https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB"
             self.recommendations.append(
-                f"This run has high time cost on communication. {percentage:.1f}% of the step time is in communication. " +
-                f"You could try {href('Gradient Compression', compress_url)} or {href('Gradient Accumulation', grad_acc_url)} or " +
-                "increase the batch size. Note: Gradient accumulation will increase global effective batch size, which may hurt " +
-                f"model convergence and accuracy. For such case, you may want to evaluate {href('LAMB optimizer', lamb_url)}."
+                f"This run has high time cost on communication. {percentage:.1f}% of the step time is in "
+                f"communication. You could try {href('Gradient Compression', compress_url)} or "
+                f"{href('Gradient Accumulation', grad_acc_url)} or increase the batch size. "
+                "Note: Gradient accumulation will increase global effective batch size, which may hurt model "
+                f"convergence and accuracy. For such case, you may want to evaluate {href('LAMB optimizer', lamb_url)}."
             )
 
     def _memory_events(self) -> List[MemoryEvent]:
@@ -319,9 +324,9 @@ class RunProfileData(object):
             gpu_list_str, has_str = get_gpus_str(low_util_gpus)
             text = "GPU {} {} low utilization. You could try to " \
                    "increase batch size to improve. Note: Increasing batch size " \
-                   "may affect the speed and stability of model convergence.".format(
-                gpu_list_str, has_str)
+                   "may affect the speed and stability of model convergence.".format(gpu_list_str, has_str)
             self.recommendations.append(text)
+
 
 class DistributedRunProfileData:
     def __init__(self, run_profile_data):

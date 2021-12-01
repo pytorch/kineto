@@ -98,7 +98,7 @@ class RunLoader(object):
             sys.exit(1)
         except Exception as ex:
             logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
-                               self.run_name, worker, ex, exc_info=True)
+                           self.run_name, worker, ex, exc_info=True)
             self.queue.put((None, None))
         logger.debug("finishing process data")
 
@@ -124,7 +124,8 @@ class RunLoader(object):
             if data.has_communication and data.comm_node_list:
                 comm_node_lists.append(data.comm_node_list)
                 if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
-                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
+                    logger.error("Number of communication operation nodes don't match between workers in run: %s"
+                                 % self.run_name)
                     has_communication = False
             else:
                 has_communication = False
@@ -144,7 +145,8 @@ class RunLoader(object):
                 for k in range(worker_num):
                     kernel_ranges = comm_node_lists[k][i].kernel_ranges
                     if len(kernel_ranges) != kernel_range_size:
-                        logger.error("Number of communication kernels don't match between workers in run: %s" % self.run_name)
+                        logger.error("Number of communication kernels don't match between workers in run: %s"
+                                     % self.run_name)
                         has_communication = False
                         return None
                     if kernel_ranges:

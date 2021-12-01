@@ -16,8 +16,8 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
-#include <list>
 #include <mutex>
+#include <set>
 #include <time.h>
 
 #include <fmt/chrono.h>
@@ -30,8 +30,8 @@ namespace KINETO_NAMESPACE {
 std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
-static std::list<ILoggerObserver*>& LoggerObservers() {
-  static std::list<ILoggerObserver*> observers;
+static std::set<ILoggerObserver*>& LoggerObservers() {
+  static std::set<ILoggerObserver*> observers;
   return observers;
 }
 static std::mutex& mutex() {
@@ -85,16 +85,12 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
 
 void Logger::addLoggerObserver(ILoggerObserver* observer) {
   std::lock_guard<std::mutex> guard(mutex());
-  LoggerObservers().push_back(observer);
+  LoggerObservers().insert(observer);
 }
 
 void Logger::removeLoggerObserver(ILoggerObserver* observer) {
   std::lock_guard<std::mutex> guard(mutex());
-  auto& LoggerObservers_ = LoggerObservers();
-  auto it = std::find(LoggerObservers_.begin(), LoggerObservers_.end(), observer);
-  if (it != LoggerObservers_.end()) {
-    LoggerObservers_.erase(it);
-  }
+  LoggerObservers().erase(observer);
 }
 
 } // namespace KINETO_NAMESPACE

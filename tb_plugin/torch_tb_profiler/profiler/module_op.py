@@ -21,6 +21,7 @@ class Module:
                 self.module_id == o.module_id and
                 self.children == o.children)
 
+
 class ModuleStats:
     def __init__(self, name, module_id):
         self.name = name
@@ -48,6 +49,7 @@ def aggegate_module_view(tid2tree, events):
         return _process_module_statistics(modules, roots)
     else:
         return None
+
 
 def _build_module_hierarchy(events):
     '''Get the module hierarchy from the chome trace events
@@ -151,6 +153,7 @@ def _get_module_list(tid2tree):
         for child in root.children:
             yield from traverse_node(child)
 
+
 Stats = namedtuple('Stats', [
     'name',
     'id',
@@ -163,10 +166,12 @@ Stats = namedtuple('Stats', [
     'avg_duration',
     'children'])
 
+
 def _process_module_statistics(modules, hierarchy):
     '''Get the module statistics from the ModuleNode(s) and the hierarchy
     '''
     module_aggs = _aggregate_modules(modules)
+
     def process_modules(modules):
         modules_stats = []
         for m in modules:
@@ -174,7 +179,8 @@ def _process_module_statistics(modules, hierarchy):
             stats = module_aggs[(m.name, m.module_id)]
 
             child_stats = process_modules(m.children)
-            modules_stats.append(Stats(name,
+            modules_stats.append(Stats(
+                name,
                 m.module_id,
                 stats.occurences,
                 stats.operators,
@@ -220,8 +226,10 @@ def get_module_tree(tid2tree):
 
     return modules
 
+
 def dump_modules(level, modules):
     '''testing purpose'''
     for module in modules:
-        print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}: {module.stats.avg_host_duration}")
+        print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}:"
+              f" {module.stats.avg_host_duration}")
         dump_modules(level + 1, module.children)

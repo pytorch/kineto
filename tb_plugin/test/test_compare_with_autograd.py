@@ -13,13 +13,15 @@ import torchvision.models as models
 import torch_tb_profiler.io as io
 from torch_tb_profiler.profiler import RunLoader
 
+
 def create_log_dir():
-    log_dir_name='./log{}'.format(str(int(time.time()*1000)))
+    log_dir_name = './log{}'.format(str(int(time.time()*1000)))
     try:
         os.makedirs(log_dir_name)
     except Exception:
         raise RuntimeError("Can't create directory: " + log_dir_name)
     return log_dir_name
+
 
 def get_autograd_result(p, worker_name, record_shapes=False, with_stack=False):
     avgs = p.key_averages()
@@ -112,6 +114,7 @@ def get_autograd_result(p, worker_name, record_shapes=False, with_stack=False):
 
     return result_dict
 
+
 def generate_plugin_result_row(data):
     row = list()
     row.append(data['name'])
@@ -126,8 +129,9 @@ def generate_plugin_result_row(data):
         row.append(data['call_stack'])
     return row
 
+
 def get_plugin_result(run, record_shapes=False, with_stack=False):
-    result_dict =  dict()
+    result_dict = dict()
     for (worker_name, span), profile in run.profiles.items():
         worker_name = worker_name.split('.')[0]
         assert profile.operation_table_by_name is not None
@@ -139,7 +143,7 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
             rows = profile.kernel_table["data"]["rows"]
             result_dict[worker_name + "#kernel"] = list()
             for row in rows:
-                result_dict[worker_name + "#kernel"].append([row[0], row[2], row[3]]) # row[1] is "Tensor Cores Used".
+                result_dict[worker_name + "#kernel"].append([row[0], row[2], row[3]])  # row[1] is "Tensor Cores Used".
         if record_shapes:
             assert profile.operation_table_by_name_input is not None
             result_dict[worker_name + "#operator#input_shape"] = list()
@@ -154,19 +158,20 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
             assert profile.operation_stack_by_name_input is not None
             result_dict[worker_name + "#operator#stack"] = list()
             op_stack_dict = profile.operation_stack_by_name
-            for k,datalist in op_stack_dict.items():
+            for k, datalist in op_stack_dict.items():
                 for data in datalist:
                     row = generate_plugin_result_row(data)
                     result_dict[worker_name + "#operator#stack"].append(row)
             if record_shapes:
                 result_dict[worker_name + "#operator#stack#input_shape"] = list()
                 op_stack_dict = profile.operation_stack_by_name_input
-                for k,datalist in op_stack_dict.items():
+                for k, datalist in op_stack_dict.items():
                     for data in datalist:
                         row = generate_plugin_result_row(data)
                         result_dict[worker_name + "#operator#stack#input_shape"].append(row)
 
     return result_dict
+
 
 def get_train_func(use_gpu=True):
     model = models.resnet50(pretrained=True)
@@ -208,6 +213,7 @@ def get_train_func(use_gpu=True):
                 break
     return train
 
+
 def get_output_fn(dir_name, profilers_dict):
     def output_fn(p):
         # In current torch.profiler.profile, at beginning of each span, a new p.profiler will be created.
@@ -217,6 +223,7 @@ def get_output_fn(dir_name, profilers_dict):
         tb_trace_handler = torch.profiler.tensorboard_trace_handler(dir_name, worker_name)
         tb_trace_handler(p)
     return output_fn
+
 
 class TestCompareWithAutogradResult(unittest.TestCase):
 
@@ -242,17 +249,17 @@ class TestCompareWithAutogradResult(unittest.TestCase):
             get_train_func()(5)
         log_dir = create_log_dir()
         p.export_chrome_trace(os.path.join(log_dir, "worker0.{}.pt.trace.json".format(int(time.time() * 1000))))
-        self.compare_results(log_dir, {"worker0":p})
+        self.compare_results(log_dir, {"worker0": p})
 
     def base_profiler_api(self, use_gpu, record_shapes, profile_memory, with_stack):
         log_dir = create_log_dir()
         profilers_dict = dict()
         if use_gpu:
-            activities=[
+            activities = [
                 torch.profiler.ProfilerActivity.CPU,
                 torch.profiler.ProfilerActivity.CUDA]
         else:
-            activities=[torch.profiler.ProfilerActivity.CPU]
+            activities = [torch.profiler.ProfilerActivity.CPU]
 
         with torch.profiler.profile(
             activities=activities,
@@ -292,4 +299,3 @@ class TestCompareWithAutogradResult(unittest.TestCase):
         ):
             get_train_func()(7)
         self.compare_results(log_dir, profilers_dict)
-

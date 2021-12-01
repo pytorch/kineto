@@ -23,6 +23,7 @@ from .run import DistributedRunProfile, Run, RunProfile
 
 logger = utils.get_logger()
 
+
 def decorate_headers(func):
     def wrapper(*args, **kwargs):
         headers = func(*args, **kwargs)
@@ -30,7 +31,9 @@ def decorate_headers(func):
         return headers
     return wrapper
 
+
 exceptions.HTTPException.get_headers = decorate_headers(exceptions.HTTPException.get_headers)
+
 
 class TorchProfilerPlugin(base_plugin.TBPlugin):
     """TensorBoard plugin for Torch Profiler."""
@@ -232,7 +235,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def trace_route(self, request):
         profile = self._get_profile_for_request(request)
 
-        if not profile.has_kernel:# Pure CPU.
+        if not profile.has_kernel:  # Pure CPU.
             raw_data = self._cache.read(profile.trace_file_path)
             if not profile.trace_file_path.endswith('.gz'):
                 raw_data = gzip.compress(raw_data, 1)
@@ -289,14 +292,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        return self.respond_as_json(RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
+        return self.respond_as_json(
+            RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def memory_curve_route(self, request):
         profile = self._get_profile_for_request(request)
         time_metric = request.args.get("time_metric", "ms")
         memory_metric = request.args.get("memory_metric", "MB")
-        return self.respond_as_json(RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
+        return self.respond_as_json(
+            RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def memory_events_route(self, request):
@@ -310,7 +315,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if end_ts is not None:
             end_ts = int(end_ts)
 
-        return self.respond_as_json(RunProfile.get_memory_events(profile, start_ts, end_ts, time_metric=time_metric, memory_metric=memory_metric))
+        return self.respond_as_json(
+            RunProfile.get_memory_events(profile, start_ts, end_ts, time_metric=time_metric,
+                                         memory_metric=memory_metric))
 
     @wrappers.Request.application
     def module_route(self, request):
@@ -322,7 +329,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             name = request.args.get("run")
             worker = request.args.get("worker")
             span = request.args.get("span")
-            raise exceptions.NotFound("could not find the run for %s/%s/%s" %(name, worker, span))
+            raise exceptions.NotFound("could not find the run for %s/%s/%s" % (name, worker, span))
 
     @wrappers.Request.application
     def static_file_route(self, request):
@@ -386,7 +393,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                     logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
 
                 time.sleep(consts.MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS)
-        except:
+        except Exception:
             logger.exception("Failed to start monitor_runs")
 
     def _receive_runs(self):
@@ -469,22 +476,22 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._check_run(run, name)
         profile = run.get_profile(worker, span)
         if profile is None:
-            raise exceptions.NotFound("could not find the profile for %s/%s/%s " %(name, worker, span))
+            raise exceptions.NotFound("could not find the profile for %s/%s/%s " % (name, worker, span))
         return profile
 
     def _check_run(self, run, name):
         if run is None:
-            raise exceptions.NotFound("could not find the run for %s" %(name))
+            raise exceptions.NotFound("could not find the run for %s" % (name))
 
     def _check_normal_profile(self, profile, name, worker):
         if not isinstance(profile, RunProfile):
-            raise exceptions.BadRequest("Get an unexpected profile type %s for %s/%s" %(type(profile), name, worker))
+            raise exceptions.BadRequest("Get an unexpected profile type %s for %s/%s" % (type(profile), name, worker))
 
     def _check_distributed_profile(self, profile, name):
         if not isinstance(profile, DistributedRunProfile):
-            raise exceptions.BadRequest("Get an unexpected distributed profile type %s for %s" %(type(profile), name))
+            raise exceptions.BadRequest("Get an unexpected distributed profile type %s for %s" % (type(profile), name))
 
     def _validate(self, **kwargs):
-        for name,v in kwargs.items():
+        for name, v in kwargs.items():
             if v is None:
-                raise exceptions.BadRequest("Must specify %s in request url" %(name))
+                raise exceptions.BadRequest("Must specify %s in request url" % (name))

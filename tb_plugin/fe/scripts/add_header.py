@@ -3,11 +3,12 @@ import glob
 import os
 import sys
 
-HEADER='''/*---------------------------------------------------------------------------------------------
+HEADER = '''/*---------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
 '''
+
 
 def add_header(file):
     with open(file, 'r') as f:
@@ -20,6 +21,7 @@ def add_header(file):
     with open(file, 'w') as out:
         out.write(HEADER)
         out.writelines(contents)
+
 
 if __name__ == '__main__':
     dir = sys.argv[1]

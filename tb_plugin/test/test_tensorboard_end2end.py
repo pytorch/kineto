@@ -18,7 +18,7 @@ def get_samples_dir():
 
 class TestEnd2End(unittest.TestCase):
 
-    #def test_tensorboard_gs(self):
+    # def test_tensorboard_gs(self):
     #    test_folder = 'gs://pe-tests-public/tb_samples/'
     #    expected_runs = b'["resnet50_profiler_api_num_workers_0", "resnet50_profiler_api_num_workers_4"]'
     #    self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
@@ -28,7 +28,7 @@ class TestEnd2End(unittest.TestCase):
         expected_runs = b'["resnet50_num_workers_0", "resnet50_num_workers_4"]'
 
         print("starting spawn mode testing...")
-        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD':'spawn'})
+        self._test_tensorboard_with_arguments(test_folder, expected_runs, {'TORCH_PROFILER_START_METHOD': 'spawn'})
 
     @unittest.skip("fork is not use anymore")
     def test_tensorboard_fork(self):
@@ -61,8 +61,8 @@ class TestEnd2End(unittest.TestCase):
         shutil.rmtree(logdir)
 
     def _test_tensorboard_with_arguments(self, test_folder, expected_runs, env=None, path_prefix=None):
-        host='localhost'
-        port=random.randint(6008, 65535)
+        host = 'localhost'
+        port = random.randint(6008, 65535)
 
         try:
             if env:
@@ -72,7 +72,8 @@ class TestEnd2End(unittest.TestCase):
             if not path_prefix:
                 tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port)], env=env)
             else:
-                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port), '--path_prefix='+path_prefix], env=env)
+                tb = Popen(['tensorboard', '--logdir='+test_folder, '--port='+str(port),
+                           '--path_prefix='+path_prefix], env=env)
             self._test_tensorboard(host, port, expected_runs, path_prefix)
         finally:
             pid = tb.pid
@@ -87,7 +88,7 @@ class TestEnd2End(unittest.TestCase):
             link_prefix = 'http://{}:{}/{}/data/plugin/pytorch_profiler/'.format(host, port, path_prefix)
         run_link = link_prefix + 'runs'
 
-        expected_links_format=[
+        expected_links_format = [
             link_prefix + 'overview?run={}&worker=worker0&span=1&view=Overview',
             link_prefix + 'operation?run={}&worker=worker0&span=1&view=Operator&group_by=Operation',
             link_prefix + 'operation/table?run={}&worker=worker0&span=1&view=Operator&group_by=Operation',
@@ -127,7 +128,7 @@ class TestEnd2End(unittest.TestCase):
                     print("receive mismatched data, retrying", data)
                 time.sleep(2)
                 retry_times -= 1
-                if retry_times<0:
+                if retry_times < 0:
                     self.fail("Load run timeout")
             except Exception:
                 if retry_times > 0:
@@ -135,7 +136,7 @@ class TestEnd2End(unittest.TestCase):
                 else:
                     raise
 
-        links=[]
+        links = []
         for run in json.loads(expected_runs):
             for expected_link in expected_links_format:
                 links.append(expected_link.format(run))
@@ -143,7 +144,7 @@ class TestEnd2End(unittest.TestCase):
         if os.environ.get("TORCH_PROFILER_REGEN_RESULT_CHECK") == "1":
             with open('result_check_file.txt', 'w', encoding="utf-8") as f:
                 # NOTE: result_check_file.txt is manually generated and verified.
-                # And then checked-in so that we can make sure that frontend 
+                # And then checked-in so that we can make sure that frontend
                 # content change can be detected on code change.
                 for link in links:
                     response = urllib.request.urlopen(link)
@@ -151,7 +152,7 @@ class TestEnd2End(unittest.TestCase):
                     f.write("\n")
         else:
             with open('result_check_file.txt', 'r') as f:
-                lines=f.readlines()
+                lines = f.readlines()
                 i = 0
                 print("starting testing...")
                 for link in links:
@@ -163,6 +164,7 @@ class TestEnd2End(unittest.TestCase):
                         self.fail(e)
             self.assertEqual(i, 10)
             print("ending testing...")
+
 
 if __name__ == '__main__':
     unittest.main()

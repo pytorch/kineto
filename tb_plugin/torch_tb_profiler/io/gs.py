@@ -1,8 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-import tempfile
-
 from google.cloud import storage
 
 from .. import utils
@@ -89,7 +87,8 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
             yield key, None, value
 
     def split_blob_path(self, blob_path):
-        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
+        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path).
+        Finally, split the relative path.
         return (basename(blob_path), [relative splitted paths])
         If blob_path doesn't exist, return (None, None)
         For example,

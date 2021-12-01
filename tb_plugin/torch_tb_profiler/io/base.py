@@ -51,6 +51,7 @@ class BaseFileSystem(ABC):
     def stat(self, filename):
         raise NotImplementedError
 
+
 class BasePath(ABC):
     @abstractmethod
     def join(self, path, *paths):
@@ -68,6 +69,7 @@ class BasePath(ABC):
     def relpath(self, path, start):
         pass
 
+
 class LocalPath(BasePath):
     def abspath(self, path):
         return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
@@ -80,6 +82,7 @@ class LocalPath(BasePath):
 
     def join(self, path, *paths):
         return os.path.join(path, *paths)
+
 
 class RemotePath(BasePath):
     def split(self, path):
@@ -105,5 +108,5 @@ class RemotePath(BasePath):
         if not path.startswith(start):
             return path
         start = start.rstrip('/')
-        begin = len(start) + 1 # include the ending slash '/'
+        begin = len(start) + 1  # include the ending slash '/'
         return path[begin:]

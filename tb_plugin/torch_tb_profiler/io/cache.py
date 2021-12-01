@@ -1,7 +1,6 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-import os
 import tempfile
 
 from .. import utils
@@ -11,6 +10,7 @@ from .file import basename, is_local, download_file, read
 
 logger = utils.get_logger()
 
+
 class Cache:
     def __init__(self, cache_dir=None):
         self._lock = mp.Lock()
@@ -19,7 +19,7 @@ class Cache:
         self._cache_dir = cache_dir
 
     def __getstate__(self):
-        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver. 
+        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver.
         The default mode is fork in Unix and spawn on Windows and macOS.
         Therefore, the __getstate__ and __setstate__ are used to pickle/unpickle the state in spawn mode.
         '''
@@ -32,8 +32,8 @@ class Cache:
         return data, file._REGISTERED_FILESYSTEMS
 
     def __setstate__(self, state):
-        '''The default logging level in new process is warning. Only warning and error log can be written to 
-        streams. 
+        '''The default logging level in new process is warning. Only warning and error log can be written to
+        streams.
         So, we need call use_absl_handler in the new process.
         '''
         from absl import logging
@@ -57,7 +57,8 @@ class Cache:
             if is_local(filename):
                 return filename
             else:
-                local_file = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % basename(filename), dir=self._cache_dir, delete=False)
+                local_file = tempfile.NamedTemporaryFile(
+                    'w+t', suffix='.%s' % basename(filename), dir=self._cache_dir, delete=False)
                 local_file.close()
                 download_file(filename, local_file.name)
                 self.add_file(filename, local_file.name)
@@ -78,4 +79,3 @@ class Cache:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._manager.__exit__(exc_type, exc_value, traceback)
-

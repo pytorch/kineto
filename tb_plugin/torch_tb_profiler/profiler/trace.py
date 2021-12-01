@@ -9,9 +9,11 @@ __all__ = ["EventTypes", "create_event"]
 
 logger = utils.get_logger()
 
+
 class DeviceType(IntEnum):
     CPU = 0
     CUDA = 1
+
 
 class EventTypes(object):
     TRACE = "Trace"
@@ -26,20 +28,22 @@ class EventTypes(object):
     PYTHON_FUNCTION = "python_function"
     MODULE = "Module"
 
+
 EventTypeMap = {
-    "Trace" : EventTypes.TRACE,
-    "cpu_op" : EventTypes.OPERATOR,
-    "Operator" : EventTypes.OPERATOR,
-    "Runtime" : EventTypes.RUNTIME,
-    "Kernel" : EventTypes.KERNEL,
-    "Memcpy" : EventTypes.MEMCPY,
-    "gpu_memcpy" : EventTypes.MEMCPY,
-    "Memset" : EventTypes.MEMSET,
-    "gpu_memset" : EventTypes.MEMSET,
-    "Python" : EventTypes.PYTHON,
-    "Memory" : EventTypes.MEMORY,
+    "Trace": EventTypes.TRACE,
+    "cpu_op": EventTypes.OPERATOR,
+    "Operator": EventTypes.OPERATOR,
+    "Runtime": EventTypes.RUNTIME,
+    "Kernel": EventTypes.KERNEL,
+    "Memcpy": EventTypes.MEMCPY,
+    "gpu_memcpy": EventTypes.MEMCPY,
+    "Memset": EventTypes.MEMSET,
+    "gpu_memset": EventTypes.MEMSET,
+    "Python": EventTypes.PYTHON,
+    "Memory": EventTypes.MEMORY,
     "python_function": EventTypes.PYTHON_FUNCTION
 }
+
 
 class BaseEvent(object):
     def __init__(self, type, data):
@@ -49,6 +53,7 @@ class BaseEvent(object):
         self.pid = data.get("pid")
         self.tid = data.get("tid")
         self.args = data.get("args", {})
+
 
 class DurationEvent(BaseEvent):
     def __init__(self, type, data):
@@ -61,6 +66,7 @@ class DurationEvent(BaseEvent):
             extern_id = self.args.get("External id")
         self.external_id = extern_id
         self.correlation_id = self.args.get("correlation")
+
 
 class KernelEvent(DurationEvent):
     def __init__(self, type, data):
@@ -86,11 +92,13 @@ class OperatorEvent(DurationEvent):
             shape = self.args.get("Input dims", [])
         self.input_shape = shape
 
+
 class ProfilerStepEvent(OperatorEvent):
     def __init__(self, data):
         super().__init__(EventTypes.PROFILER_STEP, data)
         # torch.profiler.profile.step will invoke record_function with name like "ProfilerStep#5"
         self.step = int(self.name.split("#")[1])
+
 
 class MemoryEvent(BaseEvent):
     def __init__(self, type, data):
@@ -122,16 +130,19 @@ class MemoryEvent(BaseEvent):
     def total_reserved(self):
         return self.args.get("Total Reserved", float("nan"))
 
+
 class PythonFunctionEvent(DurationEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
         self.python_id = self.args.get("Python id")
         self.python_parent_id = self.args.get("Python parent id")
 
+
 class ModuleEvent(PythonFunctionEvent):
     def __init__(self, data):
         super().__init__(EventTypes.MODULE, data)
         self.module_id = self.args.get("Python module id")
+
 
 def create_event(event):
     try:
@@ -145,6 +156,7 @@ def create_event(event):
     except Exception as ex:
         logger.warning("Failed to parse profile event. Exception=%s. Event=%s", ex, event, exc_info=True)
         raise
+
 
 def create_trace_event(event):
     category = event.get("cat")

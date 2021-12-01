@@ -35,6 +35,7 @@ def generate_communication_nodes(communication_data, steps, steps_names):
 
     return comm_node_list
 
+
 def analyze_communication_nodes(comm_node_list):
     step_comm_stats = {}
     total_comm_stats = {}
@@ -71,7 +72,10 @@ def analyze_communication_nodes(comm_node_list):
         total_comm_stats[comm_node.name][3].extend(comm_node.real_time_ranges)
 
     for step, comm_ranges in step_to_comm_ranges.items():
-        step_comm_stats[step] = [get_ranges_sum(merge_ranges(comm_ranges[0])), get_ranges_sum(merge_ranges(comm_ranges[1]))]
+        step_comm_stats[step] = [
+            get_ranges_sum(merge_ranges(comm_ranges[0])),
+            get_ranges_sum(merge_ranges(comm_ranges[1]))
+        ]
 
     for _, stats in total_comm_stats.items():
         stats[2] = get_ranges_sum(merge_ranges(stats[2]))

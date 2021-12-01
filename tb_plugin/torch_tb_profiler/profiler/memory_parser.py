@@ -12,6 +12,7 @@ from .trace import DeviceType, MemoryEvent
 
 logger = utils.get_logger()
 
+
 class MemoryRecord:
     def __init__(self, scope, pid, tid, ts, device_type, device_id, address, bytes, total_allocated, total_reserved):
         self.scope = scope
@@ -46,8 +47,8 @@ class MemoryRecord:
 
     @staticmethod
     def from_event(event: MemoryEvent):
-        return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id, event.addr, event.bytes,
-                            event.total_allocated, event.total_reserved)
+        return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id,
+                            event.addr, event.bytes, event.total_allocated, event.total_reserved)
 
     def __repr__(self) -> str:
         return f"<{'+' if self.bytes>0 else ''}{self.bytes}B, addr: {self.addr}, ts: {self.ts}>"
@@ -79,7 +80,7 @@ class MemoryParser:
     def get_peak_memory(self):
         peaks = defaultdict(int)
         for r in self.all_records:
-            if r.total_allocated == r.total_allocated: # !isnan
+            if r.total_allocated == r.total_allocated:  # !isnan
                 peaks[(r.device_type, r.device_id)] = max(peaks[(r.device_type, r.device_id)], r.total_allocated)
         return peaks
 
@@ -184,7 +185,7 @@ class MemoryParser:
                 '''In the loop, one pass will process one record. The basic logic is:
                 It will search from the node that last visited since both the records and tree is ordered already
                 1. it current node contains the records, then find the exactly child which just embrace it.
-                2. otherwise, find the parent node and set the child_index, so that the parent node could continue from previous visited node.
+                2. otherwise, find the parent node and set the child_index, so that the parent node could continue from previous visited node. # noqa: E501
                 3. if there is not any node contains the records, then all remaining records will be ignored.
                 '''
                 record = records[record_index]
@@ -194,8 +195,9 @@ class MemoryParser:
 
                 if current_node is None:
                     # 3. Ignore all remaining records.
-                    logger.debug("could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (
-                        record.tid, record.ts, record_index, len(records)))
+                    logger.debug(
+                        "could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (
+                            record.tid, record.ts, record_index, len(records)))
                     self.staled_records.append(records[record_index])
                     record_index += 1
                     continue
@@ -244,7 +246,7 @@ class MemoryParser:
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
                     current_node.add_memory_record(record)
-                    # NOTE: only allocation record can be associated with op. Because deallocation happens at the end 
+                    # NOTE: only allocation record can be associated with op. Because deallocation happens at the end
                     # of a tensor's lifetime which is not deterministic.
                     if record.is_allocation:
                         record.op_name = current_node.name

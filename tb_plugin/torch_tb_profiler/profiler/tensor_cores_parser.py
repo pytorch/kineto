@@ -30,7 +30,7 @@ class TensorCoresParser:
                         if is_tc_used:
                             tc_time[k.device_id] += dur
                         total_time[k.device_id] += dur
-        if has_kernel: # If no kernel, then keep all self.tc_ratio as None.
+        if has_kernel:  # If no kernel, then keep all self.tc_ratio as None.
             for gpu_id in gpu_ids:
                 if total_time[gpu_id] > 0:
                     tc_ratio[gpu_id] = tc_time[k.device_id] / total_time[k.device_id]

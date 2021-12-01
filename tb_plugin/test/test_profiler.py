@@ -12,7 +12,7 @@ SCHEMA_VERSION = 1
 WORKER_NAME = "worker0"
 
 
-def parse_json_trace(json_content, worker_name = WORKER_NAME) -> RunProfileData:
+def parse_json_trace(json_content, worker_name=WORKER_NAME) -> RunProfileData:
     trace_json = json.loads(json_content)
     trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
     return RunProfileData.from_json(worker_name, 0, trace_json)
@@ -21,7 +21,7 @@ def parse_json_trace(json_content, worker_name = WORKER_NAME) -> RunProfileData:
 '''
 All the events in json string are only simulation, not actual generated events.
 We removed the data fields that not used by current version of our profiler,
-for easy to check correctness and shorter in length. 
+for easy to check correctness and shorter in length.
 We even renamed the data values such as kernel name or "ts", to simplify the string.
 '''
 
@@ -31,61 +31,61 @@ class TestProfiler(unittest.TestCase):
     def test_all_categories(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 180,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::nll_loss_backward", "pid": 13721, "tid": "456",
             "ts": 340, "dur": 70,
             "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 50, "dur": 400,
             "args": {"Input Dims": [], "External id": 1}
           },
           {
-            "ph": "X", "cat": "Memcpy", 
+            "ph": "X", "cat": "Memcpy",
             "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
             "ts": 405, "dur": 10,
             "args": {"stream": 7, "correlation": 334, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaMemcpyAsync", "pid": 13721, "tid": "456",
             "ts": 360, "dur": 20,
             "args": {"correlation": 334, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Memset", 
+            "ph": "X", "cat": "Memset",
             "name": "Memset (Device)", "pid": 0, "tid": "stream 7",
             "ts": 420, "dur": 5,
             "args": {"stream": 7, "correlation": 40344, "external id": 4}
-          },         
+          },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaMemsetAsync", "pid": 13721, "tid": "456",
             "ts": 390, "dur": 10,
             "args": {"correlation": 40344, "external id": 4}
-          },          
+          },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 430, "dur": 15,
             "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 405, "dur": 5,
             "args": {"correlation": 40348, "external id": 4}
@@ -162,61 +162,61 @@ class TestProfiler(unittest.TestCase):
     def test_external_id(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 70,
             "args": {"Input Dims": [], "External id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 5,
             "args": {"correlation": 334, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 0,
             "args": {"correlation": 334, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 6,
             "args": {"correlation": 335, "external id": 2, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 0,
             "args": {"correlation": 335, "external id": 2}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 7,
             "args": {"correlation": 336, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 190, "dur": 0,
             "args": {"correlation": 336, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 130, "dur": 8,
             "args": {"correlation": 337, "external id": 2, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 190, "dur": 0,
             "args": {"correlation": 337, "external id": 2}
@@ -242,13 +242,13 @@ class TestProfiler(unittest.TestCase):
         # 2 events with same start time.
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 70,
             "args": {"Input Dims": [], "External id": 4}
@@ -269,13 +269,13 @@ class TestProfiler(unittest.TestCase):
         # 2 events with same end time.
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mat_mul", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 130, "dur": 70,
             "args": {"Input Dims": [], "External id": 4}
@@ -300,31 +300,31 @@ class TestProfiler(unittest.TestCase):
     def test_remove_dup_nodes(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 100,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 110, "dur": 80,
             "args": {"Input Dims": [], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "456",
             "ts": 120, "dur": 60,
             "args": {"Input Dims": [], "External id": 4}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 130, "dur": 20,
             "args": {"correlation": 335, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void gemmSN_TN_kernel_64addr", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 8,
             "args": {"correlation": 335, "external id": 4, "device": 0}
@@ -343,19 +343,19 @@ class TestProfiler(unittest.TestCase):
         # This operator is different thread with the runtime.
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 100,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 130, "dur": 20,
             "args": {"correlation": 335, "external id": 0}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void gemmSN_TN_kernel_64addr", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 8,
             "args": {"correlation": 335, "external id": 0, "device": 0}
@@ -372,19 +372,19 @@ class TestProfiler(unittest.TestCase):
     def test_runtime_called_by_profilerstep(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 300,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 130, "dur": 20,
             "args": {"correlation": 335, "external id": 2}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void gemmSN_TN_kernel_64addr", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 8,
             "args": {"correlation": 335, "external id": 2, "device": 0}
@@ -410,26 +410,26 @@ class TestProfiler(unittest.TestCase):
     def test_runtime_launch_multipe_kernels(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "Broadcast", "pid": 13721, "tid": "456",
             "ts": 100, "dur": 300,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchCooperativeKernelMultiDevice", "pid": 13721, "tid": "456",
             "ts": 130, "dur": 20,
             "args": {"correlation": 335, "external id": 2}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "ncclBroadcastRingLLKernel_copy_i8(ncclColl)", "pid": 0, "tid": "stream 13",
             "ts": 160, "dur": 120318,
             "args": {"device": 0, "context": 1, "stream": 13,
                      "correlation": 335, "external id": 2, "device": 0}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "ncclBroadcastRingLLKernel_copy_i8(ncclColl)", "pid": 0, "tid": "stream 22",
             "ts": 170, "dur": 132800,
             "args": {"device": 0, "context": 2, "stream": 22,
@@ -447,25 +447,25 @@ class TestProfiler(unittest.TestCase):
     def test_no_profilerstep(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::nll_loss_backward", "pid": 13721, "tid": "456",
             "ts": 300, "dur": 70,
             "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
-          },    
+          },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 320, "dur": 100,
             "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 310, "dur": 20,
             "args": {"correlation": 40348, "external id": 4}
@@ -541,49 +541,49 @@ class TestProfiler(unittest.TestCase):
     def test_multiple_profilersteps_no_overlap(self):
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 200,
             "args": {"Input Dims": [], "External id": 1}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 350, "dur": 150,
             "args": {"Input Dims": [], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 360, "dur": 50,
             "args": {"Input Dims": [], "External id": 4}
-          },              
+          },
           {
-            "ph": "X", "cat": "Memcpy", 
+            "ph": "X", "cat": "Memcpy",
             "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
             "ts": 280, "dur": 40,
             "args": {"stream": 7, "correlation": 334, "external id": 2}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaMemcpyAsync", "pid": 13721, "tid": "123",
             "ts": 250, "dur": 5,
             "args": {"correlation": 334, "external id": 2}
-          },          
+          },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 410, "dur": 200,
             "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
             "ts": 400, "dur": 5,
             "args": {"correlation": 40348, "external id": 4}
@@ -671,37 +671,37 @@ class TestProfiler(unittest.TestCase):
         def test_external_id(self):
             json_content = """
               [{
-                "ph": "X", "cat": "Operator", 
+                "ph": "X", "cat": "Operator",
                 "name": "aten::mat_mul", "pid": 13721, "tid": "456",
                 "ts": 100, "dur": 100,
                 "args": {"Input Dims": [], "External id": 2}
               },
               {
-                "ph": "X", "cat": "Operator", 
+                "ph": "X", "cat": "Operator",
                 "name": "aten::mm", "pid": 13721, "tid": "456",
                 "ts": 120, "dur": 40,
                 "args": {"Input Dims": [], "External id": 4}
               },
               {
-                "ph": "X", "cat": "Kernel", 
+                "ph": "X", "cat": "Kernel",
                 "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
                 "ts": 155, "dur": 20,
                 "args": {"correlation": 334, "external id": 4, "device": 0}
               },
               {
-                "ph": "X", "cat": "Runtime", 
+                "ph": "X", "cat": "Runtime",
                 "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
                 "ts": 150, "dur": 10,
                 "args": {"correlation": 334, "external id": 4}
               },
               {
-                "ph": "X", "cat": "Kernel", 
+                "ph": "X", "cat": "Kernel",
                 "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
                 "ts": 210, "dur": 16,
                 "args": {"correlation": 335, "external id": 2, "device": 0}
               },
               {
-                "ph": "X", "cat": "Runtime", 
+                "ph": "X", "cat": "Runtime",
                 "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
                 "ts": 170, "dur": 25,
                 "args": {"correlation": 335, "external id": 2}
@@ -736,55 +736,55 @@ class TestProfiler(unittest.TestCase):
         # so it is regarded as beginning of "ProfilerStep#2".
         json_content = """
           [{
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 200,
             "args": {"Input Dims": [], "External id": 1}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 350, "dur": 150,
             "args": {"Input Dims": [], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::mm", "pid": 13721, "tid": "123",
             "ts": 360, "dur": 50,
             "args": {"Input Dims": [], "External id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 150, "dur": 90,
             "args": {"correlation": 123, "external id": 0, "device": 0}
-          },              
+          },
           {
-            "ph": "X", "cat": "Memcpy", 
+            "ph": "X", "cat": "Memcpy",
             "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
             "ts": 280, "dur": 100,
             "args": {"stream": 7, "correlation": 334, "external id": 2}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaMemcpyAsync", "pid": 13721, "tid": "123",
             "ts": 250, "dur": 5,
             "args": {"correlation": 334, "external id": 2}
-          },          
+          },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 410, "dur": 200,
             "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
             "ts": 400, "dur": 5,
             "args": {"correlation": 40348, "external id": 4}
@@ -1221,136 +1221,136 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(data_with_gpu_metrics_str, data_expected_str)
 
         try:
-            data = json.loads(data_with_gpu_metrics_flat.decode("utf8"))
-        except:
+            _ = json.loads(data_with_gpu_metrics_flat.decode("utf8"))
+        except Exception:
             self.assertTrue(
                 False, "The string fails to be parsed by json after appending gpu metrics.")
 
     def test_memory_view(self):
         json_content = """[
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 10, "dur": 10,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__", "pid": 13721, "tid": "123",
             "ts": 100, "dur": 180,
             "args": {"Input Dims": [], "External id": 2}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::nll_loss_backward", "pid": 13721, "tid": "123",
             "ts": 340, "dur": 70,
             "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#1", "pid": 13721, "tid": "123",
             "ts": 50, "dur": 400,
             "args": {"Input Dims": [], "External id": 1}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "ProfilerStep#2", "pid": 13721, "tid": "123",
             "ts": 500, "dur": 500,
             "args": {"Input Dims": [], "External id": 1}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 510, "dur": 150,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::copy_", "pid": 13721, "tid": "123",
             "ts": 520, "dur": 100,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
 
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::liner", "pid": 13721, "tid": "123",
             "ts": 700, "dur": 100,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::t", "pid": 13721, "tid": "123",
             "ts": 705, "dur": 40,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::transpose", "pid": 13721, "tid": "123",
             "ts": 710, "dur": 30,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::tranas_stride", "pid": 13721, "tid": "123",
             "ts": 720, "dur": 10,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::addmm", "pid": 13721, "tid": "123",
             "ts": 750, "dur": 40,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::to", "pid": 13721, "tid": "123",
             "ts": 900, "dur": 100,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Memcpy", 
+            "ph": "X", "cat": "Memcpy",
             "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
             "ts": 405, "dur": 10,
             "args": {"stream": 7, "correlation": 334, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaMemcpyAsync", "pid": 13721, "tid": "456",
             "ts": 360, "dur": 20,
             "args": {"correlation": 334, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Memset", 
+            "ph": "X", "cat": "Memset",
             "name": "Memset (Device)", "pid": 0, "tid": "stream 7",
             "ts": 420, "dur": 5,
             "args": {"stream": 7, "correlation": 40344, "external id": 4}
-          },         
+          },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaMemsetAsync", "pid": 13721, "tid": "456",
             "ts": 390, "dur": 10,
             "args": {"correlation": 40344, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "void cunn_ClassNLLCriterion_updateGradInput_kernel<float>", "pid": 0, "tid": "stream 7",
             "ts": 430, "dur": 15,
             "args": {"correlation": 40348, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 405, "dur": 5,
             "args": {"correlation": 40348, "external id": 4}
           },
-          
-          
+
+
           {
             "ph": "i", "s": "t", "name": "[memory]",
             "pid": 13721, "tid": 123,
@@ -1602,9 +1602,9 @@ class TestProfiler(unittest.TestCase):
 
         # validation
         gpu_expected_data = {
-            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count, call
+            # self increase size, self allocation size, self allocation count, increase size, allocation size, allocation count, call # noqa: E501
             'aten::to': [104, 104, 2, 104, 204, 3, 4],
-            'aten::nll_loss_backward': [0, 10, 1, 0, 10, 1 ,1],
+            'aten::nll_loss_backward': [0, 10, 1, 0, 10, 1, 1],
             'aten::copy_': [0, 100, 1, 0, 100, 1, 1],
             'aten::addmm': [0, 30, 1, 0, 30, 1, 1],
             'aten::tranas_stride': [0, 50, 1, 0, 50, 1, 1],
@@ -1634,65 +1634,65 @@ class TestProfiler(unittest.TestCase):
         json_content = """
           [
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "op1", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "op2", "pid": 13721, "tid": "456",
             "ts": 340, "dur": 70,
             "args": {"Input Dims": [[], [32, 1000], [32], [], [], [], []], "External id": 4}
-          },          
+          },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 230, "dur": 15,
             "args": {"correlation": 1000, "external id": 3, "device": 0,
                     "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 210, "dur": 5,
             "args": {"correlation": 1000, "external id": 3}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 250, "dur": 10,
             "args": {"correlation": 1001, "external id": 3, "device": 0,
                      "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 215, "dur": 5,
             "args": {"correlation": 1001, "external id": 3}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 250, "dur": 13,
             "args": {"correlation": 1002, "external id": 3, "device": 0,
                      "grid": [16, 1, 1], "block": [16, 16, 64], "registers per thread": 18, "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 220, "dur": 5,
             "args": {"correlation": 1002, "external id": 3}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 250, "dur": 17,
             "args": {"correlation": 1003, "external id": 4, "device": 0,
                      "grid": [16, 1, 1], "block": [16, 16, 64], "registers per thread": 18, "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 350, "dur": 5,
             "args": {"correlation": 1003, "external id": 4}
@@ -1764,46 +1764,46 @@ class TestProfiler(unittest.TestCase):
         json_content = """
           [
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "op1", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 60,
             "args": {"Input Dims": [[2, 8, 5], [], [], [], [], [], [], []], "External id": 3}
-          },          
+          },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 1,
             "args": {"correlation": 1000, "external id": 3, "device": 0,
                     "block": [16, 16, 16], "registers per thread": 18, "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 210, "dur": 5,
             "args": {"correlation": 1000, "external id": 3}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 230, "dur": 2,
             "args": {"correlation": 1001, "external id": 3, "device": 0,
                     "grid": [16, 1, 1], "registers per thread": 18, "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 220, "dur": 5,
             "args": {"correlation": 1001, "external id": 3}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel1", "pid": 0, "tid": "stream 7",
             "ts": 240, "dur": 3,
             "args": {"correlation": 1002, "external id": 3, "device": 0,
                     "grid": [16, 1, 1], "block": [16, 16, 16], "shared memory": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 230, "dur": 5,
             "args": {"correlation": 1002, "external id": 3}
@@ -1816,7 +1816,7 @@ class TestProfiler(unittest.TestCase):
                     "grid": [16, 1, 1], "block": [16, 16, 16], "registers per thread": 18}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "456",
             "ts": 240, "dur": 5,
             "args": {"correlation": 1003, "external id": 3}
@@ -1927,43 +1927,44 @@ class TestProfiler(unittest.TestCase):
         json_content = """
           [
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::conv2d", "pid": 13721, "tid": "123",
             "ts": 200, "dur": 100,
             "args": {"Input Dims": [[]], "External id": 3}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "op_no_tc", "pid": 13721, "tid": "123",
             "ts": 205, "dur": 10,
             "args": {"Input Dims": [[]], "External id": 4}
           },
           {
-            "ph": "X", "cat": "Operator", 
+            "ph": "X", "cat": "Operator",
             "name": "aten::cudnn_convolution", "pid": 13721, "tid": "123",
             "ts": 215, "dur": 10,
             "args": {"Input Dims": [[]], "External id": 5}
           },
           {
-            "ph": "X", "cat": "Kernel", 
+            "ph": "X", "cat": "Kernel",
             "name": "kernel_no_tc", "pid": 0, "tid": "stream 7",
             "ts": 210, "dur": 10,
             "args": {"correlation": 1000, "external id": 4, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
             "ts": 205, "dur": 5,
             "args": {"correlation": 1000, "external id": 4}
           },
           {
-            "ph": "X", "cat": "Kernel", 
-            "name": "volta_fp16_s884cudnn_fp16_128x128_ldg8_splitK_relu_f2f_exp_small_nhwc_tn_v1", "pid": 0, "tid": "stream 7",
+            "ph": "X", "cat": "Kernel",
+            "name": "volta_fp16_s884cudnn_fp16_128x128_ldg8_splitK_relu_f2f_exp_small_nhwc_tn_v1",
+            "pid": 0, "tid": "stream 7",
             "ts": 220, "dur": 15,
             "args": {"correlation": 1001, "external id": 5, "device": 0}
           },
           {
-            "ph": "X", "cat": "Runtime", 
+            "ph": "X", "cat": "Runtime",
             "name": "cudaLaunchKernel", "pid": 13721, "tid": "123",
             "ts": 215, "dur": 5,
             "args": {"correlation": 1001, "external id": 5}
@@ -2018,6 +2019,7 @@ class TestProfiler(unittest.TestCase):
 
         self.assertAlmostEqual(profile.tc_ratio[0], 15 / (15 + 10))
         self.assertAlmostEqual(profile.tc_eligible_ops_kernel_ratio, 15 / (15 + 10))
+
 
 class TestDistributed(unittest.TestCase):
 
@@ -2122,9 +2124,11 @@ class TestDistributed(unittest.TestCase):
         self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [1074, 498])
         self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [1074, 15])
         self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
-            [['nccl:broadcast', 1, 212480, 212480, 16, 16, 16, 16], ['nccl:all_reduce', 1, 8196000, 8196000, 1556, 1556, 1058, 1058]])
+                         [['nccl:broadcast', 1, 212480, 212480, 16, 16, 16, 16],
+                          ['nccl:all_reduce', 1, 8196000, 8196000, 1556, 1556, 1058, 1058]])
         self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
-            [['nccl:broadcast', 1, 212480, 212480, 31, 31, 16, 16], ['nccl:all_reduce', 1, 8196000, 8196000, 1058, 1058, 1058, 1058]])
+                         [['nccl:broadcast', 1, 212480, 212480, 31, 31, 16, 16],
+                          ['nccl:all_reduce', 1, 8196000, 8196000, 1058, 1058, 1058, 1058]])
 
     def test_distributed_gloo_gpu(self):
         json_content0 = """
@@ -2239,9 +2243,11 @@ class TestDistributed(unittest.TestCase):
         self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [75, 34])
         self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [78, 20])
         self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
-            [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14], ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
+                         [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14],
+                          ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
         self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
-            [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
+                         [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15],
+                          ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
 
     def test_distributed_gloo_cpu(self):
         json_content0 = """
@@ -2356,41 +2362,44 @@ class TestDistributed(unittest.TestCase):
         self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [75, 34])
         self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [78, 20])
         self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
-            [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14], ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
+                         [['gloo:broadcast', 3, 637440, 212480, 63, 21, 41, 14],
+                          ['gloo:all_reduce', 2, 16392000, 8196000, 46, 23, 34, 17]])
         self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
-            [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15], ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
+                         [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15],
+                          ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
+
 
 class TestMemoryCurve(unittest.TestCase):
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.event_data_cpu = [
-            [1, 0, 0, 1, 4, 4, 0],         # alloc 1
-            [20, 0, 0, 1, -4, 0, 0],       # free  1
-            [100, 0, 0, 2, 8000, 8000, 0], # alloc 2
-            [200, 0, 0, 2, -8000, 0, 0],   # free  2
-            [300, 0, 0, 3, 4, 4, 0],       # alloc 3
-            [400, 0, 0, 4, 16, 20, 0],     # alloc 4
-            [500, 0, 0, 5, 4000, 4020, 0], # alloc 5
-            [600, 0, 0, 4, -16, 4004, 0],  # free  4
-            [700, 0, 0, 7, 80, 4084, 0],   # alloc 7
-            [800, 0, 0, 3, -4, 4080, 0],   # free  3
-            [900, 0, 0, 7, -80, 4000, 0],  # free  7
-            [905, 0, 0, 4, -4000, 0, 0],   # free  5
+            [1, 0, 0, 1, 4, 4, 0],          # alloc 1
+            [20, 0, 0, 1, -4, 0, 0],        # free  1
+            [100, 0, 0, 2, 8000, 8000, 0],  # alloc 2
+            [200, 0, 0, 2, -8000, 0, 0],    # free  2
+            [300, 0, 0, 3, 4, 4, 0],        # alloc 3
+            [400, 0, 0, 4, 16, 20, 0],      # alloc 4
+            [500, 0, 0, 5, 4000, 4020, 0],  # alloc 5
+            [600, 0, 0, 4, -16, 4004, 0],   # free  4
+            [700, 0, 0, 7, 80, 4084, 0],    # alloc 7
+            [800, 0, 0, 3, -4, 4080, 0],    # free  3
+            [900, 0, 0, 7, -80, 4000, 0],   # free  7
+            [905, 0, 0, 4, -4000, 0, 0],    # free  5
         ]
 
         self.event_data_gpu = [
-            [2, 1, 0, 11, 400, 400, 512],        # alloc 11
-            [22, 1, 0, 11, -400, 0, 512],        # free  11
-            [105, 1, 0, 12, 5000, 5000, 10240],  # alloc 12
-            [106, 1, 0, 13, 3000, 8000, 10240],  # alloc 13
-            [205, 1, 0, 12, -5000, 3000, 10240], # free  12
-            [401, 1, 0, 14, 1024, 4024, 10240],  # alloc 14
-            [499, 1, 0, 15, 4, 4028, 10240],     # alloc 15
-            [501, 1, 0, 13, -3000, 1028, 10240], # free  13
-            [502, 1, 0, 15, -4, 1024, 10240],    # free  15
-            [906, 1, 0, 14, -1024, 0, 10240],    # free  14
+            [2, 1, 0, 11, 400, 400, 512],         # alloc 11
+            [22, 1, 0, 11, -400, 0, 512],         # free  11
+            [105, 1, 0, 12, 5000, 5000, 10240],   # alloc 12
+            [106, 1, 0, 13, 3000, 8000, 10240],   # alloc 13
+            [205, 1, 0, 12, -5000, 3000, 10240],  # free  12
+            [401, 1, 0, 14, 1024, 4024, 10240],   # alloc 14
+            [499, 1, 0, 15, 4, 4028, 10240],      # alloc 15
+            [501, 1, 0, 13, -3000, 1028, 10240],  # free  13
+            [502, 1, 0, 15, -4, 1024, 10240],     # free  15
+            [906, 1, 0, 14, -1024, 0, 10240],     # free  14
         ]
 
         self.all_events = sorted(self.event_data_cpu + self.event_data_gpu, key=lambda e: e[0])
@@ -2455,25 +2464,25 @@ class TestMemoryCurve(unittest.TestCase):
 
         self.assertEqual(2 * len(self.event_data_cpu) - 1, len(curves["CPU"]))
         for i in range(len(curves["CPU"])):
-            if i % 2 == 0: # original values
+            if i % 2 == 0:  # original values
                 # adjusted timestamp
                 self.assertEqual(self.event_data_cpu[i//2][0] - start_ts,  curves["CPU"][i][0])
                 # total allocated
                 self.assertEqual(self.event_data_cpu[i//2][-2], curves["CPU"][i][1])
                 # total reserved
                 self.assertEqual(self.event_data_cpu[i//2][-1], curves["CPU"][i][2])
-            else: # interpolated values
+            else:  # interpolated values
                 self.assertEqual(self.event_data_cpu[i//2+1][0] - start_ts,  curves["CPU"][i][0])
                 self.assertEqual(self.event_data_cpu[i//2][-2], curves["CPU"][i][1])
                 self.assertEqual(self.event_data_cpu[i//2][-1], curves["CPU"][i][2])
 
         self.assertEqual(2 * len(self.event_data_gpu) - 1, len(curves["GPU0"]))
         for i in range(len(self.event_data_gpu)):
-            if i % 2 == 0: # original values
+            if i % 2 == 0:  # original values
                 self.assertEqual(self.event_data_gpu[i//2][0] - start_ts,  curves["GPU0"][i][0])
                 self.assertEqual(self.event_data_gpu[i//2][-2], curves["GPU0"][i][1])
                 self.assertEqual(self.event_data_gpu[i//2][-1], curves["GPU0"][i][2])
-            else: # interpolated values
+            else:  # interpolated values
                 self.assertEqual(self.event_data_gpu[i//2+1][0] - start_ts,  curves["GPU0"][i][0])
                 self.assertEqual(self.event_data_gpu[i//2][-2], curves["GPU0"][i][1])
                 self.assertEqual(self.event_data_gpu[i//2][-1], curves["GPU0"][i][2])
@@ -2482,145 +2491,146 @@ class TestMemoryCurve(unittest.TestCase):
 class TestModuleView(unittest.TestCase):
 
     def test_build_module_hierarchy(self):
-      from torch_tb_profiler.profiler import trace
-      from torch_tb_profiler.profiler.module_op import _build_module_hierarchy, aggegate_module_view
+        from torch_tb_profiler.profiler import trace
+        from torch_tb_profiler.profiler.module_op import _build_module_hierarchy, aggegate_module_view
 
-      json_content = """[
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "test_root", "pid": 1908, "tid": 1908,
-          "ts": 1, "dur": 19367,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 1, "Python thread": 0
+        json_content = """[
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "test_root", "pid": 1908, "tid": 1908,
+            "ts": 1, "dur": 19367,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 1, "Python thread": 0
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
+            "ts": 2, "dur": 211,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 2, "Python parent id": 1, "Python module id": 0
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
+            "ts": 5, "dur": 62,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 3, "Python parent id": 2, "Python thread": 0, "Python module id": 1
+            }
+          },
+          {
+            "ph": "X", "cat": "cpu_op",
+            "name": "aten::addmm", "pid": 1908, "tid": 1908,
+            "ts": 10, "dur": 31,
+            "args": {
+              "External id": 12182,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 3
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
+            "ts": 1000, "dur": 211,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 4, "Python parent id": 1, "Python module id": 0
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
+            "ts": 1001, "dur": 62,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 5, "Python parent id": 4, "Python thread": 0, "Python module id": 1
+            }
+          },
+          {
+            "ph": "X", "cat": "cpu_op",
+            "name": "aten::addmm", "pid": 1908, "tid": 1908,
+            "ts": 1002, "dur": 32,
+            "args": {
+              "External id": 12182,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 5
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
+            "ts": 2000, "dur": 211,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 6, "Python parent id": 1, "Python module id": 0
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
+            "ts": 2001, "dur": 62,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 7, "Python parent id": 6, "Python thread": 0, "Python module id": 1
+            }
+          },
+          {
+            "ph": "X", "cat": "cpu_op",
+            "name": "aten::addmm", "pid": 1908, "tid": 1908,
+            "ts": 2002, "dur": 33,
+            "args": {
+              "External id": 12182,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 7
+            }
+          },
+          {
+            "ph": "X", "cat": "python_function",
+            "name": "nn.Module: Conv2", "pid": 1908, "tid": 1908,
+            "ts": 3000, "dur": 211,
+            "args": {
+              "External id": 0,
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "Python id": 8, "Python parent id": 1, "Python module id": 100
+            }
           }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
-          "ts": 2, "dur": 211,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 2, "Python parent id": 1, "Python module id": 0
-          }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
-          "ts": 5, "dur": 62,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 3, "Python parent id": 2, "Python thread": 0, "Python module id": 1
-          }
-        },
-        {
-          "ph": "X", "cat": "cpu_op", 
-          "name": "aten::addmm", "pid": 1908, "tid": 1908,
-          "ts": 10, "dur": 31,
-          "args": {
-            "External id": 12182,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 3
-          }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
-          "ts": 1000, "dur": 211,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 4, "Python parent id": 1, "Python module id": 0
-          }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
-          "ts": 1001, "dur": 62,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 5, "Python parent id": 4, "Python thread": 0, "Python module id": 1
-          }
-        },
-        {
-          "ph": "X", "cat": "cpu_op", 
-          "name": "aten::addmm", "pid": 1908, "tid": 1908,
-          "ts": 1002, "dur": 32,
-          "args": {
-            "External id": 12182,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 5
-          }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: MyModule", "pid": 1908, "tid": 1908,
-          "ts": 2000, "dur": 211,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 6, "Python parent id": 1, "Python module id": 0
-          }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: Linear", "pid": 1908, "tid": 1908,
-          "ts": 2001, "dur": 62,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 7, "Python parent id": 6, "Python thread": 0, "Python module id": 1
-          }
-        },
-        {
-          "ph": "X", "cat": "cpu_op", 
-          "name": "aten::addmm", "pid": 1908, "tid": 1908,
-          "ts": 2002, "dur": 33,
-          "args": {
-            "External id": 12182,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Fwd thread id": 0, "Sequence number": 4006, "python_caller_id": 7
-          }
-        },
-        {
-          "ph": "X", "cat": "python_function", 
-          "name": "nn.Module: Conv2", "pid": 1908, "tid": 1908,
-          "ts": 3000, "dur": 211,
-          "args": {
-            "External id": 0,
-            "Trace name": "PyTorch Profiler", "Trace iteration": 0,
-            "Python id": 8, "Python parent id": 1, "Python module id": 100
-          }
-        }
-      ]
-      """
-      data = parse_json_trace(json_content)
-      stats = aggegate_module_view(data.tid2tree, data.events)
-      stats.sort(key=lambda x: x.name)
-      self.assertEqual(2, len(stats))
-      self.assertEqual("Conv2", stats[0].name)
-      self.assertEqual("MyModule", stats[1].name)
-      self.assertEqual(1, len(stats[1].children))
-      self.assertEqual("Linear", stats[1].children[0].name)
+        ]
+        """
+        data = parse_json_trace(json_content)
+        stats = aggegate_module_view(data.tid2tree, data.events)
+        stats.sort(key=lambda x: x.name)
+        self.assertEqual(2, len(stats))
+        self.assertEqual("Conv2", stats[0].name)
+        self.assertEqual("MyModule", stats[1].name)
+        self.assertEqual(1, len(stats[1].children))
+        self.assertEqual("Linear", stats[1].children[0].name)
 
-      content = json.loads(json_content)
+        content = json.loads(json_content)
 
-      events = []
-      for data in content:
+        events = []
+        for data in content:
             event = trace.create_event(data)
             events.append(event)
 
-      roots = _build_module_hierarchy(events)
-      roots.sort(key = lambda x: x.name)
-      self.assertEqual(2, len(roots))
-      self.assertEqual("nn.Module: Conv2", roots[0].name)
-      self.assertEqual("nn.Module: MyModule", roots[1].name)
-      self.assertEqual(1, len(roots[1].children))
-      self.assertEqual("nn.Module: Linear", roots[1].children[0].name)
+        roots = _build_module_hierarchy(events)
+        roots.sort(key=lambda x: x.name)
+        self.assertEqual(2, len(roots))
+        self.assertEqual("nn.Module: Conv2", roots[0].name)
+        self.assertEqual("nn.Module: MyModule", roots[1].name)
+        self.assertEqual(1, len(roots[1].children))
+        self.assertEqual("nn.Module: Linear", roots[1].children[0].name)
+
 
 if __name__ == '__main__':
     unittest.main()

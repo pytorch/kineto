@@ -15,7 +15,9 @@ def get_logging_level():
         log_level = logging.getLevelName(logging.INFO)
     return log_level
 
-logger=None
+
+logger = None
+
 
 def get_logger():
     global logger
@@ -23,6 +25,7 @@ def get_logger():
         logger = logging.getLogger(consts.PLUGIN_NAME)
         logger.setLevel(get_logging_level())
     return logger
+
 
 def is_chrome_trace_file(path):
     return consts.WORKER_PATTERN.match(path)
@@ -44,8 +47,7 @@ class Canonicalizer:
             memory_metric="B",
             *,
             input_time_metric="us",
-            input_memory_metric="B",
-        ):
+            input_memory_metric="B"):
         # raw timestamp is in microsecond
         # https://github.com/pytorch/pytorch/blob/v1.9.0/torch/csrc/autograd/profiler_kineto.cpp#L33
         time_metric_to_factor = {
@@ -65,11 +67,11 @@ class Canonicalizer:
         self.canonical_time_metrics = {
             "micro": "us", "microsecond": "us", "us": "us",
             "milli": "ms", "millisecond": "ms", "ms": "ms",
-                 "":  "s",      "second":  "s",  "s":  "s",
+            "":  "s",      "second":  "s",  "s":  "s",
         }
         # canonicalize the memory metric to a string
         self.canonical_memory_metrics = {
-             "":  "B",  "B":  "B",
+            "":  "B",  "B":  "B",
             "K": "KB", "KB": "KB",
             "M": "MB", "MB": "MB",
             "G": "GB", "GB": "GB",
@@ -79,8 +81,10 @@ class Canonicalizer:
         self.memory_metric = self.canonical_memory_metrics[memory_metric]
 
         # scale factor scale input to output
-        self.time_factor = time_metric_to_factor[self.canonical_time_metrics[input_time_metric]] / time_metric_to_factor[self.time_metric ]
-        self.memory_factor = memory_metric_to_factor[self.canonical_memory_metrics[input_memory_metric]] / memory_metric_to_factor[self.memory_metric]
+        self.time_factor = time_metric_to_factor[self.canonical_time_metrics[input_time_metric]] /\
+            time_metric_to_factor[self.time_metric]
+        self.memory_factor = memory_metric_to_factor[self.canonical_memory_metrics[input_memory_metric]] /\
+            memory_metric_to_factor[self.memory_metric]
 
     def convert_time(self, t):
         return self.time_factor * t

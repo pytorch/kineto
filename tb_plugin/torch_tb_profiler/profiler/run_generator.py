@@ -33,7 +33,8 @@ class RunGenerator(object):
         profile_run.operation_table_by_name = self._generate_op_table(self.profile_data.op_list_groupby_name)
         profile_run.operation_stack_by_name = self._generate_op_table_for_stack(False)
         profile_run.operation_pie_by_name_input = self._generate_op_pie(True)
-        profile_run.operation_table_by_name_input = self._generate_op_table(self.profile_data.op_list_groupby_name_input, True)
+        profile_run.operation_table_by_name_input = self._generate_op_table(
+            self.profile_data.op_list_groupby_name_input, True)
         profile_run.operation_stack_by_name_input = self._generate_op_table_for_stack(True)
 
         if self.profile_data.has_kernel:
@@ -88,7 +89,8 @@ class RunGenerator(object):
                          "extra": round(100 * part_cost / self.profile_data.avg_costs.costs[ProfileRole.Total], 2)}
             return cost_dict
 
-        show_gpu = self.profile_data.has_runtime or self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset
+        show_gpu = (self.profile_data.has_runtime
+                    or self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset)
 
         column_tootip = {"type": "string", "role": "tooltip", "p": {"html": "true"}}
         data = {}
@@ -301,7 +303,7 @@ class RunGenerator(object):
             stack_list_dict = self.profile_data.stack_lists_group_by_name
 
         result = dict()
-        for k,v in stack_list_dict.items():
+        for k, v in stack_list_dict.items():
             result[k] = self._generate_op_table(v, group_by_input_shape, True)
         return result
 
@@ -409,7 +411,6 @@ class RunGenerator(object):
         data = {"total": pie}
         return data
 
-
     @staticmethod
     def _get_gpu_info(device_props, gpu_id):
         if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
@@ -433,6 +434,7 @@ class RunGenerator(object):
 
         return gpu_info
 
+
 class DistributedRunGenerator(object):
     def __init__(self, all_profile_data, span):
         self.all_profile_data = all_profile_data
@@ -452,7 +454,7 @@ class DistributedRunGenerator(object):
         index = 0
         for data in sorted(self.all_profile_data, key=lambda x: x.worker):
             if not data.device_props:
-               continue
+                continue
 
             match = consts.NODE_PROCESS_PATTERN.match(data.worker)
             if match:
@@ -474,7 +476,7 @@ class DistributedRunGenerator(object):
                     result[node][process_id]['GPU'+str(used_device)] = gpu_info
 
         if result:
-            for k,v in result.items():
+            for k, v in result.items():
                 result[k] = OrderedDict(sorted(v.items()))
             return {
                 "metadata": {"title": "Device Information"},
@@ -485,38 +487,56 @@ class DistributedRunGenerator(object):
 
     def _generate_overlap_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Computation/Communication Overview", "legends": ["Computation", "Overlapping", "Communication", "Other"], "units": "us"}
+        result["metadata"] = {
+            "title": "Computation/Communication Overview",
+            "legends": ["Computation", "Overlapping", "Communication", "Other"],
+            "units": "us"
+        }
         steps_to_overlap = OrderedDict()
         steps_to_overlap['all'] = OrderedDict()
         for data in self.all_profile_data:
             steps_to_overlap['all'][data.worker] = [0, 0, 0, 0]
             step_number = len(data.steps_names)
-            for i,step_name in enumerate(data.steps_names):
+            for i, step_name in enumerate(data.steps_names):
                 steps_to_overlap.setdefault(step_name, OrderedDict())
                 costs = data.comm_overlap_costs[i]
-                steps_to_overlap[step_name][data.worker] = [costs.computation - costs.overlap, costs.overlap, costs.communication - costs.overlap, costs.other]
-                steps_to_overlap['all'][data.worker] = [sum(x) for x in zip(steps_to_overlap['all'][data.worker], steps_to_overlap[step_name][data.worker])]
+                steps_to_overlap[step_name][data.worker] = [
+                    costs.computation - costs.overlap,
+                    costs.overlap,
+                    costs.communication - costs.overlap,
+                    costs.other
+                ]
+                steps_to_overlap['all'][data.worker] = [
+                    sum(x) for x in zip(steps_to_overlap['all'][data.worker], steps_to_overlap[step_name][data.worker])]
             steps_to_overlap['all'][data.worker] = [x/step_number for x in steps_to_overlap['all'][data.worker]]
-        for k,v in steps_to_overlap.items():
+        for k, v in steps_to_overlap.items():
             steps_to_overlap[k] = OrderedDict(sorted(v.items()))
         result["data"] = steps_to_overlap
         return result
 
     def _generate_wait_graph(self):
         result = dict()
-        result["metadata"] = {"title": "Synchronizing/Communication Overview", "legends": ["Data Transfer Time", "Synchronizing Time"], "units": "us"}
+        result["metadata"] = {
+            "title": "Synchronizing/Communication Overview",
+            "legends": ["Data Transfer Time", "Synchronizing Time"],
+            "units": "us"
+        }
         steps_to_wait = OrderedDict()
 
         steps_to_wait['all'] = OrderedDict()
         for data in self.all_profile_data:
             steps_to_wait['all'][data.worker] = [0, 0]
             step_number = len(data.step_comm_stats.values())
-            for step,comm_stats in data.step_comm_stats.items():
-                steps_to_wait.setdefault(step, OrderedDict())[data.worker] = [comm_stats[1], comm_stats[0]-comm_stats[1]]
-                steps_to_wait['all'][data.worker] = [sum(x) for x in zip(steps_to_wait['all'][data.worker], steps_to_wait[step][data.worker])]
+            for step, comm_stats in data.step_comm_stats.items():
+                steps_to_wait.setdefault(step, OrderedDict())[data.worker] = [
+                    comm_stats[1],
+                    comm_stats[0]-comm_stats[1]
+                ]
+                steps_to_wait['all'][data.worker] = [
+                    sum(x) for x in zip(steps_to_wait['all'][data.worker], steps_to_wait[step][data.worker])]
             steps_to_wait['all'][data.worker] = [x/step_number for x in steps_to_wait['all'][data.worker]]
 
-        for k,v in steps_to_wait.items():
+        for k, v in steps_to_wait.items():
             steps_to_wait[k] = OrderedDict(sorted(v.items()))
         result["data"] = steps_to_wait
         return result
@@ -529,12 +549,29 @@ class DistributedRunGenerator(object):
         for data in self.all_profile_data:
             table = {}
             table["columns"] = [{"type": "string", "name": "Name"}]
-            col_names = ["Calls", "Total Size (bytes)", "Avg Size (bytes)", "Total Latency (us)", "Avg Latency (us)", "Data Transfer Time (us)", "Avg Data Transfer Time (us)"]
+            col_names = [
+                "Calls",
+                "Total Size (bytes)",
+                "Avg Size (bytes)",
+                "Total Latency (us)",
+                "Avg Latency (us)",
+                "Data Transfer Time (us)",
+                "Avg Data Transfer Time (us)"
+            ]
             for column in col_names:
                 table["columns"].append({"type": "number", "name": column})
             table["rows"] = []
-            for op,stats in data.total_comm_stats.items():
-                row = [op, stats[0], stats[1], round(stats[1]/stats[0]), stats[2], round(stats[2]/stats[0]), stats[3], round(stats[3]/stats[0])]
+            for op, stats in data.total_comm_stats.items():
+                row = [
+                    op,
+                    stats[0],
+                    stats[1],
+                    round(stats[1]/stats[0]),
+                    stats[2],
+                    round(stats[2]/stats[0]),
+                    stats[3],
+                    round(stats[3]/stats[0])
+                ]
                 table["rows"].append(row)
             workers_to_comm_ops[data.worker] = table
         result["data"] = OrderedDict(sorted(workers_to_comm_ops.items()))

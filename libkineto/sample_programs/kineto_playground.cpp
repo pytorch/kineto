@@ -1,13 +1,10 @@
 // (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
+#include <kineto_playground.cuh>
 
-#include <common/logging/logging.h>
 #include <libkineto.h>
 
-#include "kineto/libkineto/sample_programs/kineto_playground.cuh"
+#include <string>
 
 using namespace kineto;
 
@@ -30,8 +27,6 @@ int main() {
   playground();
 
   auto trace = profiler.stopTrace();
-  LOG(INFO) << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
   trace->save(kFileName);
   return 0;
 }
-

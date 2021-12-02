@@ -43,6 +43,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",
+        "src/ILoggerObserver.cpp",
         "src/init.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",

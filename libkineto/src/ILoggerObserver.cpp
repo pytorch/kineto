@@ -9,7 +9,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ILoggerObserver.h"
 
-#if !USE_GOOGLE_LOG
+#ifndef USE_GOOGLE_LOG
 
 #include <array>
 #include <fmt/format.h>
@@ -55,4 +55,4 @@ LoggerOutputType toLoggerOutputType(const std::string& str) {
 } // namespace KINETO_NAMESPACE
 
 
-#endif // !USE_GOOGLE_LOG
+#endif // USE_GOOGLE_LOG

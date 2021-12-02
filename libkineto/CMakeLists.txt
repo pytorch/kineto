@@ -17,12 +17,13 @@ function(get_filelist name outputvar)
   set(${outputvar} ${_tempvar} PARENT_SCOPE)
 endfunction()
 
-project(kineto VERSION 0.1 LANGUAGES CXX C)
+project(kineto VERSION 0.1 LANGUAGES CXX C CUDA)
 
 set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
+option(KINETO_SAMPLE_PROGRAMS "Build kineto sample programs" ON)
 
 set(LIBKINETO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBKINETO_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -193,4 +194,8 @@ install(EXPORT kinetoLibraryConfig DESTINATION share/cmake/kineto
 
 if(KINETO_BUILD_TESTS)
   add_subdirectory(test)
+endif()
+
+if(KINETO_SAMPLE_PROGRAMS)
+  add_subdirectory(sample_programs)
 endif()

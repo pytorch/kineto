@@ -133,9 +133,10 @@ class OpTreeBuilder:
                     node.children = child.children
                     node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
                     remove_dup_nodes(node)  # This node may have to merge with child's child.
-            else:
-                for child in node.children:
-                    remove_dup_nodes(child)
+                    return
+
+            for child in node.children:
+                remove_dup_nodes(child)
 
         root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
         remove_dup_nodes(root_node)

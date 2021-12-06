@@ -13,18 +13,14 @@ class OpTreeBuilder:
     BACKWARD_ROOT_PREFIX = 'autograd::engine::evaluate_function:'
     BACKWARD_ACCUMULATE_GRAD = 'autograd::engine::evaluate_function: torch::autograd::AccumulateGrad'
 
-    def __init__(self, tid2list, tid2zero_rt_list, corrid_to_device, fwd_bwd_map):
-        self.tid2list = tid2list
-        self.tid2zero_rt_list = tid2zero_rt_list
-        self.corrid_to_device = corrid_to_device
-        self.fwd_bwd_map = fwd_bwd_map
+    def __init__(self):
         self.main_tid = None
         self.tid2tree = None
 
-    def build_tree(self):
+    def build_tree(self, tid2list, tid2zero_rt_list, staled_device_nodes, fwd_bwd_map):
         '''Construct the BackwardNode and replace the original backward nodes
         '''
-        self.tid2tree = self._build_tree(self.tid2list, self.tid2zero_rt_list, self.corrid_to_device)
+        self.tid2tree = self._build_tree(tid2list, tid2zero_rt_list, staled_device_nodes)
         self._set_main_tid()
 
         modules, backward_nodes = self._get_modules()
@@ -33,7 +29,7 @@ class OpTreeBuilder:
 
         _, ts2parent = OpTreeBuilder._get_node_parents(backward_nodes)
         agg_nodes = OpTreeBuilder._group_backward_nodes(backward_nodes)
-        fwd_bwd_root = self._get_backward_roots(self.fwd_bwd_map, ts2parent, agg_nodes)
+        fwd_bwd_root = self._get_backward_roots(fwd_bwd_map, ts2parent, agg_nodes)
         if len(agg_nodes) > 0:
             logger.warning("some nodes cannot find forward nodes")
 
@@ -45,12 +41,8 @@ class OpTreeBuilder:
 
         return self.tid2tree
 
-    def _build_tree(self, tid2list, tid2zero_rt_list, corrid_to_device):
+    def _build_tree(self, tid2list, tid2zero_rt_list, staled_device_nodes):
         tid2tree = {}
-
-        staled_device_nodes = []
-        for _, device_nodes in corrid_to_device.items():
-            staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
 
         for tid, op_list in tid2list.items():
             zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
@@ -74,7 +66,6 @@ class OpTreeBuilder:
             else:
                 # there are multiple tids
                 backward_tid = self._find_backward_tid()
-                backward_tid = None
                 tid2len = {
                     tid: root.end_time - root.start_time for tid, root in self.tid2tree.items()
                     if tid != backward_tid or backward_tid is None
@@ -142,8 +133,9 @@ class OpTreeBuilder:
                     node.children = child.children
                     node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
                     remove_dup_nodes(node)  # This node may have to merge with child's child.
-            for child in node.children:
-                remove_dup_nodes(child)
+            else:
+                for child in node.children:
+                    remove_dup_nodes(child)
 
         root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
         remove_dup_nodes(root_node)

@@ -86,7 +86,11 @@ class NodeParserMixin:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
 
-        return tid2list, tid2zero_rt_list, corrid_to_device
+        staled_device_nodes = []
+        for _, device_nodes in corrid_to_device.items():
+            staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+
+        return tid2list, tid2zero_rt_list, staled_device_nodes
 
     def _update_communication_node(self, event):
         '''Update the communication node by using the TraceEvent instance'''
@@ -381,8 +385,8 @@ class EventParser(NodeParserMixin, StepParser):
     def parse(self, events, fwd_bwd_map) -> Dict[int, List[OperatorNode]]:
         result = self.parse_nodes(events)
 
-        builder = OpTreeBuilder(*result, fwd_bwd_map=fwd_bwd_map)
-        tid2tree = builder.build_tree()
+        builder = OpTreeBuilder()
+        tid2tree = builder.build_tree(*result, fwd_bwd_map=fwd_bwd_map)
         # Process steps
         self.parse_steps(events, self.communication_data)
         if len(self.comm_lib) > 1:

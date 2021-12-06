@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from .node import ModuleNode, ProfilerStepNode, is_operator_node
+from .node import ModuleNode, OperatorNode, ProfilerStepNode, is_operator_node
 from .trace import EventTypes
 
 
@@ -140,7 +140,7 @@ def _aggregate_modules(modules):
 def _get_module_list(tid2tree):
     '''Get all ModuleNode from the operator tree'''
     def traverse_node(node):
-        if type(node) not in (ProfilerStepNode, ModuleNode):
+        if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode):
             return
 
         if isinstance(node, ModuleNode):

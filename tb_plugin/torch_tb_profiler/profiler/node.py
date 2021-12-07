@@ -287,6 +287,7 @@ class DeviceNode(BaseNode):
 def is_operator_node(node):
     if (type(node) is OperatorNode and node.type == EventTypes.OPERATOR
             and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__"))
+            and not node.name.startswith("enumerate(DataPipe)#")
             and not node.name.startswith("Optimizer.") and node.name not in ExcludeOpName):
         return True
     else:

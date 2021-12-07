@@ -222,6 +222,9 @@ class OpTreeBuilder:
 
     @staticmethod
     def _get_backward_roots(fwd_bwd_map, ts2parent, backward_nodes):
+        if not fwd_bwd_map:
+            return None
+
         fwd_to_bwdroot = {}
         for fwd, bwd in fwd_bwd_map.items():
             parent = ts2parent.get(bwd)
@@ -239,6 +242,10 @@ class OpTreeBuilder:
         '''Construct the backward module from root (node argument) and
         insert it into result array if there is no any parent associated with it.
         '''
+        if not fwd_bwd_map:
+            logger.warning("The forward backward map is empty. The backward construction is skipped.")
+            return
+
         if isinstance(node, ModuleNode):
             backward_node = BackwardNode(node.name + ".backward", None, None, "backward", 0)
 

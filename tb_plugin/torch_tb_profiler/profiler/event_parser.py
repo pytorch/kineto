@@ -334,8 +334,9 @@ class StepParser:
             self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
         elif evt_type == EventTypes.RUNTIME:
             self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
-        elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
-                and event.name.endswith(".__next__"):
+        elif (evt_type == EventTypes.OPERATOR and (
+                (event.name.startswith("enumerate(DataLoader)#") and event.name.endswith(".__next__"))
+                or event.name.startswith("enumerate(DataPipe)#"))):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))

@@ -43,6 +43,7 @@ class RunProfileData(object):
         self.has_kernel = False
         self.has_communication = False
         self.has_memcpy_or_memset = False
+        self.role_ranges = None
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
@@ -164,6 +165,7 @@ class RunProfileData(object):
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
         self.comm_lib = parser.comm_lib
+        self.role_ranges = parser.role_ranges
 
         # Parse communications.
         self.comm_node_list = parser.generate_communication_nodes()

@@ -171,19 +171,20 @@ def pop_list(range_list, index):
 
 
 def merge_ranges(src_ranges, is_sorted=False):
+    if not src_ranges:
+        # return empty list if src_ranges is None or its length is zero.
+        return []
+
+    if not is_sorted:
+        src_ranges.sort(key=lambda x: x[0])
+
     merged_ranges = []
-    if len(src_ranges) > 0:
-        if not is_sorted:
-            src_ranges.sort(key=lambda x: x[0])
-        src_id = 0
-        merged_ranges.append(
-            (src_ranges[src_id][0], src_ranges[src_id][1]))
-        for src_id in range(1, len(src_ranges)):
-            dst_id = len(merged_ranges) - 1
-            if src_ranges[src_id][1] > merged_ranges[dst_id][1]:
-                if src_ranges[src_id][0] <= merged_ranges[dst_id][1]:
-                    merged_ranges[dst_id] = (merged_ranges[dst_id][0], src_ranges[src_id][1])
-                else:
-                    merged_ranges.append(
-                        (src_ranges[src_id][0], src_ranges[src_id][1]))
+    merged_ranges.append(src_ranges[0])
+    for _, src_range in enumerate(src_ranges, start=1):
+        if src_range[1] > merged_ranges[-1][1]:
+            if src_range[0] <= merged_ranges[-1][1]:
+                merged_ranges[-1] = (merged_ranges[-1][0], src_range[1])
+            else:
+                merged_ranges.append((src_range[0], src_range[1]))
+
     return merged_ranges

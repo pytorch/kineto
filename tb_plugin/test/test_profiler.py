@@ -2632,5 +2632,41 @@ class TestModuleView(unittest.TestCase):
         self.assertEqual("nn.Module: Linear", roots[1].children[0].name)
 
 
+class TestDataPipe(unittest.TestCase):
+
+    def test_datapipe(self):
+        json_content = """[
+            {
+                "ph": "X", "cat": "cpu_op",
+                "name": "enumerate(DataPipe)#ShufflerIterDataPipe", "pid": 7557, "tid": 7557,
+                "ts": 100, "dur": 23,
+                "args": {
+                    "External id": 34,
+                    "Trace name": "PyTorch Profiler", "Trace iteration": 0
+                }
+            }
+        ]"""
+        profile = parse_json_trace(json_content)
+        profile.process()
+
+        dataloader_ranges = profile.role_ranges[ProfileRole.DataLoader]
+        datapipe_range = None
+        for range in dataloader_ranges:
+            if range[0] == 100 and range[1] == 123:
+                datapipe_range = range
+                break
+        self.assertTrue(datapipe_range is not None)
+
+        root = next(iter(profile.tid2tree.values()))
+        ops, _ = root.get_operator_and_kernels()
+        datapipe_op = None
+        for op in ops:
+            if op.name.startswith("enumerate(DataPipe)"):
+                datapipe_op = op
+                break
+
+        self.assertTrue(datapipe_op is None)
+
+
 if __name__ == '__main__':
     unittest.main()

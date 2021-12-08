@@ -88,8 +88,13 @@ class NodeParserMixin:
                     len(externalid_to_runtime[ext_id]), ext_id))
 
         if len(corrid_to_device) > 0:
-            corrids = ', '.join(str(x) for x in corrid_to_device.keys())
-            logger.warning("{} items doesn't belongs to any operators: {}".format(len(corrid_to_device), corrids))
+            node_count_dict = defaultdict(int)
+            for nodes in corrid_to_device.values():
+                for n in nodes:
+                    node_count_dict[n.type] += 1
+
+            logger.warning(("Some events doesn't belongs to any operators: "
+                           f"{', '.join([':'.join((k, str(v))) for k, v in node_count_dict.items()])}"))
 
         staled_device_nodes = []
         for device_nodes in corrid_to_device.values():

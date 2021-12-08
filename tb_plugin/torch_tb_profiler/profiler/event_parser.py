@@ -10,6 +10,7 @@ from .. import utils
 from .communication import generate_communication_nodes
 from .node import (CommunicationNode, DeviceNode, ModuleNode, OperatorNode,
                    ProfilerStepNode, RuntimeNode)
+from .op_tree import OpTreeBuilder
 from .range_utils import merge_ranges
 from .trace import EventTypes
 
@@ -85,7 +86,11 @@ class NodeParserMixin:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
 
-        return tid2list, tid2zero_rt_list, corrid_to_device
+        staled_device_nodes = []
+        for _, device_nodes in corrid_to_device.items():
+            staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+
+        return tid2list, tid2zero_rt_list, staled_device_nodes
 
     def _update_communication_node(self, event):
         '''Update the communication node by using the TraceEvent instance'''
@@ -167,98 +172,6 @@ class NodeParserMixin:
             if event.name == "DistributedDataParallel.forward":
                 self.use_ddp = True
             tid2list[int(tid)].append(op_node)
-
-
-class OpTreeBuilder:
-    def __init__(self):
-        pass
-
-    def build_tree(self, tid2list, tid2zero_rt_list, corrid_to_device):
-        tid2tree = {}
-
-        staled_device_nodes = []
-        for _, device_nodes in corrid_to_device.items():
-            staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
-
-        for tid, op_list in tid2list.items():
-            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
-            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
-            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
-            if main_tid:
-                # only append the staled device nodes into main thread
-                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
-            else:
-                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
-            tid2tree[int(tid)] = root_node
-
-        return tid2tree
-
-    def _build_tree(self, host_node_list, zero_rt_list, tid, staled_device_nodes):
-        '''host_node_list: list of OperatorNode and ProfilerStepNode.
-        zero_rt_list: list of RuntimeNode with external_id=0.'''
-
-        def build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes):
-            dummpy_rt = []
-            if staled_device_nodes:
-                # Note: Although kernels of this dummy runtime is put under main thread's tree,
-                # we don't know which thread launches them.
-                # TODO: Don't make belonging thread assumption on future usage if we need special handling
-                dummpy_rt.append(RuntimeNode("dummy", None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
-                dummpy_rt[0].fill_stats()
-            node_stack = []
-            root_node = OperatorNode(
-                name="CallTreeRoot",
-                start_time=-sys.maxsize - 1,
-                end_time=sys.maxsize,
-                type=EventTypes.PYTHON,
-                tid=tid,
-                runtimes=zero_rt_list + dummpy_rt)  # Give the list of RuntimeNode with external_id=0 to root node.
-            node_stack.append(root_node)
-            for node in host_node_list:
-                while True:  # break loop when the node is inserted.
-                    tail_node = node_stack[-1]
-                    if node.start_time < tail_node.end_time:
-                        if node.end_time <= tail_node.end_time:
-                            tail_node.children.append(node)
-                            # node.parent_node = weakref.ref(tail_node)
-                            node_stack.append(node)
-                        else:
-                            logger.error("Error in input data: ranges on the same thread should not intersect!"
-                                         "Father:({},{},{}) Child:({},{},{})".format(
-                                          tail_node.name, tail_node.start_time, tail_node.end_time,
-                                          node.name, node.start_time, node.end_time))
-                        break
-                    else:
-                        node_stack.pop()
-            return root_node
-
-        # Merge the consecutive calls to same function into one.
-        # Just follow the same pattern in torch/autograd/profiler.py,
-        # EventList._remove_dup_nodes
-        # TODO: Replace recursive by for loop, in case of too deep callstack.
-        def remove_dup_nodes(node):
-            if node.type == EventTypes.RUNTIME:
-                return
-            if len(node.children) == 1:
-                child = node.children[0]
-                if node.name == child.name and node.type == EventTypes.OPERATOR and child.type == EventTypes.OPERATOR:
-                    node.children = child.children
-                    node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
-                    remove_dup_nodes(node)  # This node may have to merge with child's child.
-            for child in node.children:
-                remove_dup_nodes(child)
-
-        root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
-        remove_dup_nodes(root_node)
-        root_node.fill_stats()
-
-        # replace the root_node start_time/end_time
-        root_node.start_time = next((child.start_time for child in root_node.children
-                                    if child.start_time is not None), None)
-        root_node.end_time = next((child.end_time for child in reversed(root_node.children)
-                                  if child.end_time is not None), None)
-        return root_node
 
 
 class StepParser:
@@ -465,13 +378,15 @@ class StepParser:
                     self.steps_names = self.steps_names[:keep_steps]
 
 
-class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
+class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
 
-    def parse(self, events) -> Dict[int, List[OperatorNode]]:
-        tid2tree = self.build_tree(*self.parse_nodes(events))
+    def parse(self, events, fwd_bwd_map) -> Dict[int, List[OperatorNode]]:
+        result = self.parse_nodes(events)
 
+        builder = OpTreeBuilder()
+        tid2tree = builder.build_tree(*result, fwd_bwd_map=fwd_bwd_map)
         # Process steps
         self.parse_steps(events, self.communication_data)
         if len(self.comm_lib) > 1:
@@ -486,7 +401,7 @@ class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
         return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
 
     @staticmethod
-    def print_tree(tid2tree):
+    def print_tree(root):
         class Ctx:
             tid: int = -1
             name_stack: list = []
@@ -517,7 +432,6 @@ class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
                 traverse_opeartor_node(n)
             pop()
 
-        for tid, tree in tid2tree.items():
-            ctx.tid = tid
-            traverse_opeartor_node(tree)
-            ctx.tid = -1
+        ctx.tid = root.tid
+        traverse_opeartor_node(root)
+        ctx.tid = -1

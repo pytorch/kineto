@@ -9,9 +9,14 @@ import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
 import { Table } from 'antd'
 import * as React from 'react'
-// @ts-ignore
 import { FlameGraph } from 'react-flame-graph'
-import { defaultApi, KeyedColumn, ModuleStats, ModuleViewData } from '../api'
+import {
+  defaultApi,
+  KeyedColumn,
+  ModuleStats,
+  ModuleViewData,
+  OperatorNode
+} from '../api'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -28,8 +33,8 @@ export interface IProps {
   span: string
 }
 
-const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
-  return columns.map((col: KeyedColumn) => {
+const getKeyedTableColumns = (columns: KeyedColumn[]) => {
+  return columns.map((col) => {
     return {
       dataIndex: col.key,
       key: col.key,
@@ -38,9 +43,9 @@ const getKeyedTableColumns = (columns: KeyedColumn[]): any => {
   })
 }
 
-const getTableRows = function (key: number, rows: ModuleStats[]): any {
-  return rows.map(function (row: ModuleStats) {
-    const data = {
+const getTableRows = (key: number, rows: ModuleStats[]) => {
+  return rows.map((row) => {
+    const data: any = {
       key: key++,
       name: row.name,
       occurences: row.occurences,
@@ -48,32 +53,55 @@ const getTableRows = function (key: number, rows: ModuleStats[]): any {
       host_duration: row.host_duration,
       self_host_duration: row.self_host_duration,
       device_duration: row.device_duration,
-      self_device_duration: row.self_device_duration,
-      children: getTableRows(key, row.children)
+      self_device_duration: row.self_device_duration
     }
-    if (data.children.length == 0) {
-      delete data.children
+
+    if (row.children.length) {
+      data.children = getTableRows(key, row.children)
     }
 
     return data
   })
 }
 
-const getFlameGraphData = function (rows: ModuleStats[]): any {
-  return rows.map(function (row: ModuleStats) {
-    const data = {
+const getFlameGraphData = (rows: ModuleStats[]) => {
+  return rows.map((row) => {
+    const data: any = {
       name: row.name,
       value: row.avg_duration,
-      tooltip: `${row.name} (module id: ${row.id}): ${row.avg_duration} us`,
-      children: getFlameGraphData(row.children)
+      tooltip: `${row.name} (module id: ${row.id}): ${row.avg_duration} us`
     }
 
-    if (data.children.length == 0) {
-      delete data.children
+    if (row.children.length) {
+      data.children = getFlameGraphData(row.children)
     }
 
     return data
   })
+}
+
+const getTreeHeight = (row: ModuleStats): number => {
+  if (row.children && row.children.length) {
+    return 1 + Math.max(...row.children.map((child) => getTreeHeight(child)))
+  } else {
+    return 1
+  }
+}
+
+const getOperatorTree = (
+  level: number,
+  row: OperatorNode,
+  result: object[]
+) => {
+  result.push({
+    level: level,
+    name: row.name,
+    start: row.start_time,
+    end: row.end_time
+  })
+  if (row.children.length) {
+    row.children.forEach((child) => getOperatorTree(level + 1, child, result))
+  }
 }
 
 export const ModuleView: React.FC<IProps> = (props) => {
@@ -83,28 +111,92 @@ export const ModuleView: React.FC<IProps> = (props) => {
   const [moduleView, setModuleView] = React.useState<
     ModuleViewData | undefined
   >(undefined)
-  const [flameData, setFlameData] = React.useState([])
+  const [flameData, setFlameData] = React.useState<any[]>([])
+  const [flameHeight, setFlameHeight] = React.useState<number>(0)
   const [modules, setModules] = React.useState<number[]>([])
   const [module, setModule] = React.useState<number>(0)
 
-  const [columns, setColumns] = React.useState([])
-  const [rows, setRows] = React.useState([])
+  const [columns, setColumns] = React.useState<any[]>([])
+  const [rows, setRows] = React.useState<any[]>([])
+
+  const cardRef = React.useRef<HTMLDivElement>(null)
+  const [cardWidth, setCardWidth] = React.useState<number | undefined>(
+    undefined
+  )
+  const timelineRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    defaultApi.moduleGet(run, worker, span).then((resp) => {
-      setModuleView(resp)
-      if (resp) {
-        // set the flamegraph data
-        const flameData = getFlameGraphData(resp.data)
-        setFlameData(flameData)
-        setModules(Array.from(Array(flameData.length).keys()))
-        setModule(0)
+    defaultApi
+      .moduleGet(run, worker, span)
+      .then((resp) => {
+        setModuleView(resp)
+        if (resp) {
+          // set the flamegraph data
+          const flameData: any[] = getFlameGraphData(resp.data)
+          setFlameData(flameData)
+          const flameHeight = Math.max(
+            ...flameData.map((x) => getTreeHeight(x))
+          )
+          setFlameHeight(flameHeight * 25)
+          setModules(Array.from(Array(flameData.length).keys()))
+          setModule(0)
 
-        // set the tree table data
-        setColumns(getKeyedTableColumns(resp.columns))
-        setRows(getTableRows(1, resp.data))
-      }
-    })
+          // set the tree table data
+          setColumns(getKeyedTableColumns(resp.columns))
+          setRows(getTableRows(1, resp.data))
+        }
+      })
+      .catch((e) => {
+        if (e.status == 404) {
+          setModules([])
+          setFlameData([])
+          setRows([])
+        }
+      })
+
+    if (cardRef.current) {
+      setCardWidth(cardRef.current.offsetWidth - 10)
+    }
+    if (timelineRef.current) {
+      defaultApi.treeGet(run, worker, span).then((resp) => {
+        if (resp) {
+          const data = new google.visualization.DataTable()
+          data.addColumn({ type: 'string', id: 'Layer' })
+          data.addColumn({ type: 'string', id: 'Name' })
+          data.addColumn({ type: 'string', role: 'tooltip' })
+          data.addColumn({ type: 'number', id: 'Start' })
+          data.addColumn({ type: 'number', id: 'End' })
+
+          let timeline_data: any[] = []
+          getOperatorTree(0, resp, timeline_data)
+          timeline_data.sort((a, b) => a.level - b.level)
+          const max_level = timeline_data[timeline_data.length - 1].level
+          timeline_data.forEach((d) => {
+            data.addRow([
+              d.level.toString(),
+              d.name,
+              `${d.name} Duration: ${d.end - d.start} us`,
+              d.start / 1000.0, // the time unit is us returned from server, but the google charts only accept milliseconds here
+              d.end / 1000.0
+            ])
+          })
+
+          const chart = new google.visualization.Timeline(timelineRef.current)
+
+          // console.info(timeline_data)
+          const options = {
+            height: (max_level + 1) * 50,
+            tooltip: {
+              isHtml: true
+            },
+            timeline: {
+              showRowLabels: false
+            }
+          }
+          chart.draw(data, options)
+        }
+      })
+    }
   }, [run, worker, span])
 
   const handleModuleChange: SelectProps['onChange'] = (event) => {
@@ -132,7 +224,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
 
   return (
     <div className={classes.root}>
-      <Card variant="outlined">
+      <Card variant="outlined" ref={cardRef}>
         <CardHeader title="Module View" />
 
         {/* defaultExpandAllRows will only valid when first render the Table
@@ -146,7 +238,7 @@ export const ModuleView: React.FC<IProps> = (props) => {
             columns={columns}
             dataSource={rows}
             expandable={{
-              defaultExpandAllRows: true
+              defaultExpandAllRows: false
             }}
           />
         )}
@@ -156,13 +248,15 @@ export const ModuleView: React.FC<IProps> = (props) => {
         {flameData && flameData.length > 0 && (
           <FlameGraph
             data={flameData[module]}
-            height={200}
-            width={800}
+            height={flameHeight}
+            width={cardWidth}
             onChange={(node: any) => {
               console.log(`"${node.name}" focused`)
             }}
           />
         )}
+
+        <div ref={timelineRef} />
       </Card>
     </div>
   )

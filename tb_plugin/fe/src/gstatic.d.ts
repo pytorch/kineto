@@ -3,3 +3,4 @@
  *--------------------------------------------------------------------------------------------*/
 
 declare const google: any
+declare module 'react-flame-graph'

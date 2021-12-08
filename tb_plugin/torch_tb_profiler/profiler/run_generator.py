@@ -55,6 +55,8 @@ class RunGenerator(object):
         profile_run.occupancy = self.profile_data.occupancy
         profile_run.tc_ratio = self.profile_data.tc_ratio
 
+        profile_run.tid2tree = self.profile_data.tid2tree
+
         if self.profile_data.memory_parser:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.memory_parser = self.profile_data.memory_parser
@@ -73,12 +75,12 @@ class RunGenerator(object):
 
     def _generate_overview(self):
         def build_part_time_str(part_cost, part_name):
-            format_str = '<div class="visualization-tooltip" style="white-space: nowrap;">' \
-                         'Step {}<br>' \
-                         'Total: {}us<br>' \
-                         '<b>{}: {}us</b><br>' \
-                         'Percentage: {}%' \
-                         '</div>'
+            format_str = ('<div class="visualization-tooltip" style="white-space: nowrap;">'
+                          'Step {}<br>'
+                          'Total: {}us<br>'
+                          '<b>{}: {}us</b><br>'
+                          'Percentage: {}%'
+                          '</div>')
             percentage = round(100 * part_cost / costs.costs[ProfileRole.Total], 2)
             return format_str.format(step_name, costs.costs[ProfileRole.Total], part_name, part_cost, percentage)
 

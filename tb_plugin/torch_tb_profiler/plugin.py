@@ -109,6 +109,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/memory_curve": self.memory_curve_route,
             "/memory_events": self.memory_events_route,
             "/module": self.module_route,
+            "/tree": self.op_tree
         }
 
     def frontend_metadata(self):
@@ -330,6 +331,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             worker = request.args.get("worker")
             span = request.args.get("span")
             raise exceptions.NotFound("could not find the run for %s/%s/%s" % (name, worker, span))
+
+    @wrappers.Request.application
+    def op_tree(self, request):
+        profile = self._get_profile_for_request(request)
+        content = profile.get_operator_tree()
+        return self.respond_as_json(content)
 
     @wrappers.Request.application
     def static_file_route(self, request):

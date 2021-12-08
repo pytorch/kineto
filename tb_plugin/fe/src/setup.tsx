@@ -3,5 +3,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 export async function setup() {
-  await google.charts.load('current', { packages: ['corechart', 'table'] })
+  await google.charts.load('current', {
+    packages: ['corechart', 'table', 'timeline']
+  })
 }

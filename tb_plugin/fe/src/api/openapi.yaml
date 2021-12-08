@@ -585,6 +585,32 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/ModuleViewData'
+  /tree:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/OperatorNode'
+
 components:
   schemas:
     Runs:
@@ -1047,3 +1073,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ModuleStats'
+    OperatorNode:
+      type: object
+      required:
+        - name
+        - start_time
+        - end_time
+        - type
+        - tid
+        - children
+      properties:
+        name:
+          type: string
+        start_time:
+          type: number
+        end_time:
+          type: number
+        type:
+          type: string
+        tid:
+          type: number
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperatorNode'

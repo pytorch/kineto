@@ -193,7 +193,7 @@ class MemoryParser:
                 if len(node_stack) > tree_height:
                     tree_height = len(node_stack)
 
-                if current_node is None:
+                if current_node is None or current_node.start_time is None or current_node.end_time is None:
                     # 3. Ignore all remaining records.
                     logger.debug(
                         "could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (

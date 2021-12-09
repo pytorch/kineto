@@ -11,9 +11,9 @@ RUN_NODE_TYPES = (BackwardNode, DataLoaderNode, ModuleNode, OptimizerNode, Profi
 
 class DiffNode:
     def __init__(self, left: Operator, right: Operator):
-        self.left = left
-        self.right = right
-        self.children = []
+        self.left: Operator = left
+        self.right: Operator = right
+        self.children: List[DiffNode] = []
 
     def build_tree(self):
         '''build the children from the left_node and right_node'''
@@ -40,10 +40,11 @@ class DiffNode:
     @staticmethod
     def create_node(left: Union[OperatorNode, List[OperatorNode]],
                     right: Union[OperatorNode, List[OperatorNode]]) -> 'DiffNode':
-        '''Create the diff tree from two root node
-        TODO: need handle the different threads case
-        TODO: need add runtimes besides of children?
-        '''
+        if isinstance(left, list) and len(left) == 1:
+            left = left[0]
+        if isinstance(right, list) and len(right) == 1:
+            right = right[0]
+
         node = DiffNode(create_operator(left), create_operator(right))
         node.build_tree()
         return node
@@ -68,13 +69,11 @@ class DiffNode:
                     key_index = j + 1
                     break
 
-        # split the two list by the matching points
-
-        # construct the result
         if not matched_paris:
             # there is not any matching points.
             return
 
+        # split the two list by the matching points
         l_iter = 0
         r_iter = 0
 
@@ -87,7 +86,7 @@ class DiffNode:
             yield DiffNode.create_node(left_nodes[l], right_nodes[r])
             l_iter = l + 1
             r_iter = r + 1
-            # TODO: fill unknown nodes in case of the starttime of next node and current
+            # TODO: fill unknown nodes in case of the start_time of next node and current
             # end time is bigger than threshold.
             # Or do we need move the logic into frondend for visualization?
 
@@ -101,9 +100,22 @@ class DiffNode:
 def create_diff_tree(left: OperatorNode, right: OperatorNode) -> DiffNode:
     '''Create the diff tree from two root node
        TODO: need handle the different threads case
-       TODO: need add runtimes besides of children?
+             need add runtimes besides of children?
     '''
-    return DiffNode.create_node(left.children, right.children)
+    left_children = list(get_tree_operators(left))
+    right_children = list(get_tree_operators(right))
+    return DiffNode.create_node(left_children, right_children)
+
+
+def get_tree_operators(root: OperatorNode) -> List[OperatorNode]:
+    '''Get the operators by the root operators by excluding the ProfilerStepNode
+    '''
+    profiler_nodes = [c for c in root.children if isinstance(c, ProfilerStepNode)]
+    if not profiler_nodes:
+        # there is no ProfilerStepNode at all
+        yield from root.children
+    else:
+        yield from (child for p in profiler_nodes for child in p.children)
 
 
 def print_node(node: DiffNode, level: int, index: int, file=sys.stdout):

@@ -3,8 +3,7 @@ import unittest
 
 import pytest
 from torch_tb_profiler.profiler.data import RunProfileData
-from torch_tb_profiler.profiler.diffrun.tree import (create_diff_tree,
-                                                     print_node)
+from torch_tb_profiler.profiler.diffrun.tree import compare_op_tree, print_node
 
 
 def load_profile(worker, span, path):
@@ -27,7 +26,7 @@ class TestDiffRun(unittest.TestCase):
         roots1 = list(profile2.tid2tree.values())
         root1 = roots1[0]
 
-        node = create_diff_tree(root, root1)
+        node = compare_op_tree(root, root1)
         print_node(node, 0, 0)
 
 

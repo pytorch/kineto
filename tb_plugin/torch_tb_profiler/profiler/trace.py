@@ -135,14 +135,14 @@ class MemoryEvent(BaseEvent):
 class PythonFunctionEvent(DurationEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.python_id = self.args.get("Python id")
-        self.python_parent_id = self.args.get("Python parent id")
+        self.python_id: int = self.args.get("Python id")
+        self.python_parent_id: int = self.args.get("Python parent id")
 
 
 class ModuleEvent(PythonFunctionEvent):
     def __init__(self, data):
         super().__init__(EventTypes.MODULE, data)
-        self.module_id = self.args.get("Python module id")
+        self.module_id: int = self.args.get("Python module id")
 
 
 def create_event(event) -> Optional[BaseEvent]:

@@ -1,7 +1,11 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 from collections import namedtuple
+from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple
 
 from .node import ModuleNode, OperatorNode, ProfilerStepNode, is_operator_node
-from .trace import EventTypes
+from .trace import BaseEvent, EventTypes
 
 
 class Module:
@@ -42,7 +46,20 @@ class ModuleStats:
         return self.device_duration / self.occurences
 
 
-def aggegate_module_view(tid2tree, events):
+Stats = namedtuple('Stats', [
+    'name',
+    'id',
+    'occurences',
+    'operators',
+    'host_duration',
+    'self_host_duration',
+    'device_duration',
+    'self_device_duration',
+    'avg_duration',
+    'children'])
+
+
+def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
     roots = _build_module_hierarchy(events)
     modules = _get_module_list(tid2tree)
     if modules and roots:
@@ -51,7 +68,7 @@ def aggegate_module_view(tid2tree, events):
         return None
 
 
-def _build_module_hierarchy(events):
+def _build_module_hierarchy(events: List[BaseEvent]) -> List[Module]:
     '''Get the module hierarchy from the chome trace events
     '''
     python_events = [e for e in events if e.type in (EventTypes.PYTHON_FUNCTION, EventTypes.MODULE)]
@@ -99,7 +116,7 @@ def _build_module_hierarchy(events):
 
     # The traverse order is well defined which guarantees that a given topology
     # will produce a unique and unambiguous hierarchy.
-    def append_hierarchy(e_id):
+    def append_hierarchy(e_id) -> Module:
         e = id_to_event[e_id]
         module = Module(e.name, e.module_id)
         for id in module_child_map[e_id]:
@@ -107,7 +124,7 @@ def _build_module_hierarchy(events):
             module.children.append(child)
         return module
 
-    unique_modules = set()
+    unique_modules: Set[Module] = set()
     for e_id in module_roots:
         root = append_hierarchy(e_id)
         unique_modules.add(root)
@@ -115,9 +132,9 @@ def _build_module_hierarchy(events):
     return list(unique_modules)
 
 
-def _aggregate_modules(modules):
+def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], ModuleStats]:
     '''Aggregate the modules based on the name and module_id'''
-    module_aggs = {}
+    module_aggs: Dict[Tuple(str, int), ModuleStats] = {}
     for m in modules:
         key = (m.name, m.module_id)
         if key not in module_aggs:
@@ -137,7 +154,7 @@ def _aggregate_modules(modules):
     return module_aggs
 
 
-def _get_module_list(tid2tree):
+def _get_module_list(tid2tree: Dict[int, OperatorNode]) -> Generator[ModuleNode, None, None]:
     '''Get all ModuleNode from the operator tree'''
     def traverse_node(node):
         if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode):
@@ -154,27 +171,14 @@ def _get_module_list(tid2tree):
             yield from traverse_node(child)
 
 
-Stats = namedtuple('Stats', [
-    'name',
-    'id',
-    'occurences',
-    'operators',
-    'host_duration',
-    'self_host_duration',
-    'device_duration',
-    'self_device_duration',
-    'avg_duration',
-    'children'])
-
-
-def _process_module_statistics(modules, hierarchy):
+def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: Iterable[Module]) -> List[Stats]:
     '''Get the module statistics from the ModuleNode(s) and the hierarchy
     '''
-    module_aggs = _aggregate_modules(modules)
+    module_aggs = _aggregate_modules(modules_nodes)
 
-    def process_modules(modules):
+    def process_modules(h_modules: Iterable[Module]) -> List[Stats]:
         modules_stats = []
-        for m in modules:
+        for m in h_modules:
             name = m.name.replace('nn.Module: ', '')
             stats = module_aggs[(m.name, m.module_id)]
 

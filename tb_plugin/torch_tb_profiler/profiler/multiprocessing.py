@@ -1,3 +1,6 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 import multiprocessing as mp
 import os
 

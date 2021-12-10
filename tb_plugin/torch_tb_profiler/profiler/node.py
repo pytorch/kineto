@@ -5,10 +5,11 @@ import sys
 from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
+from typing import Generator, List, Optional
 
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
-from .trace import EventTypes
+from .trace import EventTypes, KernelEvent, ModuleEvent, OperatorEvent
 
 logger = utils.get_logger()
 
@@ -53,7 +54,7 @@ class BaseNode(ABC):
         if self.start_time is not None and self.end_time is not None:
             return self.end_time - self.start_time
         else:
-            return None
+            return 0
 
 
 class CommunicationNode(BaseNode):
@@ -74,7 +75,7 @@ class CommunicationNode(BaseNode):
 
 
 class HostNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, tid, external_id, device_duration=0):
+    def __init__(self, name, start_time, end_time, type, tid, external_id, device_duration: int = 0):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.device_duration = device_duration  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream? # noqa: E501
 
@@ -87,8 +88,8 @@ class OperatorNode(HostNode):
                  children=None, runtimes=None, input_shape=None, input_type=None, callstack=None,
                  self_host_duration=0, self_device_duration=0):
         super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
-        self.children = [] if children is None else children  # OperatorNode and ProfilerStepNode.
-        self.runtimes = [] if runtimes is None else runtimes  # RuntimeNode
+        self.children: List[OperatorNode] = [] if children is None else children  # OperatorNode and ProfilerStepNode.
+        self.runtimes: List[RuntimeNode] = [] if runtimes is None else runtimes  # RuntimeNode
         self.input_shape = input_shape
         self.input_type = input_type
         self.callstack = callstack
@@ -100,7 +101,7 @@ class OperatorNode(HostNode):
         self.tc_self_duration = 0  # Time of TC kernels launched by this op excluding its children operators.
         self.tc_total_duration = 0  # Time of TC kernels launched by this op including its children operators.
 
-    def add_memory_record(self, record):
+    def add_memory_record(self, record) -> None:
         self.memory_records.append(record)
 
     def get_memory_metrics(self, start_ts, end_ts):
@@ -182,8 +183,8 @@ class OperatorNode(HostNode):
                 yield d
 
     def get_operator_and_kernels(self):
-        ops = []
-        kernels = []
+        ops: List[OperatorNode] = []
+        kernels: List[DeviceNode] = []
         for child in self.children:
             child_ops, child_kernels = child.get_operator_and_kernels()
             ops.extend(child_ops)
@@ -197,7 +198,7 @@ class OperatorNode(HostNode):
         return ops, kernels
 
     @classmethod
-    def create(cls, event):
+    def create(cls, event: OperatorEvent):
         kwargs = BaseNode.get_node_argument(event)
         return cls(input_shape=event.input_shape, input_type=event.input_type, callstack=event.callstack, **kwargs)
 
@@ -208,7 +209,7 @@ class ProfilerStepNode(OperatorNode):
 
 
 class ModuleNode(OperatorNode):
-    def __init__(self, module_id, python_id, python_parent_id, **kwargs):
+    def __init__(self, module_id: int, python_id: int, python_parent_id: int, **kwargs):
         super().__init__(**kwargs)
         self.module_id = module_id
         self.python_id = python_id
@@ -223,7 +224,7 @@ class ModuleNode(OperatorNode):
                 self.self_device_duration += child.device_duration
 
     @classmethod
-    def create(cls, event):
+    def create(cls, event: ModuleEvent):
         kwargs = BaseNode.get_node_argument(event)
         kwargs["module_id"] = event.module_id
         kwargs["python_id"] = event.python_id
@@ -238,11 +239,11 @@ class BackwardNode(OperatorNode):
 
 class RuntimeNode(HostNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
-                 device_nodes=None):
+                 device_nodes: Optional[List['DeviceNode']] = None):
         super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
-        self.tc_duration = 0  # Time summarization of all its launched kernels.
+        self.tc_duration: int = 0  # Time summarization of all its launched kernels.
 
     def fill_stats(self, op_node=None):
         if self.device_nodes:
@@ -254,14 +255,14 @@ class RuntimeNode(HostNode):
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
-    def get_kernels(self, reverse=False):
+    def get_kernels(self, reverse=False) -> Generator['DeviceNode', None, None]:
         if self.device_nodes:
             for d in reversed(self.device_nodes) if reverse else self.device_nodes:
                 if d.type == EventTypes.KERNEL:
                     yield d
 
     @classmethod
-    def create(cls, event, device_nodes):
+    def create(cls, event, device_nodes: Optional[List['DeviceNode']]):
         kwargs = BaseNode.get_node_argument(event)
         return cls(device_nodes=device_nodes, **kwargs)
 
@@ -283,7 +284,7 @@ class DeviceNode(BaseNode):
         self.device_id = device_id
 
     @classmethod
-    def create(cls, event):
+    def create(cls, event: KernelEvent):
         kwargs = BaseNode.get_node_argument(event)
         if event.type == EventTypes.KERNEL:
             kwargs["blocks_per_sm"] = event.blocks_per_sm

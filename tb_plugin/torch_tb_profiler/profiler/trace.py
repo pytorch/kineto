@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from enum import IntEnum
+from typing import Dict, Optional
 
 from .. import utils
 
@@ -83,7 +84,7 @@ class KernelEvent(DurationEvent):
 class OperatorEvent(DurationEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.callstack = self.args.get("Call stack", "")
+        self.callstack = self.args.get("Call stack")
         self.input_type = self.args.get("Input type")
 
         shape = self.args.get("Input Dims")
@@ -144,7 +145,7 @@ class ModuleEvent(PythonFunctionEvent):
         self.module_id = self.args.get("Python module id")
 
 
-def create_event(event):
+def create_event(event) -> Optional[BaseEvent]:
     try:
         type = event.get("ph")
         if type == "X":
@@ -158,7 +159,7 @@ def create_event(event):
         raise
 
 
-def create_trace_event(event):
+def create_trace_event(event) -> Optional[BaseEvent]:
     category = event.get("cat")
     event_type = EventTypeMap.get(category)
     if event_type == EventTypes.OPERATOR:
@@ -183,7 +184,7 @@ def create_trace_event(event):
         return None
 
 
-def create_association_events(events):
+def create_association_events(events) -> Dict[int, int]:
     fwd_bwd_events = (e for e in events if e.get("cat") == 'forward_backward')
 
     forward_map = {}

@@ -5,6 +5,7 @@ import sys
 from abc import ABC
 from collections import defaultdict
 from enum import IntEnum
+from typing import Generator, List
 
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
@@ -53,7 +54,7 @@ class BaseNode(ABC):
         if self.start_time is not None and self.end_time is not None:
             return self.end_time - self.start_time
         else:
-            return None
+            return 0
 
 
 class CommunicationNode(BaseNode):
@@ -87,8 +88,8 @@ class OperatorNode(HostNode):
                  children=None, runtimes=None, input_shape=None, input_type=None, callstack=None,
                  self_host_duration=0, self_device_duration=0):
         super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
-        self.children = [] if children is None else children  # OperatorNode and ProfilerStepNode.
-        self.runtimes = [] if runtimes is None else runtimes  # RuntimeNode
+        self.children: List[OperatorNode] = [] if children is None else children  # OperatorNode and ProfilerStepNode.
+        self.runtimes: List[RuntimeNode] = [] if runtimes is None else runtimes  # RuntimeNode
         self.input_shape = input_shape
         self.input_type = input_type
         self.callstack = callstack
@@ -100,7 +101,7 @@ class OperatorNode(HostNode):
         self.tc_self_duration = 0  # Time of TC kernels launched by this op excluding its children operators.
         self.tc_total_duration = 0  # Time of TC kernels launched by this op including its children operators.
 
-    def add_memory_record(self, record):
+    def add_memory_record(self, record) -> None:
         self.memory_records.append(record)
 
     def get_memory_metrics(self, start_ts, end_ts):
@@ -182,8 +183,8 @@ class OperatorNode(HostNode):
                 yield d
 
     def get_operator_and_kernels(self):
-        ops = []
-        kernels = []
+        ops: List[OperatorNode] = []
+        kernels: List[DeviceNode] = []
         for child in self.children:
             child_ops, child_kernels = child.get_operator_and_kernels()
             ops.extend(child_ops)
@@ -254,7 +255,7 @@ class RuntimeNode(HostNode):
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
-    def get_kernels(self, reverse=False):
+    def get_kernels(self, reverse=False) -> Generator['DeviceNode', None, None]:
         if self.device_nodes:
             for d in reversed(self.device_nodes) if reverse else self.device_nodes:
                 if d.type == EventTypes.KERNEL:

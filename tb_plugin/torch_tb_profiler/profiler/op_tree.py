@@ -1,9 +1,13 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 import sys
 from collections import defaultdict
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .. import utils
-from .node import (BackwardNode, ModuleNode, OperatorNode, ProfilerStepNode,
-                   RuntimeNode, is_operator_node)
+from .node import (BackwardNode, DeviceNode, ModuleNode, OperatorNode,
+                   ProfilerStepNode, RuntimeNode, is_operator_node)
 from .trace import EventTypes
 
 logger = utils.get_logger()
@@ -15,9 +19,13 @@ class OpTreeBuilder:
 
     def __init__(self):
         self.main_tid = None
-        self.tid2tree = None
+        self.tid2tree: Dict[int, OperatorNode] = None
 
-    def build_tree(self, tid2list, tid2zero_rt_list, staled_device_nodes, fwd_bwd_map):
+    def build_tree(self,
+                   tid2list: Dict[int, List[OperatorNode]],
+                   tid2zero_rt_list: Dict[int, List[RuntimeNode]],
+                   staled_device_nodes: List[DeviceNode],
+                   fwd_bwd_map: Dict[int, int]):
         '''Construct the BackwardNode and replace the original backward nodes
         '''
         self.tid2tree = self._build_tree(tid2list, tid2zero_rt_list, staled_device_nodes)
@@ -33,7 +41,7 @@ class OpTreeBuilder:
         if len(agg_nodes) > 0:
             logger.warning("some nodes cannot find forward nodes")
 
-        backward_modules = []
+        backward_modules: List[BackwardNode] = []
         for module in modules:
             OpTreeBuilder._build_backward_module(module, None, fwd_bwd_root, backward_modules)
         OpTreeBuilder._insert_backward_modules(self.tid2tree[self.main_tid], backward_modules)
@@ -149,13 +157,13 @@ class OpTreeBuilder:
                                    if child.end_time is not None), None)
         return root_node
 
-    def _get_modules(self):
+    def _get_modules(self) -> Tuple[List[ModuleNode], List[OperatorNode]]:
         '''Get the ModuleNodes and backward root nodes
         If there are any ModuleNodes, the backward roots will be removed from the tree
         so that later a new BackwardNode will be replaced.
         '''
-        modules = []
-        backward_nodes = defaultdict(list)
+        modules: List[ModuleNode] = []
+        backward_nodes: Dict[OperatorNode, List[OperatorNode]] = defaultdict(list)
 
         def traverse_node(parent, node):
             if isinstance(node, ModuleNode):
@@ -167,7 +175,6 @@ class OpTreeBuilder:
                 if node.name.startswith(OpTreeBuilder.BACKWARD_ROOT_PREFIX):
                     backward_nodes[parent].append(node)
                 else:
-                    # print("skip ", node.name)
                     pass
 
         for root in self.tid2tree.values():
@@ -175,7 +182,7 @@ class OpTreeBuilder:
                 traverse_node(root, child)
 
         if modules:
-            backward_nodes_flatten = []
+            backward_nodes_flatten: List[OperatorNode] = []
             # only remove the backward nodes when the module information exist
             for p, nodes in backward_nodes.items():
                 p.children = [child for child in p.children if child not in nodes]
@@ -186,10 +193,10 @@ class OpTreeBuilder:
             return None, None
 
     @staticmethod
-    def _get_node_parents(nodes):
+    def _get_node_parents(nodes: Iterable[OperatorNode]):
         '''Get the child->parent relationship for these nodes'''
-        ts_to_node = {}
-        ts_to_parent = {}
+        ts_to_node: Dict[int, OperatorNode] = {}
+        ts_to_parent: Dict[int, OperatorNode] = {}
 
         def traverse_node(node):
             if node.start_time not in ts_to_node:
@@ -204,7 +211,7 @@ class OpTreeBuilder:
         return ts_to_node, ts_to_parent
 
     @staticmethod
-    def _group_backward_nodes(nodes):
+    def _group_backward_nodes(nodes: Iterable[OperatorNode]) -> Dict[OperatorNode, List[OperatorNode]]:
         '''All nodes are backward nodes startswith autograd::engine::evaluate_function.
         If one node's name is autograd::engine::evaluate_function: torch::autograd::AccumulateGrad,
         it should be grouped with previous normal backward node. Otherwise, a new backward node should be started
@@ -221,11 +228,13 @@ class OpTreeBuilder:
         return {nodes[0]: nodes for nodes in grouped_bwd_nodes}
 
     @staticmethod
-    def _get_backward_roots(fwd_bwd_map, ts2parent, backward_nodes):
+    def _get_backward_roots(fwd_bwd_map: Dict[int, int],
+                            ts2parent: Dict[int, OperatorNode],
+                            backward_nodes: Dict[OperatorNode, List[OperatorNode]]) -> Dict[int, List[OperatorNode]]:
         if not fwd_bwd_map:
             return None
 
-        fwd_to_bwdroot = {}
+        fwd_to_bwdroot: Dict[int, List[OperatorNode]] = {}
         for fwd, bwd in fwd_bwd_map.items():
             parent = ts2parent.get(bwd)
             while parent is not None and not parent.name.startswith(OpTreeBuilder.BACKWARD_ROOT_PREFIX):
@@ -238,7 +247,10 @@ class OpTreeBuilder:
 
         return fwd_to_bwdroot
 
-    def _build_backward_module(node, parent, fwd_bwd_map, result):
+    def _build_backward_module(node: ModuleNode,
+                               parent: Optional[BackwardNode],
+                               fwd_bwd_map: Dict[int, List[OperatorNode]],
+                               result: List[BackwardNode]):
         '''Construct the backward module from root (node argument) and
         insert it into result array if there is no any parent associated with it.
         '''
@@ -271,7 +283,7 @@ class OpTreeBuilder:
             parent.tid = parent.children[0].tid
 
     @staticmethod
-    def _insert_backward_modules(root, backward_modules):
+    def _insert_backward_modules(root: OperatorNode, backward_modules: List[BackwardNode]):
         backward_modules.sort(key=lambda x: (x.start_time, -x.end_time))
 
         # each item is (parent_node, child_index) that it is visiting.

@@ -6,9 +6,8 @@ from typing import Any, List, Optional, Union
 
 from . import consts
 from .profiler.data import RunProfileData
-from .profiler.memory_parser import MemoryParser, MemoryRecord
+from .profiler.memory_parser import MemoryMetrics, MemoryParser, MemoryRecord
 from .profiler.module_op import Stats
-from .profiler.node import MemoryMetrics
 from .utils import Canonicalizer, DisplayRounder
 
 

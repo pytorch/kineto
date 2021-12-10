@@ -7,7 +7,7 @@ import json
 import re
 import tempfile
 from json.decoder import JSONDecodeError
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .. import io, utils
 from ..utils import href
@@ -17,6 +17,7 @@ from .event_parser import CommLibTypes, EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser
+from .node import OperatorNode, RuntimeNode
 from .op_agg import ModuleAggregator
 from .overall_parser import OverallParser
 from .tensor_cores_parser import TensorCoresParser
@@ -33,22 +34,22 @@ class RunProfileData(object):
         self.distributed_info = None
         self.device_props = None
         self.used_devices = []
-        self.use_dp = False
-        self.use_ddp = False
+        self.use_dp: bool = False
+        self.use_ddp: bool = False
         self.comm_lib = None
         self.profiler_start_ts = float("inf")
-        self.forward_backward_events = None
+        self.forward_backward_events: Dict[int, int] = None
         self.events: List[BaseEvent] = None
-        self.trace_file_path = None
-        self.has_runtime = False
-        self.has_kernel = False
-        self.has_communication = False
-        self.has_memcpy_or_memset = False
+        self.trace_file_path: str = None
+        self.has_runtime: bool = False
+        self.has_kernel: bool = False
+        self.has_communication: bool = False
+        self.has_memcpy_or_memset: bool = False
         self.role_ranges = None
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
-        self.runtime_node_list = None
+        self.runtime_node_list: List[RuntimeNode] = None
         self.gpu_ids = None
         self.gpu_utilization = None
         self.sm_efficiency = None
@@ -57,7 +58,7 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
-        self.tid2tree = None
+        self.tid2tree: Dict[int, OperatorNode] = None
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None

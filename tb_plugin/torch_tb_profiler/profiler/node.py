@@ -3,8 +3,6 @@
 # -------------------------------------------------------------------------
 import sys
 from abc import ABC
-from collections import defaultdict
-from enum import IntEnum
 from typing import Generator, List, Optional
 
 from .. import utils
@@ -14,15 +12,6 @@ from .trace import EventTypes, KernelEvent, ModuleEvent, OperatorEvent
 logger = utils.get_logger()
 
 ExcludeOpName = ["DataParallel.forward", "DistributedDataParallel.forward"]
-
-
-class MemoryMetrics(IntEnum):
-    SelfIncreaseSize = 0
-    SelfAllocationSize = 1
-    SelfAllocationCount = 2
-    IncreaseSize = 3
-    AllocationSize = 4
-    AllocationCount = 5
 
 
 class BaseNode(ABC):
@@ -100,28 +89,6 @@ class OperatorNode(HostNode):
         self.tc_eligible = self.name in TC_OP_Allowlist
         self.tc_self_duration = 0  # Time of TC kernels launched by this op excluding its children operators.
         self.tc_total_duration = 0  # Time of TC kernels launched by this op including its children operators.
-
-    def add_memory_record(self, record) -> None:
-        self.memory_records.append(record)
-
-    def get_memory_metrics(self, start_ts, end_ts):
-        metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
-        memory_metrics = defaultdict(lambda: [0] * metrics_count)
-        for record in self.memory_records:
-            if start_ts is not None and record.ts < start_ts:
-                continue
-            if end_ts is not None and record.ts > end_ts:
-                continue
-            name = record.device_name
-            if name is None:
-                continue
-
-            memory_metrics[name][MemoryMetrics.SelfIncreaseSize] += record.bytes
-            if record.bytes > 0:
-                memory_metrics[name][MemoryMetrics.SelfAllocationSize] += record.bytes
-                memory_metrics[name][MemoryMetrics.SelfAllocationCount] += 1
-
-        return memory_metrics
 
     def fill_stats(self):
         # TODO: Replace recursive by using a stack, in case of too deep callstack.

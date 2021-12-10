@@ -2,14 +2,24 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import defaultdict
+from enum import IntEnum
 from typing import Iterable, List, Optional
 
 from .. import utils
-from .node import MemoryMetrics, is_operator_node
+from .node import OperatorNode, is_operator_node
 from .op_agg import aggregate_ops
 from .trace import DeviceType, MemoryEvent
 
 logger = utils.get_logger()
+
+
+class MemoryMetrics(IntEnum):
+    SelfIncreaseSize = 0
+    SelfAllocationSize = 1
+    SelfAllocationCount = 2
+    IncreaseSize = 3
+    AllocationSize = 4
+    AllocationCount = 5
 
 
 class MemoryRecord:
@@ -111,7 +121,7 @@ class MemoryParser:
                 # since the node has not been visited for insert memory records, just ignore all childrens
                 return
             elif is_op:
-                node_memory_metrics = node.get_memory_metrics(start_ts, end_ts)
+                node_memory_metrics = MemoryParser.get_memory_metrics(node, start_ts, end_ts)
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
                     # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]
@@ -161,6 +171,26 @@ class MemoryParser:
 
         return result
 
+    @staticmethod
+    def get_memory_metrics(op: OperatorNode, start_ts, end_ts):
+        metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
+        memory_metrics = defaultdict(lambda: [0] * metrics_count)
+        for record in op.memory_records:
+            if start_ts is not None and record.ts < start_ts:
+                continue
+            if end_ts is not None and record.ts > end_ts:
+                continue
+            name = record.device_name
+            if name is None:
+                continue
+
+            memory_metrics[name][MemoryMetrics.SelfIncreaseSize] += record.bytes
+            if record.bytes > 0:
+                memory_metrics[name][MemoryMetrics.SelfAllocationSize] += record.bytes
+                memory_metrics[name][MemoryMetrics.SelfAllocationCount] += 1
+
+        return memory_metrics
+
     def record_length(self, records_by_tid):
         return sum(len(v) for v in records_by_tid.values())
 
@@ -174,7 +204,7 @@ class MemoryParser:
             node_stack = []
 
             record_index = 0
-            current_node = self.tid2tree.get(tid)
+            current_node: OperatorNode = self.tid2tree.get(tid)
             child_index = 0
 
             if current_node:
@@ -244,7 +274,7 @@ class MemoryParser:
 
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
-                    current_node.add_memory_record(record)
+                    current_node.memory_records.append(record)
                     # NOTE: only allocation record can be associated with op. Because deallocation happens at the end
                     # of a tensor's lifetime which is not deterministic.
                     if record.is_allocation:

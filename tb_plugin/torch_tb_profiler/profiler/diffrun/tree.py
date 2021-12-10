@@ -1,8 +1,12 @@
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# -------------------------------------------------------------------------
 import sys
 from typing import List, Union
 
 from ..node import (BackwardNode, DataLoaderNode, ModuleNode, OperatorNode,
                     OptimizerNode, ProfilerStepNode)
+from .contract import DiffStats, OpStats
 from .operator import Operator, Operators, create_operator
 
 INDENT = "    "
@@ -97,7 +101,7 @@ class DiffNode:
             yield DiffNode.create_node(left_remaining, right_remaining)
 
 
-def create_diff_tree(left: OperatorNode, right: OperatorNode) -> DiffNode:
+def compare_op_tree(left: OperatorNode, right: OperatorNode) -> DiffNode:
     '''Create the diff tree from two root node
        TODO: need handle the different threads case
              need add runtimes besides of children?
@@ -118,7 +122,31 @@ def get_tree_operators(root: OperatorNode) -> List[OperatorNode]:
         yield from (child for p in profiler_nodes for child in p.children)
 
 
-def print_node(node: DiffNode, level: int, index: int, file=sys.stdout):
+def diff_summary(node: DiffNode) -> DiffStats:
+    if not node:
+        return None
+
+    left = OpStats(
+        node.left.name,
+        node.left.duration,
+        node.left.device_duration,
+        node.left.total_duration,
+        list(node.left.aggregate_ops()))
+    right = OpStats(
+        node.right.name,
+        node.right.duration,
+        node.right.device_duration,
+        node.right.total_duration,
+        list(node.right.aggregate_ops()))
+
+    stats = DiffStats(left, right)
+    for child in node.children:
+        stats.children.append(diff_summary(child))
+
+    return stats
+
+
+def print_node(node: Union[DiffNode, DiffStats], level: int, index: int, file=sys.stdout):
     file.write(f"{INDENT * level}level {level}, index {index}:\n")
     file.write(f"{INDENT * (level + 1)}left : {node.left}\n")
     file.write(f"{INDENT * (level + 1)}right: {node.right}\n")

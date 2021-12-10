@@ -1,9 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import Iterable, Optional, List
-
 from collections import defaultdict
+from typing import Iterable, List, Optional
 
 from .. import utils
 from .node import MemoryMetrics, is_operator_node

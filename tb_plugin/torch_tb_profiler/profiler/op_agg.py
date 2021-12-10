@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------------
 import sys
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 
 from .. import utils
 from .node import DeviceNode, OperatorNode
@@ -117,12 +117,12 @@ def aggregate_kernels(kernel_list: List[DeviceNode]) -> List[KernelAggByNameOp]:
 class ModuleAggregator:
 
     def __init__(self):
-        self.op_list_groupby_name: Optional[List[OperatorAgg]] = None  # For Operator-view.
-        self.op_list_groupby_name_input: Optional[List[OperatorAgg]] = None  # For Operator-view.
-        self.kernel_list_groupby_name_op: Optional[List[KernelAggByNameOp]] = None  # For Kernel-view.
-        self.stack_lists_group_by_name: Optional[Dict[str, List[OperatorAgg]]] = None
-        self.stack_lists_group_by_name_input: Optional[Dict[str, List[OperatorAgg]]] = None
-        self.ops: Optional[List[OperatorNode]] = None
+        self.op_list_groupby_name: List[OperatorAgg] = None  # For Operator-view.
+        self.op_list_groupby_name_input: List[OperatorAgg] = None  # For Operator-view.
+        self.kernel_list_groupby_name_op: List[KernelAggByNameOp] = None  # For Kernel-view.
+        self.stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = None
+        self.stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = None
+        self.ops: List[OperatorNode] = None
 
     def aggregate(self, tid2tree: Dict[int, OperatorNode]):
         # get the operators and kernels recursively by traverse the node tree root.

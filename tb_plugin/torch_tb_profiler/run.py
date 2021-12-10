@@ -2,11 +2,12 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import defaultdict
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Union
 
 from . import consts
 from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryParser, MemoryRecord
+from .profiler.module_op import Stats
 from .profiler.node import MemoryMetrics
 from .utils import Canonicalizer, DisplayRounder
 
@@ -121,7 +122,7 @@ class RunProfile(object):
         self.memory_parser: Optional[MemoryParser] = None
         self.tid2tree = None
 
-        self.module_stats: Optional[List(Tuple)] = None
+        self.module_stats: Optional[List(Stats)] = None
 
     def get_gpu_metrics(self):
         def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
@@ -520,7 +521,7 @@ class RunProfile(object):
             "data": []
         }
 
-        def process_modules_stats(parent, modules_stats):
+        def process_modules_stats(parent: List[Any], modules_stats: List[Stats]):
             for stats in modules_stats:
                 d = {
                     "name": stats.name,

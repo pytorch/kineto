@@ -95,6 +95,8 @@ if (NOT LIBKINETO_NOCUPTI)
 endif()
 if (NOT LIBKINETO_NOROCTRACER)
     target_compile_options(kineto_base PRIVATE "-DHAS_ROCTRACER")
+    target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_HCC__")
+    target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_AMD__")
 endif()
 
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")

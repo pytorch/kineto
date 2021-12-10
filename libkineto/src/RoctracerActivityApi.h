@@ -18,7 +18,6 @@
 #include <atomic>
 
 #ifdef HAS_ROCTRACER
-#define __HIP_PLATFORM_AMD__
 #include <roctracer.h>
 #include <roctracer_hcc.h>
 #include <roctracer_hip.h>

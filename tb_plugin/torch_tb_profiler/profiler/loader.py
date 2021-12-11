@@ -6,11 +6,13 @@ import bisect
 import os
 import sys
 from collections import defaultdict
+from typing import List, Tuple
 
 from .. import consts, io, utils
-from ..run import Run
-from .multiprocessing import Process, Queue
+from ..run import Run, RunProfile
 from .data import DistributedRunProfileData, RunProfileData
+from .multiprocessing import Process, Queue
+from .node import CommunicationNode
 from .run_generator import DistributedRunGenerator, RunGenerator
 
 logger = utils.get_logger()
@@ -58,7 +60,7 @@ class RunLoader(object):
         run = Run(self.run_name, self.run_dir)
         num_items = len(workers)
         while num_items > 0:
-            item = self.queue.get()
+            item: Tuple[RunProfile, DistributedRunProfileData] = self.queue.get()
             num_items -= 1
             r, d = item
             if r or d:
@@ -102,7 +104,7 @@ class RunLoader(object):
             self.queue.put((None, None))
         logger.debug("finishing process data")
 
-    def _process_spans(self, distributed_run):
+    def _process_spans(self, distributed_run: Run):
         spans = distributed_run.get_spans()
         if spans is None:
             return [self._process_distributed_profiles(distributed_run.get_profiles(), None)]
@@ -115,9 +117,9 @@ class RunLoader(object):
                     span_profiles.append(p)
             return span_profiles
 
-    def _process_distributed_profiles(self, profiles, span):
+    def _process_distributed_profiles(self, profiles: List[DistributedRunProfileData], span):
         has_communication = True
-        comm_node_lists = []
+        comm_node_lists: List[List[CommunicationNode]] = []
         for data in profiles:
             logger.debug("Processing profile data")
             # Set has_communication to False and disable distributed view if any one worker has no communication

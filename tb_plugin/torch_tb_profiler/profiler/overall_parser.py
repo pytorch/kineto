@@ -14,7 +14,7 @@ logger = utils.get_logger()
 class OverallParser(object):
     class Costs:
         def __init__(self):
-            self.costs: List[int] = [0] * len(ProfileRole)
+            self.costs: List[float] = [0] * len(ProfileRole)
 
         @classmethod
         def calculate_costs(cls, statistics: 'OverallParser.Statistics', step: Tuple[int, int]):

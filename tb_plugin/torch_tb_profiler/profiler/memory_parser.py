@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------------
 from collections import defaultdict
 from enum import IntEnum
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .. import utils
 from .node import OperatorNode, is_operator_node
@@ -23,7 +23,9 @@ class MemoryMetrics(IntEnum):
 
 
 class MemoryRecord:
-    def __init__(self, scope, pid, tid, ts, device_type, device_id, address, bytes, total_allocated, total_reserved):
+    def __init__(self, scope: str, pid: int, tid: int, ts: int,
+                 device_type: DeviceType, device_id: int,
+                 address: int, bytes: int, total_allocated: float, total_reserved: float):
         self.scope = scope
         self.tid = tid
         self.pid = pid
@@ -54,17 +56,17 @@ class MemoryRecord:
     def op_name_or_unknown(self):
         return self.op_name if self.op_name else "<unknown>"
 
-    @staticmethod
-    def from_event(event: MemoryEvent):
-        return MemoryRecord(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id,
-                            event.addr, event.bytes, event.total_allocated, event.total_reserved)
+    @classmethod
+    def from_event(cls, event: MemoryEvent):
+        return cls(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id,
+                   event.addr, event.bytes, event.total_allocated, event.total_reserved)
 
     def __repr__(self) -> str:
         return f"<{'+' if self.bytes>0 else ''}{self.bytes}B, addr: {self.addr}, ts: {self.ts}>"
 
 
 class MemoryParser:
-    def __init__(self, tid2tree, memory_events: Iterable[MemoryEvent]):
+    def __init__(self, tid2tree: Dict[int, OperatorNode], memory_events: Iterable[MemoryEvent]):
         self.tid2tree = tid2tree
 
         # statistics purpose
@@ -76,7 +78,7 @@ class MemoryParser:
         self.processed_node = defaultdict(int)
         self.unreached_node = defaultdict(list)
 
-        records_by_tid = defaultdict(list)
+        records_by_tid: Dict[int, List[MemoryRecord]] = defaultdict(list)
         for event in memory_events:
             record = MemoryRecord.from_event(event)
             records_by_tid[record.tid].append(record)
@@ -86,14 +88,14 @@ class MemoryParser:
         self.all_records = self.get_preprocessed_records()
         self.peaks = self.get_peak_memory()
 
-    def get_peak_memory(self):
+    def get_peak_memory(self) -> Dict[Tuple[DeviceType, int], int]:
         peaks = defaultdict(int)
         for r in self.all_records:
             if r.total_allocated == r.total_allocated:  # !isnan
                 peaks[(r.device_type, r.device_id)] = max(peaks[(r.device_type, r.device_id)], r.total_allocated)
         return peaks
 
-    def get_memory_statistics(self, start_ts=None, end_ts=None):
+    def get_memory_statistics(self, start_ts=None, end_ts=None) -> Dict[str, Dict[str, List[int]]]:
         metric_length = len(MemoryMetrics)
         self_metric_length = metric_length // 2
 
@@ -101,12 +103,12 @@ class MemoryParser:
             return defaultdict(lambda: [0] * metric_length)
 
         # traverse outputs
-        op_list = []
+        op_list: List[OperatorNode] = []
         # two level keys dictionary
         # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
-        memory_metrics_keyed_by_node = defaultdict(dict_factory)
+        memory_metrics_keyed_by_node: Dict[OperatorNode, Dict[str, List[int]]] = defaultdict(dict_factory)
 
-        def traverse_node_memory(node):
+        def traverse_node_memory(node: OperatorNode):
             if start_ts is not None and node.end_time < start_ts:
                 return
             if end_ts is not None and node.start_time > end_ts:
@@ -146,7 +148,7 @@ class MemoryParser:
 
         # keyed first by device name like CPU/GPU0 etc, then keyed by operator name.
         # the value is array [items indexed by MemoryMetrics]
-        memory_metrics_keyed_by_nodename = defaultdict(dict_factory)
+        memory_metrics_keyed_by_nodename: Dict[str, Dict[str, List[int]]] = defaultdict(dict_factory)
         # node: the instance, device_keyed_metrics: dictionary keyed by device name like CPU/GPU0
         for node, device_keyed_metrics in memory_metrics_keyed_by_node.items():
             if not is_operator_node(node):
@@ -158,12 +160,12 @@ class MemoryParser:
                     memory_metrics_keyed_by_nodename[device][node.name][i] += metric
 
         # get the op_calls dictionary from module parser result.
-        op_calls = defaultdict(int)
+        op_calls: Dict[str, int] = defaultdict(int)
         agg_result = aggregate_ops(op_list, [lambda op: op.name])
         for op_name, op_agg in agg_result[0].items():
             op_calls[op_name] += op_agg.calls
 
-        result = defaultdict(defaultdict)
+        result: Dict[str, Dict[str, List[int]]] = defaultdict(defaultdict)
         for device, node_metrics in memory_metrics_keyed_by_nodename.items():
             for node, values in node_metrics.items():
                 if any(values):
@@ -174,7 +176,7 @@ class MemoryParser:
     @staticmethod
     def get_memory_metrics(op: OperatorNode, start_ts, end_ts):
         metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
-        memory_metrics = defaultdict(lambda: [0] * metrics_count)
+        memory_metrics: Dict[str, List[int]] = defaultdict(lambda: [0] * metrics_count)
         for record in op.memory_records:
             if start_ts is not None and record.ts < start_ts:
                 continue
@@ -194,14 +196,14 @@ class MemoryParser:
     def record_length(self, records_by_tid):
         return sum(len(v) for v in records_by_tid.values())
 
-    def update_node(self, records_by_tid):
+    def update_node(self, records_by_tid: Dict[int, List[MemoryRecord]]):
         tree_height = 0
         for tid, records in records_by_tid.items():
             if not records:
                 continue
 
             # each item is (parent_node, child_index) that it is visiting.
-            node_stack = []
+            node_stack: List[Tuple[OperatorNode, int]] = []
 
             record_index = 0
             current_node: OperatorNode = self.tid2tree.get(tid)

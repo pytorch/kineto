@@ -106,7 +106,7 @@ class NodeParserMixin:
         return comm_node is not None
 
     def _parse_node(self,
-                    event: BaseEvent,
+                    event: DurationEvent,
                     corrid_to_device: Dict[int, List[DeviceNode]],
                     corrid_to_runtime: Dict[int, RuntimeNode],
                     externalid_to_runtime: Dict[int, List[RuntimeNode]],

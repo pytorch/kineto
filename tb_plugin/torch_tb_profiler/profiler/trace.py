@@ -104,8 +104,8 @@ class ProfilerStepEvent(OperatorEvent):
 class MemoryEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.scope = data.get("s", "")
-        self.device_id = self.args.get("Device Id")
+        self.scope: str = data.get("s", "")
+        self.device_id: int = self.args.get("Device Id")
         dtype = self.args.get("Device Type")
         if dtype is not None:
             try:
@@ -113,7 +113,7 @@ class MemoryEvent(BaseEvent):
             except ValueError:
                 dtype = None
 
-        self.device_type = dtype
+        self.device_type: DeviceType = dtype
 
     @property
     def addr(self):

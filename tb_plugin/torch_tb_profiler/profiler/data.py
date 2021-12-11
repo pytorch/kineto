@@ -27,7 +27,7 @@ logger = utils.get_logger()
 
 
 class RunProfileData(object):
-    def __init__(self, worker, span=None):
+    def __init__(self, worker: str, span: Optional[str] = None):
         self.worker = worker
         self.span = span
         self.data_schema_version = None
@@ -333,7 +333,7 @@ class RunProfileData(object):
 
 
 class DistributedRunProfileData:
-    def __init__(self, run_profile_data):
+    def __init__(self, run_profile_data: RunProfileData):
         self.worker = run_profile_data.worker
         self.span = run_profile_data.span
         self.steps_names = run_profile_data.steps_names

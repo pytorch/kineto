@@ -1,14 +1,20 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-from .range_utils import merge_ranges, get_ranges_sum
+from typing import Dict, List, Tuple
+
 from .. import utils
+from .node import CommunicationNode
+from .range_utils import get_ranges_sum, merge_ranges
 
 logger = utils.get_logger()
 
 
-def generate_communication_nodes(communication_data, steps, steps_names):
-    comm_node_list = []
+def generate_communication_nodes(
+        communication_data: Dict[int, CommunicationNode],
+        steps: List[Tuple[int, int]],
+        steps_names: List[str]):
+    comm_node_list: List[CommunicationNode] = []
 
     # Sort the communication node according the start time, this is for correlating communication node between workers
     for comm_node in communication_data.values():
@@ -36,11 +42,11 @@ def generate_communication_nodes(communication_data, steps, steps_names):
     return comm_node_list
 
 
-def analyze_communication_nodes(comm_node_list):
-    step_comm_stats = {}
-    total_comm_stats = {}
+def analyze_communication_nodes(comm_node_list: List[CommunicationNode]):
+    step_comm_stats: Dict[str, Tuple[int, int]] = {}
+    total_comm_stats: Dict[str, Tuple[int, int, List, List]] = {}
 
-    step_to_comm_ranges = {}
+    step_to_comm_ranges: Dict[str, Tuple[List, List]] = {}
     for comm_node in comm_node_list:
         if comm_node.step_name not in step_to_comm_ranges:
             step_to_comm_ranges[comm_node.step_name] = [[], []]

@@ -5,8 +5,7 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from . import consts
-from .profiler.data import RunProfileData
-from .profiler.memory_parser import MemoryMetrics, MemoryParser, MemoryRecord
+from .profiler.memory_parser import MemoryMetrics, MemoryRecord, MemorySnapshot
 from .profiler.module_op import Stats
 from .profiler.node import OperatorNode
 from .utils import Canonicalizer, DisplayRounder
@@ -122,7 +121,7 @@ class RunProfile(object):
         self.gpu_infos = None
 
         # for memory stats and curve
-        self.memory_parser: Optional[MemoryParser] = None
+        self.memory_snapshot: Optional[MemorySnapshot] = None
         self.tid2tree: Dict[int, OperatorNode] = None
 
         self.module_stats: Optional[List(Stats)] = None
@@ -249,12 +248,11 @@ class RunProfile(object):
 
         return events
 
-    @staticmethod
-    def get_memory_stats(profile: Union["RunProfile", RunProfileData], start_ts=None, end_ts=None, memory_metric="K"):
+    def get_memory_stats(self, start_ts=None, end_ts=None, memory_metric="K"):
         cano = Canonicalizer(memory_metric=memory_metric)
         round = DisplayRounder(ndigits=2)
 
-        stats = profile.memory_parser.get_memory_statistics(start_ts=start_ts, end_ts=end_ts)
+        stats = self.memory_snapshot.get_memory_statistics(self.tid2tree, start_ts=start_ts, end_ts=end_ts)
 
         result = {
             "metadata": {
@@ -307,9 +305,8 @@ class RunProfile(object):
 
         return result
 
-    @staticmethod
     def get_memory_curve(
-            profile: Union["RunProfile", RunProfileData],
+            self,
             time_metric: str = "ms",
             memory_metric: str = "K",
             patch_for_step_plot=True):
@@ -342,7 +339,7 @@ class RunProfile(object):
                     continue
 
                 curves[dev].append([
-                    cano.convert_time(ts - profile.profiler_start_ts),
+                    cano.convert_time(ts - self.profiler_start_ts),
                     cano.convert_memory(ta),
                     cano.convert_memory(tr),
                 ])
@@ -372,7 +369,7 @@ class RunProfile(object):
 
         cano = Canonicalizer(time_metric, memory_metric)
 
-        curves, peaks = get_curves_and_peaks(profile.memory_parser.all_records, cano)
+        curves, peaks = get_curves_and_peaks(self.memory_snapshot.memory_records, cano)
         if patch_for_step_plot:
             curves = patch_curves_for_step_plot(curves)
         peaks_formatted = {}
@@ -381,7 +378,7 @@ class RunProfile(object):
             peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(cano.convert_memory(value), cano.memory_metric)
             if dev != "CPU":
                 try:
-                    totals[dev] = cano.convert_memory(profile.gpu_infos[int(dev[3:])]["Memory Raw"])
+                    totals[dev] = cano.convert_memory(self.gpu_infos[int(dev[3:])]["Memory Raw"])
                 except BaseException:
                     pass
 
@@ -398,7 +395,7 @@ class RunProfile(object):
                 "devices": devices,
                 "peaks": peaks_formatted,
                 "totals": totals,
-                "first_ts": profile.profiler_start_ts,
+                "first_ts": self.profiler_start_ts,
                 "time_metric": cano.time_metric,
                 "memory_metric": cano.memory_metric,
                 "time_factor": cano.time_factor,
@@ -413,9 +410,8 @@ class RunProfile(object):
             "rows": curves,
         }
 
-    @staticmethod
     def get_memory_events(
-            p: Union["RunProfile", RunProfileData],
+            self,
             start_ts=None,
             end_ts=None,
             time_metric: str = "ms",
@@ -430,8 +426,8 @@ class RunProfile(object):
         cano = Canonicalizer(time_metric=time_metric, memory_metric=memory_metric)
         round = DisplayRounder(ndigits=2)
 
-        profiler_start_ts = p.profiler_start_ts
-        memory_records = RunProfile._filtered_by_ts(p.memory_parser.all_records, start_ts, end_ts)
+        profiler_start_ts = self.profiler_start_ts
+        memory_records = RunProfile._filtered_by_ts(self.memory_snapshot.memory_records, start_ts, end_ts)
 
         events = defaultdict(list)
         alloc = {}  # allocation events may or may not have paired free event

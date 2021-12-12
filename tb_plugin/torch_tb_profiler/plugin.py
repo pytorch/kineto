@@ -295,7 +295,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             end_ts = int(end_ts)
 
         return self.respond_as_json(
-            RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
+            profile.get_memory_stats(start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def memory_curve_route(self, request: werkzeug.Request):
@@ -303,7 +303,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         time_metric = request.args.get("time_metric", "ms")
         memory_metric = request.args.get("memory_metric", "MB")
         return self.respond_as_json(
-            RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
+            profile.get_memory_curve(time_metric=time_metric, memory_metric=memory_metric))
 
     @wrappers.Request.application
     def memory_events_route(self, request: werkzeug.Request):

@@ -421,7 +421,6 @@ class EventParser(NodeParserMixin, StepParser):
                 prefix = " " * prefix_len
                 print(prefix, node.name)
                 print(prefix, "time:", node.start_time, "-->", node.end_time)
-                print(prefix, "memory:", node.memory_records)
 
         def push(node: OperatorNode):
             ctx.name_stack.append(node.name)

@@ -16,7 +16,7 @@ from .communication import analyze_communication_nodes
 from .event_parser import CommLibTypes, EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
-from .memory_parser import MemoryParser
+from .memory_parser import MemoryParser, MemorySnapshot
 from .node import OperatorNode, RuntimeNode
 from .op_agg import ModuleAggregator
 from .overall_parser import OverallParser
@@ -71,7 +71,7 @@ class RunProfileData(object):
         self.recommendations = []
         self.comm_node_list = None
         self.comm_overlap_costs = None
-        self.memory_parser: Optional[MemoryParser] = None
+        self.memory_snapshot: Optional[MemorySnapshot] = None
 
     @staticmethod
     def parse(worker, span, path, cache_dir):
@@ -219,7 +219,8 @@ class RunProfileData(object):
 
         memory_events = self._memory_events()
         if len(memory_events):
-            self.memory_parser = MemoryParser(self.tid2tree, memory_events)
+            memory_parser = MemoryParser(memory_events)
+            self.memory_snapshot = memory_parser.find_memory_nodes(self.tid2tree)
 
     def analyze(self):
         self.recommendations = []
@@ -252,8 +253,8 @@ class RunProfileData(object):
                     f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16.")
 
             # Memory related
-            if self.memory_parser:
-                for (dev_type, dev_id), peak_mem in self.memory_parser.peaks.items():
+            if self.memory_snapshot:
+                for (dev_type, dev_id), peak_mem in self.memory_snapshot.get_peak_memory().items():
                     if dev_type == -1:  # ignore cpu
                         continue
                     total_mem = self.device_props[dev_id].get("totalGlobalMem")

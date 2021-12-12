@@ -84,7 +84,6 @@ class OperatorNode(HostNode):
         self.callstack = callstack
         self.self_host_duration = self_host_duration
         self.self_device_duration = self_device_duration
-        self.memory_records = []
         # self.parent_node = None
         self.tc_eligible = self.name in TC_OP_Allowlist
         self.tc_self_duration = 0  # Time of TC kernels launched by this op excluding its children operators.

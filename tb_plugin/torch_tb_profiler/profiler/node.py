@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------
 import sys
 from abc import ABC
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Tuple
 
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
@@ -51,8 +51,8 @@ class CommunicationNode(BaseNode):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.input_shape = input_shape
         self.input_type = input_type
-        self.kernel_ranges = []
-        self.real_time_ranges = []
+        self.kernel_ranges: List[Tuple[int, int]] = []
+        self.real_time_ranges: List[Tuple[int, int]] = []
         self.total_time = 0
         self.real_time = 0
         self.step_name = None
@@ -73,9 +73,9 @@ class OperatorNode(HostNode):
     # Don't use [] as default parameters
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
-    def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
+    def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration: int = 0,
                  children=None, runtimes=None, input_shape=None, input_type=None, callstack=None,
-                 self_host_duration=0, self_device_duration=0):
+                 self_host_duration: int = 0, self_device_duration: int = 0):
         super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
         self.children: List[OperatorNode] = [] if children is None else children  # OperatorNode and ProfilerStepNode.
         self.runtimes: List[RuntimeNode] = [] if runtimes is None else runtimes  # RuntimeNode

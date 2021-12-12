@@ -48,25 +48,25 @@ EventTypeMap = {
 
 class BaseEvent(object):
     def __init__(self, type, data):
-        self.type = type
-        self.name = data.get("name")
-        self.ts = data.get("ts")
-        self.pid = data.get("pid")
-        self.tid = data.get("tid")
-        self.args = data.get("args", {})
+        self.type: str = type
+        self.name: str = data.get("name")
+        self.ts: int = data.get("ts")
+        self.pid: int = data.get("pid")
+        self.tid: int = data.get("tid")
+        self.args: Dict = data.get("args", {})
 
 
 class DurationEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.category = data.get("cat", "")
-        self.duration = data.get("dur")
+        self.category: str = data.get("cat", "")
+        self.duration: int = data.get("dur")
 
-        extern_id = self.args.get("external id")
+        extern_id: Optional[int] = self.args.get("external id")
         if extern_id is None:
             extern_id = self.args.get("External id")
         self.external_id = extern_id
-        self.correlation_id = self.args.get("correlation")
+        self.correlation_id: Optional[int] = self.args.get("correlation")
 
 
 class KernelEvent(DurationEvent):
@@ -98,14 +98,14 @@ class ProfilerStepEvent(OperatorEvent):
     def __init__(self, data):
         super().__init__(EventTypes.PROFILER_STEP, data)
         # torch.profiler.profile.step will invoke record_function with name like "ProfilerStep#5"
-        self.step = int(self.name.split("#")[1])
+        self.step: int = int(self.name.split("#")[1])
 
 
 class MemoryEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
-        self.scope = data.get("s", "")
-        self.device_id = self.args.get("Device Id")
+        self.scope: str = data.get("s", "")
+        self.device_id: int = self.args.get("Device Id")
         dtype = self.args.get("Device Type")
         if dtype is not None:
             try:
@@ -113,7 +113,7 @@ class MemoryEvent(BaseEvent):
             except ValueError:
                 dtype = None
 
-        self.device_type = dtype
+        self.device_type: DeviceType = dtype
 
     @property
     def addr(self):

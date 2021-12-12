@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import List, Tuple
+
 from .. import utils
 from .event_parser import ProfileRole
 from .range_utils import (get_ranges_sum, intersection_ranges_lists,
@@ -12,10 +14,10 @@ logger = utils.get_logger()
 class OverallParser(object):
     class Costs:
         def __init__(self):
-            self.costs = [0] * len(ProfileRole)
+            self.costs: List[float] = [0] * len(ProfileRole)
 
         @classmethod
-        def calculate_costs(cls, statistics, step):
+        def calculate_costs(cls, statistics: 'OverallParser.Statistics', step: Tuple[int, int]):
             cost_obj = cls()
             for i in range(len(statistics.cost_ranges)):
                 cost_obj.costs[i] = get_ranges_sum(statistics.cost_ranges[i])
@@ -23,18 +25,18 @@ class OverallParser(object):
             return cost_obj
 
     class Statistics:
-        def __init__(self, cost_ranges):
+        def __init__(self, cost_ranges: List[List[Tuple[int, int]]]):
             if not cost_ranges:
                 raise ValueError("the cost ranges is None")
 
             self.cost_ranges = cost_ranges
 
         @classmethod
-        def create_statistics(cls, steps, role_ranges):
+        def create_statistics(cls, steps: List[Tuple[int, int]], role_ranges: List[List[Tuple[int, int]]]):
             assert len(role_ranges) == ProfileRole.Total - 1
 
-            cost_ranges = []
-            slots = []
+            cost_ranges: List[List[Tuple[int, int]]] = []
+            slots: List[Tuple[int, int]] = []
             for role in role_ranges:
                 if slots:
                     range = intersection_ranges_lists(slots, role)
@@ -48,8 +50,8 @@ class OverallParser(object):
 
             return cls(cost_ranges)
 
-        def intersection_with_step(self, step):
-            cost_ranges = []
+        def intersection_with_step(self, step: Tuple[int, int]):
+            cost_ranges: List[List[Tuple[int, int]]] = []
             step = [step]
             for range in self.cost_ranges:
                 cost_ranges.append(intersection_ranges_lists(step, range))
@@ -58,17 +60,17 @@ class OverallParser(object):
 
     class StepCommunicationCosts:
         def __init__(self):
-            self.computation = 0
-            self.communication = 0
-            self.overlap = 0
-            self.other = 0
+            self.computation: int = 0
+            self.communication: int = 0
+            self.overlap: int = 0
+            self.other: int = 0
 
     def __init__(self):
-        self.steps_costs = []
+        self.steps_costs: List[OverallParser.Costs] = []
         self.avg_costs = OverallParser.Costs()
-        self.communication_overlap = []
+        self.communication_overlap: List[OverallParser.StepCommunicationCosts] = []
 
-    def aggregate(self, steps, role_ranges):
+    def aggregate(self, steps: List[Tuple[int, int]], role_ranges: List[List[Tuple[int, int]]]):
         logger.debug("Overall, statistics")
         global_stats = OverallParser.Statistics.create_statistics(steps, role_ranges)
         if role_ranges[ProfileRole.Kernel]:

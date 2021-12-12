@@ -194,7 +194,7 @@ class StepParser:
         self.global_start_ts = sys.maxsize
         self.global_end_ts = -sys.maxsize - 1
 
-    def parse_steps(self, events: Iterable[BaseEvent], comm_nodes: Dict[int, CommunicationNode]):
+    def parse_steps(self, events: Iterable[DurationEvent], comm_nodes: Dict[int, CommunicationNode]):
         for event in events:
             if event.type == EventTypes.MEMORY:
                 continue

@@ -82,7 +82,7 @@ class RunProfileData(object):
         return profile, trace_path
 
     @staticmethod
-    def from_json(worker, span, trace_json):
+    def from_json(worker, span, trace_json: Dict):
         profile = RunProfileData(worker, span)
         profile.data_schema_version = trace_json.get("schemaVersion", None)
         profile.distributed_info = trace_json.get("distributedInfo", None)

@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 from enum import IntEnum
+from typing import List, Tuple
 
 
 class EndpointTypes(IntEnum):
@@ -45,7 +46,7 @@ def merge_ranges_with_value(src_ranges):
 
 # range_list1 item is length 3. range_list2 item is length 2.
 # Reture value's item is length 3.
-def intersection_ranges_lists_with_value(range_list1, range_list2):
+def intersection_ranges_lists_with_value(range_list1, range_list2) -> List[Tuple[int, int, int]]:
     range_list_dst = []
     if len(range_list1) == 0 or len(range_list2) == 0:
         return range_list_dst
@@ -83,7 +84,8 @@ def intersection_ranges_lists_with_value(range_list1, range_list2):
     return range_list_dst
 
 
-def subtract_ranges_lists(range_list1, range_list2):
+def subtract_ranges_lists(range_list1: List[Tuple[int, int]],
+                          range_list2: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     range_list_dst = []
     if len(range_list1) == 0:
         return range_list_dst
@@ -117,7 +119,8 @@ def subtract_ranges_lists(range_list1, range_list2):
     return range_list_dst
 
 
-def intersection_ranges_lists(range_list1, range_list2):
+def intersection_ranges_lists(range_list1: List[Tuple[int, int]],
+                              range_list2: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     range_list_dst = []
     if len(range_list1) == 0 or len(range_list2) == 0:
         return range_list_dst
@@ -155,8 +158,8 @@ def intersection_ranges_lists(range_list1, range_list2):
     return range_list_dst
 
 
-def get_ranges_sum(ranges):
-    sum = 0
+def get_ranges_sum(ranges: List[Tuple[int, int]]) -> int:
+    sum: int = 0
     for range in ranges:
         sum += (range[1] - range[0])
     return sum
@@ -170,7 +173,7 @@ def pop_list(range_list, index):
     return next_item, next_index
 
 
-def merge_ranges(src_ranges, is_sorted=False):
+def merge_ranges(src_ranges, is_sorted=False) -> List[Tuple[int, int]]:
     if not src_ranges:
         # return empty list if src_ranges is None or its length is zero.
         return []

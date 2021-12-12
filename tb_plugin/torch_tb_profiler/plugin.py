@@ -5,13 +5,14 @@ import atexit
 import gzip
 import json
 import os
-import sys
 import shutil
+import sys
 import tempfile
 import threading
 import time
 from collections import OrderedDict
 from queue import Queue
+from typing import Union
 
 import werkzeug
 from tensorboard.plugins import base_plugin
@@ -41,7 +42,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     plugin_name = consts.PLUGIN_NAME
     headers = [('X-Content-Type-Options', 'nosniff')]
 
-    def __init__(self, context):
+    def __init__(self, context: base_plugin.TBContext):
         """Instantiates TorchProfilerPlugin.
         Args:
           context: A base_plugin.TBContext instance.
@@ -116,7 +117,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return base_plugin.FrontendMetadata(es_module_path="/index.js", disable_reload=True)
 
     @wrappers.Request.application
-    def runs_route(self, request):
+    def runs_route(self, request: werkzeug.Request):
         with self._runs_lock:
             names = list(self._runs.keys())
 
@@ -127,7 +128,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(data)
 
     @wrappers.Request.application
-    def views_route(self, request):
+    def views_route(self, request: werkzeug.Request):
         name = request.args.get("run")
         self._validate(run=name)
         run = self._get_run(name)
@@ -138,7 +139,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(views_list)
 
     @wrappers.Request.application
-    def workers_route(self, request):
+    def workers_route(self, request: werkzeug.Request):
         name = request.args.get("run")
         view = request.args.get("view")
         self._validate(run=name, view=view)
@@ -147,7 +148,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(run.get_workers(view))
 
     @wrappers.Request.application
-    def spans_route(self, request):
+    def spans_route(self, request: werkzeug.Request):
         name = request.args.get("run")
         worker = request.args.get("worker")
         self._validate(run=name, worker=worker)
@@ -156,7 +157,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(run.get_spans(worker))
 
     @wrappers.Request.application
-    def overview_route(self, request):
+    def overview_route(self, request: werkzeug.Request):
         name = request.args.get("run")
         worker = request.args.get("worker")
         span = request.args.get("span")
@@ -178,7 +179,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(data)
 
     @wrappers.Request.application
-    def operation_pie_route(self, request):
+    def operation_pie_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         group_by = request.args.get("group_by")
@@ -188,7 +189,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return self.respond_as_json(profile.operation_pie_by_name)
 
     @wrappers.Request.application
-    def operation_table_route(self, request):
+    def operation_table_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         group_by = request.args.get("group_by")
@@ -198,7 +199,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return self.respond_as_json(profile.operation_table_by_name)
 
     @wrappers.Request.application
-    def operation_stack_route(self, request):
+    def operation_stack_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         op_name = request.args.get("op_name")
@@ -211,13 +212,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return self.respond_as_json(profile.operation_stack_by_name[str(op_name)])
 
     @wrappers.Request.application
-    def kernel_pie_route(self, request):
+    def kernel_pie_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         return self.respond_as_json(profile.kernel_pie)
 
     @wrappers.Request.application
-    def kernel_table_route(self, request):
+    def kernel_table_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         group_by = request.args.get("group_by")
@@ -227,13 +228,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return self.respond_as_json(profile.kernel_op_table)
 
     @wrappers.Request.application
-    def kernel_tc_route(self, request):
+    def kernel_tc_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         return self.respond_as_json(profile.tc_pie)
 
     @wrappers.Request.application
-    def trace_route(self, request):
+    def trace_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         if not profile.has_kernel:  # Pure CPU.
@@ -263,27 +264,27 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return werkzeug.Response(raw_data, content_type="application/json", headers=headers)
 
     @wrappers.Request.application
-    def dist_gpu_info_route(self, request):
+    def dist_gpu_info_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.gpu_info)
 
     @wrappers.Request.application
-    def comm_overlap_route(self, request):
+    def comm_overlap_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.steps_to_overlap)
 
     @wrappers.Request.application
-    def comm_wait_route(self, request):
+    def comm_wait_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.steps_to_wait)
 
     @wrappers.Request.application
-    def comm_ops_route(self, request):
+    def comm_ops_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request, True)
         return self.respond_as_json(profile.comm_ops)
 
     @wrappers.Request.application
-    def memory_route(self, request):
+    def memory_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         start_ts = request.args.get("start_ts", None)
         end_ts = request.args.get("end_ts", None)
@@ -297,7 +298,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             RunProfile.get_memory_stats(profile, start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric))
 
     @wrappers.Request.application
-    def memory_curve_route(self, request):
+    def memory_curve_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         time_metric = request.args.get("time_metric", "ms")
         memory_metric = request.args.get("memory_metric", "MB")
@@ -305,7 +306,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             RunProfile.get_memory_curve(profile, time_metric=time_metric, memory_metric=memory_metric))
 
     @wrappers.Request.application
-    def memory_events_route(self, request):
+    def memory_events_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         start_ts = request.args.get("start_ts", None)
         end_ts = request.args.get("end_ts", None)
@@ -321,7 +322,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                                          memory_metric=memory_metric))
 
     @wrappers.Request.application
-    def module_route(self, request):
+    def module_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         content = profile.get_module_view()
         if content:
@@ -333,13 +334,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             raise exceptions.NotFound("could not find the run for %s/%s/%s" % (name, worker, span))
 
     @wrappers.Request.application
-    def op_tree(self, request):
+    def op_tree(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         content = profile.get_operator_tree()
         return self.respond_as_json(content)
 
     @wrappers.Request.application
-    def static_file_route(self, request):
+    def static_file_route(self, request: werkzeug.Request):
         filename = os.path.basename(request.path)
         extension = os.path.splitext(filename)[1]
         if extension == '.html':
@@ -405,7 +406,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def _receive_runs(self):
         while True:
-            run = self._queue.get()
+            run: Run = self._queue.get()
             if run is None:
                 continue
 
@@ -463,7 +464,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             name = io.relpath(run_dir, logdir)
         return name
 
-    def _get_profile_for_request(self, request, distributed=False):
+    def _get_profile_for_request(self,
+                                 request: werkzeug.Request,
+                                 distributed=False) -> Union[DistributedRunProfile, RunProfile]:
         name = request.args.get("run")
         span = request.args.get("span")
         if distributed:

@@ -5,7 +5,7 @@ from collections import namedtuple
 from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple
 
 from .node import ModuleNode, OperatorNode, ProfilerStepNode, is_operator_node
-from .trace import BaseEvent, EventTypes
+from .trace import BaseEvent, EventTypes, PythonFunctionEvent
 
 
 class Module:
@@ -68,7 +68,7 @@ def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEve
         return None
 
 
-def _build_module_hierarchy(events: List[BaseEvent]) -> List[Module]:
+def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
     '''Get the module hierarchy from the chome trace events
     '''
     python_events = [e for e in events if e.type in (EventTypes.PYTHON_FUNCTION, EventTypes.MODULE)]

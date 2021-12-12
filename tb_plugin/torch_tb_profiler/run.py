@@ -2,12 +2,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import defaultdict
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from . import consts
 from .profiler.data import RunProfileData
 from .profiler.memory_parser import MemoryMetrics, MemoryParser, MemoryRecord
 from .profiler.module_op import Stats
+from .profiler.node import OperatorNode
 from .utils import Canonicalizer, DisplayRounder
 
 
@@ -29,7 +30,7 @@ class Run(object):
         return worker_list
 
     @property
-    def views(self):
+    def views(self) -> List[consts.View]:
         view_set = set()
         for profile in self.profiles.values():
             view_set.update(profile.views)
@@ -56,7 +57,7 @@ class Run(object):
         else:
             return sorted(spans)
 
-    def add_profile(self, profile):
+    def add_profile(self, profile: Union['DistributedRunProfile', 'RunProfile']):
         span = profile.span
         if span is None:
             span = "default"
@@ -64,7 +65,7 @@ class Run(object):
             span = str(span)
         self.profiles[(profile.worker, span)] = profile
 
-    def get_profile(self, worker, span) -> "RunProfile":
+    def get_profile(self, worker, span) -> Union['DistributedRunProfile', 'RunProfile']:
         if worker is None:
             raise ValueError("the worker parameter is mandatory")
 
@@ -73,7 +74,8 @@ class Run(object):
 
         return self.profiles.get((worker, span), None)
 
-    def get_profiles(self, *, worker=None, span=None) -> Optional[List["RunProfile"]]:
+    def get_profiles(self, *, worker=None, span=None) \
+            -> Optional[Union[List['RunProfile'], List['DistributedRunProfile']]]:
         # Note: we could not use if span to check it is None or not
         # since the span 0 will be skipped at this case.
         if worker is not None and span is not None:
@@ -102,13 +104,15 @@ class RunProfile(object):
         self.overview = None
         self.operation_pie_by_name = None
         self.operation_table_by_name = None
+        self.operation_stack_by_name: Dict = None
         self.operation_pie_by_name_input = None
         self.operation_table_by_name_input = None
+        self.operation_stack_by_name_input: Dict = None
         self.kernel_op_table = None
         self.kernel_pie = None
         self.kernel_table = None
         self.tc_pie = None
-        self.trace_file_path = None
+        self.trace_file_path: str = None
         self.gpu_ids = None
         self.gpu_utilization = None
         self.sm_efficiency = None
@@ -119,7 +123,7 @@ class RunProfile(object):
 
         # for memory stats and curve
         self.memory_parser: Optional[MemoryParser] = None
-        self.tid2tree = None
+        self.tid2tree: Dict[int, OperatorNode] = None
 
         self.module_stats: Optional[List(Stats)] = None
 
@@ -136,11 +140,11 @@ class RunProfile(object):
                          "\"args\":{{\"Est. SM Efficiency\":{}}}}}").format(gpu_id, gpu_id, start_time, counter_value)
             return util_json
 
-        def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list):
+        def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list: List):
             json_str = build_trace_counter_gpu_util(gpu_id, start_time, counter_value)
             counter_json_list.append(json_str)
 
-        def add_trace_counter_sm_efficiency(gpu_id, start_time, end_time, value, counter_json_list):
+        def add_trace_counter_sm_efficiency(gpu_id, start_time, end_time, value, counter_json_list: List):
             efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, start_time, value)
             efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, end_time, 0)
             counter_json_list.append(efficiency_json_start)
@@ -177,7 +181,7 @@ class RunProfile(object):
         return raw_data
 
     def get_gpu_metrics_data_tooltip(self):
-        def get_gpu_metrics_data(profile):
+        def get_gpu_metrics_data(profile: RunProfile):
             gpu_metrics_data = []
             has_sm_efficiency = False
             has_occupancy = False
@@ -234,7 +238,7 @@ class RunProfile(object):
         return data, tooltip
 
     @staticmethod
-    def _filtered_by_ts(events, start_ts, end_ts):
+    def _filtered_by_ts(events: Iterable[MemoryRecord], start_ts, end_ts):
         """Returns time-ordered events of memory allocation and free"""
         if start_ts is not None and end_ts is not None:
             events = [e for e in events if start_ts <= e.ts and e.ts <= end_ts]
@@ -352,7 +356,7 @@ class RunProfile(object):
             return curves, peaks
 
         # NOTE: this should have been occured in frontend
-        def patch_curves_for_step_plot(curves):
+        def patch_curves_for_step_plot(curves: Dict[str, List]):
             # For example, if a curve is [(0, 0), (1, 1), (2,2)], the line plot
             # is a stright line. Interpolating it as [(0, 0), (1, 0), (1, 1),
             # (2,1) (2,2)], then the line plot will work as step plot.
@@ -381,7 +385,7 @@ class RunProfile(object):
                 except BaseException:
                     pass
 
-        devices = sorted(list(curves.keys()))
+        devices: List[str] = sorted(list(curves.keys()))
         default_device = "CPU"
         for dev in devices:
             if dev.startswith("GPU"):
@@ -545,7 +549,7 @@ class RunProfile(object):
 
         result = []
 
-        def traverse_node(parent, node):
+        def traverse_node(parent: List, node: OperatorNode):
             d = {
                 "name": node.name,
                 "start_time": node.start_time,
@@ -565,7 +569,7 @@ class DistributedRunProfile(object):
     """ Profiling all workers in a view.
     """
 
-    def __init__(self, span):
+    def __init__(self, span: str):
         self.worker = 'All'
         self.span = span
         self.views = []

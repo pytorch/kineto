@@ -17,22 +17,22 @@ class OperatorAgg:
         self.input_shape = str(op.input_shape)  # Optional
 
         self.callstacks = set()  # Optional
-        self.calls = 0
-        self.host_duration = 0
-        self.device_duration = 0
-        self.self_host_duration = 0
-        self.self_device_duration = 0
+        self.calls: int = 0
+        self.host_duration: int = 0
+        self.device_duration: int = 0
+        self.self_host_duration: int = 0
+        self.self_device_duration: int = 0
         self.tc_eligible = op.tc_eligible
-        self.tc_self_duration = 0
-        self.tc_total_duration = 0
+        self.tc_self_duration: int = 0
+        self.tc_total_duration: int = 0
         # TODO: Think about adding these avgs to UI.
 
     @property
-    def tc_self_ratio(self):
+    def tc_self_ratio(self) -> float:
         return self.tc_self_duration / self.self_device_duration if self.self_device_duration > 0 else 0
 
     @property
-    def tc_total_ratio(self):
+    def tc_total_ratio(self) -> float:
         return self.tc_total_duration / self.device_duration if self.device_duration > 0 else 0
 
 
@@ -70,10 +70,10 @@ class KernelAggByNameOp:
         self.regs_per_thread = kernel.regs_per_thread
         self.shared_memory = kernel.shared_memory
 
-        self.calls = 0
-        self.total_duration = 0
-        self.min_duration = sys.maxsize
-        self.max_duration = 0
+        self.calls: int = 0
+        self.total_duration: int = 0
+        self.min_duration: int = sys.maxsize
+        self.max_duration: int = 0
         self.blocks_per_sm = 0.0
         self.occupancy = 0.0
         self.tc_used = kernel.tc_used
@@ -84,11 +84,11 @@ class KernelAggByNameOp:
         return self.total_duration / self.calls
 
     @property
-    def avg_blocks_per_sm(self):
+    def avg_blocks_per_sm(self) -> float:
         return self.blocks_per_sm / self.total_duration if self.total_duration > 0 else 0
 
     @property
-    def avg_occupancy(self):
+    def avg_occupancy(self) -> float:
         return self.occupancy / self.total_duration if self.total_duration > 0 else 0
 
 

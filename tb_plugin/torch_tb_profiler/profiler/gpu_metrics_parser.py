@@ -1,11 +1,13 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+from typing import Iterable
+
 from .. import consts, utils
 from .range_utils import (get_ranges_sum, intersection_ranges_lists,
                           intersection_ranges_lists_with_value, merge_ranges,
                           merge_ranges_with_value)
-from .trace import EventTypes
+from .trace import BaseEvent, EventTypes, KernelEvent
 
 logger = utils.get_logger()
 
@@ -152,7 +154,12 @@ class GPUMetricsParser(object):
             if total_time > 0:
                 self.avg_occupancy_per_device[gpu_id] = total_occupancy / total_time
 
-    def parse_events(self, events, global_start_time, global_end_time, steps_start_time, steps_end_time):
+    def parse_events(self,
+                     events: Iterable[BaseEvent],
+                     global_start_time: int,
+                     global_end_time: int,
+                     steps_start_time: int,
+                     steps_end_time: int):
         logger.debug("GPU Metrics, parse events")
         for event in events:
             if event.type == EventTypes.KERNEL:
@@ -162,7 +169,7 @@ class GPUMetricsParser(object):
         self.calculate_approximated_sm_efficiency(steps_start_time, steps_end_time)
         self.calculate_occupancy(steps_start_time, steps_end_time)
 
-    def parse_event(self, event):
+    def parse_event(self, event: KernelEvent):
         ts = event.ts
         dur = event.duration
         gpu_id = event.device_id

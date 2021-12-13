@@ -65,37 +65,27 @@ class MemoryRecord:
         return f"<{'+' if self.bytes>0 else ''}{self.bytes}B, addr: {self.addr}, ts: {self.ts}>"
 
 
-class MemoryParser:
-    def __init__(self, tid2tree: Dict[int, OperatorNode], memory_events: Iterable[MemoryEvent]):
-        self.tid2tree = tid2tree
-
-        # statistics purpose
-        self.staled_records: List[MemoryRecord] = []
-        self.processed_records: List[MemoryRecord] = []
-
+class MemorySnapshot:
+    def __init__(self, memory_records: Iterable[MemoryRecord],
+                 op_memory_table: Dict[Tuple[str, int, int], List[MemoryRecord]],
+                 processed_nodes: Dict[OperatorNode, int]) -> None:
+        self.memory_records = memory_records
+        self.op_memory_table = op_memory_table
         # the visited node times from parent to child
         # troubleshooting issue purpose.
-        self.processed_node = defaultdict(int)
+        self.processed_node = processed_nodes
         self.unreached_node = defaultdict(list)
-
-        records_by_tid: Dict[int, List[MemoryRecord]] = defaultdict(list)
-        for event in memory_events:
-            record = MemoryRecord.from_event(event)
-            records_by_tid[record.tid].append(record)
-
-        self.update_node(records_by_tid)
-        # for memory events requests
-        self.all_records = self.get_preprocessed_records()
-        self.peaks = self.get_peak_memory()
 
     def get_peak_memory(self) -> Dict[Tuple[DeviceType, int], int]:
         peaks = defaultdict(int)
-        for r in self.all_records:
+        for r in self.memory_records:
             if r.total_allocated == r.total_allocated:  # !isnan
                 peaks[(r.device_type, r.device_id)] = max(peaks[(r.device_type, r.device_id)], r.total_allocated)
         return peaks
 
-    def get_memory_statistics(self, start_ts=None, end_ts=None) -> Dict[str, Dict[str, List[int]]]:
+    def get_memory_statistics(self,
+                              tid2tree: Dict[int, OperatorNode],
+                              start_ts=None, end_ts=None) -> Dict[str, Dict[str, List[int]]]:
         metric_length = len(MemoryMetrics)
         self_metric_length = metric_length // 2
 
@@ -123,7 +113,7 @@ class MemoryParser:
                 # since the node has not been visited for insert memory records, just ignore all childrens
                 return
             elif is_op:
-                node_memory_metrics = MemoryParser.get_memory_metrics(node, start_ts, end_ts)
+                node_memory_metrics = self.get_memory_metrics(node, start_ts, end_ts)
                 for device, metrics in node_memory_metrics.items():
                     # device is name of device like: CPU/GPU0
                     # metrics is an arrary [SelfIncreaseSize, SelfAllocationSize, SelfAllocationCount]
@@ -142,7 +132,7 @@ class MemoryParser:
                     for i in range(self_metric_length, metric_length):
                         memory_metrics_keyed_by_node[node][device][i] += metrics[i]
 
-        for tid, root in self.tid2tree.items():
+        for tid, root in tid2tree.items():
             for child in root.children:
                 traverse_node_memory(child)
 
@@ -173,11 +163,10 @@ class MemoryParser:
 
         return result
 
-    @staticmethod
-    def get_memory_metrics(op: OperatorNode, start_ts, end_ts):
+    def get_memory_metrics(self, op: OperatorNode, start_ts, end_ts):
         metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
         memory_metrics: Dict[str, List[int]] = defaultdict(lambda: [0] * metrics_count)
-        for record in op.memory_records:
+        for record in self.op_memory_table[(op.name, op.start_time, op.end_time)]:
             if start_ts is not None and record.ts < start_ts:
                 continue
             if end_ts is not None and record.ts > end_ts:
@@ -193,10 +182,22 @@ class MemoryParser:
 
         return memory_metrics
 
-    def record_length(self, records_by_tid):
-        return sum(len(v) for v in records_by_tid.values())
 
-    def update_node(self, records_by_tid: Dict[int, List[MemoryRecord]]):
+class MemoryParser:
+    def __init__(self, memory_events: Iterable[MemoryEvent]):
+        # statistics purpose
+        self.staled_records: List[MemoryRecord] = []
+        self.processed_records: List[MemoryRecord] = []
+        self.memory_records: List[MemoryRecord] = [MemoryRecord.from_event(e) for e in memory_events]
+
+    def find_memory_nodes(self, tid2tree: Dict[int, OperatorNode]) -> MemorySnapshot:
+        records_by_tid: Dict[int, List[MemoryRecord]] = defaultdict(list)
+        for r in self.memory_records:
+            records_by_tid[r.tid].append(r)
+
+        op_memory_table: Dict[Tuple[str, int, int], List[MemoryRecord]] = defaultdict(list)
+        processed_node = defaultdict(int)
+
         tree_height = 0
         for tid, records in records_by_tid.items():
             if not records:
@@ -206,11 +207,11 @@ class MemoryParser:
             node_stack: List[Tuple[OperatorNode, int]] = []
 
             record_index = 0
-            current_node: OperatorNode = self.tid2tree.get(tid)
+            current_node: OperatorNode = tid2tree.get(tid)
             child_index = 0
 
             if current_node:
-                self.processed_node[current_node] += 1
+                processed_node[current_node] += 1
 
             while record_index < len(records):
                 '''In the loop, one pass will process one record. The basic logic is:
@@ -267,7 +268,7 @@ class MemoryParser:
                         child_index += 1
                     else:
                         # current children contains the record
-                        self.processed_node[current_node.children[child_index]] += 1
+                        processed_node[current_node.children[child_index]] += 1
 
                         # push child index which will be visited, then continue the loop
                         node_stack.append((current_node, child_index))
@@ -276,7 +277,8 @@ class MemoryParser:
 
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
-                    current_node.memory_records.append(record)
+                    op_memory_table[(current_node.name, current_node.start_time,
+                                     current_node.end_time)].append(record)
                     # NOTE: only allocation record can be associated with op. Because deallocation happens at the end
                     # of a tensor's lifetime which is not deterministic.
                     if record.is_allocation:
@@ -291,14 +293,17 @@ class MemoryParser:
                 record_index += 1
 
         # show summary information
-        if len(self.staled_records) > 0 and self.record_length(records_by_tid) > 0:
+        if len(self.staled_records) > 0 and len(self.memory_records) > 0:
             logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(
-                len(self.staled_records), self.record_length(records_by_tid), len(self.processed_records)))
+                len(self.staled_records), len(self.memory_records), len(self.processed_records)))
         if tree_height > 0:
             logger.debug("max tree height is {}".format(tree_height))
 
+        all_records = self.get_preprocessed_records()
+        return MemorySnapshot(all_records, op_memory_table, processed_node)
+
     def get_preprocessed_records(self):
-        memory_records = sorted(self.staled_records + self.processed_records, key=lambda r: r.ts)
+        memory_records = sorted(self.memory_records, key=lambda r: r.ts)
 
         alloc = {}  # allocation events may or may not have paired free event
         free = {}  # free events that does not have paired alloc event

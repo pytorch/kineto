@@ -59,9 +59,9 @@ class RunGenerator(object):
 
         profile_run.tid2tree = self.profile_data.tid2tree
 
-        if self.profile_data.memory_parser:
+        if self.profile_data.memory_snapshot:
             profile_run.views.append(consts.MEMORY_VIEW)
-            profile_run.memory_parser = self.profile_data.memory_parser
+            profile_run.memory_snapshot = self.profile_data.memory_snapshot
 
         profile_run.gpu_infos = {}
         for gpu_id in profile_run.gpu_ids:

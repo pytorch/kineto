@@ -2,11 +2,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import OrderedDict
+from typing import Dict, Iterable, List
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
-from .data import RunProfileData
+from .data import DistributedRunProfileData, RunProfileData
 from .module_op import aggegate_module_view
+from .op_agg import KernelAggByNameOp, OperatorAgg
 from .overall_parser import ProfileRole
 
 logger = utils.get_logger()
@@ -74,7 +76,7 @@ class RunGenerator(object):
         return profile_run
 
     def _generate_overview(self):
-        def build_part_time_str(part_cost, part_name):
+        def build_part_time_str(part_cost: float, part_name: str):
             format_str = ('<div class="visualization-tooltip" style="white-space: nowrap;">'
                           'Step {}<br>'
                           'Total: {}us<br>'
@@ -84,7 +86,7 @@ class RunGenerator(object):
             percentage = round(100 * part_cost / costs.costs[ProfileRole.Total], 2)
             return format_str.format(step_name, costs.costs[ProfileRole.Total], part_name, part_cost, percentage)
 
-        def build_avg_cost_dict(part_name, part_cost):
+        def build_avg_cost_dict(part_name: str, part_cost: float):
             cost_dict = {"name": part_name,
                          "description": "",
                          "value": round(part_cost),
@@ -179,7 +181,7 @@ class RunGenerator(object):
 
         return data
 
-    def _generate_op_pie(self, group_by_input_shape=False):
+    def _generate_op_pie(self, group_by_input_shape: bool = False):
         op_device_total_time = []
         op_device_self_time = []
         op_host_total_time = []
@@ -247,7 +249,7 @@ class RunGenerator(object):
 
         return data
 
-    def _generate_op_table(self, op_list, group_by_input_shape=False, call_stack=False):
+    def _generate_op_table(self, op_list: Iterable[OperatorAgg], group_by_input_shape=False, call_stack=False):
         show_gpu = self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset
 
         if group_by_input_shape:
@@ -298,7 +300,7 @@ class RunGenerator(object):
 
         return result
 
-    def _generate_op_table_for_stack(self, group_by_input_shape):
+    def _generate_op_table_for_stack(self, group_by_input_shape: bool):
         if group_by_input_shape:
             stack_list_dict = self.profile_data.stack_lists_group_by_name_input
         else:
@@ -310,7 +312,7 @@ class RunGenerator(object):
         return result
 
     @staticmethod
-    def _get_gpu_metrics_columns(blocks_per_sm_count, occupancy_count):
+    def _get_gpu_metrics_columns(blocks_per_sm_count: int, occupancy_count: int):
         columns = []
         if blocks_per_sm_count > 0:
             columns.append({"type": "number", "name": "Mean Blocks Per SM",
@@ -346,8 +348,8 @@ class RunGenerator(object):
         table["columns"].extend(gpu_metrics_columns)
 
         table["rows"] = []
-        kernel_list = sorted(self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration,
-                             reverse=True)
+        kernel_list: List[KernelAggByNameOp] = sorted(
+            self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration, reverse=True)
         for agg_by_name_op in kernel_list:
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
                              str(agg_by_name_op.grid), str(agg_by_name_op.block),
@@ -438,7 +440,7 @@ class RunGenerator(object):
 
 
 class DistributedRunGenerator(object):
-    def __init__(self, all_profile_data, span):
+    def __init__(self, all_profile_data: Iterable[DistributedRunProfileData], span):
         self.all_profile_data = all_profile_data
         self.span = span
 
@@ -494,7 +496,7 @@ class DistributedRunGenerator(object):
             "legends": ["Computation", "Overlapping", "Communication", "Other"],
             "units": "us"
         }
-        steps_to_overlap = OrderedDict()
+        steps_to_overlap: Dict[str, Dict[str, List[int]]] = OrderedDict()
         steps_to_overlap['all'] = OrderedDict()
         for data in self.all_profile_data:
             steps_to_overlap['all'][data.worker] = [0, 0, 0, 0]
@@ -523,7 +525,7 @@ class DistributedRunGenerator(object):
             "legends": ["Data Transfer Time", "Synchronizing Time"],
             "units": "us"
         }
-        steps_to_wait = OrderedDict()
+        steps_to_wait: Dict[str, Dict[str, List[int]]] = OrderedDict()
 
         steps_to_wait['all'] = OrderedDict()
         for data in self.all_profile_data:

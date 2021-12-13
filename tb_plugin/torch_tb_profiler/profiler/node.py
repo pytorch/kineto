@@ -15,7 +15,7 @@ ExcludeOpName = ["DataParallel.forward", "DistributedDataParallel.forward"]
 
 
 class BaseNode(ABC):
-    def __init__(self, name, start_time, end_time, type, tid, external_id):
+    def __init__(self, name: str, start_time: int, end_time: int, type: str, tid: int, external_id: int):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
@@ -212,7 +212,7 @@ class RuntimeNode(HostNode):
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
         self.tc_duration: int = 0  # Time summarization of all its launched kernels.
 
-    def fill_stats(self, op_node=None):
+    def fill_stats(self, op_node: OperatorNode = None):
         if self.device_nodes:
             for device_node in self.device_nodes:
                 if op_node:
@@ -237,7 +237,7 @@ class RuntimeNode(HostNode):
 class DeviceNode(BaseNode):
     def __init__(self, name, start_time, end_time, type, tid, external_id=None,
                  blocks_per_sm=None, occupancy=None,
-                 grid=None, block=None, regs_per_thread=None, shared_memory=None, tc_used=False, device_id=None):
+                 grid=None, block=None, regs_per_thread=None, shared_memory=None, device_id=None):
         super().__init__(name, start_time, end_time, type, tid, external_id)
         self.op_tc_eligible = False
         self.op_name = None

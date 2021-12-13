@@ -5,24 +5,22 @@ from enum import IntEnum
 from typing import List, Tuple
 
 
-class EndpointTypes(IntEnum):
-    START = 0
-    END = 1
-
-
-class EndPoint(object):
-    def __init__(self, ep_time, ep_pt_type, ep_value):
-        self.time = ep_time
-        self.pt_type = ep_pt_type
-        self.value = ep_value
-
-
 # src_ranges: item of (start_time, end_time, value)
 def merge_ranges_with_value(src_ranges):
+    class EndpointTypes(IntEnum):
+        START = 0
+        END = 1
+
+    class EndPoint(object):
+        def __init__(self, ep_time, ep_pt_type, ep_value):
+            self.time = ep_time
+            self.pt_type = ep_pt_type
+            self.value = ep_value
+
     merged_ranges = []
     if len(src_ranges) > 0:
         # Build tuple of (time, type, value)
-        endpoints = []
+        endpoints: List[EndPoint] = []
         for r in src_ranges:
             endpoints.append(EndPoint(r[0], EndpointTypes.START, r[2]))
             endpoints.append(EndPoint(r[1], EndpointTypes.END, r[2]))

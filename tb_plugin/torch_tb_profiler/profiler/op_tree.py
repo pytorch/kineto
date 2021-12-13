@@ -18,7 +18,7 @@ class OpTreeBuilder:
     BACKWARD_ACCUMULATE_GRAD = 'autograd::engine::evaluate_function: torch::autograd::AccumulateGrad'
 
     def __init__(self):
-        self.main_tid = None
+        self.main_tid: int = None
         self.tid2tree: Dict[int, OperatorNode] = None
 
     def build_tree(self,
@@ -49,7 +49,7 @@ class OpTreeBuilder:
 
         return self.tid2tree
 
-    def _build_tree(self, tid2list, tid2zero_rt_list, staled_device_nodes):
+    def _build_tree(self, tid2list: Dict[int, List[OperatorNode]], tid2zero_rt_list, staled_device_nodes):
         tid2tree = {}
 
         for tid, op_list in tid2list.items():
@@ -93,15 +93,15 @@ class OpTreeBuilder:
         '''host_node_list: list of OperatorNode and ProfilerStepNode.
         zero_rt_list: list of RuntimeNode with external_id=0.'''
 
-        def build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes):
-            dummpy_rt = []
+        def build_tree_relationship(host_node_list: Iterable[OperatorNode], zero_rt_list, staled_device_nodes):
+            dummpy_rt: List[RuntimeNode] = []
             if staled_device_nodes:
                 # Note: Although kernels of this dummy runtime is put under main thread's tree,
                 # we don't know which thread launches them.
                 # TODO: Don't make belonging thread assumption on future usage if we need special handling
                 dummpy_rt.append(RuntimeNode("dummy", None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
                 dummpy_rt[0].fill_stats()
-            node_stack = []
+            node_stack: List[OperatorNode] = []
             root_node = OperatorNode(
                 name="CallTreeRoot",
                 start_time=-sys.maxsize - 1,
@@ -132,7 +132,7 @@ class OpTreeBuilder:
         # Just follow the same pattern in torch/autograd/profiler.py,
         # EventList._remove_dup_nodes
         # TODO: Replace recursive by for loop, in case of too deep callstack.
-        def remove_dup_nodes(node):
+        def remove_dup_nodes(node: OperatorNode):
             if node.type == EventTypes.RUNTIME:
                 return
             if len(node.children) == 1:
@@ -165,7 +165,7 @@ class OpTreeBuilder:
         modules: List[ModuleNode] = []
         backward_nodes: Dict[OperatorNode, List[OperatorNode]] = defaultdict(list)
 
-        def traverse_node(parent, node):
+        def traverse_node(parent, node: OperatorNode):
             if isinstance(node, ModuleNode):
                 modules.append(node)
             elif isinstance(node, ProfilerStepNode):
@@ -198,7 +198,7 @@ class OpTreeBuilder:
         ts_to_node: Dict[int, OperatorNode] = {}
         ts_to_parent: Dict[int, OperatorNode] = {}
 
-        def traverse_node(node):
+        def traverse_node(node: OperatorNode):
             if node.start_time not in ts_to_node:
                 ts_to_node[node.start_time] = node
             for child in node.children:
@@ -216,7 +216,7 @@ class OpTreeBuilder:
         If one node's name is autograd::engine::evaluate_function: torch::autograd::AccumulateGrad,
         it should be grouped with previous normal backward node. Otherwise, a new backward node should be started
         '''
-        grouped_bwd_nodes = []
+        grouped_bwd_nodes: List[List[OperatorNode]] = []
         for node in nodes:
             if node.name == OpTreeBuilder.BACKWARD_ACCUMULATE_GRAD:
                 grouped_bwd_nodes[-1].append(node)

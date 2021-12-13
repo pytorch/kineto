@@ -9,10 +9,10 @@ from .trace import BaseEvent, EventTypes, PythonFunctionEvent
 
 
 class Module:
-    def __init__(self, name, module_id):
+    def __init__(self, name: str, module_id: int):
         self.name = name
         self.module_id = module_id
-        self.children = []
+        self.children: List[Module] = []
 
     def __hash__(self):
         return hash((self.name, self.module_id, tuple(self.children)))
@@ -27,15 +27,15 @@ class Module:
 
 
 class ModuleStats:
-    def __init__(self, name, module_id):
+    def __init__(self, name: str, module_id: int):
         self.name = name
         self.module_id = module_id
-        self.occurences = 0
-        self.operators = 0
-        self.host_duration = 0
-        self.device_duration = 0
-        self.self_host_duration = 0
-        self.self_device_duration = 0
+        self.occurences: int = 0
+        self.operators: int = 0
+        self.host_duration: int = 0
+        self.device_duration: int = 0
+        self.self_host_duration: int = 0
+        self.self_device_duration: int = 0
 
     @property
     def avg_host_duration(self):
@@ -75,7 +75,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
     id_to_event = {e.python_id: e for e in python_events}
 
     # Extract Python function topology.
-    children = {}
+    children: Dict[int, List[int]] = {}
     for e in python_events:
         e_id = e.python_id
         children.setdefault(e_id, [])
@@ -108,7 +108,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
             e = id_to_event.get(e.python_parent_id, None)
 
     module_roots = [k for k, v in module_parent_map.items() if v is None]
-    module_child_map = {}
+    module_child_map: Dict[int, List[int]] = {}
     for child_id, parent_id in module_parent_map.items():
         module_child_map.setdefault(child_id, [])
         module_child_map.setdefault(parent_id, [])
@@ -201,13 +201,13 @@ def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: I
     return data
 
 
-def get_module_tree(tid2tree):
+def get_module_tree(tid2tree: Dict[int, OperatorNode]):
     '''Get the module tree in timeline'''
     from copy import copy
 
     modules = []
 
-    def traverse_node(node, parent):
+    def traverse_node(node, parent: Optional[ModuleNode]):
         if type(node) not in (ProfilerStepNode, ModuleNode):
             return
 

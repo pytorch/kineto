@@ -9,6 +9,7 @@ import Grid from '@material-ui/core/Grid'
 import InputLabel from '@material-ui/core/InputLabel'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
+import Slider from '@material-ui/core/Slider'
 import { makeStyles } from '@material-ui/core/styles'
 import TextField, { TextFieldProps } from '@material-ui/core/TextField'
 import * as React from 'react'
@@ -24,7 +25,6 @@ import { AntTableChart } from './charts/AntTableChart'
 import { LineChart } from './charts/LineChart'
 import { DataLoading } from './DataLoading'
 import { MemoryStatsTable } from './tables/MemoryStatsTable'
-import Slider from '@material-ui/core/Slider'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -275,6 +275,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   React.useEffect(() => {
     api.defaultApi.memoryCurveGet(run, worker, span).then((resp) => {
       setMemoryCurveData(resp)
+      // Reset the select range to null whenever run/worker/span changes
+      setSelectedRange(undefined)
     })
   }, [run, worker, span])
 

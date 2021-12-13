@@ -1600,7 +1600,7 @@ class TestProfiler(unittest.TestCase):
 
         profile = parse_json_trace(json_content)
         profile.process()
-        memory_stats = profile.memory_parser.get_memory_statistics()
+        memory_stats = profile.memory_snapshot.get_memory_statistics(profile.tid2tree)
 
         self.assertEqual(len(memory_stats), 2)
         self.assertIn("GPU0", memory_stats)

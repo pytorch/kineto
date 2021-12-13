@@ -117,6 +117,7 @@ class RunProfile(object):
         self.gpu_utilization = None
         self.sm_efficiency = None
         self.occupancy = None
+        self.tc_ratio = None
         self.gpu_util_buckets = None
         self.approximated_sm_efficiency_ranges = None
         self.gpu_infos = None
@@ -170,7 +171,7 @@ class RunProfile(object):
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
         return counter_json_bytes
 
-    def append_gpu_metrics(self, raw_data):
+    def append_gpu_metrics(self, raw_data: bytes):
         counter_json_bytes = self.get_gpu_metrics()
 
         raw_data_without_tail = raw_data[: raw_data.rfind(b']')]

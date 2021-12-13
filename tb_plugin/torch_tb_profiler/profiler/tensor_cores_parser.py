@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-from typing import Dict, Iterable
+from typing import Dict, Iterable, List
 
 from .. import consts
 from .node import OperatorNode
@@ -11,14 +11,14 @@ class TensorCoresParser:
     def __init__(self):
         self.tc_eligible_ops_kernel_ratio = 0.0
         # For calculating Tensor Cores time ratio per GPU.
-        self.tc_ratio = [None] * consts.MAX_GPU_PER_NODE
+        self.tc_ratio: List[float] = None
 
     def parse_events(self, tid2tree: Dict[str, OperatorNode], ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
         self.tc_ratio = self._calculate_tc_ratio(ops, gpu_ids)
         self.tc_eligible_ops_kernel_ratio = self._get_tc_eligible_ops_kernel_ratio(tid2tree, ops)
 
-    def _calculate_tc_ratio(self, ops: Iterable[OperatorNode], gpu_ids):
-        tc_ratio = [None] * consts.MAX_GPU_PER_NODE
+    def _calculate_tc_ratio(self, ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
+        tc_ratio: List[float] = [None] * consts.MAX_GPU_PER_NODE
         tc_time = [0] * consts.MAX_GPU_PER_NODE
         total_time = [0] * consts.MAX_GPU_PER_NODE
         has_kernel = False
@@ -36,13 +36,13 @@ class TensorCoresParser:
         if has_kernel:  # If no kernel, then keep all self.tc_ratio as None.
             for gpu_id in gpu_ids:
                 if total_time[gpu_id] > 0:
-                    tc_ratio[gpu_id] = tc_time[k.device_id] / total_time[k.device_id]
+                    tc_ratio[gpu_id] = tc_time[gpu_id] / total_time[gpu_id]
                 else:
                     tc_ratio[gpu_id] = 0.0
         return tc_ratio
 
     def _get_bottom_tc_eligible_operators(self, op_tree_node: OperatorNode):
-        ops = []
+        ops: List[OperatorNode] = []
         for child in op_tree_node.children:
             child_ops = self._get_bottom_tc_eligible_operators(child)
             ops.extend(child_ops)
@@ -51,7 +51,7 @@ class TensorCoresParser:
             ops.append(op_tree_node)
         return ops
 
-    def _get_tc_eligible_ops_kernel_ratio(self, tid2tree: Dict[int, OperatorNode], ops):
+    def _get_tc_eligible_ops_kernel_ratio(self, tid2tree: Dict[int, OperatorNode], ops: Iterable[OperatorNode]):
         def sum_self_kernel_time(ops: Iterable[OperatorNode]):
             sum_time = 0
             for op in ops:

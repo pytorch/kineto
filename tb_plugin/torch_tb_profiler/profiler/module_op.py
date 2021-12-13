@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 from collections import namedtuple
-from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple
+from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
 
 from .node import ModuleNode, OperatorNode, ProfilerStepNode, is_operator_node
 from .trace import BaseEvent, EventTypes, PythonFunctionEvent
@@ -233,9 +233,8 @@ def get_module_tree(tid2tree: Dict[int, OperatorNode]):
     return modules
 
 
-def dump_modules(level, modules):
+def dump_modules(level: int, modules: Iterable[Union[Module, ModuleNode]]):
     '''testing purpose'''
     for module in modules:
-        print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}:"
-              f" {module.stats.avg_host_duration}")
+        print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}")
         dump_modules(level + 1, module.children)

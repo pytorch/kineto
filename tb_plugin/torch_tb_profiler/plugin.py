@@ -110,7 +110,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             '/memory_curve': self.memory_curve_route,
             '/memory_events': self.memory_events_route,
             '/module': self.module_route,
-            '/tree': self.op_tree_route
+            '/tree': self.op_tree_route,
+            "/diff": self.diff_run_route,
         }
 
     def frontend_metadata(self):
@@ -327,6 +328,23 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def op_tree_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         content = profile.get_operator_tree()
+        return self.respond_as_json(content, True)
+
+    @wrappers.Request.application
+    def diff_run_route(self, request: werkzeug.Request):
+        name = request.args.get("run")
+        span = request.args.get("span")
+        worker = request.args.get("worker")
+        self._validate(run=name, worker=worker, span=span)
+        base = self._get_profile(name, worker, span)
+
+        exp_name = request.args.get("exp_run")
+        exp_span = request.args.get("exp_span")
+        exp_worker = request.args.get("exp_worker")
+        self._validate(exp_run=exp_name, exp_worker=exp_worker, exp_span=exp_span)
+        exp = self._get_profile(exp_name, exp_worker, exp_span)
+
+        content = base.compare_run(exp)
         return self.respond_as_json(content, True)
 
     @wrappers.Request.application

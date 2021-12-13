@@ -214,20 +214,6 @@ class RuntimeNode(HostNode):
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
         self.tc_duration: int = 0  # Time summarization of all its launched kernels.
 
-    @property
-    def device_start_time(self):
-        if self.device_nodes:
-            return self.device_nodes[0].start_time
-        else:
-            return self.start_time
-
-    @property
-    def device_end_time(self):
-        if self.device_nodes:
-            return self.device_nodes[-1].end_time
-        else:
-            return self.end_time
-
     def fill_stats(self, op_node: OperatorNode = None):
         if self.device_nodes:
             for device_node in self.device_nodes:
@@ -285,7 +271,7 @@ class DeviceNode(BaseNode):
         return cls(**kwargs)
 
 
-def create_operator_node(event):
+def create_operator_node(event: OperatorEvent):
     if (event.name.startswith("enumerate(DataLoader)#") and event.name.endswith(".__next__")
             or event.name.startswith("enumerate(DataPipe)#")):
         return DataLoaderNode.create(event)
@@ -295,6 +281,6 @@ def create_operator_node(event):
         return OperatorNode.create(event)
 
 
-def is_operator_node(node):
+def is_operator_node(node: BaseNode):
     return bool(type(node) is OperatorNode and node.type == EventTypes.OPERATOR and node.name not in ExcludeOpName)
 

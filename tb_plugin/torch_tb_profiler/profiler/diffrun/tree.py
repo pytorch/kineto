@@ -152,3 +152,11 @@ def print_node(node: Union[DiffNode, DiffStats], level: int, index: int, file=sy
     file.write(f"{INDENT * (level + 1)}right: {node.right}\n")
     for i, child in enumerate(node.children):
         print_node(child, level + 1, i, file=file)
+
+
+def print_ops(op: Operators, prefix: str = INDENT, file=sys.stdout):
+    if isinstance(op.op_nodes, list):
+        for n in op.op_nodes:
+            file.write(f'{prefix}{n.name}\n')
+    else:
+        file.write(f'{prefix}{op.op_nodes.name}\n')

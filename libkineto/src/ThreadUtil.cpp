@@ -57,12 +57,16 @@ int32_t systemThreadId() {
 
 int32_t threadId() {
   if (!_tid) {
-#ifndef _MSC_VER
+#ifdef __APPLE__
+    uint64_t tid;
+    pthread_threadid_np(nullptr, &tid);
+    _tid = tid;
+#elif defined _MSC_VER
+  _tid = (int32_t)GetCurrentThreadId();
+#else
   pthread_t pth = pthread_self();
   int32_t* ptr = reinterpret_cast<int32_t*>(&pth);
   _tid = *ptr;
-#else
-  _tid = (int32_t)GetCurrentThreadId();
 #endif
   }
   return _tid;

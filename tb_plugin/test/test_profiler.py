@@ -1,11 +1,13 @@
-import os
 import gzip
 import json
+import os
 import unittest
 
-from torch_tb_profiler.profiler.data import DistributedRunProfileData, RunProfileData
+from torch_tb_profiler.profiler.data import (DistributedRunProfileData,
+                                             RunProfileData)
 from torch_tb_profiler.profiler.loader import RunLoader
 from torch_tb_profiler.profiler.overall_parser import ProfileRole
+from torch_tb_profiler.profiler.run_generator import RunGenerator
 from torch_tb_profiler.run import RunProfile
 
 SCHEMA_VERSION = 1
@@ -1177,16 +1179,16 @@ class TestProfiler(unittest.TestCase):
     def test_dump_gpu_metrics(self):
         profile = RunProfile("test_dump_gpu_metrics", None)
         # Faked data for easy to see in UI. Real data values are 1/100 of these.
-        profile.gpu_util_buckets = [[(1621401187223005, 0.0), (1621401187224005, 0.0),
-                                     (1621401187225005, 0.6), (1621401187226005, 0.5),
-                                     (1621401187227005, 0.6), (1621401187228005, 0.2),
-                                     (1621401187229005, 0.6), (1621401187230005, 0.1),
-                                     (1621401187231005, 0.5), (1621401187232005, 0.2),
-                                     (1621401187233005, 0.3), (1621401187234005, 0.4),
-                                     (1621401187235005, 0.4219409282700422),
-                                     (1621401187236901, 0)]]
+        gpu_util_buckets = [[(1621401187223005, 0.0), (1621401187224005, 0.0),
+                            (1621401187225005, 0.6), (1621401187226005, 0.5),
+                            (1621401187227005, 0.6), (1621401187228005, 0.2),
+                            (1621401187229005, 0.6), (1621401187230005, 0.1),
+                            (1621401187231005, 0.5), (1621401187232005, 0.2),
+                            (1621401187233005, 0.3), (1621401187234005, 0.4),
+                            (1621401187235005, 0.4219409282700422),
+                            (1621401187236901, 0)]]
         # Faked data for easy to see in UI. Real data values are 1/10 of these.
-        profile.approximated_sm_efficiency_ranges = \
+        approximated_sm_efficiency_ranges = \
             [[(1621401187225275, 1621401187225278, 0.25), (1621401187225530, 1621401187225532, 0.125),
               (1621401187225820, 1621401187225821, 0.125), (1621401187226325, 1621401187226327, 0.25),
               (1621401187226575, 1621401187226577, 0.125), (1621401187226912, 1621401187226913, 0.125),
@@ -1205,6 +1207,7 @@ class TestProfiler(unittest.TestCase):
 
         basedir = os.path.dirname(os.path.realpath(__file__))
         trace_json_flat_path = os.path.join(basedir, "gpu_metrics_input.json")
+        profile.gpu_metrics = RunGenerator.get_gpu_metrics(gpu_util_buckets, approximated_sm_efficiency_ranges)
         with open(trace_json_flat_path, "rb") as file:
             raw_data = file.read()
         data_with_gpu_metrics_compressed = profile.append_gpu_metrics(raw_data)
@@ -2488,7 +2491,8 @@ class TestModuleView(unittest.TestCase):
 
     def test_build_module_hierarchy(self):
         from torch_tb_profiler.profiler import trace
-        from torch_tb_profiler.profiler.module_op import _build_module_hierarchy, aggegate_module_view
+        from torch_tb_profiler.profiler.module_op import (
+            _build_module_hierarchy, aggegate_module_view)
 
         json_content = """[
             {

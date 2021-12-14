@@ -4,7 +4,7 @@
 import tempfile
 
 from .. import utils
-from ..profiler import multiprocessing as mp
+from .. import multiprocessing as mp
 from . import file
 from .file import basename, is_local, download_file, read
 

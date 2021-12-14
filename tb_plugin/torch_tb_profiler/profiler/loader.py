@@ -9,9 +9,9 @@ from collections import defaultdict
 from typing import List, Tuple
 
 from .. import consts, io, utils
+from ..multiprocessing import Process, Queue
 from ..run import Run, RunProfile
 from .data import DistributedRunProfileData, RunProfileData
-from .multiprocessing import Process, Queue
 from .node import CommunicationNode
 from .run_generator import DistributedRunGenerator, RunGenerator
 
@@ -19,7 +19,7 @@ logger = utils.get_logger()
 
 
 class RunLoader(object):
-    def __init__(self, name, run_dir, caches):
+    def __init__(self, name, run_dir, caches: io.Cache):
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches

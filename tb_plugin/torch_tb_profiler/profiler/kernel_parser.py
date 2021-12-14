@@ -21,7 +21,7 @@ class KernelParser:
         events = events.astype({"type": "category", "name": "string"}, copy=False)
         events["tc_used"] = events["name"].map(lambda name: name in TC_Allowlist)
 
-        def weighted_avg(x):
+        def weighted_avg(x: pd.Series):
             try:
                 # fill these None as zero
                 x = x.fillna(0)
@@ -37,8 +37,7 @@ class KernelParser:
             max=('duration', "max"),
             min=('duration', "min"),
             blocks_per_sm=('blocks_per_sm', weighted_avg),
-            occupancy=('occupancy', weighted_avg))\
-            .sort_values("sum", ascending=False)
+            occupancy=('occupancy', weighted_avg)).sort_values("sum", ascending=False)
 
         tc_total = self.kernel_stat["sum"].sum()
         tc_self = self.kernel_stat[self.kernel_stat["tc_used"]]["sum"].sum()

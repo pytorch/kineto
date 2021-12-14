@@ -420,7 +420,7 @@ class RunGenerator(object):
         if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
             return None
 
-        device_prop = device_props[gpu_id]
+        device_prop: Dict = device_props[gpu_id]
         gpu_info = {}
         name = device_prop.get("name")
         if name is not None:
@@ -454,7 +454,9 @@ class DistributedRunGenerator(object):
         return profile_run
 
     def _generate_gpu_info(self):
-        result = OrderedDict()
+        # first key is node name, the second key is process id, the third key is GPU0/,
+        # the value is the gpu info json
+        result: Dict[str, Dict[str, Dict[str, Dict]]] = OrderedDict()
         index = 0
         for data in sorted(self.all_profile_data, key=lambda x: x.worker):
             if not data.device_props:

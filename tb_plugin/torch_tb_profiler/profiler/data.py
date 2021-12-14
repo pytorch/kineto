@@ -50,7 +50,7 @@ class RunProfileData(object):
         self.steps_names = None
         self.avg_costs = None
         self.runtime_node_list: List[RuntimeNode] = None
-        self.gpu_ids = None
+        self.gpu_ids: List[int] = None
         self.gpu_utilization = None
         self.sm_efficiency = None
         self.occupancy = None
@@ -195,7 +195,7 @@ class RunProfileData(object):
         gpu_metrics_parser = GPUMetricsParser()
         gpu_metrics_parser.parse_events(self.events, parser.global_start_ts, parser.global_end_ts,
                                         parser.steps[0][0], parser.steps[-1][1])
-        self.gpu_ids = gpu_metrics_parser.gpu_ids
+        self.gpu_ids = list(gpu_metrics_parser.gpu_ids)
         self.gpu_utilization = gpu_metrics_parser.gpu_utilization
         self.sm_efficiency = gpu_metrics_parser.avg_approximated_sm_efficiency_per_device
         self.occupancy = gpu_metrics_parser.avg_occupancy_per_device

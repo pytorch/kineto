@@ -112,7 +112,7 @@ class RunProfile(object):
         self.kernel_table = None
         self.tc_pie = None
         self.trace_file_path: str = None
-        self.gpu_ids = None
+        self.gpu_ids: List[int] = None
         self.gpu_utilization = None
         self.sm_efficiency = None
         self.occupancy = None

@@ -67,7 +67,7 @@ class MemoryRecord:
 
 class MemorySnapshot:
     def __init__(self, memory_records: Iterable[MemoryRecord],
-                 op_memory_table: Dict[Tuple[str, int, int], List[MemoryRecord]],
+                 op_memory_table: Dict[OperatorNode, List[MemoryRecord]],
                  processed_nodes: Dict[OperatorNode, int]) -> None:
         self.memory_records = memory_records
         self.op_memory_table = op_memory_table
@@ -166,7 +166,7 @@ class MemorySnapshot:
     def get_memory_metrics(self, op: OperatorNode, start_ts, end_ts):
         metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
         memory_metrics: Dict[str, List[int]] = defaultdict(lambda: [0] * metrics_count)
-        for record in self.op_memory_table[(op.name, op.start_time, op.end_time)]:
+        for record in self.op_memory_table[op]:
             if start_ts is not None and record.ts < start_ts:
                 continue
             if end_ts is not None and record.ts > end_ts:
@@ -195,7 +195,7 @@ class MemoryParser:
         for r in self.memory_records:
             records_by_tid[r.tid].append(r)
 
-        op_memory_table: Dict[Tuple[str, int, int], List[MemoryRecord]] = defaultdict(list)
+        op_memory_table: Dict[OperatorNode, List[MemoryRecord]] = defaultdict(list)
         processed_node = defaultdict(int)
 
         tree_height = 0
@@ -277,8 +277,7 @@ class MemoryParser:
 
                 # the current_node is the one contains the record at this moment.
                 if is_operator_node(current_node):
-                    op_memory_table[(current_node.name, current_node.start_time,
-                                     current_node.end_time)].append(record)
+                    op_memory_table[current_node].append(record)
                     # NOTE: only allocation record can be associated with op. Because deallocation happens at the end
                     # of a tensor's lifetime which is not deterministic.
                     if record.is_allocation:

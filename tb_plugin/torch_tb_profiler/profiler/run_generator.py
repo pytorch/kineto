@@ -48,26 +48,24 @@ class RunGenerator(object):
 
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
-        profile_run.gpu_util_buckets = self.profile_data.gpu_util_buckets
-        profile_run.approximated_sm_efficiency_ranges = self.profile_data.approximated_sm_efficiency_ranges
 
-        profile_run.gpu_ids = self.profile_data.gpu_ids
-        profile_run.gpu_utilization = self.profile_data.gpu_utilization
-        profile_run.sm_efficiency = self.profile_data.sm_efficiency
-        profile_run.occupancy = self.profile_data.occupancy
-        profile_run.tc_ratio = self.profile_data.tc_ratio
+        profile_run.gpu_metrics = self.get_gpu_metrics(
+            self.profile_data.gpu_util_buckets, self.profile_data.approximated_sm_efficiency_ranges)
+
+        gpu_infos = {}
+        for gpu_id in self.profile_data.gpu_ids:
+            gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
+            if gpu_info is not None:
+                gpu_infos[gpu_id] = gpu_info
+
+        profile_run.gpu_summary, profile_run.gpu_tooltip = self.get_gpu_metrics_data_tooltip(
+            self.profile_data, gpu_infos)
 
         profile_run.tid2tree = self.profile_data.tid2tree
 
         if self.profile_data.memory_snapshot:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.memory_snapshot = self.profile_data.memory_snapshot
-
-        profile_run.gpu_infos = {}
-        for gpu_id in profile_run.gpu_ids:
-            gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
-            if gpu_info is not None:
-                profile_run.gpu_infos[gpu_id] = gpu_info
 
         profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
         if profile_run.module_stats:
@@ -437,6 +435,103 @@ class RunGenerator(object):
             gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
 
         return gpu_info
+
+    @staticmethod
+    def get_gpu_metrics_data_tooltip(
+            profile: RunProfileData,
+            gpu_infos):
+        if not profile.gpu_ids:
+            return None, None
+
+        has_sm_efficiency = False
+        has_occupancy = False
+        has_tc = False
+
+        gpu_metrics_data = []
+        gpu_info_columns = ["Name", "Memory", "Compute Capability"]
+
+        def process_gpu(gpu_id: int):
+            nonlocal has_sm_efficiency, has_occupancy, has_tc
+            gpu_metrics_data.append({"title": "GPU {}:".format(gpu_id), "value": ""})
+            gpu_info = gpu_infos.get(gpu_id, None)
+            if gpu_info is not None:
+                for key in gpu_info_columns:
+                    if key in gpu_info:
+                        gpu_metrics_data.append({"title": key, "value": gpu_info[key]})
+            else:
+                # the legacy chrome tracing file would not have gpu info.
+                pass
+            gpu_metrics_data.append({"title": "GPU Utilization", "value": "{} %".format(
+                round(profile.gpu_utilization[gpu_id] * 100, 2))})
+            if profile.sm_efficiency[gpu_id] is not None:
+                gpu_metrics_data.append({"title": "Est. SM Efficiency", "value": "{} %".format(
+                    round(profile.sm_efficiency[gpu_id] * 100, 2))})
+                has_sm_efficiency = True
+            if profile.occupancy[gpu_id] is not None:
+                gpu_metrics_data.append({"title": "Est. Achieved Occupancy", "value": "{} %".format(
+                    round(profile.occupancy[gpu_id], 2))})
+                has_occupancy = True
+            if profile.tc_ratio[gpu_id] is not None:
+                gpu_metrics_data.append({"title": "Kernel Time using Tensor Cores", "value": "{} %".format(
+                    round(profile.tc_ratio[gpu_id] * 100, 2))})
+                has_tc = True
+
+        process_gpu(profile.gpu_ids[0])
+        for idx in range(1, len(profile.gpu_ids)):
+            # Append separator line for beautiful to see.
+            gpu_metrics_data.append({"title": "<hr/>", "value": ""})
+            process_gpu(profile.gpu_ids[idx])
+
+        tooltip_summary = "The GPU usage metrics:\n"
+        tooltip = "{}\n{}".format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
+        if has_sm_efficiency:
+            tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
+        if has_occupancy:
+            tooltip += "\n" + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
+        if has_tc:
+            tooltip += "\n" + consts.TOOLTIP_TENSOR_CORES
+
+        return gpu_metrics_data, tooltip
+
+    @staticmethod
+    def get_gpu_metrics(gpu_util_buckets, approximated_sm_efficiency_ranges):
+        def build_trace_counter_gpu_util(gpu_id, start_time, counter_value):
+            util_json = ("{{\"ph\":\"C\", \"name\":\"GPU {} Utilization\", \"pid\":{}, \"ts\":{}, "
+                         "\"args\":{{\"GPU Utilization\":{}}}}}").format(gpu_id, gpu_id, start_time, counter_value)
+            return util_json
+
+        def build_trace_counter_sm_efficiency(gpu_id, start_time, counter_value):
+            util_json = ("{{\"ph\":\"C\", \"name\":\"GPU {} Est. SM Efficiency\", \"pid\":{}, \"ts\":{}, "
+                         "\"args\":{{\"Est. SM Efficiency\":{}}}}}").format(gpu_id, gpu_id, start_time, counter_value)
+            return util_json
+
+        def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list: List):
+            json_str = build_trace_counter_gpu_util(gpu_id, start_time, counter_value)
+            counter_json_list.append(json_str)
+
+        def add_trace_counter_sm_efficiency(gpu_id, start_time, end_time, value, counter_json_list: List):
+            efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, start_time, value)
+            efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, end_time, 0)
+            counter_json_list.append(efficiency_json_start)
+            counter_json_list.append(efficiency_json_finish)
+
+        counter_json_list = []
+        for gpu_id, buckets in enumerate(gpu_util_buckets):
+            if len(buckets) > 0:
+                # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
+                add_trace_counter_gpu_util(gpu_id, buckets[0][0], 1, counter_json_list)
+                add_trace_counter_gpu_util(gpu_id, buckets[0][0], 0, counter_json_list)
+            for b in buckets:
+                add_trace_counter_gpu_util(gpu_id, b[0], b[1], counter_json_list)
+        for gpu_id, ranges in enumerate(approximated_sm_efficiency_ranges):
+            buckets = gpu_util_buckets[gpu_id]
+            if len(ranges) > 0 and len(buckets) > 0:
+                # Adding 1 as baseline. To avoid misleading virtualization when the max value is less than 1.
+                add_trace_counter_sm_efficiency(gpu_id, buckets[0][0], buckets[0][0], 1, counter_json_list)
+            for r in ranges:
+                add_trace_counter_sm_efficiency(gpu_id, r[0], r[1], r[2], counter_json_list)
+
+        return counter_json_list
 
 
 class DistributedRunGenerator(object):

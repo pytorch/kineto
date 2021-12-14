@@ -17,7 +17,7 @@ from .event_parser import CommLibTypes, EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser, MemorySnapshot
-from .node import OperatorNode, RuntimeNode
+from .node import OperatorNode
 from .op_agg import ModuleAggregator
 from .overall_parser import OverallParser
 from .tensor_cores_parser import TensorCoresParser
@@ -27,20 +27,40 @@ logger = utils.get_logger()
 
 
 class RunProfileData(object):
-    def __init__(self, worker: str, span: Optional[str] = None):
+    def __init__(self, worker: str, span: str, trace_json: Dict):
         self.worker = worker
         self.span = span
-        self.data_schema_version = None
-        self.distributed_info = None
-        self.device_props = None
+
+        # metadatas
+        self.data_schema_version = trace_json.get("schemaVersion", None)
+        self.distributed_info = trace_json.get("distributedInfo", None)
+        self.device_props = trace_json.get("deviceProperties", None)
+
+        self.profiler_start_ts = float("inf")
+        self.events: List[BaseEvent] = []
+
+        trace_body = trace_json["traceEvents"]
+        fwd_bwd_events = []
+        for data in trace_body:
+            if data.get("cat") == 'forward_backward':
+                fwd_bwd_events.append(data)
+            else:
+                event = trace.create_event(data)
+                if event is not None:
+                    self.profiler_start_ts = min(self.profiler_start_ts, event.ts)
+                    self.events.append(event)
+
+        self.events.sort(key=lambda e: e.ts)
+        self.forward_backward_events = trace.create_association_events(fwd_bwd_events)
+
+        self.trace_file_path: str = None
+
+        # Event Parser results
+        self.tid2tree: Dict[int, OperatorNode] = None
         self.used_devices = []
         self.use_dp: bool = False
         self.use_ddp: bool = False
         self.comm_lib = None
-        self.profiler_start_ts = float("inf")
-        self.forward_backward_events: Dict[int, int] = None
-        self.events: List[BaseEvent] = None
-        self.trace_file_path: str = None
         self.has_runtime: bool = False
         self.has_kernel: bool = False
         self.has_communication: bool = False
@@ -49,7 +69,8 @@ class RunProfileData(object):
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
-        self.runtime_node_list: List[RuntimeNode] = None
+
+        # GPU parser
         self.gpu_ids: List[int] = None
         self.gpu_utilization = None
         self.sm_efficiency = None
@@ -58,20 +79,27 @@ class RunProfileData(object):
         self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
         self.blocks_per_sm_count = None
         self.occupancy_count = None
-        self.tid2tree: Dict[int, OperatorNode] = None
+
+        # Operator aggregator
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
+
+        # Kernel and Tensor Core
         self.kernel_stat = None
         self.tc_ratio = None
         self.tc_eligible_ops_kernel_ratio = None
         self.tc_used_ratio = None  # If it's a pure CPU run, then this keeps as None.
-        self.recommendations = []
+
+        # Communicator
         self.comm_node_list = None
         self.comm_overlap_costs = None
         self.memory_snapshot: Optional[MemorySnapshot] = None
+
+        # recommendation based on analysis result.
+        self.recommendations = []
 
     @staticmethod
     def parse(worker, span, path, cache_dir):
@@ -79,25 +107,11 @@ class RunProfileData(object):
 
         profile = RunProfileData.from_json(worker, span, trace_json)
         profile.trace_file_path = trace_path
-        return profile, trace_path
+        return profile
 
     @staticmethod
     def from_json(worker, span, trace_json: Dict):
-        profile = RunProfileData(worker, span)
-        profile.data_schema_version = trace_json.get("schemaVersion", None)
-        profile.distributed_info = trace_json.get("distributedInfo", None)
-        profile.device_props = trace_json.get("deviceProperties", None)
-        trace_json = trace_json["traceEvents"]
-
-        profile.events = []
-        for data in trace_json:
-            event = trace.create_event(data)
-            if event is not None:
-                profile.profiler_start_ts = min(profile.profiler_start_ts, event.ts)
-                profile.events.append(event)
-        profile.events.sort(key=lambda e: e.ts)
-        profile.forward_backward_events = trace.create_association_events(trace_json)
-
+        profile = RunProfileData(worker, span, trace_json)
         profile.process()
         profile.analyze()
         return profile
@@ -191,7 +205,6 @@ class RunProfileData(object):
         self.comm_overlap_costs = overall_parser.communication_overlap
 
         logger.debug("GPUMetricsParser")
-        self.runtime_node_list = parser.runtime_node_list
         gpu_metrics_parser = GPUMetricsParser()
         gpu_metrics_parser.parse_events(self.events, parser.global_start_ts, parser.global_end_ts,
                                         parser.steps[0][0], parser.steps[-1][1])

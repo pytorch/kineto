@@ -110,7 +110,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             "/memory_curve": self.memory_curve_route,
             "/memory_events": self.memory_events_route,
             "/module": self.module_route,
-            "/tree": self.op_tree
+            "/tree": self.op_tree_route
         }
 
     def frontend_metadata(self):
@@ -170,11 +170,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         normal_workers = [worker for worker in run.workers if worker != 'All']
         data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(normal_workers))},
                                 {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
-        if len(profile.gpu_ids) > 0:
-            gpu_metrics_data, gpu_metrics_tooltip = profile.get_gpu_metrics_data_tooltip()
+        if profile.gpu_summary and profile.gpu_tooltip:
             data["gpu_metrics"] = {"title": "GPU Summary",
-                                   "data": gpu_metrics_data,
-                                   "tooltip": gpu_metrics_tooltip}
+                                   "data": profile.gpu_summary,
+                                   "tooltip": profile.gpu_tooltip}
 
         return self.respond_as_json(data)
 
@@ -334,7 +333,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             raise exceptions.NotFound("could not find the run for %s/%s/%s" % (name, worker, span))
 
     @wrappers.Request.application
-    def op_tree(self, request: werkzeug.Request):
+    def op_tree_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         content = profile.get_operator_tree()
         return self.respond_as_json(content)

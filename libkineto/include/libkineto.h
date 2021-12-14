@@ -76,9 +76,14 @@ class LibkinetoApi {
   }
 
   void initProfilerIfRegistered() {
-    if (activityProfiler_ && !activityProfiler_->isInitialized()) {
-      activityProfiler_->init();
-      initChildActivityProfilers();
+    static std::once_flag once;
+    if (activityProfiler_) {
+      std::call_once(once, [this] {
+        if (!activityProfiler_->isInitialized()) {
+          activityProfiler_->init();
+          initChildActivityProfilers();
+        }
+      });
     }
   }
 

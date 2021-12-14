@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from . import consts
 from .profiler.memory_parser import MemoryMetrics, MemoryRecord, MemorySnapshot
@@ -19,7 +19,7 @@ class Run(object):
     def __init__(self, name, run_dir):
         self.name = name
         self.run_dir = run_dir
-        self.profiles = {}
+        self.profiles: Dict[Tuple[str, str], RunProfile] = {}
 
     @property
     def workers(self):
@@ -94,7 +94,7 @@ class RunProfile(object):
     def __init__(self, worker, span):
         self.worker = worker
         self.span = span
-        self.views = []
+        self.views: List[consts.View] = []
         self.has_runtime = False
         self.has_kernel = False
         self.has_communication = False

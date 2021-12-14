@@ -175,17 +175,16 @@ class RunProfileData(object):
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
-        self.has_communication = parser.has_communication
         self.has_memcpy_or_memset = parser.has_memcpy_or_memset
         self.steps_names = parser.steps_names
         self.used_devices = sorted(list(parser.used_devices))
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
-        self.comm_lib = parser.comm_lib
         self.role_ranges = parser.role_ranges
 
-        # Parse communications.
-        self.comm_node_list = parser.generate_communication_nodes()
+        self.comm_lib = parser.comm_lib
+        self.has_communication = parser.has_communication
+        self.comm_node_list = parser.comm_node_list
 
         # Starting aggregate
         logger.debug("ModuleAggregator")

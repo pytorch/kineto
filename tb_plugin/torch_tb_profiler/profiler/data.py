@@ -71,14 +71,7 @@ class RunProfileData(object):
         self.avg_costs = None
 
         # GPU parser
-        self.gpu_ids: List[int] = None
-        self.gpu_utilization = None
-        self.sm_efficiency = None
-        self.occupancy = None
-        self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
-        self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
-        self.blocks_per_sm_count = None
-        self.occupancy_count = None
+        self.gpu_metrics_parser: GPUMetricsParser = None
 
         # Operator aggregator
         self.op_list_groupby_name = None
@@ -204,21 +197,12 @@ class RunProfileData(object):
         self.comm_overlap_costs = overall_parser.communication_overlap
 
         logger.debug("GPUMetricsParser")
-        gpu_metrics_parser = GPUMetricsParser()
-        gpu_metrics_parser.parse_events(self.events, parser.global_start_ts, parser.global_end_ts,
-                                        parser.steps[0][0], parser.steps[-1][1])
-        self.gpu_ids = list(gpu_metrics_parser.gpu_ids)
-        self.gpu_utilization = gpu_metrics_parser.gpu_utilization
-        self.sm_efficiency = gpu_metrics_parser.avg_approximated_sm_efficiency_per_device
-        self.occupancy = gpu_metrics_parser.avg_occupancy_per_device
-        self.gpu_util_buckets = gpu_metrics_parser.gpu_util_buckets
-        self.approximated_sm_efficiency_ranges = gpu_metrics_parser.approximated_sm_efficiency_ranges
-        self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
-        self.occupancy_count = gpu_metrics_parser.occupancy_count
+        self.gpu_metrics_parser = GPUMetricsParser.parse_events(
+            self.events, parser.global_start_ts, parser.global_end_ts, parser.steps[0][0], parser.steps[-1][1])
 
         logger.debug("TensorCoresParser")
         tensorcores_parser = TensorCoresParser()
-        tensorcores_parser.parse_events(self.tid2tree, module_aggregator.ops, gpu_metrics_parser.gpu_ids)
+        tensorcores_parser.parse_events(self.tid2tree, module_aggregator.ops, self.gpu_metrics_parser.gpu_ids)
         self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
         self.tc_ratio = tensorcores_parser.tc_ratio
 
@@ -334,8 +318,8 @@ class RunProfileData(object):
             return gpu_list_str, has_str
 
         low_util_gpus = []
-        for gpu_id in self.gpu_ids:
-            if self.gpu_utilization[gpu_id] < 0.5:
+        for gpu_id in self.gpu_metrics_parser.gpu_ids:
+            if self.gpu_metrics_parser.gpu_utilization[gpu_id] < 0.5:
                 low_util_gpus.append(gpu_id)
         if len(low_util_gpus) > 0:
             gpu_list_str, has_str = get_gpus_str(low_util_gpus)

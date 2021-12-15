@@ -7,7 +7,7 @@ from torch_tb_profiler.profiler.data import (DistributedRunProfileData,
                                              RunProfileData)
 from torch_tb_profiler.profiler.loader import RunLoader
 from torch_tb_profiler.profiler.overall_parser import ProfileRole
-from torch_tb_profiler.profiler.run_generator import RunGenerator
+from torch_tb_profiler.profiler.gpu_metrics_parser import GPUMetricsParser
 from torch_tb_profiler.run import RunProfile
 
 SCHEMA_VERSION = 1
@@ -1011,22 +1011,22 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertEqual(len(profile.gpu_ids), 1)
-        self.assertAlmostEqual(profile.gpu_utilization[1], (40 + 20) / 120)
-        self.assertAlmostEqual(profile.sm_efficiency[1],
+        self.assertEqual(len(profile.gpu_metrics_parser.gpu_ids), 1)
+        self.assertAlmostEqual(profile.gpu_metrics_parser.gpu_utilization[1], (40 + 20) / 120)
+        self.assertAlmostEqual(profile.gpu_metrics_parser.avg_approximated_sm_efficiency_per_device[1],
                                (0.5 * (135 - 130)
                                 + 1.0 * (140 - 135)
                                 + 0.6 * (145 - 140)
                                 + 0.9 * (150 - 145)
                                 + 0.3 * (170 - 150)
                                 + 1.0 * (220 - 200)) / (220 - 100))
-        self.assertAlmostEqual(profile.occupancy[1],
+        self.assertAlmostEqual(profile.gpu_metrics_parser.avg_occupancy_per_device[1],
                                (0.6 * 10 + 0.1 * 15 + 1.0 * 25 + 0.3 * 20) / (10 + 15 + 25 + 20))
 
         gpu_util_expected = [(100, 0), (110, 0), (120, 0), (130, 1.0), (140, 1.0), (150, 1.0), (160, 1.0),
                              (170, 0), (180, 0), (190, 0), (200, 1.0), (210, 1.0), (220, 0)]
-        for gpu_id in profile.gpu_ids:
-            buckets = profile.gpu_util_buckets[gpu_id]
+        for gpu_id in profile.gpu_metrics_parser.gpu_ids:
+            buckets = profile.gpu_metrics_parser.gpu_util_buckets[gpu_id]
             gpu_util_id = 0
             for b in buckets:
                 self.assertEqual(b[0], gpu_util_expected[gpu_util_id][0])
@@ -1036,8 +1036,8 @@ class TestProfiler(unittest.TestCase):
 
         sm_efficiency_expected = [(130, 0.5), (135, 0), (135, 1.0), (140, 0), (140, 0.6), (145, 0), (145, 0.9),
                                   (150, 0), (150, 0.3), (170, 0), (170, 0), (200, 0), (200, 1.0), (220, 0)]
-        for gpu_id in profile.gpu_ids:
-            ranges = profile.approximated_sm_efficiency_ranges[gpu_id]
+        for gpu_id in profile.gpu_metrics_parser.gpu_ids:
+            ranges = profile.gpu_metrics_parser.approximated_sm_efficiency_ranges[gpu_id]
             sm_efficiency_id = 0
             for r in ranges:
                 self.assertEqual(
@@ -1144,12 +1144,12 @@ class TestProfiler(unittest.TestCase):
         profile = parse_json_trace(json_content)
         profile.process()
 
-        self.assertEqual(len(profile.gpu_ids), 1)
-        self.assertAlmostEqual(profile.gpu_utilization[1], 0.0)
-        self.assertTrue(profile.sm_efficiency[1] is None)
-        self.assertTrue(profile.occupancy[1] is None)
-        self.assertTrue(profile.blocks_per_sm_count[1] > 0)
-        self.assertTrue(profile.occupancy_count[1] > 0)
+        self.assertEqual(len(profile.gpu_metrics_parser.gpu_ids), 1)
+        self.assertAlmostEqual(profile.gpu_metrics_parser.gpu_utilization[1], 0.0)
+        self.assertTrue(profile.gpu_metrics_parser.avg_approximated_sm_efficiency_per_device[1] is None)
+        self.assertTrue(profile.gpu_metrics_parser.avg_occupancy_per_device[1] is None)
+        self.assertTrue(profile.gpu_metrics_parser.blocks_per_sm_count[1] > 0)
+        self.assertTrue(profile.gpu_metrics_parser.occupancy_count[1] > 0)
 
         count = 0
         for agg_by_op in profile.kernel_list_groupby_name_op:
@@ -1207,7 +1207,10 @@ class TestProfiler(unittest.TestCase):
 
         basedir = os.path.dirname(os.path.realpath(__file__))
         trace_json_flat_path = os.path.join(basedir, "gpu_metrics_input.json")
-        profile.gpu_metrics = RunGenerator.get_gpu_metrics(gpu_util_buckets, approximated_sm_efficiency_ranges)
+        gpu_metrics_parser = GPUMetricsParser()
+        gpu_metrics_parser.gpu_util_buckets = gpu_util_buckets
+        gpu_metrics_parser.approximated_sm_efficiency_ranges = approximated_sm_efficiency_ranges
+        profile.gpu_metrics = gpu_metrics_parser.get_gpu_metrics()
         with open(trace_json_flat_path, "rb") as file:
             raw_data = file.read()
         data_with_gpu_metrics_compressed = profile.append_gpu_metrics(raw_data)

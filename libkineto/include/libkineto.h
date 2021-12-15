@@ -65,6 +65,7 @@ class LibkinetoApi {
   void registerProfiler(std::unique_ptr<ActivityProfilerInterface> profiler) {
     activityProfiler_ = std::move(profiler);
     initClientIfRegistered();
+    initProfilerIfRegistered();
   }
 
   ActivityProfilerInterface& activityProfiler() {

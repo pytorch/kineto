@@ -185,11 +185,7 @@ def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Di
 def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[OperatorNode, None, None]:
     """Get all node with node_class from the operator tree"""
     def traverse_node(node):
-<<<<<<< HEAD
         if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode, PLModuleNode, DataLoaderNode):
-=======
-        if type(node) not in (ProfilerStepNode, ModuleNode, DataLoaderNode):
->>>>>>> 1f654d2 (Override fill_stats in BackwardNode to fix the device_duration)
             return
 
         if isinstance(node, node_class):

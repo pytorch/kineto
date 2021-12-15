@@ -7,7 +7,8 @@ from typing import Generator, List, Optional, Tuple
 
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
-from .trace import EventTypes, KernelEvent, ModuleEvent, OperatorEvent
+from .trace import (DurationEvent, EventTypes, KernelEvent, ModuleEvent,
+                    OperatorEvent)
 
 logger = utils.get_logger()
 
@@ -24,7 +25,7 @@ class BaseNode(ABC):
         self.external_id = external_id  # For consistency check.
 
     @staticmethod
-    def get_node_argument(event):
+    def get_node_argument(event: DurationEvent):
         kwargs = {}
         kwargs['name'] = event.name
         kwargs['start_time'] = event.ts
@@ -39,7 +40,7 @@ class BaseNode(ABC):
         return kwargs
 
     @property
-    def duration(self):
+    def duration(self) -> int:
         if self.start_time is not None and self.end_time is not None:
             return self.end_time - self.start_time
         else:
@@ -58,7 +59,7 @@ class CommunicationNode(BaseNode):
         self.step_name = None
 
     @classmethod
-    def create(cls, event):
+    def create(cls, event: OperatorEvent):
         kwargs = BaseNode.get_node_argument(event)
         return cls(input_shape=event.input_shape, input_type=event.input_type, **kwargs)
 

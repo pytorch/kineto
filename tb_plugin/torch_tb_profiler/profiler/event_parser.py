@@ -386,6 +386,7 @@ class StepParser:
 class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
+        self.comm_node_list: Dict[CommunicationNode] = None
 
     def parse(self, events: Iterable[BaseEvent], fwd_bwd_map: Dict[int, int]) -> Dict[int, List[OperatorNode]]:
         result = self.parse_nodes(events)
@@ -400,10 +401,9 @@ class EventParser(NodeParserMixin, StepParser):
             self.communication_data.clear()
         # Move the interleaved logic out of each NodeParser and StepParser
         self.update_device_steps(self.runtime_node_list)
-        return tid2tree
 
-    def generate_communication_nodes(self):
-        return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+        self.comm_node_list = generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+        return tid2tree
 
     @staticmethod
     def print_tree(root):

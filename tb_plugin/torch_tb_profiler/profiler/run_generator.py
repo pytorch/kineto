@@ -48,26 +48,22 @@ class RunGenerator(object):
 
         profile_run.views.append(consts.TRACE_VIEW)
         profile_run.trace_file_path = self.profile_data.trace_file_path
-        profile_run.gpu_util_buckets = self.profile_data.gpu_util_buckets
-        profile_run.approximated_sm_efficiency_ranges = self.profile_data.approximated_sm_efficiency_ranges
 
-        profile_run.gpu_ids = self.profile_data.gpu_ids
-        profile_run.gpu_utilization = self.profile_data.gpu_utilization
-        profile_run.sm_efficiency = self.profile_data.sm_efficiency
-        profile_run.occupancy = self.profile_data.occupancy
-        profile_run.tc_ratio = self.profile_data.tc_ratio
+        profile_run.gpu_metrics = self.profile_data.gpu_metrics_parser.get_gpu_metrics()
+
+        gpu_infos = {gpu_id: RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
+                     for gpu_id in self.profile_data.gpu_metrics_parser.gpu_ids}
+        gpu_infos = {gpu_id: gpu_info for gpu_id, gpu_info in gpu_infos.items() if gpu_info is not None}
+
+        profile_run.gpu_summary, profile_run.gpu_tooltip = \
+            self.profile_data.gpu_metrics_parser.get_gpu_metrics_data_tooltip(
+                gpu_infos, self.profile_data.tc_ratio)
 
         profile_run.tid2tree = self.profile_data.tid2tree
 
         if self.profile_data.memory_snapshot:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.memory_snapshot = self.profile_data.memory_snapshot
-
-        profile_run.gpu_infos = {}
-        for gpu_id in profile_run.gpu_ids:
-            gpu_info = RunGenerator._get_gpu_info(self.profile_data.device_props, gpu_id)
-            if gpu_info is not None:
-                profile_run.gpu_infos[gpu_id] = gpu_info
 
         profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
         if profile_run.module_stats:
@@ -311,17 +307,6 @@ class RunGenerator(object):
             result[k] = self._generate_op_table(v, group_by_input_shape, True)
         return result
 
-    @staticmethod
-    def _get_gpu_metrics_columns(blocks_per_sm_count: int, occupancy_count: int):
-        columns = []
-        if blocks_per_sm_count > 0:
-            columns.append({"type": "number", "name": "Mean Blocks Per SM",
-                            "tooltip": consts.TOOLTIP_BLOCKS_PER_SM})
-        if occupancy_count > 0:
-            columns.append({"type": "number", "name": "Mean Est. Achieved Occupancy (%)",
-                            "tooltip": consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_TABLE})
-        return columns
-
     def _generate_kernel_op_table(self):
         table = {}
         result = {
@@ -343,8 +328,7 @@ class RunGenerator(object):
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
-        gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
-            sum(self.profile_data.blocks_per_sm_count), sum(self.profile_data.occupancy_count))
+        gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns()
         table["columns"].extend(gpu_metrics_columns)
 
         table["rows"] = []
@@ -359,9 +343,9 @@ class RunGenerator(object):
                              agg_by_name_op.calls,
                              agg_by_name_op.total_duration, round(agg_by_name_op.avg_duration),
                              agg_by_name_op.max_duration, agg_by_name_op.min_duration]
-            if sum(self.profile_data.blocks_per_sm_count) > 0:
+            if self.profile_data.gpu_metrics_parser.has_blocks_per_sm:
                 kernel_op_row.append(round(agg_by_name_op.avg_blocks_per_sm, 2))
-            if sum(self.profile_data.occupancy_count) > 0:
+            if self.profile_data.gpu_metrics_parser.has_occupancy:
                 kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
             table["rows"].append(kernel_op_row)
         return result
@@ -386,17 +370,16 @@ class RunGenerator(object):
                              "tooltip": consts.TOOLTIP_KERNEL_USES_TC}]
         columns = ["count", "sum", "mean", "max", "min"]
         round_digits = [0, 0, 0, 0, 0]
-        if sum(self.profile_data.blocks_per_sm_count) > 0:
+        if self.profile_data.gpu_metrics_parser.has_blocks_per_sm:
             columns.append("blocks_per_sm")
             round_digits.append(2)
-        if sum(self.profile_data.occupancy_count) > 0:
+        if self.profile_data.gpu_metrics_parser.has_occupancy:
             columns.append("occupancy")
             round_digits.append(2)
         col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
         for column in col_names:
             table["columns"].append({"type": "number", "name": column})
-        gpu_metrics_columns = RunGenerator._get_gpu_metrics_columns(
-            sum(self.profile_data.blocks_per_sm_count), sum(self.profile_data.occupancy_count))
+        gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns()
         table["columns"].extend(gpu_metrics_columns)
 
         table["rows"] = []
@@ -420,7 +403,7 @@ class RunGenerator(object):
         if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
             return None
 
-        device_prop = device_props[gpu_id]
+        device_prop: Dict = device_props[gpu_id]
         gpu_info = {}
         name = device_prop.get("name")
         if name is not None:
@@ -454,7 +437,9 @@ class DistributedRunGenerator(object):
         return profile_run
 
     def _generate_gpu_info(self):
-        result = OrderedDict()
+        # first key is node name, the second key is process id, the third key is GPU0/,
+        # the value is the gpu info json
+        result: Dict[str, Dict[str, Dict[str, Dict]]] = OrderedDict()
         index = 0
         for data in sorted(self.all_profile_data, key=lambda x: x.worker):
             if not data.device_props:

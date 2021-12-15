@@ -42,7 +42,8 @@ def generate_communication_nodes(
     return comm_node_list
 
 
-def analyze_communication_nodes(comm_node_list: List[CommunicationNode]):
+def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
+        -> Tuple[Dict[str, Tuple[int, int]], Dict[str, List[int]]]:
     step_comm_stats: Dict[str, Tuple[int, int]] = {}
     total_comm_stats: Dict[str, Tuple[int, int, List, List]] = {}
 

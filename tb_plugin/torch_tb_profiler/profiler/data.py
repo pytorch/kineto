@@ -201,8 +201,8 @@ class RunProfileData(object):
             self.events, parser.global_start_ts, parser.global_end_ts, parser.steps[0][0], parser.steps[-1][1])
 
         logger.debug("TensorCoresParser")
-        tensorcores_parser = TensorCoresParser()
-        tensorcores_parser.parse_events(self.tid2tree, module_aggregator.ops, self.gpu_metrics_parser.gpu_ids)
+        tensorcores_parser = TensorCoresParser.parse_events(
+            self.tid2tree, module_aggregator.ops, self.gpu_metrics_parser.gpu_ids)
         self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
         self.tc_ratio = tensorcores_parser.tc_ratio
 
@@ -214,7 +214,7 @@ class RunProfileData(object):
             self.tc_used_ratio = kernel_parser.tc_used_ratio
 
         memory_events = self._memory_events()
-        if len(memory_events):
+        if memory_events:
             memory_parser = MemoryParser(memory_events)
             self.memory_snapshot = memory_parser.find_memory_nodes(self.tid2tree)
 

@@ -17,7 +17,7 @@ from .event_parser import CommLibTypes, EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
 from .kernel_parser import KernelParser
 from .memory_parser import MemoryParser, MemorySnapshot
-from .node import OperatorNode, RuntimeNode
+from .node import OperatorNode
 from .op_agg import ModuleAggregator
 from .overall_parser import OverallParser
 from .tensor_cores_parser import TensorCoresParser
@@ -27,20 +27,40 @@ logger = utils.get_logger()
 
 
 class RunProfileData(object):
-    def __init__(self, worker: str, span: Optional[str] = None):
+    def __init__(self, worker: str, span: str, trace_json: Dict):
         self.worker = worker
         self.span = span
-        self.data_schema_version = None
-        self.distributed_info = None
-        self.device_props = None
+
+        # metadatas
+        self.data_schema_version = trace_json.get("schemaVersion", None)
+        self.distributed_info = trace_json.get("distributedInfo", None)
+        self.device_props = trace_json.get("deviceProperties", None)
+
+        self.profiler_start_ts = float("inf")
+        self.events: List[BaseEvent] = []
+
+        trace_body = trace_json["traceEvents"]
+        fwd_bwd_events = []
+        for data in trace_body:
+            if data.get("cat") == 'forward_backward':
+                fwd_bwd_events.append(data)
+            else:
+                event = trace.create_event(data)
+                if event is not None:
+                    self.profiler_start_ts = min(self.profiler_start_ts, event.ts)
+                    self.events.append(event)
+
+        self.events.sort(key=lambda e: e.ts)
+        self.forward_backward_events = trace.create_association_events(fwd_bwd_events)
+
+        self.trace_file_path: str = None
+
+        # Event Parser results
+        self.tid2tree: Dict[int, OperatorNode] = None
         self.used_devices = []
         self.use_dp: bool = False
         self.use_ddp: bool = False
         self.comm_lib = None
-        self.profiler_start_ts = float("inf")
-        self.forward_backward_events: Dict[int, int] = None
-        self.events: List[BaseEvent] = None
-        self.trace_file_path: str = None
         self.has_runtime: bool = False
         self.has_kernel: bool = False
         self.has_communication: bool = False
@@ -49,29 +69,30 @@ class RunProfileData(object):
         self.steps_costs = None
         self.steps_names = None
         self.avg_costs = None
-        self.runtime_node_list: List[RuntimeNode] = None
-        self.gpu_ids = None
-        self.gpu_utilization = None
-        self.sm_efficiency = None
-        self.occupancy = None
-        self.gpu_util_buckets = None  # Cached here. Will be processed to json on first trace view.
-        self.approximated_sm_efficiency_ranges = None  # Cached here. Will be processed to json on first trace view.
-        self.blocks_per_sm_count = None
-        self.occupancy_count = None
-        self.tid2tree: Dict[int, OperatorNode] = None
+
+        # GPU parser
+        self.gpu_metrics_parser: GPUMetricsParser = None
+
+        # Operator aggregator
         self.op_list_groupby_name = None
         self.op_list_groupby_name_input = None
         self.stack_lists_group_by_name = None
         self.stack_lists_group_by_name_input = None
         self.kernel_list_groupby_name_op = None
+
+        # Kernel and Tensor Core
         self.kernel_stat = None
         self.tc_ratio = None
         self.tc_eligible_ops_kernel_ratio = None
         self.tc_used_ratio = None  # If it's a pure CPU run, then this keeps as None.
-        self.recommendations = []
+
+        # Communicator
         self.comm_node_list = None
         self.comm_overlap_costs = None
         self.memory_snapshot: Optional[MemorySnapshot] = None
+
+        # recommendation based on analysis result.
+        self.recommendations = []
 
     @staticmethod
     def parse(worker, span, path, cache_dir):
@@ -79,25 +100,11 @@ class RunProfileData(object):
 
         profile = RunProfileData.from_json(worker, span, trace_json)
         profile.trace_file_path = trace_path
-        return profile, trace_path
+        return profile
 
     @staticmethod
     def from_json(worker, span, trace_json: Dict):
-        profile = RunProfileData(worker, span)
-        profile.data_schema_version = trace_json.get("schemaVersion", None)
-        profile.distributed_info = trace_json.get("distributedInfo", None)
-        profile.device_props = trace_json.get("deviceProperties", None)
-        trace_json = trace_json["traceEvents"]
-
-        profile.events = []
-        for data in trace_json:
-            event = trace.create_event(data)
-            if event is not None:
-                profile.profiler_start_ts = min(profile.profiler_start_ts, event.ts)
-                profile.events.append(event)
-        profile.events.sort(key=lambda e: e.ts)
-        profile.forward_backward_events = trace.create_association_events(trace_json)
-
+        profile = RunProfileData(worker, span, trace_json)
         profile.process()
         profile.analyze()
         return profile
@@ -161,17 +168,16 @@ class RunProfileData(object):
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
-        self.has_communication = parser.has_communication
         self.has_memcpy_or_memset = parser.has_memcpy_or_memset
         self.steps_names = parser.steps_names
         self.used_devices = sorted(list(parser.used_devices))
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
-        self.comm_lib = parser.comm_lib
         self.role_ranges = parser.role_ranges
 
-        # Parse communications.
-        self.comm_node_list = parser.generate_communication_nodes()
+        self.comm_lib = parser.comm_lib
+        self.has_communication = parser.has_communication
+        self.comm_node_list = parser.comm_node_list
 
         # Starting aggregate
         logger.debug("ModuleAggregator")
@@ -191,22 +197,12 @@ class RunProfileData(object):
         self.comm_overlap_costs = overall_parser.communication_overlap
 
         logger.debug("GPUMetricsParser")
-        self.runtime_node_list = parser.runtime_node_list
-        gpu_metrics_parser = GPUMetricsParser()
-        gpu_metrics_parser.parse_events(self.events, parser.global_start_ts, parser.global_end_ts,
-                                        parser.steps[0][0], parser.steps[-1][1])
-        self.gpu_ids = gpu_metrics_parser.gpu_ids
-        self.gpu_utilization = gpu_metrics_parser.gpu_utilization
-        self.sm_efficiency = gpu_metrics_parser.avg_approximated_sm_efficiency_per_device
-        self.occupancy = gpu_metrics_parser.avg_occupancy_per_device
-        self.gpu_util_buckets = gpu_metrics_parser.gpu_util_buckets
-        self.approximated_sm_efficiency_ranges = gpu_metrics_parser.approximated_sm_efficiency_ranges
-        self.blocks_per_sm_count = gpu_metrics_parser.blocks_per_sm_count
-        self.occupancy_count = gpu_metrics_parser.occupancy_count
+        self.gpu_metrics_parser = GPUMetricsParser.parse_events(
+            self.events, parser.global_start_ts, parser.global_end_ts, parser.steps[0][0], parser.steps[-1][1])
 
         logger.debug("TensorCoresParser")
-        tensorcores_parser = TensorCoresParser()
-        tensorcores_parser.parse_events(self.tid2tree, module_aggregator.ops, gpu_metrics_parser.gpu_ids)
+        tensorcores_parser = TensorCoresParser.parse_events(
+            self.tid2tree, module_aggregator.ops, self.gpu_metrics_parser.gpu_ids)
         self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
         self.tc_ratio = tensorcores_parser.tc_ratio
 
@@ -218,7 +214,7 @@ class RunProfileData(object):
             self.tc_used_ratio = kernel_parser.tc_used_ratio
 
         memory_events = self._memory_events()
-        if len(memory_events):
+        if memory_events:
             memory_parser = MemoryParser(memory_events)
             self.memory_snapshot = memory_parser.find_memory_nodes(self.tid2tree)
 
@@ -322,8 +318,8 @@ class RunProfileData(object):
             return gpu_list_str, has_str
 
         low_util_gpus = []
-        for gpu_id in self.gpu_ids:
-            if self.gpu_utilization[gpu_id] < 0.5:
+        for gpu_id in self.gpu_metrics_parser.gpu_ids:
+            if self.gpu_metrics_parser.gpu_utilization[gpu_id] < 0.5:
                 low_util_gpus.append(gpu_id)
         if len(low_util_gpus) > 0:
             gpu_list_str, has_str = get_gpus_str(low_util_gpus)

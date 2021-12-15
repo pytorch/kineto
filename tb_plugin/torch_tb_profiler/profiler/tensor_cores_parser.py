@@ -8,16 +8,19 @@ from .node import OperatorNode
 
 
 class TensorCoresParser:
-    def __init__(self):
-        self.tc_eligible_ops_kernel_ratio = 0.0
+    def __init__(self, tc_ratio: List[float], tc_eligible_ops_kernel_ratio: float):
         # For calculating Tensor Cores time ratio per GPU.
-        self.tc_ratio: List[float] = None
+        self.tc_ratio = tc_ratio
+        self.tc_eligible_ops_kernel_ratio = tc_eligible_ops_kernel_ratio
 
-    def parse_events(self, tid2tree: Dict[str, OperatorNode], ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
-        self.tc_ratio = self._calculate_tc_ratio(ops, gpu_ids)
-        self.tc_eligible_ops_kernel_ratio = self._get_tc_eligible_ops_kernel_ratio(tid2tree, ops)
+    @classmethod
+    def parse_events(cls, tid2tree: Dict[str, OperatorNode], ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
+        tc_ratio = cls._calculate_tc_ratio(ops, gpu_ids)
+        tc_eligible_ops_kernel_ratio = cls._get_tc_eligible_ops_kernel_ratio(tid2tree, ops)
+        return cls(tc_ratio, tc_eligible_ops_kernel_ratio)
 
-    def _calculate_tc_ratio(self, ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
+    @staticmethod
+    def _calculate_tc_ratio(ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
         tc_ratio: List[float] = [None] * consts.MAX_GPU_PER_NODE
         tc_time = [0] * consts.MAX_GPU_PER_NODE
         total_time = [0] * consts.MAX_GPU_PER_NODE
@@ -41,17 +44,19 @@ class TensorCoresParser:
                     tc_ratio[gpu_id] = 0.0
         return tc_ratio
 
-    def _get_bottom_tc_eligible_operators(self, op_tree_node: OperatorNode):
+    @staticmethod
+    def _get_bottom_tc_eligible_operators(op_tree_node: OperatorNode):
         ops: List[OperatorNode] = []
         for child in op_tree_node.children:
-            child_ops = self._get_bottom_tc_eligible_operators(child)
+            child_ops = TensorCoresParser._get_bottom_tc_eligible_operators(child)
             ops.extend(child_ops)
         # TC-eligible ops which have children TC-eligible ops will not be regarded as "bottom".
         if op_tree_node.tc_eligible and len(ops) == 0:
             ops.append(op_tree_node)
         return ops
 
-    def _get_tc_eligible_ops_kernel_ratio(self, tid2tree: Dict[int, OperatorNode], ops: Iterable[OperatorNode]):
+    @staticmethod
+    def _get_tc_eligible_ops_kernel_ratio(tid2tree: Dict[int, OperatorNode], ops: Iterable[OperatorNode]):
         def sum_self_kernel_time(ops: Iterable[OperatorNode]):
             sum_time = 0
             for op in ops:
@@ -64,7 +69,7 @@ class TensorCoresParser:
 
         ops_bottom_tc_eligible = []
         for root in tid2tree.values():
-            ops_bottom_tc_eligible.extend(self._get_bottom_tc_eligible_operators(root))
+            ops_bottom_tc_eligible.extend(TensorCoresParser._get_bottom_tc_eligible_operators(root))
         ops_bottom_tc_eligible_kernel_sum = sum_self_kernel_time(ops_bottom_tc_eligible)
         ops_kernel_sum = sum_self_kernel_time(ops)
         tc_eligible_ops_kernel_ratio = ops_bottom_tc_eligible_kernel_sum / ops_kernel_sum \

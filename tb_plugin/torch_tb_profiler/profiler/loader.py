@@ -85,9 +85,9 @@ class RunLoader(object):
         try:
             logger.debug("Parse trace, run_dir=%s, worker=%s", self.run_dir, path)
             local_file = self.caches.get_remote_cache(io.join(self.run_dir, path))
-            data, trace_path = RunProfileData.parse(worker, span, local_file, self.caches.cache_dir)
-            if trace_path != local_file:
-                self.caches.add_file(local_file, trace_path)
+            data = RunProfileData.parse(worker, span, local_file, self.caches.cache_dir)
+            if data.trace_file_path != local_file:
+                self.caches.add_file(local_file, data.trace_file_path)
 
             generator = RunGenerator(worker, span, data)
             profile = generator.generate_run_profile()

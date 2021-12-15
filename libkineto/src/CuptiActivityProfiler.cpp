@@ -466,6 +466,10 @@ void CuptiActivityProfiler::configure(
   if (profilers_.size() > 0) {
     configureChildProfilers();
   }
+
+  if (libkineto::api().client()) {
+    libkineto::api().client()->warmup(config_->isOpInputsCollectionEnabled());
+  }
   LOG(INFO) << "Tracing starting in "
             << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
 

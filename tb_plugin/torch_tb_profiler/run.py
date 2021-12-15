@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from . import consts
-from .profiler.diffrun import DiffStats, OpAgg, compare_op_tree, diff_summary
+from .profiler.diffrun import compare_op_tree, diff_summary
 from .profiler.memory_parser import MemoryMetrics, MemoryRecord, MemorySnapshot
 from .profiler.module_op import Stats
 from .profiler.node import OperatorNode
@@ -422,18 +422,8 @@ class RunProfile(object):
 
         def process_modules_stats(parent: List[Any], modules_stats: List[Stats]):
             for stats in modules_stats:
-                d = {
-                    'name': stats.name,
-                    'id': stats.id,
-                    'occurences': stats.occurences,
-                    'operators': stats.operators,
-                    'host_duration': stats.host_duration,
-                    'self_host_duration': stats.self_host_duration,
-                    'device_duration': stats.device_duration,
-                    'self_device_duration': stats.self_device_duration,
-                    'avg_duration': stats.avg_duration,
-                    'children': []
-                }
+                d = stats._asdict()
+                d['children'] = []
                 parent.append(d)
                 process_modules_stats(d['children'], stats.children)
 
@@ -465,48 +455,7 @@ class RunProfile(object):
         exp_root = next(iter(exp.tid2tree.values()))
         diff_root = compare_op_tree(base_root, exp_root)
         diff_stats = diff_summary(diff_root)
-
-        def get_agg_json(agg: OpAgg):
-            return {
-                'name': agg.name,
-                'calls': agg.calls,
-                'host_duration': agg.host_duration,
-                'device_duration': agg.device_duration,
-                'self_host_duration': agg.self_device_duration,
-                'self_device_duration': agg.self_device_duration
-            }
-
-        def traverse_node(node: DiffStats):
-            d = {
-                'left': {
-                    'name': node.left.name,
-                    'duration': node.left.duration,
-                    'device_duration': node.left.device_duration,
-                    'total_duration': node.left.total_duration,
-                    'aggs': []
-                },
-                'right': {
-                    'name': node.right.name,
-                    'duration': node.right.duration,
-                    'device_duration': node.right.device_duration,
-                    'total_duration': node.right.total_duration,
-                    'aggs': []
-                },
-                'children': []
-            }
-
-            for agg in node.left.op_aggs:
-                d["left"]["aggs"].append(get_agg_json(agg))
-
-            for agg in node.right.op_aggs:
-                d["right"]["aggs"].append(get_agg_json(agg))
-
-            for c in node.children:
-                d["children"].append(traverse_node(c))
-
-            return d
-
-        return traverse_node(diff_stats)
+        return diff_stats
 
 
 class DistributedRunProfile(object):

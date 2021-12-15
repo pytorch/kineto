@@ -9,7 +9,7 @@ from ..node import (BackwardNode, DataLoaderNode, ModuleNode, OperatorNode,
 from .contract import DiffStats, OpStats
 from .operator import Operator, Operators, create_operator
 
-INDENT = "    "
+INDENT = '    '
 RUN_NODE_TYPES = (BackwardNode, DataLoaderNode, ModuleNode, OptimizerNode, ProfilerStepNode)
 
 
@@ -147,9 +147,9 @@ def diff_summary(node: DiffNode) -> DiffStats:
 
 
 def print_node(node: Union[DiffNode, DiffStats], level: int, index: int, file=sys.stdout):
-    file.write(f"{INDENT * level}level {level}, index {index}:\n")
-    file.write(f"{INDENT * (level + 1)}left : {node.left}\n")
-    file.write(f"{INDENT * (level + 1)}right: {node.right}\n")
+    file.write(f'{INDENT * level}level {level}, index {index}:\n')
+    file.write(f'{INDENT * (level + 1)}left : {node.left}\n')
+    file.write(f'{INDENT * (level + 1)}right: {node.right}\n')
     for i, child in enumerate(node.children):
         print_node(child, level + 1, i, file=file)
 

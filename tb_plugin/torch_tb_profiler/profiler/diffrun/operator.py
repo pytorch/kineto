@@ -14,7 +14,7 @@ class Operator(metaclass=ABCMeta):
         self.name: str = name
 
     def __str__(self) -> str:
-        return f"{self.name}: {self.duration}"
+        return f'{self.name}: {self.duration}'
 
     @property
     def duration(self) -> int:
@@ -67,11 +67,11 @@ class UnknownOp(Operator):
 class Operators(Operator):
     def __init__(self, nodes: Union[OperatorNode, List[OperatorNode]]):
         if not nodes:
-            raise ValueError("the operator node is None or empty")
+            raise ValueError('the operator node is None or empty')
         if isinstance(nodes, OperatorNode):
             super().__init__(nodes.name)
         elif isinstance(nodes, list):
-            super().__init__("multiple nodes")
+            super().__init__('multiple nodes')
 
         self.op_nodes: Union[OperatorNode, List[OperatorNode]] = nodes
 
@@ -98,9 +98,9 @@ class Operators(Operator):
 
     def __str__(self) -> str:
         if isinstance(self.op_nodes, list):
-            return f"{self.name}: {len(self.op_nodes)}: {self.op_nodes[0].name}: {self.total_duration}"
+            return f'{self.name}: {len(self.op_nodes)}: {self.op_nodes[0].name}: {self.total_duration}'
         else:
-            return f"{self.name}: {self.op_nodes.__class__.__name__}: {self.total_duration}"
+            return f'{self.name}: {self.op_nodes.__class__.__name__}: {self.total_duration}'
 
     def get_operators_and_kernels(self) -> Tuple[List[OperatorNode], List[DeviceNode]]:
         if isinstance(self.op_nodes, list):

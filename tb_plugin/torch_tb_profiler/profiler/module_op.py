@@ -157,7 +157,8 @@ def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], M
 def _get_module_list(tid2tree: Dict[int, OperatorNode]) -> Generator[ModuleNode, None, None]:
     """Get all ModuleNode from the operator tree"""
     def traverse_node(node):
-        if type(node) not in (ProfilerStepNode, ModuleNode, DataLoaderNode):
+        # the OperatorNode is mainly consider the Operator with DistributedDataParallel.forward
+        if type(node) not in (DataLoaderNode, ModuleNode, OperatorNode, ProfilerStepNode):
             return
 
         if isinstance(node, ModuleNode):

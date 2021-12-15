@@ -66,6 +66,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         receive_runs = threading.Thread(target=self._receive_runs, name='receive_runs', daemon=True)
         receive_runs.start()
 
+        self.diff_run_cache = {}
+        self.diff_run_flatten_cache = {}
+
         def clean():
             logger.debug('starting cleanup...')
             self._cache.__exit__(*sys.exc_info())
@@ -111,7 +114,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             '/memory_events': self.memory_events_route,
             '/module': self.module_route,
             '/tree': self.op_tree_route,
-            "/diff": self.diff_run_route,
+            '/diff': self.diff_run_route,
+            '/diffnode': self.diff_run_node_route,
         }
 
     def frontend_metadata(self):
@@ -332,19 +336,20 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def diff_run_route(self, request: werkzeug.Request):
-        name = request.args.get("run")
-        span = request.args.get("span")
-        worker = request.args.get("worker")
-        self._validate(run=name, worker=worker, span=span)
-        base = self._get_profile(name, worker, span)
+        base, exp = self.get_diff_runs(request)
+        diff_stats = self.get_diff_status(base, exp)
+        content = diff_stats.get_diff_tree_summary()
+        return self.respond_as_json(content, True)
 
-        exp_name = request.args.get("exp_run")
-        exp_span = request.args.get("exp_span")
-        exp_worker = request.args.get("exp_worker")
-        self._validate(exp_run=exp_name, exp_worker=exp_worker, exp_span=exp_span)
-        exp = self._get_profile(exp_name, exp_worker, exp_span)
-
-        content = base.compare_run(exp)
+    @wrappers.Request.application
+    def diff_run_node_route(self, request: werkzeug.Request):
+        base, exp = self.get_diff_runs(request)
+        path = request.args.get('path', '0')
+        stats_dict = self.get_diff_stats_dict(base, exp)
+        diff_stat = stats_dict.get(path)
+        if diff_stat is None:
+            raise exceptions.NotFound('could not find diff run for %s' % (path))
+        content = diff_stat.get_diff_node_summary(path)
         return self.respond_as_json(content, True)
 
     @wrappers.Request.application
@@ -386,6 +391,39 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def is_loading(self):
         with self._load_lock:
             return bool(self._load_threads)
+
+    def get_diff_runs(self, request: werkzeug.Request):
+        name = request.args.get('run')
+        span = request.args.get('span')
+        worker = request.args.get('worker')
+        self._validate(run=name, worker=worker, span=span)
+        base = self._get_profile(name, worker, span)
+
+        exp_name = request.args.get('exp_run')
+        exp_span = request.args.get('exp_span')
+        exp_worker = request.args.get('exp_worker')
+        self._validate(exp_run=exp_name, exp_worker=exp_worker, exp_span=exp_span)
+        exp = self._get_profile(exp_name, exp_worker, exp_span)
+
+        return base, exp
+
+    def get_diff_status(self, base: RunProfile, exp: RunProfile):
+        key = (base, exp)
+        diff_stats = self.diff_run_cache.get(key)
+        if diff_stats is None:
+            diff_stats = base.compare_run(exp)
+            self.diff_run_cache[key] = diff_stats
+
+        return diff_stats
+
+    def get_diff_stats_dict(self, base: RunProfile, exp: RunProfile):
+        key = (base, exp)
+        stats_dict = self.diff_run_flatten_cache.get(key)
+        if stats_dict is None:
+            diff_stats = self.get_diff_status(base, exp)
+            stats_dict = diff_stats.flatten_diff_tree()
+            self.diff_run_flatten_cache[key] = stats_dict
+        return stats_dict
 
     def _monitor_runs(self):
         logger.info('Monitor runs begin')

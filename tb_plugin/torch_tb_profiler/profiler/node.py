@@ -272,10 +272,10 @@ class DeviceNode(BaseNode):
 
 
 def create_operator_node(event: OperatorEvent):
-    if (event.name.startswith("enumerate(DataLoader)#") and event.name.endswith(".__next__")
-            or event.name.startswith("enumerate(DataPipe)#")):
+    if (event.name.startswith('enumerate(DataLoader)#') and event.name.endswith('.__next__')
+            or event.name.startswith('enumerate(DataPipe)#')):
         return DataLoaderNode.create(event)
-    elif event.name.startswith("Optimizer."):
+    elif event.name.startswith('Optimizer.'):
         return OptimizerNode.create(event)
     else:
         return OperatorNode.create(event)
@@ -283,4 +283,3 @@ def create_operator_node(event: OperatorEvent):
 
 def is_operator_node(node: BaseNode):
     return bool(type(node) is OperatorNode and node.type == EventTypes.OPERATOR and node.name not in ExcludeOpName)
-

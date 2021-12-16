@@ -169,6 +169,9 @@ class ModuleNode(OperatorNode):
         kwargs["module_id"] = event.module_id
         kwargs["python_id"] = event.python_id
         kwargs["python_parent_id"] = event.python_parent_id
+        # From the time being, the ModuleNode always have external_id to 0.
+        # As the result, we need reset the external_id to None to ignore adding the runtime nodes for ModuleNode
+        kwargs.pop('external_id', None)
         return cls(**kwargs)
 
 

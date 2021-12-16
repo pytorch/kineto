@@ -181,7 +181,8 @@ def merge_ranges(src_ranges, is_sorted=False) -> List[Tuple[int, int]]:
 
     merged_ranges = []
     merged_ranges.append(src_ranges[0])
-    for _, src_range in enumerate(src_ranges, start=1):
+    for src_id in range(1, len(src_ranges)):
+        src_range = src_ranges[src_id]
         if src_range[1] > merged_ranges[-1][1]:
             if src_range[0] <= merged_ranges[-1][1]:
                 merged_ranges[-1] = (merged_ranges[-1][0], src_range[1])

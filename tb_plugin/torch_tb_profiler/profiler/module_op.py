@@ -142,8 +142,7 @@ def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], M
         agg = module_aggs[key]
         agg.occurences += 1
 
-        ops = [child for child in m.children if is_operator_node(child)]
-        agg.operators += len(ops)
+        agg.operators += sum(1 for child in m.children if is_operator_node(child))
 
         agg.self_host_duration += m.self_host_duration
         agg.host_duration += m.end_time - m.start_time

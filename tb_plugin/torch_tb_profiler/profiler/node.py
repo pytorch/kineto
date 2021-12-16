@@ -122,33 +122,6 @@ class OperatorNode(HostNode):
                 logger.warning("New Tensor Cores eligible operator found: '{}'!".format(self.name))
                 self.tc_eligible = True
 
-    @property
-    def device_start_time(self):
-        self_device_start_time = next((device.start_time for device in self.get_device_nodes()), None)
-        child_device_start_time = next((device.start_time for device in self.get_child_device_nodes()), None)
-        return min((v for v in [self_device_start_time, child_device_start_time] if v is not None), default=None)
-
-    @property
-    def device_end_time(self):
-        self_device_end_time = next((device.end_time for device in self.get_device_nodes(True)), None)
-        child_device_end_time = next((device.end_time for device in self.get_child_device_nodes(True)), None)
-        return max((v for v in [self_device_end_time, child_device_end_time] if v is not None), default=None)
-
-    def get_device_nodes(self, reverse=False):
-        '''Get the first/last device not if there are any'''
-        for r in reversed(self.runtimes) if reverse else self.runtimes:
-            # the runtime node "cudaDeviceSynchronize" would not have any associated kernels
-            for d in r.get_kernels(reverse):
-                yield d
-
-    def get_child_device_nodes(self, reverse=False):
-        '''Get the child device nodes'''
-        for child in reversed(self.children) if reverse else self.children:
-            for d in child.get_device_nodes(reverse):
-                yield d
-            for d in child.get_child_device_nodes(reverse):
-                yield d
-
     def get_operator_and_kernels(self):
         ops: List[OperatorNode] = []
         kernels: List[DeviceNode] = []

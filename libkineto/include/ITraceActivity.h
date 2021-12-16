@@ -21,9 +21,11 @@ struct ITraceActivity {
   virtual ~ITraceActivity() {}
   // Device is a physical or logical entity, e.g. CPU, GPU or process
   virtual int64_t deviceId() const = 0;
-  // A resource is something on the device, e.g. s/w or h/w thread,
+  // A resource is something on the device, h/w thread,
   // functional units etc.
   virtual int64_t resourceId() const = 0;
+  // s/w thread
+  virtual int32_t getThreadId() const = 0;
   // Start timestamp in mucrosecond
   virtual int64_t timestamp() const = 0;
   // Duration in microseconds

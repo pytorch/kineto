@@ -42,6 +42,10 @@ class GenericTraceActivity : public ITraceActivity {
     return resource;
   }
 
+  int32_t getThreadId() const override {
+    return threadId;
+  }
+
   int64_t timestamp() const override {
     return startTime;
   }
@@ -105,6 +109,7 @@ class GenericTraceActivity : public ITraceActivity {
   int32_t id{0};
   int32_t device{0};
   int32_t resource{0};
+  int32_t threadId{0};
   ActivityType activityType;
   std::string activityName;
   struct Flow {

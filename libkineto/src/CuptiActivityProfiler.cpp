@@ -145,6 +145,8 @@ void CuptiActivityProfiler::processCpuTrace(
     }
     clientActivityTraceMap_[act.correlationId()] = &span_pair;
     activityMap_[act.correlationId()] = &act;
+
+    recordThreadInfo(act.resourceId(), act.getThreadId(), act.deviceId());
   }
   logger.handleTraceSpan(cpu_span);
 }

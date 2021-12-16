@@ -39,6 +39,8 @@ struct CuptiActivity : public ITraceActivity {
     return nsToUs(activity_.end - activity_.start);
   }
   int64_t correlationId() const override {return activity_.correlationId;}
+  // TODO(T107507796): Deprecate ITraceActivity
+  int32_t getThreadId() const override {return 0;}
   const ITraceActivity* linkedActivity() const override {return linked_;}
   int flowType() const override {return kLinkAsyncCpuGpu;}
   int flowId() const override {return correlationId();}

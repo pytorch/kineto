@@ -68,6 +68,9 @@ constexpr char kActivitiesWarmupDurationSecsKey[] = "ACTIVITIES_WARMUP_PERIOD_SE
 constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
+// Client Interface
+constexpr char kClientInterfaceEnableOpInputsCollection[] = "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
+
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -291,6 +294,11 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesMaxGpuBufferSize_ = toInt32(val) * 1024 * 1024;
   } else if (!name.compare(kActivitiesWarmupDurationSecsKey)) {
     activitiesWarmupDuration_ = seconds(toInt32(val));
+  }
+
+  // Client Interface
+  else if (!name.compare(kClientInterfaceEnableOpInputsCollection)) {
+    enableOpInputsCollection_ = toBool(val);  
   }
 
   // Common

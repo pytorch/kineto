@@ -175,6 +175,10 @@ class Config : public AbstractConfig {
     selectedActivityTypes_ = types;
   }
 
+  bool isOpInputsCollectionEnabled() const {
+    return enableOpInputsCollection_;
+  }
+
   // Trace for this long
   std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
@@ -339,6 +343,10 @@ class Config : public AbstractConfig {
 
   int activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;
+
+  // Client Interface
+  // Enable inputs collection when tracing ops
+  bool enableOpInputsCollection_{true};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;

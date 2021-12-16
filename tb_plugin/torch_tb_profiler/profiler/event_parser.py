@@ -79,6 +79,11 @@ class NodeParserMixin:
         # associate CUDA Runtimes with CPU events
         for _, op_list in tid2list.items():
             for op in op_list:
+                if isinstance(op, ModuleNode):
+                    # From the time being, the ModuleNode always have external_id to 0.
+                    # As the result, we need ignore the runtime nodes for ModuleNode
+                    continue
+
                 runtime_nodes = externalid_to_runtime.pop(op.external_id, [])
                 if runtime_nodes:
                     op.runtimes.extend(runtime_nodes)

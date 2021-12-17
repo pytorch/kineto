@@ -199,10 +199,10 @@ class RuntimeNode(HostNode):
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
     def get_kernels(self):
-        if not self.device_nodes:
-            return
-
-        return (d for d in self.device_nodes if d.type == EventTypes.KERNEL)
+        if self.device_nodes:
+            for d in self.device_nodes:
+                if d.type == EventTypes.KERNEL:
+                    yield d
 
     @classmethod
     def create(cls, event, device_nodes: Optional[List['DeviceNode']]):

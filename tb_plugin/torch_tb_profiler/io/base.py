@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import namedtuple
 
 # Data returned from the Stat call.
-StatData = namedtuple("StatData", ["length"])
+StatData = namedtuple('StatData', ['length'])
 
 
 class BaseFileSystem(ABC):
@@ -86,7 +86,7 @@ class LocalPath(BasePath):
 
 class RemotePath(BasePath):
     def split(self, path):
-        """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+        """Split a pathname.  Returns tuple '(head, tail)' where 'tail' is
         everything after the final slash.  Either part may be empty."""
         sep = '/'
         i = path.rfind(sep) + 1
@@ -96,7 +96,7 @@ class RemotePath(BasePath):
 
     def join(self, path, *paths):
         """Join paths with a slash."""
-        return "/".join((path,) + paths)
+        return '/'.join((path,) + paths)
 
     def abspath(self, path):
         return path

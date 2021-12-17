@@ -35,9 +35,9 @@ class ProfileRole(IntEnum):
 
 class NodeParserMixin:
     def __init__(self, *args, **kwargs):
-        '''Please refer to https://stackoverflow.com/questions/9575409/calling-parent-class-init-with-multiple-inheritance-whats-the-right-way # noqa: E501
+        """Please refer to https://stackoverflow.com/questions/9575409/calling-parent-class-init-with-multiple-inheritance-whats-the-right-way # noqa: E501
         to see the reason why we need call super().__init__ like this way
-        '''
+        """
         super().__init__(*args, **kwargs)
 
         self.communication_data: Dict[int, CommunicationNode] = {}
@@ -94,7 +94,7 @@ class NodeParserMixin:
         return tid2list, tid2zero_rt_list, staled_device_nodes
 
     def _update_communication_node(self, event: KernelEvent):
-        '''Update the communication node by using the TraceEvent instance'''
+        """Update the communication node by using the TraceEvent instance"""
         external_id = event.external_id
         comm_node = self.communication_data.get(external_id)
         if comm_node:
@@ -126,8 +126,8 @@ class NodeParserMixin:
                 # Check the external_id
                 if rt_node.external_id != device_node.external_id:
                     logger.warning(
-                        "Runtime and Device-op have same correlation id %s but with different external id!"
-                        " (runtime external_id, device external_id): (%s, %s)" %
+                        'Runtime and Device-op have same correlation id %s but with different external id!'
+                        ' (runtime external_id, device external_id): (%s, %s)' %
                         (corrid, rt_node.external_id, device_node.external_id))
             else:
                 corrid_to_device[corrid].append(device_node)
@@ -148,8 +148,8 @@ class NodeParserMixin:
                 for device_node in device_nodes:
                     if rt_node.external_id != device_node.external_id:
                         logger.warning(
-                            "Runtime and Device-op have same correlation id %s but with different external id!"
-                            " (rt external_id, device external_id): (%s, %s)" %
+                            'Runtime and Device-op have same correlation id %s but with different external id!'
+                            ' (rt external_id, device external_id): (%s, %s)' %
                             (corrid, rt_node.external_id, device_node.external_id))
         elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP, EventTypes.MODULE]:
             if event.type == EventTypes.PROFILER_STEP:
@@ -169,9 +169,9 @@ class NodeParserMixin:
                     comm_node.kernel_ranges.append((ts, ts + dur))
                     comm_node.total_time = dur
                 self.communication_data[op_node.external_id] = comm_node
-            if event.name == "DataParallel.forward":
+            if event.name == 'DataParallel.forward':
                 self.use_dp = True
-            if event.name == "DistributedDataParallel.forward":
+            if event.name == 'DistributedDataParallel.forward':
                 self.use_ddp = True
             tid2list[int(tid)].append(op_node)
 
@@ -189,7 +189,7 @@ class StepParser:
         self.global_min_ts = sys.maxsize  # Min time of all events.
         self.global_max_ts = -sys.maxsize - 1  # Max time of all events.
         # The below two form time range for adding gpu utilization to trace view.
-        # Use "PyTorch Profiler (0)" as them.
+        # Use 'PyTorch Profiler (0)' as them.
         # If not exists, assign global_min_ts and global_max_ts to them.
         self.global_start_ts = sys.maxsize
         self.global_end_ts = -sys.maxsize - 1
@@ -200,7 +200,7 @@ class StepParser:
                 continue
 
             self._parse_step(event, comm_nodes)
-            if event.type == EventTypes.TRACE and event.name == "PyTorch Profiler (0)":
+            if event.type == EventTypes.TRACE and event.name == 'PyTorch Profiler (0)':
                 self.global_start_ts = event.ts
                 self.global_end_ts = event.ts + event.duration
         if self.global_start_ts == sys.maxsize:
@@ -210,7 +210,7 @@ class StepParser:
 
         if len(self.steps) == 0:
             self.steps.append((self.cpu_min_ts, self.cpu_max_ts))
-            self.steps_names.append("0")
+            self.steps_names.append('0')
 
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
@@ -250,8 +250,8 @@ class StepParser:
         elif evt_type == EventTypes.RUNTIME:
             self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
         elif (evt_type == EventTypes.OPERATOR and (
-                (event.name.startswith("enumerate(DataLoader)#") and event.name.endswith(".__next__"))
-                or event.name.startswith("enumerate(DataPipe)#"))):
+                (event.name.startswith('enumerate(DataLoader)#') and event.name.endswith('.__next__'))
+                or event.name.startswith('enumerate(DataPipe)#'))):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
@@ -271,8 +271,8 @@ class StepParser:
         self.global_max_ts = max(self.global_max_ts, ts + dur)
 
     def _find_device_steps(self, runtime_node_list: List[RuntimeNode]):
-        '''return steps associated with device nodes.
-        '''
+        """return steps associated with device nodes.
+        """
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
 
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
@@ -340,8 +340,8 @@ class StepParser:
                                prev_step_end_time: Optional[int],
                                steps_device: List[Tuple[int, int]],
                                steps_matched_device_nodes: List[int]):
-        '''Update self.steps considering device side events launched by each host side step.
-        Update self.steps_names if some tail steps are removed.'''
+        """Update self.steps considering device side events launched by each host side step.
+        Update self.steps_names if some tail steps are removed."""
 
         # Change step time to device side on the condition that any step have device time.
         is_use_gpu = prev_step_end_time is not None
@@ -356,7 +356,7 @@ class StepParser:
                     step_end_time = max(step_end_time, steps_device[i_step][1])
                     if step_end_time < step_start_time:
                         logger.warning(
-                            "Abnormal step_end_time of step {}: [{}, {}]".format(
+                            'Abnormal step_end_time of step {}: [{}, {}]'.format(
                                 i_step, step_start_time, step_end_time))
                         step_end_time = step_start_time
                 self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
@@ -375,8 +375,8 @@ class StepParser:
                     keep_steps = i_step
                 if keep_steps < len(self.steps):
                     logger.warning(
-                        "Remove the last {} steps from overview. "
-                        "Because the profiler may fail to capture all the kernels launched by these steps.".format(
+                        'Remove the last {} steps from overview. '
+                        'Because the profiler may fail to capture all the kernels launched by these steps.'.format(
                             len(self.steps) - keep_steps
                         ))
                     self.steps = self.steps[:keep_steps]
@@ -397,7 +397,7 @@ class EventParser(NodeParserMixin, StepParser):
         self.parse_steps(events, self.communication_data)
         if len(self.comm_lib) > 1:
             logger.warning(
-                "Multiple communication libs are found. To avoid confusing, we disable the distributed view.")
+                'Multiple communication libs are found. To avoid confusing, we disable the distributed view.')
             self.communication_data.clear()
         # Move the interleaved logic out of each NodeParser and StepParser
         self.update_device_steps(self.runtime_node_list)
@@ -414,13 +414,13 @@ class EventParser(NodeParserMixin, StepParser):
         ctx = Ctx()
 
         def print_node_set_prefix(node: OperatorNode):
-            header = f"[{ctx.tid}]" + ".".join(ctx.name_stack[1:])  # omit the CallTreeRoot
+            header = f'[{ctx.tid}]' + '.'.join(ctx.name_stack[1:])  # omit the CallTreeRoot
             prefix_len = len(ctx.name_stack) * 4 - 4 - 1
             if len(ctx.name_stack) > 1:
                 print(header)
-                prefix = " " * prefix_len
+                prefix = ' ' * prefix_len
                 print(prefix, node.name)
-                print(prefix, "time:", node.start_time, "-->", node.end_time)
+                print(prefix, 'time:', node.start_time, '-->', node.end_time)
 
         def push(node: OperatorNode):
             ctx.name_stack.append(node.name)

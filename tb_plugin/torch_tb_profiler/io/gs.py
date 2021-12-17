@@ -14,7 +14,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
 
     def __init__(self):
         if not storage:
-            raise ImportError("google-cloud-storage must be installed for Google Cloud Blob support.")
+            raise ImportError('google-cloud-storage must be installed for Google Cloud Blob support.')
 
     def exists(self, dirname):
         """Returns whether the path is a directory or not."""
@@ -44,7 +44,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         basename, parts = self.split_blob_path(dirname)
         if basename is None or parts is None:
             return False
-        if basename == "":
+        if basename == '':
             # root container case
             return True
         else:
@@ -81,7 +81,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         results = {}
         for blob in blobs:
             dirname, basename = self.split(blob.name)
-            dirname = "gs://{}/{}".format(bucket_name, dirname)
+            dirname = 'gs://{}/{}'.format(bucket_name, dirname)
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value
@@ -114,9 +114,9 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
 
     def bucket_and_path(self, url):
         """Split an S3-prefixed URL into bucket and path."""
-        if url.startswith("gs://"):
-            url = url[len("gs://"):]
-        idx = url.index("/")
+        if url.startswith('gs://'):
+            url = url[len('gs://'):]
+        idx = url.index('/')
         bucket = url[:idx]
         path = url[(idx + 1):]
         return bucket, path

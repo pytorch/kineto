@@ -33,10 +33,10 @@ def generate_communication_nodes(
             elif comm_node.start_time >= steps[index][1]:
                 index += 1
             else:
-                logger.error("Found a communication op not belong to any step.")
+                logger.error('Found a communication op not belong to any step.')
                 break
         if index >= valid_steps:
-            logger.error("Found communication ops not belong to any step. ")
+            logger.error('Found communication ops not belong to any step. ')
             break
 
     return comm_node_list
@@ -69,7 +69,7 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
                 elif comm_node.input_type[i] == 'c10::Half':
                     bytes_one_value = 2
                 else:
-                    logger.warning("Found an unknown tensor type: {}".format(comm_node.input_type[i]))
+                    logger.warning('Found an unknown tensor type: {}'.format(comm_node.input_type[i]))
                     bytes_one_value = 0
                 total_size = 1
                 for size in comm_node.input_shape[i]:

@@ -21,7 +21,7 @@ class GPUMetricsParser(object):
         self.kernel_ranges_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         self.gpu_utilization = [None] * consts.MAX_GPU_PER_NODE
         self.gpu_util_timeline_unit_size = 0
-        self.gpu_util_timeline_unit_name = ""
+        self.gpu_util_timeline_unit_name = ''
         self.gpu_util_buckets = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
         # For calculating approximated SM efficiency.
         self.blocks_per_sm_per_device = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
@@ -45,13 +45,13 @@ class GPUMetricsParser(object):
                 bucket_size *= 10
             buckets = int(range_micro_seconds / bucket_size)
             unit = bucket_size
-            unit_str = "us"
+            unit_str = 'us'
             if unit >= 1000:
                 unit /= 1000
-                unit_str = "ms"
+                unit_str = 'ms'
                 if unit >= 1000:
                     unit /= 1000
-                    unit_str = "s"
+                    unit_str = 's'
             return int(bucket_size), int(buckets), int(unit), unit_str
 
         gpu_utilization_timeline = [[] for _ in range(consts.MAX_GPU_PER_NODE)]
@@ -64,7 +64,7 @@ class GPUMetricsParser(object):
             ranges_sum = get_ranges_sum(kernel_ranges_all_steps)
             self.gpu_utilization[gpu_id] = ranges_sum / (steps_end_time - steps_start_time)
 
-            # The timeline will use "PyTorch Profiler (0)" as start,
+            # The timeline will use 'PyTorch Profiler (0)' as start,
             # in order to draw previous step's kernels' gpu utilization.
             bucket_size, buckets, self.gpu_util_timeline_unit_size, self.gpu_util_timeline_unit_name = \
                 get_bucket_info(global_end_time - global_start_time)
@@ -162,7 +162,7 @@ class GPUMetricsParser(object):
                      steps_start_time: int,
                      steps_end_time: int):
         parser = GPUMetricsParser()
-        logger.debug("GPU Metrics, parse events")
+        logger.debug('GPU Metrics, parse events')
         for event in events:
             if event.type == EventTypes.KERNEL:
                 parser.parse_event(event)
@@ -189,23 +189,23 @@ class GPUMetricsParser(object):
                     self.blocks_per_sm_count[gpu_id] += 1
                 else:
                     # Workaround for negative value input.
-                    logger.warning("blocks per SM {} with ts {} is not positive!".format(event.blocks_per_sm, ts))
+                    logger.warning('blocks per SM {} with ts {} is not positive!'.format(event.blocks_per_sm, ts))
             if event.occupancy is not None:
                 if event.occupancy >= 0.0:
                     self.occupancy_per_device[gpu_id].append((ts, ts + dur, event.occupancy))
                     self.occupancy_count[gpu_id] += 1
                 else:
                     # Workaround for negative value input.
-                    logger.warning("est. achieved occupancy % {} with ts {} is negative!".format(event.occupancy, ts))
+                    logger.warning('est. achieved occupancy % {} with ts {} is negative!'.format(event.occupancy, ts))
 
     def get_gpu_metrics_columns(self):
         columns = []
         if self.has_blocks_per_sm:
-            columns.append({"type": "number", "name": "Mean Blocks Per SM",
-                            "tooltip": consts.TOOLTIP_BLOCKS_PER_SM})
+            columns.append({'type': 'number', 'name': 'Mean Blocks Per SM',
+                            'tooltip': consts.TOOLTIP_BLOCKS_PER_SM})
         if self.has_occupancy:
-            columns.append({"type": "number", "name": "Mean Est. Achieved Occupancy (%)",
-                            "tooltip": consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_TABLE})
+            columns.append({'type': 'number', 'name': 'Mean Est. Achieved Occupancy (%)',
+                            'tooltip': consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_TABLE})
         return columns
 
     @property
@@ -267,31 +267,31 @@ class GPUMetricsParser(object):
         has_tc = False
 
         gpu_metrics_data = []
-        gpu_info_columns = ["Name", "Memory", "Compute Capability"]
+        gpu_info_columns = ['Name', 'Memory', 'Compute Capability']
 
         def process_gpu(gpu_id: int):
             nonlocal has_sm_efficiency, has_occupancy, has_tc
-            gpu_metrics_data.append({"title": "GPU {}:".format(gpu_id), "value": ""})
+            gpu_metrics_data.append({'title': 'GPU {}:'.format(gpu_id), 'value': ''})
             gpu_info = gpu_infos.get(gpu_id, None)
             if gpu_info is not None:
                 for key in gpu_info_columns:
                     if key in gpu_info:
-                        gpu_metrics_data.append({"title": key, "value": gpu_info[key]})
+                        gpu_metrics_data.append({'title': key, 'value': gpu_info[key]})
             else:
                 # the legacy chrome tracing file would not have gpu info.
                 pass
-            gpu_metrics_data.append({"title": "GPU Utilization", "value": "{} %".format(
+            gpu_metrics_data.append({'title': 'GPU Utilization', 'value': '{} %'.format(
                 round(self.gpu_utilization[gpu_id] * 100, 2))})
             if self.avg_approximated_sm_efficiency_per_device[gpu_id] is not None:
-                gpu_metrics_data.append({"title": "Est. SM Efficiency", "value": "{} %".format(
+                gpu_metrics_data.append({'title': 'Est. SM Efficiency', 'value': '{} %'.format(
                     round(self.avg_approximated_sm_efficiency_per_device[gpu_id] * 100, 2))})
                 has_sm_efficiency = True
             if self.avg_occupancy_per_device[gpu_id] is not None:
-                gpu_metrics_data.append({"title": "Est. Achieved Occupancy", "value": "{} %".format(
+                gpu_metrics_data.append({'title': 'Est. Achieved Occupancy', 'value': '{} %'.format(
                     round(self.avg_occupancy_per_device[gpu_id], 2))})
                 has_occupancy = True
             if tc_ratio[gpu_id] is not None:
-                gpu_metrics_data.append({"title": "Kernel Time using Tensor Cores", "value": "{} %".format(
+                gpu_metrics_data.append({'title': 'Kernel Time using Tensor Cores', 'value': '{} %'.format(
                     round(tc_ratio[gpu_id] * 100, 2))})
                 has_tc = True
 
@@ -299,16 +299,16 @@ class GPUMetricsParser(object):
         process_gpu(gpu_ids[0])
         for idx in range(1, len(gpu_ids)):
             # Append separator line for beautiful to see.
-            gpu_metrics_data.append({"title": "<hr/>", "value": ""})
+            gpu_metrics_data.append({'title': '<hr/>', 'value': ''})
             process_gpu(gpu_ids[idx])
 
-        tooltip_summary = "The GPU usage metrics:\n"
-        tooltip = "{}\n{}".format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
+        tooltip_summary = 'The GPU usage metrics:\n'
+        tooltip = '{}\n{}'.format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
         if has_sm_efficiency:
-            tooltip += "\n" + consts.TOOLTIP_SM_EFFICIENCY
+            tooltip += '\n' + consts.TOOLTIP_SM_EFFICIENCY
         if has_occupancy:
-            tooltip += "\n" + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
+            tooltip += '\n' + consts.TOOLTIP_OCCUPANCY_COMMON + consts.TOOLTIP_OCCUPANCY_OVERVIEW
         if has_tc:
-            tooltip += "\n" + consts.TOOLTIP_TENSOR_CORES
+            tooltip += '\n' + consts.TOOLTIP_TENSOR_CORES
 
         return gpu_metrics_data, tooltip

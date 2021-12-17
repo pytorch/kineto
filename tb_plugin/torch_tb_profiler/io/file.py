@@ -1,4 +1,4 @@
-'''
+"""
 This file is forked from
 https://github.com/tensorflow/tensorboard/blob/master/tensorboard/compat/tensorflow_stub/io/gfile.py.
 The following functionalities are added after forking:
@@ -12,7 +12,7 @@ The following functionalities are added after forking:
 * add specialized walk for Local file system, Azure Blob and Google Cloud to improve the walk performance.
 * add global wrapper for abspath, basename, join, download_file.
 * change the global walk wrapper to support specialized walk.
-'''
+"""
 import glob as py_glob
 import os
 import tempfile

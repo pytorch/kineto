@@ -1,0 +1,19 @@
+name: Build torch-tb-profiler Pip Package
+
+on:
+  # TODO: Add an on_release trigger to build on tags
+  workflow_dispatch:
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build pip package
+        run: |
+          set -e
+          cd tb_plugin
+          python setup.py sdist bdist_wheel
+          cd dist/
+          pip install *.whl
+          python -c "import torch_tb_profiler;print(torch_tb_profiler.__version__)"

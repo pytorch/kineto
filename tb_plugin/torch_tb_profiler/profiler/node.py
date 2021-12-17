@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------
 import sys
 from abc import ABC
-from typing import Generator, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
@@ -198,11 +198,11 @@ class RuntimeNode(HostNode):
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
-    def get_kernels(self, reverse=False) -> Generator['DeviceNode', None, None]:
-        if self.device_nodes:
-            for d in reversed(self.device_nodes) if reverse else self.device_nodes:
-                if d.type == EventTypes.KERNEL:
-                    yield d
+    def get_kernels(self):
+        if not self.device_nodes:
+            return
+
+        return (d for d in self.device_nodes if d.type == EventTypes.KERNEL)
 
     @classmethod
     def create(cls, event, device_nodes: Optional[List['DeviceNode']]):

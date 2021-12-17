@@ -27,8 +27,8 @@ class TensorCoresParser:
         has_kernel = False
         for op in ops:
             for rt in op.runtimes:
-                # "CallTreeRoot" & "dummy" kernels are launched out of profiler step, so don't count them.
-                if not (op.name == "CallTreeRoot" and rt.name == "dummy"):
+                # 'CallTreeRoot' & 'dummy' kernels are launched out of profiler step, so don't count them.
+                if not (op.name == 'CallTreeRoot' and rt.name == 'dummy'):
                     for k in rt.get_kernels():
                         has_kernel = True
                         dur = k.end_time - k.start_time
@@ -50,7 +50,7 @@ class TensorCoresParser:
         for child in op_tree_node.children:
             child_ops = TensorCoresParser._get_bottom_tc_eligible_operators(child)
             ops.extend(child_ops)
-        # TC-eligible ops which have children TC-eligible ops will not be regarded as "bottom".
+        # TC-eligible ops which have children TC-eligible ops will not be regarded as 'bottom'.
         if op_tree_node.tc_eligible and len(ops) == 0:
             ops.append(op_tree_node)
         return ops
@@ -61,8 +61,8 @@ class TensorCoresParser:
             sum_time = 0
             for op in ops:
                 for rt in op.runtimes:
-                    # "CallTreeRoot" & "dummy" kernels are launched out of profiler step, so don't count them.
-                    if not (op.name == "CallTreeRoot" and rt.name == "dummy"):
+                    # 'CallTreeRoot' & 'dummy' kernels are launched out of profiler step, so don't count them.
+                    if not (op.name == 'CallTreeRoot' and rt.name == 'dummy'):
                         for k in rt.get_kernels():
                             sum_time += k.end_time - k.start_time
             return sum_time

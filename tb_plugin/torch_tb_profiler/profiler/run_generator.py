@@ -83,97 +83,97 @@ class RunGenerator(object):
             return format_str.format(step_name, costs.costs[ProfileRole.Total], part_name, part_cost, percentage)
 
         def build_avg_cost_dict(part_name: str, part_cost: float):
-            cost_dict = {"name": part_name,
-                         "description": "",
-                         "value": round(part_cost),
-                         "extra": round(100 * part_cost / self.profile_data.avg_costs.costs[ProfileRole.Total], 2)}
+            cost_dict = {'name': part_name,
+                         'description': '',
+                         'value': round(part_cost),
+                         'extra': round(100 * part_cost / self.profile_data.avg_costs.costs[ProfileRole.Total], 2)}
             return cost_dict
 
         show_gpu = (self.profile_data.has_runtime
                     or self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset)
 
-        column_tootip = {"type": "string", "role": "tooltip", "p": {"html": "true"}}
+        column_tootip = {'type': 'string', 'role': 'tooltip', 'p': {'html': 'true'}}
         data = {}
-        data["steps"] = {}
-        data["steps"]["columns"] = [{"type": "string", "name": "Step"}]
+        data['steps'] = {}
+        data['steps']['columns'] = [{'type': 'string', 'name': 'Step'}]
         if show_gpu:
-            data["steps"]["columns"].extend([{"type": "number", "name": "Kernel"},
+            data['steps']['columns'].extend([{'type': 'number', 'name': 'Kernel'},
                                              column_tootip,
-                                             {"type": "number", "name": "Memcpy"},
+                                             {'type': 'number', 'name': 'Memcpy'},
                                              column_tootip,
-                                             {"type": "number", "name": "Memset"},
+                                             {'type': 'number', 'name': 'Memset'},
                                              column_tootip])
         if self.profile_data.has_communication:
-            data["steps"]["columns"].extend([{"type": "number", "name": "Communication"},
+            data['steps']['columns'].extend([{'type': 'number', 'name': 'Communication'},
                                              column_tootip])
         if show_gpu:
-            data["steps"]["columns"].extend([{"type": "number", "name": "Runtime"},
+            data['steps']['columns'].extend([{'type': 'number', 'name': 'Runtime'},
                                              column_tootip])
-        data["steps"]["columns"].extend([{"type": "number", "name": "DataLoader"},
+        data['steps']['columns'].extend([{'type': 'number', 'name': 'DataLoader'},
                                          column_tootip,
-                                         {"type": "number", "name": "CPU Exec"},
+                                         {'type': 'number', 'name': 'CPU Exec'},
                                          column_tootip,
-                                         {"type": "number", "name": "Other"},
+                                         {'type': 'number', 'name': 'Other'},
                                          column_tootip])
 
-        data["steps"]["rows"] = []
+        data['steps']['rows'] = []
         for i in range(len(self.profile_data.steps_costs)):
             costs = self.profile_data.steps_costs[i]
             step_name = self.profile_data.steps_names[i]
             row = [step_name]
             if show_gpu:
                 row.extend([costs.costs[ProfileRole.Kernel],
-                            build_part_time_str(costs.costs[ProfileRole.Kernel], "Kernel"),
+                            build_part_time_str(costs.costs[ProfileRole.Kernel], 'Kernel'),
                             costs.costs[ProfileRole.Memcpy],
-                            build_part_time_str(costs.costs[ProfileRole.Memcpy], "Memcpy"),
+                            build_part_time_str(costs.costs[ProfileRole.Memcpy], 'Memcpy'),
                             costs.costs[ProfileRole.Memset],
-                            build_part_time_str(costs.costs[ProfileRole.Memset], "Memset")])
+                            build_part_time_str(costs.costs[ProfileRole.Memset], 'Memset')])
             if self.profile_data.has_communication:
                 row.extend([costs.costs[ProfileRole.Communication],
-                            build_part_time_str(costs.costs[ProfileRole.Communication], "Communication")])
+                            build_part_time_str(costs.costs[ProfileRole.Communication], 'Communication')])
             if show_gpu:
                 row.extend([costs.costs[ProfileRole.Runtime],
-                            build_part_time_str(costs.costs[ProfileRole.Runtime], "Runtime")])
+                            build_part_time_str(costs.costs[ProfileRole.Runtime], 'Runtime')])
             row.extend([costs.costs[ProfileRole.DataLoader],
-                        build_part_time_str(costs.costs[ProfileRole.DataLoader], "DataLoader"),
+                        build_part_time_str(costs.costs[ProfileRole.DataLoader], 'DataLoader'),
                         costs.costs[ProfileRole.CpuOp],
-                        build_part_time_str(costs.costs[ProfileRole.CpuOp], "CPU Exec"),
+                        build_part_time_str(costs.costs[ProfileRole.CpuOp], 'CPU Exec'),
                         costs.costs[ProfileRole.Other],
-                        build_part_time_str(costs.costs[ProfileRole.Other], "Other")])
-            data["steps"]["rows"].append(row)
+                        build_part_time_str(costs.costs[ProfileRole.Other], 'Other')])
+            data['steps']['rows'].append(row)
 
         avg_costs = []
         if show_gpu:
             avg_costs.extend([
-                build_avg_cost_dict("Kernel", self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
-                build_avg_cost_dict("Memcpy", self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
-                build_avg_cost_dict("Memset", self.profile_data.avg_costs.costs[ProfileRole.Memset])
+                build_avg_cost_dict('Kernel', self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
+                build_avg_cost_dict('Memcpy', self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
+                build_avg_cost_dict('Memset', self.profile_data.avg_costs.costs[ProfileRole.Memset])
             ])
         if self.profile_data.has_communication:
             avg_costs.extend([
-                build_avg_cost_dict("Communication", self.profile_data.avg_costs.costs[ProfileRole.Communication])
+                build_avg_cost_dict('Communication', self.profile_data.avg_costs.costs[ProfileRole.Communication])
             ])
         if show_gpu:
             avg_costs.extend([
-                build_avg_cost_dict("Runtime", self.profile_data.avg_costs.costs[ProfileRole.Runtime])
+                build_avg_cost_dict('Runtime', self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([
-            build_avg_cost_dict("DataLoader", self.profile_data.avg_costs.costs[ProfileRole.DataLoader]),
-            build_avg_cost_dict("CPU Exec", self.profile_data.avg_costs.costs[ProfileRole.CpuOp]),
-            build_avg_cost_dict("Other", self.profile_data.avg_costs.costs[ProfileRole.Other])
+            build_avg_cost_dict('DataLoader', self.profile_data.avg_costs.costs[ProfileRole.DataLoader]),
+            build_avg_cost_dict('CPU Exec', self.profile_data.avg_costs.costs[ProfileRole.CpuOp]),
+            build_avg_cost_dict('Other', self.profile_data.avg_costs.costs[ProfileRole.Other])
         ])
 
-        data["performance"] = [{"name": "Average Step Time", "description": "",
-                                "value": round(self.profile_data.avg_costs.costs[ProfileRole.Total]),
-                                "extra": 100, "children": avg_costs}]
+        data['performance'] = [{'name': 'Average Step Time', 'description': '',
+                                'value': round(self.profile_data.avg_costs.costs[ProfileRole.Total]),
+                                'extra': 100, 'children': avg_costs}]
 
         if len(self.profile_data.recommendations) == 0:
-            html = "<li>N/A</li>"
+            html = '<li>N/A</li>'
         else:
-            html = ""
+            html = ''
             for recommendation in self.profile_data.recommendations:
-                html += "<li>{}</li>".format(recommendation)
-        data["recommendations"] = "<ul>{}</ul>".format(html)
+                html += '<li>{}</li>'.format(recommendation)
+        data['recommendations'] = '<ul>{}</ul>'.format(html)
 
         return data
 
@@ -211,37 +211,37 @@ class RunGenerator(object):
         host_self_time = {}
 
         if len(op_device_total_time) > 0:
-            device_total_time["title"] = "Device Total Time (us)"
-            device_total_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
-            device_total_time["rows"] = op_device_total_time
+            device_total_time['title'] = 'Device Total Time (us)'
+            device_total_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            device_total_time['rows'] = op_device_total_time
         else:
             device_total_time = None
 
         if len(op_device_self_time) > 0:
-            device_self_time["title"] = "Device Self Time (us)"
-            device_self_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
-            device_self_time["rows"] = op_device_self_time
+            device_self_time['title'] = 'Device Self Time (us)'
+            device_self_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            device_self_time['rows'] = op_device_self_time
         else:
             device_self_time = None
 
         if len(op_host_total_time) > 0:
-            host_total_time["title"] = "Host Total Time (us)"
-            host_total_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
-            host_total_time["rows"] = op_host_total_time
+            host_total_time['title'] = 'Host Total Time (us)'
+            host_total_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            host_total_time['rows'] = op_host_total_time
         else:
             host_total_time = None
 
         if len(op_host_self_time) > 0:
-            host_self_time["title"] = "Host Self Time (us)"
-            host_self_time["columns"] = [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}]
-            host_self_time["rows"] = op_host_self_time
+            host_self_time['title'] = 'Host Self Time (us)'
+            host_self_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            host_self_time['rows'] = op_host_self_time
         else:
             host_self_time = None
 
-        data["device_total_time"] = device_total_time
-        data["device_self_time"] = device_self_time
-        data["host_total_time"] = host_total_time
-        data["host_self_time"] = host_self_time
+        data['device_total_time'] = device_total_time
+        data['device_self_time'] = device_self_time
+        data['host_total_time'] = host_total_time
+        data['host_self_time'] = host_self_time
 
         return data
 
@@ -259,15 +259,15 @@ class RunGenerator(object):
 
         data = list()
         result = {
-            "metadata": {
-                "sort": "device_self_duration" if show_gpu else "host_self_duration",
-                "tooltips": {
-                    "tc_eligible": consts.TOOLTIP_OP_TC_ELIGIBLE,
-                    "tc_self_ratio": consts.TOOLTIP_OP_TC_SELF,
-                    "tc_total_ratio": consts.TOOLTIP_OP_TC_TOTAL
+            'metadata': {
+                'sort': 'device_self_duration' if show_gpu else 'host_self_duration',
+                'tooltips': {
+                    'tc_eligible': consts.TOOLTIP_OP_TC_ELIGIBLE,
+                    'tc_self_ratio': consts.TOOLTIP_OP_TC_SELF,
+                    'tc_total_ratio': consts.TOOLTIP_OP_TC_TOTAL
                 }
             },
-            "data": data
+            'data': data
         }
         for op in op_list:
             # Whether device_duration & self_device_duration are accurate or not depends on the input tracing data.
@@ -281,7 +281,7 @@ class RunGenerator(object):
                 row['device_total_duration'] = round(op.device_duration)
             row['host_self_duration'] = round(op.self_host_duration)
             row['host_total_duration'] = round(op.host_duration)
-            row['tc_eligible'] = "Yes" if op.tc_eligible else "No"
+            row['tc_eligible'] = 'Yes' if op.tc_eligible else 'No'
             row['tc_self_ratio'] = round(100 * op.tc_self_ratio, 2)
             row['tc_total_ratio'] = round(100 * op.tc_total_ratio, 2)
             if call_stack:
@@ -310,36 +310,36 @@ class RunGenerator(object):
     def _generate_kernel_op_table(self):
         table = {}
         result = {
-            "metadata": {
-                "sort": "Total Duration (us)"
+            'metadata': {
+                'sort': 'Total Duration (us)'
             },
-            "data": table
+            'data': table
         }
-        table["columns"] = [{"type": "string", "name": "Name"},
-                            {"type": "string", "name": "Operator"},
-                            {"type": "string", "name": "Grid"},
-                            {"type": "string", "name": "Block"},
-                            {"type": "number", "name": "Register Per Thread"},
-                            {"type": "number", "name": "Shared Memory"},
-                            {"type": "string", "name": "Kernel Uses Tensor Cores",
-                             "tooltip": consts.TOOLTIP_KERNEL_USES_TC},
-                            {"type": "string", "name": "Op is Tensor Cores eligible",
-                             "tooltip": consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE}]
-        col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
+        table['columns'] = [{'type': 'string', 'name': 'Name'},
+                            {'type': 'string', 'name': 'Operator'},
+                            {'type': 'string', 'name': 'Grid'},
+                            {'type': 'string', 'name': 'Block'},
+                            {'type': 'number', 'name': 'Register Per Thread'},
+                            {'type': 'number', 'name': 'Shared Memory'},
+                            {'type': 'string', 'name': 'Kernel Uses Tensor Cores',
+                             'tooltip': consts.TOOLTIP_KERNEL_USES_TC},
+                            {'type': 'string', 'name': 'Op is Tensor Cores eligible',
+                             'tooltip': consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE}]
+        col_names = ['Calls', 'Total Duration (us)', 'Mean Duration (us)', 'Max Duration (us)', 'Min Duration (us)']
         for column in col_names:
-            table["columns"].append({"type": "number", "name": column})
+            table['columns'].append({'type': 'number', 'name': column})
         gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns()
-        table["columns"].extend(gpu_metrics_columns)
+        table['columns'].extend(gpu_metrics_columns)
 
-        table["rows"] = []
+        table['rows'] = []
         kernel_list: List[KernelAggByNameOp] = sorted(
             self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration, reverse=True)
         for agg_by_name_op in kernel_list:
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
                              str(agg_by_name_op.grid), str(agg_by_name_op.block),
                              str(agg_by_name_op.regs_per_thread or '0'), str(agg_by_name_op.shared_memory or '0'),
-                             "Yes" if agg_by_name_op.tc_used else "No",
-                             "Yes" if agg_by_name_op.op_tc_eligible else "No",
+                             'Yes' if agg_by_name_op.tc_used else 'No',
+                             'Yes' if agg_by_name_op.op_tc_eligible else 'No',
                              agg_by_name_op.calls,
                              agg_by_name_op.total_duration, round(agg_by_name_op.avg_duration),
                              agg_by_name_op.max_duration, agg_by_name_op.min_duration]
@@ -347,55 +347,55 @@ class RunGenerator(object):
                 kernel_op_row.append(round(agg_by_name_op.avg_blocks_per_sm, 2))
             if self.profile_data.gpu_metrics_parser.has_occupancy:
                 kernel_op_row.append(round(agg_by_name_op.avg_occupancy, 2))
-            table["rows"].append(kernel_op_row)
+            table['rows'].append(kernel_op_row)
         return result
 
     def _generate_kernel_pie(self):
-        pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
+        pie = {'columns': [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}], 'rows': []}
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
-            pie["rows"].append([name, row["sum"]])
-        data = {"total": pie}
+            pie['rows'].append([name, row['sum']])
+        data = {'total': pie}
         return data
 
     def _generate_kernel_table(self):
         table = {}
         result = {
-            "metadata": {
-                "sort": "Total Duration (us)"
+            'metadata': {
+                'sort': 'Total Duration (us)'
             },
-            "data": table
+            'data': table
         }
-        table["columns"] = [{"type": "string", "name": "Name"},
-                            {"type": "string", "name": "Tensor Cores Used",
-                             "tooltip": consts.TOOLTIP_KERNEL_USES_TC}]
-        columns = ["count", "sum", "mean", "max", "min"]
+        table['columns'] = [{'type': 'string', 'name': 'Name'},
+                            {'type': 'string', 'name': 'Tensor Cores Used',
+                             'tooltip': consts.TOOLTIP_KERNEL_USES_TC}]
+        columns = ['count', 'sum', 'mean', 'max', 'min']
         round_digits = [0, 0, 0, 0, 0]
         if self.profile_data.gpu_metrics_parser.has_blocks_per_sm:
-            columns.append("blocks_per_sm")
+            columns.append('blocks_per_sm')
             round_digits.append(2)
         if self.profile_data.gpu_metrics_parser.has_occupancy:
-            columns.append("occupancy")
+            columns.append('occupancy')
             round_digits.append(2)
-        col_names = ["Calls", "Total Duration (us)", "Mean Duration (us)", "Max Duration (us)", "Min Duration (us)"]
+        col_names = ['Calls', 'Total Duration (us)', 'Mean Duration (us)', 'Max Duration (us)', 'Min Duration (us)']
         for column in col_names:
-            table["columns"].append({"type": "number", "name": column})
+            table['columns'].append({'type': 'number', 'name': column})
         gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns()
-        table["columns"].extend(gpu_metrics_columns)
+        table['columns'].extend(gpu_metrics_columns)
 
-        table["rows"] = []
+        table['rows'] = []
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
-            kernel_row = [name, "Yes" if row["tc_used"] else "No"]
+            kernel_row = [name, 'Yes' if row['tc_used'] else 'No']
             for i, column in enumerate(columns):
                 kernel_row.append(round(row[column]) if round_digits[i] == 0
                                   else round(row[column], round_digits[i]))
-            table["rows"].append(kernel_row)
+            table['rows'].append(kernel_row)
         return result
 
     def _generate_tc_pie(self):
-        pie = {"columns": [{"type": "string", "name": "name"}, {"type": "number", "name": "value"}], "rows": []}
-        pie["rows"].append(["Using Tensor Cores", self.profile_data.tc_used_ratio])
-        pie["rows"].append(["Not Using Tensor Cores", 1.0 - self.profile_data.tc_used_ratio])
-        data = {"total": pie}
+        pie = {'columns': [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}], 'rows': []}
+        pie['rows'].append(['Using Tensor Cores', self.profile_data.tc_used_ratio])
+        pie['rows'].append(['Not Using Tensor Cores', 1.0 - self.profile_data.tc_used_ratio])
+        data = {'total': pie}
         return data
 
     @staticmethod
@@ -405,19 +405,19 @@ class RunGenerator(object):
 
         device_prop: Dict = device_props[gpu_id]
         gpu_info = {}
-        name = device_prop.get("name")
+        name = device_prop.get('name')
         if name is not None:
-            gpu_info["Name"] = name
+            gpu_info['Name'] = name
 
-        mem = device_prop.get("totalGlobalMem")
+        mem = device_prop.get('totalGlobalMem')
         if mem is not None:
-            gpu_info["Memory"] = "{} GB".format(round(float(mem) / 1024 / 1024 / 1024, 2))
-            gpu_info["Memory Raw"] = mem
+            gpu_info['Memory'] = '{} GB'.format(round(float(mem) / 1024 / 1024 / 1024, 2))
+            gpu_info['Memory Raw'] = mem
 
-        major = device_prop.get("computeMajor")
-        minor = device_prop.get("computeMinor")
+        major = device_prop.get('computeMajor')
+        minor = device_prop.get('computeMinor')
         if major is not None and minor is not None:
-            gpu_info["Compute Capability"] = "{}.{}".format(major, minor)
+            gpu_info['Compute Capability'] = '{}.{}'.format(major, minor)
 
         return gpu_info
 
@@ -450,14 +450,14 @@ class DistributedRunGenerator(object):
                 node = match.group(1)
                 process_id = match.group(2)
             else:
-                logger.warning("cannot parse node name from worker name {}".format(data.worker))
+                logger.warning('cannot parse node name from worker name {}'.format(data.worker))
                 node = data.worker
                 process_id = index
                 index += 1
             if node not in result:
                 result[node] = OrderedDict()
 
-            process_id = "Process " + str(process_id)
+            process_id = 'Process ' + str(process_id)
             result[node][process_id] = OrderedDict()
             for used_device in data.used_devices:
                 gpu_info = RunGenerator._get_gpu_info(data.device_props, used_device)
@@ -468,18 +468,18 @@ class DistributedRunGenerator(object):
             for k, v in result.items():
                 result[k] = OrderedDict(sorted(v.items()))
             return {
-                "metadata": {"title": "Device Information"},
-                "data": result
+                'metadata': {'title': 'Device Information'},
+                'data': result
             }
         else:
             return None
 
     def _generate_overlap_graph(self):
         result = dict()
-        result["metadata"] = {
-            "title": "Computation/Communication Overview",
-            "legends": ["Computation", "Overlapping", "Communication", "Other"],
-            "units": "us"
+        result['metadata'] = {
+            'title': 'Computation/Communication Overview',
+            'legends': ['Computation', 'Overlapping', 'Communication', 'Other'],
+            'units': 'us'
         }
         steps_to_overlap: Dict[str, Dict[str, List[int]]] = OrderedDict()
         steps_to_overlap['all'] = OrderedDict()
@@ -500,15 +500,15 @@ class DistributedRunGenerator(object):
             steps_to_overlap['all'][data.worker] = [x/step_number for x in steps_to_overlap['all'][data.worker]]
         for k, v in steps_to_overlap.items():
             steps_to_overlap[k] = OrderedDict(sorted(v.items()))
-        result["data"] = steps_to_overlap
+        result['data'] = steps_to_overlap
         return result
 
     def _generate_wait_graph(self):
         result = dict()
-        result["metadata"] = {
-            "title": "Synchronizing/Communication Overview",
-            "legends": ["Data Transfer Time", "Synchronizing Time"],
-            "units": "us"
+        result['metadata'] = {
+            'title': 'Synchronizing/Communication Overview',
+            'legends': ['Data Transfer Time', 'Synchronizing Time'],
+            'units': 'us'
         }
         steps_to_wait: Dict[str, Dict[str, List[int]]] = OrderedDict()
 
@@ -527,29 +527,29 @@ class DistributedRunGenerator(object):
 
         for k, v in steps_to_wait.items():
             steps_to_wait[k] = OrderedDict(sorted(v.items()))
-        result["data"] = steps_to_wait
+        result['data'] = steps_to_wait
         return result
 
     def _generate_ops_table(self):
         result = dict()
-        result["metadata"] = {"title": "Communication Operations Stats"}
+        result['metadata'] = {'title': 'Communication Operations Stats'}
         workers_to_comm_ops = OrderedDict()
         # Ignore the span for distributed view
         for data in self.all_profile_data:
             table = {}
-            table["columns"] = [{"type": "string", "name": "Name"}]
+            table['columns'] = [{'type': 'string', 'name': 'Name'}]
             col_names = [
-                "Calls",
-                "Total Size (bytes)",
-                "Avg Size (bytes)",
-                "Total Latency (us)",
-                "Avg Latency (us)",
-                "Data Transfer Time (us)",
-                "Avg Data Transfer Time (us)"
+                'Calls',
+                'Total Size (bytes)',
+                'Avg Size (bytes)',
+                'Total Latency (us)',
+                'Avg Latency (us)',
+                'Data Transfer Time (us)',
+                'Avg Data Transfer Time (us)'
             ]
             for column in col_names:
-                table["columns"].append({"type": "number", "name": column})
-            table["rows"] = []
+                table['columns'].append({'type': 'number', 'name': column})
+            table['rows'] = []
             for op, stats in data.total_comm_stats.items():
                 row = [
                     op,
@@ -561,7 +561,7 @@ class DistributedRunGenerator(object):
                     stats[3],
                     round(stats[3]/stats[0])
                 ]
-                table["rows"].append(row)
+                table['rows'].append(row)
             workers_to_comm_ops[data.worker] = table
-        result["data"] = OrderedDict(sorted(workers_to_comm_ops.items()))
+        result['data'] = OrderedDict(sorted(workers_to_comm_ops.items()))
         return result

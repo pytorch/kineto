@@ -31,7 +31,7 @@ class OverallParser(object):
     class Statistics:
         def __init__(self, cost_ranges: List[List[Tuple[int, int]]]):
             if not cost_ranges:
-                raise ValueError("the cost ranges is None")
+                raise ValueError('the cost ranges is None')
 
             self.cost_ranges = cost_ranges
 
@@ -75,7 +75,7 @@ class OverallParser(object):
         self.communication_overlap: List[OverallParser.StepCommunicationCosts] = []
 
     def aggregate(self, steps: List[Tuple[int, int]], role_ranges: List[List[Tuple[int, int]]]):
-        logger.debug("Overall, statistics")
+        logger.debug('Overall, statistics')
         global_stats = OverallParser.Statistics.create_from_range(steps, role_ranges)
         if role_ranges[ProfileRole.Kernel]:
             comm_comp_overlap = intersection_ranges_lists(
@@ -84,7 +84,7 @@ class OverallParser(object):
             comm_comp_overlap = intersection_ranges_lists(
                 role_ranges[ProfileRole.CpuOp], role_ranges[ProfileRole.Communication])
 
-        logger.debug("Overall, aggregation")
+        logger.debug('Overall, aggregation')
         for i, step in enumerate(steps):
             steps_stat = global_stats.intersection_with_step(step)
             self.steps_costs.append(OverallParser.Costs.create_from_statistics(steps_stat, step[1] - step[0]))

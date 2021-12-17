@@ -42,9 +42,9 @@ class MemoryRecord:
     @property
     def device_name(self):
         if self.device_type == DeviceType.CPU:
-            return "CPU"
+            return 'CPU'
         elif self.device_type == DeviceType.CUDA:
-            return "GPU{}".format(self.device_id)
+            return 'GPU{}'.format(self.device_id)
         else:
             return None
 
@@ -54,7 +54,7 @@ class MemoryRecord:
 
     @property
     def op_name_or_unknown(self):
-        return self.op_name if self.op_name else "<unknown>"
+        return self.op_name if self.op_name else '<unknown>'
 
     @classmethod
     def from_event(cls, event: MemoryEvent):
@@ -121,7 +121,7 @@ class MemorySnapshot:
                         memory_metrics_keyed_by_node[node][device][i] = value
                         memory_metrics_keyed_by_node[node][device][i + self_metric_length] += value
             else:
-                logger.debug("node {}:{} is not operator node, will skip its self metrics processing".format(
+                logger.debug('node {}:{} is not operator node, will skip its self metrics processing'.format(
                     node.name, node.start_time))
 
             # recursive the children nodes
@@ -164,7 +164,7 @@ class MemorySnapshot:
         return result
 
     def get_memory_metrics(self, op: OperatorNode, start_ts, end_ts):
-        metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith("Self")])
+        metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith('Self')])
         memory_metrics: Dict[str, List[int]] = defaultdict(lambda: [0] * metrics_count)
         for record in self.op_memory_table[op]:
             if start_ts is not None and record.ts < start_ts:
@@ -214,12 +214,12 @@ class MemoryParser:
                 processed_node[current_node] += 1
 
             while record_index < len(records):
-                '''In the loop, one pass will process one record. The basic logic is:
+                """In the loop, one pass will process one record. The basic logic is:
                 It will search from the node that last visited since both the records and tree is ordered already
                 1. it current node contains the records, then find the exactly child which just embrace it.
                 2. otherwise, find the parent node and set the child_index, so that the parent node could continue from previous visited node. # noqa: E501
                 3. if there is not any node contains the records, then all remaining records will be ignored.
-                '''
+                """
                 record = records[record_index]
 
                 if len(node_stack) > tree_height:
@@ -228,7 +228,7 @@ class MemoryParser:
                 if current_node is None or current_node.start_time is None or current_node.end_time is None:
                     # 3. Ignore all remaining records.
                     logger.debug(
-                        "could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d" % (
+                        'could not find the node for tid %d, timestamp: %d, record index: %d, total records: %d' % (
                             record.tid, record.ts, record_index, len(records)))
                     self.staled_records.append(records[record_index])
                     record_index += 1
@@ -236,7 +236,7 @@ class MemoryParser:
 
                 if record.ts < current_node.start_time:
                     # this should only happens for root node.
-                    logger.debug("record timestamp %d is less that the start time of %s" %
+                    logger.debug('record timestamp %d is less that the start time of %s' %
                                  (record.ts, current_node.name))
                     # This record has no chance to be appended to following tree node.
                     self.staled_records.append(record)
@@ -293,10 +293,10 @@ class MemoryParser:
 
         # show summary information
         if len(self.staled_records) > 0 and len(self.memory_records) > 0:
-            logger.debug("{} memory records are skipped in total {} memory records and only {} get processed".format(
+            logger.debug('{} memory records are skipped in total {} memory records and only {} get processed'.format(
                 len(self.staled_records), len(self.memory_records), len(self.processed_records)))
         if tree_height > 0:
-            logger.debug("max tree height is {}".format(tree_height))
+            logger.debug('max tree height is {}'.format(tree_height))
 
         all_records = self.get_preprocessed_records()
         return MemorySnapshot(all_records, op_memory_table, processed_node)
@@ -306,7 +306,7 @@ class MemoryParser:
 
         alloc = {}  # allocation events may or may not have paired free event
         free = {}  # free events that does not have paired alloc event
-        prev_ts = float("-inf")  # ensure ordered memory records is ordered
+        prev_ts = float('-inf')  # ensure ordered memory records is ordered
         for i, r in enumerate(memory_records):
             if r.addr is None:
                 # profile json data prior to pytorch 1.10 do not have addr
@@ -331,5 +331,5 @@ class MemoryParser:
                     free[addr] = i
 
         if free:
-            logger.warning(f"{len(free)} memory records do not have associated operator.")
+            logger.warning(f'{len(free)} memory records do not have associated operator.')
         return memory_records

@@ -54,7 +54,7 @@ class RunLoader(object):
             span_index = None if span is None else span_index_map[(worker, span)]
             p = Process(target=self._process_data, args=(worker, span_index, path))
             p.start()
-        logger.info("started all processing")
+        logger.info('started all processing')
 
         distributed_run = Run(self.run_name, self.run_dir)
         run = Run(self.run_name, self.run_dir)
@@ -64,7 +64,7 @@ class RunLoader(object):
             num_items -= 1
             r, d = item
             if r or d:
-                logger.debug("Loaded profile via mp.Queue")
+                logger.debug('Loaded profile via mp.Queue')
             if r is not None:
                 run.add_profile(r)
             if d is not None:
@@ -83,7 +83,7 @@ class RunLoader(object):
         absl.logging.use_absl_handler()
 
         try:
-            logger.debug("Parse trace, run_dir=%s, worker=%s", self.run_dir, path)
+            logger.debug('Parse trace, run_dir=%s, worker=%s', self.run_dir, path)
             local_file = self.caches.get_remote_cache(io.join(self.run_dir, path))
             data = RunProfileData.parse(worker, span, local_file, self.caches.cache_dir)
             if data.trace_file_path != local_file:
@@ -93,16 +93,16 @@ class RunLoader(object):
             profile = generator.generate_run_profile()
             dist_data = DistributedRunProfileData(data)
 
-            logger.debug("Sending back profile via mp.Queue")
+            logger.debug('Sending back profile via mp.Queue')
             self.queue.put((profile, dist_data))
         except KeyboardInterrupt:
-            logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))
+            logger.warning('tb_plugin receive keyboard interrupt signal, process %d will exit' % (os.getpid()))
             sys.exit(1)
         except Exception as ex:
-            logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
+            logger.warning('Failed to parse profile data for Run %s on %s. Exception=%s',
                            self.run_name, worker, ex, exc_info=True)
             self.queue.put((None, None))
-        logger.debug("finishing process data")
+        logger.debug('finishing process data')
 
     def _process_spans(self, distributed_run: Run):
         spans = distributed_run.get_spans()
@@ -121,7 +121,7 @@ class RunLoader(object):
         has_communication = True
         comm_node_lists: List[List[CommunicationNode]] = []
         for data in profiles:
-            logger.debug("Processing profile data")
+            logger.debug('Processing profile data')
             # Set has_communication to False and disable distributed view if any one worker has no communication
             if data.has_communication and data.comm_node_list:
                 comm_node_lists.append(data.comm_node_list)
@@ -131,10 +131,10 @@ class RunLoader(object):
                     has_communication = False
             else:
                 has_communication = False
-            logger.debug("Processing profile data finish")
+            logger.debug('Processing profile data finish')
 
         if not has_communication:
-            logger.debug("There is no communication profile in this run.")
+            logger.debug('There is no communication profile in this run.')
             return None
 
         worker_num = len(comm_node_lists)

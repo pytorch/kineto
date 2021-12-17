@@ -77,7 +77,7 @@ class NodeParserMixin:
                     self._update_communication_node(event)
 
         # associate CUDA Runtimes with CPU events
-        for _, op_list in tid2list.items():
+        for op_list in tid2list.values():
             for op in op_list:
                 runtime_nodes = externalid_to_runtime.pop(op.external_id, [])
                 if runtime_nodes:
@@ -88,7 +88,7 @@ class NodeParserMixin:
                     len(externalid_to_runtime[ext_id]), ext_id))
 
         staled_device_nodes = []
-        for _, device_nodes in corrid_to_device.items():
+        for device_nodes in corrid_to_device.values():
             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
 
         return tid2list, tid2zero_rt_list, staled_device_nodes

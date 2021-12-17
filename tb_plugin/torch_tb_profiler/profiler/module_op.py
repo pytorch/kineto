@@ -142,8 +142,7 @@ def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], M
         agg = module_aggs[key]
         agg.occurences += 1
 
-        ops = [child for child in m.children if is_operator_node(child)]
-        agg.operators += len(ops)
+        agg.operators += sum(is_operator_node(child) for child in m.children)
 
         agg.self_host_duration += m.self_host_duration
         agg.host_duration += m.end_time - m.start_time
@@ -176,14 +175,13 @@ def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: I
     '''
     module_aggs = _aggregate_modules(modules_nodes)
 
-    def process_modules(h_modules: Iterable[Module]) -> List[Stats]:
-        modules_stats = []
+    def process_modules(h_modules: Iterable[Module]):
         for m in h_modules:
             name = m.name.replace('nn.Module: ', '')
             stats = module_aggs[(m.name, m.module_id)]
 
-            child_stats = process_modules(m.children)
-            modules_stats.append(Stats(
+            child_stats = list(process_modules(m.children))
+            yield Stats(
                 name,
                 m.module_id,
                 stats.occurences,
@@ -193,11 +191,9 @@ def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: I
                 stats.device_duration,
                 stats.self_device_duration,
                 stats.avg_device_duration if stats.avg_device_duration > 0 else stats.avg_host_duration,
-                child_stats))
-        return modules_stats
+                child_stats)
 
-    data = process_modules(hierarchy)
-    data.sort(key=lambda x: x.name)
+    data = sorted(process_modules(hierarchy), key=lambda x: x.name)
     return data
 
 

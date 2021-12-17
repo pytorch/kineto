@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------
 import sys
 from abc import ABC
-from typing import Generator, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
@@ -122,33 +122,6 @@ class OperatorNode(HostNode):
                 logger.warning("New Tensor Cores eligible operator found: '{}'!".format(self.name))
                 self.tc_eligible = True
 
-    @property
-    def device_start_time(self):
-        self_device_start_time = next((device.start_time for device in self.get_device_nodes()), None)
-        child_device_start_time = next((device.start_time for device in self.get_child_device_nodes()), None)
-        return min((v for v in [self_device_start_time, child_device_start_time] if v is not None), default=None)
-
-    @property
-    def device_end_time(self):
-        self_device_end_time = next((device.end_time for device in self.get_device_nodes(True)), None)
-        child_device_end_time = next((device.end_time for device in self.get_child_device_nodes(True)), None)
-        return max((v for v in [self_device_end_time, child_device_end_time] if v is not None), default=None)
-
-    def get_device_nodes(self, reverse=False):
-        '''Get the first/last device not if there are any'''
-        for r in reversed(self.runtimes) if reverse else self.runtimes:
-            # the runtime node "cudaDeviceSynchronize" would not have any associated kernels
-            for d in r.get_kernels(reverse):
-                yield d
-
-    def get_child_device_nodes(self, reverse=False):
-        '''Get the child device nodes'''
-        for child in reversed(self.children) if reverse else self.children:
-            for d in child.get_device_nodes(reverse):
-                yield d
-            for d in child.get_child_device_nodes(reverse):
-                yield d
-
     def get_operator_and_kernels(self):
         ops: List[OperatorNode] = []
         kernels: List[DeviceNode] = []
@@ -196,6 +169,9 @@ class ModuleNode(OperatorNode):
         kwargs["module_id"] = event.module_id
         kwargs["python_id"] = event.python_id
         kwargs["python_parent_id"] = event.python_parent_id
+        # From the time being, the ModuleNode always have external_id to 0.
+        # As the result, we need reset the external_id to None to ignore adding the runtime nodes for ModuleNode
+        kwargs.pop('external_id', None)
         return cls(**kwargs)
 
 
@@ -222,9 +198,9 @@ class RuntimeNode(HostNode):
                 self.device_duration += device_duration
                 self.tc_duration += device_duration if device_node.tc_used else 0
 
-    def get_kernels(self, reverse=False) -> Generator['DeviceNode', None, None]:
+    def get_kernels(self):
         if self.device_nodes:
-            for d in reversed(self.device_nodes) if reverse else self.device_nodes:
+            for d in self.device_nodes:
                 if d.type == EventTypes.KERNEL:
                     yield d
 

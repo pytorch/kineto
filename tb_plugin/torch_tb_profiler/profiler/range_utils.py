@@ -1,21 +1,19 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-from enum import IntEnum
 from typing import List, Tuple
 
 
 # src_ranges: item of (start_time, end_time, value)
 def merge_ranges_with_value(src_ranges):
+    from collections import namedtuple
+    from enum import IntEnum
+
     class EndpointTypes(IntEnum):
         START = 0
         END = 1
 
-    class EndPoint(object):
-        def __init__(self, ep_time, ep_pt_type, ep_value):
-            self.time = ep_time
-            self.pt_type = ep_pt_type
-            self.value = ep_value
+    EndPoint = namedtuple('EndPoint', ['time', 'pt_type', 'value'])
 
     merged_ranges = []
     if len(src_ranges) > 0:
@@ -181,7 +179,8 @@ def merge_ranges(src_ranges, is_sorted=False) -> List[Tuple[int, int]]:
 
     merged_ranges = []
     merged_ranges.append(src_ranges[0])
-    for _, src_range in enumerate(src_ranges, start=1):
+    for src_id in range(1, len(src_ranges)):
+        src_range = src_ranges[src_id]
         if src_range[1] > merged_ranges[-1][1]:
             if src_range[0] <= merged_ranges[-1][1]:
                 merged_ranges[-1] = (merged_ranges[-1][0], src_range[1])

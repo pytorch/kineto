@@ -330,5 +330,6 @@ class MemoryParser:
                     assert addr not in free
                     free[addr] = i
 
-        logger.warning(f"{len(free)} memory records do not have associated operator.")
+        if free:
+            logger.warning(f"{len(free)} memory records do not have associated operator.")
         return memory_records

@@ -26,8 +26,8 @@ class OpTreeBuilder:
                    tid2zero_rt_list: Dict[int, List[RuntimeNode]],
                    staled_device_nodes: List[DeviceNode],
                    fwd_bwd_map: Dict[int, int]):
-        '''Construct the BackwardNode and replace the original backward nodes
-        '''
+        """Construct the BackwardNode and replace the original backward nodes
+        """
         self.tid2tree = self._build_tree(tid2list, tid2zero_rt_list, staled_device_nodes)
         self._set_main_tid()
 
@@ -39,7 +39,7 @@ class OpTreeBuilder:
         agg_nodes = OpTreeBuilder._group_backward_nodes(backward_nodes)
         fwd_bwd_root = self._get_backward_roots(fwd_bwd_map, ts2parent, agg_nodes)
         if len(agg_nodes) > 0:
-            logger.warning("some nodes cannot find forward nodes")
+            logger.warning('some nodes cannot find forward nodes')
 
         backward_modules: List[BackwardNode] = []
         for module in modules:
@@ -56,7 +56,7 @@ class OpTreeBuilder:
             zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
             # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
             op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
+            main_tid = any([op.name.startswith('ProfilerStep#') for op in op_list])
             if main_tid:
                 # only append the staled device nodes into main thread
                 self.main_tid = op_list[0].tid
@@ -90,8 +90,8 @@ class OpTreeBuilder:
         return None
 
     def _build_tree_internal(self, host_node_list, zero_rt_list, tid, staled_device_nodes):
-        '''host_node_list: list of OperatorNode and ProfilerStepNode.
-        zero_rt_list: list of RuntimeNode with external_id=0.'''
+        """host_node_list: list of OperatorNode and ProfilerStepNode.
+        zero_rt_list: list of RuntimeNode with external_id=0."""
 
         def build_tree_relationship(host_node_list: Iterable[OperatorNode], zero_rt_list, staled_device_nodes):
             dummpy_rt: List[RuntimeNode] = []
@@ -99,11 +99,11 @@ class OpTreeBuilder:
                 # Note: Although kernels of this dummy runtime is put under main thread's tree,
                 # we don't know which thread launches them.
                 # TODO: Don't make belonging thread assumption on future usage if we need special handling
-                dummpy_rt.append(RuntimeNode("dummy", None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
+                dummpy_rt.append(RuntimeNode('dummy', None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
                 dummpy_rt[0].fill_stats()
             node_stack: List[OperatorNode] = []
             root_node = OperatorNode(
-                name="CallTreeRoot",
+                name='CallTreeRoot',
                 start_time=-sys.maxsize - 1,
                 end_time=sys.maxsize,
                 type=EventTypes.PYTHON,
@@ -119,8 +119,8 @@ class OpTreeBuilder:
                             # node.parent_node = weakref.ref(tail_node)
                             node_stack.append(node)
                         else:
-                            logger.error("Error in input data: ranges on the same thread should not intersect!"
-                                         "Father:({},{},{}) Child:({},{},{})"
+                            logger.error('Error in input data: ranges on the same thread should not intersect!'
+                                         'Father:({},{},{}) Child:({},{},{})'
                                          .format(tail_node.name, tail_node.start_time, tail_node.end_time,
                                                  node.name, node.start_time, node.end_time))
                         break
@@ -158,10 +158,10 @@ class OpTreeBuilder:
         return root_node
 
     def _get_modules(self) -> Tuple[List[ModuleNode], List[OperatorNode]]:
-        '''Get the ModuleNodes and backward root nodes
+        """Get the ModuleNodes and backward root nodes
         If there are any ModuleNodes, the backward roots will be removed from the tree
         so that later a new BackwardNode will be replaced.
-        '''
+        """
         modules: List[ModuleNode] = []
         backward_nodes: Dict[OperatorNode, List[OperatorNode]] = defaultdict(list)
 
@@ -194,7 +194,7 @@ class OpTreeBuilder:
 
     @staticmethod
     def _get_node_parents(nodes: Iterable[OperatorNode]):
-        '''Get the child->parent relationship for these nodes'''
+        """Get the child->parent relationship for these nodes"""
         ts_to_node: Dict[int, OperatorNode] = {}
         ts_to_parent: Dict[int, OperatorNode] = {}
 
@@ -212,10 +212,10 @@ class OpTreeBuilder:
 
     @staticmethod
     def _group_backward_nodes(nodes: Iterable[OperatorNode]) -> Dict[OperatorNode, List[OperatorNode]]:
-        '''All nodes are backward nodes startswith autograd::engine::evaluate_function.
+        """All nodes are backward nodes startswith autograd::engine::evaluate_function.
         If one node's name is autograd::engine::evaluate_function: torch::autograd::AccumulateGrad,
         it should be grouped with previous normal backward node. Otherwise, a new backward node should be started
-        '''
+        """
         grouped_bwd_nodes: List[List[OperatorNode]] = []
         for node in nodes:
             if node.name == OpTreeBuilder.BACKWARD_ACCUMULATE_GRAD:
@@ -243,7 +243,7 @@ class OpTreeBuilder:
             if parent:
                 fwd_to_bwdroot[fwd] = backward_nodes.pop(parent)
             else:
-                logger.warning("parent is None for", bwd)
+                logger.warning('parent is None for', bwd)
 
         return fwd_to_bwdroot
 
@@ -251,15 +251,15 @@ class OpTreeBuilder:
                                parent: Optional[BackwardNode],
                                fwd_bwd_map: Dict[int, List[OperatorNode]],
                                result: List[BackwardNode]):
-        '''Construct the backward module from root (node argument) and
+        """Construct the backward module from root (node argument) and
         insert it into result array if there is no any parent associated with it.
-        '''
+        """
         if not fwd_bwd_map:
-            logger.warning("The forward backward map is empty. The backward construction is skipped.")
+            logger.warning('The forward backward map is empty. The backward construction is skipped.')
             return
 
         if isinstance(node, ModuleNode):
-            backward_node = BackwardNode(node.name + ".backward", None, None, "backward", 0)
+            backward_node = BackwardNode(node.name + '.backward', None, None, 'backward', 0)
 
             if parent is None:
                 result.append(backward_node)

@@ -59,14 +59,14 @@ class Run(object):
     def add_profile(self, profile: Union['DistributedRunProfile', 'RunProfile']):
         span = profile.span
         if span is None:
-            span = "default"
+            span = 'default'
         else:
             span = str(span)
         self.profiles[(profile.worker, span)] = profile
 
     def get_profile(self, worker, span) -> Union['DistributedRunProfile', 'RunProfile']:
         if worker is None:
-            raise ValueError("the worker parameter is mandatory")
+            raise ValueError('the worker parameter is mandatory')
 
         if len(self.profiles) == 0:
             return None
@@ -99,7 +99,7 @@ class RunProfile(object):
         self.has_kernel = False
         self.has_communication = False
         self.has_memcpy_or_memset = False
-        self.profiler_start_ts = float("inf")
+        self.profiler_start_ts = float('inf')
         self.overview = None
         self.operation_pie_by_name = None
         self.operation_table_by_name = None
@@ -125,7 +125,7 @@ class RunProfile(object):
         self.module_stats: Optional[List(Stats)] = None
 
     def append_gpu_metrics(self, raw_data: bytes):
-        counter_json_str = ", {}".format(", ".join(self.gpu_metrics))
+        counter_json_str = ', {}'.format(', '.join(self.gpu_metrics))
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
 
         raw_data_without_tail = raw_data[: raw_data.rfind(b']')]
@@ -147,42 +147,42 @@ class RunProfile(object):
 
         return events
 
-    def get_memory_stats(self, start_ts=None, end_ts=None, memory_metric="K"):
+    def get_memory_stats(self, start_ts=None, end_ts=None, memory_metric='K'):
         cano = Canonicalizer(memory_metric=memory_metric)
         round = DisplayRounder(ndigits=2)
 
         stats = self.memory_snapshot.get_memory_statistics(self.tid2tree, start_ts=start_ts, end_ts=end_ts)
 
         result = {
-            "metadata": {
-                "title": "Memory View",
-                "default_device": "CPU",
-                "search": "Operator Name",
-                "sort": f"Self Size Increase ({cano.memory_metric})"
+            'metadata': {
+                'title': 'Memory View',
+                'default_device': 'CPU',
+                'search': 'Operator Name',
+                'sort': f'Self Size Increase ({cano.memory_metric})'
             },
-            "columns": [
-                {"name": "Operator Name", "type": "string"},
-                {"name": "Calls", "type": "number", "tooltip": "# of calls of the operator."},
-                {"name": f"Size Increase ({cano.memory_metric})", "type": "number",
-                 "tooltip": "The memory increase size include all children operators."},
-                {"name": f"Self Size Increase ({cano.memory_metric})", "type": "number",
-                 "tooltip": "The memory increase size associated with the operator itself."},
-                {"name": "Allocation Count", "type": "number",
-                    "tooltip": "The allocation count including all chidren operators."},
-                {"name": "Self Allocation Count", "type": "number",
-                 "tooltip": "The allocation count belonging to the operator itself."},
-                {"name": f"Allocation Size ({cano.memory_metric})", "type": "number",
-                 "tooltip": "The allocation size including all children operators."},
-                {"name": f"Self Allocation Size ({cano.memory_metric})", "type": "number",
-                 "tooltip": ("The allocation size belonging to the operator itself.\n"
-                             "It will sum up all allocation bytes without considering the memory free.")},
+            'columns': [
+                {'name': 'Operator Name', 'type': 'string'},
+                {'name': 'Calls', 'type': 'number', 'tooltip': '# of calls of the operator.'},
+                {'name': f'Size Increase ({cano.memory_metric})', 'type': 'number',
+                 'tooltip': 'The memory increase size include all children operators.'},
+                {'name': f'Self Size Increase ({cano.memory_metric})', 'type': 'number',
+                 'tooltip': 'The memory increase size associated with the operator itself.'},
+                {'name': 'Allocation Count', 'type': 'number',
+                    'tooltip': 'The allocation count including all chidren operators.'},
+                {'name': 'Self Allocation Count', 'type': 'number',
+                 'tooltip': 'The allocation count belonging to the operator itself.'},
+                {'name': f'Allocation Size ({cano.memory_metric})', 'type': 'number',
+                 'tooltip': 'The allocation size including all children operators.'},
+                {'name': f'Self Allocation Size ({cano.memory_metric})', 'type': 'number',
+                 'tooltip': ('The allocation size belonging to the operator itself.\n'
+                             'It will sum up all allocation bytes without considering the memory free.')},
             ],
-            "rows": {}
+            'rows': {}
         }
 
         for name in stats:
             these_rows = []
-            result["rows"][name] = these_rows
+            result['rows'][name] = these_rows
 
             memory = stats[name]
             for op_name, stat in sorted(memory.items()):
@@ -198,16 +198,16 @@ class RunProfile(object):
                 ])
 
         for dev_name in sorted(stats.keys()):
-            if dev_name.startswith("GPU"):
-                result["metadata"]["default_device"] = dev_name
+            if dev_name.startswith('GPU'):
+                result['metadata']['default_device'] = dev_name
                 break
 
         return result
 
     def get_memory_curve(
             self,
-            time_metric: str = "ms",
-            memory_metric: str = "K",
+            time_metric: str = 'ms',
+            memory_metric: str = 'K',
             patch_for_step_plot=True):
         def get_curves_and_peaks(records: List[MemoryRecord], cano: Canonicalizer):
             """Inputs:
@@ -216,12 +216,12 @@ class RunProfile(object):
             For example:
             ```py
             {
-                "CPU": [# Timestamp, Total Allocated, Total Reserved, Device Total Memory, operator
-                    [1, 4, 4, 1000000, "aten::add"],
+                'CPU': [# Timestamp, Total Allocated, Total Reserved, Device Total Memory, operator
+                    [1, 4, 4, 1000000, 'aten::add'],
                     [2, 16, 16, 1000000, "aten::empty],
-                    [4, 4, 16, 1000000, "..."],
+                    [4, 4, 16, 1000000, '...'],
                 ],
-                "GPU0": ...
+                'GPU0': ...
             }
             ```"""
             curves = defaultdict(list)
@@ -274,52 +274,52 @@ class RunProfile(object):
         peaks_formatted = {}
         totals = {}
         for dev, value in peaks.items():
-            peaks_formatted[dev] = "Peak Memory Usage: {:.1f}{}".format(cano.convert_memory(value), cano.memory_metric)
-            if dev != "CPU":
+            peaks_formatted[dev] = 'Peak Memory Usage: {:.1f}{}'.format(cano.convert_memory(value), cano.memory_metric)
+            if dev != 'CPU':
                 try:
-                    totals[dev] = cano.convert_memory(self.gpu_infos[int(dev[3:])]["Memory Raw"])
+                    totals[dev] = cano.convert_memory(self.gpu_infos[int(dev[3:])]['Memory Raw'])
                 except BaseException:
                     pass
 
         devices: List[str] = sorted(list(curves.keys()))
-        default_device = "CPU"
+        default_device = 'CPU'
         for dev in devices:
-            if dev.startswith("GPU"):
+            if dev.startswith('GPU'):
                 default_device = dev
                 break
 
         return {
-            "metadata": {
-                "default_device": default_device,
-                "devices": devices,
-                "peaks": peaks_formatted,
-                "totals": totals,
-                "first_ts": self.profiler_start_ts,
-                "time_metric": cano.time_metric,
-                "memory_metric": cano.memory_metric,
-                "time_factor": cano.time_factor,
-                "memory_factor": cano.memory_factor,
+            'metadata': {
+                'default_device': default_device,
+                'devices': devices,
+                'peaks': peaks_formatted,
+                'totals': totals,
+                'first_ts': self.profiler_start_ts,
+                'time_metric': cano.time_metric,
+                'memory_metric': cano.memory_metric,
+                'time_factor': cano.time_factor,
+                'memory_factor': cano.memory_factor,
             },
-            "columns": [
-                {"name": f"Time ({cano.time_metric})", "type": "number", "tooltip": "Time since profiler starts."},
-                {"name": f"Allocated ({cano.memory_metric})", "type": "number", "tooltip": "Total memory in use."},
-                {"name": f"Reserved ({cano.memory_metric})", "type": "number",
-                 "tooltip": "Total reserved memory by allocator, both used and unused."},
+            'columns': [
+                {'name': f'Time ({cano.time_metric})', 'type': 'number', 'tooltip': 'Time since profiler starts.'},
+                {'name': f'Allocated ({cano.memory_metric})', 'type': 'number', 'tooltip': 'Total memory in use.'},
+                {'name': f'Reserved ({cano.memory_metric})', 'type': 'number',
+                 'tooltip': 'Total reserved memory by allocator, both used and unused.'},
             ],
-            "rows": curves,
+            'rows': curves,
         }
 
     def get_memory_events(
             self,
             start_ts=None,
             end_ts=None,
-            time_metric: str = "ms",
-            memory_metric: str = "K"):
+            time_metric: str = 'ms',
+            memory_metric: str = 'K'):
         def get_op_name_or_ctx(record: MemoryRecord):
             name = record.op_name_or_unknown
-            if name.startswith("aten::empty") and record.parent_op_name:
-                # aten::empty can be treated as the "malloc" in pytorch
-                name = f"{record.parent_op_name} ({name})"
+            if name.startswith('aten::empty') and record.parent_op_name:
+                # aten::empty can be treated as the 'malloc' in pytorch
+                name = f'{record.parent_op_name} ({name})'
             return name
 
         cano = Canonicalizer(time_metric=time_metric, memory_metric=memory_metric)
@@ -331,7 +331,7 @@ class RunProfile(object):
         events = defaultdict(list)
         alloc = {}  # allocation events may or may not have paired free event
         free = {}  # free events that does not have paired alloc event
-        prev_ts = float("-inf")  # ensure ordered memory records is ordered
+        prev_ts = float('-inf')  # ensure ordered memory records is ordered
         for i, r in enumerate(memory_records):
             if r.addr is None:
                 # profile json data prior to pytorch 1.10 do not have addr
@@ -381,25 +381,25 @@ class RunProfile(object):
                 None,
             ])
 
-        default_device = "CPU"
+        default_device = 'CPU'
         for dev_name in sorted(events.keys()):
-            if dev_name.startswith("GPU"):
+            if dev_name.startswith('GPU'):
                 default_device = dev_name
                 break
 
         return {
-            "metadata": {
-                "title": "Memory Events",
-                "default_device": default_device,
+            'metadata': {
+                'title': 'Memory Events',
+                'default_device': default_device,
             },
-            "columns": [
-                {"name": "Operator", "type": "string", "tooltip": ""},
-                {"name": f"Size ({cano.memory_metric})", "type": "number", "tooltip": ""},
-                {"name": f"Allocation Time ({cano.time_metric})", "type": "number", "tooltip": ""},
-                {"name": f"Release Time ({cano.time_metric})", "type": "number", "tooltip": ""},
-                {"name": f"Duration ({cano.time_metric})", "type": "number", "tooltip": ""},
+            'columns': [
+                {'name': 'Operator', 'type': 'string', 'tooltip': ''},
+                {'name': f'Size ({cano.memory_metric})', 'type': 'number', 'tooltip': ''},
+                {'name': f'Allocation Time ({cano.time_metric})', 'type': 'number', 'tooltip': ''},
+                {'name': f'Release Time ({cano.time_metric})', 'type': 'number', 'tooltip': ''},
+                {'name': f'Duration ({cano.time_metric})', 'type': 'number', 'tooltip': ''},
             ],
-            "rows": events,  # in the form of { "CPU": [...], "GPU0": [...], ... }
+            'rows': events,  # in the form of { 'CPU': [...], 'GPU0': [...], ... }
         }
 
     def get_module_view(self):
@@ -407,36 +407,36 @@ class RunProfile(object):
             return None
 
         result = {
-            "columns": [
-                {"name": "Module Name", "type": "string", "key": "name"},
-                {"name": "Occurences", "type": "number", "key": "occurences"},
-                {"name": "Operators", "type": "number", "key": "operators"},
-                {"name": "Host Total Time", "type": "number", "key": "host_duration"},
-                {"name": "Host Self Time", "type": "number", "key": "self_host_duration"},
-                {"name": "Device Total Time", "type": "number", "key": "device_duration"},
-                {"name": "Device Self Time", "type": "number", "key": "self_device_duration"}
+            'columns': [
+                {'name': 'Module Name', 'type': 'string', 'key': 'name'},
+                {'name': 'Occurences', 'type': 'number', 'key': 'occurences'},
+                {'name': 'Operators', 'type': 'number', 'key': 'operators'},
+                {'name': 'Host Total Time', 'type': 'number', 'key': 'host_duration'},
+                {'name': 'Host Self Time', 'type': 'number', 'key': 'self_host_duration'},
+                {'name': 'Device Total Time', 'type': 'number', 'key': 'device_duration'},
+                {'name': 'Device Self Time', 'type': 'number', 'key': 'self_device_duration'}
             ],
-            "data": []
+            'data': []
         }
 
         def process_modules_stats(parent: List[Any], modules_stats: List[Stats]):
             for stats in modules_stats:
                 d = {
-                    "name": stats.name,
-                    "id": stats.id,
-                    "occurences": stats.occurences,
-                    "operators": stats.operators,
-                    "host_duration": stats.host_duration,
-                    "self_host_duration": stats.self_host_duration,
-                    "device_duration": stats.device_duration,
-                    "self_device_duration": stats.self_device_duration,
-                    "avg_duration": stats.avg_duration,
-                    "children": []
+                    'name': stats.name,
+                    'id': stats.id,
+                    'occurences': stats.occurences,
+                    'operators': stats.operators,
+                    'host_duration': stats.host_duration,
+                    'self_host_duration': stats.self_host_duration,
+                    'device_duration': stats.device_duration,
+                    'self_device_duration': stats.self_device_duration,
+                    'avg_duration': stats.avg_duration,
+                    'children': []
                 }
                 parent.append(d)
-                process_modules_stats(d["children"], stats.children)
+                process_modules_stats(d['children'], stats.children)
 
-        process_modules_stats(result["data"], self.module_stats)
+        process_modules_stats(result['data'], self.module_stats)
         return result
 
     def get_operator_tree(self):
@@ -446,16 +446,16 @@ class RunProfile(object):
 
         def traverse_node(parent: List, node: OperatorNode):
             d = {
-                "name": node.name,
-                "start_time": node.start_time,
-                "end_time": node.end_time,
-                "type": node.type,
-                "tid": node.tid,
-                "children": []
+                'name': node.name,
+                'start_time': node.start_time,
+                'end_time': node.end_time,
+                'type': node.type,
+                'tid': node.tid,
+                'children': []
             }
             parent.append(d)
             for child in node.children:
-                traverse_node(d["children"], child)
+                traverse_node(d['children'], child)
         traverse_node(result, root)
         return result[0]
 

@@ -12,7 +12,7 @@ from .trace import (DurationEvent, EventTypes, KernelEvent, ModuleEvent,
 
 logger = utils.get_logger()
 
-ExcludeOpName = ["DataParallel.forward", "DistributedDataParallel.forward"]
+ExcludeOpName = ['DataParallel.forward', 'DistributedDataParallel.forward']
 
 
 class BaseNode(ABC):
@@ -166,9 +166,9 @@ class ModuleNode(OperatorNode):
     @classmethod
     def create(cls, event: ModuleEvent):
         kwargs = BaseNode.get_node_argument(event)
-        kwargs["module_id"] = event.module_id
-        kwargs["python_id"] = event.python_id
-        kwargs["python_parent_id"] = event.python_parent_id
+        kwargs['module_id'] = event.module_id
+        kwargs['python_id'] = event.python_id
+        kwargs['python_parent_id'] = event.python_parent_id
         # From the time being, the ModuleNode always have external_id to 0.
         # As the result, we need reset the external_id to None to ignore adding the runtime nodes for ModuleNode
         kwargs.pop('external_id', None)
@@ -230,21 +230,21 @@ class DeviceNode(BaseNode):
     def create(cls, event: KernelEvent):
         kwargs = BaseNode.get_node_argument(event)
         if event.type == EventTypes.KERNEL:
-            kwargs["blocks_per_sm"] = event.blocks_per_sm
-            kwargs["occupancy"] = event.occupancy
-            kwargs["grid"] = event.grid
-            kwargs["block"] = event.block
-            kwargs["regs_per_thread"] = event.regs_per_thread
-            kwargs["shared_memory"] = event.shared_memory
-            kwargs["device_id"] = event.device_id
+            kwargs['blocks_per_sm'] = event.blocks_per_sm
+            kwargs['occupancy'] = event.occupancy
+            kwargs['grid'] = event.grid
+            kwargs['block'] = event.block
+            kwargs['regs_per_thread'] = event.regs_per_thread
+            kwargs['shared_memory'] = event.shared_memory
+            kwargs['device_id'] = event.device_id
         return cls(**kwargs)
 
 
 def is_operator_node(node):
     if (type(node) is OperatorNode and node.type == EventTypes.OPERATOR
-            and not (node.name.startswith("enumerate(DataLoader)#") and node.name.endswith(".__next__"))
-            and not node.name.startswith("enumerate(DataPipe)#")
-            and not node.name.startswith("Optimizer.") and node.name not in ExcludeOpName):
+            and not (node.name.startswith('enumerate(DataLoader)#') and node.name.endswith('.__next__'))
+            and not node.name.startswith('enumerate(DataPipe)#')
+            and not node.name.startswith('Optimizer.') and node.name not in ExcludeOpName):
         return True
     else:
         return False

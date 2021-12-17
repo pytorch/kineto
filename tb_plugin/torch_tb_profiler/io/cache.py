@@ -19,26 +19,26 @@ class Cache:
         self._cache_dir = cache_dir
 
     def __getstate__(self):
-        '''The multiprocessing module can start one of three ways: spawn, fork, or forkserver.
+        """The multiprocessing module can start one of three ways: spawn, fork, or forkserver.
         The default mode is fork in Unix and spawn on Windows and macOS.
         Therefore, the __getstate__ and __setstate__ are used to pickle/unpickle the state in spawn mode.
-        '''
+        """
         data = self.__dict__.copy()
         # remove the _manager to bypass the following pickle error
         # TypeError: cannot pickle 'weakref' object
         if hasattr(self, '_manager'):
             del data['_manager']
-        logger.debug("Cache.__getstate__: %s " % data)
+        logger.debug('Cache.__getstate__: %s ' % data)
         return data, file._REGISTERED_FILESYSTEMS
 
     def __setstate__(self, state):
-        '''The default logging level in new process is warning. Only warning and error log can be written to
+        """The default logging level in new process is warning. Only warning and error log can be written to
         streams.
         So, we need call use_absl_handler in the new process.
-        '''
+        """
         from absl import logging
         logging.use_absl_handler()
-        logger.debug("Cache.__setstate__ %s " % (state,))
+        logger.debug('Cache.__setstate__ %s ' % (state,))
         data, file._REGISTERED_FILESYSTEMS = state
         self.__dict__.update(data)
 
@@ -51,7 +51,7 @@ class Cache:
         return self._cache_dir
 
     def get_remote_cache(self, filename):
-        '''Try to get the local file in the cache. download it to local if it cannot be found in cache.'''
+        """Try to get the local file in the cache. download it to local if it cannot be found in cache."""
         local_file = self.get_file(filename)
         if local_file is None:
             if is_local(filename):
@@ -71,7 +71,7 @@ class Cache:
 
     def add_file(self, source_file, local_file):
         with self._lock:
-            logger.debug("add local cache %s for file %s" % (local_file, source_file))
+            logger.debug('add local cache %s for file %s' % (local_file, source_file))
             self._cache_dict[source_file] = local_file
 
     def __enter__(self):

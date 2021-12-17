@@ -96,8 +96,8 @@ def aggregate_kernels(kernel_list: List[DeviceNode]) -> List[KernelAggByNameOp]:
     name_op_to_agg: Dict[str, KernelAggByNameOp] = {}
     for kernel in kernel_list:
         dur = kernel.end_time - kernel.start_time
-        op_name = "N/A" if kernel.op_name is None else kernel.op_name
-        key = "###".join((kernel.name, op_name,
+        op_name = 'N/A' if kernel.op_name is None else kernel.op_name
+        key = '###'.join((kernel.name, op_name,
                           str(kernel.grid), str(kernel.block),
                           str(kernel.regs_per_thread or '0'), str(kernel.shared_memory or '0')))
         if key not in name_op_to_agg:
@@ -138,9 +138,9 @@ class ModuleAggregator:
 
         keys: List[Callable[[OperatorNode], str]] = [
             lambda x: x.name,
-            lambda x: x.name + "###" + str(x.input_shape),
-            lambda x: x.name + "###" + str(x.callstack),
-            lambda x: x.name + "###" + str(x.input_shape) + "###" + str(x.callstack)
+            lambda x: x.name + '###' + str(x.input_shape),
+            lambda x: x.name + '###' + str(x.callstack),
+            lambda x: x.name + '###' + str(x.input_shape) + '###' + str(x.callstack)
         ]
         agg_result = aggregate_ops(ops, keys)
         stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = defaultdict(list)
@@ -152,7 +152,7 @@ class ModuleAggregator:
         for agg in agg_result[3].values():
             assert (len(agg.callstacks) == 1)
             if list(agg.callstacks)[0]:
-                key = agg.name + "###" + str(agg.input_shape)
+                key = agg.name + '###' + str(agg.input_shape)
                 stack_lists_group_by_name_input[key].append(agg)
 
         self.op_list_groupby_name = list(agg_result[0].values())

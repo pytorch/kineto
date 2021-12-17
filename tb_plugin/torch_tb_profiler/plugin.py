@@ -60,16 +60,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._cache = io.Cache(self._temp_dir)
         self._queue = Queue()
         self._gpu_metrics_file_dict = {}
-        monitor_runs = threading.Thread(target=self._monitor_runs, name="monitor_runs", daemon=True)
+        monitor_runs = threading.Thread(target=self._monitor_runs, name='monitor_runs', daemon=True)
         monitor_runs.start()
 
-        receive_runs = threading.Thread(target=self._receive_runs, name="receive_runs", daemon=True)
+        receive_runs = threading.Thread(target=self._receive_runs, name='receive_runs', daemon=True)
         receive_runs.start()
 
         def clean():
-            logger.debug("starting cleanup...")
+            logger.debug('starting cleanup...')
             self._cache.__exit__(*sys.exc_info())
-            logger.debug("remove temporary cache directory %s" % self._temp_dir)
+            logger.debug('remove temporary cache directory %s' % self._temp_dir)
             shutil.rmtree(self._temp_dir)
 
         atexit.register(clean)
@@ -86,35 +86,35 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     def get_plugin_apps(self):
         return {
-            "/index.js": self.static_file_route,
-            "/index.html": self.static_file_route,
-            "/trace_viewer_full.html": self.static_file_route,
-            "/trace_embedding.html": self.static_file_route,
-            "/runs": self.runs_route,
-            "/views": self.views_route,
-            "/workers": self.workers_route,
-            "/spans": self.spans_route,
-            "/overview": self.overview_route,
-            "/operation": self.operation_pie_route,
-            "/operation/table": self.operation_table_route,
-            "/operation/stack": self.operation_stack_route,
-            "/kernel": self.kernel_pie_route,
-            "/kernel/table": self.kernel_table_route,
-            "/kernel/tc_pie": self.kernel_tc_route,
-            "/trace": self.trace_route,
-            "/distributed/gpuinfo": self.dist_gpu_info_route,
-            "/distributed/overlap": self.comm_overlap_route,
-            "/distributed/waittime": self.comm_wait_route,
-            "/distributed/commops": self.comm_ops_route,
-            "/memory": self.memory_route,
-            "/memory_curve": self.memory_curve_route,
-            "/memory_events": self.memory_events_route,
-            "/module": self.module_route,
-            "/tree": self.op_tree_route
+            '/index.js': self.static_file_route,
+            '/index.html': self.static_file_route,
+            '/trace_viewer_full.html': self.static_file_route,
+            '/trace_embedding.html': self.static_file_route,
+            '/runs': self.runs_route,
+            '/views': self.views_route,
+            '/workers': self.workers_route,
+            '/spans': self.spans_route,
+            '/overview': self.overview_route,
+            '/operation': self.operation_pie_route,
+            '/operation/table': self.operation_table_route,
+            '/operation/stack': self.operation_stack_route,
+            '/kernel': self.kernel_pie_route,
+            '/kernel/table': self.kernel_table_route,
+            '/kernel/tc_pie': self.kernel_tc_route,
+            '/trace': self.trace_route,
+            '/distributed/gpuinfo': self.dist_gpu_info_route,
+            '/distributed/overlap': self.comm_overlap_route,
+            '/distributed/waittime': self.comm_wait_route,
+            '/distributed/commops': self.comm_ops_route,
+            '/memory': self.memory_route,
+            '/memory_curve': self.memory_curve_route,
+            '/memory_events': self.memory_events_route,
+            '/module': self.module_route,
+            '/tree': self.op_tree_route
         }
 
     def frontend_metadata(self):
-        return base_plugin.FrontendMetadata(es_module_path="/index.js", disable_reload=True)
+        return base_plugin.FrontendMetadata(es_module_path='/index.js', disable_reload=True)
 
     @wrappers.Request.application
     def runs_route(self, request: werkzeug.Request):
@@ -122,14 +122,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             names = list(self._runs.keys())
 
         data = {
-            "runs": names,
-            "loading": self.is_loading
+            'runs': names,
+            'loading': self.is_loading
         }
         return self.respond_as_json(data)
 
     @wrappers.Request.application
     def views_route(self, request: werkzeug.Request):
-        name = request.args.get("run")
+        name = request.args.get('run')
         self._validate(run=name)
         run = self._get_run(name)
         views_list = [view.display_name for view in run.views]
@@ -137,16 +137,16 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def workers_route(self, request: werkzeug.Request):
-        name = request.args.get("run")
-        view = request.args.get("view")
+        name = request.args.get('run')
+        view = request.args.get('view')
         self._validate(run=name, view=view)
         run = self._get_run(name)
         return self.respond_as_json(run.get_workers(view))
 
     @wrappers.Request.application
     def spans_route(self, request: werkzeug.Request):
-        name = request.args.get("run")
-        worker = request.args.get("worker")
+        name = request.args.get('run')
+        worker = request.args.get('worker')
         self._validate(run=name, worker=worker)
         run = self._get_run(name)
         return self.respond_as_json(run.get_spans(worker))
@@ -154,17 +154,17 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def overview_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
-        name = request.args.get("run")
+        name = request.args.get('run')
         run = self._get_run(name)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         normal_workers = [worker for worker in run.workers if worker != 'All']
-        data["environments"] = [{"title": "Number of Worker(s)", "value": str(len(normal_workers))},
-                                {"title": "Device Type", "value": "GPU" if is_gpu_used else "CPU"}]
+        data['environments'] = [{'title': 'Number of Worker(s)', 'value': str(len(normal_workers))},
+                                {'title': 'Device Type', 'value': 'GPU' if is_gpu_used else 'CPU'}]
         if profile.gpu_summary and profile.gpu_tooltip:
-            data["gpu_metrics"] = {"title": "GPU Summary",
-                                   "data": profile.gpu_summary,
-                                   "tooltip": profile.gpu_tooltip}
+            data['gpu_metrics'] = {'title': 'GPU Summary',
+                                   'data': profile.gpu_summary,
+                                   'tooltip': profile.gpu_tooltip}
 
         return self.respond_as_json(data)
 
@@ -172,8 +172,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def operation_pie_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
-        group_by = request.args.get("group_by")
-        if group_by == "OperationAndInputShape":
+        group_by = request.args.get('group_by')
+        if group_by == 'OperationAndInputShape':
             return self.respond_as_json(profile.operation_pie_by_name_input)
         else:
             return self.respond_as_json(profile.operation_pie_by_name)
@@ -182,8 +182,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def operation_table_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
-        group_by = request.args.get("group_by")
-        if group_by == "OperationAndInputShape":
+        group_by = request.args.get('group_by')
+        if group_by == 'OperationAndInputShape':
             return self.respond_as_json(profile.operation_table_by_name_input)
         else:
             return self.respond_as_json(profile.operation_table_by_name)
@@ -192,12 +192,12 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def operation_stack_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
-        op_name = request.args.get("op_name")
+        op_name = request.args.get('op_name')
         self._validate(op_name=op_name)
-        group_by = request.args.get("group_by")
-        input_shape = request.args.get("input_shape")
-        if group_by == "OperationAndInputShape":
-            return self.respond_as_json(profile.operation_stack_by_name_input[str(op_name)+"###"+str(input_shape)])
+        group_by = request.args.get('group_by')
+        input_shape = request.args.get('input_shape')
+        if group_by == 'OperationAndInputShape':
+            return self.respond_as_json(profile.operation_stack_by_name_input[str(op_name)+'###'+str(input_shape)])
         else:
             return self.respond_as_json(profile.operation_stack_by_name[str(op_name)])
 
@@ -211,8 +211,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def kernel_table_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
-        group_by = request.args.get("group_by")
-        if group_by == "Kernel":
+        group_by = request.args.get('group_by')
+        if group_by == 'Kernel':
             return self.respond_as_json(profile.kernel_table)
         else:
             return self.respond_as_json(profile.kernel_op_table)
@@ -276,9 +276,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def memory_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
-        start_ts = request.args.get("start_ts", None)
-        end_ts = request.args.get("end_ts", None)
-        memory_metric = request.args.get("memory_metric", "KB")
+        start_ts = request.args.get('start_ts', None)
+        end_ts = request.args.get('end_ts', None)
+        memory_metric = request.args.get('memory_metric', 'KB')
         if start_ts is not None:
             start_ts = int(start_ts)
         if end_ts is not None:
@@ -290,18 +290,18 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     @wrappers.Request.application
     def memory_curve_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
-        time_metric = request.args.get("time_metric", "ms")
-        memory_metric = request.args.get("memory_metric", "MB")
+        time_metric = request.args.get('time_metric', 'ms')
+        memory_metric = request.args.get('memory_metric', 'MB')
         return self.respond_as_json(
             profile.get_memory_curve(time_metric=time_metric, memory_metric=memory_metric), True)
 
     @wrappers.Request.application
     def memory_events_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
-        start_ts = request.args.get("start_ts", None)
-        end_ts = request.args.get("end_ts", None)
-        time_metric = request.args.get("time_metric", "ms")
-        memory_metric = request.args.get("memory_metric", "KB")
+        start_ts = request.args.get('start_ts', None)
+        end_ts = request.args.get('end_ts', None)
+        time_metric = request.args.get('time_metric', 'ms')
+        memory_metric = request.args.get('memory_metric', 'KB')
         if start_ts is not None:
             start_ts = int(start_ts)
         if end_ts is not None:
@@ -318,10 +318,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         if content:
             return self.respond_as_json(content, True)
         else:
-            name = request.args.get("run")
-            worker = request.args.get("worker")
-            span = request.args.get("span")
-            raise exceptions.NotFound("could not find the run for %s/%s/%s" % (name, worker, span))
+            name = request.args.get('run')
+            worker = request.args.get('worker')
+            span = request.args.get('span')
+            raise exceptions.NotFound('could not find the run for %s/%s/%s' % (name, worker, span))
 
     @wrappers.Request.application
     def op_tree_route(self, request: werkzeug.Request):
@@ -346,7 +346,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
         except IOError:
-            raise exceptions.NotFound("404 Not Found")
+            raise exceptions.NotFound('404 Not Found')
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
         )
@@ -370,13 +370,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             return bool(self._load_threads)
 
     def _monitor_runs(self):
-        logger.info("Monitor runs begin")
+        logger.info('Monitor runs begin')
 
         try:
             touched = set()
             while True:
                 try:
-                    logger.debug("Scan run dir")
+                    logger.debug('Scan run dir')
                     run_dirs = self._get_run_dirs()
 
                     has_dir = False
@@ -385,7 +385,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                         has_dir = True
                         if run_dir not in touched:
                             touched.add(run_dir)
-                            logger.info("Find run directory %s", run_dir)
+                            logger.info('Find run directory %s', run_dir)
                             # Use threading to avoid UI stall and reduce data parsing time
                             t = threading.Thread(target=self._load_run, args=(run_dir,))
                             t.start()
@@ -396,11 +396,11 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
                         # handle directory removed case.
                         self._runs.clear()
                 except Exception as ex:
-                    logger.warning("Failed to scan runs. Exception=%s", ex, exc_info=True)
+                    logger.warning('Failed to scan runs. Exception=%s', ex, exc_info=True)
 
                 time.sleep(consts.MONITOR_RUN_REFRESH_INTERNAL_IN_SECONDS)
         except Exception:
-            logger.exception("Failed to start monitor_runs")
+            logger.exception('Failed to start monitor_runs')
 
     def _receive_runs(self):
         while True:
@@ -408,7 +408,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             if run is None:
                 continue
 
-            logger.info("Add run %s", run.name)
+            logger.info('Add run %s', run.name)
             with self._runs_lock:
                 is_new = run.name not in self._runs
                 self._runs[run.name] = run
@@ -434,28 +434,28 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def _load_run(self, run_dir):
         try:
             name = self._get_run_name(run_dir)
-            logger.info("Load run %s", name)
+            logger.info('Load run %s', name)
             # Currently, assume run data is immutable, so just load once
             loader = RunLoader(name, run_dir, self._cache)
             run = loader.load()
-            logger.info("Run %s loaded", name)
+            logger.info('Run %s loaded', name)
             self._queue.put(run)
         except Exception as ex:
-            logger.warning("Failed to load run %s. Exception=%s", ex, name, exc_info=True)
+            logger.warning('Failed to load run %s. Exception=%s', ex, name, exc_info=True)
 
         t = threading.current_thread()
         with self._load_lock:
             try:
                 self._load_threads.remove(t)
             except ValueError:
-                logger.warning("could not find the thread {}".format(run_dir))
+                logger.warning('could not find the thread {}'.format(run_dir))
 
     def _get_run(self, name) -> Run:
         with self._runs_lock:
             run = self._runs.get(name, None)
 
         if run is None:
-            raise exceptions.NotFound("could not find the run for %s" % (name))
+            raise exceptions.NotFound('could not find the run for %s' % (name))
 
         return run
 
@@ -468,23 +468,23 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return name
 
     def _get_profile_for_request(self, request: werkzeug.Request) -> RunProfile:
-        name = request.args.get("run")
-        span = request.args.get("span")
-        worker = request.args.get("worker")
+        name = request.args.get('run')
+        span = request.args.get('span')
+        worker = request.args.get('worker')
         self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker, span)
         if not isinstance(profile, RunProfile):
-            raise exceptions.BadRequest("Get an unexpected profile type %s for %s/%s" % (type(profile), name, worker))
+            raise exceptions.BadRequest('Get an unexpected profile type %s for %s/%s' % (type(profile), name, worker))
 
         return profile
 
     def _get_distributed_profile_for_request(self, request: werkzeug.Request) -> DistributedRunProfile:
-        name = request.args.get("run")
-        span = request.args.get("span")
+        name = request.args.get('run')
+        span = request.args.get('span')
         self._validate(run=name)
         profile = self._get_profile(name, 'All', span)
         if not isinstance(profile, DistributedRunProfile):
-            raise exceptions.BadRequest("Get an unexpected distributed profile type %s for %s" % (type(profile), name))
+            raise exceptions.BadRequest('Get an unexpected distributed profile type %s for %s' % (type(profile), name))
 
         return profile
 
@@ -492,10 +492,10 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         profile = run.get_profile(worker, span)
         if profile is None:
-            raise exceptions.NotFound("could not find the profile for %s/%s/%s " % (name, worker, span))
+            raise exceptions.NotFound('could not find the profile for %s/%s/%s ' % (name, worker, span))
         return profile
 
     def _validate(self, **kwargs):
         for name, v in kwargs.items():
             if v is None:
-                raise exceptions.BadRequest("Must specify %s in request url" % (name))
+                raise exceptions.BadRequest('Must specify %s in request url' % (name))

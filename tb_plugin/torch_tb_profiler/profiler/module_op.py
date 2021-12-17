@@ -69,8 +69,8 @@ def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEve
 
 
 def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
-    '''Get the module hierarchy from the chome trace events
-    '''
+    """Get the module hierarchy from the chome trace events
+    """
     python_events = [e for e in events if e.type in (EventTypes.PYTHON_FUNCTION, EventTypes.MODULE)]
     id_to_event = {e.python_id: e for e in python_events}
 
@@ -133,7 +133,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
 
 
 def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], ModuleStats]:
-    '''Aggregate the modules based on the name and module_id'''
+    """Aggregate the modules based on the name and module_id"""
     module_aggs: Dict[Tuple(str, int), ModuleStats] = {}
     for m in modules:
         key = (m.name, m.module_id)
@@ -154,7 +154,7 @@ def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], M
 
 
 def _get_module_list(tid2tree: Dict[int, OperatorNode]) -> Generator[ModuleNode, None, None]:
-    '''Get all ModuleNode from the operator tree'''
+    """Get all ModuleNode from the operator tree"""
     def traverse_node(node):
         if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode):
             return
@@ -171,8 +171,8 @@ def _get_module_list(tid2tree: Dict[int, OperatorNode]) -> Generator[ModuleNode,
 
 
 def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: Iterable[Module]) -> List[Stats]:
-    '''Get the module statistics from the ModuleNode(s) and the hierarchy
-    '''
+    """Get the module statistics from the ModuleNode(s) and the hierarchy
+    """
     module_aggs = _aggregate_modules(modules_nodes)
 
     def process_modules(h_modules: Iterable[Module]):
@@ -198,7 +198,7 @@ def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: I
 
 
 def get_module_tree(tid2tree: Dict[int, OperatorNode]):
-    '''Get the module tree in timeline'''
+    """Get the module tree in timeline"""
     from copy import copy
 
     modules = []
@@ -230,7 +230,7 @@ def get_module_tree(tid2tree: Dict[int, OperatorNode]):
 
 
 def dump_modules(level: int, modules: Iterable[Union[Module, ModuleNode]]):
-    '''testing purpose'''
+    """testing purpose"""
     for module in modules:
         print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}")
         dump_modules(level + 1, module.children)

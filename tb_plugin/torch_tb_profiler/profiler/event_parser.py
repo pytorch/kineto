@@ -389,16 +389,21 @@ class EventParser(NodeParserMixin, StepParser):
         self.comm_node_list: Dict[CommunicationNode] = None
 
     def parse(self, events: Iterable[BaseEvent], fwd_bwd_map: Dict[int, int]) -> Dict[int, List[OperatorNode]]:
-        result = self.parse_nodes(events)
+        with utils.timing('EventParser: parse nodes'):
+            result = self.parse_nodes(events)
 
-        builder = OpTreeBuilder()
-        tid2tree = builder.build_tree(*result, fwd_bwd_map=fwd_bwd_map)
-        # Process steps
-        self.parse_steps(events, self.communication_data)
-        if len(self.comm_lib) > 1:
-            logger.warning(
-                'Multiple communication libs are found. To avoid confusing, we disable the distributed view.')
-            self.communication_data.clear()
+        with utils.timing('EventParser: build operator tree'):
+            builder = OpTreeBuilder()
+            tid2tree = builder.build_tree(*result, fwd_bwd_map=fwd_bwd_map)
+
+        with utils.timing('EventParser: parse steps times'):
+            # Process steps
+            self.parse_steps(events, self.communication_data)
+            if len(self.comm_lib) > 1:
+                logger.warning(
+                    'Multiple communication libs are found. To avoid confusing, we disable the distributed view.')
+                self.communication_data.clear()
+
         # Move the interleaved logic out of each NodeParser and StepParser
         self.update_device_steps(self.runtime_node_list)
 

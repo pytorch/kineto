@@ -2,8 +2,10 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 import logging
-import os
 import math
+import os
+import time
+from contextlib import contextmanager
 from math import pow
 
 from . import consts
@@ -107,3 +109,14 @@ class DisplayRounder:
         else:
             ndigit = abs(math.floor(math.log10(_v)))
             return round(v, ndigit)
+
+
+@contextmanager
+def timing(description: str, force: bool = False) -> None:
+    if force or os.environ.get('TORCH_PROFILER_BENCHMARK', '0') == '1':
+        start = time.time()
+        yield
+        elapsed_time = time.time() - start
+        logger.info(f'{description}: {elapsed_time}')
+    else:
+        yield

@@ -105,7 +105,8 @@ class RunProfileData(object):
     @staticmethod
     def from_json(worker, span, trace_json: Dict):
         profile = RunProfileData(worker, span, trace_json)
-        profile.process()
+        with utils.timing('Data processing'):
+            profile.process()
         profile.analyze()
         return profile
 
@@ -163,8 +164,9 @@ class RunProfileData(object):
         return trace_path, trace_json
 
     def process(self):
-        parser = EventParser()
-        self.tid2tree = parser.parse(self.events, self.forward_backward_events)
+        with utils.timing('EventParser.parse'):
+            parser = EventParser()
+            self.tid2tree = parser.parse(self.events, self.forward_backward_events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel
@@ -181,8 +183,9 @@ class RunProfileData(object):
 
         # Starting aggregate
         logger.debug('ModuleAggregator')
-        module_aggregator = ModuleAggregator()
-        module_aggregator.aggregate(self.tid2tree)
+        with utils.timing('ModuleAggregator aggegation'):
+            module_aggregator = ModuleAggregator()
+            module_aggregator.aggregate(self.tid2tree)
         self.op_list_groupby_name = module_aggregator.op_list_groupby_name
         self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
         self.stack_lists_group_by_name = module_aggregator.stack_lists_group_by_name
@@ -190,8 +193,9 @@ class RunProfileData(object):
         self.kernel_list_groupby_name_op = module_aggregator.kernel_list_groupby_name_op
 
         logger.debug('OverallParser')
-        overall_parser = OverallParser()
-        overall_parser.aggregate(parser.steps, parser.role_ranges)
+        with utils.timing('OverallParser aggegation'):
+            overall_parser = OverallParser()
+            overall_parser.aggregate(parser.steps, parser.role_ranges)
         self.avg_costs = overall_parser.avg_costs
         self.steps_costs = overall_parser.steps_costs
         self.comm_overlap_costs = overall_parser.communication_overlap
@@ -208,8 +212,9 @@ class RunProfileData(object):
 
         if self.has_kernel:
             logger.debug('KernelParser')
-            kernel_parser = KernelParser()
-            kernel_parser.parse_events(self.events)
+            with utils.timing('parse kernels'):
+                kernel_parser = KernelParser()
+                kernel_parser.parse_events(self.events)
             self.kernel_stat = kernel_parser.kernel_stat
             self.tc_used_ratio = kernel_parser.tc_used_ratio
 

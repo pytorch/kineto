@@ -6,6 +6,7 @@
  */
 
 #include "ConfigLoader.h"
+#include <memory>
 
 #ifdef __linux__
 #include <signal.h>
@@ -159,6 +160,12 @@ void ConfigLoader::startThread() {
     }
     updateThread_ =
         std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
+#if !USE_GOOGLE_LOG
+    loggerObservers_ = std::make_unique<std::set<ILoggerObserver*>>();
+    loggerObserversMutex_ = std::make_unique<std::mutex>();
+    // Link the Logger Observers set to the Logger.
+    SET_LOGGER_OBSERVER_SET_AND_MUTEX(loggerObservers_.get(), loggerObserversMutex_.get());
+#endif // !USE_GOOGLE_LOG
   }
 }
 
@@ -171,6 +178,13 @@ ConfigLoader::~ConfigLoader() {
     }
     updateThread_->join();
   }
+#if !USE_GOOGLE_LOG
+  {
+    std::lock_guard<std::mutex> lock(*loggerObserversMutex_);
+    // Un-link the observers since I am being deleted.
+    SET_LOGGER_OBSERVER_SET_AND_MUTEX(nullptr, nullptr);
+  }
+#endif // !USE_GOOGLE_LOG
 }
 
 void ConfigLoader::handleOnDemandSignal() {

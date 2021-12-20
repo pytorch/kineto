@@ -99,7 +99,13 @@ class OpTreeBuilder:
                 # Note: Although kernels of this dummy runtime is put under main thread's tree,
                 # we don't know which thread launches them.
                 # TODO: Don't make belonging thread assumption on future usage if we need special handling
-                dummpy_rt.append(RuntimeNode('dummy', None, None, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
+                dummpy_rt.append(RuntimeNode(
+                    name='dummy',
+                    start_time=None,
+                    end_time=None,
+                    type=EventTypes.RUNTIME,
+                    tid=0,
+                    device_nodes=staled_device_nodes))
                 dummpy_rt[0].fill_stats()
             node_stack: List[OperatorNode] = []
             root_node = OperatorNode(
@@ -259,8 +265,8 @@ class OpTreeBuilder:
             return
 
         if isinstance(node, ModuleNode):
-            backward_node = BackwardNode(node.name + '.backward', None, None, 'backward', 0)
-
+            backward_node = BackwardNode(name=node.name + '.backward', start_time=None, end_time=None,
+                                         type='backward', tid=0)
             if parent is None:
                 result.append(backward_node)
             else:

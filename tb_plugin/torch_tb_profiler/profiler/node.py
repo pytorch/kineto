@@ -16,7 +16,8 @@ ExcludeOpName = ['DataParallel.forward', 'DistributedDataParallel.forward']
 
 
 class BaseNode(ABC):
-    def __init__(self, name: str, start_time: int, end_time: int, type: str, tid: int, external_id: int):
+    def __init__(self, name: str, start_time: int, end_time: int, type: str, tid: int,
+                 external_id: Optional[int] = None):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
@@ -48,15 +49,15 @@ class BaseNode(ABC):
 
 
 class CommunicationNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, tid, external_id, input_shape, input_type):
-        super().__init__(name, start_time, end_time, type, tid, external_id)
+    def __init__(self, input_shape: List[List[int]], input_type: List[str], **kwargs):
+        super().__init__(**kwargs)
         self.input_shape = input_shape
         self.input_type = input_type
         self.kernel_ranges: List[Tuple[int, int]] = []
         self.real_time_ranges: List[Tuple[int, int]] = []
-        self.total_time = 0
-        self.real_time = 0
-        self.step_name = None
+        self.total_time: int = 0
+        self.real_time: int = 0
+        self.step_name: str = None
 
     @classmethod
     def create(cls, event: OperatorEvent):
@@ -65,8 +66,8 @@ class CommunicationNode(BaseNode):
 
 
 class HostNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, tid, external_id, device_duration: int = 0):
-        super().__init__(name, start_time, end_time, type, tid, external_id)
+    def __init__(self, device_duration: int = 0, **kwargs):
+        super().__init__(**kwargs)
         self.device_duration = device_duration  # Total time of Kernel, GPU Memcpy, GPU Memset. TODO: parallel multi-stream? # noqa: E501
 
 
@@ -74,10 +75,10 @@ class OperatorNode(HostNode):
     # Don't use [] as default parameters
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
-    def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration: int = 0,
-                 children=None, runtimes=None, input_shape=None, input_type=None, callstack=None,
-                 self_host_duration: int = 0, self_device_duration: int = 0):
-        super().__init__(name, start_time, end_time, type, tid,  external_id, device_duration)
+    def __init__(self, children=None, runtimes=None, input_shape: Optional[List[List[int]]] = None,
+                 input_type: Optional[List[str]] = None, callstack: Optional[str] = None,
+                 self_host_duration: int = 0, self_device_duration: int = 0, **kwargs):
+        super().__init__(**kwargs)
         self.children: List[OperatorNode] = [] if children is None else children  # OperatorNode and ProfilerStepNode.
         self.runtimes: List[RuntimeNode] = [] if runtimes is None else runtimes  # RuntimeNode
         self.input_shape = input_shape
@@ -176,14 +177,13 @@ class ModuleNode(OperatorNode):
 
 
 class BackwardNode(OperatorNode):
-    def __init__(self, name, start_time, end_time, type, tid):
-        super().__init__(name, start_time, end_time, type, tid)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class RuntimeNode(HostNode):
-    def __init__(self, name, start_time, end_time, type, tid, external_id=None, device_duration=0,
-                 device_nodes: Optional[List['DeviceNode']] = None):
-        super().__init__(name, start_time, end_time, type, tid, external_id, device_duration)
+    def __init__(self, device_nodes: Optional[List['DeviceNode']] = None, **kwargs):
+        super().__init__(**kwargs)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
         self.tc_duration: int = 0  # Time summarization of all its launched kernels.
@@ -211,10 +211,15 @@ class RuntimeNode(HostNode):
 
 
 class DeviceNode(BaseNode):
-    def __init__(self, name, start_time, end_time, type, tid, external_id=None,
-                 blocks_per_sm=None, occupancy=None,
-                 grid=None, block=None, regs_per_thread=None, shared_memory=None, device_id=None):
-        super().__init__(name, start_time, end_time, type, tid, external_id)
+    def __init__(self,
+                 blocks_per_sm: Optional[float] = None,
+                 occupancy: int = None,
+                 grid: Optional[List[int]] = None,
+                 block: Optional[List[int]] = None,
+                 regs_per_thread: int = None,
+                 shared_memory: int = None,
+                 device_id: int = None, **kwargs):
+        super().__init__(**kwargs)
         self.op_tc_eligible = False
         self.op_name = None
         self.blocks_per_sm = blocks_per_sm

@@ -181,8 +181,8 @@ class BackwardNode(OperatorNode):
         super().__init__(**kwargs)
 
     def fill_stats(self):
-        '''Override the timestamps and duration for BackwardNode only
-        '''
+        """Override the timestamps and duration for BackwardNode only
+        """
         self.children.sort(key=lambda x: (x.start_time, -x.end_time))
         self.start_time = self.children[0].start_time
         self.end_time = self.children[-1].end_time

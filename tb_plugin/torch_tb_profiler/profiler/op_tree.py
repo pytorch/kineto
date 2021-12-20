@@ -283,9 +283,7 @@ class OpTreeBuilder:
             OpTreeBuilder._build_backward_module(child, parent, fwd_bwd_map, result)
 
         if isinstance(node, ModuleNode) and parent and parent.children:
-            parent.children.sort(key=lambda x: (x.start_time, -x.end_time))
-            parent.start_time = parent.children[0].start_time
-            parent.end_time = parent.children[-1].end_time
+            parent.fill_stats()
             parent.tid = parent.children[0].tid
 
     @staticmethod

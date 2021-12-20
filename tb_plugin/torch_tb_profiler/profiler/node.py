@@ -180,6 +180,22 @@ class BackwardNode(OperatorNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def fill_stats(self):
+        """Override the timestamps and duration for BackwardNode only
+        """
+        self.children.sort(key=lambda x: (x.start_time, -x.end_time))
+        self.start_time = self.children[0].start_time
+        self.end_time = self.children[-1].end_time
+
+        self.self_host_duration = self.end_time - self.start_time
+        for child in self.children:
+            self.device_duration += child.device_duration
+            self.self_host_duration -= (child.end_time - child.start_time)
+            self.tc_total_duration += child.tc_total_duration
+            # Mark TC eligible as True if any child operator is TC eligible.
+            if not self.tc_eligible and child.tc_eligible:
+                self.tc_eligible = True
+
 
 class RuntimeNode(HostNode):
     def __init__(self, device_nodes: Optional[List['DeviceNode']] = None, **kwargs):

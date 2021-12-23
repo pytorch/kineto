@@ -15,6 +15,7 @@
 #include <chrono>
 #include <fmt/format.h>
 #include <fstream>
+#include <memory>
 
 #include "DaemonConfigLoader.h"
 
@@ -159,6 +160,11 @@ void ConfigLoader::startThread() {
     }
     updateThread_ =
         std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
+#if !USE_GOOGLE_LOG
+    loggerObservers_ = std::make_shared<LoggerObserverSet>();
+    // Link the Logger Observers set to the Logger.
+    SET_LOGGER_OBSERVER_SET(loggerObservers_.get());
+#endif // !USE_GOOGLE_LOG
   }
 }
 
@@ -171,6 +177,10 @@ ConfigLoader::~ConfigLoader() {
     }
     updateThread_->join();
   }
+#if !USE_GOOGLE_LOG
+  // Un-link the observers since I am being deleted.
+  SET_LOGGER_OBSERVER_SET(nullptr);
+#endif // !USE_GOOGLE_LOG
 }
 
 void ConfigLoader::handleOnDemandSignal() {

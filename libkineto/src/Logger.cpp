@@ -17,7 +17,6 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
-#include <set>
 #include <time.h>
 
 #include <fmt/chrono.h>
@@ -30,14 +29,7 @@ namespace KINETO_NAMESPACE {
 std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
-static std::set<ILoggerObserver*>& LoggerObservers() {
-  static std::set<ILoggerObserver*> observers;
-  return observers;
-}
-static std::mutex& mutex() {
-  static std::mutex mutex_;
-  return mutex_;
-}
+std::shared_ptr<LoggerObserverSet> Logger::loggerObservers_{nullptr};
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
@@ -59,12 +51,8 @@ Logger::~Logger() {
   }
 #endif
 
-  {
-    std::lock_guard<std::mutex> guard(mutex());
-    // Output to observers. Current Severity helps keep track of which bucket the output goes.
-    for (auto& observer : LoggerObservers()) {
-      observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
-    }
+  if (auto lo = loggerObservers_) {
+    lo->write(buf_.str(), (LoggerOutputType) messageSeverity_);
   }
 
   // Finally, print to terminal or console.
@@ -83,14 +71,22 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
   verboseLogModules_ = mask;
 }
 
+void Logger::setLoggerObservers(LoggerObserverSet* observers) {
+  static std::mutex mutex_;
+  std::lock_guard<std::mutex> l(mutex_);
+  loggerObservers_.reset(observers);
+}
+
 void Logger::addLoggerObserver(ILoggerObserver* observer) {
-  std::lock_guard<std::mutex> guard(mutex());
-  LoggerObservers().insert(observer);
+  if (auto lo = loggerObservers_) {
+    lo->insert(observer);
+  }
 }
 
 void Logger::removeLoggerObserver(ILoggerObserver* observer) {
-  std::lock_guard<std::mutex> guard(mutex());
-  LoggerObservers().erase(observer);
+  if (auto lo = loggerObservers_) {
+    loggerObservers_->remove(observer);
+  }
 }
 
 } // namespace KINETO_NAMESPACE

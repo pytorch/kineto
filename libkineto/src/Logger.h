@@ -17,6 +17,7 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 
 #define LIBKINETO_DBG_STREAM std::cerr
 
@@ -26,6 +27,7 @@
 
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
+#define SET_LOGGER_OBSERVER_SET(observers)
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
@@ -39,6 +41,7 @@
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ILoggerObserver.h"
+#include "LoggerObserverSet.h"
 
 #ifdef _MSC_VER
 // unset a predefined ERROR (windows)
@@ -101,6 +104,8 @@ class Logger {
     return verboseLogModules_;
   }
 
+  static void setLoggerObservers(LoggerObserverSet* observers);
+
   static void addLoggerObserver(ILoggerObserver* observer);
 
   static void removeLoggerObserver(ILoggerObserver* observer);
@@ -113,6 +118,7 @@ class Logger {
   static std::atomic_int severityLevel_;
   static std::atomic_int verboseLogLevel_;
   static std::atomic<uint64_t> verboseLogModules_;
+  static std::shared_ptr<LoggerObserverSet> loggerObservers_;
 };
 
 class VoidLogger {
@@ -195,5 +201,8 @@ struct __to_constant__ {
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
+
+#define SET_LOGGER_OBSERVER_SET(observers) \
+  libkineto::Logger::setLoggerObservers(observers)
 
 #endif // USE_GOOGLE_LOG

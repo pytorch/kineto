@@ -17,6 +17,10 @@
 
 #include "Config.h"
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "LoggerObserverSet.h"
+
 namespace libkineto {
   class LibkinetoApi;
 }
@@ -138,6 +142,10 @@ class ConfigLoader {
   std::mutex updateThreadMutex_;
   std::atomic_bool stopFlag_{false};
   std::atomic_bool onDemandSignal_{false};
+
+#if !USE_GOOGLE_LOG
+  std::shared_ptr<LoggerObserverSet> loggerObservers_;
+#endif // !USE_GOOGLE_LOG
 };
 
 } // namespace KINETO_NAMESPACE

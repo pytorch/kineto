@@ -1,18 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- *
- * glog has a couple of big issues:
- *  1) It crashes or terminates when linked both statically and dynamically
- *  2) VLOG before init crashes - this is a problem because parts of libkineto
- *     may be initialized before main()
- *
- * For these reasons we use our own implementations of glog macros
- * that just log to stderr by default.
- *
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 

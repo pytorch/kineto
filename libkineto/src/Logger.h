@@ -12,12 +12,15 @@
 
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
+#define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock)
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
 #include <atomic>
 #include <map>
+#include <mutex>
 #include <ostream>
+#include <set>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -87,6 +90,22 @@ class Logger {
     return verboseLogModules_;
   }
 
+  static inline void setLoggerObservers(std::set<ILoggerObserver*>* observers) {
+    loggerObservers_ = observers;
+  }
+
+  static inline std::set<ILoggerObserver*>* loggerObservers() {
+    return loggerObservers_;
+  }
+
+  static inline void setLoggerObserversMutex(std::mutex* mutex) {
+    loggerObserversMutex_ = mutex;
+  }
+
+  static inline std::mutex* LoggerObserversMutex() {
+    return loggerObserversMutex_;
+  }
+
   static void addLoggerObserver(ILoggerObserver* observer);
 
   static void removeLoggerObserver(ILoggerObserver* observer);
@@ -99,6 +118,8 @@ class Logger {
   static std::atomic_int severityLevel_;
   static std::atomic_int verboseLogLevel_;
   static std::atomic<uint64_t> verboseLogModules_;
+  static std::set<ILoggerObserver*>* loggerObservers_;
+  static std::mutex* loggerObserversMutex_;
 };
 
 class VoidLogger {
@@ -181,5 +202,9 @@ struct __to_constant__ {
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
+
+#define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock) \
+  libkineto::Logger::setLoggerObservers(observers); \
+  libkineto::Logger::setLoggerObserversMutex(lock)
 
 #endif // USE_GOOGLE_LOG

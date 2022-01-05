@@ -11,8 +11,6 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
-#include <mutex>
-#include <set>
 #include <time.h>
 
 #include <fmt/chrono.h>
@@ -25,14 +23,8 @@ namespace KINETO_NAMESPACE {
 std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
-static std::set<ILoggerObserver*>& LoggerObservers() {
-  static std::set<ILoggerObserver*> observers;
-  return observers;
-}
-static std::mutex& mutex() {
-  static std::mutex mutex_;
-  return mutex_;
-}
+std::set<ILoggerObserver*>* Logger::loggerObservers_{nullptr};
+std::mutex* Logger::loggerObserversMutex_{nullptr};
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
@@ -54,11 +46,16 @@ Logger::~Logger() {
   }
 #endif
 
-  {
-    std::lock_guard<std::mutex> guard(mutex());
+  auto mutex = LoggerObserversMutex();
+  if (mutex) {
+    std::lock_guard<std::mutex> guard(*mutex);
     // Output to observers. Current Severity helps keep track of which bucket the output goes.
-    for (auto& observer : LoggerObservers()) {
-      observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
+    if (loggerObservers()) {
+      for (auto observer : *loggerObservers()) {
+        if (observer) {
+          observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
+        }
+      }
     }
   }
 
@@ -79,13 +76,23 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
 }
 
 void Logger::addLoggerObserver(ILoggerObserver* observer) {
-  std::lock_guard<std::mutex> guard(mutex());
-  LoggerObservers().insert(observer);
+  auto mutex = LoggerObserversMutex();
+  if (mutex) {
+    std::lock_guard<std::mutex> guard(*mutex);
+    if (loggerObservers()) {
+      loggerObservers()->insert(observer);
+    }
+  }
 }
 
 void Logger::removeLoggerObserver(ILoggerObserver* observer) {
-  std::lock_guard<std::mutex> guard(mutex());
-  LoggerObservers().erase(observer);
+  auto mutex = LoggerObserversMutex();
+  if (mutex) {
+    std::lock_guard<std::mutex> guard(*mutex);
+    if (loggerObservers()) {
+      loggerObservers()->erase(observer);
+    }
+  }
 }
 
 } // namespace KINETO_NAMESPACE

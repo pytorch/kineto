@@ -1,6 +1,9 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ConfigLoader.h"
+#include "LoggerObserverList.h"
 
 #ifdef __linux__
 #include <signal.h>
@@ -156,9 +159,9 @@ void ConfigLoader::startThread() {
     updateThread_ =
         std::make_unique<std::thread>(&ConfigLoader::updateConfigThread, this);
 #if !USE_GOOGLE_LOG
-    loggerObservers_ = std::make_unique<std::set<ILoggerObserver*>>();
-    // Link the Logger Observers set to the Logger.
-    SET_LOGGER_OBSERVER_SET_AND_MUTEX(loggerObservers_.get(), &loggerObserversMutex_);
+    loggerObserverList_ = std::make_shared<LoggerObserverList>();
+    // Link the Logger Observers to the Logger.
+    SET_LOGGER_OBSERVER_LIST(loggerObserverList_);
 #endif // !USE_GOOGLE_LOG
   }
 }
@@ -173,11 +176,8 @@ ConfigLoader::~ConfigLoader() {
     updateThread_->join();
   }
 #if !USE_GOOGLE_LOG
-  {
-    std::lock_guard<std::mutex> lock(loggerObserversMutex_);
-    // Un-link the observers since I am being deleted.
-    SET_LOGGER_OBSERVER_SET_AND_MUTEX(nullptr, nullptr);
-  }
+  // Un-link the observers since I am being deleted.
+  SET_LOGGER_OBSERVER_LIST(nullptr);
 #endif // !USE_GOOGLE_LOG
 }
 

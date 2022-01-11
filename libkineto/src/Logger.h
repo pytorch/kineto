@@ -12,7 +12,7 @@
 
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
-#define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock)
+#define SET_LOGGER_OBSERVER_LIST(observers)
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
@@ -28,6 +28,7 @@
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ILoggerObserver.h"
+#include "LoggerObserverList.h"
 
 #ifdef _MSC_VER
 // unset a predefined ERROR (windows)
@@ -90,25 +91,13 @@ class Logger {
     return verboseLogModules_;
   }
 
-  static inline void setLoggerObservers(std::set<ILoggerObserver*>* observers) {
-    loggerObservers_ = observers;
+  static inline void setLoggerObservers(std::shared_ptr<LoggerObserverList> observers) {
+    std::atomic_store(&loggerObservers_, observers);
   }
 
-  static inline std::set<ILoggerObserver*>* loggerObservers() {
-    return loggerObservers_;
-  }
+  static void addLoggerObserver(std::shared_ptr<ILoggerObserver> observer);
 
-  static inline void setLoggerObserversMutex(std::mutex* mutex) {
-    loggerObserversMutex_ = mutex;
-  }
-
-  static inline std::mutex* LoggerObserversMutex() {
-    return loggerObserversMutex_;
-  }
-
-  static void addLoggerObserver(ILoggerObserver* observer);
-
-  static void removeLoggerObserver(ILoggerObserver* observer);
+  static void removeLoggerObserver(std::shared_ptr<ILoggerObserver> observer);
 
  private:
   std::stringstream buf_;
@@ -118,8 +107,8 @@ class Logger {
   static std::atomic_int severityLevel_;
   static std::atomic_int verboseLogLevel_;
   static std::atomic<uint64_t> verboseLogModules_;
-  static std::set<ILoggerObserver*>* loggerObservers_;
-  static std::mutex* loggerObserversMutex_;
+  // This is atomic, MUST ALWAYS use atomic_ functions for loggerObservers_.
+  static std::shared_ptr<LoggerObserverList> loggerObservers_;
 };
 
 class VoidLogger {
@@ -203,8 +192,7 @@ struct __to_constant__ {
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
 
-#define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock) \
-  libkineto::Logger::setLoggerObservers(observers); \
-  libkineto::Logger::setLoggerObserversMutex(lock)
+#define SET_LOGGER_OBSERVER_LIST(observers) \
+  libkineto::Logger::setLoggerObservers(observers)
 
 #endif // USE_GOOGLE_LOG

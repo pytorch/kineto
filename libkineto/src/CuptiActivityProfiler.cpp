@@ -400,12 +400,6 @@ void CuptiActivityProfiler::configure(
     return;
   }
 
-#if !USE_GOOGLE_LOG
-  // Add a LoggerObserverCollector to collect all logs during the trace.
-  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
-  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
-#endif // !USE_GOOGLE_LOG
-
   config_ = config.clone();
 
   if (config_->activitiesDuration().count() == 0) {
@@ -433,6 +427,12 @@ void CuptiActivityProfiler::configure(
 
   // Ensure we're starting in a clean state
   resetTraceData();
+
+#if !USE_GOOGLE_LOG
+  // Add a LoggerObserverCollector to collect all logs during the trace.
+  loggerCollectorMetadata_ = std::make_shared<LoggerCollector>();
+  Logger::addLoggerObserver(loggerCollectorMetadata_);
+#endif // !USE_GOOGLE_LOG
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
@@ -694,7 +694,7 @@ void CuptiActivityProfiler::resetTraceData() {
   metadata_.clear();
   sessions_.clear();
 #if !USE_GOOGLE_LOG
-  Logger::removeLoggerObserver(loggerCollectorMetadata_.get());
+  Logger::removeLoggerObserver(loggerCollectorMetadata_);
 #endif // !USE_GOOGLE_LOG
 }
 

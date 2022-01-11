@@ -4,6 +4,8 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "Logger.h"
 #include "ILoggerObserver.h"
+#include <atomic>
+#include <math.h>
 
 #ifndef USE_GOOGLE_LOG
 
@@ -23,8 +25,18 @@ namespace KINETO_NAMESPACE {
 std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
-std::set<ILoggerObserver*>* Logger::loggerObservers_{nullptr};
-std::mutex* Logger::loggerObserversMutex_{nullptr};
+
+// For iOS CI tests, skip error on global constructor without destructor here.
+// This is valid C++ code, and shouldn't crash without destructor.
+#if __clang__ && __APPLE__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wglobal-constructors"
+#endif
+// This is atomic, MUST ALWAYS use atomic_ functions for loggerObservers_.
+std::shared_ptr<LoggerObserverList> Logger::loggerObservers_{nullptr};
+#if __clang__ && __APPLE__
+#pragma clang diagnostic pop
+#endif
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
@@ -46,21 +58,14 @@ Logger::~Logger() {
   }
 #endif
 
-  auto mutex = LoggerObserversMutex();
-  if (mutex) {
-    std::lock_guard<std::mutex> guard(*mutex);
-    // Output to observers. Current Severity helps keep track of which bucket the output goes.
-    if (loggerObservers()) {
-      for (auto observer : *loggerObservers()) {
-        if (observer) {
-          observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
-        }
-      }
-    }
+  std::string message = buf_.str();
+  auto p = std::atomic_load(&loggerObservers_);
+  if (p) {
+    p->write_all(message, (LoggerOutputType) messageSeverity_);
   }
 
   // Finally, print to terminal or console.
-  out_ << buf_.str() << std::endl;
+  out_ << message << std::endl;
 }
 
 void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
@@ -75,23 +80,17 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
   verboseLogModules_ = mask;
 }
 
-void Logger::addLoggerObserver(ILoggerObserver* observer) {
-  auto mutex = LoggerObserversMutex();
-  if (mutex) {
-    std::lock_guard<std::mutex> guard(*mutex);
-    if (loggerObservers()) {
-      loggerObservers()->insert(observer);
-    }
+void Logger::addLoggerObserver(std::shared_ptr<ILoggerObserver> observer) {
+  auto p = std::atomic_load(&loggerObservers_);
+  if (p) {
+    p->push_front(observer);
   }
 }
 
-void Logger::removeLoggerObserver(ILoggerObserver* observer) {
-  auto mutex = LoggerObserversMutex();
-  if (mutex) {
-    std::lock_guard<std::mutex> guard(*mutex);
-    if (loggerObservers()) {
-      loggerObservers()->erase(observer);
-    }
+void Logger::removeLoggerObserver(std::shared_ptr<ILoggerObserver> observer) {
+  auto p = std::atomic_load(&loggerObservers_);
+  if (p) {
+    p->remove(observer);
   }
 }
 

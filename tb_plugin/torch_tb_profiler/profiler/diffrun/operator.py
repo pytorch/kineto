@@ -46,12 +46,12 @@ class Operator(metaclass=ABCMeta):
 
 class BlankOp(Operator):
     def __init__(self) -> None:
-        super().__init__('blank')
+        super().__init__('Blank')
 
 
 class UnknownOp(Operator):
     def __init__(self, device_duration: int, duration: int) -> None:
-        super().__init__('unknown')
+        super().__init__('Unknown')
         self.device_duration = device_duration
         self.duration = duration
 
@@ -71,7 +71,7 @@ class Operators(Operator):
         if isinstance(nodes, OperatorNode):
             super().__init__(nodes.name)
         elif isinstance(nodes, list):
-            super().__init__('multiple nodes')
+            super().__init__('CompositeNodes')
 
         self.op_nodes: Union[OperatorNode, List[OperatorNode]] = nodes
 

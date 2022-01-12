@@ -610,7 +610,91 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/OperatorNode'
-
+  /diff:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DiffSummary'
+  /diffnode:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_span
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: path
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DiffNode'
 components:
   schemas:
     Runs:
@@ -1097,3 +1181,79 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OperatorNode'
+    OpAgg:
+      type: object
+      required:
+        - name
+        - calls
+        - host_duration
+        - device_duration
+        - self_host_duration
+        - self_device_duration
+      properties:
+        name:
+          type: string
+        calls:
+          type: number
+        host_duration:
+          type: number
+        device_duration:
+          type: number
+        self_host_duration:
+          type: number
+        self_device_duration:
+          type: number
+    OpStats:
+      type: object
+      required:
+        - name
+        - duration
+        - device_duration
+        - total_duration
+        - aggs
+      properties:
+        name:
+          type: string
+        duration:
+          type: number
+        device_duration:
+          type: number
+        total_duration:
+          type: number
+        aggs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpAgg'
+    DiffSummary:
+      type: object
+      required:
+        - left
+        - right
+        - children
+      properties:
+        left:
+          $ref: '#/components/schemas/OpStats'
+        right:
+          $ref: '#/components/schemas/OpStats'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffSummary'
+    DiffNode:
+      type: object
+      required:
+        - left
+        - right
+        - children
+        - path
+      properties:
+        left:
+          $ref: '#/components/schemas/OpStats'
+        right:
+          $ref: '#/components/schemas/OpStats'
+        path:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffNode'

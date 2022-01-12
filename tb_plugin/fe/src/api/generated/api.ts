@@ -167,6 +167,62 @@ export interface CallStackTableDataInner {
 /**
  *
  * @export
+ * @interface DiffNode
+ */
+export interface DiffNode {
+  /**
+   *
+   * @type {OpStats}
+   * @memberof DiffNode
+   */
+  left: OpStats
+  /**
+   *
+   * @type {OpStats}
+   * @memberof DiffNode
+   */
+  right: OpStats
+  /**
+   *
+   * @type {string}
+   * @memberof DiffNode
+   */
+  path: string
+  /**
+   *
+   * @type {Array<DiffNode>}
+   * @memberof DiffNode
+   */
+  children: Array<DiffNode>
+}
+/**
+ *
+ * @export
+ * @interface DiffSummary
+ */
+export interface DiffSummary {
+  /**
+   *
+   * @type {OpStats}
+   * @memberof DiffSummary
+   */
+  left: OpStats
+  /**
+   *
+   * @type {OpStats}
+   * @memberof DiffSummary
+   */
+  right: OpStats
+  /**
+   *
+   * @type {Array<DiffSummary>}
+   * @memberof DiffSummary
+   */
+  children: Array<DiffSummary>
+}
+/**
+ *
+ * @export
  * @interface DistributedGraph
  */
 export interface DistributedGraph {
@@ -748,6 +804,86 @@ export interface ModuleViewData {
 /**
  *
  * @export
+ * @interface OpAgg
+ */
+export interface OpAgg {
+  /**
+   *
+   * @type {string}
+   * @memberof OpAgg
+   */
+  name: string
+  /**
+   *
+   * @type {number}
+   * @memberof OpAgg
+   */
+  calls: number
+  /**
+   *
+   * @type {number}
+   * @memberof OpAgg
+   */
+  host_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof OpAgg
+   */
+  device_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof OpAgg
+   */
+  self_host_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof OpAgg
+   */
+  self_device_duration: number
+}
+/**
+ *
+ * @export
+ * @interface OpStats
+ */
+export interface OpStats {
+  /**
+   *
+   * @type {string}
+   * @memberof OpStats
+   */
+  name: string
+  /**
+   *
+   * @type {number}
+   * @memberof OpStats
+   */
+  duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof OpStats
+   */
+  device_duration: number
+  /**
+   *
+   * @type {number}
+   * @memberof OpStats
+   */
+  total_duration: number
+  /**
+   *
+   * @type {Array<OpAgg>}
+   * @memberof OpStats
+   */
+  aggs: Array<OpAgg>
+}
+/**
+ *
+ * @export
  * @interface OperationTableData
  */
 export interface OperationTableData extends Array<OperationTableDataInner> {}
@@ -1069,6 +1205,234 @@ export const DefaultApiFetchParamCreator = function (
   configuration?: Configuration
 ) {
   return {
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} exp_run
+     * @param {string} exp_worker
+     * @param {string} exp_span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    diffGet(
+      run: string,
+      worker: string,
+      span: string,
+      exp_run: string,
+      exp_worker: string,
+      exp_span: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling diffGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling diffGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling diffGet.'
+        )
+      }
+      // verify required parameter 'exp_run' is not null or undefined
+      if (exp_run === null || exp_run === undefined) {
+        throw new RequiredError(
+          'exp_run',
+          'Required parameter exp_run was null or undefined when calling diffGet.'
+        )
+      }
+      // verify required parameter 'exp_worker' is not null or undefined
+      if (exp_worker === null || exp_worker === undefined) {
+        throw new RequiredError(
+          'exp_worker',
+          'Required parameter exp_worker was null or undefined when calling diffGet.'
+        )
+      }
+      // verify required parameter 'exp_span' is not null or undefined
+      if (exp_span === null || exp_span === undefined) {
+        throw new RequiredError(
+          'exp_span',
+          'Required parameter exp_span was null or undefined when calling diffGet.'
+        )
+      }
+      const localVarPath = `/diff`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      if (exp_run !== undefined) {
+        localVarQueryParameter['exp_run'] = exp_run
+      }
+
+      if (exp_worker !== undefined) {
+        localVarQueryParameter['exp_worker'] = exp_worker
+      }
+
+      if (exp_span !== undefined) {
+        localVarQueryParameter['exp_span'] = exp_span
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} exp_run
+     * @param {string} exp_worker
+     * @param {string} exp_span
+     * @param {string} [path]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    diffnodeGet(
+      run: string,
+      worker: string,
+      span: string,
+      exp_run: string,
+      exp_worker: string,
+      exp_span: string,
+      path?: string,
+      options: any = {}
+    ): FetchArgs {
+      // verify required parameter 'run' is not null or undefined
+      if (run === null || run === undefined) {
+        throw new RequiredError(
+          'run',
+          'Required parameter run was null or undefined when calling diffnodeGet.'
+        )
+      }
+      // verify required parameter 'worker' is not null or undefined
+      if (worker === null || worker === undefined) {
+        throw new RequiredError(
+          'worker',
+          'Required parameter worker was null or undefined when calling diffnodeGet.'
+        )
+      }
+      // verify required parameter 'span' is not null or undefined
+      if (span === null || span === undefined) {
+        throw new RequiredError(
+          'span',
+          'Required parameter span was null or undefined when calling diffnodeGet.'
+        )
+      }
+      // verify required parameter 'exp_run' is not null or undefined
+      if (exp_run === null || exp_run === undefined) {
+        throw new RequiredError(
+          'exp_run',
+          'Required parameter exp_run was null or undefined when calling diffnodeGet.'
+        )
+      }
+      // verify required parameter 'exp_worker' is not null or undefined
+      if (exp_worker === null || exp_worker === undefined) {
+        throw new RequiredError(
+          'exp_worker',
+          'Required parameter exp_worker was null or undefined when calling diffnodeGet.'
+        )
+      }
+      // verify required parameter 'exp_span' is not null or undefined
+      if (exp_span === null || exp_span === undefined) {
+        throw new RequiredError(
+          'exp_span',
+          'Required parameter exp_span was null or undefined when calling diffnodeGet.'
+        )
+      }
+      const localVarPath = `/diffnode`
+      const localVarUrlObj = url.parse(localVarPath, true)
+      const localVarRequestOptions = Object.assign({ method: 'GET' }, options)
+      const localVarHeaderParameter = {} as any
+      const localVarQueryParameter = {} as any
+
+      if (run !== undefined) {
+        localVarQueryParameter['run'] = run
+      }
+
+      if (worker !== undefined) {
+        localVarQueryParameter['worker'] = worker
+      }
+
+      if (span !== undefined) {
+        localVarQueryParameter['span'] = span
+      }
+
+      if (exp_run !== undefined) {
+        localVarQueryParameter['exp_run'] = exp_run
+      }
+
+      if (exp_worker !== undefined) {
+        localVarQueryParameter['exp_worker'] = exp_worker
+      }
+
+      if (exp_span !== undefined) {
+        localVarQueryParameter['exp_span'] = exp_span
+      }
+
+      if (path !== undefined) {
+        localVarQueryParameter['path'] = path
+      }
+
+      localVarUrlObj.query = Object.assign(
+        {},
+        localVarUrlObj.query,
+        localVarQueryParameter,
+        options.query
+      )
+      // fix override query string Detail: https://stackoverflow.com/a/7517673/1077943
+      delete localVarUrlObj.search
+      localVarRequestOptions.headers = Object.assign(
+        {},
+        localVarHeaderParameter,
+        options.headers
+      )
+
+      return {
+        url: url.format(localVarUrlObj),
+        options: localVarRequestOptions
+      }
+    },
     /**
      *
      * @param {string} run
@@ -2592,6 +2956,95 @@ export const DefaultApiFp = function (configuration?: Configuration) {
      * @param {string} run
      * @param {string} worker
      * @param {string} span
+     * @param {string} exp_run
+     * @param {string} exp_worker
+     * @param {string} exp_span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    diffGet(
+      run: string,
+      worker: string,
+      span: string,
+      exp_run: string,
+      exp_worker: string,
+      exp_span: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<DiffSummary> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).diffGet(run, worker, span, exp_run, exp_worker, exp_span, options)
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} exp_run
+     * @param {string} exp_worker
+     * @param {string} exp_span
+     * @param {string} [path]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    diffnodeGet(
+      run: string,
+      worker: string,
+      span: string,
+      exp_run: string,
+      exp_worker: string,
+      exp_span: string,
+      path?: string,
+      options?: any
+    ): (fetch?: FetchAPI, basePath?: string) => Promise<DiffNode> {
+      const localVarFetchArgs = DefaultApiFetchParamCreator(
+        configuration
+      ).diffnodeGet(
+        run,
+        worker,
+        span,
+        exp_run,
+        exp_worker,
+        exp_span,
+        path,
+        options
+      )
+      return (
+        fetch: FetchAPI = portableFetch,
+        basePath: string = BASE_PATH
+      ) => {
+        return fetch(
+          basePath + localVarFetchArgs.url,
+          localVarFetchArgs.options
+        ).then((response) => {
+          if (response.status >= 200 && response.status < 300) {
+            return response.json()
+          } else {
+            throw response
+          }
+        })
+      }
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3314,6 +3767,69 @@ export const DefaultApiFactory = function (
      * @param {string} run
      * @param {string} worker
      * @param {string} span
+     * @param {string} exp_run
+     * @param {string} exp_worker
+     * @param {string} exp_span
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    diffGet(
+      run: string,
+      worker: string,
+      span: string,
+      exp_run: string,
+      exp_worker: string,
+      exp_span: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).diffGet(
+        run,
+        worker,
+        span,
+        exp_run,
+        exp_worker,
+        exp_span,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
+     * @param {string} exp_run
+     * @param {string} exp_worker
+     * @param {string} exp_span
+     * @param {string} [path]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    diffnodeGet(
+      run: string,
+      worker: string,
+      span: string,
+      exp_run: string,
+      exp_worker: string,
+      exp_span: string,
+      path?: string,
+      options?: any
+    ) {
+      return DefaultApiFp(configuration).diffnodeGet(
+        run,
+        worker,
+        span,
+        exp_run,
+        exp_worker,
+        exp_span,
+        path,
+        options
+      )(fetch, basePath)
+    },
+    /**
+     *
+     * @param {string} run
+     * @param {string} worker
+     * @param {string} span
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3724,6 +4240,73 @@ export const DefaultApiFactory = function (
  * @extends {BaseAPI}
  */
 export class DefaultApi extends BaseAPI {
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {string} exp_run
+   * @param {string} exp_worker
+   * @param {string} exp_span
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public diffGet(
+    run: string,
+    worker: string,
+    span: string,
+    exp_run: string,
+    exp_worker: string,
+    exp_span: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).diffGet(
+      run,
+      worker,
+      span,
+      exp_run,
+      exp_worker,
+      exp_span,
+      options
+    )(this.fetch, this.basePath)
+  }
+
+  /**
+   *
+   * @param {string} run
+   * @param {string} worker
+   * @param {string} span
+   * @param {string} exp_run
+   * @param {string} exp_worker
+   * @param {string} exp_span
+   * @param {string} [path]
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof DefaultApi
+   */
+  public diffnodeGet(
+    run: string,
+    worker: string,
+    span: string,
+    exp_run: string,
+    exp_worker: string,
+    exp_span: string,
+    path?: string,
+    options?: any
+  ) {
+    return DefaultApiFp(this.configuration).diffnodeGet(
+      run,
+      worker,
+      span,
+      exp_run,
+      exp_worker,
+      exp_span,
+      path,
+      options
+    )(this.fetch, this.basePath)
+  }
+
   /**
    *
    * @param {string} run

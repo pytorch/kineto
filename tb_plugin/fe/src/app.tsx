@@ -18,15 +18,11 @@ import ListSubheader from '@material-ui/core/ListSubheader'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
-import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
-<<<<<<< Updated upstream
-=======
 import Tab from '@material-ui/core/Tab'
 import Tabs from '@material-ui/core/Tabs'
 import Typography from '@material-ui/core/Typography'
->>>>>>> Stashed changes
 import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
@@ -190,7 +186,7 @@ export const App = () => {
   const continuouslyFetchRuns = async () => {
     while (true) {
       try {
-        const runs = await api.mockApi.runsGet()
+        const runs = await api.defaultApi.runsGet()
         setRuns(runs.runs)
         setRunsLoading(runs.loading)
       } catch (e) {
@@ -214,7 +210,7 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run) {
-      api.mockApi.viewsGet(run).then((rawViews) => {
+      api.defaultApi.viewsGet(run).then((rawViews) => {
         const views = rawViews
           .map((v) => Views[Views[v as Views]])
           .filter(Boolean)
@@ -230,7 +226,7 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run && view) {
-      api.mockApi.workersGet(run, view).then((workers) => {
+      api.defaultApi.workersGet(run, view).then((workers) => {
         setWorkers(workers)
       })
     }
@@ -243,7 +239,7 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run && worker) {
-      api.mockApi.spansGet(run, worker).then((spans) => {
+      api.defaultApi.spansGet(run, worker).then((spans) => {
         setSpans(spans)
       })
     }

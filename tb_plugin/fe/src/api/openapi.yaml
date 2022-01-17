@@ -610,46 +610,6 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/OperatorNode'
-  /diff:
-    get:
-      parameters:
-        - in: query
-          name: run
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: worker
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: span
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: exp_run
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: exp_worker
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: exp_span
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: successful operation
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/DiffSummary'
   /diffnode:
     get:
       parameters:
@@ -1224,21 +1184,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OpAgg'
-    DiffSummary:
-      type: object
-      required:
-        - left
-        - right
-        - children
-      properties:
-        left:
-          $ref: '#/components/schemas/OpStats'
-        right:
-          $ref: '#/components/schemas/OpStats'
-        children:
-          type: array
-          items:
-            $ref: '#/components/schemas/DiffSummary'
     DiffNode:
       type: object
       required:

@@ -12,6 +12,7 @@
      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
      sudo apt update && sudo apt install yarn
   ```
-3. shell `yarn`
-4. shell `yarn build`
-5. `./dist/index.html`
+3. shell `yarn` to prepare JS dependency
+4. shell `yarn build:copy`
+5. Go to `tb_plugin` folder and install the package using `python setup.py develop`
+6. Launch tensorboard

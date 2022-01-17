@@ -6,10 +6,15 @@ import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardHeader from '@material-ui/core/CardHeader'
 import Grid from '@material-ui/core/Grid'
+import IconButton from '@material-ui/core/IconButton'
+import Typography from '@material-ui/core/Typography'
+import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
+
 import { makeStyles } from '@material-ui/core/styles'
 import { Table } from 'antd'
 import * as React from 'react'
 import * as api from '../api'
+import { FullCircularProgress } from './FullCircularProgress'
 import { useResizeEventDependency } from '../utils/resize'
 
 const topGraphHeight = 230
@@ -39,6 +44,9 @@ const useStyles = makeStyles((theme) => ({
   },
   topGraph: {
     height: topGraphHeight + 40
+  },
+  iconButton: {
+    padding: '8px'
   }
 }))
 
@@ -121,13 +129,11 @@ export interface TableRow {
   deltaDurationPercent: string
 }
 
-
-let chartDataStack: any[][] = [];
+let chartDataStack: any[][] = []
 let columnUnderlyingDataStack: ColumnUnderlyingData[][] = []
-
+let columnTableDataSourceStack: TableRow[][] = []
 export const DiffOverview: React.FC<IProps> = (props) => {
-
-  const COMPOSITE_NODES_NAME = 'multiple nodes'
+  const COMPOSITE_NODES_NAME = 'CompositeNodes'
 
   const tableColumns = [
     {
@@ -183,113 +189,25 @@ export const DiffOverview: React.FC<IProps> = (props) => {
     }
   ]
 
-  const [tableDataSource, setTableDataSource] = React.useState<TableRow[]>()
+  const [tableDataSource, setTableDataSource] = React.useState<TableRow[]>([])
   const { run, worker, span, expRun, expWorker, expSpan } = props
-
-  const [selectedColumnRow, setSelectedColumnRow] = React.useState<number>(-1)
 
   const [columnUnderlyingData, setColumnUnderlyingData] = React.useState<
     ColumnUnderlyingData[]
   >([])
   const [columnChartData, setColumnChartData] = React.useState<any[]>([])
 
+  const [dataStackLevel, setDataStackLevel] = React.useState(0)
+  const [loading, setLoading] = React.useState(false)
+
   const classes = useStyles()
 
   const handleChartColumnSelect = (row: number, column: number) => {
-    setSelectedColumnRow(row)
-  }
-
-  React.useEffect(() => {
-    api.defaultApi
-      .diffnodeGet(run, worker, span, expRun, expWorker, expSpan)
-      .then((resp) => handleDiffNodeResp(resp));
-  }, [run, worker, span])
-
-  const handleDiffNodeResp = (resp: any) => {
-    let data: any[] = []
-    let underlyingData: ColumnUnderlyingData[] = []
-
-    data.push([
-      'Call',
-      'Baseline',
-      'Experiment',
-      'Baseline Trend',
-      'Exp Trend'
-    ])
-
-    // Use children
-    if (resp.left.name == COMPOSITE_NODES_NAME) {
-      for (let i = 0; i < resp.children.length; i++) {
-        let left = resp.children[i].left
-        let right = resp.children[i].right
-        let curr: any[] = []
-
-        let name = left.name
-        if (name === COMPOSITE_NODES_NAME) {
-          continue
-        }
-
-        if (name.startsWith('aten::')) {
-          // Ignore aten operators
-          continue
-        }
-
-        if (name.startsWith('enumerate(DataLoader)')) {
-          name = 'DataLoader'
-        }
-
-        if (name.startsWith('enumerate(DataPipe)')) {
-          name = 'DataPipe'
-        }
-
-        if (name.startsWith('nn.Module: ')) {
-          name = name.substring(11)
-        }
-
-        if (name.startsWith('Optimizer.zero_grad')) {
-          name = 'Optimizer.zero_grad'
-        }
-
-        if (name.startsWith('Optimizer.step')) {
-          name = 'Optimizer.step'
-        }
-
-        curr.push(name)
-        curr.push(left.total_duration)
-        curr.push(right.total_duration)
-        curr.push(left.total_duration)
-        curr.push(right.total_duration)
-
-        underlyingData.push({
-          name: name,
-          path: resp.children[i].path,
-          leftAggs: left.aggs,
-          rightAggs: right.aggs
-        })
-
-
-        data.push(curr)
-      }
-    }
-
-    setColumnChartData(data)
-    chartDataStack.push(data);
-
-    setColumnUnderlyingData(underlyingData)
-    columnUnderlyingDataStack.push(underlyingData);
-  }
-
-  React.useEffect(() => {
-    let selectedUnderlyingData = columnUnderlyingData[selectedColumnRow]
+    let selectedUnderlyingData = columnUnderlyingData[row]
     if (!selectedUnderlyingData) {
       return
     }
 
-    /*
-    api.defaultApi
-    .diffnodeGet(run, worker, span, expRun, expWorker, expSpan, selectedUnderlyingData.path)
-    .then((resp) => handleDiffNodeResp(resp));
-*/
     let tableDataSource: TableRow[] = []
 
     for (let i = 0; i < selectedUnderlyingData.leftAggs.length; i++) {
@@ -316,21 +234,172 @@ export const DiffOverview: React.FC<IProps> = (props) => {
         ).toFixed(2)}%`
       })
     }
+
     setTableDataSource(tableDataSource)
-  }, [selectedColumnRow])
+    columnTableDataSourceStack.push(tableDataSource)
+
+    setLoading(true)
+
+    api.defaultApi
+      .diffnodeGet(
+        run,
+        worker,
+        span,
+        expRun,
+        expWorker,
+        expSpan,
+        selectedUnderlyingData.path
+      )
+      .then((resp) => handleDiffNodeResp(resp))
+      .finally(() => setLoading(false))
+  }
+
+  const handleGoBack = () => {
+    if (chartDataStack.length > 1) {
+      chartDataStack.pop()
+      let top = chartDataStack[chartDataStack.length - 1]
+      setColumnChartData(top)
+    }
+
+    if (columnUnderlyingDataStack.length > 0) {
+      columnUnderlyingDataStack.pop()
+      let top = columnUnderlyingDataStack[columnUnderlyingDataStack.length - 1]
+      setColumnUnderlyingData(top)
+    }
+
+    if (columnTableDataSourceStack.length > 0) {
+      columnTableDataSourceStack.pop()
+      let top =
+        columnTableDataSourceStack[columnTableDataSourceStack.length - 1]
+      setTableDataSource(top)
+    }
+
+    setDataStackLevel(dataStackLevel - 1)
+  }
+
+  React.useEffect(() => {
+    if (
+      run.length > 0 &&
+      worker.length > 0 &&
+      span.length > 0 &&
+      expRun.length > 0 &&
+      expWorker.length > 0 &&
+      expSpan.length > 0
+    ) {
+      setLoading(true)
+
+      api.defaultApi
+        .diffnodeGet(run, worker, span, expRun, expWorker, expSpan)
+        .then((resp) => handleDiffNodeResp(resp))
+        .finally(() => setLoading(false))
+    }
+  }, [run, worker, span, expRun, expWorker, expSpan])
+
+  const handleDiffNodeResp = (resp: any) => {
+    let data: any[] = []
+    let underlyingData: ColumnUnderlyingData[] = []
+
+    data.push(['Call', 'Baseline', 'Experiment', 'Baseline Trend', 'Exp Trend'])
+
+    for (let i = 0; i < resp.children.length; i++) {
+      let left = resp.children[i].left
+      let right = resp.children[i].right
+      let curr: any[] = []
+
+      let name = left.name
+      if (name === COMPOSITE_NODES_NAME) {
+        continue
+      }
+
+      if (name.startsWith('aten::')) {
+        // Ignore aten operators
+        continue
+      }
+
+      if (name.startsWith('enumerate(DataLoader)')) {
+        name = name.substring(21)
+      }
+
+      if (name.startsWith('enumerate(DataPipe)')) {
+        name = name.substring(19)
+      }
+
+      if (name.startsWith('nn.Module: ')) {
+        name = name.substring(11)
+      }
+
+      if (name.startsWith('Optimizer.zero_grad')) {
+        name = 'Optimizer.zero_grad'
+      }
+
+      if (name.startsWith('Optimizer.step')) {
+        name = 'Optimizer.step'
+      }
+
+      curr.push(name)
+      curr.push(left.total_duration)
+      curr.push(right.total_duration)
+      curr.push(left.total_duration)
+      curr.push(right.total_duration)
+
+      underlyingData.push({
+        name: name,
+        path: resp.children[i].path,
+        leftAggs: left.aggs,
+        rightAggs: right.aggs
+      })
+
+      data.push(curr)
+    }
+
+    setColumnChartData(data)
+    chartDataStack.push(data)
+
+    setColumnUnderlyingData(underlyingData)
+    columnUnderlyingDataStack.push(underlyingData)
+
+    setDataStackLevel(dataStackLevel + 1)
+  }
+
+  if (!loading && columnUnderlyingDataStack.length === 0) {
+    return (
+      <Card variant="outlined">
+        <CardHeader title="No Runs Found"></CardHeader>
+        <CardContent>
+          <Typography>There are not any runs selected for diff.</Typography>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (loading) {
+    return <FullCircularProgress />
+  }
 
   return (
     <div className={classes.root}>
+      <IconButton
+        className={classes.iconButton}
+        onClick={handleGoBack}
+        disabled={dataStackLevel < 2}
+      >
+        <ChevronLeftIcon />
+      </IconButton>
       <Grid container spacing={1}>
         <Grid container item spacing={1}>
           <Grid item sm={12}>
             <Card variant="outlined">
               <CardHeader title="DiffView" />
               <CardContent>
-                <DiffColumnChart
-                  rawData={columnChartData}
-                  selectCallback={handleChartColumnSelect}
-                />
+                {columnChartData.length > 1 && (
+                  <DiffColumnChart
+                    rawData={columnChartData}
+                    selectCallback={handleChartColumnSelect}
+                  />
+                )}
+                {columnChartData.length === 1 && (
+                  <Typography>No more level to show.</Typography>
+                )}
               </CardContent>
             </Card>
           </Grid>

@@ -9,6 +9,11 @@ export function firstOrUndefined<T>(v: T[] | undefined | null): T | undefined {
   return v[0]
 }
 
+export function secondOrUndefined<T>(v: T[] | undefined | null): T | undefined {
+  if (!v || v.length < 2) return undefined
+  return v[1]
+}
+
 export function sleep(delay: number) {
   return new Promise((resolve) => setTimeout(resolve, delay))
 }

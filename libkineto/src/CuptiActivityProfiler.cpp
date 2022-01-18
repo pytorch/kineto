@@ -400,12 +400,6 @@ void CuptiActivityProfiler::configure(
     return;
   }
 
-#if !USE_GOOGLE_LOG
-  // Add a LoggerObserverCollector to collect all logs during the trace.
-  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
-  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
-#endif // !USE_GOOGLE_LOG
-
   config_ = config.clone();
 
   if (config_->activitiesDuration().count() == 0) {
@@ -433,6 +427,12 @@ void CuptiActivityProfiler::configure(
 
   // Ensure we're starting in a clean state
   resetTraceData();
+
+#if !USE_GOOGLE_LOG
+  // Add a LoggerObserverCollector to collect all logs during the trace.
+  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
+  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
+#endif // !USE_GOOGLE_LOG
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
@@ -556,6 +556,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
       if (now >= profileStartTime_) {
+        // This line supports the UST Logger. TODO: wrap semantics.
+        LOG(INFO) << "Completed Stage: " << kWarmUpStage;
         if (now > profileStartTime_ + milliseconds(10)) {
           LOG(WARNING)
               << "Tracing started "
@@ -603,6 +605,9 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         VLOG_IF(0, now >= profileEndTime_) << "Reached profile end time";
+
+        // This line supports the UST Logger. TODO: wrap semantics.
+        LOG(INFO) << "Completed Stage: " << kCollectionStage;
       } else if (now < profileEndTime_ && profileEndTime_ < nextWakeupTime) {
         new_wakeup_time = profileEndTime_;
       }
@@ -615,6 +620,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);
       processTraceInternal(*logger_);
+      // This line supports the UST Logger. TODO: wrap semantics.
+      LOG(INFO) << "Completed Stage: " << kPostProcessingStage;
       resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;

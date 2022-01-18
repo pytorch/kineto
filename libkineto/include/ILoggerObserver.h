@@ -23,13 +23,15 @@ LoggerOutputType toLoggerOutputType(const std::string& str);
 
 constexpr int LoggerTypeCount = (int) LoggerOutputType::ENUM_COUNT;
 
+constexpr char kWarmUpStage[] = "Warm Up";
+constexpr char kCollectionStage[] = "Collection";
+constexpr char kPostProcessingStage[] = "Post Processing";
+
 class ILoggerObserver {
  public:
   virtual ~ILoggerObserver() = default;
   virtual void write(const std::string& message, LoggerOutputType ot) = 0;
-  virtual const std::map<LoggerOutputType, std::vector<std::string>> extractCollectorMetadata() {
-    return std::map<LoggerOutputType, std::vector<std::string>>();
-  }
+  virtual const std::map<LoggerOutputType, std::vector<std::string>> extractCollectorMetadata() = 0;
 
 };
 

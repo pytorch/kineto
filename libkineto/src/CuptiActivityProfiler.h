@@ -338,8 +338,10 @@ class CuptiActivityProfiler {
   // a vector of active profiler plugin sessions
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
 
-  // LoggerObserver to collect all LOGs during the trace
+  // LoggerCollector to collect all LOGs during the trace
+#if !USE_GOOGLE_LOG
   std::unique_ptr<LoggerCollector> loggerCollectorMetadata_;
+#endif // !USE_GOOGLE_LOG
 };
 
 } // namespace KINETO_NAMESPACE

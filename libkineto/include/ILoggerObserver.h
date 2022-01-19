@@ -2,10 +2,16 @@
 
 #pragma once
 
+#include <string>
+
+// Stages in libkineto used when pushing logs to UST Logger.
+constexpr char kWarmUpStage[] = "Warm Up";
+constexpr char kCollectionStage[] = "Collection";
+constexpr char kPostProcessingStage[] = "Post Processing";
+
 #if !USE_GOOGLE_LOG
 
 #include <map>
-#include <string>
 #include <vector>
 
 namespace KINETO_NAMESPACE {
@@ -15,17 +21,14 @@ enum LoggerOutputType {
   INFO = 1,
   WARNING = 2,
   ERROR = 3,
-  ENUM_COUNT = 4
+  STAGE = 4,
+  ENUM_COUNT = 5
 };
 
 const char* toString(LoggerOutputType t);
 LoggerOutputType toLoggerOutputType(const std::string& str);
 
 constexpr int LoggerTypeCount = (int) LoggerOutputType::ENUM_COUNT;
-
-constexpr char kWarmUpStage[] = "Warm Up";
-constexpr char kCollectionStage[] = "Collection";
-constexpr char kPostProcessingStage[] = "Post Processing";
 
 class ILoggerObserver {
  public:

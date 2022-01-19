@@ -13,6 +13,7 @@
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
 #define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock)
+#define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
@@ -206,5 +207,9 @@ struct __to_constant__ {
 #define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock) \
   libkineto::Logger::setLoggerObservers(observers); \
   libkineto::Logger::setLoggerObserversMutex(lock)
+
+// UST Logger Semantics to describe when a stage is complete.
+#define UST_LOGGER_MARK_COMPLETED(stage) \
+  LOG(libkineto::LoggerOutputType::STAGE) << "Completed Stage: " << stage
 
 #endif // USE_GOOGLE_LOG

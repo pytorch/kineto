@@ -556,8 +556,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
       if (now >= profileStartTime_) {
-        // This line supports the UST Logger. TODO: wrap semantics.
-        LOG(INFO) << "Completed Stage: " << kWarmUpStage;
+        UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
         if (now > profileStartTime_ + milliseconds(10)) {
           LOG(WARNING)
               << "Tracing started "
@@ -606,8 +605,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         stopTraceInternal(now);
         VLOG_IF(0, now >= profileEndTime_) << "Reached profile end time";
 
-        // This line supports the UST Logger. TODO: wrap semantics.
-        LOG(INFO) << "Completed Stage: " << kCollectionStage;
+        UST_LOGGER_MARK_COMPLETED(kCollectionStage);
       } else if (now < profileEndTime_ && profileEndTime_ < nextWakeupTime) {
         new_wakeup_time = profileEndTime_;
       }
@@ -620,8 +618,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);
       processTraceInternal(*logger_);
-      // This line supports the UST Logger. TODO: wrap semantics.
-      LOG(INFO) << "Completed Stage: " << kPostProcessingStage;
+      UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
       resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;

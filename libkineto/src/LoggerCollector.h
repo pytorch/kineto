@@ -18,7 +18,10 @@ class LoggerCollector : public ILoggerObserver {
   LoggerCollector() : buckets_() {}
 
   void write(const std::string& message, LoggerOutputType ot = ERROR) override {
-    buckets_[ot].push_back(message);
+    // Skip STAGE output type which is only used by USTLoggerCollector.
+    if (ot != STAGE) {
+      buckets_[ot].push_back(message);
+    }
   }
 
   const std::map<LoggerOutputType, std::vector<std::string>> extractCollectorMetadata() override {

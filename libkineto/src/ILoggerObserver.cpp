@@ -22,6 +22,7 @@ static constexpr std::array<LoggerTypeName, LoggerTypeCount + 1> LoggerMap{{
     {"INFO", LoggerOutputType::INFO},
     {"WARNING", LoggerOutputType::WARNING},
     {"ERROR", LoggerOutputType::ERROR},
+    {"STAGE", LoggerOutputType::STAGE},
     {"???", LoggerOutputType::ENUM_COUNT}
 }};
 

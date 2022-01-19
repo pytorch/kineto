@@ -4,7 +4,9 @@
 
 #if !USE_GOOGLE_LOG
 
+#include <atomic>
 #include <map>
+#include <set>
 #include <vector>
 
 // TODO(T90238193)
@@ -28,8 +30,25 @@ class LoggerCollector : public ILoggerObserver {
     return buckets_;
   }
 
+  void addDevice(const int64_t device) override {
+    devices.insert(device);
+  }
+
+  void setTraceDurationMS(const int64_t duration) override {
+    trace_duration_ms = duration;
+  }
+
+  void addEventCount(const int64_t count) override {
+    event_count += count;
+  }
+
  protected:
   std::map<LoggerOutputType, std::vector<std::string>> buckets_;
+
+  // These are useful metadata to collect from CUPTIActivityProfiler for internal tracking.
+  std::set<int64_t> devices;
+  int64_t trace_duration_ms;
+  std::atomic<uint64_t> event_count{0};
 
 };
 

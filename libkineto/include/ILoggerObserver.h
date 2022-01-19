@@ -35,6 +35,9 @@ class ILoggerObserver {
   virtual ~ILoggerObserver() = default;
   virtual void write(const std::string& message, LoggerOutputType ot) = 0;
   virtual const std::map<LoggerOutputType, std::vector<std::string>> extractCollectorMetadata() = 0;
+  virtual void addDevice(const int64_t device) = 0;
+  virtual void setTraceDurationMS(const int64_t duration) = 0;
+  virtual void addEventCount(const int64_t count) = 0;
 
 };
 

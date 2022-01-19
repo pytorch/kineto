@@ -203,6 +203,10 @@ export const DiffOverview: React.FC<IProps> = (props) => {
   const classes = useStyles()
 
   const handleChartColumnSelect = (row: number, column: number) => {
+    if (columnUnderlyingData.length === 0) {
+      return
+    }
+
     let selectedUnderlyingData = columnUnderlyingData[row]
     if (!selectedUnderlyingData) {
       return
@@ -301,39 +305,65 @@ export const DiffOverview: React.FC<IProps> = (props) => {
 
     data.push(['Call', 'Baseline', 'Experiment', 'Baseline Trend', 'Exp Trend'])
 
-    for (let i = 0; i < resp.children.length; i++) {
-      let left = resp.children[i].left
-      let right = resp.children[i].right
+    if (resp.children.length > 0) {
+      for (let i = 0; i < resp.children.length; i++) {
+        let left = resp.children[i].left
+        let right = resp.children[i].right
+        let curr: any[] = []
+
+        let name = left.name
+        if (name === COMPOSITE_NODES_NAME) {
+          continue
+        }
+
+        if (name.startsWith('aten::')) {
+          // Ignore aten operators
+          continue
+        }
+
+        if (name.startsWith('enumerate(DataLoader)')) {
+          name = name.substring(21)
+        }
+
+        if (name.startsWith('enumerate(DataPipe)')) {
+          name = name.substring(19)
+        }
+
+        if (name.startsWith('nn.Module: ')) {
+          name = name.substring(11)
+        }
+
+        if (name.startsWith('Optimizer.zero_grad')) {
+          name = 'Optimizer.zero_grad'
+        }
+
+        if (name.startsWith('Optimizer.step')) {
+          name = 'Optimizer.step'
+        }
+
+        curr.push(name)
+        curr.push(left.total_duration)
+        curr.push(right.total_duration)
+        curr.push(left.total_duration)
+        curr.push(right.total_duration)
+
+        underlyingData.push({
+          name: name,
+          path: resp.children[i].path,
+          leftAggs: left.aggs,
+          rightAggs: right.aggs
+        })
+
+        data.push(curr)
+      }
+    } else {
+      let left = resp.left
+      let right = resp.right
       let curr: any[] = []
-
       let name = left.name
-      if (name === COMPOSITE_NODES_NAME) {
-        continue
-      }
-
-      if (name.startsWith('aten::')) {
-        // Ignore aten operators
-        continue
-      }
-
-      if (name.startsWith('enumerate(DataLoader)')) {
-        name = name.substring(21)
-      }
-
-      if (name.startsWith('enumerate(DataPipe)')) {
-        name = name.substring(19)
-      }
 
       if (name.startsWith('nn.Module: ')) {
         name = name.substring(11)
-      }
-
-      if (name.startsWith('Optimizer.zero_grad')) {
-        name = 'Optimizer.zero_grad'
-      }
-
-      if (name.startsWith('Optimizer.step')) {
-        name = 'Optimizer.step'
       }
 
       curr.push(name)
@@ -341,13 +371,6 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       curr.push(right.total_duration)
       curr.push(left.total_duration)
       curr.push(right.total_duration)
-
-      underlyingData.push({
-        name: name,
-        path: resp.children[i].path,
-        leftAggs: left.aggs,
-        rightAggs: right.aggs
-      })
 
       data.push(curr)
     }

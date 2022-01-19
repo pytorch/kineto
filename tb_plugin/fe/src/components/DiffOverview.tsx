@@ -121,11 +121,13 @@ export interface TableRow {
   baselineCalls?: number
   expCalls?: number
   deltaCalls?: number
+  deltaCallsPercentNumber?: number
   deltaCallsPercent?: string
 
   baselineDuration: number
   expDuration: number
   deltaDuration: number
+  deltaDurationPercentNumber: number
   deltaDurationPercent: string
 }
 
@@ -156,12 +158,14 @@ export const DiffOverview: React.FC<IProps> = (props) => {
     {
       title: 'Delta Calls',
       dataIndex: 'deltaCalls',
-      key: 'deltaCalls'
+      key: 'deltaCalls',
+      sorter: (a: TableRow, b: TableRow) => a.deltaCalls! - b.deltaCalls!
     },
     {
       title: 'Delta Calls%',
       dataIndex: 'deltaCallsPercent',
-      key: 'deltaCallsPercent'
+      key: 'deltaCallsPercent',
+      sorter: (a: TableRow, b: TableRow) => a.deltaCallsPercentNumber! - b.deltaCallsPercentNumber!,
     },
 
     {
@@ -180,12 +184,14 @@ export const DiffOverview: React.FC<IProps> = (props) => {
     {
       title: 'Delta Duration',
       dataIndex: 'deltaDuration',
-      key: 'deltaDuration'
+      key: 'deltaDuration',
+      sorter: (a: TableRow, b: TableRow) => a.deltaDuration! - b.deltaDuration!
     },
     {
       title: 'Delta Duration%',
       dataIndex: 'deltaDurationPercent',
-      key: 'deltaDurationPercent'
+      key: 'deltaDurationPercent',
+      sorter: (a: TableRow, b: TableRow) => a.deltaDurationPercentNumber! - b.deltaDurationPercentNumber!,
     }
   ]
 
@@ -218,24 +224,29 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       let left = selectedUnderlyingData.leftAggs[i]
       let right = selectedUnderlyingData.rightAggs[i]
 
+      let deltaCallsPercentNumber = (
+        ((right.calls - left.calls) / left.calls) *
+        100
+      );
+      let deltaDurationPercentNumber = (
+        ((right.self_host_duration - left.self_host_duration) /
+          left.self_host_duration) *
+        100
+      )
+
       tableDataSource.push({
         key: i,
         operator: left.name,
         baselineCalls: left.calls,
         expCalls: right.calls,
         deltaCalls: right.calls - left.calls,
-        deltaCallsPercent: `${(
-          ((right.calls - left.calls) / left.calls) *
-          100
-        ).toFixed(2)}%`,
+        deltaCallsPercentNumber: deltaCallsPercentNumber,
+        deltaCallsPercent: `${deltaCallsPercentNumber.toFixed(2)}%`,
         baselineDuration: left.self_host_duration,
         expDuration: right.self_host_duration,
         deltaDuration: right.self_host_duration - left.self_host_duration,
-        deltaDurationPercent: `${(
-          ((right.self_host_duration - left.self_host_duration) /
-            left.self_host_duration) *
-          100
-        ).toFixed(2)}%`
+        deltaDurationPercentNumber: deltaDurationPercentNumber,
+        deltaDurationPercent: `${deltaDurationPercentNumber.toFixed(2)}%`
       })
     }
 

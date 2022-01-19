@@ -6,7 +6,7 @@ import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardHeader from '@material-ui/core/CardHeader'
 import Grid from '@material-ui/core/Grid'
-import IconButton from '@material-ui/core/IconButton'
+import Button from '@material-ui/core/Button'
 import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 
@@ -401,19 +401,21 @@ export const DiffOverview: React.FC<IProps> = (props) => {
 
   return (
     <div className={classes.root}>
-      <IconButton
-        className={classes.iconButton}
-        onClick={handleGoBack}
-        disabled={dataStackLevel < 2}
-      >
-        <ChevronLeftIcon />
-      </IconButton>
       <Grid container spacing={1}>
         <Grid container item spacing={1}>
           <Grid item sm={12}>
             <Card variant="outlined">
               <CardHeader title="DiffView" />
               <CardContent>
+                <Button
+                  className={classes.iconButton}
+                  startIcon={<ChevronLeftIcon />}
+                  onClick={handleGoBack}
+                  variant="outlined"
+                  disabled={dataStackLevel < 2}
+                >
+                  Go Back
+                </Button>
                 {columnChartData.length > 1 && (
                   <DiffColumnChart
                     rawData={columnChartData}

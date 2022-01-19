@@ -63,14 +63,6 @@ const ViewNames = {
   [Views.Module]: Views.Module
 }
 
-export enum DiffViews {
-  Overview = 'Overview'
-}
-
-const DiffViewNames = {
-  [DiffViews.Overview]: DiffViews.Overview
-}
-
 const drawerWidth = 340
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -166,9 +158,6 @@ export const App = () => {
   const [loaded, setLoaded] = React.useState(false)
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
-  const diffViews = [DiffViews.Overview]
-
-  const [diffView, setDiffView] = React.useState<DiffViews | ''>('')
   const [diffLeftRun, setDiffLeftRun] = React.useState<string>('')
   const [diffLeftWorker, setDiffLeftWorker] = React.useState<string>('')
   const [diffLeftSpan, setDiffLeftSpan] = React.useState<string | ''>('')
@@ -221,7 +210,6 @@ export const App = () => {
 
   React.useEffect(() => {
     setView(firstOrUndefined(views) ?? '')
-    setDiffView(firstOrUndefined(diffViews) ?? '')
   }, [views])
 
   React.useEffect(() => {
@@ -274,10 +262,6 @@ export const App = () => {
 
   const handleSpanChange: SelectProps['onChange'] = (event) => {
     setSpan(event.target.value as string)
-  }
-
-  const handleDiffViewChange: SelectProps['onChange'] = (event) => {
-    setDiffView(event.target.value as DiffViews)
   }
 
   const handleDiffLeftRunChange: SelectProps['onChange'] = (event) => {
@@ -368,19 +352,16 @@ export const App = () => {
       }
     }
     if (selectedTab === 1) {
-      switch (diffView) {
-        case DiffViews.Overview:
-          return (
-            <DiffOverview
-              run={diffLeftRun}
-              worker={diffLeftWorker}
-              span={diffLeftSpan}
-              expRun={diffRightRun}
-              expWorker={diffRightWorker}
-              expSpan={diffRightSpan}
-            />
-          )
-      }
+      return (
+        <DiffOverview
+          run={diffLeftRun}
+          worker={diffLeftWorker}
+          span={diffLeftSpan}
+          expRun={diffRightRun}
+          expWorker={diffRightWorker}
+          expSpan={diffRightSpan}
+        />
+      )
     }
   }
 
@@ -481,16 +462,7 @@ export const App = () => {
         {selectedTab == 0 && spanComponent()}
         {selectedTab == 1 && (
           <>
-            <FormControl variant="outlined" className={classes.formControl}>
-              <Select value={diffView} onChange={handleDiffViewChange}>
-                {diffViews.map((view) => (
-                  <MenuItem value={view}>{DiffViewNames[view]}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Divider />
-
-            <Typography variant="h6">&nbsp;Baseline</Typography>
+            <Typography variant="h6">&nbsp;&nbsp;Baseline</Typography>
             <ListSubheader>Runs</ListSubheader>
             <FormControl variant="outlined" className={classes.formControl}>
               <Select value={diffLeftRun} onChange={handleDiffLeftRunChange}>
@@ -522,7 +494,7 @@ export const App = () => {
 
             <Divider />
 
-            <Typography variant="h6">&nbsp;Experimental</Typography>
+            <Typography variant="h6">&nbsp;&nbsp;Experimental</Typography>
             <ListSubheader>Runs</ListSubheader>
             <FormControl variant="outlined" className={classes.formControl}>
               <Select value={diffRightRun} onChange={handleDiffRightRunChange}>

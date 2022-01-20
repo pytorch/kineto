@@ -55,6 +55,10 @@ export interface DiffColumnChartIProps {
   selectCallback: (row: number, column: number) => void
 }
 
+export interface DiffStepChartIProps {
+  rawData: any[]
+}
+
 const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props) => {
   const { rawData, selectCallback } = props
   const graphRef = React.useRef<HTMLDivElement>(null)
@@ -87,6 +91,7 @@ const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props) => {
     let accumulated_max = Math.max(left_accumulated_duration_max, right_accumulated_duration_max);
 
     var options = {
+      title: "Execution Comparsion",
       height: 500,
       seriesType: 'bars',
       series: {
@@ -130,6 +135,37 @@ const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props) => {
   )
 }
 
+const DiffStepChart: React.FC<DiffStepChartIProps> = (props) => {
+  const { rawData } = props
+  const graphRef = React.useRef<HTMLDivElement>(null)
+  const [resizeEventDependency] = useResizeEventDependency()
+
+  React.useLayoutEffect(() => {
+    const element = graphRef.current
+    if (!element) return
+
+    var options = {
+      title: "Execution Diff",
+      height: 500
+    }
+
+    const chart = new google.visualization.SteppedAreaChart(element)
+    const data = google.visualization.arrayToDataTable(rawData)
+    chart.draw(data, options)
+
+    return () => {
+      chart.clearChart()
+    }
+
+  }, [rawData, resizeEventDependency])
+
+  return (
+    <div>
+      <div ref={graphRef}></div>
+    </div>
+  )
+}
+
 export interface IProps {
   run: string
   worker: string
@@ -163,9 +199,11 @@ export interface TableRow {
   deltaDurationPercent: string
 }
 
-let chartDataStack: any[][] = []
+let columnChartDataStack: any[][] = []
+let stepChartDataStack: any[][] = []
 let columnUnderlyingDataStack: ColumnUnderlyingData[][] = []
 let columnTableDataSourceStack: TableRow[][] = []
+
 export const DiffOverview: React.FC<IProps> = (props) => {
   const COMPOSITE_NODES_NAME = 'CompositeNodes'
 
@@ -239,6 +277,7 @@ export const DiffOverview: React.FC<IProps> = (props) => {
   const [rootUnderlyingData, setRootUnderlyingData] = React.useState<ColumnUnderlyingData>();
   
   const [columnChartData, setColumnChartData] = React.useState<any[]>([])
+  const [stepChartData, setStepChartData] = React.useState<any[]>([])
 
   const [dataStackLevel, setDataStackLevel] = React.useState(0)
   const [loading, setLoading] = React.useState(false)
@@ -276,10 +315,16 @@ export const DiffOverview: React.FC<IProps> = (props) => {
   }
 
   const handleGoBack = () => {
-    if (chartDataStack.length > 1) {
-      chartDataStack.pop()
-      let top = chartDataStack[chartDataStack.length - 1]
+    if (columnChartDataStack.length > 1) {
+      columnChartDataStack.pop()
+      let top = columnChartDataStack[columnChartDataStack.length - 1]
       setColumnChartData(top)
+    }
+
+    if (stepChartDataStack.length > 1) {
+      stepChartDataStack.pop()
+      let top = stepChartDataStack[stepChartDataStack.length - 1]
+      setStepChartData(top)
     }
 
     if (columnUnderlyingDataStack.length > 0) {
@@ -287,7 +332,6 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       let top = columnUnderlyingDataStack[columnUnderlyingDataStack.length - 1]
       setColumnUnderlyingData(top)
     }
-
 
     if (columnTableDataSourceStack.length > 0) {
 
@@ -371,18 +415,22 @@ export const DiffOverview: React.FC<IProps> = (props) => {
   }, [run, worker, span, expRun, expWorker, expSpan])
 
   const handleDiffNodeResp = (resp: any) => {
-    let data: any[] = []
+    let columnChartData: any[] = []
+    let stepChartData: any[] = []
     let underlyingData: ColumnUnderlyingData[] = []
 
-    data.push(['Call', 'Baseline', 'Experiment', 'Baseline Trend', 'Exp Trend'])
+    columnChartData.push(['Call', 'Baseline', 'Experiment', 'Baseline Trend', 'Exp Trend'])
+    stepChartData.push(['Call', 'Diff', 'Accumulated Diff'])
 
     if (resp.children.length > 0) {
       let accumulated_left_duration = 0;
       let accumulated_right_duration = 0;
+      let accumulated_step_diff = 0;
       for (let i = 0; i < resp.children.length; i++) {
         let left = resp.children[i].left
         let right = resp.children[i].right
-        let curr: any[] = []
+        let currColumn: any[] = []
+        let currStep: any[] = []
 
         let name = left.name
         if (name === COMPOSITE_NODES_NAME) {
@@ -414,15 +462,16 @@ export const DiffOverview: React.FC<IProps> = (props) => {
           name = 'Optimizer.step'
         }
 
-        curr.push(name)
-        curr.push(left.total_duration)
-        curr.push(right.total_duration)
+        currColumn.push(name)
+        currColumn.push(left.total_duration)
+        currColumn.push(right.total_duration)
 
         accumulated_left_duration += left.total_duration
-        curr.push(accumulated_left_duration)
+        currColumn.push(accumulated_left_duration)
 
         accumulated_right_duration += right.total_duration
-        curr.push(accumulated_right_duration)
+        currColumn.push(accumulated_right_duration)
+        columnChartData.push(currColumn)
 
         underlyingData.push({
           name: name,
@@ -430,30 +479,41 @@ export const DiffOverview: React.FC<IProps> = (props) => {
           leftAggs: left.aggs,
           rightAggs: right.aggs
         })
+        
+        currStep.push(name)
+        let stepDiff = right.total_duration - left.total_duration;
+        currStep.push(stepDiff);
+        currStep.push(accumulated_step_diff);
 
-        data.push(curr)
+        accumulated_step_diff += stepDiff;
+
+        stepChartData.push(currStep);
       }
     } else {
       let left = resp.left
       let right = resp.right
-      let curr: any[] = []
+      let currColumn: any[] = []
+      let currStep: any[] = []
       let name = left.name
 
       if (name.startsWith('nn.Module: ')) {
         name = name.substring(11)
       }
 
-      curr.push(name)
-      curr.push(left.total_duration)
-      curr.push(right.total_duration)
-      curr.push(left.total_duration)
-      curr.push(right.total_duration)
+      currColumn.push(name)
+      currColumn.push(left.total_duration)
+      currColumn.push(right.total_duration)
+      currColumn.push(left.total_duration)
+      currColumn.push(right.total_duration)
 
-      data.push(curr)
+      columnChartData.push(currColumn)
     }
 
-    setColumnChartData(data)
-    chartDataStack.push(data)
+    setColumnChartData(columnChartData)
+    columnChartDataStack.push(columnChartData)
+
+    setStepChartData(stepChartData);
+    stepChartDataStack.push(stepChartData);
 
     setColumnUnderlyingData(underlyingData)
     columnUnderlyingDataStack.push(underlyingData)
@@ -494,10 +554,15 @@ export const DiffOverview: React.FC<IProps> = (props) => {
                   Go Back
                 </Button>
                 {columnChartData.length > 1 && (
+                  <>
                   <DiffColumnChart
                     rawData={columnChartData}
                     selectCallback={handleChartColumnSelect}
                   />
+                  <DiffStepChart
+                    rawData={stepChartData}
+                  />
+                  </>
                 )}
                 {columnChartData.length === 1 && (
                   <Typography>No more level to show.</Typography>

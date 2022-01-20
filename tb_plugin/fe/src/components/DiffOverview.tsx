@@ -64,14 +64,46 @@ const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props) => {
     const element = graphRef.current
     if (!element) return
 
+    let left_duration_data: number[] = [];
+    let left_accumulated_duration_data: number[] = [];
+    
+    let right_duration_data: number[] = [];
+    let right_accumulated_duration_data: number[] = [];
+    
+    for (let i = 0; i < rawData.length; i++) {
+      let curr = rawData[i];
+      left_duration_data.push(curr[1]);
+      right_duration_data.push(curr[2]);
+      left_accumulated_duration_data.push(curr[3]);
+      right_accumulated_duration_data.push(curr[4]);
+    }
+
+    let left_duration_max = Math.max(...left_duration_data);
+    let right_duration_max = Math.max(...right_duration_data);
+    let duration_max = Math.max(left_duration_max, right_duration_max);
+
+    let left_accumulated_duration_max = Math.max(...left_accumulated_duration_data);
+    let right_accumulated_duration_max = Math.max(...right_accumulated_duration_data);
+    let accumulated_max = Math.max(left_accumulated_duration_max, right_accumulated_duration_max);
+
     var options = {
       height: 500,
       seriesType: 'bars',
       series: {
-        0: { type: 'bars' },
-        1: { type: 'bars' },
-        2: { type: 'line' },
-        3: { type: 'line' }
+        0: { type: 'bars', targetAxisIndex: 0},
+        1: { type: 'bars', targetAxisIndex: 0},
+        2: { type: 'line', targetAxisIndex: 1},
+        3: { type: 'line', targetAxisIndex: 1}
+      },
+      vAxes: {
+        0: {
+          logScale: false,
+          maxValue: duration_max
+        },
+        1: { 
+          logScale: false,
+          maxValue: accumulated_max
+        }
       }
     }
 
@@ -165,7 +197,8 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       title: 'Delta Calls%',
       dataIndex: 'deltaCallsPercent',
       key: 'deltaCallsPercent',
-      sorter: (a: TableRow, b: TableRow) => a.deltaCallsPercentNumber! - b.deltaCallsPercentNumber!,
+      sorter: (a: TableRow, b: TableRow) =>
+        a.deltaCallsPercentNumber! - b.deltaCallsPercentNumber!
     },
 
     {
@@ -191,7 +224,8 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       title: 'Delta Duration%',
       dataIndex: 'deltaDurationPercent',
       key: 'deltaDurationPercent',
-      sorter: (a: TableRow, b: TableRow) => a.deltaDurationPercentNumber! - b.deltaDurationPercentNumber!,
+      sorter: (a: TableRow, b: TableRow) =>
+        a.deltaDurationPercentNumber! - b.deltaDurationPercentNumber!
     }
   ]
 
@@ -201,6 +235,9 @@ export const DiffOverview: React.FC<IProps> = (props) => {
   const [columnUnderlyingData, setColumnUnderlyingData] = React.useState<
     ColumnUnderlyingData[]
   >([])
+
+  const [rootUnderlyingData, setRootUnderlyingData] = React.useState<ColumnUnderlyingData>();
+  
   const [columnChartData, setColumnChartData] = React.useState<any[]>([])
 
   const [dataStackLevel, setDataStackLevel] = React.useState(0)
@@ -218,38 +255,7 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       return
     }
 
-    let tableDataSource: TableRow[] = []
-
-    for (let i = 0; i < selectedUnderlyingData.leftAggs.length; i++) {
-      let left = selectedUnderlyingData.leftAggs[i]
-      let right = selectedUnderlyingData.rightAggs[i]
-
-      let deltaCallsPercentNumber = (
-        ((right.calls - left.calls) / left.calls) *
-        100
-      );
-      let deltaDurationPercentNumber = (
-        ((right.self_host_duration - left.self_host_duration) /
-          left.self_host_duration) *
-        100
-      )
-
-      tableDataSource.push({
-        key: i,
-        operator: left.name,
-        baselineCalls: left.calls,
-        expCalls: right.calls,
-        deltaCalls: right.calls - left.calls,
-        deltaCallsPercentNumber: deltaCallsPercentNumber,
-        deltaCallsPercent: `${deltaCallsPercentNumber.toFixed(2)}%`,
-        baselineDuration: left.self_host_duration,
-        expDuration: right.self_host_duration,
-        deltaDuration: right.self_host_duration - left.self_host_duration,
-        deltaDurationPercentNumber: deltaDurationPercentNumber,
-        deltaDurationPercent: `${deltaDurationPercentNumber.toFixed(2)}%`
-      })
-    }
-
+    let tableDataSource = generateDataSourceFromUnderlyingData(selectedUnderlyingData);
     setTableDataSource(tableDataSource)
     columnTableDataSourceStack.push(tableDataSource)
 
@@ -282,14 +288,56 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       setColumnUnderlyingData(top)
     }
 
+
     if (columnTableDataSourceStack.length > 0) {
+
       columnTableDataSourceStack.pop()
       let top =
         columnTableDataSourceStack[columnTableDataSourceStack.length - 1]
-      setTableDataSource(top)
+      
+      if (top) {
+        setTableDataSource(top)
+      } else {
+        let tableDataSource = generateDataSourceFromUnderlyingData(rootUnderlyingData!);
+        setTableDataSource(tableDataSource);
+      }
     }
 
     setDataStackLevel(dataStackLevel - 1)
+  }
+
+  const generateDataSourceFromUnderlyingData = (selectedUnderlyingData: ColumnUnderlyingData) => {
+    
+    let tableDataSource: TableRow[] = []
+
+    for (let i = 0; i < selectedUnderlyingData.leftAggs.length; i++) {
+      let left = selectedUnderlyingData.leftAggs[i]
+      let right = selectedUnderlyingData.rightAggs[i]
+
+      let deltaCallsPercentNumber =
+        ((right.calls - left.calls) / left.calls) * 100
+      let deltaDurationPercentNumber =
+        ((right.self_host_duration - left.self_host_duration) /
+          left.self_host_duration) *
+        100
+
+      tableDataSource.push({
+        key: i,
+        operator: left.name,
+        baselineCalls: left.calls,
+        expCalls: right.calls,
+        deltaCalls: right.calls - left.calls,
+        deltaCallsPercentNumber: deltaCallsPercentNumber,
+        deltaCallsPercent: `${deltaCallsPercentNumber.toFixed(2)}%`,
+        baselineDuration: left.self_host_duration,
+        expDuration: right.self_host_duration,
+        deltaDuration: right.self_host_duration - left.self_host_duration,
+        deltaDurationPercentNumber: deltaDurationPercentNumber,
+        deltaDurationPercent: `${deltaDurationPercentNumber.toFixed(2)}%`
+      })
+    }
+
+    return tableDataSource;
   }
 
   React.useEffect(() => {
@@ -305,7 +353,19 @@ export const DiffOverview: React.FC<IProps> = (props) => {
 
       api.defaultApi
         .diffnodeGet(run, worker, span, expRun, expWorker, expSpan)
-        .then((resp) => handleDiffNodeResp(resp))
+        .then((resp) => {
+          handleDiffNodeResp(resp);
+          let rootUnderlyingData = {
+            name: "rootNode",
+            path: resp.path,
+            leftAggs: resp.left.aggs,
+            rightAggs: resp.right.aggs,
+          }
+
+          setRootUnderlyingData(rootUnderlyingData);
+          let tableDataSource = generateDataSourceFromUnderlyingData(rootUnderlyingData!);
+          setTableDataSource(tableDataSource);
+        })
         .finally(() => setLoading(false))
     }
   }, [run, worker, span, expRun, expWorker, expSpan])
@@ -317,6 +377,8 @@ export const DiffOverview: React.FC<IProps> = (props) => {
     data.push(['Call', 'Baseline', 'Experiment', 'Baseline Trend', 'Exp Trend'])
 
     if (resp.children.length > 0) {
+      let accumulated_left_duration = 0;
+      let accumulated_right_duration = 0;
       for (let i = 0; i < resp.children.length; i++) {
         let left = resp.children[i].left
         let right = resp.children[i].right
@@ -355,8 +417,12 @@ export const DiffOverview: React.FC<IProps> = (props) => {
         curr.push(name)
         curr.push(left.total_duration)
         curr.push(right.total_duration)
-        curr.push(left.total_duration)
-        curr.push(right.total_duration)
+
+        accumulated_left_duration += left.total_duration
+        curr.push(accumulated_left_duration)
+
+        accumulated_right_duration += right.total_duration
+        curr.push(accumulated_right_duration)
 
         underlyingData.push({
           name: name,
@@ -400,7 +466,7 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       <Card variant="outlined">
         <CardHeader title="No Runs Found"></CardHeader>
         <CardContent>
-          <Typography>There are not any runs selected for diff.</Typography>
+          <Typography>There is no run selected for diff.</Typography>
         </CardContent>
       </Card>
     )

@@ -483,9 +483,9 @@ export const DiffOverview: React.FC<IProps> = (props) => {
         currStep.push(name)
         let stepDiff = right.total_duration - left.total_duration;
         currStep.push(stepDiff);
-        currStep.push(accumulated_step_diff);
 
         accumulated_step_diff += stepDiff;
+        currStep.push(accumulated_step_diff);
 
         stepChartData.push(currStep);
       }
@@ -507,6 +507,12 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       currColumn.push(right.total_duration)
 
       columnChartData.push(currColumn)
+
+      currStep.push(name)
+      let stepDiff = right.total_duration - left.total_duration;
+      currStep.push(stepDiff);
+      currStep.push(stepDiff)
+      stepChartData.push(currStep);
     }
 
     setColumnChartData(columnChartData)

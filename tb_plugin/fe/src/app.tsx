@@ -2,6 +2,8 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import Box from '@material-ui/core/Box'
+import Button from '@material-ui/core/Button'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardHeader from '@material-ui/core/CardHeader'
@@ -16,9 +18,11 @@ import ListSubheader from '@material-ui/core/ListSubheader'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
-import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import Tab from '@material-ui/core/Tab'
+import Tabs from '@material-ui/core/Tabs'
+import Typography from '@material-ui/core/Typography'
 import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
@@ -33,9 +37,11 @@ import { ModuleView } from './components/ModuleView'
 import { Operator } from './components/Operator'
 import { Overview } from './components/Overview'
 import { TraceView } from './components/TraceView'
+import { DiffOverview } from './components/DiffOverview'
+
 import { setup } from './setup'
 import './styles.css'
-import { firstOrUndefined, sleep } from './utils'
+import { firstOrUndefined, secondOrUndefined, sleep } from './utils'
 
 export enum Views {
   Overview = 'Overview',
@@ -135,6 +141,8 @@ const useStyles = makeStyles((theme) => ({
 export const App = () => {
   const classes = useStyles()
 
+  const [selectedTab, setSelectedTab] = React.useState(0)
+
   const [run, setRun] = React.useState<string>('')
   const [runs, setRuns] = React.useState<string[]>([])
   const [runsLoading, setRunsLoading] = React.useState(true)
@@ -149,6 +157,14 @@ export const App = () => {
   const [view, setView] = React.useState<Views | ''>('')
   const [loaded, setLoaded] = React.useState(false)
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
+
+  const [diffLeftRun, setDiffLeftRun] = React.useState<string>('')
+  const [diffLeftWorker, setDiffLeftWorker] = React.useState<string>('')
+  const [diffLeftSpan, setDiffLeftSpan] = React.useState<string | ''>('')
+
+  const [diffRightRun, setDiffRightRun] = React.useState<string>('')
+  const [diffRightWorker, setDiffRightWorker] = React.useState<string>('')
+  const [diffRightSpan, setDiffRightSpan] = React.useState<string | ''>('')
 
   React.useEffect(() => {
     setup().then(() => {
@@ -176,6 +192,8 @@ export const App = () => {
   React.useEffect(() => {
     if (!run || !runs.includes(run)) {
       setRun(firstOrUndefined(runs) ?? '')
+      setDiffLeftRun(firstOrUndefined(runs) ?? '')
+      setDiffRightRun(secondOrUndefined(runs) ?? '')
     }
   }, [runs])
 
@@ -204,6 +222,7 @@ export const App = () => {
 
   React.useEffect(() => {
     setWorker(firstOrUndefined(workers) ?? '')
+    setDiffLeftWorker(firstOrUndefined(workers) ?? '')
   }, [workers])
 
   React.useEffect(() => {
@@ -216,7 +235,12 @@ export const App = () => {
 
   React.useEffect(() => {
     setSpan(firstOrUndefined(spans) ?? '')
+    setDiffLeftSpan(firstOrUndefined(spans) ?? '')
   }, [spans])
+
+  const handleTabChange = (event: React.ChangeEvent<{}>, value: any) => {
+    setSelectedTab(value as number)
+  }
 
   const handleRunChange: SelectProps['onChange'] = (event) => {
     setRun(event.target.value as string)
@@ -238,6 +262,36 @@ export const App = () => {
 
   const handleSpanChange: SelectProps['onChange'] = (event) => {
     setSpan(event.target.value as string)
+  }
+
+  const handleDiffLeftRunChange: SelectProps['onChange'] = (event) => {
+    setDiffLeftRun(event.target.value as string)
+    setDiffLeftWorker('')
+    setDiffLeftSpan('')
+  }
+
+  const handleDiffLeftWorkerChange: SelectProps['onChange'] = (event) => {
+    setDiffLeftWorker(event.target.value as string)
+    setDiffLeftSpan('')
+  }
+
+  const handleDiffLeftSpanChange: SelectProps['onChange'] = (event) => {
+    setDiffLeftSpan(event.target.value as string)
+  }
+
+  const handleDiffRightRunChange: SelectProps['onChange'] = (event) => {
+    setDiffRightRun(event.target.value as string)
+    setDiffRightWorker('')
+    setDiffRightSpan('')
+  }
+
+  const handleDiffRightWorkerChange: SelectProps['onChange'] = (event) => {
+    setDiffRightWorker(event.target.value as string)
+    setDiffRightSpan('')
+  }
+
+  const handleDiffRightSpanChange: SelectProps['onChange'] = (event) => {
+    setDiffRightSpan(event.target.value as string)
   }
 
   const [open, setOpen] = React.useState(true)
@@ -272,28 +326,42 @@ export const App = () => {
       return <FullCircularProgress />
     }
 
-    switch (view) {
-      case Views.Overview:
-        return <Overview run={run} worker={worker} span={span} />
-      case Views.Operator:
-        return <Operator run={run} worker={worker} span={span} />
-      case Views.Kernel:
-        return <Kernel run={run} worker={worker} span={span} />
-      case Views.Trace:
-        return (
-          <TraceView
-            run={run}
-            worker={worker}
-            span={span}
-            iframeRef={iframeRef}
-          />
-        )
-      case Views.Distributed:
-        return <DistributedView run={run} worker={worker} span={span} />
-      case Views.Memory:
-        return <MemoryView run={run} worker={worker} span={span} />
-      case Views.Module:
-        return <ModuleView run={run} worker={worker} span={span} />
+    if (selectedTab === 0) {
+      switch (view) {
+        case Views.Overview:
+          return <Overview run={run} worker={worker} span={span} />
+        case Views.Operator:
+          return <Operator run={run} worker={worker} span={span} />
+        case Views.Kernel:
+          return <Kernel run={run} worker={worker} span={span} />
+        case Views.Trace:
+          return (
+            <TraceView
+              run={run}
+              worker={worker}
+              span={span}
+              iframeRef={iframeRef}
+            />
+          )
+        case Views.Distributed:
+          return <DistributedView run={run} worker={worker} span={span} />
+        case Views.Memory:
+          return <MemoryView run={run} worker={worker} span={span} />
+        case Views.Module:
+          return <ModuleView run={run} worker={worker} span={span} />
+      }
+    }
+    if (selectedTab === 1) {
+      return (
+        <DiffOverview
+          run={diffLeftRun}
+          worker={diffLeftWorker}
+          span={diffLeftSpan}
+          expRun={diffRightRun}
+          expWorker={diffRightWorker}
+          expSpan={diffRightSpan}
+        />
+      )
     }
   }
 
@@ -347,37 +415,118 @@ export const App = () => {
           </IconButton>
         </div>
         <Divider />
-        <ListSubheader>Runs</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={run} onChange={handleRunChange}>
-              {runs.map((run) => (
-                <MenuItem value={run}>{run}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
-        <ListSubheader>Views</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={view} onChange={handleViewChange}>
-              {views.map((view) => (
-                <MenuItem value={view}>{ViewNames[view]}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
-        <ListSubheader>Workers</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={worker} onChange={handleWorkerChange}>
-              {workers.map((worker) => (
-                <MenuItem value={worker}>{worker}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
-        {spanComponent()}
+        <Box>
+          <Tabs
+            value={selectedTab}
+            onChange={handleTabChange}
+            aria-label="basic tabs example"
+          >
+            <Tab label="Normal" />
+            <Tab label="Diff" />
+          </Tabs>
+        </Box>
+        {selectedTab == 0 && (
+          <>
+            <ListSubheader>Runs</ListSubheader>
+            <ClickAwayListener onClickAway={SetIframeActive}>
+              <FormControl variant="outlined" className={classes.formControl}>
+                <Select value={run} onChange={handleRunChange}>
+                  {runs.map((run) => (
+                    <MenuItem value={run}>{run}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </ClickAwayListener>
+            <ListSubheader>Views</ListSubheader>
+            <ClickAwayListener onClickAway={SetIframeActive}>
+              <FormControl variant="outlined" className={classes.formControl}>
+                <Select value={view} onChange={handleViewChange}>
+                  {views.map((view) => (
+                    <MenuItem value={view}>{ViewNames[view]}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </ClickAwayListener>
+            <ListSubheader>Workers</ListSubheader>
+            <ClickAwayListener onClickAway={SetIframeActive}>
+              <FormControl variant="outlined" className={classes.formControl}>
+                <Select value={worker} onChange={handleWorkerChange}>
+                  {workers.map((worker) => (
+                    <MenuItem value={worker}>{worker}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </ClickAwayListener>
+          </>
+        )}
+        {selectedTab == 0 && spanComponent()}
+        {selectedTab == 1 && (
+          <>
+            <Typography variant="h6">&nbsp;&nbsp;Baseline</Typography>
+            <ListSubheader>Runs</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select value={diffLeftRun} onChange={handleDiffLeftRunChange}>
+                {runs.map((run) => (
+                  <MenuItem value={run}>{run}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Workers</ListSubheader>
+
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select
+                value={diffLeftWorker}
+                onChange={handleDiffLeftWorkerChange}
+              >
+                {workers.map((worker) => (
+                  <MenuItem value={worker}>{worker}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Span</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select value={diffLeftSpan} onChange={handleDiffLeftSpanChange}>
+                {spans.map((span) => (
+                  <MenuItem value={span}>{span}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Divider />
+
+            <Typography variant="h6">&nbsp;&nbsp;Experimental</Typography>
+            <ListSubheader>Runs</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select value={diffRightRun} onChange={handleDiffRightRunChange}>
+                {runs.map((run) => (
+                  <MenuItem value={run}>{run}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Workers</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select
+                value={diffRightWorker}
+                onChange={handleDiffRightWorkerChange}
+              >
+                {workers.map((worker) => (
+                  <MenuItem value={worker}>{worker}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Span</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select
+                value={diffRightSpan}
+                onChange={handleDiffRightSpanChange}
+              >
+                {spans.map((span) => (
+                  <MenuItem value={span}>{span}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        )}
       </Drawer>
       {!open && (
         <Fab

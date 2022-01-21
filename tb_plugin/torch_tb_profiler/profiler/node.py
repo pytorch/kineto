@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 from .. import utils
 from .tensor_core import TC_Allowlist, TC_OP_Allowlist
 from .trace import (DurationEvent, EventTypes, KernelEvent, ModuleEvent,
-                    OperatorEvent)
+                    OperatorEvent, PLProfileEvent)
 
 logger = utils.get_logger()
 
@@ -195,6 +195,27 @@ class BackwardNode(OperatorNode):
             # Mark TC eligible as True if any child operator is TC eligible.
             if not self.tc_eligible and child.tc_eligible:
                 self.tc_eligible = True
+
+class PLProfileNode(OperatorNode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def create(cls, event: PLProfileEvent):
+        kwargs = BaseNode.get_node_argument(event)
+        return cls(**kwargs)
+
+
+class PLModuleNode(OperatorNode):
+    def __init__(self, module_id: int, **kwargs):
+        super().__init__(**kwargs)
+        self.module_id = module_id
+
+    @classmethod
+    def create(cls, event: PLProfileEvent):
+        kwargs = BaseNode.get_node_argument(event)
+        kwargs['module_id'] = event.module_id
+        return cls(**kwargs)
 
 
 class RuntimeNode(HostNode):

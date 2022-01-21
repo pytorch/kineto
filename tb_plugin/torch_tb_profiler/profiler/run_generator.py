@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .data import DistributedRunProfileData, RunProfileData
-from .module_op import aggegate_module_view
+from .module_op import aggegate_module_view, aggegate_pl_module_view
 from .op_agg import KernelAggByNameOp, OperatorAgg
 from .overall_parser import ProfileRole
 
@@ -60,12 +60,14 @@ class RunGenerator(object):
                 gpu_infos, self.profile_data.tc_ratio)
 
         profile_run.tid2tree = self.profile_data.tid2tree
+        profile_run.pl_tid2tree = self.profile_data.pl_tid2tree
 
         if self.profile_data.memory_snapshot:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.memory_snapshot = self.profile_data.memory_snapshot
 
         profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
+        profile_run.pl_module_stats = aggegate_pl_module_view(self.profile_data.tid2tree, self.profile_data.events)
         if profile_run.module_stats:
             profile_run.views.append(consts.MODULE_VIEW)
 

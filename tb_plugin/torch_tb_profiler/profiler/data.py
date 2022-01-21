@@ -57,6 +57,7 @@ class RunProfileData(object):
 
         # Event Parser results
         self.tid2tree: Dict[int, OperatorNode] = None
+        self.pl_tid2tree: Dict[int, OperatorNode] = None
         self.used_devices = []
         self.use_dp: bool = False
         self.use_ddp: bool = False
@@ -166,7 +167,7 @@ class RunProfileData(object):
     def process(self):
         with utils.timing('EventParser.parse'):
             parser = EventParser()
-            self.tid2tree = parser.parse(self.events, self.forward_backward_events)
+            self.tid2tree, self.pl_tid2tree = parser.parse(self.events, self.forward_backward_events)
 
         self.has_runtime = parser.has_runtime
         self.has_kernel = parser.has_kernel

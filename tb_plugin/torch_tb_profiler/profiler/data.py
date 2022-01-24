@@ -32,6 +32,7 @@ class RunProfileData(object):
         self.span = span
 
         # metadatas
+        self.framework = trace_json.get('Framework', None)
         self.data_schema_version = trace_json.get('schemaVersion', None)
         self.distributed_info = trace_json.get('distributedInfo', None)
         self.device_props = trace_json.get('deviceProperties', None)

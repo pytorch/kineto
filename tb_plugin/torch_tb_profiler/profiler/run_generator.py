@@ -22,6 +22,7 @@ class RunGenerator(object):
 
     def generate_run_profile(self):
         profile_run = RunProfile(self.worker, self.span)
+        profile_run.framework = self.profile_data.framework
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
         profile_run.has_communication = self.profile_data.has_communication

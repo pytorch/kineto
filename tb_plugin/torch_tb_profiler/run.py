@@ -95,6 +95,7 @@ class RunProfile(object):
         self.worker = worker
         self.span = span
         self.views: List[consts.View] = []
+        self.framework = None
         self.has_runtime = False
         self.has_kernel = False
         self.has_communication = False
@@ -404,10 +405,10 @@ class RunProfile(object):
             'rows': events,  # in the form of { 'CPU': [...], 'GPU0': [...], ... }
         }
 
-    def get_module_view(self, pytorch_lightning=True):
-        if pytorch_lightning and self.pl_module_stats:
+    def get_module_view(self):
+        if self.framework == "pytorch-lightning" and self.pl_module_stats:
             module_stats = self.pl_module_stats
-        elif not pytorch_lightning and self.module_stats:
+        elif self.module_stats:
             module_stats = self.module_stats
         else:
             return None
@@ -445,8 +446,8 @@ class RunProfile(object):
         process_modules_stats(result['data'], module_stats)
         return result
 
-    def get_operator_tree(self, pytorch_lightning = True):
-        if pytorch_lightning:
+    def get_operator_tree(self):
+        if self.framework == "pytorch-lightning":
             root = next(iter(self.pl_tid2tree.values()))
         else:
             root = next(iter(self.tid2tree.values()))

@@ -79,6 +79,9 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
 }
 
 void Logger::addLoggerObserver(ILoggerObserver* observer) {
+  if (observer == nullptr) {
+    return;
+  }
 #if !USE_GOOGLE_LOG
   std::lock_guard<std::mutex> guard(loggerObserversMutex_);
   loggerObservers().insert(observer);
@@ -90,6 +93,27 @@ void Logger::removeLoggerObserver(ILoggerObserver* observer) {
   std::lock_guard<std::mutex> guard(loggerObserversMutex_);
   loggerObservers().erase(observer);
 #endif
+}
+
+void Logger::addLoggerObserverDevice(int64_t device) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addDevice(device);
+  }
+}
+
+void Logger::addLoggerObserverEventCount(int64_t count) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addEventCount(count);
+  }
+}
+
+void Logger::setLoggerObserverTraceDurationMS(int64_t duration) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setTraceDurationMS(duration);
+  }
 }
 
 } // namespace KINETO_NAMESPACE

@@ -12,6 +12,9 @@
 
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
+#define LOGGER_OBSERVER_ADD_DEVICE(device)
+#define LOGGER_OBSERVER_ADD_EVENT_COUNT(count)
+#define LOGGER_OBSERVER_SET_TRACE_DURATION_MS(duration)
 #define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
@@ -99,7 +102,15 @@ class Logger {
   static void addLoggerObserver(ILoggerObserver* observer);
 
   static void removeLoggerObserver(ILoggerObserver* observer);
+
+  static void addLoggerObserverDevice(int64_t device);
+
+  static void addLoggerObserverEventCount(int64_t count);
+
+  static void setLoggerObserverTraceDurationMS(int64_t duration);
+
 #endif
+
  private:
   std::stringstream buf_;
   std::ostream& out_;
@@ -197,6 +208,15 @@ struct __to_constant__ {
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
+
+#define LOGGER_OBSERVER_ADD_DEVICE(device_count) \
+  libkineto::Logger::addLoggerObserverDevice(device_count)
+
+#define LOGGER_OBSERVER_ADD_EVENT_COUNT(count) \
+  libkineto::Logger::addLoggerObserverEventCount(count)
+
+#define LOGGER_OBSERVER_SET_TRACE_DURATION_MS(duration) \
+  libkineto::Logger::setLoggerObserverTraceDurationMS(duration)
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) \

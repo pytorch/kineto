@@ -23,8 +23,12 @@ namespace KINETO_NAMESPACE {
 std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
-std::set<ILoggerObserver*>* Logger::loggerObservers_{nullptr};
-std::mutex* Logger::loggerObserversMutex_{nullptr};
+#if !USE_GOOGLE_LOG
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wglobal-constructors"
+std::mutex Logger::loggerObserversMutex_;
+#pragma GCC diagnostic pop
+#endif
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
@@ -46,18 +50,17 @@ Logger::~Logger() {
   }
 #endif
 
-  auto mutex = LoggerObserversMutex();
-  if (mutex) {
-    std::lock_guard<std::mutex> guard(*mutex);
-    // Output to observers. Current Severity helps keep track of which bucket the output goes.
-    if (loggerObservers()) {
-      for (auto observer : *loggerObservers()) {
-        if (observer) {
-          observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
-        }
+#if !USE_GOOGLE_LOG
+  {
+    std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+    for (auto* observer : loggerObservers()) {
+      // Output to observers. Current Severity helps keep track of which bucket the output goes.
+      if (observer) {
+        observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
       }
     }
   }
+#endif
 
   // Finally, print to terminal or console.
   out_ << buf_.str() << std::endl;
@@ -76,23 +79,17 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
 }
 
 void Logger::addLoggerObserver(ILoggerObserver* observer) {
-  auto mutex = LoggerObserversMutex();
-  if (mutex) {
-    std::lock_guard<std::mutex> guard(*mutex);
-    if (loggerObservers()) {
-      loggerObservers()->insert(observer);
-    }
-  }
+#if !USE_GOOGLE_LOG
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  loggerObservers().insert(observer);
+#endif
 }
 
 void Logger::removeLoggerObserver(ILoggerObserver* observer) {
-  auto mutex = LoggerObserversMutex();
-  if (mutex) {
-    std::lock_guard<std::mutex> guard(*mutex);
-    if (loggerObservers()) {
-      loggerObservers()->erase(observer);
-    }
-  }
+#if !USE_GOOGLE_LOG
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  loggerObservers().erase(observer);
+#endif
 }
 
 } // namespace KINETO_NAMESPACE

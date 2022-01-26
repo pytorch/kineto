@@ -59,7 +59,7 @@ export interface DiffStepChartIProps {
   rawData: any[]
 }
 
-const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props) => {
+const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props: DiffColumnChartIProps) => {
   const { rawData, selectCallback } = props
   const graphRef = React.useRef<HTMLDivElement>(null)
   const [resizeEventDependency] = useResizeEventDependency()
@@ -142,7 +142,7 @@ const DiffColumnChart: React.FC<DiffColumnChartIProps> = (props) => {
   )
 }
 
-const DiffStepChart: React.FC<DiffStepChartIProps> = (props) => {
+const DiffStepChart: React.FC<DiffStepChartIProps> = (props: DiffStepChartIProps) => {
   const { rawData } = props
   const graphRef = React.useRef<HTMLDivElement>(null)
   const [resizeEventDependency] = useResizeEventDependency()
@@ -217,7 +217,8 @@ export const DiffOverview: React.FC<IProps> = (props) => {
     {
       title: 'Operator',
       dataIndex: 'operator',
-      key: 'operator'
+      key: 'operator',
+      sorter: (a: TableRow, b: TableRow) =>  a.operator.localeCompare(b.operator)
     },
     {
       title: 'Baseline Calls',
@@ -407,6 +408,11 @@ export const DiffOverview: React.FC<IProps> = (props) => {
       expSpan.length > 0
     ) {
       setLoading(true)
+
+      columnChartDataStack = []
+      stepChartDataStack = []
+      columnUnderlyingDataStack = []
+      columnTableDataSourceStack = []
 
       api.defaultApi
         .diffnodeGet(run, worker, span, expRun, expWorker, expSpan)

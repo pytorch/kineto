@@ -422,6 +422,7 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
   const [columnChartData, setColumnChartData] = React.useState<any[]>([])
   const [stepChartData, setStepChartData] = React.useState<any[]>([])
 
+  const [selectedTableColumnsOptions, setSelectedTableColumnsOptions] = React.useState<[key: string]>(['hostDuration']);
   const [selectedTableColumns, setSelectedTableColumns] = React.useState<any[]>(
     [...baseTableColumns, ...hostDurationColumns]
   )
@@ -511,7 +512,7 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
   const handleColumnSelectionChange = (value: [key: string]) => {
     let columns = value.map((x) => tableSourceColumnMap[x]).flat()
     let r = [...baseTableColumns, ...columns]
-    console.log(r)
+    setSelectedTableColumnsOptions(value)
     setSelectedTableColumns(r)
   }
 
@@ -808,7 +809,7 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
                   mode="multiple"
                   style={{ width: '100%' }}
                   placeholder="Select the data you need"
-                  defaultValue={['hostDuration']}
+                  value={selectedTableColumnsOptions}
                   onChange={handleColumnSelectionChange}
                   optionLabelProp="label"
                 >

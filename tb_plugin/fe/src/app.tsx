@@ -148,6 +148,7 @@ export const App = () => {
   const [runsLoading, setRunsLoading] = React.useState(true)
 
   const [workers, setWorkers] = React.useState<string[]>([])
+  
   const [worker, setWorker] = React.useState<string>('')
 
   const [spans, setSpans] = React.useState<string[]>([])
@@ -158,10 +159,14 @@ export const App = () => {
   const [loaded, setLoaded] = React.useState(false)
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
+  const [diffLeftWorkerOptions, setDiffLeftWorkerOptions] = React.useState<string[]>([])
+  const [diffLeftSpansOptions, setDiffLeftSpansOptions] = React.useState<string[]>([]);
   const [diffLeftRun, setDiffLeftRun] = React.useState<string>('')
   const [diffLeftWorker, setDiffLeftWorker] = React.useState<string>('')
   const [diffLeftSpan, setDiffLeftSpan] = React.useState<string | ''>('')
 
+  const [diffRightWorkerOptions, setDiffRightWorkerOptions] = React.useState<string[]>([])
+  const [diffRightSpansOptions, setDiffRightSpansOptions] = React.useState<string[]>([]);
   const [diffRightRun, setDiffRightRun] = React.useState<string>('')
   const [diffRightWorker, setDiffRightWorker] = React.useState<string>('')
   const [diffRightSpan, setDiffRightSpan] = React.useState<string | ''>('')
@@ -197,6 +202,64 @@ export const App = () => {
     }
   }, [runs])
 
+  // #region - Diff Left
+
+  React.useEffect(() => {
+    if (diffLeftRun) {
+      api.defaultApi.workersGet(diffLeftRun, Views.Overview).then((workers) => {
+        setDiffLeftWorkerOptions(workers)
+      })
+    }
+  }, [diffLeftRun])
+
+  React.useEffect(() => {
+    setDiffLeftWorker(firstOrUndefined(diffLeftWorkerOptions) ?? '')
+  }, [diffLeftWorkerOptions])
+
+  React.useEffect(() => {
+    if (diffLeftRun && diffLeftWorker) {
+      api.defaultApi.spansGet(diffLeftRun, diffLeftWorker).then((spans) => {
+        setDiffLeftSpansOptions(spans)
+      })
+    }
+  }, [diffLeftRun, diffLeftWorker])
+
+  React.useEffect(() => {
+    setDiffLeftSpan(firstOrUndefined(diffLeftSpansOptions) ?? '')
+  }, [diffLeftSpansOptions])
+
+  // #endregion
+
+  // #region - Diff Right
+
+  React.useEffect(() => {
+    if (diffRightRun) {
+      api.defaultApi.workersGet(diffRightRun, Views.Overview).then((workers) => {
+        setDiffRightWorkerOptions(workers)
+      })
+    }
+  }, [diffRightRun])
+
+  React.useEffect(() => {
+    setDiffRightWorker(firstOrUndefined(diffRightWorkerOptions) ?? '')
+  }, [diffRightWorkerOptions])
+
+  React.useEffect(() => {
+    if (diffRightRun && diffRightWorker) {
+      api.defaultApi.spansGet(diffRightRun, diffRightWorker).then((spans) => {
+        setDiffRightSpansOptions(spans)
+      })
+    }
+  }, [diffRightRun, diffRightWorker])
+
+  React.useEffect(() => {
+    setDiffRightSpan(firstOrUndefined(diffRightSpansOptions) ?? '')
+  }, [diffRightSpansOptions])
+
+  // #endregion
+
+  // #region - normal
+
   React.useEffect(() => {
     if (run) {
       api.defaultApi.viewsGet(run).then((rawViews) => {
@@ -222,7 +285,6 @@ export const App = () => {
 
   React.useEffect(() => {
     setWorker(firstOrUndefined(workers) ?? '')
-    setDiffLeftWorker(firstOrUndefined(workers) ?? '')
   }, [workers])
 
   React.useEffect(() => {
@@ -235,8 +297,9 @@ export const App = () => {
 
   React.useEffect(() => {
     setSpan(firstOrUndefined(spans) ?? '')
-    setDiffLeftSpan(firstOrUndefined(spans) ?? '')
   }, [spans])
+
+  // #endregion
 
   const handleTabChange = (event: React.ChangeEvent<{}>, value: any) => {
     setSelectedTab(value as number)
@@ -478,7 +541,7 @@ export const App = () => {
                 value={diffLeftWorker}
                 onChange={handleDiffLeftWorkerChange}
               >
-                {workers.map((worker) => (
+                {diffLeftWorkerOptions.map((worker) => (
                   <MenuItem value={worker}>{worker}</MenuItem>
                 ))}
               </Select>
@@ -486,7 +549,7 @@ export const App = () => {
             <ListSubheader>Span</ListSubheader>
             <FormControl variant="outlined" className={classes.formControl}>
               <Select value={diffLeftSpan} onChange={handleDiffLeftSpanChange}>
-                {spans.map((span) => (
+                {diffLeftSpansOptions.map((span) => (
                   <MenuItem value={span}>{span}</MenuItem>
                 ))}
               </Select>
@@ -509,7 +572,7 @@ export const App = () => {
                 value={diffRightWorker}
                 onChange={handleDiffRightWorkerChange}
               >
-                {workers.map((worker) => (
+                {diffRightWorkerOptions.map((worker) => (
                   <MenuItem value={worker}>{worker}</MenuItem>
                 ))}
               </Select>
@@ -520,7 +583,7 @@ export const App = () => {
                 value={diffRightSpan}
                 onChange={handleDiffRightSpanChange}
               >
-                {spans.map((span) => (
+                {diffRightSpansOptions.map((span) => (
                   <MenuItem value={span}>{span}</MenuItem>
                 ))}
               </Select>

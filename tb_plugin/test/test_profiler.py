@@ -2700,7 +2700,7 @@ class TestModuleView(unittest.TestCase):
 
         events = []
         for data in content:
-            event = trace.create_event(data)
+            event = trace.create_event(data, False)
             events.append(event)
 
         roots = _build_module_hierarchy(events)

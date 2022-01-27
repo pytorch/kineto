@@ -71,7 +71,7 @@ class NodeParserMixin:
             if event.type == EventTypes.MEMORY:
                 continue
             self._parse_node(
-                event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
+                event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, pl_tid2list, tid2zero_rt_list)
 
         if CommLibTypes.Nccl in self.comm_lib:
             for event in events:
@@ -79,17 +79,11 @@ class NodeParserMixin:
                     self._update_communication_node(event)
 
         # associate CUDA Runtimes with CPU events
-        for tid, op_list in tid2list.items():
-            pl_op_list = []
+        for op_list in tid2list.values():
             for op in op_list:
                 runtime_nodes = externalid_to_runtime.pop(op.external_id, [])
                 if runtime_nodes:
                     op.runtimes.extend(runtime_nodes)
-                if op.type == EventTypes.PL_PROFILE:
-                    pl_op_list.append(op)
-                    op_list.remove(op)
-            if pl_op_list:
-                pl_tid2list[tid] = pl_op_list
         for ext_id in externalid_to_runtime:
             if ext_id != 0:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
@@ -119,6 +113,7 @@ class NodeParserMixin:
                     corrid_to_runtime: Dict[int, RuntimeNode],
                     externalid_to_runtime: Dict[int, List[RuntimeNode]],
                     tid2list: Dict[int, List[OperatorNode]],
+                    pl_tid2list: Dict[int, List[PLProfileNode]],
                     tid2zero_rt_list: Dict[int, List[RuntimeNode]]):
         corrid = event.correlation_id
         tid = event.tid
@@ -159,13 +154,11 @@ class NodeParserMixin:
                             'Runtime and Device-op have same correlation id %s but with different external id!'
                             ' (rt external_id, device external_id): (%s, %s)' %
                             (corrid, rt_node.external_id, device_node.external_id))
-        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PL_MODULE, EventTypes.PL_PROFILE, EventTypes.PROFILER_STEP, EventTypes.MODULE]:
+        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PL_MODULE, EventTypes.PROFILER_STEP, EventTypes.MODULE]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event)
             elif event.type == EventTypes.MODULE:
                 op_node = ModuleNode.create(event)
-            elif event.type == EventTypes.PL_PROFILE:
-                op_node = PLProfileNode.create(event)
             elif event.type == EventTypes.PL_MODULE:
                 op_node = PLModuleNode.create(event)
             else:
@@ -186,6 +179,9 @@ class NodeParserMixin:
             if event.name == 'DistributedDataParallel.forward':
                 self.use_ddp = True
             tid2list[int(tid)].append(op_node)
+        elif event.type == EventTypes.PL_PROFILE:
+            op_node = PLProfileNode.create(event)
+            pl_tid2list[int(tid)].append(op_node)
 
 
 class StepParser:

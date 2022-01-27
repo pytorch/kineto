@@ -95,7 +95,7 @@ class RunProfile(object):
         self.worker = worker
         self.span = span
         self.views: List[consts.View] = []
-        self.framework = None
+        self.is_pytorch_lightning = False
         self.has_runtime = False
         self.has_kernel = False
         self.has_communication = False
@@ -406,7 +406,7 @@ class RunProfile(object):
         }
 
     def get_module_view(self):
-        if self.framework == "pytorch-lightning" and self.pl_module_stats:
+        if self.is_pytorch_lightning and self.pl_module_stats:
             module_stats = self.pl_module_stats
         elif self.module_stats:
             module_stats = self.module_stats
@@ -447,7 +447,7 @@ class RunProfile(object):
         return result
 
     def get_operator_tree(self):
-        if self.framework == "pytorch-lightning":
+        if self.is_pytorch_lightning:
             root = next(iter(self.pl_tid2tree.values()))
         else:
             root = next(iter(self.tid2tree.values()))

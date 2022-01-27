@@ -22,7 +22,7 @@ class RunGenerator(object):
 
     def generate_run_profile(self):
         profile_run = RunProfile(self.worker, self.span)
-        profile_run.framework = self.profile_data.framework
+        profile_run.is_pytorch_lightning = self.profile_data.is_pytorch_lightning
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
         profile_run.has_communication = self.profile_data.has_communication
@@ -69,7 +69,7 @@ class RunGenerator(object):
 
         profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
         profile_run.pl_module_stats = aggegate_pl_module_view(self.profile_data.tid2tree, self.profile_data.events)
-        if profile_run.module_stats:
+        if profile_run.module_stats or (profile_run.is_pytorch_lightning and profile_run.pl_module_stats):
             profile_run.views.append(consts.MODULE_VIEW)
 
         return profile_run

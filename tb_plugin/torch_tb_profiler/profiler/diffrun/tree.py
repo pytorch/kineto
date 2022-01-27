@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 import sys
-from typing import List, Union
+from typing import Generator, List, Union
 
 from ..node import (BackwardNode, DataLoaderNode, ModuleNode, OperatorNode,
                     OptimizerNode, ProfilerStepNode)
@@ -42,8 +42,9 @@ class DiffNode:
             # TODO: do we need statistic the stats for both operator and kernel here?
 
     @staticmethod
-    def create_node(left: Union[OperatorNode, List[OperatorNode]],
-                    right: Union[OperatorNode, List[OperatorNode]]) -> 'DiffNode':
+    def create_node(
+            left: Union[OperatorNode, List[OperatorNode]],
+            right: Union[OperatorNode, List[OperatorNode]]) -> 'DiffNode':
         if isinstance(left, list) and len(left) == 1:
             left = left[0]
         if isinstance(right, list) and len(right) == 1:
@@ -54,7 +55,9 @@ class DiffNode:
         return node
 
     @staticmethod
-    def compare_operator_nodes(left_nodes: List[OperatorNode], right_nodes: List[OperatorNode]) -> List['DiffNode']:
+    def compare_operator_nodes(
+            left_nodes: List[OperatorNode],
+            right_nodes: List[OperatorNode]) -> Generator['DiffNode', None, None]:
         '''Given two OperatorNode lists, find the DataLoader/Module/Backward/Optimizer node and create the child list DiffNode
         '''
         right_keys = [(type(r), r.name) for r in right_nodes]
@@ -111,7 +114,7 @@ def compare_op_tree(left: OperatorNode, right: OperatorNode) -> DiffNode:
     return DiffNode.create_node(left_children, right_children)
 
 
-def get_tree_operators(root: OperatorNode) -> List[OperatorNode]:
+def get_tree_operators(root: OperatorNode) -> Generator[OperatorNode, None, None]:
     '''Get the operators by the root operators by excluding the ProfilerStepNode
     '''
     profiler_nodes = [c for c in root.children if isinstance(c, ProfilerStepNode)]

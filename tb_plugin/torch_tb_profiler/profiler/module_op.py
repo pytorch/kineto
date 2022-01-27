@@ -4,7 +4,8 @@
 from collections import namedtuple
 from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
 
-from .node import DataLoaderNode, ModuleNode, OperatorNode, PLModuleNode, ProfilerStepNode, is_operator_node
+from .node import (DataLoaderNode, ModuleNode, OperatorNode, PLModuleNode,
+                   ProfilerStepNode, is_operator_node)
 from .trace import BaseEvent, EventTypes, PLModuleEvent, PythonFunctionEvent
 
 

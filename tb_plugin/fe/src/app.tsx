@@ -160,14 +160,22 @@ export const App = () => {
   const [loaded, setLoaded] = React.useState(false)
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
 
-  const [diffLeftWorkerOptions, setDiffLeftWorkerOptions] = React.useState<string[]>([])
-  const [diffLeftSpansOptions, setDiffLeftSpansOptions] = React.useState<string[]>([]);
+  const [diffLeftWorkerOptions, setDiffLeftWorkerOptions] = React.useState<
+    string[]
+  >([])
+  const [diffLeftSpansOptions, setDiffLeftSpansOptions] = React.useState<
+    string[]
+  >([])
   const [diffLeftRun, setDiffLeftRun] = React.useState<string>('')
   const [diffLeftWorker, setDiffLeftWorker] = React.useState<string>('')
   const [diffLeftSpan, setDiffLeftSpan] = React.useState<string | ''>('')
 
-  const [diffRightWorkerOptions, setDiffRightWorkerOptions] = React.useState<string[]>([])
-  const [diffRightSpansOptions, setDiffRightSpansOptions] = React.useState<string[]>([]);
+  const [diffRightWorkerOptions, setDiffRightWorkerOptions] = React.useState<
+    string[]
+  >([])
+  const [diffRightSpansOptions, setDiffRightSpansOptions] = React.useState<
+    string[]
+  >([])
   const [diffRightRun, setDiffRightRun] = React.useState<string>('')
   const [diffRightWorker, setDiffRightWorker] = React.useState<string>('')
   const [diffRightSpan, setDiffRightSpan] = React.useState<string | ''>('')
@@ -239,9 +247,11 @@ export const App = () => {
 
   React.useEffect(() => {
     if (diffRightRun) {
-      api.defaultApi.workersGet(diffRightRun, Views.Overview).then((workers) => {
-        setDiffRightWorkerOptions(workers)
-      })
+      api.defaultApi
+        .workersGet(diffRightRun, Views.Overview)
+        .then((workers) => {
+          setDiffRightWorkerOptions(workers)
+        })
     }
   }, [diffRightRun])
 

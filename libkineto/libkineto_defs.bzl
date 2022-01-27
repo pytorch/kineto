@@ -67,6 +67,7 @@ def get_libkineto_public_headers():
 # suppress these warnings.
 KINETO_COMPILER_FLAGS = [
     "-fexceptions",
+    "-Wno-deprecated-declarations",
     "-Wno-unused-function",
     "-Wno-unused-private-field",
 ]

@@ -163,11 +163,11 @@ class PLModuleEvent(DurationEvent):
         self.module_type = self.name[:self.name.find(': ')]
         self.name = self.name[self.name.find(': ')+2:]
 
-def create_event(event) -> Optional[BaseEvent]:
+def create_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     try:
         type = event.get('ph')
         if type == 'X':
-            return create_trace_event(event)
+            return create_trace_event(event, is_pytorch_lightning)
         elif type == 'i' and event.get('name') == '[memory]':
             return MemoryEvent(EventTypes.MEMORY, event)
         else:
@@ -177,24 +177,26 @@ def create_event(event) -> Optional[BaseEvent]:
         raise
 
 
-def create_trace_event(event) -> Optional[BaseEvent]:
+def create_trace_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     category = event.get('cat')
     event_type = EventTypeMap.get(category)
     if event_type == EventTypes.OPERATOR:
         name = event.get('name')
         if name and name.startswith('ProfilerStep#'):
             return ProfilerStepEvent(event)
-        elif name and name.startswith('[pl][profile]'):
-            return PLProfileEvent(event)
-        elif name and name.startswith('[pl][module]'):
-            return PLModuleEvent(event)
-        else:
-            return OperatorEvent(event_type, event)
+        if is_pytorch_lightning:
+            if name and name.startswith('[pl][profile]'):
+                return PLProfileEvent(event)
+            elif name and name.startswith('[pl][module]'):
+                return PLModuleEvent(event)
+        return OperatorEvent(event_type, event)
     elif event_type == EventTypes.PYTHON:
         return OperatorEvent(event_type, event)
     elif event_type == EventTypes.KERNEL:
         return KernelEvent(event_type, event)
     elif event_type == EventTypes.PYTHON_FUNCTION:
+        if is_pytorch_lightning:
+            return None
         args = event.get('args')
         if args and args.get('Python module id') is not None:
             return ModuleEvent(event)

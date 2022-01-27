@@ -158,7 +158,7 @@ class ModuleNode(OperatorNode):
 
     def fill_stats(self):
         super().fill_stats()
-        self.self_device_duration = get_self_device_time(self, PLModuleNode)
+        self.self_device_duration += get_chilren_self_device_time(self)
 
     @classmethod
     def create(cls, event: ModuleEvent):
@@ -209,7 +209,7 @@ class PLModuleNode(OperatorNode):
 
     def fill_stats(self):
         super().fill_stats()
-        self.self_device_duration = get_self_device_time(self, ModuleNode)
+        self.self_device_duration += get_chilren_self_device_time(self)
 
     @classmethod
     def create(cls, event: PLProfileEvent):
@@ -292,11 +292,9 @@ def is_operator_node(node):
         return False
 
 
-def get_self_device_time(node, include_sub_type):
+def get_chilren_self_device_time(node):
     self_device_duration = 0
     for child in node.children:
         if is_operator_node(child):
             self_device_duration += child.device_duration
-        elif type(child) is include_sub_type:
-            self_device_duration += get_self_device_time(child, include_sub_type)
     return self_device_duration

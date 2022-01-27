@@ -46,7 +46,7 @@ class RunProfileData(object):
             if data.get('cat') == 'forward_backward':
                 fwd_bwd_events.append(data)
             else:
-                event = trace.create_event(data)
+                event = trace.create_event(data, self.is_pytorch_lightning)
                 if event is not None:
                     self.profiler_start_ts = min(self.profiler_start_ts, event.ts)
                     self.events.append(event)

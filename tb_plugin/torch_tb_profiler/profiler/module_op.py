@@ -61,7 +61,7 @@ Stats = namedtuple('Stats', [
 
 def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
     roots = _build_module_hierarchy(events)
-    modules = _get_module_list(tid2tree, False)
+    modules = _get_node_list(tid2tree, ModuleNode)
     if modules and roots:
         return _process_module_statistics(modules, roots)
     else:
@@ -70,7 +70,7 @@ def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEve
 
 def aggegate_pl_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
     roots = _build_module_hierarchy_from_name(events)
-    modules = _get_module_list(tid2tree, True)
+    modules = _get_node_list(tid2tree, PLModuleNode)
     if modules and roots:
         return _process_module_statistics(modules, roots)
     else:
@@ -182,16 +182,13 @@ def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Di
     return module_aggs
 
 
-def _get_module_list(tid2tree: Dict[int, OperatorNode], get_pl_module = False) -> Generator[OperatorNode, None, None]:
-    """Get all ModuleNode from the operator tree"""
+def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[OperatorNode, None, None]:
+    """Get all node with node_class from the operator tree"""
     def traverse_node(node):
         if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode, PLModuleNode):
             return
 
-        if isinstance(node, ModuleNode) and not get_pl_module:
-            yield node
-
-        if isinstance(node, PLModuleNode) and get_pl_module:
+        if isinstance(node, node_class):
             yield node
 
         for child in node.children:

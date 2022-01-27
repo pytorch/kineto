@@ -235,6 +235,8 @@ let columnUnderlyingDataStack: ColumnUnderlyingData[][] = []
 let columnTableDataSourceStack: TableRow[][] = []
 
 export const DiffOverview: React.FC<IProps> = (props: IProps) => {
+  // #region - Constant
+
   const COMPOSITE_NODES_NAME = 'CompositeNodes'
 
   const hostDurationColumns = [
@@ -407,6 +409,9 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
     }
   ]
 
+  // #endregion
+
+  // #region - State
   const [tableDataSource, setTableDataSource] = React.useState<TableRow[]>([])
   const { run, worker, span, expRun, expWorker, expSpan } = props
 
@@ -430,8 +435,10 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
   const [dataStackLevel, setDataStackLevel] = React.useState(0)
   const [loading, setLoading] = React.useState(false)
 
+  // #endregion
   const classes = useStyles()
 
+  // #region - Event Handler
   const handleChartColumnSelect = (row: number, column: number) => {
     if (columnUnderlyingData.length === 0) {
       return
@@ -751,6 +758,8 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
 
     setDataStackLevel(dataStackLevel + 1)
   }
+
+  // #endregion
 
   if (!loading && columnUnderlyingDataStack.length === 0) {
     return (

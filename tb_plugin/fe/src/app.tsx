@@ -141,6 +141,8 @@ const useStyles = makeStyles((theme) => ({
 export const App = () => {
   const classes = useStyles()
 
+  // #region - State
+
   const [selectedTab, setSelectedTab] = React.useState(0)
 
   const [run, setRun] = React.useState<string>('')
@@ -148,7 +150,6 @@ export const App = () => {
   const [runsLoading, setRunsLoading] = React.useState(true)
 
   const [workers, setWorkers] = React.useState<string[]>([])
-  
   const [worker, setWorker] = React.useState<string>('')
 
   const [spans, setSpans] = React.useState<string[]>([])
@@ -170,6 +171,10 @@ export const App = () => {
   const [diffRightRun, setDiffRightRun] = React.useState<string>('')
   const [diffRightWorker, setDiffRightWorker] = React.useState<string>('')
   const [diffRightSpan, setDiffRightSpan] = React.useState<string | ''>('')
+
+  const [open, setOpen] = React.useState(true)
+
+  // #endregion
 
   React.useEffect(() => {
     setup().then(() => {
@@ -301,6 +306,7 @@ export const App = () => {
 
   // #endregion
 
+  // #region - Event Handler
   const handleTabChange = (event: React.ChangeEvent<{}>, value: any) => {
     setSelectedTab(value as number)
   }
@@ -357,8 +363,6 @@ export const App = () => {
     setDiffRightSpan(event.target.value as string)
   }
 
-  const [open, setOpen] = React.useState(true)
-
   const handleDrawerOpen = () => {
     setOpen(true)
     SetIframeActive()
@@ -372,6 +376,8 @@ export const App = () => {
   const SetIframeActive = () => {
     iframeRef.current?.focus()
   }
+
+  // #endregion
 
   const renderContent = () => {
     if (!runsLoading && runs.length == 0) {

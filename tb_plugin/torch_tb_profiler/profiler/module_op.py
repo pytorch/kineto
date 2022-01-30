@@ -4,12 +4,12 @@
 from collections import namedtuple
 from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
 
-from .node import ModuleNode, OperatorNode, ProfilerStepNode, is_operator_node
-from .trace import BaseEvent, EventTypes, PythonFunctionEvent
+from .node import ModuleNode, OperatorNode, PLModuleNode, ProfilerStepNode, is_operator_node
+from .trace import BaseEvent, EventTypes, PLModuleEvent, PythonFunctionEvent
 
 
 class Module:
-    def __init__(self, name: str, module_id: int):
+    def __init__(self, name: str, module_id: int, shape: str = ""):
         self.name = name
         self.module_id = module_id
         self.children: List[Module] = []
@@ -61,11 +61,40 @@ Stats = namedtuple('Stats', [
 
 def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
     roots = _build_module_hierarchy(events)
-    modules = _get_module_list(tid2tree)
+    modules = _get_node_list(tid2tree, ModuleNode)
     if modules and roots:
         return _process_module_statistics(modules, roots)
     else:
         return None
+
+
+def aggegate_pl_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
+    roots = _build_module_hierarchy_from_name(events)
+    modules = _get_node_list(tid2tree, PLModuleNode)
+    if modules and roots:
+        return _process_module_statistics(modules, roots)
+    else:
+        return None
+
+
+def _build_module_hierarchy_from_name(events: List[PLModuleEvent]) -> List[Module]:
+    pl_module_events = [e for e in events if e.type == EventTypes.PL_MODULE]
+    name2module: Dict[str, Module] = {}
+    no_root: Set[str] = set()
+
+    for event in pl_module_events:
+        if event.name not in name2module:
+            name2module[event.name] = Module(event.name, 0)
+
+    for name, module in name2module.items():
+        if name.find('.') == -1:
+            continue
+        parent_name = name[:name.rfind('.')]
+        if parent_name in name2module:
+            name2module[parent_name].children.append(module)
+            no_root.add(module.name)
+
+    return [module for name, module in name2module.items() if name not in no_root]
 
 
 def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
@@ -132,7 +161,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
     return list(unique_modules)
 
 
-def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], ModuleStats]:
+def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Dict[Tuple[str, int], ModuleStats]:
     """Aggregate the modules based on the name and module_id"""
     module_aggs: Dict[Tuple(str, int), ModuleStats] = {}
     for m in modules:
@@ -153,13 +182,13 @@ def _aggregate_modules(modules: Iterable[ModuleNode]) -> Dict[Tuple[str, int], M
     return module_aggs
 
 
-def _get_module_list(tid2tree: Dict[int, OperatorNode]) -> Generator[ModuleNode, None, None]:
-    """Get all ModuleNode from the operator tree"""
+def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[OperatorNode, None, None]:
+    """Get all node with node_class from the operator tree"""
     def traverse_node(node):
-        if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode):
+        if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode, PLModuleNode):
             return
 
-        if isinstance(node, ModuleNode):
+        if isinstance(node, node_class):
             yield node
 
         for child in node.children:
@@ -170,7 +199,7 @@ def _get_module_list(tid2tree: Dict[int, OperatorNode]) -> Generator[ModuleNode,
             yield from traverse_node(child)
 
 
-def _process_module_statistics(modules_nodes: Iterable[ModuleNode], hierarchy: Iterable[Module]) -> List[Stats]:
+def _process_module_statistics(modules_nodes: Iterable[Union[ModuleNode, PLModuleNode]], hierarchy: Iterable[Module]) -> List[Stats]:
     """Get the module statistics from the ModuleNode(s) and the hierarchy
     """
     module_aggs = _aggregate_modules(modules_nodes)

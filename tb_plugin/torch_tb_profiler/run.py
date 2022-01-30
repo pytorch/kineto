@@ -95,6 +95,7 @@ class RunProfile(object):
         self.worker = worker
         self.span = span
         self.views: List[consts.View] = []
+        self.is_pytorch_lightning = False
         self.has_runtime = False
         self.has_kernel = False
         self.has_communication = False
@@ -121,8 +122,10 @@ class RunProfile(object):
         # for memory stats and curve
         self.memory_snapshot: Optional[MemorySnapshot] = None
         self.tid2tree: Dict[int, OperatorNode] = None
+        self.pl_tid2tree: Dict[int, OperatorNode] = None
 
         self.module_stats: Optional[List(Stats)] = None
+        self.pl_module_stats: Optional[List(Stats)] = None
 
     def append_gpu_metrics(self, raw_data: bytes):
         counter_json_str = ', {}'.format(', '.join(self.gpu_metrics))
@@ -403,7 +406,11 @@ class RunProfile(object):
         }
 
     def get_module_view(self):
-        if not self.module_stats:
+        if self.is_pytorch_lightning and self.pl_module_stats:
+            module_stats = self.pl_module_stats
+        elif self.module_stats:
+            module_stats = self.module_stats
+        else:
             return None
 
         result = {
@@ -436,11 +443,14 @@ class RunProfile(object):
                 parent.append(d)
                 process_modules_stats(d['children'], stats.children)
 
-        process_modules_stats(result['data'], self.module_stats)
+        process_modules_stats(result['data'], module_stats)
         return result
 
     def get_operator_tree(self):
-        root = next(iter(self.tid2tree.values()))
+        if self.is_pytorch_lightning:
+            root = next(iter(self.pl_tid2tree.values()))
+        else:
+            root = next(iter(self.tid2tree.values()))
 
         result = []
 

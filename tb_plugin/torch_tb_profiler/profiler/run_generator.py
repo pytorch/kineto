@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
 from .data import DistributedRunProfileData, RunProfileData
-from .module_op import aggegate_module_view
+from .module_op import aggegate_module_view, aggegate_pl_module_view
 from .op_agg import KernelAggByNameOp, OperatorAgg
 from .overall_parser import ProfileRole
 
@@ -22,6 +22,7 @@ class RunGenerator(object):
 
     def generate_run_profile(self):
         profile_run = RunProfile(self.worker, self.span)
+        profile_run.is_pytorch_lightning = self.profile_data.is_pytorch_lightning
         profile_run.has_runtime = self.profile_data.has_runtime
         profile_run.has_kernel = self.profile_data.has_kernel
         profile_run.has_communication = self.profile_data.has_communication
@@ -60,13 +61,15 @@ class RunGenerator(object):
                 gpu_infos, self.profile_data.tc_ratio)
 
         profile_run.tid2tree = self.profile_data.tid2tree
+        profile_run.pl_tid2tree = self.profile_data.pl_tid2tree
 
         if self.profile_data.memory_snapshot:
             profile_run.views.append(consts.MEMORY_VIEW)
             profile_run.memory_snapshot = self.profile_data.memory_snapshot
 
         profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
-        if profile_run.module_stats:
+        profile_run.pl_module_stats = aggegate_pl_module_view(self.profile_data.tid2tree, self.profile_data.events)
+        if profile_run.module_stats or (profile_run.is_pytorch_lightning and profile_run.pl_module_stats):
             profile_run.views.append(consts.MODULE_VIEW)
 
         return profile_run

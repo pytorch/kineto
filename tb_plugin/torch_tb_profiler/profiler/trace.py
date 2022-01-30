@@ -28,6 +28,8 @@ class EventTypes(object):
     MEMORY = 'Memory'
     PYTHON_FUNCTION = 'python_function'
     MODULE = 'Module'
+    PL_PROFILE = 'pl_profile'
+    PL_MODULE = 'pl_module'
 
 
 EventTypeMap = {
@@ -145,11 +147,27 @@ class ModuleEvent(PythonFunctionEvent):
         self.module_id: int = self.args.get('Python module id')
 
 
-def create_event(event) -> Optional[BaseEvent]:
+class PLProfileEvent(DurationEvent):
+    def __init__(self, data):
+        super().__init__(EventTypes.PL_PROFILE, data)
+        self.name = self.name.replace('[pl][profile]', '')
+
+
+class PLModuleEvent(DurationEvent):
+    def __init__(self, data):
+        super().__init__(EventTypes.PL_MODULE, data)
+        self.module_id = 0 # just to be compatible with ModuleEvent processing
+        self.name = self.name.replace('[pl][module]', '')
+        #self.shape = self.name[:self.name.rfind(']')+1]
+        #self.name = self.name[self.name.rfind(']')+1:]
+        self.module_type = self.name[:self.name.find(': ')]
+        self.name = self.name[self.name.find(': ')+2:]
+
+def create_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     try:
         type = event.get('ph')
         if type == 'X':
-            return create_trace_event(event)
+            return create_trace_event(event, is_pytorch_lightning)
         elif type == 'i' and event.get('name') == '[memory]':
             return MemoryEvent(EventTypes.MEMORY, event)
         else:
@@ -159,20 +177,26 @@ def create_event(event) -> Optional[BaseEvent]:
         raise
 
 
-def create_trace_event(event) -> Optional[BaseEvent]:
+def create_trace_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     category = event.get('cat')
     event_type = EventTypeMap.get(category)
     if event_type == EventTypes.OPERATOR:
         name = event.get('name')
         if name and name.startswith('ProfilerStep#'):
             return ProfilerStepEvent(event)
-        else:
-            return OperatorEvent(event_type, event)
+        if is_pytorch_lightning:
+            if name and name.startswith('[pl][profile]'):
+                return PLProfileEvent(event)
+            elif name and name.startswith('[pl][module]'):
+                return PLModuleEvent(event)
+        return OperatorEvent(event_type, event)
     elif event_type == EventTypes.PYTHON:
         return OperatorEvent(event_type, event)
     elif event_type == EventTypes.KERNEL:
         return KernelEvent(event_type, event)
     elif event_type == EventTypes.PYTHON_FUNCTION:
+        if is_pytorch_lightning:
+            return None
         args = event.get('args')
         if args and args.get('Python module id') is not None:
             return ModuleEvent(event)
@@ -185,13 +209,11 @@ def create_trace_event(event) -> Optional[BaseEvent]:
 
 
 def create_association_events(events) -> Dict[int, int]:
-    fwd_bwd_events = (e for e in events if e.get('cat') == 'forward_backward')
-
     forward_map = {}
     backward_map = {}
 
     result = {}
-    for e in fwd_bwd_events:
+    for e in events:
         ph = e.get('ph')
         id = e['id']
         ts = e['ts']

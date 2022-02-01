@@ -12,7 +12,6 @@
 
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
-#define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock)
 #define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
@@ -91,26 +90,14 @@ class Logger {
     return verboseLogModules_;
   }
 
-  static inline void setLoggerObservers(std::set<ILoggerObserver*>* observers) {
-    loggerObservers_ = observers;
-  }
-
-  static inline std::set<ILoggerObserver*>* loggerObservers() {
-    return loggerObservers_;
-  }
-
-  static inline void setLoggerObserversMutex(std::mutex* mutex) {
-    loggerObserversMutex_ = mutex;
-  }
-
-  static inline std::mutex* LoggerObserversMutex() {
-    return loggerObserversMutex_;
+  static void clearLoggerObservers() {
+    std::lock_guard<std::mutex> g(loggerObserversMutex_);
+    loggerObservers().clear();
   }
 
   static void addLoggerObserver(ILoggerObserver* observer);
 
   static void removeLoggerObserver(ILoggerObserver* observer);
-
  private:
   std::stringstream buf_;
   std::ostream& out_;
@@ -119,8 +106,11 @@ class Logger {
   static std::atomic_int severityLevel_;
   static std::atomic_int verboseLogLevel_;
   static std::atomic<uint64_t> verboseLogModules_;
-  static std::set<ILoggerObserver*>* loggerObservers_;
-  static std::mutex* loggerObserversMutex_;
+  static std::set<ILoggerObserver*>& loggerObservers() {
+    static auto* inst = new std::set<ILoggerObserver*>();
+    return *inst;
+  }
+  static std::mutex loggerObserversMutex_;
 };
 
 class VoidLogger {
@@ -203,10 +193,6 @@ struct __to_constant__ {
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
-
-#define SET_LOGGER_OBSERVER_SET_AND_MUTEX(observers, lock) \
-  libkineto::Logger::setLoggerObservers(observers); \
-  libkineto::Logger::setLoggerObserversMutex(lock)
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) \

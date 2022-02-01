@@ -17,26 +17,7 @@ constexpr char InfoTestStr[] = "Checking LOG(INFO)";
 constexpr char WarningTestStr[] = "Checking LOG(WARNING)";
 constexpr char ErrorTestStr[] = "Checking LOG(ERROR)";
 
-class LoggerObserverTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    loggerObservers_ = std::make_unique<std::set<ILoggerObserver*>>();
-    // Link the Logger Observers set to the Logger.
-    SET_LOGGER_OBSERVER_SET_AND_MUTEX(loggerObservers_.get(), &loggerObserversMutex_);
-  }
-  void TearDown() override {
-    {
-      std::lock_guard<std::mutex> lock(loggerObserversMutex_);
-      // Un-link the observers since I am being deleted.
-      SET_LOGGER_OBSERVER_SET_AND_MUTEX(nullptr, nullptr);
-    }
-  }
-
-  std::unique_ptr<std::set<ILoggerObserver*>> loggerObservers_;
-  std::mutex loggerObserversMutex_;
-};
-
-TEST_F(LoggerObserverTest, SingleCollectorObserver) {
+TEST(LoggerObserverTest, SingleCollectorObserver) {
   // Add a LoggerObserverCollector to collect all logs during the trace.
   std::unique_ptr<LoggerCollector> lCollector = std::make_unique<LoggerCollector>();
   Logger::addLoggerObserver(lCollector.get());
@@ -67,7 +48,7 @@ void* writeSeveralMessages(void* ptr) {
   return nullptr;
 }
 
-TEST_F(LoggerObserverTest, FourCollectorObserver) {
+TEST(LoggerObserverTest, FourCollectorObserver) {
   // There shouldn't be too many CUPTIActivityProfilers active at the same time.
   std::unique_ptr<LoggerCollector> lc1 = std::make_unique<LoggerCollector>();
   std::unique_ptr<LoggerCollector> lc2 = std::make_unique<LoggerCollector>();

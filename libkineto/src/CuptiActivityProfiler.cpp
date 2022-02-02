@@ -436,8 +436,16 @@ void CuptiActivityProfiler::configure(
     LOG(INFO) << "GPU-only tracing for "
               << config_->activitiesDuration().count() << "ms";
   }
-  LOGGER_OBSERVER_SET_TRACE_DURATION_MS(config_->activitiesDuration().count());
 
+  // Set useful metadata into the logger.
+  LOGGER_OBSERVER_SET_TRACE_DURATION_MS(config_->activitiesDuration().count());
+  if (!config_->requestTraceID().empty()) {
+    LOGGER_OBSERVER_SET_TRACE_ID(config_->requestTraceID());
+  }
+  if (!config_->requestGroupTraceID().empty()) {
+    LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
+  }
+  LOGGER_OBSERVER_ADD_DESTINATION(config_->activitiesLogUrl());
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {

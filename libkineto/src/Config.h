@@ -259,6 +259,23 @@ class Config : public AbstractConfig {
     return activitiesOnDemandTimestamp_;
   }
 
+  // Users may request and set trace id and group trace id.
+  const std::string& requestTraceID() const {
+    return requestTraceID_;
+  }
+
+  void setRequestTraceID(const std::string& tid) {
+    requestTraceID_ = tid;
+  }
+
+  const std::string& requestGroupTraceID() const {
+    return requestGroupTraceID_;
+  }
+
+  void setRequestGroupTraceID(const std::string& gtid) {
+    requestGroupTraceID_ = gtid;
+  }
+
   void updateActivityProfilerRequestReceivedTime();
 
   void printActivityProfilerConfig(std::ostream& s) const override;
@@ -368,6 +385,10 @@ class Config : public AbstractConfig {
 
   // Enable IPC Fabric instead of thrift communication
   bool enableIpcFabric_;
+
+  // Logger Metadata
+  std::string requestTraceID_;
+  std::string requestGroupTraceID_;
 };
 
 } // namespace KINETO_NAMESPACE

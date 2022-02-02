@@ -33,6 +33,7 @@ class LoggerCollector : public ILoggerObserver {
   void reset() override {
     trace_duration_ms = 0;
     event_count = 0;
+    destinations.clear();
   }
 
   void addDevice(const int64_t device) override {
@@ -47,6 +48,10 @@ class LoggerCollector : public ILoggerObserver {
     event_count += count;
   }
 
+  void addDestination(const std::string& dest) override {
+    destinations.insert(dest);
+  }
+
  protected:
   std::map<LoggerOutputType, std::vector<std::string>> buckets_;
 
@@ -54,6 +59,7 @@ class LoggerCollector : public ILoggerObserver {
   std::set<int64_t> devices;
   int64_t trace_duration_ms{0};
   std::atomic<uint64_t> event_count{0};
+  std::set<std::string> destinations;
 
 };
 

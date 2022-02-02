@@ -15,6 +15,9 @@
 #define LOGGER_OBSERVER_ADD_DEVICE(device)
 #define LOGGER_OBSERVER_ADD_EVENT_COUNT(count)
 #define LOGGER_OBSERVER_SET_TRACE_DURATION_MS(duration)
+#define LOGGER_OBSERVER_SET_TRACE_ID(tid)
+#define LOGGER_OBSERVER_SET_GROUP_TRACE_ID(gtid)
+#define LOGGER_OBSERVER_ADD_DESTINATION(dest)
 #define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
@@ -107,6 +110,12 @@ class Logger {
   static void addLoggerObserverEventCount(int64_t count);
 
   static void setLoggerObserverTraceDurationMS(int64_t duration);
+
+  static void setLoggerObserverTraceID(const std::string& tid);
+
+  static void setLoggerObserverGroupTraceID(const std::string& gtid);
+
+  static void addLoggerObserverDestination(const std::string& dest);
 
  private:
   std::stringstream buf_;
@@ -215,6 +224,18 @@ struct __to_constant__ {
 // Record duration of trace in milliseconds.
 #define LOGGER_OBSERVER_SET_TRACE_DURATION_MS(duration) \
   libkineto::Logger::setLoggerObserverTraceDurationMS(duration)
+
+// Record the trace id when given.
+#define LOGGER_OBSERVER_SET_TRACE_ID(tid) \
+  libkineto::Logger::setLoggerObserverTraceID(tid)
+
+// Record the group trace id when given.
+#define LOGGER_OBSERVER_SET_GROUP_TRACE_ID(gtid) \
+  libkineto::Logger::setLoggerObserverGroupTraceID(gtid)
+
+// Log the set of destinations the trace is sent to.
+#define LOGGER_OBSERVER_ADD_DESTINATION(dest) \
+  libkineto::Logger::addLoggerObserverDestination(dest)
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) \

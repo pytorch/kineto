@@ -110,6 +110,27 @@ void Logger::setLoggerObserverTraceDurationMS(int64_t duration) {
   }
 }
 
+void Logger::setLoggerObserverTraceID(const std::string& tid) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setTraceID(tid);
+  }
+}
+
+void Logger::setLoggerObserverGroupTraceID(const std::string& gtid) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setGroupTraceID(gtid);
+  }
+}
+
+void Logger::addLoggerObserverDestination(const std::string& dest) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addDestination(dest);
+  }
+}
+
 } // namespace KINETO_NAMESPACE
 
 #endif // USE_GOOGLE_LOG

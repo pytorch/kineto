@@ -80,6 +80,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     VLOG(0) << "Span time range: " << cpu_trace->span.startTime << " - "
             << cpu_trace->span.endTime;
     processCpuTrace(*cpu_trace, logger);
+    LOGGER_OBSERVER_ADD_EVENT_COUNT(cpu_trace->activities.size());
   }
 
 #ifdef HAS_CUPTI
@@ -95,6 +96,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
           std::bind(&CuptiActivityProfiler::handleCuptiActivity, this, std::placeholders::_1, &logger));
       LOG(INFO) << "Processed " << count_and_size.first
                 << " GPU records (" << count_and_size.second << " bytes)";
+      LOGGER_OBSERVER_ADD_EVENT_COUNT(count_and_size.first);
     }
   }
 #endif // HAS_CUPTI
@@ -104,6 +106,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     const int count = cupti_.processActivities(logger);
     LOG(INFO) << "Processed " << count
               << " GPU records";
+    LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
 #endif // HAS_ROCTRACER
 
@@ -408,6 +411,15 @@ void CuptiActivityProfiler::configure(
         config_->activitiesDurationDefault());
   }
 
+  // Ensure we're starting in a clean state
+  resetTraceData();
+
+#if !USE_GOOGLE_LOG
+  // Add a LoggerObserverCollector to collect all logs during the trace.
+  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
+  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
+#endif // !USE_GOOGLE_LOG
+
   profileStartTime_ = config_->requestTimestamp();
   if (profileStartTime_ < now) {
     LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
@@ -424,15 +436,8 @@ void CuptiActivityProfiler::configure(
     LOG(INFO) << "GPU-only tracing for "
               << config_->activitiesDuration().count() << "ms";
   }
+  LOGGER_OBSERVER_SET_TRACE_DURATION_MS(config_->activitiesDuration().count());
 
-  // Ensure we're starting in a clean state
-  resetTraceData();
-
-#if !USE_GOOGLE_LOG
-  // Add a LoggerObserverCollector to collect all logs during the trace.
-  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
-  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
-#endif // !USE_GOOGLE_LOG
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {

@@ -30,6 +30,11 @@ class LoggerCollector : public ILoggerObserver {
     return buckets_;
   }
 
+  void reset() override {
+    trace_duration_ms = 0;
+    event_count = 0;
+  }
+
   void addDevice(const int64_t device) override {
     devices.insert(device);
   }
@@ -47,7 +52,7 @@ class LoggerCollector : public ILoggerObserver {
 
   // These are useful metadata to collect from CUPTIActivityProfiler for internal tracking.
   std::set<int64_t> devices;
-  int64_t trace_duration_ms;
+  int64_t trace_duration_ms{0};
   std::atomic<uint64_t> event_count{0};
 
 };

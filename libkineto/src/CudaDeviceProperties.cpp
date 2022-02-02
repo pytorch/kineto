@@ -36,6 +36,7 @@ static const std::vector<cudaDeviceProp> createDeviceProps() {
       return {};
     }
     props.push_back(prop);
+    LOGGER_OBSERVER_ADD_DEVICE(i);
   }
   return props;
 }

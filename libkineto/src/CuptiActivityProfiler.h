@@ -50,7 +50,8 @@ class CuptiActivityProfiler {
   // memory usage limit (ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB) during warmup.
   const std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
       const std::chrono::time_point<std::chrono::system_clock>& now,
-      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime);
+      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
+      int64_t currentIter = -1);
 
   // Used for async requests
   void setLogger(ActivityLogger* logger) {
@@ -175,6 +176,14 @@ class CuptiActivityProfiler {
     int cntr;
   };
 
+  bool isWarmupDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
+
+  bool isCollectionDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
+
   void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
 
@@ -274,6 +283,7 @@ class CuptiActivityProfiler {
   // Start and end time used for triggering and stopping profiling
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
   std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
+  int64_t profileStartIter_ = -1, profileEndIter_ = -1;
 
 
   // All recorded trace spans, both CPU and GPU

@@ -44,6 +44,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   void prepareTrace(const std::set<ActivityType>& activityTypes) override;
   void startTrace() override;
+  void step() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
 
   void pushCorrelationId(uint64_t id) override;

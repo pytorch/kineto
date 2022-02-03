@@ -176,6 +176,21 @@ class CuptiActivityProfilerTest : public ::testing::Test {
   ActivityLoggerFactory loggerFactory;
 };
 
+void checkTracefile(const char* filename) {
+#ifdef __linux__
+  // Check that the expected file was written and that it has some content
+  int fd = open(filename, O_RDONLY);
+  if (!fd) {
+    perror(filename);
+  }
+  EXPECT_TRUE(fd);
+  // Should expect at least 100 bytes
+  struct stat buf{};
+  fstat(fd, &buf);
+  EXPECT_GT(buf.st_size, 100);
+  close(fd);
+#endif
+}
 
 TEST(CuptiActivityProfiler, AsyncTrace) {
   std::vector<std::string> log_modules(
@@ -190,6 +205,7 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
 
   Config cfg;
 
+  int iter = 0;
   int warmup = 5;
   auto now = system_clock::now();
   auto startTime = now + seconds(10);
@@ -224,6 +240,13 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
       /* Current time */ now, /* Next wakeup time */ now);
 
   auto next = now + milliseconds(1000);
+
+  // performRunLoopStep can also be called by an application thread to update iteration count
+  // since this config does not use iteration this should have no effect on the state
+  while (++iter < 20) {
+    profiler.performRunLoopStep(now, now, iter);
+  }
+
   // Runloop should now be in collect state, so start workload
   // Perform another runloop step, passing in the end profile time as current.
   // This should terminate collection
@@ -231,28 +254,116 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
       /* Current time */ next, /* Next wakeup time */ next);
   // One step needed for each of the Process and Finalize phases
   // Doesn't really matter what times we pass in here.
-  //
+
+  EXPECT_TRUE(profiler.isActive());
+
   auto nextnext = next + milliseconds(1000);
+
+  while (++iter < 40) {
+    profiler.performRunLoopStep(next, next, iter);
+  }
+
+  EXPECT_TRUE(profiler.isActive());
+
   profiler.performRunLoopStep(nextnext,nextnext);
   profiler.performRunLoopStep(nextnext,nextnext);
 
   // Assert that tracing has completed
   EXPECT_FALSE(profiler.isActive());
 
-#ifdef __linux__
-  // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
-  if (!fd) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
-#endif
+  checkTracefile(filename);
 }
 
+TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(1, log_modules);
+
+  auto runIterTest = [&](
+    int start_iter, int warmup_iters, int trace_iters) {
+
+    LOG(INFO ) << "Async Trace Test: start_iteration = " << start_iter
+               << " warmup iterations = " << warmup_iters
+               << " trace iterations = " << trace_iters;
+
+    MockCuptiActivities activities;
+    CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
+
+    char filename[] = "/tmp/libkineto_testXXXXXX.json";
+    mkstemps(filename, 5);
+
+    Config cfg;
+
+    int iter = 0;
+    auto now = system_clock::now();
+
+    bool success = cfg.parse(fmt::format(R"CFG(
+      PROFILE_START_ITERATION = {}
+      ACTIVITIES_WARMUP_ITERATIONS={}
+      ACTIVITIES_ITERATIONS={}
+      ACTIVITIES_DURATION_SECS = 1
+      ACTIVITIES_LOG_FILE = {}
+    )CFG", start_iter, warmup_iters, trace_iters, filename));
+
+    EXPECT_TRUE(success);
+    EXPECT_FALSE(profiler.isActive());
+
+    auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
+
+    // Usually configuration is done when now is startIter - warmup iter to kick off warmup
+    // but start right away in the test
+    while (iter < (start_iter - warmup_iters)) {
+      profiler.performRunLoopStep(now, now, iter++);
+    }
+
+    profiler.configure(cfg, now);
+    profiler.setLogger(logger.get());
+
+    EXPECT_TRUE(profiler.isActive());
+
+    // fast forward in time, mimicking what will happen in reality
+    now += seconds(10);
+    auto next = now + milliseconds(1000);
+
+    // this call to runloop step should not be effecting the state
+    profiler.performRunLoopStep(now, next);
+    EXPECT_TRUE(profiler.isActive());
+
+    // start trace collection
+    while (iter < start_iter) {
+      profiler.performRunLoopStep(now, next, iter++);
+    }
+
+    // Runloop should now be in collect state, so start workload
+
+    while (iter < (start_iter + trace_iters)) {
+      profiler.performRunLoopStep(now, next, iter++);
+    }
+
+    // One step is required for each of the Process and Finalize phases
+    // Doesn't really matter what times we pass in here.
+    if (iter >= (start_iter + trace_iters)) {
+      profiler.performRunLoopStep(now, next, iter++);
+    }
+    EXPECT_TRUE(profiler.isActive());
+
+    auto nextnext = next + milliseconds(1000);
+
+    profiler.performRunLoopStep(nextnext, nextnext);
+    profiler.performRunLoopStep(nextnext, nextnext);
+
+    // Assert that tracing has completed
+    EXPECT_FALSE(profiler.isActive());
+
+    checkTracefile(filename);
+  };
+
+  // start iter = 50, warmup iters = 5, trace iters = 10
+  runIterTest(50, 5, 10);
+  // should be able to start at 0 iteration
+  runIterTest(0, 0, 2);
+  runIterTest(0, 5, 5);
+}
 
 TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   using ::testing::Return;

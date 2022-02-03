@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <limits>
 
 #ifdef HAS_CUPTI
 #include <cupti.h>
@@ -421,20 +422,35 @@ void CuptiActivityProfiler::configure(
 #endif // !USE_GOOGLE_LOG
 
   profileStartTime_ = config_->requestTimestamp();
-  if (profileStartTime_ < now) {
-    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
-    return;
-  } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
-    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
-    return;
+
+  if (config_->hasProfileStartIteration()) {
+    profileStartIter_ = config_->profileStartIteration();
+    profileEndIter_ = profileStartIter_ + config_->activitiesRunIterations();
+  } else {
+
+    profileStartIter_ = -1;
+    profileEndIter_ = std::numeric_limits<decltype(profileEndIter_)>::max();
+
+    if (profileStartTime_ < now) {
+      LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
+      return;
+    } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
+      LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
+      return;
+    }
   }
 
   if (LOG_IS_ON(INFO)) {
     config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
   }
   if (!cpuOnly_ && !libkineto::api().client()) {
-    LOG(INFO) << "GPU-only tracing for "
-              << config_->activitiesDuration().count() << "ms";
+    if (profileStartIter_ < 0) {
+      LOG(INFO) << "GPU-only tracing for "
+                << config_->activitiesDuration().count() << "ms";
+    } else {
+      LOG(INFO) << "GPU-only tracing for "
+                << config_->activitiesRunIterations() << " iterations";
+    }
   }
 
   // Set useful metadata into the logger.
@@ -480,8 +496,12 @@ void CuptiActivityProfiler::configure(
   if (libkineto::api().client()) {
     libkineto::api().client()->warmup(config_->isOpInputsCollectionEnabled());
   }
-  LOG(INFO) << "Tracing starting in "
-            << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
+  if (profileStartIter_ >= 0) {
+    LOG(INFO) << "Tracing starting on iteration = " << profileStartIter_;
+  } else {
+    LOG(INFO) << "Tracing starting in "
+              << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
+  }
 
   traceBuffers_ = std::make_unique<ActivityBuffers>();
   captureWindowStartTime_ = captureWindowEndTime_ = 0;
@@ -540,20 +560,61 @@ void CuptiActivityProfiler::resetInternal() {
   currentRunloopState_ = RunloopState::WaitForRequest;
 }
 
+bool CuptiActivityProfiler::isWarmupDone(
+      const time_point<system_clock>& now,
+      int64_t currentIter) const {
+  // is it a time based config
+  if (profileStartIter_ < 0) {
+    // qualify that this check is not being called from application step() API
+    // this avoids races between the step() API and periodically invoked
+    // profiler run loop step() method
+    return (currentIter < 0) && (now >= profileStartTime_);
+  }
+  // this is an iteration based config
+  if (currentIter < 0) {
+    return false;
+  }
+  return currentIter >= profileStartIter_;
+}
+
+bool CuptiActivityProfiler::isCollectionDone(
+      const time_point<system_clock>& now,
+      int64_t currentIter) const {
+  // is it a time based config
+  if (profileStartIter_ < 0) {
+    // qualify that this check is not being called from application step() API
+    return (currentIter < 0) && (now >= profileEndTime_);
+  }
+  // this is an iteration based config
+  if (currentIter < 0) {
+    return false;
+  }
+  return currentIter >= profileEndIter_;
+}
+
 const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
     const time_point<system_clock>& now,
-    const time_point<system_clock>& nextWakeupTime) {
+    const time_point<system_clock>& nextWakeupTime,
+    int64_t currentIter) {
   auto new_wakeup_time = nextWakeupTime;
+  bool warmup_done = false, collection_done = false;
+
+  VLOG_IF(1, currentIter >= 0) << "Run loop on application step(), iteration = "
+    << currentIter;
+
   switch (currentRunloopState_) {
     case RunloopState::WaitForRequest:
+      VLOG(1) << "State: WaitForRequest";
       // Nothing to do
       break;
 
     case RunloopState::Warmup:
       VLOG(1) << "State: Warmup";
+      warmup_done = isWarmupDone(now, currentIter);
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
       // Flushing can take a while so avoid doing it close to the start time
-      if (!cpuOnly_ && nextWakeupTime < profileStartTime_) {
+      if (!cpuOnly_ && currentIter < 0 &&
+          (profileStartIter_ >= 0 || nextWakeupTime < profileStartTime_)) {
         cupti_.clearActivities();
       }
 
@@ -568,9 +629,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       }
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
-      if (now >= profileStartTime_) {
+      if (warmup_done) {
         UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
-        if (now > profileStartTime_ + milliseconds(10)) {
+        if (profileStartIter_ < 0 &&
+            (now > profileStartTime_ + milliseconds(10))) {
           LOG(WARNING)
               << "Tracing started "
               << duration_cast<milliseconds>(now - profileStartTime_).count()
@@ -596,29 +658,37 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       // captureWindowStartTime_ can be set by external threads,
       // so recompute end time.
       // FIXME: Is this a good idea for synced start?
-      {
+      if (profileStartIter_ < 0) {
         std::lock_guard<std::mutex> guard(mutex_);
         profileEndTime_ = time_point<system_clock>(
                               microseconds(captureWindowStartTime_)) +
             config_->activitiesDuration();
       }
 
-      if (now >= profileEndTime_ || stopCollection_.exchange(false)
+      collection_done = isCollectionDone(now, currentIter);
+
+      // TODO revisit stopCollection_ is not used right now
+      if (collection_done || stopCollection_.exchange(false)
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
           || cupti_.stopCollection
 #endif // HAS_CUPTI || HAS_ROCTRACER
       ){
         // Update runloop state first to prevent further updates to shared state
-        LOG(INFO) << "Tracing complete";
+        LOG(INFO) << "Tracing complete.";
+        if (currentIter > 0) {
+          LOG(INFO) << "This state change was invoked by application's step() call";
+        }
         // FIXME: Need to communicate reason for stopping on errors
         if (libkineto::api().client()) {
           libkineto::api().client()->stop();
         }
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
-        VLOG_IF(0, now >= profileEndTime_) << "Reached profile end time";
+        VLOG_IF(0, collection_done) << "Reached profile end time";
 
         UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+      } else if (profileStartIter_ >= 0) {
+        // nothing to do here
       } else if (now < profileEndTime_ && profileEndTime_ < nextWakeupTime) {
         new_wakeup_time = profileEndTime_;
       }
@@ -627,6 +697,13 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
     case RunloopState::ProcessTrace:
       VLOG(1) << "State: ProcessTrace";
+      // skip this state transition if it called from the step() api
+      // of the profiler.
+      // else it could lead to a race between the profiler thread and an
+      // application thread calling step()
+      if (currentIter >= 0) {
+        return new_wakeup_time;
+      }
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);

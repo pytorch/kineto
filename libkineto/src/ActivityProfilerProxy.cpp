@@ -52,6 +52,10 @@ ActivityProfilerProxy::stopTrace() {
   return controller_->stopTrace();
 }
 
+void ActivityProfilerProxy::step() {
+  controller_->step();
+}
+
 bool ActivityProfilerProxy::isActive() {
   return controller_->isActive();
 }

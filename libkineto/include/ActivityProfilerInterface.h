@@ -58,6 +58,10 @@ class ActivityProfilerInterface {
     return nullptr;
   }
 
+  // Re-evaluate internal state to allow for triggering operations based
+  // on number of iteration. each implicitly increments the iteration count
+  virtual void step() {}
+
   // *** TraceActivity API ***
   // FIXME: Pass activityProfiler interface into clientInterface?
   virtual void pushCorrelationId(uint64_t id){}

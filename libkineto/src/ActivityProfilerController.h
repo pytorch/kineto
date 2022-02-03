@@ -42,6 +42,8 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
     profiler_->startTrace(std::chrono::system_clock::now());
   }
 
+  void step();
+
   std::unique_ptr<ActivityTraceInterface> stopTrace();
 
   bool isActive() {
@@ -66,6 +68,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
  private:
   void profilerLoop();
+  void activateConfig(std::chrono::time_point<std::chrono::system_clock> now);
 
   std::unique_ptr<Config> asyncRequestConfig_;
   std::mutex asyncConfigLock_;
@@ -73,6 +76,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
+  std::atomic_int64_t iterationCount_{-1};
   ConfigLoader& configLoader_;
 };
 

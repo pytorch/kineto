@@ -179,15 +179,15 @@ class Config : public AbstractConfig {
     return activitiesDuration_;
   }
 
+  // Trace for this many iterations, determined by external API
+  int activitiesRunIterations() const {
+    return activitiesRunIterations_;
+  }
+
   std::chrono::milliseconds activitiesDurationDefault() const;
 
   void setActivitiesDuration(std::chrono::milliseconds duration) {
     activitiesDuration_ = duration;
-  }
-
-  // Trace for this many iterations, determined by external API
-  int activitiesExternalIterations() const {
-    return activitiesExternalAPIIterations_;
   }
 
   int activitiesMaxGpuBufferSize() const {
@@ -196,6 +196,10 @@ class Config : public AbstractConfig {
 
   std::chrono::seconds activitiesWarmupDuration() const {
     return activitiesWarmupDuration_;
+  }
+
+  int activitiesWarmupIterations() const {
+    return activitiesWarmupIterations_;
   }
 
   // Timestamp at which the profiling to start, requested by the user.
@@ -212,6 +216,18 @@ class Config : public AbstractConfig {
   bool hasProfileStartTime() const {
     return requestTimestamp_.time_since_epoch().count() > 0 ||
         profileStartTime_.time_since_epoch().count() > 0;
+  }
+
+  int profileStartIteration() const {
+    return profileStartIteration_;
+  }
+
+  bool hasProfileStartIteration() const {
+    return profileStartIteration_ >= 0 && activitiesRunIterations_ > 0;
+  }
+
+  void setProfileStartIteration(int64_t iter) {
+    profileStartIteration_ = iter;
   }
 
   const std::chrono::seconds maxRequestAge() const;
@@ -355,6 +371,7 @@ class Config : public AbstractConfig {
 
   int activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;
+  int activitiesWarmupIterations_;
 
   // Client Interface
   // Enable inputs collection when tracing ops
@@ -362,7 +379,9 @@ class Config : public AbstractConfig {
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;
-  int activitiesExternalAPIIterations_;
+  int activitiesRunIterations_;
+
+  // Below are not used
   // Use this net name for iteration count
   std::string activitiesExternalAPIIterationsTarget_;
   // Only profile nets that includes this in the name
@@ -377,6 +396,9 @@ class Config : public AbstractConfig {
 
   // Synchronized start timestamp
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
+  // or start iteration
+  int profileStartIteration_;
+
   // DEPRECATED
   std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;
 

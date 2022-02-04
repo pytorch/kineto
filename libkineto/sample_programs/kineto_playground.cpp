@@ -22,6 +22,7 @@ int main() {
   std::set<libkineto::ActivityType> types;
 
   auto& profiler = libkineto::api().activityProfiler();
+  libkineto::api().initProfilerIfRegistered();
   profiler.prepareTrace(types);
 
   // Good to warm up after prepareTrace to get cupti initialization to settle

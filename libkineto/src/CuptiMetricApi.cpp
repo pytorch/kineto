@@ -1,11 +1,6 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include "CuptiMetricInterface.h"
+#include "CuptiMetricApi.h"
 
 #include <chrono>
 
@@ -17,7 +12,7 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
-CUpti_MetricID CuptiMetricInterface::idFromName(const std::string& name) {
+CUpti_MetricID CuptiMetricApi::idFromName(const std::string& name) {
   CUpti_MetricID metric_id{~0u};
   CUptiResult res =
       CUPTI_CALL(cuptiMetricGetIdFromName(device_, name.c_str(), &metric_id));
@@ -30,7 +25,7 @@ CUpti_MetricID CuptiMetricInterface::idFromName(const std::string& name) {
 // Return a map of event IDs and names for a given metric id.
 // Note that many events don't have a name. In that case the name will
 // be set to the empty string.
-std::map<CUpti_EventID, std::string> CuptiMetricInterface::events(
+std::map<CUpti_EventID, std::string> CuptiMetricApi::events(
     CUpti_MetricID metric_id) {
   uint32_t num_events = 0;
   CUPTI_CALL(cuptiMetricGetNumEvents(metric_id, &num_events));
@@ -57,7 +52,7 @@ std::map<CUpti_EventID, std::string> CuptiMetricInterface::events(
   return res;
 }
 
-CUpti_MetricValueKind CuptiMetricInterface::valueKind(CUpti_MetricID metric) {
+CUpti_MetricValueKind CuptiMetricApi::valueKind(CUpti_MetricID metric) {
   CUpti_MetricValueKind res{CUPTI_METRIC_VALUE_KIND_FORCE_INT};
   size_t value_kind_size = sizeof(res);
   CUPTI_CALL(cuptiMetricGetAttribute(
@@ -65,7 +60,7 @@ CUpti_MetricValueKind CuptiMetricInterface::valueKind(CUpti_MetricID metric) {
   return res;
 }
 
-CUpti_MetricEvaluationMode CuptiMetricInterface::evaluationMode(
+CUpti_MetricEvaluationMode CuptiMetricApi::evaluationMode(
     CUpti_MetricID metric) {
   CUpti_MetricEvaluationMode eval_mode{
       CUPTI_METRIC_EVALUATION_MODE_PER_INSTANCE};
@@ -76,7 +71,7 @@ CUpti_MetricEvaluationMode CuptiMetricInterface::evaluationMode(
 }
 
 // FIXME: Consider caching value kind here
-SampleValue CuptiMetricInterface::calculate(
+SampleValue CuptiMetricApi::calculate(
     CUpti_MetricID metric,
     CUpti_MetricValueKind kind,
     vector<CUpti_EventID>& events,

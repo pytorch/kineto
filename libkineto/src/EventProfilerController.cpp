@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "EventProfilerController.h"
 
@@ -12,8 +7,8 @@
 #include <vector>
 
 #include "ConfigLoader.h"
-#include "CuptiEventInterface.h"
-#include "CuptiMetricInterface.h"
+#include "CuptiEventApi.h"
+#include "CuptiMetricApi.h"
 #include "EventProfiler.h"
 #include "output_csv.h"
 
@@ -207,9 +202,9 @@ EventProfilerController::EventProfilerController(
     ConfigLoader& configLoader,
     detail::HeartbeatMonitor& heartbeatMonitor)
     : configLoader_(configLoader), heartbeatMonitor_(heartbeatMonitor) {
-  auto cupti_events = std::make_unique<CuptiEventInterface>(context);
+  auto cupti_events = std::make_unique<CuptiEventApi>(context);
   auto cupti_metrics =
-      std::make_unique<CuptiMetricInterface>(cupti_events->device());
+      std::make_unique<CuptiMetricApi>(cupti_events->device());
   configLoader_.addHandler(
       ConfigLoader::ConfigKind::EventProfiler, this);
   auto config = configLoader.getConfigCopy();

@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -17,7 +12,7 @@
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
 #include "ConfigLoader.h"
-#include "CuptiActivityInterface.h"
+#include "CuptiActivityApi.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -47,14 +42,12 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
     profiler_->startTrace(std::chrono::system_clock::now());
   }
 
+  void step();
+
   std::unique_ptr<ActivityTraceInterface> stopTrace();
 
   bool isActive() {
     return profiler_->isActive();
-  }
-
-  bool traceInclusionFilter(const std::string& match) {
-    return profiler_->applyNetFilter(match);
   }
 
   void transferCpuTrace(
@@ -75,6 +68,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
  private:
   void profilerLoop();
+  void activateConfig(std::chrono::time_point<std::chrono::system_clock> now);
 
   std::unique_ptr<Config> asyncRequestConfig_;
   std::mutex asyncConfigLock_;
@@ -82,6 +76,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
+  std::atomic_int64_t iterationCount_{-1};
   ConfigLoader& configLoader_;
 };
 

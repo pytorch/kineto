@@ -25,7 +25,6 @@ class TC_Allowlist(metaclass=TC_Allowlist_Meta):
 
 
 class TC_OP_Allowlist(metaclass=TC_Allowlist_Meta):
-    # Refer to https://github.com/pytorch/pytorch/blob/69b2bf70f9c0e591ce5e566afa59e19618031ead/aten/src/ATen/autocast_mode.cpp#L290-L351 # noqa: E501
     allowlist = ['aten::_convolution', 'aten::_convolution_nogroup',
                  'aten::conv1d', 'aten::conv2d', 'aten::conv3d', 'aten::conv_tbc',
                  'aten::conv_transpose1d', 'aten::conv_transpose2d', 'aten::conv_transpose3d',

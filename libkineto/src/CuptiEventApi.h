@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -15,10 +10,10 @@ namespace KINETO_NAMESPACE {
 
 // C++ interface to CUPTI Events C API.
 // Virtual methods are here mainly to allow easier testing.
-class CuptiEventInterface {
+class CuptiEventApi {
  public:
-  explicit CuptiEventInterface(CUcontext context_);
-  virtual ~CuptiEventInterface() {}
+  explicit CuptiEventApi(CUcontext context_);
+  virtual ~CuptiEventApi() {}
 
   CUdevice device() {
     return device_;
@@ -44,7 +39,7 @@ class CuptiEventInterface {
 
  protected:
   // Unit testing
-  CuptiEventInterface() : context_(nullptr), device_(0) {}
+  CuptiEventApi() : context_(nullptr), device_(0) {}
 
  private:
   CUcontext context_;

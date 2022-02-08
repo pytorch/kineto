@@ -1,18 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- *
- * glog has a couple of big issues:
- *  1) It crashes or terminates when linked both statically and dynamically
- *  2) VLOG before init crashes - this is a problem because parts of libkineto
- *     may be initialized before main()
- *
- * For these reasons we use our own implementations of glog macros
- * that just log to stderr by default.
- *
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -26,26 +12,35 @@
 
 #define SET_LOG_SEVERITY_LEVEL(level)
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)
+#define LOGGER_OBSERVER_ADD_DEVICE(device)
+#define LOGGER_OBSERVER_ADD_EVENT_COUNT(count)
+#define LOGGER_OBSERVER_SET_TRACE_DURATION_MS(duration)
+#define LOGGER_OBSERVER_SET_TRACE_ID(tid)
+#define LOGGER_OBSERVER_SET_GROUP_TRACE_ID(gtid)
+#define LOGGER_OBSERVER_ADD_DESTINATION(dest)
+#define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
 #include <atomic>
+#include <map>
+#include <mutex>
 #include <ostream>
+#include <set>
 #include <string>
 #include <sstream>
 #include <vector>
+
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "ILoggerObserver.h"
 
 #ifdef _MSC_VER
 // unset a predefined ERROR (windows)
 #undef ERROR
 #endif // _MSC_VER
 
-namespace libkineto {
-
-constexpr int VERBOSE = 0;
-constexpr int INFO = 1;
-constexpr int WARNING = 2;
-constexpr int ERROR = 3;
+namespace KINETO_NAMESPACE {
 
 class Logger {
  public:
@@ -101,13 +96,40 @@ class Logger {
     return verboseLogModules_;
   }
 
+  static void clearLoggerObservers() {
+    std::lock_guard<std::mutex> g(loggerObserversMutex_);
+    loggerObservers().clear();
+  }
+
+  static void addLoggerObserver(ILoggerObserver* observer);
+
+  static void removeLoggerObserver(ILoggerObserver* observer);
+
+  static void addLoggerObserverDevice(int64_t device);
+
+  static void addLoggerObserverEventCount(int64_t count);
+
+  static void setLoggerObserverTraceDurationMS(int64_t duration);
+
+  static void setLoggerObserverTraceID(const std::string& tid);
+
+  static void setLoggerObserverGroupTraceID(const std::string& gtid);
+
+  static void addLoggerObserverDestination(const std::string& dest);
+
  private:
   std::stringstream buf_;
   std::ostream& out_;
   int errnum_;
+  int messageSeverity_;
   static std::atomic_int severityLevel_;
   static std::atomic_int verboseLogLevel_;
   static std::atomic<uint64_t> verboseLogModules_;
+  static std::set<ILoggerObserver*>& loggerObservers() {
+    static auto* inst = new std::set<ILoggerObserver*>();
+    return *inst;
+  }
+  static std::mutex loggerObserversMutex_;
 };
 
 class VoidLogger {
@@ -116,7 +138,7 @@ class VoidLogger {
   void operator&(std::ostream&) {}
 };
 
-} // namespace libkineto
+} // namespace KINETO_NAMESPACE
 
 #ifdef LOG // Undefine in case these are already defined (quite likely)
 #undef LOG
@@ -190,5 +212,33 @@ struct __to_constant__ {
 #define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
+
+// Logging the set of devices the trace is collect on.
+#define LOGGER_OBSERVER_ADD_DEVICE(device_count) \
+  libkineto::Logger::addLoggerObserverDevice(device_count)
+
+// Incrementing the number of events collected by this trace.
+#define LOGGER_OBSERVER_ADD_EVENT_COUNT(count) \
+  libkineto::Logger::addLoggerObserverEventCount(count)
+
+// Record duration of trace in milliseconds.
+#define LOGGER_OBSERVER_SET_TRACE_DURATION_MS(duration) \
+  libkineto::Logger::setLoggerObserverTraceDurationMS(duration)
+
+// Record the trace id when given.
+#define LOGGER_OBSERVER_SET_TRACE_ID(tid) \
+  libkineto::Logger::setLoggerObserverTraceID(tid)
+
+// Record the group trace id when given.
+#define LOGGER_OBSERVER_SET_GROUP_TRACE_ID(gtid) \
+  libkineto::Logger::setLoggerObserverGroupTraceID(gtid)
+
+// Log the set of destinations the trace is sent to.
+#define LOGGER_OBSERVER_ADD_DESTINATION(dest) \
+  libkineto::Logger::addLoggerObserverDestination(dest)
+
+// UST Logger Semantics to describe when a stage is complete.
+#define UST_LOGGER_MARK_COMPLETED(stage) \
+  LOG(libkineto::LoggerOutputType::STAGE) << "Completed Stage: " << stage
 
 #endif // USE_GOOGLE_LOG

@@ -12,9 +12,13 @@ def get_libkineto_api_srcs():
 def get_libkineto_cupti_srcs(with_api = True):
     return [
         "src/CudaDeviceProperties.cpp",
+        "src/CuptiActivityApi.cpp",
         "src/CuptiActivityPlatform.cpp",
-        "src/CuptiEventInterface.cpp",
-        "src/CuptiMetricInterface.cpp",
+        "src/CuptiCallbackApi.cpp",
+        "src/CuptiEventApi.cpp",
+        "src/CuptiMetricApi.cpp",
+        "src/CuptiRangeProfilerApi.cpp",
+        "src/Demangle.cpp",
         "src/EventProfiler.cpp",
         "src/EventProfilerController.cpp",
         "src/WeakSymbols.cpp",
@@ -23,7 +27,7 @@ def get_libkineto_cupti_srcs(with_api = True):
 
 def get_libkineto_roctracer_srcs(with_api = True):
     return [
-        "src/RoctracerActivityInterface.cpp",
+        "src/RoctracerActivityApi.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
 def get_libkineto_cpu_only_srcs(with_api = True):
@@ -35,7 +39,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/ActivityType.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
-        "src/CuptiActivityInterface.cpp",
+        "src/CuptiActivityApi.cpp",
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/Logger.cpp",
@@ -50,9 +54,9 @@ def get_libkineto_public_headers():
         "include/ActivityType.h",
         "include/ClientInterface.h",
         "include/GenericTraceActivity.h",
-        "include/TraceActivity.h",
         "include/GenericTraceActivity.h",
         "include/IActivityProfiler.h",
+        "include/ITraceActivity.h",
         "include/TraceSpan.h",
         "include/ThreadUtil.h",
         "include/libkineto.h",
@@ -63,6 +67,7 @@ def get_libkineto_public_headers():
 # suppress these warnings.
 KINETO_COMPILER_FLAGS = [
     "-fexceptions",
+    "-Wno-deprecated-declarations",
     "-Wno-unused-function",
     "-Wno-unused-private-field",
 ]

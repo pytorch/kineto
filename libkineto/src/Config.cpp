@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "Config.h"
 
@@ -33,9 +28,6 @@ namespace KINETO_NAMESPACE {
 constexpr milliseconds kDefaultSamplePeriodMsecs(1000);
 constexpr milliseconds kDefaultMultiplexPeriodMsecs(1000);
 constexpr milliseconds kDefaultActivitiesProfileDurationMSecs(500);
-constexpr int kDefaultActivitiesExternalAPIIterations(3);
-constexpr int kDefaultActivitiesExternalAPINetSizeThreshold(0);
-constexpr int kDefaultActivitiesExternalAPIGpuOpCountThreshold(0);
 constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
 constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
 constexpr seconds kDefaultBufferUntilWarmup(10);
@@ -65,15 +57,15 @@ constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
 constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
 constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
 constexpr char kActivitiesDurationMsecsKey[] = "ACTIVITIES_DURATION_MSECS";
-constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
-constexpr char kActivitiesIterationsTargetKey[] = "ACTIVITIES_ITERATIONS_TARGET";
-constexpr char kActivitiesNetFilterKey[] = "ACTIVITIES_NET_FILTER";
-constexpr char kActivitiesMinNetSizeKey[] = "ACTIVITIES_MIN_NET_SIZE";
-constexpr char kActivitiesMinGpuOpCountKey[] = "ACTIVITIES_MIN_GPU_OP_COUNT";
 constexpr char kActivitiesWarmupDurationSecsKey[] = "ACTIVITIES_WARMUP_PERIOD_SECS";
 constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
+// Client Interface
+constexpr char kClientInterfaceEnableOpInputsCollection[] = "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
+
+constexpr char kActivitiesWarmupIterationsKey[] = "ACTIVITIES_WARMUP_ITERATIONS";
+constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -92,6 +84,11 @@ constexpr char kActivitiesMaxGpuBufferSizeKey[] =
 constexpr char kProfileStartTimeKey[] = "PROFILE_START_TIME";
 // DEPRECATED - USE PROFILE_START_TIME instead
 constexpr char kRequestTimestampKey[] = "REQUEST_TIMESTAMP";
+
+// Alternatively if the application supports reporting iterations
+// start the profile at specific iteration. If the iteration count
+// is >= this value the profile is started immediately
+constexpr char kProfileStartIterationKey[] = "PROFILE_START_ITERATION";
 
 // Enable on-demand trigger via kill -USR2 <pid>
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
@@ -179,14 +176,12 @@ Config::Config()
       activitiesLogUrl_(fmt::format("file://{}", activitiesLogFile_)),
       activitiesMaxGpuBufferSize_(kDefaultActivitiesMaxGpuBufferSize),
       activitiesWarmupDuration_(kDefaultActivitiesWarmupDurationSecs),
-      activitiesOnDemandDuration_(kDefaultActivitiesProfileDurationMSecs),
-      activitiesExternalAPIIterations_(kDefaultActivitiesExternalAPIIterations),
-      activitiesExternalAPINetSizeThreshold_(
-          kDefaultActivitiesExternalAPINetSizeThreshold),
-      activitiesExternalAPIGpuOpCountThreshold_(
-          kDefaultActivitiesExternalAPIGpuOpCountThreshold),
+      activitiesWarmupIterations_(0),
+      activitiesDuration_(kDefaultActivitiesProfileDurationMSecs),
+      activitiesRunIterations_(0),
       activitiesOnDemandTimestamp_(milliseconds(0)),
       profileStartTime_(milliseconds(0)),
+      profileStartIteration_(-1),
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(false),
       enableIpcFabric_(false) {
@@ -275,26 +270,18 @@ bool Config::handleOption(const std::string& name, std::string& val) {
 
   // Activity Profiler
   else if (!name.compare(kActivitiesDurationKey)) {
-    activitiesOnDemandDuration_ =
+    activitiesDuration_ =
         duration_cast<milliseconds>(seconds(toInt32(val)));
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivityTypesKey)) {
     vector<string> activity_types = splitAndTrim(toLower(val), ',');
     setActivityTypes(activity_types);
   } else if (!name.compare(kActivitiesDurationMsecsKey)) {
-    activitiesOnDemandDuration_ = milliseconds(toInt32(val));
+    activitiesDuration_ = milliseconds(toInt32(val));
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivitiesIterationsKey)) {
-    activitiesExternalAPIIterations_ = toInt32(val);
+    activitiesRunIterations_ = toInt32(val);
     activitiesOnDemandTimestamp_ = timestamp();
-  } else if (!name.compare(kActivitiesIterationsTargetKey)) {
-    activitiesExternalAPIIterationsTarget_ = val;
-  } else if (!name.compare(kActivitiesNetFilterKey)) {
-    activitiesExternalAPIFilter_ = splitAndTrim(val, ',');
-  } else if (!name.compare(kActivitiesMinNetSizeKey)) {
-    activitiesExternalAPINetSizeThreshold_ = toInt32(val);
-  } else if (!name.compare(kActivitiesMinGpuOpCountKey)) {
-    activitiesExternalAPIGpuOpCountThreshold_ = toInt32(val);
   } else if (!name.compare(kLogVerboseLevelKey)) {
     verboseLogLevel_ = toInt32(val);
   } else if (!name.compare(kLogVerboseModulesKey)) {
@@ -309,6 +296,13 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesMaxGpuBufferSize_ = toInt32(val) * 1024 * 1024;
   } else if (!name.compare(kActivitiesWarmupDurationSecsKey)) {
     activitiesWarmupDuration_ = seconds(toInt32(val));
+  } else if (!name.compare(kActivitiesWarmupIterationsKey)) {
+    activitiesWarmupIterations_ = toInt32(val);
+  }
+
+  // Client Interface
+  else if (!name.compare(kClientInterfaceEnableOpInputsCollection)) {
+    enableOpInputsCollection_ = toBool(val);
   }
 
   // Common
@@ -320,6 +314,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kProfileStartTimeKey)) {
     profileStartTime_ =
       time_point<system_clock>(milliseconds(toInt64(val)));
+  } else if (!name.compare(kProfileStartIterationKey)) {
+    profileStartIteration_ = toInt32(val);
   } else if (!name.compare(kEnableSigUsr2Key)) {
     enableSigUsr2_ = toBool(val);
   } else if (!name.compare(kEnableIpcFabricKey)) {
@@ -330,7 +326,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   return true;
 }
 
-std::chrono::milliseconds Config::activitiesOnDemandDurationDefault() const {
+std::chrono::milliseconds Config::activitiesDurationDefault() const {
   return kDefaultActivitiesProfileDurationMSecs;
 };
 
@@ -411,27 +407,22 @@ void Config::setReportPeriod(milliseconds msecs) {
 
 void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Log file: " << activitiesLogFile() << std::endl;
-  s << fmt::format(
-           "Net filter: {}",
-           fmt::join(activitiesOnDemandExternalFilter(), ", "))
+  s << "Trace Iterations: " << activitiesRunIterations()
     << std::endl;
-  s << "Target net for iteration count: " << activitiesOnDemandExternalTarget()
-    << std::endl;
-  s << "Net Iterations: " << activitiesOnDemandExternalIterations()
-    << std::endl;
-  if (hasProfileStartTime()) {
+  if (hasProfileStartIteration()) {
+    s << "Trace start Iteration: " << profileStartIteration() << std::endl;
+    s << "Trace warmup Iterations: " << activitiesWarmupIterations() << std::endl;
+    s << "Trace profile Iterations: " << activitiesRunIterations() << std::endl;
+  } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
     LOG(INFO) << "Trace start time: "
               << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c));
+    s << "Trace duration: " << activitiesDuration().count() << "ms"
+      << std::endl;
+    s << "Warmup duration: " << activitiesWarmupDuration().count() << "s"
+      << std::endl;
   }
-  s << "Trace duration: " << activitiesOnDemandDuration().count() << "ms"
-    << std::endl;
-  s << "Warmup duration: " << activitiesWarmupDuration().count() << "s"
-    << std::endl;
-  s << "Net size threshold: " << activitiesOnDemandExternalNetSizeThreshold()
-    << std::endl;
-  s << "GPU op count threshold: "
-    << activitiesOnDemandExternalGpuOpCountThreshold() << std::endl;
+
   s << "Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
     << "MB" << std::endl;
 

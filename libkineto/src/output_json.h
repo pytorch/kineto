@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -19,7 +14,7 @@
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 
-namespace libkineto {
+namespace KINETO_NAMESPACE {
   // Previous declaration of TraceSpan is struct. Must match the same here.
   struct TraceSpan;
 }
@@ -42,12 +37,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleTraceSpan(const TraceSpan& span) override;
 
-  void handleGenericActivity(const GenericTraceActivity& activity) override;
+  void handleGenericActivity(const ITraceActivity& activity) override;
 
 #ifdef HAS_CUPTI
-  void handleRuntimeActivity(
-      const RuntimeActivity& activity) override;
-
   void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override;
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override;
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override;
@@ -60,7 +52,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
-      int64_t endTime) override;
+      int64_t endTime,
+      std::unordered_map<std::string, std::vector<std::string>>& metadata) override;
 
   std::string traceFileName() const {
     return fileName_;
@@ -71,7 +64,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // Create a flow event (arrow)
   void handleLink(
       char type,
-      const TraceActivity& e,
+      const ITraceActivity& e,
       int64_t id,
       const std::string& cat,
       const std::string& name);
@@ -80,9 +73,11 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void openTraceFile();
 
-  void handleGenericInstantEvent(const GenericTraceActivity& op);
+  void handleGenericInstantEvent(const ITraceActivity& op);
 
-  void handleGenericLink(const GenericTraceActivity& activity);
+  void handleGenericLink(const ITraceActivity& activity);
+
+  void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
 
   std::string fileName_;
   std::ofstream traceOf_;

@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -19,8 +14,8 @@
 #include <cupti.h>
 
 #include "Config.h"
-#include "CuptiEventInterface.h"
-#include "CuptiMetricInterface.h"
+#include "CuptiEventApi.h"
+#include "CuptiMetricApi.h"
 #include "SampleListener.h"
 
 namespace KINETO_NAMESPACE {
@@ -129,7 +124,7 @@ class Metric {
       CUpti_MetricID id,
       std::vector<CUpti_EventID> events,
       CUpti_MetricEvaluationMode eval_mode,
-      CuptiMetricInterface& cupti_metrics);
+      CuptiMetricApi& cupti_metrics);
 
   struct CalculatedValues {
     std::vector<SampleValue> perInstance;
@@ -154,7 +149,7 @@ class Metric {
   std::vector<CUpti_EventID> events_;
   CUpti_MetricEvaluationMode evalMode_;
   // Calls to CUPTI is encapsulated behind this interface
-  CuptiMetricInterface& cuptiMetrics_;
+  CuptiMetricApi& cuptiMetrics_;
   CUpti_MetricValueKind valueKind_;
 };
 
@@ -169,7 +164,7 @@ class EventGroupSet {
   EventGroupSet(
       CUpti_EventGroupSet& set,
       std::map<CUpti_EventID, Event>& events,
-      CuptiEventInterface& cupti);
+      CuptiEventApi& cupti);
   ~EventGroupSet();
 
   EventGroupSet(const EventGroupSet&) = delete;
@@ -191,7 +186,7 @@ class EventGroupSet {
   CUpti_EventGroupSet& set_;
   std::map<CUpti_EventID, Event>& events_;
   // Calls to CUPTI is encapsulated behind this interface
-  CuptiEventInterface& cuptiEvents_;
+  CuptiEventApi& cuptiEvents_;
   bool enabled_;
 };
 
@@ -199,8 +194,8 @@ class EventGroupSet {
 class EventProfiler {
  public:
   explicit EventProfiler(
-      std::unique_ptr<CuptiEventInterface> cupti_events,
-      std::unique_ptr<CuptiMetricInterface> cupti_metrics,
+      std::unique_ptr<CuptiEventApi> cupti_events,
+      std::unique_ptr<CuptiMetricApi> cupti_metrics,
       std::vector<std::unique_ptr<SampleListener>>& loggers,
       std::vector<std::unique_ptr<SampleListener>>& onDemandLoggers);
   EventProfiler(const EventProfiler&) = delete;
@@ -316,8 +311,8 @@ class EventProfiler {
   void printAllSamples(std::ostream& s, CUdevice device) const;
 
   // Calls to CUPTI is encapsulated behind these interfaces
-  std::unique_ptr<CuptiEventInterface> cuptiEvents_;
-  std::unique_ptr<CuptiMetricInterface> cuptiMetrics_;
+  std::unique_ptr<CuptiEventApi> cuptiEvents_;
+  std::unique_ptr<CuptiMetricApi> cuptiMetrics_;
   // The CUpti API reports event IDs, we must map them to our event objects
   std::map<CUpti_EventID, Event> events_;
   // List of metrics

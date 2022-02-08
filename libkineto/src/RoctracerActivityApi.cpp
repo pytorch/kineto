@@ -1,11 +1,6 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include "RoctracerActivityInterface.h"
+#include "RoctracerActivityApi.h"
 
 #include <cstring>
 #include <chrono>
@@ -27,21 +22,21 @@ namespace KINETO_NAMESPACE {
 
 constexpr size_t kBufSize(2 * 1024 * 1024);
 
-RoctracerActivityInterface& RoctracerActivityInterface::singleton() {
-  static RoctracerActivityInterface instance;
+RoctracerActivityApi& RoctracerActivityApi::singleton() {
+  static RoctracerActivityApi instance;
   return instance;
 }
 
-RoctracerActivityInterface::RoctracerActivityInterface() {
+RoctracerActivityApi::RoctracerActivityApi() {
   gpuTraceBuffers_ = std::make_unique<std::list<RoctracerActivityBuffer>>();
 }
 
-RoctracerActivityInterface::~RoctracerActivityInterface() {
+RoctracerActivityApi::~RoctracerActivityApi() {
   disableActivities(std::set<ActivityType>());
   endTracing();
 }
 
-void RoctracerActivityInterface::pushCorrelationID(int id, CorrelationFlowType type) {
+void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
   if (!singleton().externalCorrelationEnabled_) {
     return;
@@ -50,7 +45,7 @@ void RoctracerActivityInterface::pushCorrelationID(int id, CorrelationFlowType t
 #endif
 }
 
-void RoctracerActivityInterface::popCorrelationID(CorrelationFlowType type) {
+void RoctracerActivityApi::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
   if (!singleton().externalCorrelationEnabled_) {
     return;
@@ -59,11 +54,11 @@ void RoctracerActivityInterface::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
-void RoctracerActivityInterface::setMaxBufferSize(int size) {
+void RoctracerActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
-int RoctracerActivityInterface::processActivities(
+int RoctracerActivityApi::processActivities(
     ActivityLogger& logger) {
   // Find offset to map from monotonic clock to system clock.
   // This will break time-ordering of events but is status quo.
@@ -88,6 +83,9 @@ int RoctracerActivityInterface::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     logger.handleGenericActivity(a);
     ++count;
@@ -103,6 +101,9 @@ int RoctracerActivityInterface::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     a.addMetadata("ptr", item.ptr);
     if (item.cid == HIP_API_ID_hipMalloc) {
@@ -123,6 +124,9 @@ int RoctracerActivityInterface::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     a.addMetadata("src", item.src);
     a.addMetadata("dst", item.dst);
@@ -147,6 +151,9 @@ int RoctracerActivityInterface::processActivities(
     a.resource = item.tid;
     a.activityType = ActivityType::CUDA_RUNTIME;
     a.activityName = std::string(roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, item.cid, 0));
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = true;
 
     if (item.functionAddr != nullptr) {
       a.addMetadataQuoted(
@@ -205,6 +212,9 @@ int RoctracerActivityInterface::processActivities(
 
         a.activityType = ActivityType::CUDA_RUNTIME;
         a.activityName = std::string(name);
+        a.flow.id = item.id;
+        a.flow.type = kLinkAsyncCpuGpu;
+        a.flow.start = true;
 
         logger.handleGenericActivity(a);
         ++count;
@@ -226,6 +236,8 @@ int RoctracerActivityInterface::processActivities(
 
         a.activityType = ActivityType::CONCURRENT_KERNEL;
         a.activityName = std::string(name);
+        a.flow.id = item.id;
+        a.flow.type = kLinkAsyncCpuGpu;
 
         auto it = kernelNames_.find(record->correlation_id);
         if (it != kernelNames_.end()) {
@@ -242,7 +254,7 @@ int RoctracerActivityInterface::processActivities(
   return count;
 }
 
-void RoctracerActivityInterface::clearActivities() {
+void RoctracerActivityApi::clearActivities() {
   gpuTraceBuffers_->clear();
   rows_.clear();
   kernelRows_.clear();
@@ -251,9 +263,9 @@ void RoctracerActivityInterface::clearActivities() {
   kernelLaunches_.clear();
 }
 
-void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg)
+void RoctracerActivityApi::api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg)
 {
-  RoctracerActivityInterface *dis = &singleton();
+  RoctracerActivityApi *dis = &singleton();
 
   if (domain == ACTIVITY_DOMAIN_HIP_API && dis->loggedIds_.contains(cid)) {
     const hip_api_data_t* data = (const hip_api_data_t*)(callback_data);
@@ -423,7 +435,7 @@ void RoctracerActivityInterface::api_callback(uint32_t domain, uint32_t cid, con
   }
 }
 
-void RoctracerActivityInterface::activity_callback(const char* begin, const char* end, void* arg)
+void RoctracerActivityApi::activity_callback(const char* begin, const char* end, void* arg)
 {
   size_t size = end - begin;
   uint8_t *buffer = (uint8_t*) malloc(size);
@@ -432,7 +444,7 @@ void RoctracerActivityInterface::activity_callback(const char* begin, const char
   gpuTraceBuffers->emplace_back(buffer, size);
 }
 
-void RoctracerActivityInterface::enableActivities(
+void RoctracerActivityApi::enableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   if (!registered_) {
@@ -499,7 +511,7 @@ void RoctracerActivityInterface::enableActivities(
 #endif
 }
 
-void RoctracerActivityInterface::disableActivities(
+void RoctracerActivityApi::disableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   roctracer_stop();
@@ -513,7 +525,7 @@ void RoctracerActivityInterface::disableActivities(
 #endif
 }
 
-void RoctracerActivityInterface::endTracing() {
+void RoctracerActivityApi::endTracing() {
   if (registered_ == true) {
     roctracer_disable_domain_callback(ACTIVITY_DOMAIN_HIP_API);
     //roctracer_disable_domain_callback(ACTIVITY_DOMAIN_ROCTX);

@@ -1,11 +1,9 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "Logger.h"
+#include "ILoggerObserver.h"
 
 #ifndef USE_GOOGLE_LOG
 
@@ -20,31 +18,21 @@
 
 #include "ThreadUtil.h"
 
-namespace libkineto {
+namespace KINETO_NAMESPACE {
 
 std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wglobal-constructors"
+std::mutex Logger::loggerObserversMutex_;
+#pragma GCC diagnostic pop
+
+
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
-    : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum) {
-  switch (severity) {
-    case VERBOSE:
-      buf_ << "V:";
-      break;
-    case INFO:
-      buf_ << "INFO:";
-      break;
-    case WARNING:
-      buf_ << "WARNING:";
-      break;
-    case ERROR:
-      buf_ << "ERROR:";
-      break;
-    default:
-      buf_ << "???:";
-      break;
-  }
+    : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
+  buf_ << toString((LoggerOutputType) severity) << ":";
 
   const auto tt =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -61,8 +49,19 @@ Logger::~Logger() {
     buf_ << " : " << strerror_r(errnum_, buf, sizeof(buf));
   }
 #endif
-  buf_ << std::endl;
-  out_ << buf_.str();
+
+  {
+    std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+    for (auto* observer : loggerObservers()) {
+      // Output to observers. Current Severity helps keep track of which bucket the output goes.
+      if (observer) {
+        observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
+      }
+    }
+  }
+
+  // Finally, print to terminal or console.
+  out_ << buf_.str() << std::endl;
 }
 
 void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
@@ -77,6 +76,61 @@ void Logger::setVerboseLogModules(const std::vector<std::string>& modules) {
   verboseLogModules_ = mask;
 }
 
-} // namespace libkineto
+void Logger::addLoggerObserver(ILoggerObserver* observer) {
+  if (observer == nullptr) {
+    return;
+  }
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  loggerObservers().insert(observer);
+}
+
+void Logger::removeLoggerObserver(ILoggerObserver* observer) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  loggerObservers().erase(observer);
+}
+
+void Logger::addLoggerObserverDevice(int64_t device) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addDevice(device);
+  }
+}
+
+void Logger::addLoggerObserverEventCount(int64_t count) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addEventCount(count);
+  }
+}
+
+void Logger::setLoggerObserverTraceDurationMS(int64_t duration) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setTraceDurationMS(duration);
+  }
+}
+
+void Logger::setLoggerObserverTraceID(const std::string& tid) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setTraceID(tid);
+  }
+}
+
+void Logger::setLoggerObserverGroupTraceID(const std::string& gtid) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setGroupTraceID(gtid);
+  }
+}
+
+void Logger::addLoggerObserverDestination(const std::string& dest) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addDestination(dest);
+  }
+}
+
+} // namespace KINETO_NAMESPACE
 
 #endif // USE_GOOGLE_LOG

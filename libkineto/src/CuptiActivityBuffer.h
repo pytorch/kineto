@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -14,6 +9,8 @@
 #include <memory>
 #include <sys/types.h>
 #include <vector>
+
+#include "ITraceActivity.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -44,6 +41,8 @@ class CuptiActivityBuffer {
 
   std::vector<uint8_t> buf_;
   size_t size_;
+
+  std::vector<std::unique_ptr<const ITraceActivity>> wrappers_;
 };
 
 using CuptiActivityBufferMap =

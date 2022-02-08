@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -36,8 +31,6 @@ struct TraceSpan {
   std::string name;
   // Prefix used to distinguish trace spans on the same timeline
   std::string prefix;
-  // Tracked by profiler for iteration trigger
-  bool tracked{false};
 };
 
 } // namespace libkineto

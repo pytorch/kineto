@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -63,6 +58,10 @@ class ActivityProfilerInterface {
     return nullptr;
   }
 
+  // Re-evaluate internal state to allow for triggering operations based
+  // on number of iteration. each implicitly increments the iteration count
+  virtual void step() {}
+
   // *** TraceActivity API ***
   // FIXME: Pass activityProfiler interface into clientInterface?
   virtual void pushCorrelationId(uint64_t id){}
@@ -73,11 +72,6 @@ class ActivityProfilerInterface {
   // Correlation ids for user defined spans
   virtual void pushUserCorrelationId(uint64_t){}
   virtual void popUserCorrelationId(){}
-
-  // Include regions with this name
-  virtual bool enableForRegion(const std::string& match) {
-    return true;
-  }
 
   // Saves information for the current thread to be used in profiler output
   // Client must record any new kernel thread where the activity has occured.

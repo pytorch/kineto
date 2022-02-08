@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -12,12 +7,12 @@
 
 namespace libkineto {
 
-struct TraceActivity;
+struct ITraceActivity;
 
 class ActivityTraceInterface {
  public:
   virtual ~ActivityTraceInterface() {}
-  virtual const std::vector<std::unique_ptr<TraceActivity>>* activities() {
+  virtual const std::vector<const ITraceActivity*>* activities() {
     return nullptr;
   }
   virtual void save(const std::string& path) {}

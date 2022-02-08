@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -50,28 +45,30 @@ class MemoryTraceLogger : public ActivityLogger {
     // Handled separately
   }
 
-  void handleGenericActivity(const GenericTraceActivity& activity) override {
-    activities_.push_back(
-        std::make_unique<GenericTraceActivity>(activity));
+  // Just add the pointer to the list - ownership of the underlying
+  // objects must be transferred in ActivityBuffers via finalizeTrace
+  void handleGenericActivity(const ITraceActivity& activity) override {
+    activities_.push_back(&activity);
   }
 
 #ifdef HAS_CUPTI
-  void handleRuntimeActivity(
-      const RuntimeActivity& activity) override {
-    activities_.push_back(std::make_unique<RuntimeActivity>(activity));
+  template<class T>
+  void addActivityWrapper(const T& act) {
+    wrappers_.push_back(std::make_unique<T>(act));
+    activities_.push_back(wrappers_.back().get());
   }
 
   void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityKernel4>>(activity));
+    addActivityWrapper(activity);
   }
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemcpy>>(activity));
+    addActivityWrapper(activity);
   }
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemcpy2>>(activity));
+    addActivityWrapper(activity);
   }
   void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override {
-    activities_.push_back(std::make_unique<GpuActivity<CUpti_ActivityMemset>>(activity));
+    addActivityWrapper(activity);
   }
 #endif // HAS_CUPTI
 
@@ -83,12 +80,13 @@ class MemoryTraceLogger : public ActivityLogger {
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
-      int64_t endTime) override {
+      int64_t endTime,
+      std::unordered_map<std::string, std::vector<std::string>>& metadata) override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
   }
 
-  const std::vector<std::unique_ptr<TraceActivity>>* traceActivities() {
+  const std::vector<const ITraceActivity*>* traceActivities() {
     return &activities_;
   }
 
@@ -107,18 +105,20 @@ class MemoryTraceLogger : public ActivityLogger {
       logger.handleTraceSpan(cpu_trace_buffer->span);
     }
     // Hold on to the buffers
-    logger.finalizeTrace(*config_, nullptr, endTime_);
+    logger.finalizeTrace(*config_, nullptr, endTime_, loggerMetadata_);
   }
 
  private:
 
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
-  std::vector<std::unique_ptr<TraceActivity>> activities_;
+  std::vector<const ITraceActivity*> activities_;
+  std::vector<std::unique_ptr<const ITraceActivity>> wrappers_;
   std::vector<std::pair<DeviceInfo, int64_t>> deviceInfoList_;
   std::vector<std::pair<ResourceInfo, int64_t>> resourceInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;
+  std::unordered_map<std::string, std::vector<std::string>> loggerMetadata_;
   int64_t endTime_{0};
 };
 

@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -14,7 +9,7 @@
 #include <vector>
 
 #include "ActivityType.h"
-#include "TraceActivity.h"
+#include "ITraceActivity.h"
 
 namespace libkineto {
   // previous declaration is struct so this one must be too.
@@ -49,6 +44,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   void prepareTrace(const std::set<ActivityType>& activityTypes) override;
   void startTrace() override;
+  void step() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
 
   void pushCorrelationId(uint64_t id) override;
@@ -59,8 +55,6 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   void transferCpuTrace(
      std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
-
-  bool enableForRegion(const std::string& match) override;
 
   void addMetadata(const std::string& key, const std::string& value) override;
 

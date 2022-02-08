@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -13,17 +8,18 @@
 #include <vector>
 
 #include "ThreadUtil.h"
-#include "TraceActivity.h"
+#include "ITraceActivity.h"
 #include "TraceSpan.h"
 
 namespace libkineto {
 
 // Link type, used in GenericTraceActivity.flow.type
 constexpr unsigned int kLinkFwdBwd = 1;
+constexpr unsigned int kLinkAsyncCpuGpu = 2;
 
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
-class GenericTraceActivity : public TraceActivity {
+class GenericTraceActivity : public ITraceActivity {
 
  public:
   GenericTraceActivity() : activityType(ActivityType::ENUM_COUNT), traceSpan_(NULL) {}
@@ -39,6 +35,10 @@ class GenericTraceActivity : public TraceActivity {
 
   int64_t resourceId() const override {
     return resource;
+  }
+
+  int32_t getThreadId() const override {
+    return threadId;
   }
 
   int64_t timestamp() const override {
@@ -57,12 +57,24 @@ class GenericTraceActivity : public TraceActivity {
     return activityType;
   }
 
-  const std::string name() const override {
-    return activityName;
+  const ITraceActivity* linkedActivity() const override {
+    return nullptr;
   }
 
-  const TraceActivity* linkedActivity() const override {
-    return flow.linkedActivity;
+  int flowType() const override {
+    return flow.type;
+  }
+
+  int flowId() const override {
+    return flow.id;
+  }
+
+  bool flowStart() const override {
+    return flow.start;
+  }
+
+  const std::string name() const override {
+    return activityName;
   }
 
   const TraceSpan* traceSpan() const override {
@@ -81,7 +93,7 @@ class GenericTraceActivity : public TraceActivity {
     metadata_.push_back(fmt::format("\"{}\": \"{}\"", key, value));
   }
 
-  const std::string getMetadata() const {
+  const std::string metadataJson() const override {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
@@ -92,16 +104,17 @@ class GenericTraceActivity : public TraceActivity {
   int32_t id{0};
   int32_t device{0};
   int32_t resource{0};
+  int32_t threadId{0};
   ActivityType activityType;
   std::string activityName;
   struct Flow {
-    Flow(): linkedActivity(nullptr), id(0), type(0) {}
-    TraceActivity* linkedActivity; // Only set in destination side.
+    Flow(): id(0), type(0), start(0) {}
     // Ids must be unique within each type
-    uint32_t id : 28;
+    uint32_t id : 27;
     // Type will be used to connect flows between profilers, as
     // well as look up flow information (name etc)
     uint32_t type : 4;
+    uint32_t start : 1;
   } flow;
 
  private:

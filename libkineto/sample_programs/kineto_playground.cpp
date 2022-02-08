@@ -1,4 +1,4 @@
-// (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +22,7 @@ int main() {
   std::set<libkineto::ActivityType> types;
 
   auto& profiler = libkineto::api().activityProfiler();
+  libkineto::api().initProfilerIfRegistered();
   profiler.prepareTrace(types);
 
   // Good to warm up after prepareTrace to get cupti initialization to settle

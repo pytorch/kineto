@@ -67,12 +67,33 @@ inline ActivityType GpuActivity<CUpti_ActivityMemset>::type() const {
 }
 
 inline void RuntimeActivity::log(ActivityLogger& logger) const {
-  logger.handleRuntimeActivity(*this);
+  logger.handleGenericActivity(*this);
 }
 
 template<class T>
 inline void GpuActivity<T>::log(ActivityLogger& logger) const {
   logger.handleGpuActivity(*this);
+}
+
+inline bool RuntimeActivity::flowStart() const {
+  return activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000 ||
+      (activity_.cbid >= CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020 &&
+       activity_.cbid <= CUPTI_RUNTIME_TRACE_CBID_cudaMemset2DAsync_v3020) ||
+      activity_.cbid ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
+      activity_.cbid ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000;
+}
+
+inline const std::string RuntimeActivity::metadataJson() const {
+  return fmt::format(R"JSON(
+      "cbid": {}, "correlation": {})JSON",
+      activity_.cbid, activity_.correlationId);
+}
+
+template<class T>
+inline const std::string GpuActivity<T>::metadataJson() const {
+  return "";
 }
 
 } // namespace KINETO_NAMESPACE

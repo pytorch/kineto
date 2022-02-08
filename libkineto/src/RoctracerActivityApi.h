@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -18,7 +13,6 @@
 #include <atomic>
 
 #ifdef HAS_ROCTRACER
-#define __HIP_PLATFORM_AMD__
 #include <roctracer.h>
 #include <roctracer_hcc.h>
 #include <roctracer_hip.h>
@@ -113,20 +107,20 @@ struct mallocRow : public roctracerRow {
 };
 
 
-class RoctracerActivityInterface {
+class RoctracerActivityApi {
  public:
   enum CorrelationFlowType {
     Default,
     User
   };
 
-  RoctracerActivityInterface();
-  RoctracerActivityInterface(const RoctracerActivityInterface&) = delete;
-  RoctracerActivityInterface& operator=(const RoctracerActivityInterface&) = delete;
+  RoctracerActivityApi();
+  RoctracerActivityApi(const RoctracerActivityApi&) = delete;
+  RoctracerActivityApi& operator=(const RoctracerActivityApi&) = delete;
 
-  virtual ~RoctracerActivityInterface();
+  virtual ~RoctracerActivityApi();
 
-  static RoctracerActivityInterface& singleton();
+  static RoctracerActivityApi& singleton();
 
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);

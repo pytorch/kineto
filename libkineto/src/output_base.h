@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -62,11 +57,9 @@ class ActivityLogger {
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
   virtual void handleGenericActivity(
-      const libkineto::GenericTraceActivity& activity) = 0;
+      const libkineto::ITraceActivity& activity) = 0;
 
 #ifdef HAS_CUPTI
-  virtual void handleRuntimeActivity(const RuntimeActivity& activity) = 0;
-
   virtual void handleGpuActivity(
       const GpuActivity<CUpti_ActivityKernel4>& activity) = 0;
   virtual void handleGpuActivity(
@@ -87,7 +80,8 @@ class ActivityLogger {
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
-      int64_t endTime) = 0;
+      int64_t endTime,
+      std::unordered_map<std::string, std::vector<std::string>>& metadata) = 0;
 
  protected:
   ActivityLogger() = default;

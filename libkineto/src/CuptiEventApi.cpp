@@ -1,11 +1,6 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include "CuptiEventInterface.h"
+#include "CuptiEventApi.h"
 
 #include <chrono>
 
@@ -17,12 +12,12 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
-CuptiEventInterface::CuptiEventInterface(CUcontext context)
+CuptiEventApi::CuptiEventApi(CUcontext context)
     : context_(context) {
   CUPTI_CALL(cuptiGetDeviceId(context_, (uint32_t*)&device_));
 }
 
-CUpti_EventGroupSets* CuptiEventInterface::createGroupSets(
+CUpti_EventGroupSets* CuptiEventApi::createGroupSets(
     vector<CUpti_EventID>& ids) {
   CUpti_EventGroupSets* group_sets = nullptr;
   CUptiResult res = CUPTI_CALL(cuptiEventGroupSetsCreate(
@@ -37,17 +32,17 @@ CUpti_EventGroupSets* CuptiEventInterface::createGroupSets(
   return group_sets;
 }
 
-void CuptiEventInterface::destroyGroupSets(CUpti_EventGroupSets* sets) {
+void CuptiEventApi::destroyGroupSets(CUpti_EventGroupSets* sets) {
   CUPTI_CALL(cuptiEventGroupSetsDestroy(sets));
 }
 
-bool CuptiEventInterface::setContinuousMode() {
+bool CuptiEventApi::setContinuousMode() {
   CUptiResult res = CUPTI_CALL(cuptiSetEventCollectionMode(
       context_, CUPTI_EVENT_COLLECTION_MODE_CONTINUOUS));
   return (res == CUPTI_SUCCESS);
 }
 
-void CuptiEventInterface::enablePerInstance(CUpti_EventGroup eventGroup) {
+void CuptiEventApi::enablePerInstance(CUpti_EventGroup eventGroup) {
   uint32_t profile_all = 1;
   CUPTI_CALL(cuptiEventGroupSetAttribute(
       eventGroup,
@@ -56,7 +51,7 @@ void CuptiEventInterface::enablePerInstance(CUpti_EventGroup eventGroup) {
       &profile_all));
 }
 
-uint32_t CuptiEventInterface::instanceCount(CUpti_EventGroup eventGroup) {
+uint32_t CuptiEventApi::instanceCount(CUpti_EventGroup eventGroup) {
   uint32_t instance_count = 0;
   size_t s = sizeof(instance_count);
   CUPTI_CALL(cuptiEventGroupGetAttribute(
@@ -64,7 +59,7 @@ uint32_t CuptiEventInterface::instanceCount(CUpti_EventGroup eventGroup) {
   return instance_count;
 }
 
-void CuptiEventInterface::enableGroupSet(CUpti_EventGroupSet& set) {
+void CuptiEventApi::enableGroupSet(CUpti_EventGroupSet& set) {
   CUptiResult res = CUPTI_CALL_NOWARN(cuptiEventGroupSetEnable(&set));
   if (res != CUPTI_SUCCESS) {
     const char* errstr = nullptr;
@@ -73,11 +68,11 @@ void CuptiEventInterface::enableGroupSet(CUpti_EventGroupSet& set) {
   }
 }
 
-void CuptiEventInterface::disableGroupSet(CUpti_EventGroupSet& set) {
+void CuptiEventApi::disableGroupSet(CUpti_EventGroupSet& set) {
   CUPTI_CALL(cuptiEventGroupSetDisable(&set));
 }
 
-void CuptiEventInterface::readEvent(
+void CuptiEventApi::readEvent(
     CUpti_EventGroup grp,
     CUpti_EventID id,
     vector<int64_t>& vals) {
@@ -90,7 +85,7 @@ void CuptiEventInterface::readEvent(
       reinterpret_cast<uint64_t*>(vals.data())));
 }
 
-vector<CUpti_EventID> CuptiEventInterface::eventsInGroup(CUpti_EventGroup grp) {
+vector<CUpti_EventID> CuptiEventApi::eventsInGroup(CUpti_EventGroup grp) {
   uint32_t group_size = 0;
   size_t s = sizeof(group_size);
   CUPTI_CALL(cuptiEventGroupGetAttribute(
@@ -102,7 +97,7 @@ vector<CUpti_EventID> CuptiEventInterface::eventsInGroup(CUpti_EventGroup grp) {
   return res;
 }
 
-CUpti_EventID CuptiEventInterface::eventId(const std::string& name) {
+CUpti_EventID CuptiEventApi::eventId(const std::string& name) {
   CUpti_EventID id{0};
   CUPTI_CALL(cuptiEventGetIdFromName(device_, name.c_str(), &id));
   return id;

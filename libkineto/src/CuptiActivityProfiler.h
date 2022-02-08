@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #pragma once
 
@@ -21,23 +16,26 @@
 #include <unordered_set>
 #include <vector>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"
 #include "output_base.h"
 #include "GenericTraceActivity.h"
 #include "IActivityProfiler.h"
+#include "LoggerCollector.h"
 
 namespace KINETO_NAMESPACE {
 
 class Config;
-class CuptiActivityInterface;
-class RoctracerActivityInterface;
+class CuptiActivityApi;
+class RoctracerActivityApi;
 
 class CuptiActivityProfiler {
  public:
-  CuptiActivityProfiler(CuptiActivityInterface& cupti, bool cpuOnly);
-  CuptiActivityProfiler(RoctracerActivityInterface& rai, bool cpuOnly);
+  CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
+  CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
 
@@ -52,7 +50,8 @@ class CuptiActivityProfiler {
   // memory usage limit (ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB) during warmup.
   const std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
       const std::chrono::time_point<std::chrono::system_clock>& now,
-      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime);
+      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
+      int64_t currentIter = -1);
 
   // Used for async requests
   void setLogger(ActivityLogger* logger) {
@@ -91,15 +90,6 @@ class CuptiActivityProfiler {
   void transferCpuTrace(
       std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 
-  // Registered with external API so that CPU-side tracer can filter which nets
-  // to trace
-  bool applyNetFilter(const std::string& name) {
-    std::lock_guard<std::mutex> guard(mutex_);
-    return applyNetFilterInternal(name);
-  }
-
-  bool applyNetFilterInternal(const std::string& name);
-
   Config& config() {
     return *config_;
   }
@@ -111,6 +101,11 @@ class CuptiActivityProfiler {
     int32_t tid = threadId();
     int32_t pid = processId();
     std::lock_guard<std::mutex> guard(mutex_);
+    recordThreadInfo(sysTid, tid, pid);
+  }
+
+  // T107508020: We can deprecate the recordThreadInfo(void) once we optimized profiler_kineto
+  void recordThreadInfo(int32_t sysTid, int32_t tid, int32_t pid) {
     if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(pid, tid),
@@ -139,49 +134,14 @@ class CuptiActivityProfiler {
 
  private:
 
-  class ExternalEventMap {
-   public:
-
-    // The correlation id of the GPU activity
-    const libkineto::GenericTraceActivity& correlatedActivity(
-        uint32_t correlation_id);
-    void insertEvent(const libkineto::GenericTraceActivity* op);
-
-    void addCorrelation(uint64_t external_id, uint32_t cuda_id);
-
-    void clear() {
-      events_.clear();
-      correlationMap_.clear();
-    }
-
-   private:
-    // Map extern correlation ID to Operator info.
-    // This is a map of regular pointers which is generally a bad idea,
-    // but this class also fully owns the objects it is pointing to so
-    // it's not so bad. This is done for performance reasons and is an
-    // implementation detail of this class that might change.
-    std::unordered_map<int64_t, const libkineto::GenericTraceActivity*>
-        events_;
-
-    // Cuda correlation id -> external correlation id for default events
-    // CUPTI provides a mechanism for correlating Cuda events to arbitrary
-    // external events, e.g.operator events from Caffe2.
-    // It also marks GPU activities with the Cuda event correlation ID.
-    // So by connecting the two, we get the complete picture.
-    std::unordered_map<
-        uint32_t, // Cuda correlation ID
-        uint64_t> // External correlation ID
-        correlationMap_;
-  };
-
   // Map of gpu activities to user defined events
   class GpuUserEventMap {
    public:
     // Insert a user defined event which maps to the gpu trace activity.
     // If the user defined event mapping already exists this will update the
     // gpu side span to include the span of gpuTraceActivity.
-    void insertOrExtendEvent(const TraceActivity& cpuTraceActivity,
-      const TraceActivity& gpuTraceActivity);
+    void insertOrExtendEvent(const ITraceActivity& cpuTraceActivity,
+      const ITraceActivity& gpuTraceActivity);
     // Log out the events to the logger
     void logEvents(ActivityLogger *logger);
 
@@ -200,12 +160,29 @@ class CuptiActivityProfiler {
   };
 
   GpuUserEventMap gpuUserEventMap_;
+  // id -> activity*
+  std::unordered_map<int64_t, const ITraceActivity*> activityMap_;
+  // cuda runtime id -> pytorch op id
+  // CUPTI provides a mechanism for correlating Cuda events to arbitrary
+  // external events, e.g.operator activities from PyTorch.
+  std::unordered_map<int64_t, int64_t> cpuCorrelationMap_;
+  // CUDA runtime <-> GPU Activity
+  std::unordered_map<int64_t, const ITraceActivity*>
+      correlatedCudaActivities_;
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
   struct profilerOverhead {
     int64_t overhead;
     int cntr;
   };
+
+  bool isWarmupDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
+
+  bool isCollectionDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
 
   void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
@@ -224,14 +201,7 @@ class CuptiActivityProfiler {
   // Process a single CPU trace
   void processCpuTrace(
       libkineto::CpuTraceBuffer& cpuTrace,
-      ActivityLogger& logger,
-      bool logNet);
-
-  bool inline passesGpuOpCountThreshold(
-      const libkineto::CpuTraceBuffer& cpuTrace) {
-    return cpuOnly_ || cpuTrace.gpuOpCount < 0 ||
-        cpuTrace.gpuOpCount >= netGpuOpCountThreshold_;
-  }
+      ActivityLogger& logger);
 
   // Create resource names for streams
   inline void recordStream(int device, int id) {
@@ -254,31 +224,26 @@ class CuptiActivityProfiler {
   // net name to id
   int netId(const std::string& netName);
 
+  const ITraceActivity* linkedActivity(
+      int32_t correlationId,
+      const std::unordered_map<int64_t, int64_t>& correlationMap);
+
 #ifdef HAS_CUPTI
   // Process generic CUPTI activity
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
 
   // Process specific GPU activity types
-  void updateGpuNetSpan(const TraceActivity& gpuOp);
-  bool outOfRange(const TraceActivity& act);
+  void updateGpuNetSpan(const ITraceActivity& gpuOp);
+  bool outOfRange(const ITraceActivity& act);
   void handleCorrelationActivity(
       const CUpti_ActivityExternalCorrelation* correlation);
   void handleRuntimeActivity(
       const CUpti_ActivityAPI* activity, ActivityLogger* logger);
-  void handleGpuActivity(const TraceActivity& act,
+  void handleGpuActivity(const ITraceActivity& act,
       ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
 #endif // HAS_CUPTI
-
-  // Is logging disabled for this event?
-  // Logging can be disabled due to operator count, net name filter etc.
-  inline bool loggingDisabled(const libkineto::TraceActivity& act) const {
-    const auto& it = clientActivityTraceMap_.find(act.correlationId());
-    return it != clientActivityTraceMap_.end() &&
-        disabledTraceSpans_.find(it->second->first.name) !=
-        disabledTraceSpans_.end();
-  }
 
   void resetTraceData();
 
@@ -293,6 +258,8 @@ class CuptiActivityProfiler {
     return counter.overhead / counter.cntr;
   }
 
+  void checkTimestampOrder(const ITraceActivity* act1);
+
   // On-demand request configuration
   std::unique_ptr<Config> config_;
 
@@ -301,9 +268,9 @@ class CuptiActivityProfiler {
 
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
-  RoctracerActivityInterface& cupti_;		// Design failure here
+  RoctracerActivityApi& cupti_;		// Design failure here
 #else
-  CuptiActivityInterface& cupti_;
+  CuptiActivityApi& cupti_;
 #endif
 
   enum class RunloopState {
@@ -316,8 +283,8 @@ class CuptiActivityProfiler {
   // Start and end time used for triggering and stopping profiling
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
   std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
+  int64_t profileStartIter_ = -1, profileEndIter_ = -1;
 
-  ExternalEventMap externalEvents_;
 
   // All recorded trace spans, both CPU and GPU
   // Trace Id -> list of iterations.
@@ -335,12 +302,6 @@ class CuptiActivityProfiler {
   std::map<
       std::pair<int64_t, int64_t>,
       ActivityLogger::ResourceInfo> resourceInfo_;
-
-  // Which trace spans are disabled. Together with the operator -> net id map
-  // this allows us to determine whether a GPU or CUDA API event should
-  // be included in the trace.
-  // If a CUDA event cannot be mapped to a net it will always be included.
-  std::unordered_set<std::string> disabledTraceSpans_;
 
   // the overhead to flush the activity buffer
   profilerOverhead flushOverhead_;
@@ -369,17 +330,8 @@ class CuptiActivityProfiler {
   // Similarly, all CUDA API events after the last net event will be removed
   int64_t captureWindowEndTime_{0};
 
-  // net name -> iteration count
-  std::map<std::string, int> netIterationCountMap_;
-  // Sub-strings used to filter nets by name
-  std::vector<std::string> netNameFilter_;
-  // Filter by GPU op count
-  int netGpuOpCountThreshold_{0};
-  // Net used to track iterations
-  std::string netIterationsTarget_;
-  // Number of iterations to track
-  int netIterationsTargetCount_{0};
-
+  // span name -> iteration count
+  std::map<std::string, int> iterationCountMap_;
   // Flag used to stop tracing from external api callback.
   // Needs to be atomic since it's set from a different thread.
   std::atomic_bool stopCollection_{false};
@@ -395,6 +347,11 @@ class CuptiActivityProfiler {
 
   // a vector of active profiler plugin sessions
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
+
+  // LoggerCollector to collect all LOGs during the trace
+#if !USE_GOOGLE_LOG
+  std::unique_ptr<LoggerCollector> loggerCollectorMetadata_;
+#endif // !USE_GOOGLE_LOG
 };
 
 } // namespace KINETO_NAMESPACE

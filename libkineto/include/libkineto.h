@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 // Mediator for initialization and profiler control
 
@@ -18,14 +13,15 @@
 #include <set>
 #include <thread>
 #include <vector>
+#include <deque>
 
 #include "ActivityProfilerInterface.h"
-#include "ActivityTraceInterface.h"
 #include "ActivityType.h"
 #include "ClientInterface.h"
 #include "GenericTraceActivity.h"
 #include "TraceSpan.h"
 #include "IActivityProfiler.h"
+#include "ActivityTraceInterface.h"
 
 #include "ThreadUtil.h"
 
@@ -43,7 +39,7 @@ class ConfigLoader;
 struct CpuTraceBuffer {
   TraceSpan span{0, 0, "none"};
   int gpuOpCount;
-  std::vector<GenericTraceActivity> activities;
+  std::deque<GenericTraceActivity> activities;
 };
 
 using ChildActivityProfilerFactory =
@@ -75,9 +71,14 @@ class LibkinetoApi {
   }
 
   void initProfilerIfRegistered() {
-    if (activityProfiler_ && !activityProfiler_->isInitialized()) {
-      activityProfiler_->init();
-      initChildActivityProfilers();
+    static std::once_flag once;
+    if (activityProfiler_) {
+      std::call_once(once, [this] {
+        if (!activityProfiler_->isInitialized()) {
+          activityProfiler_->init();
+          initChildActivityProfilers();
+        }
+      });
     }
   }
 
@@ -87,16 +88,6 @@ class LibkinetoApi {
 
   bool isProfilerRegistered() const {
     return activityProfiler_ != nullptr;
-  }
-
-  void setNetSizeThreshold(int gpu_ops) {
-    netSizeThreshold_ = gpu_ops;
-  }
-
-  // Include traces with at least this many ops
-  // FIXME: Rename and move elsewhere
-  int netSizeThreshold() {
-    return netSizeThreshold_;
   }
 
   void suppressLogMessages() {
@@ -138,7 +129,6 @@ class LibkinetoApi {
   int32_t clientRegisterThread_{0};
 
   bool isLoaded_{false};
-  std::atomic_int netSizeThreshold_{};
   std::vector<ChildActivityProfilerFactory> childProfilerFactories_;
 };
 

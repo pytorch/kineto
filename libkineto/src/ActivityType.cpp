@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "ActivityType.h"
 
@@ -27,6 +22,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"cuda_runtime", ActivityType::CUDA_RUNTIME},
     {"glow_runtime", ActivityType::GLOW_RUNTIME},
     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
+    {"python_function", ActivityType::PYTHON_FUNCTION},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT}
 }};
 

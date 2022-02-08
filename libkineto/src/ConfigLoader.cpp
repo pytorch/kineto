@@ -1,9 +1,4 @@
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "ConfigLoader.h"
 
@@ -15,6 +10,7 @@
 #include <chrono>
 #include <fmt/format.h>
 #include <fstream>
+#include <memory>
 
 #include "DaemonConfigLoader.h"
 
@@ -171,6 +167,9 @@ ConfigLoader::~ConfigLoader() {
     }
     updateThread_->join();
   }
+#if !USE_GOOGLE_LOG
+  Logger::clearLoggerObservers();
+#endif // !USE_GOOGLE_LOG
 }
 
 void ConfigLoader::handleOnDemandSignal() {

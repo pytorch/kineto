@@ -1,6 +1,6 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include "src/Config.h"
+#include "include/Config.h"
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>

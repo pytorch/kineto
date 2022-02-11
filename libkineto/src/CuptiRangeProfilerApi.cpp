@@ -275,7 +275,7 @@ void CuptiRBProfilerSession::asyncDisableAndStop() {
 
 /// User range based profiling
 void CuptiRBProfilerSession::pushRange(const std::string& rangeName) {
-  LOG(INFO) << "Push User range = " << rangeName;
+  LOG(INFO) << " CUPTI pushrange ( " << rangeName << " )";
   CUpti_Profiler_PushRange_Params pushRangeParams = {
       CUpti_Profiler_PushRange_Params_STRUCT_SIZE, nullptr};
   pushRangeParams.pRangeName = rangeName.c_str();
@@ -303,6 +303,7 @@ CuptiProfilerResult CuptiRBProfilerSession::evalualteMetrics(
     }
     LOG(INFO) << "Profiler Range data : ";
   }
+  LOG(INFO) << "Profiler Range data : ";
 
   auto results = nvperf::evalMetricValues(
       chipName_, counterDataImage, metricNames_, verbose /*verbose*/);

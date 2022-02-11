@@ -57,13 +57,13 @@ class MockActivityProfiler: public IActivityProfiler {
 
   std::unique_ptr<IActivityProfilerSession> configure(
       const std::set<ActivityType>& activity_types,
-      const std::string& config = "") override;
+      const Config& config) override;
 
   std::unique_ptr<IActivityProfilerSession> configure(
       int64_t ts_ms,
       int64_t duration_ms,
       const std::set<ActivityType>& activity_types,
-      const std::string& config = "") override;
+      const Config& config) override;
 
  private:
   std::vector<GenericTraceActivity> test_activities_;

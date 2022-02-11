@@ -6,6 +6,7 @@
 #include <set>
 #include <vector>
 
+#include "Config.h"
 #include "GenericTraceActivity.h"
 
 /* This file includes an abstract base class for an activity profiler
@@ -85,17 +86,17 @@ class IActivityProfiler {
   virtual const std::set<ActivityType>& availableActivities() const = 0;
 
   // Calls prepare() on registered tracer providers passing in the relevant
-  // activity types. Returns a profiler session handle (including uuid?).
+  // activity types. Returns a profiler session handle
   virtual std::unique_ptr<IActivityProfilerSession> configure(
       const std::set<ActivityType>& activity_types,
-      const std::string& config="") = 0;
+      const Config& config) = 0;
 
   // asynchronous version of the above with future timestamp and duration.
   virtual std::unique_ptr<IActivityProfilerSession> configure(
       int64_t ts_ms,
       int64_t duration_ms,
       const std::set<ActivityType>& activity_types,
-      const std::string& config = "") = 0;
+      const Config& config) = 0;
 };
 
 } // namespace libkineto

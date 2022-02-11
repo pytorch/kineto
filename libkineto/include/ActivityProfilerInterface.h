@@ -45,8 +45,9 @@ class ActivityProfilerInterface {
   // Call prepareTrace to enable tracing, then run the region to trace
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
-  // TODO: Add optional config string param
-  virtual void prepareTrace(const std::set<ActivityType>& activityTypes) {}
+  virtual void prepareTrace(
+      const std::set<ActivityType>& activityTypes,
+      const std::string& configStr = "") {}
 
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.

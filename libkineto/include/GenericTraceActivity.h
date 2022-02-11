@@ -83,9 +83,9 @@ class GenericTraceActivity : public ITraceActivity {
 
   void log(ActivityLogger& logger) const override;
 
-  //Encode client side metadata as a key/value string.
-  template<typename T>
-  void addMetadata(const std::string& key, T value) {
+  //Encode client side metadata as a key/value
+  template <typename ValType>
+  void addMetadata(const std::string& key, const ValType& value) {
     metadata_.push_back(fmt::format("\"{}\": {}", key, value));
   }
 

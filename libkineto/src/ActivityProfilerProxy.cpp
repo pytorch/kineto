@@ -5,6 +5,7 @@
 #include "ActivityProfilerController.h"
 #include "Config.h"
 #include "CuptiActivityApi.h"
+#include "Logger.h"
 #include <chrono>
 
 namespace KINETO_NAMESPACE {
@@ -35,11 +36,22 @@ void ActivityProfilerProxy::scheduleTrace(const Config& config) {
 }
 
 void ActivityProfilerProxy::prepareTrace(
-    const std::set<ActivityType>& activityTypes) {
+    const std::set<ActivityType>& activityTypes,
+    const std::string& configStr) {
   Config config;
-  config.setClientDefaults();
+
+  // allow user provided config to override default options ?
+  if (!configStr.empty()) {
+    if (!config.parse(configStr)) {
+      LOG(WARNING) << "Failed to parse config : " << configStr;
+    }
+    // parse also does validate
+  } else {
+    config.validate(std::chrono::system_clock::now());
+  }
+
   config.setSelectedActivityTypes(activityTypes);
-  config.validate(std::chrono::system_clock::now());
+  config.setClientDefaults();
   controller_->prepareTrace(config);
 }
 

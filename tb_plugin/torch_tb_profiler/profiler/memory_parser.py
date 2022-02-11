@@ -312,7 +312,7 @@ class MemoryParser:
                 # profile json data prior to pytorch 1.10 do not have addr
                 # we should ignore them
                 continue
-            assert prev_ts < r.ts
+            assert prev_ts <= r.ts
             prev_ts = r.ts
             addr = r.addr
             size = r.bytes

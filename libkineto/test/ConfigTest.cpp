@@ -89,7 +89,8 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::CONCURRENT_KERNEL,
                             ActivityType::EXTERNAL_CORRELATION,
                             ActivityType::GLOW_RUNTIME,
-                            ActivityType::CUDA_RUNTIME}));
+                            ActivityType::CUDA_RUNTIME,
+                            ActivityType::CUDA_PROFILER_RANGE}));
 
   Config cfg2;
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,kernel"));

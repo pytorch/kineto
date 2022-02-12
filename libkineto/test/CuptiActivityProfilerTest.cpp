@@ -14,9 +14,9 @@
 #endif
 
 #include "include/libkineto.h"
+#include "include/Config.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/ActivityTrace.h"
-#include "src/Config.h"
 #include "src/CuptiActivityApi.h"
 #include "src/output_base.h"
 #include "src/output_json.h"

@@ -387,7 +387,8 @@ void CuptiActivityProfiler::configureChildProfilers() {
     auto session = profiler->configure(
         start_time_ms,
         config_->activitiesDuration().count(),
-        config_->selectedActivityTypes()
+        config_->selectedActivityTypes(),
+        *config_
     );
     if (session) {
       sessions_.push_back(std::move(session));

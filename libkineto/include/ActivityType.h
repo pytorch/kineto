@@ -16,6 +16,7 @@ enum class ActivityType {
     CONCURRENT_KERNEL, // on-device kernels
     EXTERNAL_CORRELATION,
     CUDA_RUNTIME, // host side cuda runtime events
+    CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
     GLOW_RUNTIME, // host side glow runtime events
     CPU_INSTANT_EVENT, // host side point-like events
     PYTHON_FUNCTION,

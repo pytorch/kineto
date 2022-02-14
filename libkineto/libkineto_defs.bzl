@@ -50,6 +50,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
 
 def get_libkineto_public_headers():
     return [
+        "include/AbstractConfig.h",
         "include/ActivityProfilerInterface.h",
         "include/ActivityType.h",
         "include/Config.h",

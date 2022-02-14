@@ -39,19 +39,24 @@ void ActivityProfilerProxy::prepareTrace(
     const std::set<ActivityType>& activityTypes,
     const std::string& configStr) {
   Config config;
+  bool validate_required = true;
 
-  // allow user provided config to override default options ?
+  // allow user provided config to override default options
   if (!configStr.empty()) {
     if (!config.parse(configStr)) {
       LOG(WARNING) << "Failed to parse config : " << configStr;
     }
-    // parse also does validate
-  } else {
+    // parse also runs validate
+    validate_required = false;
+  }
+
+  config.setClientDefaults();
+  config.setSelectedActivityTypes(activityTypes);
+
+  if (validate_required) {
     config.validate(std::chrono::system_clock::now());
   }
 
-  config.setSelectedActivityTypes(activityTypes);
-  config.setClientDefaults();
   controller_->prepareTrace(config);
 }
 

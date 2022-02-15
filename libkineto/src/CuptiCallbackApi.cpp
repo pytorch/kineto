@@ -18,7 +18,7 @@ namespace KINETO_NAMESPACE {
 constexpr size_t MAX_CB_FNS_PER_CB = 8;
 
 // Reader Writer lock types
-using ReaderWriterLock = std::shared_mutex;
+using ReaderWriterLock = std::shared_timed_mutex;
 using ReaderLockGuard = std::shared_lock<ReaderWriterLock>;
 using WriteLockGuard = std::unique_lock<ReaderWriterLock>;
 

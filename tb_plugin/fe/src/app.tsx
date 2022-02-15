@@ -210,8 +210,6 @@ export const App = () => {
   React.useEffect(() => {
     if (!run || !runs.includes(run)) {
       setRun(firstOrUndefined(runs) ?? '')
-      setDiffLeftRun(firstOrUndefined(runs) ?? '')
-      setDiffRightRun(secondOrUndefined(runs) ?? '')
     }
   }, [runs])
 

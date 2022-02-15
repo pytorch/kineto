@@ -3,6 +3,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -76,7 +77,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
-  std::atomic_int64_t iterationCount_{-1};
+  std::atomic<std::int64_t> iterationCount_{-1};
   ConfigLoader& configLoader_;
 };
 

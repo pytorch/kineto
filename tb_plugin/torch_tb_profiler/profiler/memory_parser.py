@@ -331,5 +331,5 @@ class MemoryParser:
                     free[addr] = i
 
         if free:
-            logger.warning(f'{len(free)} memory records do not have associated operator.')
+            logger.debug(f'{len(free)} memory records do not have associated operator.')
         return memory_records

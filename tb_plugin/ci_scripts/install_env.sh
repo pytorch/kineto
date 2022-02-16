@@ -33,4 +33,3 @@ elif [ "$PYTORCH_VERSION" = "stable" ]; then
 fi
 
 python -c "import torch; print(torch.__version__, torch.version.git_version); from torch.autograd import kineto_available; print(kineto_available())"
-

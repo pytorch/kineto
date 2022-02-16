@@ -138,9 +138,9 @@ class ModuleAggregator:
 
         keys: List[Callable[[OperatorNode], str]] = [
             lambda x: x.name,
-            lambda x: x.name + '###' + str(x.input_shape),
-            lambda x: x.name + '###' + str(x.callstack),
-            lambda x: x.name + '###' + str(x.input_shape) + '###' + str(x.callstack)
+            lambda x: '###'.join((x.name, str(x.input_shape))),
+            lambda x: '###'.join((x.name, str(x.callstack))),
+            lambda x: '###'.join((x.name, str(x.input_shape), str(x.callstack)))
         ]
         agg_result = aggregate_ops(ops, keys)
         stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = defaultdict(list)

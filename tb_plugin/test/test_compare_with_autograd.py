@@ -243,7 +243,7 @@ class TestCompareWithAutogradResult(unittest.TestCase):
                     self.assertTrue(line in autograd_result[key])
         self.assertEqual(count, len(plugin_result.keys()))
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason='')
     def test_autograd_api(self):
         with torch.autograd.profiler.profile(use_cuda=True, use_kineto=True, record_shapes=True) as p:
             get_train_func()(5)
@@ -278,15 +278,15 @@ class TestCompareWithAutogradResult(unittest.TestCase):
     def test_profiler_api_without_gpu(self):
         self.base_profiler_api(False, True, True, False)
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason='')
     def test_profiler_api_with_record_shapes_memory_stack(self):
         self.base_profiler_api(True, True, True, True)
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason='')
     def test_profiler_api_without_record_shapes_memory_stack(self):
         self.base_profiler_api(True, False, False, False)
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="")
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason='')
     def test_profiler_api_without_step(self):
         log_dir = create_log_dir()
         profilers_dict = dict()

@@ -223,7 +223,6 @@ export const App = () => {
     }
   }, [diffLeftRun])
 
-
   React.useEffect(() => {
     if (diffLeftRun && diffLeftWorker) {
       api.defaultApi.spansGet(diffLeftRun, diffLeftWorker).then((spans) => {

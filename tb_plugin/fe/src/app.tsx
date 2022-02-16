@@ -223,9 +223,6 @@ export const App = () => {
     }
   }, [diffLeftRun])
 
-  React.useEffect(() => {
-    setDiffLeftWorker(firstOrUndefined(diffLeftWorkerOptions) ?? '')
-  }, [diffLeftWorkerOptions])
 
   React.useEffect(() => {
     if (diffLeftRun && diffLeftWorker) {
@@ -234,10 +231,6 @@ export const App = () => {
       })
     }
   }, [diffLeftRun, diffLeftWorker])
-
-  React.useEffect(() => {
-    setDiffLeftSpan(firstOrUndefined(diffLeftSpansOptions) ?? '')
-  }, [diffLeftSpansOptions])
 
   // #endregion
 
@@ -254,20 +247,12 @@ export const App = () => {
   }, [diffRightRun])
 
   React.useEffect(() => {
-    setDiffRightWorker(firstOrUndefined(diffRightWorkerOptions) ?? '')
-  }, [diffRightWorkerOptions])
-
-  React.useEffect(() => {
     if (diffRightRun && diffRightWorker) {
       api.defaultApi.spansGet(diffRightRun, diffRightWorker).then((spans) => {
         setDiffRightSpansOptions(spans)
       })
     }
   }, [diffRightRun, diffRightWorker])
-
-  React.useEffect(() => {
-    setDiffRightSpan(firstOrUndefined(diffRightSpansOptions) ?? '')
-  }, [diffRightSpansOptions])
 
   // #endregion
 

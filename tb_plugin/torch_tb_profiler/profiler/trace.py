@@ -156,12 +156,13 @@ class PLProfileEvent(DurationEvent):
 class PLModuleEvent(DurationEvent):
     def __init__(self, data):
         super().__init__(EventTypes.PL_MODULE, data)
-        self.module_id = 0 # just to be compatible with ModuleEvent processing
+        self.module_id = 0  # just to be compatible with ModuleEvent processing
         self.name = self.name.replace('[pl][module]', '')
-        #self.shape = self.name[:self.name.rfind(']')+1]
-        #self.name = self.name[self.name.rfind(']')+1:]
+        # self.shape = self.name[:self.name.rfind(']')+1]
+        # self.name = self.name[self.name.rfind(']')+1:]
         self.module_type = self.name[:self.name.find(': ')]
         self.name = self.name[self.name.find(': ')+2:]
+
 
 def create_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     try:

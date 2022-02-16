@@ -199,7 +199,9 @@ def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[O
             yield from traverse_node(child)
 
 
-def _process_module_statistics(modules_nodes: Iterable[Union[ModuleNode, PLModuleNode]], hierarchy: Iterable[Module]) -> List[Stats]:
+def _process_module_statistics(
+        modules_nodes: Iterable[Union[ModuleNode, PLModuleNode]],
+        hierarchy: Iterable[Module]) -> List[Stats]:
     """Get the module statistics from the ModuleNode(s) and the hierarchy
     """
     module_aggs = _aggregate_modules(modules_nodes)

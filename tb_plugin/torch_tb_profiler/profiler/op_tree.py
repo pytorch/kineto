@@ -29,6 +29,12 @@ class OpTreeBuilder:
         """Construct the BackwardNode and replace the original backward nodes
         """
         self.tid2tree = self._build_tree(tid2list, tid2zero_rt_list, staled_device_nodes)
+
+        # if could not find any forward/backward association, skip the processing
+        if not fwd_bwd_map:
+            logger.warning('there is no any forwarwd backward association, skip processing backward correlation.')
+            return self.tid2tree
+
         self._set_main_tid()
 
         modules, backward_nodes = self._get_modules()

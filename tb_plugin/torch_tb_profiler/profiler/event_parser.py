@@ -71,7 +71,13 @@ class NodeParserMixin:
             if event.type == EventTypes.MEMORY:
                 continue
             self._parse_node(
-                event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, pl_tid2list, tid2zero_rt_list)
+                event,
+                corrid_to_device,
+                corrid_to_runtime,
+                externalid_to_runtime,
+                tid2list,
+                pl_tid2list,
+                tid2zero_rt_list)
 
         if CommLibTypes.Nccl in self.comm_lib:
             for event in events:
@@ -154,7 +160,11 @@ class NodeParserMixin:
                             'Runtime and Device-op have same correlation id %s but with different external id!'
                             ' (rt external_id, device external_id): (%s, %s)' %
                             (corrid, rt_node.external_id, device_node.external_id))
-        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PL_MODULE, EventTypes.PROFILER_STEP, EventTypes.MODULE]:
+        elif event.type in [EventTypes.PYTHON,
+                            EventTypes.OPERATOR,
+                            EventTypes.PL_MODULE,
+                            EventTypes.PROFILER_STEP,
+                            EventTypes.MODULE]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event)
             elif event.type == EventTypes.MODULE:

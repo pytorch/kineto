@@ -428,18 +428,8 @@ class RunProfile(object):
 
         def process_modules_stats(parent: List[Any], modules_stats: List[Stats]):
             for stats in modules_stats:
-                d = {
-                    'name': stats.name,
-                    'id': stats.id,
-                    'occurences': stats.occurences,
-                    'operators': stats.operators,
-                    'host_duration': stats.host_duration,
-                    'self_host_duration': stats.self_host_duration,
-                    'device_duration': stats.device_duration,
-                    'self_device_duration': stats.self_device_duration,
-                    'avg_duration': stats.avg_duration,
-                    'children': []
-                }
+                d = stats._asdict()
+                d['children'] = []
                 parent.append(d)
                 process_modules_stats(d['children'], stats.children)
 

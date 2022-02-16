@@ -9,7 +9,7 @@
 #include <array>
 #include <fmt/format.h>
 
-namespace KINETO_NAMESPACE {
+namespace libkineto {
 
 struct LoggerTypeName {
   constexpr LoggerTypeName(const char* n, LoggerOutputType t) : name(n), type(t) {};
@@ -48,7 +48,7 @@ LoggerOutputType toLoggerOutputType(const std::string& str) {
   throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
 }
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto
 
 
 #endif // !USE_GOOGLE_LOG

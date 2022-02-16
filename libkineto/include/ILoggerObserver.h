@@ -14,7 +14,7 @@ constexpr char kPostProcessingStage[] = "Post Processing";
 #include <map>
 #include <vector>
 
-namespace KINETO_NAMESPACE {
+namespace libkineto {
 
 enum LoggerOutputType {
   VERBOSE = 0,
@@ -45,6 +45,6 @@ class ILoggerObserver {
 
 };
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto
 
 #endif // !USE_GOOGLE_LOG

@@ -659,7 +659,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(profile.kernel_list_groupby_name_op[0].name,
                          'void cunn_ClassNLLCriterion_updateGradInput_kernel<float>')
         self.assertEqual(
-            profile.kernel_list_groupby_name_op[0].op_name, "aten::mm")
+            profile.kernel_list_groupby_name_op[0].op_name, 'aten::mm')
         self.assertEqual(profile.kernel_list_groupby_name_op[0].calls, 1)
         self.assertEqual(
             profile.kernel_list_groupby_name_op[0].total_duration, 200)

@@ -9,7 +9,7 @@ from .trace import BaseEvent, EventTypes, PLModuleEvent, PythonFunctionEvent
 
 
 class Module:
-    def __init__(self, name: str, module_id: int, shape: str = ""):
+    def __init__(self, name: str, module_id: int, shape: str = ''):
         self.name = name
         self.module_id = module_id
         self.children: List[Module] = []

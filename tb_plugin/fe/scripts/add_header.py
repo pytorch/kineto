@@ -15,7 +15,7 @@ def add_header(file):
         contents = f.readlines()
 
     # do nothing if there is already header
-    if contents and contents[0].startswith("/*-"):
+    if contents and contents[0].startswith('/*-'):
         return
 
     with open(file, 'w') as out:
@@ -26,7 +26,7 @@ def add_header(file):
 if __name__ == '__main__':
     dir = sys.argv[1]
     if not os.path.isdir(dir):
-        raise ValueError("{} is not a directory".format(dir))
+        raise ValueError('{} is not a directory'.format(dir))
 
-    for file in glob.glob(dir + "/*.ts"):
+    for file in glob.glob(dir + '/*.ts'):
         add_header(file)

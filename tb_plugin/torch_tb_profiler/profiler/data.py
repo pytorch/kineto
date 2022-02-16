@@ -32,7 +32,7 @@ class RunProfileData(object):
         self.span = span
 
         # metadatas
-        self.is_pytorch_lightning = trace_json.get('Framework', None) == "pytorch-lightning"
+        self.is_pytorch_lightning = trace_json.get('Framework', None) == 'pytorch-lightning'
         self.data_schema_version = trace_json.get('schemaVersion', None)
         self.distributed_info = trace_json.get('distributedInfo', None)
         self.device_props = trace_json.get('deviceProperties', None)

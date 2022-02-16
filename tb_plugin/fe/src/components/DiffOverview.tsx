@@ -759,7 +759,7 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
     setColumnUnderlyingData(underlyingData)
     columnUnderlyingDataStack.push(underlyingData)
 
-    setDataStackLevel(dataStackLevel + 1)
+    setDataStackLevel(columnChartDataStack.length)
   }
 
   // #endregion

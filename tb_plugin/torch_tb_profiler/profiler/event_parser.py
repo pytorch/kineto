@@ -101,8 +101,8 @@ class NodeParserMixin:
                 for n in nodes:
                     node_count_dict[n.type] += 1
 
-            logger.warning(("Some events doesn't belongs to any operators: "
-                           f"{', '.join([':'.join((k, str(v))) for k, v in node_count_dict.items()])}"))
+            logger.debug(("Some events doesn't belongs to any operators: "
+                          f"{', '.join([':'.join((k, str(v))) for k, v in node_count_dict.items()])}"))
 
         staled_device_nodes = []
         for device_nodes in corrid_to_device.values():

@@ -2,20 +2,19 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import Button from '@material-ui/core/Button'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardHeader from '@material-ui/core/CardHeader'
 import Grid from '@material-ui/core/Grid'
-import Button from '@material-ui/core/Button'
+import { makeStyles } from '@material-ui/core/styles'
 import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
-
-import { makeStyles } from '@material-ui/core/styles'
-import { Table, Select } from 'antd'
+import { Select, Table } from 'antd'
 import * as React from 'react'
 import * as api from '../api'
-import { FullCircularProgress } from './FullCircularProgress'
 import { useResizeEventDependency } from '../utils/resize'
+import { FullCircularProgress } from './FullCircularProgress'
 
 const { Option } = Select
 

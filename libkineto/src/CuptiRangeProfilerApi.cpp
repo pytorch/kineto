@@ -1,20 +1,24 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include <cupti.h>
-#include <nvperf_host.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cupti_call.h"
 #include "Logger.h"
 #include "Demangle.h"
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiRangeProfilerApi.h"
 
+#if HAS_CUPTI_PROFILER
+#include <cupti.h>
+#include <nvperf_host.h>
+#include "cupti_call.h"
+#endif // HAS_CUPTI_PROFILER
 
 namespace KINETO_NAMESPACE {
 
-#ifdef HAS_CUPTI
+#if HAS_CUPTI_PROFILER
 
 /// Helper functions
 
@@ -392,6 +396,6 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
 
   return true;
 }
-#endif // HAS_CUPTI
+#endif // HAS_CUPTI_PROFILER
 
 } // namespace KINETO_NAMESPACE

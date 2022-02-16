@@ -2,14 +2,22 @@
 
 #pragma once
 
+#if defined(HAS_CUPTI) && CUDA_VERSION >= 10010
+#if defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
+#define HAS_CUPTI_PROFILER 1
 #include <cuda.h>
 #include <cupti_profiler_target.h>
 #include <cupti_target.h>
+#endif // CUDART_VERSION > 10.00 and < 11.04
+#endif // HAS_CUPTI && CUDA_VERSION >= 10.10
+
 #include <chrono>
 #include <mutex>
 #include <string>
 #include <vector>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiNvPerfMetric.h"
 
 /* Cupti Range based profiler session
@@ -18,7 +26,7 @@
 
 namespace KINETO_NAMESPACE {
 
-#ifdef HAS_CUPTI
+#if HAS_CUPTI_PROFILER
 class CuptiRBProfilerSession {
  public:
   // Initialize and configure CUPTI Profiler counters.
@@ -147,6 +155,60 @@ class CuptiRBProfilerSession {
 
   bool initSuccess_ = false;
 };
-#endif // HAS_CUPTI
+#else // !HAS_CUPTI_PROFILER
+
+// Create empty stubs for the API when CUPTI is not present.
+using CUpti_ProfilerRange = enum
+{
+    CUPTI_Range_INVALID,
+    CUPTI_AutoRange,
+    CUPTI_UserRange,
+    CUPTI_Range_COUNT,
+};
+
+using CUpti_ProfilerReplayMode = enum
+{
+    CUPTI_Replay_INVALID,
+    CUPTI_ApplicationReplay,
+    CUPTI_KernelReplay,
+    CUPTI_UserReplay,
+    CUPTI_Replay_COUNT,
+};
+
+class CuptiRBProfilerSession {
+public:
+  explicit CuptiRBProfilerSession(
+      const std::vector<std::string>& /*metricNames*/,
+      int /*deviceId*/,
+      int /*maxRanges*/,
+      int /*numNestingLevels*/,
+      void* /*cuContext*/) {}
+
+  void start(
+      CUpti_ProfilerRange /*profilerRange*/,
+      CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
+
+  void stop() {}
+  void enable() {}
+  void disable() {}
+  void beginPass() {}
+  bool endPass() { return true; }
+  void flushCounterData() {}
+  void pushRange(const std::string& /*rangeName*/) {}
+  void popRange() {}
+  void asyncStartAndEnable(
+      CUpti_ProfilerRange /*profilerRange*/,
+      CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
+  void asyncDisableAndStop() {}
+  void printMetrics() {}
+  void saveCounterData(
+      const std::string& /*CounterDataFileName*/,
+      const std::string& /*CounterDataSBFileName*/) {}
+  static void initCupti(){}
+  static void deInitCupti() {}
+  static void staticInit() {}
+  static void setCounterAvailabilityImage(std::vector<uint8_t> /*img*/) {}
+};
+#endif // HAS_CUPTI_PROFILER
 
 } // namespace KINETO_NAMESPACE

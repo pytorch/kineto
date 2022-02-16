@@ -15,6 +15,8 @@
 
 namespace KINETO_NAMESPACE {
 
+using namespace libkineto;
+
 class LoggerCollector : public ILoggerObserver {
  public:
   LoggerCollector() : buckets_() {}

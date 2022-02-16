@@ -17,6 +17,8 @@
 
 namespace libkineto {
 
+using namespace KINETO_NAMESPACE;
+
 #ifdef _MSC_VER
 // workaround for the predefined ERROR macro on Windows
 #undef ERROR

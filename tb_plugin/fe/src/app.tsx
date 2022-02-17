@@ -409,8 +409,7 @@ export const App = () => {
         case Views.Module:
           return <ModuleView run={run} worker={worker} span={span} />
       }
-    }
-    if (selectedTab === 1) {
+    } else {
       return (
         <DiffOverview
           run={diffLeftRun}
@@ -484,7 +483,7 @@ export const App = () => {
             <Tab label="Diff" />
           </Tabs>
         </Box>
-        {selectedTab == 0 && (
+        {selectedTab == 0 ? (
           <>
             <ListSubheader>Runs</ListSubheader>
             <ClickAwayListener onClickAway={SetIframeActive}>
@@ -516,10 +515,9 @@ export const App = () => {
                 </Select>
               </FormControl>
             </ClickAwayListener>
+            {spanComponent()}
           </>
-        )}
-        {selectedTab == 0 && spanComponent()}
-        {selectedTab == 1 && (
+        ) : (
           <>
             <Typography variant="h6">&nbsp;&nbsp;Baseline</Typography>
             <ListSubheader>Runs</ListSubheader>
@@ -542,7 +540,7 @@ export const App = () => {
                 ))}
               </Select>
             </FormControl>
-            <ListSubheader>Span</ListSubheader>
+            <ListSubheader>Spans</ListSubheader>
             <FormControl variant="outlined" className={classes.formControl}>
               <Select value={diffLeftSpan} onChange={handleDiffLeftSpanChange}>
                 {diffLeftSpansOptions.map((span) => (
@@ -573,7 +571,7 @@ export const App = () => {
                 ))}
               </Select>
             </FormControl>
-            <ListSubheader>Span</ListSubheader>
+            <ListSubheader>Spans</ListSubheader>
             <FormControl variant="outlined" className={classes.formControl}>
               <Select
                 value={diffRightSpan}

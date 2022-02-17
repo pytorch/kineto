@@ -15,6 +15,7 @@ repos:
     rev: v4.1.0
     hooks:
       - id: end-of-file-fixer
+        exclude: torch_tb_profiler/static/index.html
       - id: trailing-whitespace
       - id: double-quote-string-fixer
 

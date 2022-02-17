@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from .. import utils
 from .communication import generate_communication_nodes
 from .node import (CommunicationNode, DeviceNode, ModuleNode, OperatorNode, PLModuleNode, PLProfileNode,
-                   ProfilerStepNode, RuntimeNode)
+                   ProfilerStepNode, RuntimeNode, create_operator_node)
 from .op_tree import OpTreeBuilder
 from .range_utils import merge_ranges
 from .trace import BaseEvent, DurationEvent, EventTypes, KernelEvent
@@ -95,6 +95,15 @@ class NodeParserMixin:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
 
+        if len(corrid_to_device) > 0:
+            node_count_dict = defaultdict(int)
+            for nodes in corrid_to_device.values():
+                for n in nodes:
+                    node_count_dict[n.type] += 1
+
+            logger.debug(("Some events doesn't belongs to any operators: "
+                          f"{', '.join([':'.join((k, str(v))) for k, v in node_count_dict.items()])}"))
+
         staled_device_nodes = []
         for device_nodes in corrid_to_device.values():
             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
@@ -172,7 +181,7 @@ class NodeParserMixin:
             elif event.type == EventTypes.PL_MODULE:
                 op_node = PLModuleNode.create(event)
             else:
-                op_node = OperatorNode.create(event)
+                op_node = create_operator_node(event)
             if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
                 comm_node = CommunicationNode.create(event)
                 if event.name in NcclOpNameSet:

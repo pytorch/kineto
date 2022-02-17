@@ -4,7 +4,8 @@
 from collections import namedtuple
 from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
 
-from .node import ModuleNode, OperatorNode, PLModuleNode, ProfilerStepNode, is_operator_node
+from .node import (DataLoaderNode, ModuleNode, OperatorNode, PLModuleNode,
+                   ProfilerStepNode, is_operator_node)
 from .trace import BaseEvent, EventTypes, PLModuleEvent, PythonFunctionEvent
 
 
@@ -185,7 +186,7 @@ def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Di
 def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[OperatorNode, None, None]:
     """Get all node with node_class from the operator tree"""
     def traverse_node(node):
-        if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode, PLModuleNode):
+        if type(node) not in (ProfilerStepNode, ModuleNode, OperatorNode, PLModuleNode, DataLoaderNode):
             return
 
         if isinstance(node, node_class):

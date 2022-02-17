@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from . import consts
+from .profiler.diffrun import compare_op_tree, diff_summary
 from .profiler.memory_parser import MemoryMetrics, MemoryRecord, MemorySnapshot
 from .profiler.module_op import Stats
 from .profiler.node import OperatorNode
@@ -458,6 +459,13 @@ class RunProfile(object):
                 traverse_node(d['children'], child)
         traverse_node(result, root)
         return result[0]
+
+    def compare_run(self, exp: 'RunProfile'):
+        base_root = next(iter(self.tid2tree.values()))
+        exp_root = next(iter(exp.tid2tree.values()))
+        diff_root = compare_op_tree(base_root, exp_root)
+        diff_stats = diff_summary(diff_root)
+        return diff_stats
 
 
 class DistributedRunProfile(object):

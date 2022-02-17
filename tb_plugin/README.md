@@ -430,7 +430,9 @@ one worker is much larger than others, there may be a problem of loading balance
         * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
 
 * Module View
+
     If the torch.nn.Module information is dumped into the result Chrome tracing file by Pytorch profiler, the plugin could display the nn.Module hierarchy and summary.
+
     ![Alt text](./docs/images/module_view.png)
 
     *   The top table shows each torch.nn.Module statistics information including:
@@ -445,7 +447,9 @@ one worker is much larger than others, there may be a problem of loading balance
     *   The bottom graph shows the main thread operators tree.
 
 * Diff Run View
+
     The diff run feature helps to compare two run by logical timeline. The key comparision operators include backward, dataloader, torch.nn.Module, optimizer. If each operator contains these sub-operators internally, the diff run could be zoom in by click the bar.
+
     ![Alt text](./docs/images/diff_view.png)
 
     *   The top bar chart shows each operator type and trend comparision result.

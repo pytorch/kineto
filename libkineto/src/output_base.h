@@ -48,11 +48,18 @@ class ActivityLogger {
     const std::string name;
   };
 
+  struct OverheadInfo {
+    OverheadInfo(const std::string& name) : name(name) {}
+    const std::string name;
+  };
+
   virtual void handleDeviceInfo(
       const DeviceInfo& info,
       uint64_t time) = 0;
 
   virtual void handleResourceInfo(const ResourceInfo& info, int64_t time) = 0;
+
+  virtual void handleOverheadInfo(const OverheadInfo& info, int64_t time) = 0;
 
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 

@@ -297,6 +297,9 @@ void CuptiActivityApi::enableCuptiActivities(
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
+    if (activity == ActivityType::OVERHEAD) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));
+    }
   }
 #endif
 
@@ -322,6 +325,9 @@ void CuptiActivityApi::disableCuptiActivities(
     }
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
+    }
+    if (activity == ActivityType::OVERHEAD) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
     }
   }
   externalCorrelationEnabled_ = false;

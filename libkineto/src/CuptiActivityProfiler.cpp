@@ -256,6 +256,17 @@ void CuptiActivityProfiler::handleRuntimeActivity(
   runtime_activity.log(*logger);
 }
 
+void CuptiActivityProfiler::handleOverheadActivity(
+    const CUpti_ActivityOverhead* activity,
+    ActivityLogger* logger) {
+  VLOG(2) << ": CUPTI_ACTIVITY_KIND_OVERHEAD" << " overheadKind=" << activity->overheadKind;
+
+  const auto& overhead_activity =
+      traceBuffers_->addActivityWrapper(OverheadActivity(activity, nullptr));
+  overhead_activity.log(*logger);
+}
+
+
 inline void CuptiActivityProfiler::updateGpuNetSpan(
     const ITraceActivity& gpuOp) {
   if (!gpuOp.linkedActivity()) {
@@ -369,6 +380,9 @@ void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Ac
     case CUPTI_ACTIVITY_KIND_MEMSET:
       handleGpuActivity(
           reinterpret_cast<const CUpti_ActivityMemset*>(record), logger);
+      break;
+    case CUPTI_ACTIVITY_KIND_OVERHEAD:
+      handleOverheadActivity (reinterpret_cast<const CUpti_ActivityOverhead*>(record), logger);
       break;
     default:
       LOG(WARNING) << "Unexpected activity type: " << record->kind;
@@ -757,6 +771,12 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
         logger.handleTraceSpan(gpu_span);
       }
     }
+  }
+
+  // Overhead info
+  overheadInfo_.push_back(ActivityLogger::OverheadInfo("CUPTI Overhead"));
+  for(const auto& info : overheadInfo_) {
+    logger.handleOverheadInfo(info, captureWindowStartTime_);
   }
 
   gpuUserEventMap_.logEvents(&logger);

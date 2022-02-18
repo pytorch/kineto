@@ -20,7 +20,8 @@ enum class ActivityType {
     GLOW_RUNTIME, // host side glow runtime events
     CPU_INSTANT_EVENT, // host side point-like events
     PYTHON_FUNCTION,
-    ENUM_COUNT
+    OVERHEAD,
+    ENUM_COUNT // This is to add buffer and not used for any profiling logic. Add your new type before it.
 };
 
 const char* toString(ActivityType t);

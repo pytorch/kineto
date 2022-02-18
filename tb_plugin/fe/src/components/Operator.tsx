@@ -22,7 +22,6 @@ import TextField, {
 import * as React from 'react'
 import * as api from '../api'
 import {
-  TableMetadata,
   OperationTableData,
   OperationTableDataInner,
   OperatorGraph

@@ -73,6 +73,7 @@ def example(rank, use_gpu=True):
             if step + 1 >= 10:
                 break
 
+
 def init_process(rank, size, fn, backend='nccl'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = '127.0.0.1'
@@ -80,7 +81,8 @@ def init_process(rank, size, fn, backend='nccl'):
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     size = 4
     processes = []
     mp.set_start_method("spawn")
@@ -91,4 +93,3 @@ if __name__=="__main__":
 
     for p in processes:
         p.join()
-

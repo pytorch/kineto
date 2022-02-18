@@ -4,20 +4,22 @@
 import sys
 from collections import defaultdict
 from enum import IntEnum
-from typing import Dict, List
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .. import utils
 from .communication import generate_communication_nodes
-from .node import (CommunicationNode, DeviceNode, OperatorNode,
-                   ProfilerStepNode, RuntimeNode)
+from .node import (CommunicationNode, DeviceNode, ModuleNode, OperatorNode, PLModuleNode, PLProfileNode,
+                   ProfilerStepNode, RuntimeNode, create_operator_node)
+from .op_tree import OpTreeBuilder
 from .range_utils import merge_ranges
-from .trace import EventTypes
+from .trace import BaseEvent, DurationEvent, EventTypes, KernelEvent
 
 logger = utils.get_logger()
 
 NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
 GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
 CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
+
 
 class ProfileRole(IntEnum):
     Kernel = 0
@@ -33,20 +35,20 @@ class ProfileRole(IntEnum):
 
 class NodeParserMixin:
     def __init__(self, *args, **kwargs):
-        '''Please refer to https://stackoverflow.com/questions/9575409/calling-parent-class-init-with-multiple-inheritance-whats-the-right-way
+        """Please refer to https://stackoverflow.com/questions/9575409/calling-parent-class-init-with-multiple-inheritance-whats-the-right-way # noqa: E501
         to see the reason why we need call super().__init__ like this way
-        '''
+        """
         super().__init__(*args, **kwargs)
 
-        self.communication_data = {}
-        self.device_node_list = []
-        self.runtime_node_list = []
+        self.communication_data: Dict[int, CommunicationNode] = {}
+        self.device_node_list: List[DeviceNode] = []
+        self.runtime_node_list: List[RuntimeNode] = []
         self.used_devices = set()
         self.use_dp = False
         self.use_ddp = False
         self.comm_lib = set()
 
-    def parse_nodes(self, events):
+    def parse_nodes(self, events: Iterable[BaseEvent]):
         # For OperatorNode and ProfilerStepNode:
         #   Use time interval containing relationship to build father-child correlation,
         #   which is consistent with autograd profiler.
@@ -54,17 +56,28 @@ class NodeParserMixin:
         #   Use external_id to build correlation with its father OperatorNode or ProfilerStepNode.
         #   Because in the case when RuntimeNode has duration 0 and starts at same time as a OperatorNode,
         #   just use interval containing relationship can't tell it is child or brother of the OperatorNode.
-        tid2list = defaultdict(list) # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
-        tid2zero_rt_list = defaultdict(list)  # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
-        corrid_to_device = defaultdict(list)  # value is a list of DeviceNode
+        # value is a list of OperatorNode and ProfilerStepNode. Do not include RuntimeNode
+        tid2list: Dict[int, List[OperatorNode]] = defaultdict(list)
+        # value is  a list of PLProfileNode. Do not include RuntimeNode
+        pl_tid2list: Dict[int, List[PLProfileNode]] = defaultdict(list)
+        # value is a list of RuntimeNode with external_id=0. They will be attached to root nodes.
+        tid2zero_rt_list: Dict[int, List[RuntimeNode]] = defaultdict(list)
+        corrid_to_device: Dict[int, List[DeviceNode]] = defaultdict(list)  # value is a list of DeviceNode
 
-        corrid_to_runtime = {}  # value is a RuntimeNode
-        externalid_to_runtime = defaultdict(list)  # value is a list of RuntimeNode
+        corrid_to_runtime: Dict[int, RuntimeNode] = {}  # value is a RuntimeNode
+        externalid_to_runtime: Dict[int, List[RuntimeNode]] = defaultdict(list)  # value is a list of RuntimeNode
 
         for event in events:
             if event.type == EventTypes.MEMORY:
                 continue
-            self._parse_node(event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list)
+            self._parse_node(
+                event,
+                corrid_to_device,
+                corrid_to_runtime,
+                externalid_to_runtime,
+                tid2list,
+                pl_tid2list,
+                tid2zero_rt_list)
 
         if CommLibTypes.Nccl in self.comm_lib:
             for event in events:
@@ -72,7 +85,7 @@ class NodeParserMixin:
                     self._update_communication_node(event)
 
         # associate CUDA Runtimes with CPU events
-        for _, op_list in tid2list.items():
+        for op_list in tid2list.values():
             for op in op_list:
                 runtime_nodes = externalid_to_runtime.pop(op.external_id, [])
                 if runtime_nodes:
@@ -82,10 +95,23 @@ class NodeParserMixin:
                 logger.warning("{} Runtime with external id {} don't correlate to any operator!".format(
                     len(externalid_to_runtime[ext_id]), ext_id))
 
-        return tid2list, tid2zero_rt_list, corrid_to_device
+        if len(corrid_to_device) > 0:
+            node_count_dict = defaultdict(int)
+            for nodes in corrid_to_device.values():
+                for n in nodes:
+                    node_count_dict[n.type] += 1
 
-    def _update_communication_node(self, event):
-        '''Update the communication node by using the TraceEvent instance'''
+            logger.debug(("Some events doesn't belongs to any operators: "
+                          f"{', '.join([':'.join((k, str(v))) for k, v in node_count_dict.items()])}"))
+
+        staled_device_nodes = []
+        for device_nodes in corrid_to_device.values():
+            staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
+
+        return tid2list, tid2zero_rt_list, staled_device_nodes, pl_tid2list
+
+    def _update_communication_node(self, event: KernelEvent):
+        """Update the communication node by using the TraceEvent instance"""
         external_id = event.external_id
         comm_node = self.communication_data.get(external_id)
         if comm_node:
@@ -96,7 +122,14 @@ class NodeParserMixin:
 
         return comm_node is not None
 
-    def _parse_node(self, event, corrid_to_device, corrid_to_runtime, externalid_to_runtime, tid2list, tid2zero_rt_list):
+    def _parse_node(self,
+                    event: DurationEvent,
+                    corrid_to_device: Dict[int, List[DeviceNode]],
+                    corrid_to_runtime: Dict[int, RuntimeNode],
+                    externalid_to_runtime: Dict[int, List[RuntimeNode]],
+                    tid2list: Dict[int, List[OperatorNode]],
+                    pl_tid2list: Dict[int, List[PLProfileNode]],
+                    tid2zero_rt_list: Dict[int, List[RuntimeNode]]):
         corrid = event.correlation_id
         tid = event.tid
         if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
@@ -110,7 +143,9 @@ class NodeParserMixin:
 
                 # Check the external_id
                 if rt_node.external_id != device_node.external_id:
-                    logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (runtime external_id, device external_id): (%s, %s)" % 
+                    logger.warning(
+                        'Runtime and Device-op have same correlation id %s but with different external id!'
+                        ' (runtime external_id, device external_id): (%s, %s)' %
                         (corrid, rt_node.external_id, device_node.external_id))
             else:
                 corrid_to_device[corrid].append(device_node)
@@ -130,13 +165,23 @@ class NodeParserMixin:
             if device_nodes:
                 for device_node in device_nodes:
                     if rt_node.external_id != device_node.external_id:
-                        logger.warning("Runtime and Device-op have same correlation id %s but with different external id! (rt external_id, device external_id): (%s, %s)" % 
+                        logger.warning(
+                            'Runtime and Device-op have same correlation id %s but with different external id!'
+                            ' (rt external_id, device external_id): (%s, %s)' %
                             (corrid, rt_node.external_id, device_node.external_id))
-        elif event.type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.PROFILER_STEP]:
+        elif event.type in [EventTypes.PYTHON,
+                            EventTypes.OPERATOR,
+                            EventTypes.PL_MODULE,
+                            EventTypes.PROFILER_STEP,
+                            EventTypes.MODULE]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event)
+            elif event.type == EventTypes.MODULE:
+                op_node = ModuleNode.create(event)
+            elif event.type == EventTypes.PL_MODULE:
+                op_node = PLModuleNode.create(event)
             else:
-                op_node = OperatorNode.create(event)
+                op_node = create_operator_node(event)
             if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
                 comm_node = CommunicationNode.create(event)
                 if event.name in NcclOpNameSet:
@@ -148,99 +193,14 @@ class NodeParserMixin:
                     comm_node.kernel_ranges.append((ts, ts + dur))
                     comm_node.total_time = dur
                 self.communication_data[op_node.external_id] = comm_node
-            if event.name == "DataParallel.forward":
+            if event.name == 'DataParallel.forward':
                 self.use_dp = True
-            if event.name == "DistributedDataParallel.forward":
+            if event.name == 'DistributedDataParallel.forward':
                 self.use_ddp = True
             tid2list[int(tid)].append(op_node)
-
-
-class OpTreeBuilder:
-    def __init__(self):
-        pass
-
-    def build_tree(self, tid2list, tid2zero_rt_list, corrid_to_device):
-        tid2tree = {}
-
-        staled_device_nodes = []
-        for _, device_nodes in corrid_to_device.items():
-             staled_device_nodes.extend([n for n in device_nodes if n.type == EventTypes.KERNEL])
-
-        for tid, op_list in tid2list.items():
-            zero_rt_list = tid2zero_rt_list[tid] if tid in tid2zero_rt_list else []
-            # Note that when 2 start_time are equal, the one with bigger end_time should be ahead of the other.
-            op_list.sort(key=lambda x: (x.start_time, -x.end_time))
-            main_tid = any([op.name.startswith("ProfilerStep#") for op in op_list])
-            if main_tid:
-                # only append the staled device nodes into main thread
-                root_node = self._build_tree(op_list, zero_rt_list, tid, staled_device_nodes)
-            else:
-                root_node = self._build_tree(op_list, zero_rt_list, tid, [])
-            tid2tree[int(tid)] = root_node
-
-        return tid2tree
-
-    def _build_tree(self, host_node_list, zero_rt_list, tid, staled_device_nodes):
-        '''host_node_list: list of OperatorNode and ProfilerStepNode.
-        zero_rt_list: list of RuntimeNode with external_id=0.'''
-
-        def build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes):
-            dummpy_rt = []
-            if staled_device_nodes:
-                # Note: Although kernels of this dummy runtime is put under main thread's tree, 
-                # we don't know which thread launches them. 
-                # TODO: Don't make belonging thread assumption on future usage if we need special handling
-                dummpy_rt.append(RuntimeNode("dummy", 0, 0, EventTypes.RUNTIME, 0, None, 0, staled_device_nodes))
-                dummpy_rt[0].fill_stats()
-            node_stack = []
-            root_node = OperatorNode(
-                name="CallTreeRoot",
-                start_time=-sys.maxsize - 1,
-                end_time=sys.maxsize,
-                type=EventTypes.PYTHON,
-                tid=tid,
-                runtimes=zero_rt_list + dummpy_rt) # Give the list of RuntimeNode with external_id=0 to root node.
-            node_stack.append(root_node)
-            for node in host_node_list:
-                while True:  # break loop when the node is inserted.
-                    tail_node = node_stack[-1]
-                    if node.start_time < tail_node.end_time:
-                        if node.end_time <= tail_node.end_time:
-                            tail_node.children.append(node)
-                            # node.parent_node = weakref.ref(tail_node)
-                            node_stack.append(node)
-                        else:
-                            logger.error("Error in input data: ranges on the same thread should not intersect!"
-                                         "Father:({},{},{}) Child:({},{},{})".format(
-                                tail_node.name, tail_node.start_time, tail_node.end_time,
-                                node.name, node.start_time, node.end_time
-                            ))
-                        break
-                    else:
-                        node_stack.pop()
-            return root_node
-
-        # Merge the consecutive calls to same function into one.
-        # Just follow the same pattern in torch/autograd/profiler.py,
-        # EventList._remove_dup_nodes
-        # TODO: Replace recursive by for loop, in case of too deep callstack.
-        def remove_dup_nodes(node):
-            if node.type == EventTypes.RUNTIME:
-                return
-            if len(node.children) == 1:
-                child = node.children[0]
-                if node.name == child.name and node.type == EventTypes.OPERATOR and child.type == EventTypes.OPERATOR:
-                    node.children = child.children
-                    node.runtimes = child.runtimes  # Keep consistent with autograd profiler.
-                    remove_dup_nodes(node)  # This node may have to merge with child's child.
-            for child in node.children:
-                remove_dup_nodes(child)
-
-        root_node = build_tree_relationship(host_node_list, zero_rt_list, staled_device_nodes)
-        remove_dup_nodes(root_node)
-        root_node.replace_time_by_children()
-        root_node.fill_stats()
-        return root_node
+        elif event.type == EventTypes.PL_PROFILE:
+            op_node = PLProfileNode.create(event)
+            pl_tid2list[int(tid)].append(op_node)
 
 
 class StepParser:
@@ -248,26 +208,26 @@ class StepParser:
         # we could not use [[]] * len here since they all point to same memory
         # https://stackoverflow.com/questions/12791501/python-initializing-a-list-of-lists
         # https://stackoverflow.com/questions/240178/list-of-lists-changes-reflected-across-sublists-unexpectedly
-        self.role_ranges = [[] for _ in range(ProfileRole.Total - 1)]
-        self.steps = []
-        self.steps_names = []
+        self.role_ranges: List[List[Tuple[int, int]]] = [[] for _ in range(ProfileRole.Total - 1)]
+        self.steps: List[Tuple[int, int]] = []
+        self.steps_names: List[str] = []
         self.cpu_min_ts = sys.maxsize  # Min time of CPU side events.
         self.cpu_max_ts = -sys.maxsize - 1  # Max time of CPU side events.
         self.global_min_ts = sys.maxsize  # Min time of all events.
         self.global_max_ts = -sys.maxsize - 1  # Max time of all events.
         # The below two form time range for adding gpu utilization to trace view.
-        # Use "PyTorch Profiler (0)" as them.
+        # Use 'PyTorch Profiler (0)' as them.
         # If not exists, assign global_min_ts and global_max_ts to them.
         self.global_start_ts = sys.maxsize
         self.global_end_ts = -sys.maxsize - 1
 
-    def parse_steps(self, events, comm_nodes):
+    def parse_steps(self, events: Iterable[DurationEvent], comm_nodes: Dict[int, CommunicationNode]):
         for event in events:
             if event.type == EventTypes.MEMORY:
                 continue
 
             self._parse_step(event, comm_nodes)
-            if event.type == EventTypes.TRACE and event.name == "PyTorch Profiler (0)":
+            if event.type == EventTypes.TRACE and event.name == 'PyTorch Profiler (0)':
                 self.global_start_ts = event.ts
                 self.global_end_ts = event.ts + event.duration
         if self.global_start_ts == sys.maxsize:
@@ -277,12 +237,12 @@ class StepParser:
 
         if len(self.steps) == 0:
             self.steps.append((self.cpu_min_ts, self.cpu_max_ts))
-            self.steps_names.append("0")
+            self.steps_names.append('0')
 
         for i in range(len(self.role_ranges)):
             self.role_ranges[i] = merge_ranges(self.role_ranges[i])
 
-    def update_device_steps(self, runtime_node_list):
+    def update_device_steps(self, runtime_node_list: List[RuntimeNode]):
         self._update_steps_duration(*self._find_device_steps(runtime_node_list))
 
     @property
@@ -301,7 +261,7 @@ class StepParser:
     def has_memcpy_or_memset(self):
         return bool(self.role_ranges[ProfileRole.Memcpy] or self.role_ranges[ProfileRole.Memset])
 
-    def _parse_step(self, event, comm_nodes):
+    def _parse_step(self, event: DurationEvent, comm_nodes: Dict[int, CommunicationNode]):
         ts = event.ts
         dur = event.duration
         evt_type = event.type
@@ -316,8 +276,9 @@ class StepParser:
             self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
         elif evt_type == EventTypes.RUNTIME:
             self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
-        elif evt_type == EventTypes.OPERATOR and event.name.startswith("enumerate(DataLoader)#") \
-                and event.name.endswith(".__next__"):
+        elif (evt_type == EventTypes.OPERATOR and (
+                (event.name.startswith('enumerate(DataLoader)#') and event.name.endswith('.__next__'))
+                or event.name.startswith('enumerate(DataPipe)#'))):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
@@ -336,17 +297,16 @@ class StepParser:
         self.global_min_ts = min(self.global_min_ts, ts)
         self.global_max_ts = max(self.global_max_ts, ts + dur)
 
-
-    def _find_device_steps(self, runtime_node_list):
-        '''return steps associated with device nodes. 
-        '''
+    def _find_device_steps(self, runtime_node_list: List[RuntimeNode]):
+        """return steps associated with device nodes.
+        """
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
 
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
         # then record each step's min kernel start time and max kernel end time:
-        steps_device = [(sys.maxsize, -sys.maxsize - 1)] * len(self.steps)
+        steps_device: List[Tuple[int, int]] = [(sys.maxsize, -sys.maxsize - 1)] * len(self.steps)
         # where the steps associated with devcie node, if yes, the related array item is larger than 0.
-        steps_matched_device_nodes = [0] * len(self.steps)
+        steps_matched_device_nodes: List[int] = [0] * len(self.steps)
 
         i_step = 0
         i_runtime = 0
@@ -391,7 +351,7 @@ class StepParser:
             i_step += 1
 
         # If there are matched device, find the first step end time before steps_device[0][0]
-        prev_step_end_time = None
+        prev_step_end_time: Optional[int] = None
         if len(matched_device_nodes) > 0:
             prev_step_end_time = self.steps[0][0]
             if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
@@ -403,10 +363,12 @@ class StepParser:
 
         return prev_step_end_time, steps_device, steps_matched_device_nodes
 
-
-    def _update_steps_duration(self, prev_step_end_time, steps_device, steps_matched_device_nodes):
-        '''Update self.steps considering device side events launched by each host side step.
-        Update self.steps_names if some tail steps are removed.'''
+    def _update_steps_duration(self,
+                               prev_step_end_time: Optional[int],
+                               steps_device: List[Tuple[int, int]],
+                               steps_matched_device_nodes: List[int]):
+        """Update self.steps considering device side events launched by each host side step.
+        Update self.steps_names if some tail steps are removed."""
 
         # Change step time to device side on the condition that any step have device time.
         is_use_gpu = prev_step_end_time is not None
@@ -421,7 +383,7 @@ class StepParser:
                     step_end_time = max(step_end_time, steps_device[i_step][1])
                     if step_end_time < step_start_time:
                         logger.warning(
-                            "Abnormal step_end_time of step {}: [{}, {}]".format(
+                            'Abnormal step_end_time of step {}: [{}, {}]'.format(
                                 i_step, step_start_time, step_end_time))
                         step_end_time = step_start_time
                 self.steps[i_step] = (step_start_time, step_end_time)  # Update step time considering device side.
@@ -440,34 +402,44 @@ class StepParser:
                     keep_steps = i_step
                 if keep_steps < len(self.steps):
                     logger.warning(
-                        "Remove the last {} steps from overview. "
-                        "Because the profiler may fail to capture all the kernels launched by these steps.".format(
+                        'Remove the last {} steps from overview. '
+                        'Because the profiler may fail to capture all the kernels launched by these steps.'.format(
                             len(self.steps) - keep_steps
                         ))
                     self.steps = self.steps[:keep_steps]
                     self.steps_names = self.steps_names[:keep_steps]
 
-class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
+
+class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
+        self.comm_node_list: Dict[CommunicationNode] = None
 
-    def parse(self, events) ->  Dict[int, List[OperatorNode]]:
-        tid2tree = self.build_tree(*self.parse_nodes(events))
+    def parse(self, events: Iterable[BaseEvent], fwd_bwd_map: Dict[int, int]) -> Dict[int, List[OperatorNode]]:
+        with utils.timing('EventParser: parse nodes'):
+            tid2list, tid2zero_rt_list, staled_device_nodes, pl_tid2list = self.parse_nodes(events)
 
-        # Process steps
-        self.parse_steps(events, self.communication_data)
-        if len(self.comm_lib) > 1:
-            logger.warning("Multiple communication libs are found. To avoid confusing, we disable the distributed view.")
-            self.communication_data.clear()
+        with utils.timing('EventParser: build operator tree'):
+            builder = OpTreeBuilder()
+            tid2tree = builder.build_tree(tid2list, tid2zero_rt_list, staled_device_nodes, fwd_bwd_map=fwd_bwd_map)
+            pl_tid2tree = builder.build_tree(pl_tid2list, {}, [], {})
+
+        with utils.timing('EventParser: parse steps times'):
+            # Process steps
+            self.parse_steps(events, self.communication_data)
+            if len(self.comm_lib) > 1:
+                logger.warning(
+                    'Multiple communication libs are found. To avoid confusing, we disable the distributed view.')
+                self.communication_data.clear()
+
         # Move the interleaved logic out of each NodeParser and StepParser
         self.update_device_steps(self.runtime_node_list)
-        return tid2tree
 
-    def generate_communication_nodes(self):
-        return generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+        self.comm_node_list = generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+        return tid2tree, pl_tid2tree
 
     @staticmethod
-    def print_tree(tid2tree):
+    def print_tree(root):
         class Ctx:
             tid: int = -1
             name_stack: list = []
@@ -475,14 +447,13 @@ class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
         ctx = Ctx()
 
         def print_node_set_prefix(node: OperatorNode):
-            header = f"[{ctx.tid}]" + ".".join(ctx.name_stack[1:]) # omit the CallTreeRoot
+            header = f'[{ctx.tid}]' + '.'.join(ctx.name_stack[1:])  # omit the CallTreeRoot
             prefix_len = len(ctx.name_stack) * 4 - 4 - 1
             if len(ctx.name_stack) > 1:
                 print(header)
-                prefix = " " * prefix_len
+                prefix = ' ' * prefix_len
                 print(prefix, node.name)
-                print(prefix, "time:", node.start_time, "-->", node.end_time)
-                print(prefix, "memory:", node.memory_records)
+                print(prefix, 'time:', node.start_time, '-->', node.end_time)
 
         def push(node: OperatorNode):
             ctx.name_stack.append(node.name)
@@ -498,7 +469,6 @@ class EventParser(NodeParserMixin, StepParser, OpTreeBuilder):
                 traverse_opeartor_node(n)
             pop()
 
-        for tid, tree in tid2tree.items():
-            ctx.tid = tid
-            traverse_opeartor_node(tree)
-            ctx.tid = -1
+        ctx.tid = root.tid
+        traverse_opeartor_node(root)
+        ctx.tid = -1

@@ -219,7 +219,7 @@ We describe each of these views below.
     CallStack: All call stacks of this operator if it has been recorded in profiling trace file.
                To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API.
                The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code as below:
-           
+
    ![Alt text](./docs/images/vscode_stack.PNG)
 
     Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
@@ -270,7 +270,7 @@ We describe each of these views below.
 
     * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. "Mean Blocks per SM" is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
-    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](./docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
+    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](./docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
     The top left pie chart is a visualization of "Total Duration" column.
     It makes the breakdowns visible at a glance.
@@ -387,9 +387,9 @@ We describe each of these views below.
 
       * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes.
 
-      * Allocation Count: The allocation count including all children operators. 
+      * Allocation Count: The allocation count including all children operators.
 
-      * Self Allocation Count: The allocation count belonging to the operator itself excluding its children. 
+      * Self Allocation Count: The allocation count belonging to the operator itself excluding its children.
 
       * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free.
 

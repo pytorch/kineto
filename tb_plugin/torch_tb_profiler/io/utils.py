@@ -12,6 +12,7 @@ def as_str_any(value):
     else:
         return str(value)
 
+
 def as_text(bytes_or_text, encoding="utf-8"):
     """Returns the given argument as a unicode string.
 
@@ -38,6 +39,7 @@ def as_text(bytes_or_text, encoding="utf-8"):
 # Convert an object to a `str` in both Python 2 and 3.
 as_str = as_text
 
+
 def as_bytes(bytes_or_text, encoding="utf-8"):
     """Converts either bytes or unicode to `bytes`, using utf-8 encoding for
     text.
@@ -60,6 +62,7 @@ def as_bytes(bytes_or_text, encoding="utf-8"):
         raise TypeError(
             "Expected binary or unicode string, got %r" % (bytes_or_text,)
         )
+
 
 def parse_blob_url(url):
     from urllib import parse

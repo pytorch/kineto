@@ -1,14 +1,20 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-from .range_utils import merge_ranges, get_ranges_sum
+from typing import Dict, List, Tuple
+
 from .. import utils
+from .node import CommunicationNode
+from .range_utils import get_ranges_sum, merge_ranges
 
 logger = utils.get_logger()
 
 
-def generate_communication_nodes(communication_data, steps, steps_names):
-    comm_node_list = []
+def generate_communication_nodes(
+        communication_data: Dict[int, CommunicationNode],
+        steps: List[Tuple[int, int]],
+        steps_names: List[str]):
+    comm_node_list: List[CommunicationNode] = []
 
     # Sort the communication node according the start time, this is for correlating communication node between workers
     for comm_node in communication_data.values():
@@ -27,19 +33,21 @@ def generate_communication_nodes(communication_data, steps, steps_names):
             elif comm_node.start_time >= steps[index][1]:
                 index += 1
             else:
-                logger.error("Found a communication op not belong to any step.")
+                logger.error('Found a communication op not belong to any step.')
                 break
         if index >= valid_steps:
-            logger.error("Found communication ops not belong to any step. ")
+            logger.error('Found communication ops not belong to any step. ')
             break
 
     return comm_node_list
 
-def analyze_communication_nodes(comm_node_list):
-    step_comm_stats = {}
-    total_comm_stats = {}
 
-    step_to_comm_ranges = {}
+def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
+        -> Tuple[Dict[str, Tuple[int, int]], Dict[str, List[int]]]:
+    step_comm_stats: Dict[str, Tuple[int, int]] = {}
+    total_comm_stats: Dict[str, Tuple[int, int, List, List]] = {}
+
+    step_to_comm_ranges: Dict[str, Tuple[List, List]] = {}
     for comm_node in comm_node_list:
         if comm_node.step_name not in step_to_comm_ranges:
             step_to_comm_ranges[comm_node.step_name] = [[], []]
@@ -61,7 +69,7 @@ def analyze_communication_nodes(comm_node_list):
                 elif comm_node.input_type[i] == 'c10::Half':
                     bytes_one_value = 2
                 else:
-                    logger.warning("Found an unknown tensor type: {}".format(comm_node.input_type[i]))
+                    logger.warning('Found an unknown tensor type: {}'.format(comm_node.input_type[i]))
                     bytes_one_value = 0
                 total_size = 1
                 for size in comm_node.input_shape[i]:
@@ -71,7 +79,10 @@ def analyze_communication_nodes(comm_node_list):
         total_comm_stats[comm_node.name][3].extend(comm_node.real_time_ranges)
 
     for step, comm_ranges in step_to_comm_ranges.items():
-        step_comm_stats[step] = [get_ranges_sum(merge_ranges(comm_ranges[0])), get_ranges_sum(merge_ranges(comm_ranges[1]))]
+        step_comm_stats[step] = [
+            get_ranges_sum(merge_ranges(comm_ranges[0])),
+            get_ranges_sum(merge_ranges(comm_ranges[1]))
+        ]
 
     for _, stats in total_comm_stats.items():
         stats[2] = get_ranges_sum(merge_ranges(stats[2]))

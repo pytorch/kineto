@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import namedtuple
 
 # Data returned from the Stat call.
-StatData = namedtuple("StatData", ["length"])
+StatData = namedtuple('StatData', ['length'])
 
 
 class BaseFileSystem(ABC):
@@ -16,8 +16,8 @@ class BaseFileSystem(ABC):
     def append(self, filename, file_content, binary_mode=False):
         pass
 
-    def download_file(self, filename):
-        return filename
+    def download_file(self, file_to_download, file_to_save):
+        pass
 
     @abstractmethod
     def exists(self, filename):
@@ -51,6 +51,7 @@ class BaseFileSystem(ABC):
     def stat(self, filename):
         raise NotImplementedError
 
+
 class BasePath(ABC):
     @abstractmethod
     def join(self, path, *paths):
@@ -68,6 +69,7 @@ class BasePath(ABC):
     def relpath(self, path, start):
         pass
 
+
 class LocalPath(BasePath):
     def abspath(self, path):
         return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
@@ -81,9 +83,10 @@ class LocalPath(BasePath):
     def join(self, path, *paths):
         return os.path.join(path, *paths)
 
+
 class RemotePath(BasePath):
     def split(self, path):
-        """Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+        """Split a pathname.  Returns tuple '(head, tail)' where 'tail' is
         everything after the final slash.  Either part may be empty."""
         sep = '/'
         i = path.rfind(sep) + 1
@@ -93,7 +96,7 @@ class RemotePath(BasePath):
 
     def join(self, path, *paths):
         """Join paths with a slash."""
-        return "/".join((path,) + paths)
+        return '/'.join((path,) + paths)
 
     def abspath(self, path):
         return path
@@ -105,5 +108,5 @@ class RemotePath(BasePath):
         if not path.startswith(start):
             return path
         start = start.rstrip('/')
-        begin = len(start) + 1 # include the ending slash '/'
+        begin = len(start) + 1  # include the ending slash '/'
         return path[begin:]

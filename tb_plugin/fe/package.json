@@ -14,11 +14,12 @@
     "@babel/runtime": "^7.13.10",
     "@material-ui/core": "^4.11.3",
     "@material-ui/icons": "^4.11.2",
-    "antd": "^4.15.1",
+    "antd": "^4.17.0",
     "clsx": "^1.1.1",
     "portable-fetch": "^3.0.0",
     "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "react-flame-graph": "^1.4.0"
   },
   "devDependencies": {
     "@types/react": "^16.9.51",
@@ -38,6 +39,7 @@
   "resolutions": {
     "portable-fetch/**/node-fetch": "^2.6.1",
     "webpack/**/browserslist": "^4.16.5",
-    "webpack-dev-server/**/chokidar": "^3.5.2"
+    "webpack-dev-server/**/chokidar": "^3.5.2",
+    "postcss/**/nanoid": "^3.1.31"
   }
 }

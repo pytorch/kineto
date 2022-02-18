@@ -1,4 +1,3 @@
-import os
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
@@ -6,7 +5,6 @@ import torch.optim
 import torch.utils.data
 import torchvision
 import torchvision.transforms as T
-import torchvision.datasets as datasets
 import torchvision.models as models
 
 import torch.profiler

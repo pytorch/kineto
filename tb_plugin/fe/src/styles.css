@@ -7,7 +7,7 @@
     white-space: nowrap;
 }
 
-div.google-visualization-tooltip { 
+div.google-visualization-tooltip {
     pointer-events: none;
     max-width: 90%;
 }

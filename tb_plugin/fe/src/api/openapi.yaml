@@ -560,6 +560,101 @@ paths:
             '*/*':
               schema:
                 type: object
+  /module:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ModuleViewData'
+  /tree:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/OperatorNode'
+  /diffnode:
+    get:
+      parameters:
+        - in: query
+          name: run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: span
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_run
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_worker
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: exp_span
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: path
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DiffNode'
 components:
   schemas:
     Runs:
@@ -678,7 +773,7 @@ components:
     OperatorGraph:
       type: object
       required:
-        - device_total_timeA
+        - device_total_time
         - device_self_time
         - host_total_time
         - host_self_time
@@ -959,3 +1054,151 @@ components:
             $ref: '#/components/schemas/GraphColumn'
         rows:
           type: object
+    KeyedColumn:
+      type: object
+      required:
+        - type
+        - name
+        - key
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+    ModuleViewData:
+      type: object
+      required:
+        - columns
+        - data
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeyedColumn'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleStats'
+    ModuleStats:
+      type: object
+      required:
+        - name
+        - id
+        - occurences
+        - operators
+        - host_duration
+        - self_host_duration
+        - device_duration
+        - self_device_duration
+        - avg_duration
+        - children
+      properties:
+        name:
+          type: string
+        id:
+          type: string
+        occurences:
+          type: number
+        operators:
+          type: number
+        host_duration:
+          type: number
+        self_host_duration:
+          type: number
+        device_duration:
+          type: number
+        self_device_duration:
+          type: number
+        avg_duration:
+          type: number
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleStats'
+    OperatorNode:
+      type: object
+      required:
+        - name
+        - start_time
+        - end_time
+        - type
+        - tid
+        - children
+      properties:
+        name:
+          type: string
+        start_time:
+          type: number
+        end_time:
+          type: number
+        type:
+          type: string
+        tid:
+          type: number
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperatorNode'
+    OpAgg:
+      type: object
+      required:
+        - name
+        - calls
+        - host_duration
+        - device_duration
+        - self_host_duration
+        - self_device_duration
+      properties:
+        name:
+          type: string
+        calls:
+          type: number
+        host_duration:
+          type: number
+        device_duration:
+          type: number
+        self_host_duration:
+          type: number
+        self_device_duration:
+          type: number
+    OpStats:
+      type: object
+      required:
+        - name
+        - duration
+        - device_duration
+        - total_duration
+        - aggs
+      properties:
+        name:
+          type: string
+        duration:
+          type: number
+        device_duration:
+          type: number
+        total_duration:
+          type: number
+        aggs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpAgg'
+    DiffNode:
+      type: object
+      required:
+        - left
+        - right
+        - children
+        - path
+      properties:
+        left:
+          $ref: '#/components/schemas/OpStats'
+        right:
+          $ref: '#/components/schemas/OpStats'
+        path:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffNode'

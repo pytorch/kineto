@@ -2,6 +2,7 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import Box from '@material-ui/core/Box'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
 import CardHeader from '@material-ui/core/CardHeader'
@@ -16,19 +17,23 @@ import ListSubheader from '@material-ui/core/ListSubheader'
 import MenuItem from '@material-ui/core/MenuItem'
 import Select, { SelectProps } from '@material-ui/core/Select'
 import { makeStyles } from '@material-ui/core/styles'
+import Tab from '@material-ui/core/Tab'
+import Tabs from '@material-ui/core/Tabs'
+import Typography from '@material-ui/core/Typography'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
-import Typography from '@material-ui/core/Typography'
 import 'antd/es/button/style/css'
 import 'antd/es/list/style/css'
 import 'antd/es/table/style/css'
 import clsx from 'clsx'
 import * as React from 'react'
 import * as api from './api'
+import { DiffOverview } from './components/DiffOverview'
 import { DistributedView } from './components/DistributedView'
 import { FullCircularProgress } from './components/FullCircularProgress'
 import { Kernel } from './components/Kernel'
 import { MemoryView } from './components/MemoryView'
+import { ModuleView } from './components/ModuleView'
 import { Operator } from './components/Operator'
 import { Overview } from './components/Overview'
 import { TraceView } from './components/TraceView'
@@ -42,7 +47,8 @@ export enum Views {
   Kernel = 'Kernel',
   Trace = 'Trace',
   Distributed = 'Distributed',
-  Memory = 'Memory'
+  Memory = 'Memory',
+  Module = 'Module'
 }
 
 const ViewNames = {
@@ -51,7 +57,8 @@ const ViewNames = {
   [Views.Kernel]: 'GPU Kernel',
   [Views.Trace]: Views.Trace,
   [Views.Distributed]: Views.Distributed,
-  [Views.Memory]: Views.Memory
+  [Views.Memory]: Views.Memory,
+  [Views.Module]: Views.Module
 }
 
 const drawerWidth = 340
@@ -132,6 +139,10 @@ const useStyles = makeStyles((theme) => ({
 export const App = () => {
   const classes = useStyles()
 
+  // #region - State
+
+  const [selectedTab, setSelectedTab] = React.useState(0)
+
   const [run, setRun] = React.useState<string>('')
   const [runs, setRuns] = React.useState<string[]>([])
   const [runsLoading, setRunsLoading] = React.useState(true)
@@ -146,6 +157,30 @@ export const App = () => {
   const [view, setView] = React.useState<Views | ''>('')
   const [loaded, setLoaded] = React.useState(false)
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
+
+  const [diffLeftWorkerOptions, setDiffLeftWorkerOptions] = React.useState<
+    string[]
+  >([])
+  const [diffLeftSpansOptions, setDiffLeftSpansOptions] = React.useState<
+    string[]
+  >([])
+  const [diffLeftRun, setDiffLeftRun] = React.useState<string>('')
+  const [diffLeftWorker, setDiffLeftWorker] = React.useState<string>('')
+  const [diffLeftSpan, setDiffLeftSpan] = React.useState<string | ''>('')
+
+  const [diffRightWorkerOptions, setDiffRightWorkerOptions] = React.useState<
+    string[]
+  >([])
+  const [diffRightSpansOptions, setDiffRightSpansOptions] = React.useState<
+    string[]
+  >([])
+  const [diffRightRun, setDiffRightRun] = React.useState<string>('')
+  const [diffRightWorker, setDiffRightWorker] = React.useState<string>('')
+  const [diffRightSpan, setDiffRightSpan] = React.useState<string | ''>('')
+
+  const [open, setOpen] = React.useState(true)
+
+  // #endregion
 
   React.useEffect(() => {
     setup().then(() => {
@@ -175,6 +210,50 @@ export const App = () => {
       setRun(firstOrUndefined(runs) ?? '')
     }
   }, [runs])
+
+  // #region - Diff Left
+
+  React.useEffect(() => {
+    if (diffLeftRun) {
+      api.defaultApi.workersGet(diffLeftRun, Views.Overview).then((workers) => {
+        setDiffLeftWorkerOptions(workers)
+      })
+    }
+  }, [diffLeftRun])
+
+  React.useEffect(() => {
+    if (diffLeftRun && diffLeftWorker) {
+      api.defaultApi.spansGet(diffLeftRun, diffLeftWorker).then((spans) => {
+        setDiffLeftSpansOptions(spans)
+      })
+    }
+  }, [diffLeftRun, diffLeftWorker])
+
+  // #endregion
+
+  // #region - Diff Right
+
+  React.useEffect(() => {
+    if (diffRightRun) {
+      api.defaultApi
+        .workersGet(diffRightRun, Views.Overview)
+        .then((workers) => {
+          setDiffRightWorkerOptions(workers)
+        })
+    }
+  }, [diffRightRun])
+
+  React.useEffect(() => {
+    if (diffRightRun && diffRightWorker) {
+      api.defaultApi.spansGet(diffRightRun, diffRightWorker).then((spans) => {
+        setDiffRightSpansOptions(spans)
+      })
+    }
+  }, [diffRightRun, diffRightWorker])
+
+  // #endregion
+
+  // #region - normal
 
   React.useEffect(() => {
     if (run) {
@@ -215,6 +294,13 @@ export const App = () => {
     setSpan(firstOrUndefined(spans) ?? '')
   }, [spans])
 
+  // #endregion
+
+  // #region - Event Handler
+  const handleTabChange = (event: React.ChangeEvent<{}>, value: any) => {
+    setSelectedTab(value as number)
+  }
+
   const handleRunChange: SelectProps['onChange'] = (event) => {
     setRun(event.target.value as string)
     setView('')
@@ -237,7 +323,35 @@ export const App = () => {
     setSpan(event.target.value as string)
   }
 
-  const [open, setOpen] = React.useState(true)
+  const handleDiffLeftRunChange: SelectProps['onChange'] = (event) => {
+    setDiffLeftRun(event.target.value as string)
+    setDiffLeftWorker('')
+    setDiffLeftSpan('')
+  }
+
+  const handleDiffLeftWorkerChange: SelectProps['onChange'] = (event) => {
+    setDiffLeftWorker(event.target.value as string)
+    setDiffLeftSpan('')
+  }
+
+  const handleDiffLeftSpanChange: SelectProps['onChange'] = (event) => {
+    setDiffLeftSpan(event.target.value as string)
+  }
+
+  const handleDiffRightRunChange: SelectProps['onChange'] = (event) => {
+    setDiffRightRun(event.target.value as string)
+    setDiffRightWorker('')
+    setDiffRightSpan('')
+  }
+
+  const handleDiffRightWorkerChange: SelectProps['onChange'] = (event) => {
+    setDiffRightWorker(event.target.value as string)
+    setDiffRightSpan('')
+  }
+
+  const handleDiffRightSpanChange: SelectProps['onChange'] = (event) => {
+    setDiffRightSpan(event.target.value as string)
+  }
 
   const handleDrawerOpen = () => {
     setOpen(true)
@@ -252,6 +366,8 @@ export const App = () => {
   const SetIframeActive = () => {
     iframeRef.current?.focus()
   }
+
+  // #endregion
 
   const renderContent = () => {
     if (!runsLoading && runs.length == 0) {
@@ -269,26 +385,41 @@ export const App = () => {
       return <FullCircularProgress />
     }
 
-    switch (view) {
-      case Views.Overview:
-        return <Overview run={run} worker={worker} span={span} />
-      case Views.Operator:
-        return <Operator run={run} worker={worker} span={span} />
-      case Views.Kernel:
-        return <Kernel run={run} worker={worker} span={span} />
-      case Views.Trace:
-        return (
-          <TraceView
-            run={run}
-            worker={worker}
-            span={span}
-            iframeRef={iframeRef}
-          />
-        )
-      case Views.Distributed:
-        return <DistributedView run={run} worker={worker} span={span} />
-      case Views.Memory:
-        return <MemoryView run={run} worker={worker} span={span} />
+    if (selectedTab === 0) {
+      switch (view) {
+        case Views.Overview:
+          return <Overview run={run} worker={worker} span={span} />
+        case Views.Operator:
+          return <Operator run={run} worker={worker} span={span} />
+        case Views.Kernel:
+          return <Kernel run={run} worker={worker} span={span} />
+        case Views.Trace:
+          return (
+            <TraceView
+              run={run}
+              worker={worker}
+              span={span}
+              iframeRef={iframeRef}
+            />
+          )
+        case Views.Distributed:
+          return <DistributedView run={run} worker={worker} span={span} />
+        case Views.Memory:
+          return <MemoryView run={run} worker={worker} span={span} />
+        case Views.Module:
+          return <ModuleView run={run} worker={worker} span={span} />
+      }
+    } else {
+      return (
+        <DiffOverview
+          run={diffLeftRun}
+          worker={diffLeftWorker}
+          span={diffLeftSpan}
+          expRun={diffRightRun}
+          expWorker={diffRightWorker}
+          expSpan={diffRightSpan}
+        />
+      )
     }
   }
 
@@ -342,37 +473,117 @@ export const App = () => {
           </IconButton>
         </div>
         <Divider />
-        <ListSubheader>Runs</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={run} onChange={handleRunChange}>
-              {runs.map((run) => (
-                <MenuItem value={run}>{run}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
-        <ListSubheader>Views</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={view} onChange={handleViewChange}>
-              {views.map((view) => (
-                <MenuItem value={view}>{ViewNames[view]}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
-        <ListSubheader>Workers</ListSubheader>
-        <ClickAwayListener onClickAway={SetIframeActive}>
-          <FormControl variant="outlined" className={classes.formControl}>
-            <Select value={worker} onChange={handleWorkerChange}>
-              {workers.map((worker) => (
-                <MenuItem value={worker}>{worker}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </ClickAwayListener>
-        {spanComponent()}
+        <Box>
+          <Tabs
+            value={selectedTab}
+            onChange={handleTabChange}
+            aria-label="basic tabs example"
+          >
+            <Tab label="Normal" />
+            <Tab label="Diff" />
+          </Tabs>
+        </Box>
+        {selectedTab == 0 ? (
+          <>
+            <ListSubheader>Runs</ListSubheader>
+            <ClickAwayListener onClickAway={SetIframeActive}>
+              <FormControl variant="outlined" className={classes.formControl}>
+                <Select value={run} onChange={handleRunChange}>
+                  {runs.map((run) => (
+                    <MenuItem value={run}>{run}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </ClickAwayListener>
+            <ListSubheader>Views</ListSubheader>
+            <ClickAwayListener onClickAway={SetIframeActive}>
+              <FormControl variant="outlined" className={classes.formControl}>
+                <Select value={view} onChange={handleViewChange}>
+                  {views.map((view) => (
+                    <MenuItem value={view}>{ViewNames[view]}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </ClickAwayListener>
+            <ListSubheader>Workers</ListSubheader>
+            <ClickAwayListener onClickAway={SetIframeActive}>
+              <FormControl variant="outlined" className={classes.formControl}>
+                <Select value={worker} onChange={handleWorkerChange}>
+                  {workers.map((worker) => (
+                    <MenuItem value={worker}>{worker}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </ClickAwayListener>
+            {spanComponent()}
+          </>
+        ) : (
+          <>
+            <Typography variant="h6">&nbsp;&nbsp;Baseline</Typography>
+            <ListSubheader>Runs</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select value={diffLeftRun} onChange={handleDiffLeftRunChange}>
+                {runs.map((run) => (
+                  <MenuItem value={run}>{run}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Workers</ListSubheader>
+
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select
+                value={diffLeftWorker}
+                onChange={handleDiffLeftWorkerChange}
+              >
+                {diffLeftWorkerOptions.map((worker) => (
+                  <MenuItem value={worker}>{worker}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Spans</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select value={diffLeftSpan} onChange={handleDiffLeftSpanChange}>
+                {diffLeftSpansOptions.map((span) => (
+                  <MenuItem value={span}>{span}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Divider />
+
+            <Typography variant="h6">&nbsp;&nbsp;Experimental</Typography>
+            <ListSubheader>Runs</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select value={diffRightRun} onChange={handleDiffRightRunChange}>
+                {runs.map((run) => (
+                  <MenuItem value={run}>{run}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Workers</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select
+                value={diffRightWorker}
+                onChange={handleDiffRightWorkerChange}
+              >
+                {diffRightWorkerOptions.map((worker) => (
+                  <MenuItem value={worker}>{worker}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ListSubheader>Spans</ListSubheader>
+            <FormControl variant="outlined" className={classes.formControl}>
+              <Select
+                value={diffRightSpan}
+                onChange={handleDiffRightSpanChange}
+              >
+                {diffRightSpansOptions.map((span) => (
+                  <MenuItem value={span}>{span}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        )}
       </Drawer>
       {!open && (
         <Fab

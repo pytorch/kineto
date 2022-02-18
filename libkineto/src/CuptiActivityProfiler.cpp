@@ -430,7 +430,7 @@ void CuptiActivityProfiler::configure(
   } else {
 
     profileStartIter_ = -1;
-    profileEndIter_ = std::numeric_limits<decltype(profileEndIter_)>::max();
+    profileEndIter_ = (std::numeric_limits<decltype(profileEndIter_)>::max)();
 
     if (profileStartTime_ < now) {
       LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();

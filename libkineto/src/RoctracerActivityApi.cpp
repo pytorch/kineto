@@ -212,7 +212,7 @@ int RoctracerActivityApi::processActivities(
 
         a.activityType = ActivityType::CUDA_RUNTIME;
         a.activityName = std::string(name);
-        a.flow.id = item.id;
+        a.flow.id = record->correlation_id;
         a.flow.type = kLinkAsyncCpuGpu;
         a.flow.start = true;
 
@@ -236,7 +236,7 @@ int RoctracerActivityApi::processActivities(
 
         a.activityType = ActivityType::CONCURRENT_KERNEL;
         a.activityName = std::string(name);
-        a.flow.id = item.id;
+        a.flow.id = record->correlation_id;
         a.flow.type = kLinkAsyncCpuGpu;
 
         auto it = kernelNames_.find(record->correlation_id);

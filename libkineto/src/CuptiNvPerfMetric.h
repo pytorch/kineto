@@ -6,6 +6,8 @@
 #include <vector>
 #include <fmt/format.h>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "Logger.h"
 
 namespace KINETO_NAMESPACE {

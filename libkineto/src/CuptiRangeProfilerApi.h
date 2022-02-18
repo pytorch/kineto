@@ -2,14 +2,41 @@
 
 #pragma once
 
+#ifdef HAS_CUPTI
 #include <cuda.h>
+#if defined(CUDART_VERSION) && CUDART_VERSION >= 10000 && CUDART_VERSION < 11040 && CUDA_VERSION >= 10010
+#define HAS_CUPTI_PROFILER 1
+#endif // CUDART_VERSION > 10.00 and < 11.04 && CUDA_VERSION >= 10.10
+#endif // HAS_CUPTI
+
+#if HAS_CUPTI_PROFILER
 #include <cupti_profiler_target.h>
 #include <cupti_target.h>
+#else
+using CUpti_ProfilerRange = enum
+{
+  CUPTI_AutoRange,
+};
+
+using CUpti_ProfilerReplayMode = enum
+{
+  CUPTI_KernelReplay,
+};
+using CUpti_Profiler_BeginPass_Params = struct CUpti_Profiler_Initialize_Params
+{
+  int structSize;
+  void* pPriv;
+};
+using CUpti_Profiler_EndPass_Params = CUpti_Profiler_BeginPass_Params;
+#endif // HAS_CUPTI_PROFILER
+
 #include <chrono>
 #include <mutex>
 #include <string>
 #include <vector>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiNvPerfMetric.h"
 
 /* Cupti Range based profiler session

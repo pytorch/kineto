@@ -1,20 +1,24 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include <cupti.h>
-#include <nvperf_host.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cupti_call.h"
 #include "Logger.h"
 #include "Demangle.h"
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiRangeProfilerApi.h"
 
+#if HAS_CUPTI_PROFILER
+#include <cupti.h>
+#include <nvperf_host.h>
+#include "cupti_call.h"
+#endif // HAS_CUPTI_PROFILER
 
 namespace KINETO_NAMESPACE {
 
-#ifdef HAS_CUPTI
+#if HAS_CUPTI_PROFILER
 
 /// Helper functions
 
@@ -392,6 +396,51 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
 
   return true;
 }
-#endif // HAS_CUPTI
+
+#elif defined(HAS_CUPTI)
+
+// Create empty stubs for the API when CUPTI is not present.
+CuptiRBProfilerSession::CuptiRBProfilerSession(
+    const std::vector<std::string>& metricNames,
+    int deviceId,
+    int maxRanges,
+    int numNestingLevels,
+    CUcontext cuContext)
+    : metricNames_(metricNames),
+      deviceId_(deviceId),
+      maxRanges_(maxRanges),
+      numNestingLevels_(numNestingLevels),
+      cuContext_(cuContext) {}
+void CuptiRBProfilerSession::stop() {}
+void CuptiRBProfilerSession::enable() {}
+void CuptiRBProfilerSession::disable() {}
+void CuptiRBProfilerSession::beginPass() {}
+bool CuptiRBProfilerSession::endPass() { return true; }
+void CuptiRBProfilerSession::flushCounterData() {}
+void CuptiRBProfilerSession::pushRange(const std::string& /*rangeName*/) {}
+void CuptiRBProfilerSession::popRange() {}
+void CuptiRBProfilerSession::asyncStartAndEnable(
+    CUpti_ProfilerRange /*profilerRange*/,
+    CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
+void CuptiRBProfilerSession::asyncDisableAndStop() {}
+CuptiProfilerResult CuptiRBProfilerSession::evalualteMetrics(bool verbose) {
+  static CuptiProfilerResult res;
+  return res;
+};
+void CuptiRBProfilerSession::saveCounterData(
+    const std::string& /*CounterDataFileName*/,
+    const std::string& /*CounterDataSBFileName*/) {}
+void CuptiRBProfilerSession::initCupti() {}
+void CuptiRBProfilerSession::deInitCupti() {}
+void CuptiRBProfilerSession::staticInit() {}
+bool CuptiRBProfilerSession::createCounterDataImage() { return true; }
+void CuptiRBProfilerSession::startInternal(
+    CUpti_ProfilerRange /*profilerRange*/,
+    CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
+std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
+  static std::vector<uint8_t> _vec;
+  return _vec;
+}
+#endif // HAS_CUPTI_PROFILER
 
 } // namespace KINETO_NAMESPACE

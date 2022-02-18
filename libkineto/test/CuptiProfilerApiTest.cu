@@ -6,6 +6,8 @@
 
 #include <cuda.h>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "src/Logger.h"
 #include "src/CuptiRangeProfilerApi.h"
 
@@ -146,6 +148,7 @@ void VectorAddSubtract() {
   cleanUp(h_A, h_B, h_C, h_D, d_A, d_B, d_C, d_D);
 }
 
+#if HAS_CUPTI_PROFILER
 bool runTestWithAutoRange(
     int deviceNum,
     const std::vector<std::string>& metricNames,
@@ -244,6 +247,7 @@ bool runTestWithUserRange(
   }
   return true;
 }
+#endif // HAS_CUPTI_PROFILER
 
 int main(int argc, char* argv[]) {
 
@@ -298,6 +302,7 @@ int main(int argc, char* argv[]) {
 
   VectorAddSubtract();
 
+#if HAS_CUPTI_PROFILER
   CuptiRBProfilerSession::staticInit();
 
   if (!runTestWithUserRange(deviceNum, metricNames, cuContext)) {
@@ -306,6 +311,9 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Failed to profiler test benchmark in auto range";
   }
   CuptiRBProfilerSession::deInitCupti();
+#else
+  LOG(WARNING) << "CuptiRBProfilerSession is not supported.";
+#endif // HAS_CUPTI_PROFILER
   DRIVER_API_CALL(cuCtxDestroy(cuContext));
 
 

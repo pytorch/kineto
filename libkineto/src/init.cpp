@@ -7,6 +7,7 @@
 #include "Config.h"
 #ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
+#include "CuptiActivityApi.h"
 #include "EventProfilerController.h"
 #endif
 #include "cupti_call.h"
@@ -42,6 +43,15 @@ static void initProfilers(
     config_loader.initBaseConfig();
     EventProfilerController::start(ctx, config_loader);
   }
+}
+
+// Some models suffer from excessive instrumentation code gen
+// on dynamic attach which can hang for more than 5+ seconds.
+// If the workload was meant to be traced, preload the CUPTI
+// to take the performance hit early on.
+// https://docs.nvidia.com/cupti/r_main.html#r_overhead
+static bool shouldPreloadCuptiInstrumentation() {
+  return getenv("PRELOAD_CUPTI_INSTRUMENTATION");
 }
 
 static void stopProfiler(
@@ -100,6 +110,10 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
                   << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
       }
     }
+  }
+
+  if (shouldPreloadCuptiInstrumentation()) {
+    CuptiActivityApi::forceLoadCupti();
   }
 #endif // HAS_CUPTI
 

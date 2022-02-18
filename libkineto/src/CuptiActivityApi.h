@@ -61,6 +61,8 @@ class CuptiActivityApi {
   std::atomic_bool stopCollection{false};
   int64_t flushOverhead{0};
 
+  static void forceLoadCupti();
+
  private:
 #ifdef HAS_CUPTI
   int processActivitiesForBuffer(

@@ -48,7 +48,8 @@ export enum Views {
   Trace = 'Trace',
   Distributed = 'Distributed',
   Memory = 'Memory',
-  Module = 'Module'
+  Module = 'Module',
+  Lightning = 'Lightning'
 }
 
 const ViewNames = {
@@ -58,7 +59,8 @@ const ViewNames = {
   [Views.Trace]: Views.Trace,
   [Views.Distributed]: Views.Distributed,
   [Views.Memory]: Views.Memory,
-  [Views.Module]: Views.Module
+  [Views.Module]: Views.Module,
+  [Views.Lightning]: Views.Lightning
 }
 
 const drawerWidth = 340
@@ -407,6 +409,7 @@ export const App = () => {
         case Views.Memory:
           return <MemoryView run={run} worker={worker} span={span} />
         case Views.Module:
+        case Views.Lightning:
           return <ModuleView run={run} worker={worker} span={span} />
       }
     } else {

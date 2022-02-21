@@ -69,7 +69,9 @@ class RunGenerator(object):
 
         profile_run.module_stats = aggegate_module_view(self.profile_data.tid2tree, self.profile_data.events)
         profile_run.pl_module_stats = aggegate_pl_module_view(self.profile_data.tid2tree, self.profile_data.events)
-        if profile_run.module_stats or (profile_run.is_pytorch_lightning and profile_run.pl_module_stats):
+        if profile_run.is_pytorch_lightning and profile_run.pl_module_stats:
+            profile_run.views.append(consts.LIGHTNING_VIEW)
+        elif profile_run.module_stats:
             profile_run.views.append(consts.MODULE_VIEW)
 
         return profile_run

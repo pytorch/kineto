@@ -239,6 +239,8 @@ class CuptiActivityProfiler {
       const CUpti_ActivityExternalCorrelation* correlation);
   void handleRuntimeActivity(
       const CUpti_ActivityAPI* activity, ActivityLogger* logger);
+  void handleOverheadActivity(
+      const CUpti_ActivityOverhead* activity, ActivityLogger* logger);
   void handleGpuActivity(const ITraceActivity& act,
       ActivityLogger* logger);
   template <class T>
@@ -302,6 +304,8 @@ class CuptiActivityProfiler {
   std::map<
       std::pair<int64_t, int64_t>,
       ActivityLogger::ResourceInfo> resourceInfo_;
+
+  std::vector<ActivityLogger::OverheadInfo> overheadInfo_;
 
   // the overhead to flush the activity buffer
   profilerOverhead flushOverhead_;

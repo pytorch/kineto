@@ -324,7 +324,11 @@ class Config : public AbstractConfig {
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
     for (ActivityType t : activityTypes()) {
-      selectedActivityTypes_.insert(t);
+      // Do no enable this by default
+      // TODO: introduce optional types
+      if (t != ActivityType::OVERHEAD) {
+        selectedActivityTypes_.insert(t);
+      }
     }
   }
 

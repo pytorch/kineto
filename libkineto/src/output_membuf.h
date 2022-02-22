@@ -41,6 +41,8 @@ class MemoryTraceLogger : public ActivityLogger {
     resourceInfoList_.emplace_back(info, time);
   }
 
+  void handleOverheadInfo(const OverheadInfo& info, int64_t time) override {}
+
   void handleTraceSpan(const TraceSpan& span) override {
     // Handled separately
   }

@@ -59,6 +59,27 @@ const char* memoryKindString(
   }
 }
 
+const char* overheadKindString(
+    CUpti_ActivityOverheadKind kind) {
+  switch (kind) {
+    case CUPTI_ACTIVITY_OVERHEAD_UNKNOWN:
+      return "Unknown";
+    case CUPTI_ACTIVITY_OVERHEAD_DRIVER_COMPILER:
+      return "Driver Compiler";
+    case CUPTI_ACTIVITY_OVERHEAD_CUPTI_BUFFER_FLUSH:
+      return "Buffer Flush";
+    case CUPTI_ACTIVITY_OVERHEAD_CUPTI_INSTRUMENTATION:
+      return "Instrumentation";
+    case CUPTI_ACTIVITY_OVERHEAD_CUPTI_RESOURCE:
+      return "Resource";
+    case CUPTI_ACTIVITY_OVERHEAD_FORCE_INT:
+      return "Force Int";
+    default:
+      return "Unrecognized";
+  }
+}
+
+
 
 static const char* runtimeCbidNames[] = {
     "INVALID",

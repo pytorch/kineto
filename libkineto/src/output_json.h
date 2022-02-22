@@ -33,6 +33,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       const DeviceInfo& info,
       uint64_t time) override;
 
+  void handleOverheadInfo(const OverheadInfo& info, int64_t time) override;
+
   void handleResourceInfo(const ResourceInfo& info, int64_t time) override;
 
   void handleTraceSpan(const TraceSpan& span) override;

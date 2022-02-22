@@ -153,6 +153,36 @@ void ChromeTraceLogger::handleResourceInfo(
   // clang-format on
 }
 
+void ChromeTraceLogger::handleOverheadInfo(
+    const OverheadInfo& info,
+    int64_t time) {
+  if (!traceOf_) {
+    return;
+  }
+
+  // TOOD: reserve pid = -1 for overhead but we need to rethink how to scale this for
+  // other metadata
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  {{
+    "name": "process_name", "ph": "M", "ts": {}, "pid": -1, "tid": 0,
+    "args": {{
+      "name": "{}"
+    }}
+  }},
+  {{
+    "name": "process_sort_index", "ph": "M", "ts": {}, "pid": -1, "tid": 0,
+    "args": {{
+      "sort_index": {}
+    }}
+  }},)JSON",
+      time,
+      info.name,
+      time,
+      0x100000All);
+  // clang-format on
+}
+
 void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   if (!traceOf_) {
     return;

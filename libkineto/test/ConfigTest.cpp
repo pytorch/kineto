@@ -68,8 +68,9 @@ TEST(ParseTest, DefaultActivityTypes) {
   Config cfg;
   cfg.validate(std::chrono::system_clock::now());
   auto all_activities = activityTypes();
+  // TODO: introduce optional activities
   EXPECT_EQ(cfg.selectedActivityTypes(),
-    std::set<ActivityType>(all_activities.begin(), all_activities.end()));
+    std::set<ActivityType>(all_activities.begin(), all_activities.end() - 1));
 }
 
 TEST(ParseTest, ActivityTypes) {

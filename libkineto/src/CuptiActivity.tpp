@@ -70,6 +70,18 @@ inline void RuntimeActivity::log(ActivityLogger& logger) const {
   logger.handleGenericActivity(*this);
 }
 
+inline void OverheadActivity::log(ActivityLogger& logger) const {
+  logger.handleGenericActivity(*this);
+}
+
+inline bool OverheadActivity::flowStart() const {
+  return false;
+}
+
+inline const std::string OverheadActivity::metadataJson() const {
+  return "";
+}
+
 template<class T>
 inline void GpuActivity<T>::log(ActivityLogger& logger) const {
   logger.handleGpuActivity(*this);

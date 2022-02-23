@@ -140,9 +140,7 @@ void ActivityProfilerController::step() {
   // optimization to not take the lock unless necessary
   if (asyncRequestConfig_ && !profiler_->isActive()) {
     std::lock_guard<std::mutex> lock(asyncConfigLock_);
-
-    auto startIter = asyncRequestConfig_->profileStartIteration() -
-      asyncRequestConfig_->activitiesWarmupIterations();
+    auto startIter = asyncRequestConfig_->startIterationIncludingWarmup();
 
     if (asyncRequestConfig_->hasProfileStartIteration()
         && currentIter >= startIter) {
@@ -150,12 +148,13 @@ void ActivityProfilerController::step() {
                 << " start iteration = "
                 << asyncRequestConfig_->profileStartIteration()
                 << " current iteration = " << currentIter;
+
       if (currentIter > startIter) {
         // adjust the start iteration if it is in the past
         auto newProfileStart = currentIter +
           asyncRequestConfig_->activitiesWarmupIterations();
-        asyncRequestConfig_->setProfileStartIteration(newProfileStart);
         LOG(INFO) << "Start iteration updated to " << newProfileStart;
+        asyncRequestConfig_->setProfileStartIteration(newProfileStart);
       }
       activateConfig(system_clock::now());
     }
@@ -182,13 +181,29 @@ void ActivityProfilerController::scheduleTrace(const Config& config) {
     LOG(ERROR) << "Ignored request - profiler busy";
     return;
   }
-  if (config.hasProfileStartIteration() && iterationCount_ < 0) {
+  int64_t currentIter = iterationCount_;
+  if (config.hasProfileStartIteration() && currentIter < 0) {
     LOG(ERROR) << "Ignored profile iteration count based request as "
                << "application is not updating iteration count";
     return;
   }
   std::lock_guard<std::mutex> lock(asyncConfigLock_);
   asyncRequestConfig_ = config.clone();
+
+  auto startIter = asyncRequestConfig_->startIterationIncludingWarmup();
+
+  if (asyncRequestConfig_->hasProfileStartIteration()
+      && (currentIter > startIter)
+      && asyncRequestConfig_->profileStartIterationRoundUp() > 0) {
+    auto newProfileStart
+      = currentIter + asyncRequestConfig_->activitiesWarmupIterations();
+    // round up to nearest multiple
+    auto divisor = asyncRequestConfig_->profileStartIterationRoundUp();
+    auto rem = newProfileStart % divisor;
+    newProfileStart += ((rem == 0) ? 0 : divisor - rem);
+    LOG(INFO) << "Rounding up profiler start iteration to : " << newProfileStart;
+    asyncRequestConfig_->setProfileStartIteration(newProfileStart);
+  }
 
   // start a profilerLoop() thread to handle request
   if (!profilerThread_) {

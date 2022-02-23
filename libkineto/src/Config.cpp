@@ -81,14 +81,31 @@ constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
 // propagating the request to the profiler.
 // If the request can not be honored, it is up to the profilers to report
 // an error somehow - no checks are done at config parse time.
+// Note PROFILE_START_ITERATION has higher precedence
 constexpr char kProfileStartTimeKey[] = "PROFILE_START_TIME";
 // DEPRECATED - USE PROFILE_START_TIME instead
 constexpr char kRequestTimestampKey[] = "REQUEST_TIMESTAMP";
 
 // Alternatively if the application supports reporting iterations
 // start the profile at specific iteration. If the iteration count
-// is >= this value the profile is started immediately
+// is >= this value the profile is started immediately.
+// A value >= 0 is valid for this config option to take effect.
+// Note PROFILE_START_ITERATION will take precedence over PROFILE_START_TIME.
 constexpr char kProfileStartIterationKey[] = "PROFILE_START_ITERATION";
+
+// Users can also start the profile on an integer multiple of the config
+// value PROFILE_START_ITERATION_ROUNDUP. This knob behaves similar to
+// PROFILE_START_ITERATION but instead of saying : "start collection trace on
+// iteration 500", one can configure it to "start collecting trace on the next
+// 100th iteration".
+//
+// For example,
+//   PROFILE_START_ITERATION_ROUNDUP = 1000, and the current iteration is 2010
+//   The profile will then be collected on the next multiple of 1000 ie. 3000
+// Note PROFILE_START_ITERATION_ROUNDUP will also take precedence over
+// PROFILE_START_TIME.
+constexpr char kProfileStartIterationRoundUpKey[]
+  = "PROFILE_START_ITERATION_ROUNDUP";
 
 // Enable on-demand trigger via kill -USR2 <pid>
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
@@ -182,6 +199,7 @@ Config::Config()
       activitiesOnDemandTimestamp_(milliseconds(0)),
       profileStartTime_(milliseconds(0)),
       profileStartIteration_(-1),
+      profileStartIterationRoundUp_(-1),
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(false),
       enableIpcFabric_(false) {
@@ -316,6 +334,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
       time_point<system_clock>(milliseconds(toInt64(val)));
   } else if (!name.compare(kProfileStartIterationKey)) {
     profileStartIteration_ = toInt32(val);
+  } else if (!name.compare(kProfileStartIterationRoundUpKey)) {
+    profileStartIterationRoundUp_ = toInt32(val);
   } else if (!name.compare(kEnableSigUsr2Key)) {
     enableSigUsr2_ = toBool(val);
   } else if (!name.compare(kEnableIpcFabricKey)) {
@@ -396,6 +416,18 @@ void Config::validate(
         activitiesWarmupDuration() + kDefaultBufferUntilWarmup;
   }
 
+  if (profileStartIterationRoundUp_ == 0) {
+    // setting to 0 will mess up modulo arithmetic, set it to -1 so it has no effect
+    LOG(WARNING) << "Profiler start iteration round up should be >= 1.";
+    profileStartIterationRoundUp_ = -1;
+  }
+
+  if (profileStartIterationRoundUp_ > 0 && !hasProfileStartIteration()) {
+    VLOG(0) << "Setting profiler start iteration to 0 so this config is "
+            << "triggered via iteration count.";
+    profileStartIteration_ = 0;
+  }
+
   if (selectedActivityTypes_.size() == 0) {
     selectDefaultActivityTypes();
   }
@@ -407,12 +439,14 @@ void Config::setReportPeriod(milliseconds msecs) {
 
 void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "Log file: " << activitiesLogFile() << std::endl;
-  s << "Trace Iterations: " << activitiesRunIterations()
-    << std::endl;
   if (hasProfileStartIteration()) {
     s << "Trace start Iteration: " << profileStartIteration() << std::endl;
     s << "Trace warmup Iterations: " << activitiesWarmupIterations() << std::endl;
     s << "Trace profile Iterations: " << activitiesRunIterations() << std::endl;
+    if (profileStartIterationRoundUp() > 0) {
+      s << "Trace start iteration roundup : " << profileStartIterationRoundUp()
+        << std::endl;
+    }
   } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
     LOG(INFO) << "Trace start time: "

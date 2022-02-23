@@ -226,15 +226,28 @@ inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
   return out_of_range;
 }
 
+inline static bool isBlockListedRuntimeCbid(CUpti_CallbackId cbid) {
+  // Some CUDA calls that are very frequent and also not very interesting.
+  // Filter these out to reduce trace size.
+  if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020 ||
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020 ||
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020 ||
+      // Don't care about cudaEvents
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreate_v3020 ||
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreateWithFlags_v3020 ||
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventRecord_v3020 ||
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020 ||
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventSynchronize_v3020) {
+    return true;
+  }
+
+  return false;
+}
+
 void CuptiActivityProfiler::handleRuntimeActivity(
     const CUpti_ActivityAPI* activity,
     ActivityLogger* logger) {
-  // Some CUDA calls that are very frequent and also not very interesting.
-  // Filter these out to reduce trace size.
-  if (activity->cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020 ||
-      activity->cbid == CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020 ||
-      activity->cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020) {
-    // Ignore these
+  if (isBlockListedRuntimeCbid(activity->cbid)) {
     return;
   }
   VLOG(2) << activity->correlationId

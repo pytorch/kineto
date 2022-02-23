@@ -114,6 +114,12 @@ void CuptiActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
+void CuptiActivityApi::forceLoadCupti() {
+#ifdef HAS_CUPTI
+  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+#endif
+}
+
 #ifdef HAS_CUPTI
 void CUPTIAPI CuptiActivityApi::bufferRequestedTrampoline(
     uint8_t** buffer,

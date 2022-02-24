@@ -226,8 +226,20 @@ class Config : public AbstractConfig {
     return profileStartIteration_ >= 0 && activitiesRunIterations_ > 0;
   }
 
-  void setProfileStartIteration(int64_t iter) {
+  void setProfileStartIteration(int iter) {
     profileStartIteration_ = iter;
+  }
+
+  int profileStartIterationRoundUp() const {
+    return profileStartIterationRoundUp_;
+  }
+
+  // calculate the start iteration accounting for warmup
+  int startIterationIncludingWarmup() const {
+    if (!hasProfileStartIteration()) {
+      return -1;
+    }
+    return profileStartIteration_ - activitiesWarmupIterations_;
   }
 
   const std::chrono::seconds maxRequestAge() const;
@@ -402,6 +414,7 @@ class Config : public AbstractConfig {
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
   // or start iteration
   int profileStartIteration_;
+  int profileStartIterationRoundUp_;
 
   // DEPRECATED
   std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;

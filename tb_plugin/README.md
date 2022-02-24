@@ -446,6 +446,17 @@ one worker is much larger than others, there may be a problem of loading balance
     *   The middle flamegraph shows the torch.nn.Module hierarchy information
     *   The bottom graph shows the main thread operators tree.
 
+* Lightning View
+
+    If the Chrome tracing file is from PytorchLightning job, the plugin will show a Lightning View which is customized for Pytorch Lightning.
+    All the data of this view is from PytorchLightning framework.
+
+    ![Alt text](./docs/images/lightning_view.png)
+
+    *   The top table shows the model structure. The meaning of metrics in the table is same as Module View.
+    *   The middle flamegraph shows the model hierarchy information.
+    *   The bottom graph shows the call tree of all hooks in PytorchLightning.
+
 * Diff Run View
 
     The diff run feature helps to compare two run by logical timeline. The key comparision operators include backward, dataloader, torch.nn.Module, optimizer. If each operator contains these sub-operators internally, the diff run could be zoom in by click the bar.

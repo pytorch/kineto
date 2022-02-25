@@ -41,9 +41,14 @@ class ActivityLogger {
   };
 
   struct ResourceInfo {
-    ResourceInfo(int64_t deviceId, int64_t id, const std::string& name) :
-        id(id), deviceId(deviceId), name(name) {}
+    ResourceInfo(
+        int64_t deviceId,
+        int64_t id,
+        int64_t sortIndex,
+        const std::string& name) :
+        id(id), sortIndex(sortIndex), deviceId(deviceId), name(name) {}
     int64_t id;
+    int64_t sortIndex;
     int64_t deviceId;
     const std::string name;
   };

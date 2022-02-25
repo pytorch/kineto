@@ -325,9 +325,9 @@ bool Config::handleOption(const std::string& name, std::string& val) {
 
   // Common
   else if (!name.compare(kRequestTimestampKey)) {
-    LOG(WARNING) << kRequestTimestampKey
-                 << " has been deprecated - please use "
-                 << kProfileStartTimeKey;
+    VLOG(0) << kRequestTimestampKey
+            << " has been deprecated - please use "
+            << kProfileStartTimeKey;
     requestTimestamp_ = handleRequestTimestamp(toInt64(val));
   } else if (!name.compare(kProfileStartTimeKey)) {
     profileStartTime_ =

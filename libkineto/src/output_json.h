@@ -81,6 +81,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
 
+  std::string& sanitizeStrForJSON(std::string& value);
+
   std::string fileName_;
   std::ofstream traceOf_;
 };

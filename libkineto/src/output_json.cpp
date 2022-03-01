@@ -35,6 +35,14 @@ static constexpr char kDefaultLogFileFmt[] =
 static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 #endif
 
+std::string& ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
+// Replace all backslashes with forward slash because Windows paths causing JSONDecodeError.
+#ifdef _WIN32
+  std::replace(value.begin(), value.end(), '\\', '/');
+#endif
+  return value;
+}
+
 void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (const auto& kv : metadata) {
@@ -546,7 +554,7 @@ void ChromeTraceLogger::finalizeTrace(
         }
       }
       value.append("]");
-      PreparedMetadata[kv.first] = value;
+      PreparedMetadata[kv.first] = sanitizeStrForJSON(value);
     }
   }
   metadataToJSON(PreparedMetadata);
@@ -555,7 +563,7 @@ void ChromeTraceLogger::finalizeTrace(
   // Putting this here because the last entry MUST not end with a comma.
   traceOf_ << fmt::format(R"JSON(
   "traceName": "{}"
-}})JSON", fileName_);
+}})JSON", sanitizeStrForJSON(fileName_));
   // clang-format on
 
   traceOf_.close();

@@ -142,6 +142,7 @@ void VectorAddSubtract() {
     diff = h_A[i] - h_B[i];
     if (h_C[i] != sum || h_D[i] != diff) {
       LOG(ERROR) << "Result verification failed";
+      break;
     }
   }
 
@@ -152,26 +153,35 @@ void VectorAddSubtract() {
 bool runTestWithAutoRange(
     int deviceNum,
     const std::vector<std::string>& metricNames,
-    CUcontext cuContext) {
+    CUcontext cuContext,
+    bool async) {
 
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
   CuptiRBProfilerSession profiler(
-      metricNames, deviceNum, 2, 1, cuContext);
+      metricNames, deviceNum, 2, 1, async ? nullptr : cuContext);
 
   CUpti_ProfilerRange profilerRange = CUPTI_AutoRange;
   CUpti_ProfilerReplayMode profilerReplayMode = CUPTI_KernelReplay;
 
-  profiler.start(profilerRange, profilerReplayMode);
+  if (async) {
+    profiler.asyncStartAndEnable(profilerRange, profilerReplayMode);
+  } else {
+    profiler.start(profilerRange, profilerReplayMode);
+    profiler.enable();
+  }
 
-  profiler.enable();
   VectorAddSubtract();
-  profiler.disable();
 
-  // stop profiler
-  profiler.stop();
+  if (!async) {
+    profiler.disable();
+    // stop profiler
+    profiler.stop();
+  } else {
+    profiler.asyncDisableAndStop();
+  }
 
-  auto result = profiler.evalualteMetrics(true);
+  auto result = profiler.evaluateMetrics(true);
 
   // check results
   EXPECT_EQ(result.metricNames.size(), 3);
@@ -196,37 +206,49 @@ bool runTestWithAutoRange(
 bool runTestWithUserRange(
     int deviceNum,
     const std::vector<std::string>& metricNames,
-    CUcontext cuContext) {
+    CUcontext cuContext,
+    bool async = false) {
 
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
   CuptiRBProfilerSession profiler(
-      metricNames, deviceNum, numRanges, 1, cuContext);
+      metricNames, deviceNum, numRanges, 1, async ? nullptr : cuContext);
 
   CUpti_ProfilerRange profilerRange = CUPTI_UserRange;
   CUpti_ProfilerReplayMode profilerReplayMode = CUPTI_UserReplay;
 
-  profiler.start(profilerRange, profilerReplayMode);
+  if (async) {
+    profiler.asyncStartAndEnable(profilerRange, profilerReplayMode);
+    { VectorAddSubtract(); }
+    profiler.disableAndStop();
+  } else {
+    profiler.start(profilerRange, profilerReplayMode);
 
-  /* User takes the resposiblity of replaying the kernel launches */
-  bool replay = true;
-  do {
-    profiler.beginPass();
-    {
-      profiler.enable();
-      std::string rangeName = "vecAddSub";
-      profiler.pushRange(rangeName);
-      { VectorAddSubtract(); }
-      profiler.popRange();
-      profiler.disable();
-    }
-    LOG(INFO) << "Replay starting.";
-    replay = profiler.endPass();
-  } while (!replay);
-  // stop profiler
-  profiler.stop();
+    /* User takes the resposiblity of replaying the kernel launches */
+    bool replay = true;
+    do {
+      profiler.beginPass();
+      {
+        profiler.enable();
 
-  auto result = profiler.evalualteMetrics(true);
+        std::string rangeName = "vecAddSub";
+        profiler.pushRange(rangeName);
+
+        { VectorAddSubtract(); }
+
+        profiler.popRange();
+        profiler.disable();
+      }
+      LOG(INFO) << "Replay starting.";
+      replay = profiler.endPass();
+
+    } while (!replay);
+
+    // stop profiler
+    profiler.stop();
+  }
+  VectorAddSubtract();
+  auto result = profiler.evaluateMetrics(true);
 
   // check results
   EXPECT_EQ(result.metricNames.size(), 3);
@@ -240,7 +262,10 @@ bool runTestWithUserRange(
       // smsp__warps_launched.avg
       EXPECT_NE(measurement.values[0], 0);
       // smsp__sass_thread_inst_executed_op_dadd_pred_on.sum
-      EXPECT_EQ(measurement.values[1], 100000);
+      // in async mode multiple passes are not supported yet
+      if (!async) {
+        EXPECT_EQ(measurement.values[1], 100000);
+      }
       // sm__inst_executed_pipe_tensor.sum
       //EXPECT_EQ(measurement.values[2], 0);
     }
@@ -289,6 +314,8 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "CUPTI Profiler is not supported  with compute capability < 7.0";
     return -2;
   }
+  
+  CuptiRBProfilerSession::staticInit();
 
   // metrics to profile
   std::vector<std::string> metricNames = {
@@ -305,11 +332,16 @@ int main(int argc, char* argv[]) {
 #if HAS_CUPTI_PROFILER
   CuptiRBProfilerSession::staticInit();
 
-  if (!runTestWithUserRange(deviceNum, metricNames, cuContext)) {
+  if (!runTestWithUserRange(deviceNum, metricNames, cuContext, false)) {
     LOG(ERROR) << "Failed to profiler test benchmark in user range";
-  } else if (!runTestWithAutoRange(deviceNum, metricNames, cuContext)) {
+  } else if (!runTestWithAutoRange(deviceNum, metricNames, cuContext, false)) {
     LOG(ERROR) << "Failed to profiler test benchmark in auto range";
+  } else if (!runTestWithUserRange(deviceNum, metricNames, cuContext, true)) {
+    LOG(ERROR) << "Failed to profiler test benchmark in user range async";
+  } else if (!runTestWithAutoRange(deviceNum, metricNames, cuContext, true)) {
+    LOG(ERROR) << "Failed to profiler test benchmark in auto range async";
   }
+
   CuptiRBProfilerSession::deInitCupti();
 #else
   LOG(WARNING) << "CuptiRBProfilerSession is not supported.";

@@ -2,12 +2,24 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef HAS_CUPTI
+#include <cupti.h>
+#include <nvperf_host.h>
+#endif // HAS_CUPTI
+#include <mutex>
+#include <unordered_map>
 
+#ifdef HAS_CUPTI
+#include "cupti_call.h"
+#endif
+
+#include "time_since_epoch.h"
 #include "Logger.h"
 #include "Demangle.h"
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "CuptiCallbackApiMock.h"
 #include "CuptiRangeProfilerApi.h"
 
 #if HAS_CUPTI_PROFILER
@@ -19,13 +31,36 @@
 namespace KINETO_NAMESPACE {
 
 #if HAS_CUPTI_PROFILER
+constexpr char kRootUserRangeName[] = "__profile__";
+constexpr int kCallbacksCountToFlush = 500;
+
+// Should we set Counter availability image ourselves?
+// Disabled this right now as this call conflicts with DCGM
+// It is not clear why it should conflict except it being a profiler API call
+//  TODO Revisit
+constexpr bool kSetCounterAvail = false;
+
+// Shared state to track one Cupti Profiler API per Device
+namespace {
+// per device profiler maps
+std::unordered_map<uint32_t, CuptiRBProfilerSession*> profiler_map;
+std::unordered_map<uint32_t, bool> enable_flag;
+std::unordered_map<uint32_t, bool> disable_flag;
+
+std::mutex contextMutex_;
+std::unordered_map<CUcontext, int> ctx_to_dev;
+std::set<uint32_t> active_devices;
+}
+
+// forward declarations
+void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid);
+void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
 
 /// Helper functions
 
 // Available raw counters
 std::vector<uint8_t> getCounterAvailiability(CUcontext cuContext) {
   std::vector<uint8_t> counterAvailabilityImage;
-
   CUpti_Profiler_GetCounterAvailability_Params getCounterAvailabilityParams = {
       CUpti_Profiler_GetCounterAvailability_Params_STRUCT_SIZE, nullptr};
   getCounterAvailabilityParams.ctx = cuContext;
@@ -55,6 +90,161 @@ std::string getChipName(int deviceId) {
   return getChipNameParams.pChipName;
 }
 
+inline uint32_t getDevID(CUcontext ctx) {
+  uint32_t device_id = UINT32_MAX;
+  CUPTI_CALL(cuptiGetDeviceId(ctx, &device_id));
+  if (device_id == UINT32_MAX) {
+    LOG(ERROR) << "Could not determine dev id for = " << ctx;
+  }
+  return device_id;
+}
+
+// We use CUPTI Callback functions in three ways :
+//   1. Track cuda contexts and maintain a list of active GPUs to profile
+//   2. Callbacks on kernel launches to track the name of automatic
+//      ranges that correspond to names of kernels
+//   3. Lastly CUPTI profiler has to be enabled on the same thread executing
+//      the CUDA kernels. We use Callbacks to enable the profiler
+//      asynchronously from another thread.
+
+void disableKernelCallbacks();
+
+void trackCudaCtx(
+    CUpti_CallbackDomain /*domain*/,
+    CUpti_CallbackId cbid,
+    const CUpti_CallbackData* cbInfo) {
+  auto *d = reinterpret_cast<const CUpti_ResourceData*>(cbInfo);
+  auto ctx = d->context;
+  uint32_t device_id = getDevID(ctx);
+
+  if (device_id == UINT32_MAX) {
+    return;
+  }
+
+  __trackCudaCtx(ctx, device_id, cbid);
+}
+
+void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
+  std::lock_guard<std::mutex> g(contextMutex_);
+  if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_CREATED) {
+    VLOG(0) << "CUPTI Profiler observed CUDA Context created = "
+            << ctx << " device id = " << device_id;
+    active_devices.insert(device_id);
+    if constexpr (kSetCounterAvail) {
+      if (active_devices.size() == 1) {
+      CuptiRBProfilerSession::setCounterAvailabilityImage(
+          getCounterAvailiability(ctx));
+      }
+    }
+    ctx_to_dev[ctx] = device_id;
+
+  } else if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING) {
+    VLOG(0) << "CUPTI Profiler observed CUDA Context destroyed = "
+            << ctx << " device id = " << device_id;
+    auto it = active_devices.find(device_id);
+    if (it != active_devices.end()) {
+      active_devices.erase(it);
+      ctx_to_dev.erase(ctx);
+    }
+  }
+}
+
+void trackCudaKernelLaunch(
+    CUpti_CallbackDomain /*domain*/,
+    CUpti_CallbackId /*cbid*/,
+    const CUpti_CallbackData* cbInfo) {
+  VLOG(1) << " Trace : Callback name = "
+          << (cbInfo->symbolName ?  cbInfo->symbolName: "")
+          << " context ptr = " << cbInfo->context;
+  auto ctx = cbInfo->context;
+  // should be in CUPTI_API_ENTER call site
+  if (cbInfo->callbackSite != CUPTI_API_ENTER) {
+    return;
+  }
+  __trackCudaKernelLaunch(ctx, cbInfo->symbolName);
+}
+
+void __trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName) {
+  VLOG(0) << " Tracking kernel name = " << (kernelName ? kernelName : "")
+          << " context ptr = " << ctx;
+
+  uint32_t device_id = 0;
+  if (auto it = ctx_to_dev.find(ctx); it == ctx_to_dev.end()) {
+    // Warning here could be too noisy
+    VLOG(0) << " Could not find corresponding device to ctx = " << ctx;
+    return;
+  } else {
+    device_id = it->second;
+  }
+
+  auto pit = profiler_map.find(device_id);
+  if (pit == profiler_map.end() || pit->second == nullptr) {
+    return;
+  }
+  auto profiler = pit->second;
+
+  if (enable_flag[device_id]) {
+    LOG(INFO) << "Callback handler is enabling cupti profiler";
+    profiler->startAndEnable();
+    enable_flag[device_id] = false;
+
+  } else if (disable_flag[device_id]) {
+    LOG(INFO) << "Callback handler is disabling cupti profiler";
+    profiler->disableAndStop();
+    return;
+  }
+
+  if (profiler->curRange_ == CUPTI_AutoRange) {
+    profiler->logKernelName(kernelName ? kernelName : "__missing__");
+  }
+
+  /* TODO add per kernel time logging
+  if (measure_per_kernel) {
+    profiler->kernelStartTs_.push_back(
+        std::chrono::high_resolution_clock::now());
+  }
+  */
+
+  // periodically flush profiler data from GPU
+  if (profiler->numCallbacks_ % kCallbacksCountToFlush == 0) {
+    profiler->flushCounterData();
+  }
+  profiler->numCallbacks_++;
+}
+
+void enableKernelCallbacks() {
+  auto& cbapi = CuptiCallbackApi::singleton();
+  bool status = cbapi.enableCallback(
+      CUPTI_CB_DOMAIN_RUNTIME_API,
+      CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
+  if (!status) {
+    LOG(WARNING) << "CUPTI Range Profiler unable to "
+                 << "enable cuda kernel launch callback";
+    return;
+  }
+  LOG(INFO) << "CUPTI Profiler kernel callbacks enabled";
+}
+
+void disableKernelCallbacks() {
+  auto& cbapi = CuptiCallbackApi::singleton();
+  bool status = cbapi.disableCallback(
+      CUPTI_CB_DOMAIN_RUNTIME_API,
+      CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
+  if (!status) {
+    LOG(WARNING) << "CUPTI Range Profiler unable to "
+                 << "disable cuda kernel launch callback";
+    return;
+  }
+  LOG(INFO) << "CUPTI Profiler kernel callbacks disabled";
+}
+
+// static
+std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() {
+  std::lock_guard<std::mutex> g(contextMutex_);
+  return active_devices;
+}
 
 // static
 void CuptiRBProfilerSession::initCupti() {
@@ -73,6 +263,35 @@ void CuptiRBProfilerSession::deInitCupti() {
 // static
 void CuptiRBProfilerSession::staticInit() {
   CuptiRBProfilerSession::initCupti();
+
+  // Register CUPTI callbacks
+  auto& cbapi = CuptiCallbackApi::singleton();
+  CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
+  bool status = cbapi.registerCallback(
+      domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, trackCudaCtx);
+  status = status && cbapi.registerCallback(
+      domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, trackCudaCtx);
+  status = status && cbapi.enableCallback(
+      domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
+  status = status && cbapi.enableCallback(
+      domain, CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
+
+  if (!status) {
+    LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda context "
+                 << "create and destroy callbacks";
+    CUPTI_CALL(cbapi.getCuptiStatus());
+    return;
+  }
+
+  domain = CUPTI_CB_DOMAIN_RUNTIME_API;
+  status = cbapi.registerCallback(
+      domain, CuptiCallbackApi::CUDA_LAUNCH_KERNEL, trackCudaKernelLaunch);
+
+  if (!status) {
+    LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda kernel "
+                 << "launch callback";
+    return;
+  }
 }
 
 // static
@@ -143,8 +362,14 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
   endPassParams_ = {CUpti_Profiler_EndPass_Params_STRUCT_SIZE, nullptr};
 
   initSuccess_ = true;
+  profiler_map[deviceId] = this;
+}
 
-  // TODO profiler_map[deviceId] = this;
+// used in unittests only
+CuptiRBProfilerSession::CuptiRBProfilerSession(int deviceId, CUcontext ctx)
+  : deviceId_(deviceId), cuContext_(ctx) {
+  initSuccess_ = true;
+  profiler_map[deviceId] = this;
 }
 
 void CuptiRBProfilerSession::startInternal(
@@ -157,6 +382,16 @@ void CuptiRBProfilerSession::startInternal(
   if (!initSuccess_) {
     LOG(WARNING) << __func__ << "() bailing out since initialization failed";
     return;
+  }
+
+  if (cuContext_ == nullptr) {
+    for (const auto& it : ctx_to_dev) {
+      if (it.second == deviceId_) {
+        cuContext_ = it.first;
+        break;
+      }
+    }
+    LOG(INFO) << " Cupti Profiler using CUDA context = " << cuContext_;
   }
 
   profilerStartTs_ = std::chrono::high_resolution_clock::now();
@@ -202,6 +437,11 @@ void CuptiRBProfilerSession::startInternal(
     return;
   }
   profilerInitDoneTs_ = std::chrono::high_resolution_clock::now();
+
+  if (curRange_ == CUPTI_AutoRange) {
+    enableKernelCallbacks();
+  }
+  profilingActive_ = true;
 }
 
 void CuptiRBProfilerSession::stop() {
@@ -219,7 +459,10 @@ void CuptiRBProfilerSession::stop() {
       CUpti_Profiler_EndSession_Params_STRUCT_SIZE, nullptr};
   CUPTI_CALL(cuptiProfilerEndSession(&endSessionParams));
 
+  disableKernelCallbacks();
+
   profilerStopTs_ = std::chrono::high_resolution_clock::now();
+  profilingActive_ = false;
 }
 
 void CuptiRBProfilerSession::beginPass() {
@@ -267,16 +510,6 @@ void CuptiRBProfilerSession::disable() {
   CUPTI_CALL(cuptiProfilerDisableProfiling(&disableProfilingParams));
 }
 
-void CuptiRBProfilerSession::asyncStartAndEnable(
-    CUpti_ProfilerRange /*profilerRange*/,
-    CUpti_ProfilerReplayMode /*profilerReplayMode*/) {
-  /* TBD */
-}
-
-void CuptiRBProfilerSession::asyncDisableAndStop() {
-  /* TBD */
-}
-
 /// User range based profiling
 void CuptiRBProfilerSession::pushRange(const std::string& rangeName) {
   LOG(INFO) << " CUPTI pushrange ( " << rangeName << " )";
@@ -287,17 +520,66 @@ void CuptiRBProfilerSession::pushRange(const std::string& rangeName) {
 }
 
 void CuptiRBProfilerSession::popRange() {
-  LOG(INFO) << "Pop User range";
+  LOG(INFO) << " CUPTI pop range";
   CUpti_Profiler_PopRange_Params popRangeParams = {
       CUpti_Profiler_PopRange_Params_STRUCT_SIZE, nullptr};
   CUPTI_CALL(cuptiProfilerPopRange(&popRangeParams));
 }
 
-CuptiProfilerResult CuptiRBProfilerSession::evalualteMetrics(
+void CuptiRBProfilerSession::startAndEnable() {
+  startInternal(curRange_, curReplay_);
+  if (curReplay_ == CUPTI_UserReplay) {
+    beginPass();
+  }
+  enable();
+  if (curRange_ == CUPTI_UserRange) {
+    pushRange(kRootUserRangeName);
+  }
+  enable_flag[deviceId_] = false;
+}
+
+void CuptiRBProfilerSession::disableAndStop() {
+  if (curRange_ == CUPTI_UserRange) {
+    popRange();
+  }
+  disable();
+  if (curReplay_ == CUPTI_UserReplay) {
+    endPass();
+    flushCounterData();
+  }
+  stop();
+  disable_flag[deviceId_] = false;
+}
+
+void CuptiRBProfilerSession::asyncStartAndEnable(
+    CUpti_ProfilerRange profilerRange,
+    CUpti_ProfilerReplayMode profilerReplayMode) {
+  LOG(INFO) << "Starting CUPTI profiler asynchronously on device = "
+            << deviceId_ << " profiler range = "
+            << ((profilerRange == CUPTI_AutoRange) ? "autorange" : "userrange")
+            << " replay mode = "
+            << ((profilerReplayMode == CUPTI_KernelReplay) ? "kernel" : "user");
+  curReplay_ = profilerReplayMode;
+  curRange_ = profilerRange;
+  enable_flag[deviceId_] = true;
+  enableKernelCallbacks();
+}
+
+void CuptiRBProfilerSession::asyncDisableAndStop() {
+  LOG(INFO) << "Stopping CUPTI profiler asynchronously on device = "
+            << deviceId_ << " cu context = " << cuContext_;
+  disable_flag[deviceId_] = true;
+}
+
+
+CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(
     bool verbose) {
   if (!initSuccess_) {
     LOG(WARNING) << "Profiling failed, no results to return";
     return {};
+  }
+  if (profilingActive_) {
+    disableAndStop();
   }
 
   LOG(INFO) << "Total kernels logged = " << kernelNames_.size();
@@ -307,7 +589,6 @@ CuptiProfilerResult CuptiRBProfilerSession::evalualteMetrics(
     }
     LOG(INFO) << "Profiler Range data : ";
   }
-  LOG(INFO) << "Profiler Range data : ";
 
   auto results = nvperf::evalMetricValues(
       chipName_, counterDataImage, metricNames_, verbose /*verbose*/);
@@ -322,6 +603,14 @@ CuptiProfilerResult CuptiRBProfilerSession::evalualteMetrics(
   LOG(INFO) << "Total profiler init time = " << init_dur_ms.count() << " ms";
 
   return results;
+}
+
+std::unique_ptr<TraceSpan> CuptiRBProfilerSession::getProfilerTraceSpan() {
+  return std::make_unique<TraceSpan>(
+      timeSinceEpoch(profilerStartTs_),
+      timeSinceEpoch(profilerStopTs_),
+      "__cupti_profiler__"
+  );
 }
 
 void CuptiRBProfilerSession::saveCounterData(
@@ -423,7 +712,7 @@ void CuptiRBProfilerSession::asyncStartAndEnable(
     CUpti_ProfilerRange /*profilerRange*/,
     CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
 void CuptiRBProfilerSession::asyncDisableAndStop() {}
-CuptiProfilerResult CuptiRBProfilerSession::evalualteMetrics(bool verbose) {
+CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
   static CuptiProfilerResult res;
   return res;
 };
@@ -443,4 +732,19 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
 }
 #endif // HAS_CUPTI_PROFILER
 
+namespace testing {
+
+void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
+#if HAS_CUPTI_PROFILER
+  __trackCudaCtx(ctx, device_id, cbid);
+#endif // HAS_CUPTI_PROFILER
+}
+
+void trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
+#if HAS_CUPTI_PROFILER
+  __trackCudaKernelLaunch(ctx, kernelName);
+#endif // HAS_CUPTI_PROFILER
+}
+
+} // namespace testing
 } // namespace KINETO_NAMESPACE

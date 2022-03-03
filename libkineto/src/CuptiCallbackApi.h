@@ -12,6 +12,10 @@
 #include <mutex>
 #include <set>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "CuptiCallbackApiMock.h"
+
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
@@ -25,20 +29,6 @@ using namespace libkineto;
  *  Note: one design choice we made is to only support simple function pointers
  *  in order to speed up the implementation for fast path.
  */
-
-#ifndef HAS_CUPTI
-enum CUpti_CallbackDomain {
-  CUPTI_CB_DOMAIN_RESOURCE,
-  CUPTI_CB_DOMAIN_RUNTIME_API,
-};
-enum CUpti_CallbackData {
-  CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
-  CUPTI_CBID_RESOURCE_CONTEXT_CREATED,
-  CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING,
-};
-
-using CUpti_CallbackId = size_t;
-#endif
 
 using CuptiCallbackFn = void(*)(
     CUpti_CallbackDomain domain,

@@ -157,7 +157,7 @@ void ChromeTraceLogger::handleResourceInfo(
       time, info.deviceId, info.id,
       info.name,
       time, info.deviceId, info.id,
-      info.id);
+      info.sortIndex);
   // clang-format on
 }
 
@@ -243,11 +243,21 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
 
 static std::string traceActivityJson(const ITraceActivity& activity) {
   // clang-format off
+  int64_t ts = activity.timestamp();
+  int64_t duration = activity.duration();
+  if (activity.type() ==  ActivityType::GPU_USER_ANNOTATION) {
+    // The GPU user annotations start at the same time as the
+    // first associated GPU activity. Since they appear later
+    // in the trace file, this causes a visualization issue in Chrome.
+    // Make it start one us earlier.
+    ts--;
+    duration++; // Still need it to end at the orginal point
+  }
   return fmt::format(R"JSON(
     "name": "{}", "pid": {}, "tid": {},
     "ts": {}, "dur": {})JSON",
       activity.name(), activity.deviceId(), activity.resourceId(),
-      activity.timestamp(), activity.duration());
+      ts, duration);
   // clang-format on
 }
 
@@ -293,10 +303,6 @@ void ChromeTraceLogger::handleGenericActivity(
         op.traceSpan()->name,
         op.traceSpan()->iteration);
   }
-  const std::string tid =
-      op.type() == ActivityType::GPU_USER_ANNOTATION ?
-      fmt::format("stream {} annotations", op.resourceId()) :
-      fmt::format("{}", op.resourceId());
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(

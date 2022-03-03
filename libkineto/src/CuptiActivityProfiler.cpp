@@ -153,7 +153,13 @@ void CuptiActivityProfiler::processCpuTrace(
 #ifdef HAS_CUPTI
 inline void CuptiActivityProfiler::handleCorrelationActivity(
     const CUpti_ActivityExternalCorrelation* correlation) {
-  cpuCorrelationMap_[correlation->correlationId] = correlation->externalId;
+  if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0) {
+    cpuCorrelationMap_[correlation->correlationId] = correlation->externalId;
+  } else if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1){
+    userCorrelationMap_[correlation->correlationId] = correlation->externalId;
+  } else {
+    LOG(ERROR) << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
+  }
 }
 #endif // HAS_CUPTI
 
@@ -174,19 +180,14 @@ static GenericTraceActivity createUserGpuSpan(
 }
 
 void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
-    const ITraceActivity&,
+    const ITraceActivity& userActivity,
     const ITraceActivity& gpuActivity) {
-  if (!gpuActivity.linkedActivity()) {
-    VLOG(0) << "Missing linked activity";
-    return;
-  }
-  const ITraceActivity& cpuActivity = *gpuActivity.linkedActivity();
   StreamKey key(gpuActivity.deviceId(), gpuActivity.resourceId());
   CorrelationSpanMap& correlationSpanMap = streamSpanMap_[key];
-  auto it = correlationSpanMap.find(cpuActivity.correlationId());
+  auto it = correlationSpanMap.find(userActivity.correlationId());
   if (it == correlationSpanMap.end()) {
     auto it_success = correlationSpanMap.insert({
-        cpuActivity.correlationId(), createUserGpuSpan(cpuActivity, gpuActivity)
+        userActivity.correlationId(), createUserGpuSpan(userActivity, gpuActivity)
     });
     it = it_success.first;
   }
@@ -339,9 +340,19 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   checkTimestampOrder(&act);
   VLOG(2) << act.correlationId() << ": "
           << act.name();
-  recordStream(act.deviceId(), act.resourceId());
+  recordStream(act.deviceId(), act.resourceId(), "");
   act.log(*logger);
   updateGpuNetSpan(act);
+  if (config_->selectedActivityTypes().count(ActivityType::GPU_USER_ANNOTATION)) {
+    const auto& it = userCorrelationMap_.find(act.correlationId());
+    if (it != userCorrelationMap_.end()) {
+      const auto& it2 = activityMap_.find(it->second);
+      if (it2 != activityMap_.end()) {
+        recordStream(act.deviceId(), act.resourceId(), "context");
+        gpuUserEventMap_.insertOrExtendEvent(*it2->second, act);
+      }
+    }
+  }
 }
 
 const ITraceActivity* CuptiActivityProfiler::linkedActivity(

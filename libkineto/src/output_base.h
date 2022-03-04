@@ -68,8 +68,10 @@ class ActivityLogger {
 
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
-  virtual void handleGenericActivity(
+  virtual void handleActivity(
       const libkineto::ITraceActivity& activity) = 0;
+  virtual void handleGenericActivity(
+      const libkineto::GenericTraceActivity& activity) = 0;
 
 #ifdef HAS_CUPTI
   virtual void handleGpuActivity(

@@ -280,7 +280,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
       op.timestamp(), op.metadataJson());
 }
 
-void ChromeTraceLogger::handleGenericActivity(
+void ChromeTraceLogger::handleActivity(
     const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
@@ -321,6 +321,11 @@ void ChromeTraceLogger::handleGenericActivity(
     handleGenericLink(op);
   }
 }
+
+void ChromeTraceLogger::handleGenericActivity(
+    const libkineto::GenericTraceActivity& op) {
+        handleActivity(op);
+    }
 
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
   static struct {

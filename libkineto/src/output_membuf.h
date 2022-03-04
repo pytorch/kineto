@@ -47,19 +47,22 @@ class MemoryTraceLogger : public ActivityLogger {
     // Handled separately
   }
 
-  // Just add the pointer to the list - ownership of the underlying
-  // objects must be transferred in ActivityBuffers via finalizeTrace
-  void handleGenericActivity(const ITraceActivity& activity) override {
-    activities_.push_back(&activity);
-  }
-
-#ifdef HAS_CUPTI
   template<class T>
   void addActivityWrapper(const T& act) {
     wrappers_.push_back(std::make_unique<T>(act));
     activities_.push_back(wrappers_.back().get());
   }
 
+  // Just add the pointer to the list - ownership of the underlying
+  // objects must be transferred in ActivityBuffers via finalizeTrace
+  void handleActivity(const ITraceActivity& activity) override {
+    activities_.push_back(&activity);
+  }
+  void handleGenericActivity(const GenericTraceActivity& activity) override {
+    addActivityWrapper(activity);
+  }
+
+#ifdef HAS_CUPTI
   void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override {
     addActivityWrapper(activity);
   }

@@ -67,11 +67,11 @@ inline ActivityType GpuActivity<CUpti_ActivityMemset>::type() const {
 }
 
 inline void RuntimeActivity::log(ActivityLogger& logger) const {
-  logger.handleGenericActivity(*this);
+  logger.handleActivity(*this);
 }
 
 inline void OverheadActivity::log(ActivityLogger& logger) const {
-  logger.handleGenericActivity(*this);
+  logger.handleActivity(*this);
 }
 
 inline bool OverheadActivity::flowStart() const {

@@ -8,7 +8,9 @@
 #include <mutex>
 #include <shared_mutex>
 
+#ifdef HAS_CUPTI
 #include "cupti_call.h"
+#endif
 #include "Logger.h"
 
 
@@ -83,6 +85,8 @@ void CuptiCallbackApi::__callback_switchboard(
           cblist = &callbacks_.runtime[
             CUDA_LAUNCH_KERNEL - __RUNTIME_CB_DOMAIN_START];
           break;
+        default:
+          break;
       }
       break;
 
@@ -95,6 +99,8 @@ void CuptiCallbackApi::__callback_switchboard(
         case CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING:
           cblist = &callbacks_.resource[
             RESOURCE_CONTEXT_DESTROYED - __RESOURCE_CB_DOMAIN_START];
+          break;
+        default:
           break;
       }
       break;

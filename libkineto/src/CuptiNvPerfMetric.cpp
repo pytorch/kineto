@@ -1,10 +1,13 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+#ifdef HAS_CUPTI
+#include <cuda_runtime_api.h>
 #if defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
 #include <nvperf_cuda_host.h>
 #include <nvperf_host.h>
 #include <nvperf_target.h>
-#endif
+#endif // cuda version > 10.00 and < 11.04
+#endif // HAS_CUPTI
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude

@@ -277,6 +277,7 @@ void ConfigLoader::updateConfigThread() {
       onDemandConfig = config_->clone();
       configureFromSignal(now, *onDemandConfig);
     } else if (now > next_on_demand_load_time) {
+      onDemandConfig = std::make_unique<Config>();
       configureFromDaemon(now, *onDemandConfig);
       next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;
     }

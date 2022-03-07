@@ -5,12 +5,13 @@
 #ifdef HAS_CUPTI
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-#if defined(CUDART_VERSION) && CUDART_VERSION >= 10000 && CUDART_VERSION < 11040 && CUDA_VERSION >= 10010
-#define HAS_CUPTI_PROFILER 1
-#endif // CUDART_VERSION > 10.00 and < 11.04 && CUDA_VERSION >= 10.10
+// Using CUDA 11 and above due to usage of API: cuptiProfilerGetCounterAvailability.
+#if defined(CUDART_VERSION) && CUDART_VERSION >= 10000 && CUDART_VERSION < 11040 && CUDA_VERSION >= 11000
+#define HAS_CUPTI_RANGE_PROFILER 1
+#endif // CUDART_VERSION > 10.00 and < 11.04 && CUDA_VERSION >= 11.00
 #endif // HAS_CUPTI
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
 #include <cupti.h>
 #include <cupti_profiler_target.h>
 #include <cupti_target.h>
@@ -26,7 +27,7 @@ using CUpti_ProfilerReplayMode = enum
   CUPTI_KernelReplay,
   CUPTI_UserReplay,
 };
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 
 #include <chrono>
 #include <mutex>
@@ -197,7 +198,7 @@ class CuptiRBProfilerSession {
 
   static std::vector<uint8_t>& counterAvailabilityImage();
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
   CUpti_Profiler_BeginPass_Params beginPassParams_;
   CUpti_Profiler_EndPass_Params endPassParams_;
 #endif

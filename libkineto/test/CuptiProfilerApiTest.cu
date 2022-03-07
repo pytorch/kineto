@@ -149,7 +149,7 @@ void VectorAddSubtract() {
   cleanUp(h_A, h_B, h_C, h_D, d_A, d_B, d_C, d_D);
 }
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
 bool runTestWithAutoRange(
     int deviceNum,
     const std::vector<std::string>& metricNames,
@@ -272,7 +272,7 @@ bool runTestWithUserRange(
   }
   return true;
 }
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 
 int main(int argc, char* argv[]) {
 
@@ -314,7 +314,7 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "CUPTI Profiler is not supported  with compute capability < 7.0";
     return -2;
   }
-  
+
   CuptiRBProfilerSession::staticInit();
 
   // metrics to profile
@@ -329,7 +329,7 @@ int main(int argc, char* argv[]) {
 
   VectorAddSubtract();
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
   CuptiRBProfilerSession::staticInit();
 
   if (!runTestWithUserRange(deviceNum, metricNames, cuContext, false)) {
@@ -345,7 +345,7 @@ int main(int argc, char* argv[]) {
   CuptiRBProfilerSession::deInitCupti();
 #else
   LOG(WARNING) << "CuptiRBProfilerSession is not supported.";
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
   DRIVER_API_CALL(cuCtxDestroy(cuContext));
 
 

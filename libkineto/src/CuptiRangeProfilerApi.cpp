@@ -22,15 +22,15 @@
 #include "CuptiCallbackApiMock.h"
 #include "CuptiRangeProfilerApi.h"
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
 #include <cupti.h>
 #include <nvperf_host.h>
 #include "cupti_call.h"
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 
 namespace KINETO_NAMESPACE {
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
 constexpr char kRootUserRangeName[] = "__profile__";
 constexpr int kCallbacksCountToFlush = 500;
 
@@ -171,7 +171,8 @@ void __trackCudaKernelLaunch(
           << " context ptr = " << ctx;
 
   uint32_t device_id = 0;
-  if (auto it = ctx_to_dev.find(ctx); it == ctx_to_dev.end()) {
+  auto it = ctx_to_dev.find(ctx);
+  if (it == ctx_to_dev.end()) {
     // Warning here could be too noisy
     VLOG(0) << " Could not find corresponding device to ctx = " << ctx;
     return;
@@ -730,20 +731,20 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
   static std::vector<uint8_t> _vec;
   return _vec;
 }
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 
 namespace testing {
 
 void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
   __trackCudaCtx(ctx, device_id, cbid);
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 }
 
 void trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
   __trackCudaKernelLaunch(ctx, kernelName);
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 }
 
 } // namespace testing

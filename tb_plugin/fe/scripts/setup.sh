@@ -21,5 +21,5 @@ fi
 
 # download swagger-codegen-cli
 if [[ ! -f "$FE_ROOT/swagger-codegen-cli.jar" ]]; then
-    wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.25/swagger-codegen-cli-3.0.25.jar -O swagger-codegen-cli.jar
+    wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.33/swagger-codegen-cli-3.0.33.jar -O swagger-codegen-cli.jar
 fi

@@ -418,18 +418,14 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
     ColumnUnderlyingData[]
   >([])
 
-  const [
-    rootUnderlyingData,
-    setRootUnderlyingData
-  ] = React.useState<ColumnUnderlyingData>()
+  const [rootUnderlyingData, setRootUnderlyingData] =
+    React.useState<ColumnUnderlyingData>()
 
   const [columnChartData, setColumnChartData] = React.useState<any[]>([])
   const [stepChartData, setStepChartData] = React.useState<any[]>([])
 
-  const [
-    selectedTableColumnsOptions,
-    setSelectedTableColumnsOptions
-  ] = React.useState<[key: string]>(['hostDuration'])
+  const [selectedTableColumnsOptions, setSelectedTableColumnsOptions] =
+    React.useState<[key: string]>(['hostDuration'])
   const [selectedTableColumns, setSelectedTableColumns] = React.useState<any[]>(
     [...baseTableColumns, ...hostDurationColumns]
   )
@@ -593,7 +589,8 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
         expSelfDeviceDuration: right.self_device_duration,
         deltaSelfDeviceDuration:
           right.self_device_duration - left.self_device_duration,
-        deltaSelfDeviceDurationPercentNumber: deltaSelfDeviceDurationPercentNumber,
+        deltaSelfDeviceDurationPercentNumber:
+          deltaSelfDeviceDurationPercentNumber,
         deltaSelfDeviceDurationPercent: toPercentString(
           deltaSelfDeviceDurationPercentNumber
         )

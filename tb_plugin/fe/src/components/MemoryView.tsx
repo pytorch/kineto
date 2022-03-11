@@ -114,9 +114,8 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
     SelectedRange | undefined
   >()
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
-  const [searchEventOperatorName, setSearchEventOperatorName] = React.useState(
-    ''
-  )
+  const [searchEventOperatorName, setSearchEventOperatorName] =
+    React.useState('')
   const [filterEventSize, setFilterEventSize] = React.useState<EventSizeFilter>(
     {}
   )
@@ -162,9 +161,10 @@ export const MemoryView: React.FC<IProps> = React.memo((props) => {
   }
 
   const searchIndex = getSearchIndex()
-  const getName = React.useCallback((row: any) => row[searchIndex], [
-    searchIndex
-  ])
+  const getName = React.useCallback(
+    (row: any) => row[searchIndex],
+    [searchIndex]
+  )
   const [searchedTableDataRows] = useSearchDirectly(
     searchOperatorName,
     getName,

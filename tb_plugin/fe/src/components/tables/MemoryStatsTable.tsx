@@ -55,9 +55,10 @@ export const MemoryStatsTable = (props: IProps) => {
   const { data, sort } = props
   const classes = useStyles()
 
-  const rows = React.useMemo(() => getMemoryStatsTableRows(data.rows), [
-    data.rows
-  ])
+  const rows = React.useMemo(
+    () => getMemoryStatsTableRows(data.rows),
+    [data.rows]
+  )
 
   const columns = React.useMemo(
     () => getMemoryStatsTableColumns(data.columns, sort, classes.tooltip),

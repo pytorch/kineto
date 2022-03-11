@@ -72,15 +72,16 @@ export const CallStackTable = (props: IProps) => {
 
   const expandIconColumnIndex = columns?.length
 
-  const expandable: TableProps<TransformedCallStackDataInner>['expandable'] = React.useMemo(
-    () => ({
-      expandIconColumnIndex,
-      expandIcon,
-      expandedRowRender,
-      rowExpandable
-    }),
-    [expandIconColumnIndex]
-  )
+  const expandable: TableProps<TransformedCallStackDataInner>['expandable'] =
+    React.useMemo(
+      () => ({
+        expandIconColumnIndex,
+        expandIcon,
+        expandedRowRender,
+        rowExpandable
+      }),
+      [expandIconColumnIndex]
+    )
 
   return (
     <Table

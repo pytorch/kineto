@@ -4,12 +4,14 @@
 from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from . import consts
+from . import consts, utils
 from .profiler.diffrun import compare_op_tree, diff_summary
 from .profiler.memory_parser import MemoryMetrics, MemoryRecord, MemorySnapshot
 from .profiler.module_op import Stats
 from .profiler.node import OperatorNode
 from .utils import Canonicalizer, DisplayRounder
+
+logger = utils.get_logger()
 
 
 class Run(object):
@@ -341,7 +343,7 @@ class RunProfile(object):
                 # profile json data prior to pytorch 1.10 do not have addr
                 # we should ignore them
                 continue
-            assert prev_ts < r.ts
+            assert prev_ts <= r.ts
             prev_ts = r.ts
             addr = r.addr
             size = r.bytes
@@ -362,7 +364,8 @@ class RunProfile(object):
                     ])
                     del alloc[addr]
                 else:
-                    assert addr not in free
+                    if addr in free:
+                        logger.warning(f'Address {addr} is freed multiple times')
                     free[addr] = i
 
         for i in alloc.values():

@@ -305,7 +305,6 @@ class MemoryParser:
         memory_records = sorted(self.memory_records, key=lambda r: r.ts)
 
         alloc = {}  # allocation events may or may not have paired free event
-        free = {}  # free events that does not have paired alloc event
         prev_ts = float('-inf')  # ensure ordered memory records is ordered
         for i, r in enumerate(memory_records):
             if r.addr is None:
@@ -326,10 +325,4 @@ class MemoryParser:
                     r.op_name = alloc_r.op_name
                     r.parent_op_name = alloc_r.parent_op_name
                     del alloc[addr]
-                else:
-                    assert addr not in free
-                    free[addr] = i
-
-        if free:
-            logger.debug(f'{len(free)} memory records do not have associated operator.')
         return memory_records

@@ -18,6 +18,7 @@
 namespace libkineto {
 
 using namespace KINETO_NAMESPACE;
+struct CpuTraceBuffer;
 
 #ifdef _MSC_VER
 // workaround for the predefined ERROR macro on Windows
@@ -52,14 +53,14 @@ class IActivityProfilerSession {
     return status_;
   }
 
-  // returns list of Trace Activities
-  virtual std::vector<GenericTraceActivity>& activities() = 0;
-
   // returns errors with this trace
   virtual std::vector<std::string> errors() = 0;
 
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
+
+  // release ownership of the trace events and metadata
+  virtual std::unique_ptr<CpuTraceBuffer> getTraceBuffer() = 0;
 
   // XXX define trace formats
   // virtual save(string name, TraceFormat format)

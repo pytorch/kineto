@@ -550,7 +550,7 @@ void CuptiActivityProfiler::configure(
 void CuptiActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
   VLOG(0) << "Warmup -> CollectTrace";
-  for (auto& session: sessions_){
+  for (auto& session : sessions_){
     LOG(INFO) << "Starting child profiler session";
     session->start();
   }
@@ -587,7 +587,7 @@ void CuptiActivityProfiler::stopTraceInternal(const time_point<system_clock>& no
         static_cast<std::underlying_type<RunloopState>::type>(
             currentRunloopState_.load());
   }
-  for (auto& session: sessions_){
+  for (auto& session : sessions_){
     LOG(INFO) << "Stopping child profiler session";
     session->stop();
   }
@@ -804,6 +804,11 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
   }
 
   gpuUserEventMap_.logEvents(&logger);
+
+  for (auto& session : sessions_){
+    auto trace_buffer = session->getTraceBuffer();
+    traceBuffers_->cpu.push_back(std::move(trace_buffer));
+  }
 
 #if !USE_GOOGLE_LOG
   // Save logs from LoggerCollector objects into Trace metadata.

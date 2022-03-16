@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include <stdlib.h>
+#include <unordered_map>
 #include <gtest/gtest.h>
 
 // TODO(T90238193)
@@ -9,12 +10,12 @@
 
 namespace KINETO_NAMESPACE {
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
 
 class MockCuptiRBProfilerSession : public CuptiRBProfilerSession {
  public:
-  MockCuptiRBProfilerSession(int deviceId, CUcontext ctx)
-    : CuptiRBProfilerSession(deviceId, ctx) {}
+  explicit MockCuptiRBProfilerSession(const CuptiRangeProfilerOptions& opts)
+    : CuptiRBProfilerSession(opts) {}
 
   void beginPass() override {
     LOG(INFO) << " Mock CUPTI begin pass";
@@ -39,6 +40,7 @@ class MockCuptiRBProfilerSession : public CuptiRBProfilerSession {
   }
 
   void stop() override {
+    profilerStopTs_ = std::chrono::high_resolution_clock::now();
     runChecks();
   }
 
@@ -48,13 +50,14 @@ class MockCuptiRBProfilerSession : public CuptiRBProfilerSession {
   void disable() override {}
 
   CuptiProfilerResult evaluateMetrics(bool /*verbose*/) override {
-    return result;
+    return getResults()[deviceId()];
   }
 
 protected:
   void startInternal(
       CUpti_ProfilerRange profilerRange,
       CUpti_ProfilerReplayMode profilerReplayMode) override {
+    profilerStartTs_ = std::chrono::high_resolution_clock::now();
     curRange_ = profilerRange;
     curReplay_ = profilerReplayMode;
   }
@@ -72,8 +75,20 @@ private:
   int ranges_ended = 0;
   bool enabled = false;
 
-  CuptiProfilerResult result;
+  static std::unordered_map<int, CuptiProfilerResult>& getResults();
+};
 
+struct MockCuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {
+  std::unique_ptr<CuptiRBProfilerSession> make(
+      const CuptiRangeProfilerOptions& _opts) override {
+    auto opts = _opts;
+    opts.unitTest = true;
+    return std::make_unique<MockCuptiRBProfilerSession>(opts);
+  }
+
+  MockCuptiRBProfilerSession* asDerived(CuptiRBProfilerSession* base) {
+    return dynamic_cast<MockCuptiRBProfilerSession*>(base);
+  }
 };
 
 inline void simulateCudaContextCreate(CUcontext context, uint32_t dev) {
@@ -91,6 +106,6 @@ inline void simulateKernelLaunch(
   testing::trackCudaKernelLaunch(context, kernelName.c_str());
 }
 
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER
 
 } // namespace KINETO_NAMESPACE

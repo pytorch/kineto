@@ -23,9 +23,11 @@ class LoggerCollector : public ILoggerObserver {
 
   void write(const std::string& message, LoggerOutputType ot = ERROR) override {
     // Skip STAGE output type which is only used by USTLoggerCollector.
-    if (ot != STAGE) {
-      buckets_[ot].push_back(message);
+    // Skip VERBOSE output type which may bloat metadata section of traces.
+    if (ot == STAGE || ot == VERBOSE) {
+      return;
     }
+    buckets_[ot].push_back(message);
   }
 
   const std::map<LoggerOutputType, std::vector<std::string>> extractCollectorMetadata() override {

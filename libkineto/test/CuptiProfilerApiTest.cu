@@ -158,8 +158,14 @@ bool runTestWithAutoRange(
 
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
-  CuptiRBProfilerSession profiler(
-      metricNames, deviceNum, 2, 1, async ? nullptr : cuContext);
+  CuptiRangeProfilerOptions opts{
+    .metricNames = metricNames,
+    .deviceId = deviceNum,
+    .maxRanges = 2,
+    .numNestingLevels = 1,
+    .cuContext = async ? nullptr : cuContext
+  };
+  CuptiRBProfilerSession profiler(opts);
 
   CUpti_ProfilerRange profilerRange = CUPTI_AutoRange;
   CUpti_ProfilerReplayMode profilerReplayMode = CUPTI_KernelReplay;
@@ -211,8 +217,14 @@ bool runTestWithUserRange(
 
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
-  CuptiRBProfilerSession profiler(
-      metricNames, deviceNum, numRanges, 1, async ? nullptr : cuContext);
+  CuptiRangeProfilerOptions opts{
+    .metricNames = metricNames,
+    .deviceId = deviceNum,
+    .maxRanges = numRanges,
+    .numNestingLevels = 1,
+    .cuContext = async ? nullptr : cuContext
+  };
+  CuptiRBProfilerSession profiler(opts);
 
   CUpti_ProfilerRange profilerRange = CUPTI_UserRange;
   CUpti_ProfilerReplayMode profilerReplayMode = CUPTI_UserReplay;

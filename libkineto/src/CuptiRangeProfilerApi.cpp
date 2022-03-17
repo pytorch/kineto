@@ -30,6 +30,14 @@
 
 namespace KINETO_NAMESPACE {
 
+TraceSpan CuptiRBProfilerSession::getProfilerTraceSpan() {
+  return TraceSpan(
+      timeSinceEpoch(profilerStartTs_),
+      timeSinceEpoch(profilerStopTs_),
+      "__cupti_profiler__"
+  );
+}
+
 #if HAS_CUPTI_RANGE_PROFILER
 constexpr char kRootUserRangeName[] = "__profile__";
 constexpr int kCallbacksCountToFlush = 500;
@@ -103,7 +111,7 @@ inline uint32_t getDevID(CUcontext ctx) {
 //   1. Track cuda contexts and maintain a list of active GPUs to profile
 //   2. Callbacks on kernel launches to track the name of automatic
 //      ranges that correspond to names of kernels
-//   3. Lastly CUPTI profiler has to be enabled on the same thread executing
+//   3. Lastly CUPTI range profiler has to be enabled on the same thread executing
 //      the CUDA kernels. We use Callbacks to enable the profiler
 //      asynchronously from another thread.
 
@@ -304,30 +312,33 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
 
 // Setup the profiler sessions
 CuptiRBProfilerSession::CuptiRBProfilerSession(
-    const std::vector<std::string>& metricNames,
-    int deviceId,
-    int maxRanges,
-    int numNestingLevels,
-    CUcontext cuContext)
-    : metricNames_(metricNames),
-      chipName_(getChipName(deviceId)),
-      deviceId_(deviceId),
-      maxRanges_(maxRanges),
-      numNestingLevels_(numNestingLevels),
-      cuContext_(cuContext) {
-  CuptiRBProfilerSession::initCupti();
+    const CuptiRangeProfilerOptions& opts)
+    : metricNames_(opts.metricNames),
+      deviceId_(opts.deviceId),
+      maxRanges_(opts.maxRanges),
+      numNestingLevels_(opts.numNestingLevels),
+      cuContext_(opts.cuContext) {
+  // used in unittests only
+  if (opts.unitTest) {
+    initSuccess_ = true;
+    profiler_map[deviceId_] = this;
+    return;
+  }
 
-  LOG(INFO) << "Initializing CUPTI profiler session : device = " << deviceId
+  chipName_ = getChipName(opts.deviceId);
+
+  CuptiRBProfilerSession::initCupti();
+  LOG(INFO) << "Initializing CUPTI range profiler session : device = " << deviceId_
             << " chip = " << chipName_;
   /* Generate configuration for metrics, this can also be done offline*/
   NVPW_InitializeHost_Params initializeHostParams = {
       NVPW_InitializeHost_Params_STRUCT_SIZE, nullptr};
   NVPW_CALL(NVPW_InitializeHost(&initializeHostParams));
 
-  if (metricNames.size()) {
+  if (metricNames_.size()) {
     if (!nvperf::getProfilerConfigImage(
             chipName_,
-            metricNames,
+            metricNames_,
             configImage,
             CuptiRBProfilerSession::counterAvailabilityImage().data())) {
       LOG(ERROR) << "Failed to create configImage or counterDataImagePrefix";
@@ -335,7 +346,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
     }
     if (!nvperf::getCounterDataPrefixImage(
             chipName_,
-            metricNames,
+            metricNames_,
             counterDataImagePrefix)) {
       LOG(ERROR) << "Failed to create counterDataImagePrefix";
       return;
@@ -363,14 +374,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
   endPassParams_ = {CUpti_Profiler_EndPass_Params_STRUCT_SIZE, nullptr};
 
   initSuccess_ = true;
-  profiler_map[deviceId] = this;
-}
-
-// used in unittests only
-CuptiRBProfilerSession::CuptiRBProfilerSession(int deviceId, CUcontext ctx)
-  : deviceId_(deviceId), cuContext_(ctx) {
-  initSuccess_ = true;
-  profiler_map[deviceId] = this;
+  profiler_map[deviceId_] = this;
 }
 
 void CuptiRBProfilerSession::startInternal(
@@ -415,7 +419,7 @@ void CuptiRBProfilerSession::startInternal(
 
   auto status = CUPTI_CALL(cuptiProfilerBeginSession(&beginSessionParams));
   if (status != CUPTI_SUCCESS) {
-    LOG(WARNING) << "Failed to start CUPTI profiler";
+    LOG(WARNING) << "Failed to start CUPTI range profiler";
     initSuccess_ = false;
     return;
   }
@@ -433,7 +437,7 @@ void CuptiRBProfilerSession::startInternal(
   status = CUPTI_CALL(cuptiProfilerSetConfig(&setConfigParams));
 
   if (status != CUPTI_SUCCESS) {
-    LOG(WARNING) << "Failed to configure CUPTI profiler";
+    LOG(WARNING) << "Failed to configure CUPTI range profiler";
     initSuccess_ = false;
     return;
   }
@@ -555,7 +559,7 @@ void CuptiRBProfilerSession::disableAndStop() {
 void CuptiRBProfilerSession::asyncStartAndEnable(
     CUpti_ProfilerRange profilerRange,
     CUpti_ProfilerReplayMode profilerReplayMode) {
-  LOG(INFO) << "Starting CUPTI profiler asynchronously on device = "
+  LOG(INFO) << "Starting CUPTI range profiler asynchronously on device = "
             << deviceId_ << " profiler range = "
             << ((profilerRange == CUPTI_AutoRange) ? "autorange" : "userrange")
             << " replay mode = "
@@ -567,7 +571,7 @@ void CuptiRBProfilerSession::asyncStartAndEnable(
 }
 
 void CuptiRBProfilerSession::asyncDisableAndStop() {
-  LOG(INFO) << "Stopping CUPTI profiler asynchronously on device = "
+  LOG(INFO) << "Stopping CUPTI range profiler asynchronously on device = "
             << deviceId_ << " cu context = " << cuContext_;
   disable_flag[deviceId_] = true;
 }
@@ -604,14 +608,6 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(
   LOG(INFO) << "Total profiler init time = " << init_dur_ms.count() << " ms";
 
   return results;
-}
-
-std::unique_ptr<TraceSpan> CuptiRBProfilerSession::getProfilerTraceSpan() {
-  return std::make_unique<TraceSpan>(
-      timeSinceEpoch(profilerStartTs_),
-      timeSinceEpoch(profilerStopTs_),
-      "__cupti_profiler__"
-  );
 }
 
 void CuptiRBProfilerSession::saveCounterData(
@@ -687,20 +683,16 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
   return true;
 }
 
-#elif defined(HAS_CUPTI)
+#else
 
 // Create empty stubs for the API when CUPTI is not present.
 CuptiRBProfilerSession::CuptiRBProfilerSession(
-    const std::vector<std::string>& metricNames,
-    int deviceId,
-    int maxRanges,
-    int numNestingLevels,
-    CUcontext cuContext)
-    : metricNames_(metricNames),
-      deviceId_(deviceId),
-      maxRanges_(maxRanges),
-      numNestingLevels_(numNestingLevels),
-      cuContext_(cuContext) {}
+    const CuptiRangeProfilerOptions& opts)
+    : metricNames_(opts.metricNames),
+      deviceId_(opts.deviceId),
+      maxRanges_(opts.maxRanges),
+      numNestingLevels_(opts.numNestingLevels),
+      cuContext_(opts.cuContext) {};
 void CuptiRBProfilerSession::stop() {}
 void CuptiRBProfilerSession::enable() {}
 void CuptiRBProfilerSession::disable() {}
@@ -709,6 +701,8 @@ bool CuptiRBProfilerSession::endPass() { return true; }
 void CuptiRBProfilerSession::flushCounterData() {}
 void CuptiRBProfilerSession::pushRange(const std::string& /*rangeName*/) {}
 void CuptiRBProfilerSession::popRange() {}
+void CuptiRBProfilerSession::startAndEnable() {}
+void CuptiRBProfilerSession::disableAndStop() {}
 void CuptiRBProfilerSession::asyncStartAndEnable(
     CUpti_ProfilerRange /*profilerRange*/,
     CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
@@ -723,6 +717,7 @@ void CuptiRBProfilerSession::saveCounterData(
 void CuptiRBProfilerSession::initCupti() {}
 void CuptiRBProfilerSession::deInitCupti() {}
 void CuptiRBProfilerSession::staticInit() {}
+std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() { return {}; }
 bool CuptiRBProfilerSession::createCounterDataImage() { return true; }
 void CuptiRBProfilerSession::startInternal(
     CUpti_ProfilerRange /*profilerRange*/,
@@ -732,6 +727,11 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
   return _vec;
 }
 #endif // HAS_CUPTI_RANGE_PROFILER
+
+std::unique_ptr<CuptiRBProfilerSession>
+CuptiRBProfilerSessionFactory::make(const CuptiRangeProfilerOptions& opts) {
+  return std::make_unique<CuptiRBProfilerSession>(opts);
+}
 
 namespace testing {
 

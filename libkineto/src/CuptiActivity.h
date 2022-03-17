@@ -4,7 +4,10 @@
 
 #include <cupti.h>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ITraceActivity.h"
+#include "GenericTraceActivity.h"
 #include "CuptiActivityPlatform.h"
 #include "ThreadUtil.h"
 #include "cupti_strings.h"

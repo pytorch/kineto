@@ -4,6 +4,7 @@
 #include <set>
 #include <vector>
 
+#include "output_base.h"
 #include "test/MockActivitySubProfiler.h"
 
 namespace libkineto {
@@ -12,7 +13,7 @@ const std::set<ActivityType> supported_activities {ActivityType::CPU_OP};
 const std::string profile_name{"MockProfiler"};
 
 void MockProfilerSession::processTrace(ActivityLogger& logger) {
-  for (const auto& activity: activities()) {
+  for (const auto& activity: test_activities_) {
     activity.log(logger);
   }
 }
@@ -26,7 +27,7 @@ const std::set<ActivityType>& MockActivityProfiler::availableActivities() const 
 }
 
 MockActivityProfiler::MockActivityProfiler(
-    std::vector<GenericTraceActivity>& activities) :
+    std::deque<GenericTraceActivity>& activities) :
   test_activities_(activities) {};
 
 std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
@@ -45,5 +46,10 @@ std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
   return configure(activity_types, config);
 };
 
+std::unique_ptr<CpuTraceBuffer> MockProfilerSession::getTraceBuffer() {
+  auto buf = std::make_unique<CpuTraceBuffer>();
+  buf->activities.swap(test_activities_);
+  return buf;
+}
 } // namespace libkineto
 

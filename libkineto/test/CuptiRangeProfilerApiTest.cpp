@@ -13,7 +13,15 @@
 
 using namespace KINETO_NAMESPACE;
 
-#if HAS_CUPTI_PROFILER
+#if HAS_CUPTI_RANGE_PROFILER
+
+std::unordered_map<int, CuptiProfilerResult>&
+MockCuptiRBProfilerSession::getResults() {
+  static std::unordered_map<int, CuptiProfilerResult> results;
+  return results;
+}
+
+MockCuptiRBProfilerSessionFactory mfactory{};
 
 TEST(CuptiRangeProfilerApiTest, contextTracking) {
   std::vector<std::string> log_modules(
@@ -59,7 +67,13 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
   CUcontext ctx0 = reinterpret_cast<CUcontext>(10);
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
-  auto session = std::make_unique<MockCuptiRBProfilerSession>(0, ctx0);
+  CuptiRangeProfilerOptions opts{
+    .deviceId = 0,
+    .cuContext = ctx0};
+
+  std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
+  auto session = mfactory.asDerived(session_.get());
+
   session->asyncStartAndEnable(CUPTI_UserRange, CUPTI_UserReplay);
 
   simulateKernelLaunch(ctx0, "hello");
@@ -87,7 +101,13 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
 
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
-  auto session = std::make_unique<MockCuptiRBProfilerSession>(0, ctx0);
+  CuptiRangeProfilerOptions opts{
+    .deviceId = 0,
+    .cuContext = ctx0};
+
+  std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
+  auto session = mfactory.asDerived(session_.get());
+
   session->asyncStartAndEnable(CUPTI_AutoRange, CUPTI_KernelReplay);
 
   simulateKernelLaunch(ctx0, "hello");
@@ -110,4 +130,4 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
     << "Kernel names were not tracked";
 }
 
-#endif // HAS_CUPTI_PROFILER
+#endif // HAS_CUPTI_RANGE_PROFILER

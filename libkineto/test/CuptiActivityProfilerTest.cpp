@@ -535,7 +535,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   int64_t duration_us = 1000;
   auto start_time = time_point<system_clock>(microseconds(start_time_us));
 
-  std::vector<GenericTraceActivity> test_activities{3, ev};
+  std::deque<GenericTraceActivity> test_activities{3, ev};
   test_activities[0].startTime = start_time_us;
   test_activities[0].endTime = start_time_us + 5000;
   test_activities[0].activityName = "SubGraph A execution";

@@ -3,11 +3,14 @@
 #include <memory>
 #include <mutex>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityProfilerProxy.h"
 #include "Config.h"
 #ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
 #include "CuptiActivityApi.h"
+#include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
 #include "cupti_call.h"
@@ -65,6 +68,8 @@ static void stopProfiler(
   std::lock_guard<std::mutex> lock(initMutex);
   EventProfilerController::stop(ctx);
 }
+
+static CuptiRangeProfilerInit rangeProfilerInit;
 #endif // HAS_CUPTI
 
 } // namespace KINETO_NAMESPACE

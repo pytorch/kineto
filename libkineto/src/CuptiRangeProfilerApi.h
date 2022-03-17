@@ -47,18 +47,23 @@ using CUpti_ProfilerReplayMode = enum
 
 namespace KINETO_NAMESPACE {
 
+// Initialize and configure CUPTI Profiler counters.
+// - Metric names must be provided as string vector.
+// - Supported values by CUPTI can be found at -
+//   https://docs.nvidia.com/cupti/Cupti/r_main.html#r_host_metrics_api
+struct CuptiRangeProfilerOptions {
+  std::vector<std::string> metricNames;
+  int deviceId = 0;
+  int maxRanges = 1;
+  int numNestingLevels = 1;
+  CUcontext cuContext = 0;
+  bool unitTest = false;
+};
+
 class CuptiRBProfilerSession {
  public:
-  // Initialize and configure CUPTI Profiler counters.
-  // - Metric names must be provided as string vector.
-  // - Supported values by CUPTI can be found at -
-  //   https://docs.nvidia.com/cupti/Cupti/r_main.html#r_host_metrics_api
-  explicit CuptiRBProfilerSession(
-      const std::vector<std::string>& metricNames,
-      int deviceId,
-      int maxRanges,
-      int numNestingLevels = 1,
-      CUcontext cuContext = 0);
+
+  explicit CuptiRBProfilerSession(const CuptiRangeProfilerOptions& opts);
 
   virtual ~CuptiRBProfilerSession() = default;
 
@@ -116,7 +121,7 @@ class CuptiRBProfilerSession {
     evaluateMetrics(true);
   }
 
-  std::unique_ptr<TraceSpan> getProfilerTraceSpan();
+ TraceSpan getProfilerTraceSpan();
 
   virtual CuptiProfilerResult evaluateMetrics(bool verbose = false);
 
@@ -149,9 +154,8 @@ class CuptiRBProfilerSession {
   static void setCounterAvailabilityImage(std::vector<uint8_t> img) {
     counterAvailabilityImage() = img;
   }
- protected:
-  CuptiRBProfilerSession(int deviceId, CUcontext ctx);
 
+ protected:
   virtual void startInternal(
       CUpti_ProfilerRange profilerRange,
       CUpti_ProfilerReplayMode profilerReplayMode);
@@ -159,10 +163,12 @@ class CuptiRBProfilerSession {
   CUpti_ProfilerRange curRange_ = CUPTI_AutoRange;
   CUpti_ProfilerReplayMode curReplay_ = CUPTI_KernelReplay;
 
+  std::chrono::time_point<std::chrono::high_resolution_clock>
+    profilerStartTs_, profilerStopTs_, profilerInitDoneTs_;
+
  private:
 
   bool createCounterDataImage();
-
 
   // log kernel name that used with callbacks
   void logKernelName(const char* kernel) {
@@ -185,11 +191,6 @@ class CuptiRBProfilerSession {
   std::vector<uint8_t> counterDataImage;
   std::vector<uint8_t> counterDataScratchBuffer;
 
-  std::chrono::time_point<std::chrono::high_resolution_clock> profilerStartTs_;
-  std::chrono::time_point<std::chrono::high_resolution_clock>
-      profilerInitDoneTs_;
-  std::chrono::time_point<std::chrono::high_resolution_clock> profilerStopTs_;
-
   std::mutex kernelNamesMutex_;
   // raw kernel names (not demangled)
   std::vector<std::string> kernelNames_;
@@ -208,6 +209,19 @@ class CuptiRBProfilerSession {
 
   friend void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
 };
+
+// Factory class used by the wrapping CuptiProfiler object
+struct ICuptiRBProfilerSessionFactory {
+  virtual std::unique_ptr<CuptiRBProfilerSession> make(
+      const CuptiRangeProfilerOptions& opts) = 0;
+  virtual ~ICuptiRBProfilerSessionFactory() {}
+};
+
+struct CuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {
+  std::unique_ptr<CuptiRBProfilerSession> make(
+      const CuptiRangeProfilerOptions& opts) override;
+};
+
 
 // called directly only in unit tests
 namespace testing {

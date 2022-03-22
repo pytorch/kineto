@@ -256,10 +256,12 @@ std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() {
 }
 
 // static
-void CuptiRBProfilerSession::initCupti() {
+bool CuptiRBProfilerSession::initCupti() {
   CUpti_Profiler_Initialize_Params profilerInitializeParams = {
       CUpti_Profiler_Initialize_Params_STRUCT_SIZE, nullptr};
-  CUPTI_CALL(cuptiProfilerInitialize(&profilerInitializeParams));
+  CUptiResult status = CUPTI_CALL_NOWARN(
+      cuptiProfilerInitialize(&profilerInitializeParams));
+  return (status == CUPTI_SUCCESS);
 }
 
 // static
@@ -270,8 +272,10 @@ void CuptiRBProfilerSession::deInitCupti() {
 }
 
 // static
-void CuptiRBProfilerSession::staticInit() {
-  CuptiRBProfilerSession::initCupti();
+bool CuptiRBProfilerSession::staticInit() {
+  if (!CuptiRBProfilerSession::initCupti()) {
+    return false;
+  }
 
   // Register CUPTI callbacks
   auto& cbapi = CuptiCallbackApi::singleton();
@@ -289,7 +293,7 @@ void CuptiRBProfilerSession::staticInit() {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda context "
                  << "create and destroy callbacks";
     CUPTI_CALL(cbapi.getCuptiStatus());
-    return;
+    return false;
   }
 
   domain = CUPTI_CB_DOMAIN_RUNTIME_API;
@@ -299,8 +303,9 @@ void CuptiRBProfilerSession::staticInit() {
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda kernel "
                  << "launch callback";
-    return;
+    return false;
   }
+  return true;
 }
 
 // static
@@ -714,9 +719,9 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
 void CuptiRBProfilerSession::saveCounterData(
     const std::string& /*CounterDataFileName*/,
     const std::string& /*CounterDataSBFileName*/) {}
-void CuptiRBProfilerSession::initCupti() {}
+bool CuptiRBProfilerSession::initCupti() { return false; }
 void CuptiRBProfilerSession::deInitCupti() {}
-void CuptiRBProfilerSession::staticInit() {}
+bool CuptiRBProfilerSession::staticInit() { return false; }
 std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() { return {}; }
 bool CuptiRBProfilerSession::createCounterDataImage() { return true; }
 void CuptiRBProfilerSession::startInternal(

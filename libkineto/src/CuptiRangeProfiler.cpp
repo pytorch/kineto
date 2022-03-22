@@ -273,7 +273,7 @@ CuptiRangeProfiler::configure(
 
 /* ----------------------------------------
  * CuptiRangeProfilerInit :
- *    a small wrapper class that ensure the activity profiler is created and
+ *    a small wrapper class that ensure the range profiler is created and
  *  initialized.
  * ----------------------------------------
  */
@@ -283,8 +283,12 @@ CuptiRangeProfilerInit::CuptiRangeProfilerInit() {
 
 #ifdef HAS_CUPTI
   // TODO should this be revised to avoid overhead
-  CuptiRBProfilerSession::staticInit();
+  success = CuptiRBProfilerSession::staticInit();
 #endif
+
+  if (!success) {
+    return;
+  }
 
   // Register the activity profiler instance with libkineto api
   api().registerProfilerFactory([&]() {
@@ -293,7 +297,9 @@ CuptiRangeProfilerInit::CuptiRangeProfilerInit() {
 }
 
 CuptiRangeProfilerInit::~CuptiRangeProfilerInit() {
+  if (success) {
     CuptiRBProfilerSession::deInitCupti();
+  }
 }
 
 } // namespace KINETO_NAMESPACE

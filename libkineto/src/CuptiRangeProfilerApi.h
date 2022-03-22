@@ -145,11 +145,11 @@ class CuptiRBProfilerSession {
 
   static std::set<uint32_t> getActiveDevices();
 
-  static void initCupti();
+  static bool initCupti();
 
   static void deInitCupti();
 
-  static void staticInit();
+  static bool staticInit();
 
   static void setCounterAvailabilityImage(std::vector<uint8_t> img) {
     counterAvailabilityImage() = img;

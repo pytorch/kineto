@@ -67,10 +67,9 @@ TEST(ParseTest, Format) {
 TEST(ParseTest, DefaultActivityTypes) {
   Config cfg;
   cfg.validate(std::chrono::system_clock::now());
-  auto all_activities = activityTypes();
-  // TODO: introduce optional activities
+  auto default_activities = defaultActivityTypes();
   EXPECT_EQ(cfg.selectedActivityTypes(),
-    std::set<ActivityType>(all_activities.begin(), all_activities.end() - 1));
+    std::set<ActivityType>(default_activities.begin(), default_activities.end()));
 }
 
 TEST(ParseTest, ActivityTypes) {
@@ -89,9 +88,7 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::GPU_MEMSET,
                             ActivityType::CONCURRENT_KERNEL,
                             ActivityType::EXTERNAL_CORRELATION,
-                            ActivityType::GLOW_RUNTIME,
-                            ActivityType::CUDA_RUNTIME,
-                            ActivityType::CUDA_PROFILER_RANGE}));
+                            ActivityType::CUDA_RUNTIME}));
 
   Config cfg2;
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,kernel"));

@@ -20,10 +20,10 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"kernel", ActivityType::CONCURRENT_KERNEL},
     {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
     {"cuda_runtime", ActivityType::CUDA_RUNTIME},
-    {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
-    {"glow_runtime", ActivityType::GLOW_RUNTIME},
     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
     {"python_function", ActivityType::PYTHON_FUNCTION},
+    {"glow_runtime", ActivityType::GLOW_RUNTIME},
+    {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
     {"overhead", ActivityType::OVERHEAD},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT}
 }};
@@ -54,5 +54,14 @@ const std::array<ActivityType, activityTypeCount> activityTypes() {
   }
   return res;
 }
+
+const std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes() {
+  std::array<ActivityType, defaultActivityTypeCount> res;
+  for (int i = 0; i < defaultActivityTypeCount; i++) {
+    res[i] = map[i].type;
+  }
+  return res;
+}
+
 
 } // namespace libkineto

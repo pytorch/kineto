@@ -417,11 +417,9 @@ void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Ac
 
 void CuptiActivityProfiler::configureChildProfilers() {
   // If child profilers are enabled create profiler sessions
+  int64_t start_time_ms = duration_cast<milliseconds>(
+      profileStartTime_.time_since_epoch()).count();
   for (auto& profiler: profilers_) {
-    int64_t start_time_ms = duration_cast<milliseconds>(
-        profileStartTime_.time_since_epoch()).count();
-    LOG(INFO) << "Running child profiler " << profiler->name() << " for "
-            << config_->activitiesDuration().count() << " ms";
     auto session = profiler->configure(
         start_time_ms,
         config_->activitiesDuration().count(),
@@ -429,6 +427,8 @@ void CuptiActivityProfiler::configureChildProfilers() {
         *config_
     );
     if (session) {
+      LOG(INFO) << "Running child profiler " << profiler->name() << " for "
+                << config_->activitiesDuration().count() << " ms";
       sessions_.push_back(std::move(session));
     }
   }

@@ -335,12 +335,8 @@ class Config : public AbstractConfig {
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
-    for (ActivityType t : activityTypes()) {
-      // Do no enable this by default
-      // TODO: introduce optional types
-      if (t != ActivityType::OVERHEAD) {
-        selectedActivityTypes_.insert(t);
-      }
+    for (ActivityType t : defaultActivityTypes()) {
+      selectedActivityTypes_.insert(t);
     }
   }
 

@@ -151,8 +151,8 @@ bool AbstractConfig::parse(const string& conf) {
           }
         }
       } catch (const std::exception& e) {
-        LOG(ERROR) << "Failed to parse config line: " << line;
-        LOG(ERROR) << e.what();
+        LOG(ERROR) << "Failed to parse config: " << e.what()
+                   << " ; line: "<< line;
         return false;
       }
       if (!handled) {
@@ -175,7 +175,7 @@ bool AbstractConfig::parse(const string& conf) {
 bool AbstractConfig::handleOption(
     const std::string& /* unused */,
     std::string& /* unused */) {
-  LOG(ERROR) << "handleOption unimplemented";
+  // Unimplemented
   return false;
 }
 

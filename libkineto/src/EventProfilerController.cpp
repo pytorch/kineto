@@ -252,7 +252,7 @@ void EventProfilerController::acceptConfig(const Config& config) {
   }
   std::lock_guard<std::mutex> guard(mutex_);
   if (newOnDemandConfig_) {
-    LOG(ERROR) << "On demand request already queued - ignoring new request";
+    LOG(WARNING) << "On demand request already queued - ignoring new request";
     return;
   }
   newOnDemandConfig_ = config.clone();

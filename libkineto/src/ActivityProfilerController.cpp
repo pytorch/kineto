@@ -178,13 +178,13 @@ void ActivityProfilerController::activateConfig(
 void ActivityProfilerController::scheduleTrace(const Config& config) {
   VLOG(1) << "scheduleTrace";
   if (profiler_->isActive()) {
-    LOG(ERROR) << "Ignored request - profiler busy";
+    LOG(WARNING) << "Ignored request - profiler busy";
     return;
   }
   int64_t currentIter = iterationCount_;
   if (config.hasProfileStartIteration() && currentIter < 0) {
-    LOG(ERROR) << "Ignored profile iteration count based request as "
-               << "application is not updating iteration count";
+    LOG(WARNING) << "Ignored profile iteration count based request as "
+                 << "application is not updating iteration count";
     return;
   }
   std::lock_guard<std::mutex> lock(asyncConfigLock_);

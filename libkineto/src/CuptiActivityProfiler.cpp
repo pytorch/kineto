@@ -68,8 +68,7 @@ CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOn
       stopCollection_{false} {}
 
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
-  LOG(INFO) << "Processing " << traceBuffers_->cpu.size()
-      << " CPU buffers";
+  LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
   logger.handleTraceStart(metadata_);
@@ -105,8 +104,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(logger);
-    LOG(INFO) << "Processed " << count
-              << " GPU records";
+    LOG(INFO) << "Processed " << count << " GPU records";
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
 #endif // HAS_ROCTRACER
@@ -158,7 +156,7 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
   } else if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1){
     userCorrelationMap_[correlation->correlationId] = correlation->externalId;
   } else {
-    LOG(ERROR) << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
+    LOG(WARNING) << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
   }
 }
 #endif // HAS_CUPTI
@@ -439,7 +437,7 @@ void CuptiActivityProfiler::configure(
     const time_point<system_clock>& now) {
   std::lock_guard<std::mutex> guard(mutex_);
   if (isActive()) {
-    LOG(ERROR) << "CuptiActivityProfiler already busy, terminating";
+    LOG(WARNING) << "CuptiActivityProfiler already busy, terminating";
     return;
   }
 
@@ -659,7 +657,6 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
       if (cupti_.stopCollection) {
         // Go to process trace to clear any outstanding buffers etc
-        LOG(WARNING) << "Trace terminated during warmup";
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         resetInternal();
@@ -672,7 +669,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
         if (profileStartIter_ < 0 &&
             (now > profileStartTime_ + milliseconds(10))) {
-          LOG(WARNING)
+          LOG(INFO)
               << "Tracing started "
               << duration_cast<milliseconds>(now - profileStartTime_).count()
               << "ms late!";
@@ -714,9 +711,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       ){
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete.";
-        if (currentIter > 0) {
-          LOG(INFO) << "This state change was invoked by application's step() call";
-        }
+        VLOG_IF(1, currentIter > 0) << "This state change was invoked by application's step() call";
+
         // FIXME: Need to communicate reason for stopping on errors
         if (libkineto::api().client()) {
           libkineto::api().client()->stop();
@@ -757,7 +753,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 }
 
 void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& logger) {
-  LOG(INFO) << "Recorded nets:";
+  LOG(INFO) << "Traces Recorded:";
   {
     for (const auto& it : iterationCountMap_) {
       LOG(INFO) << it.first << ": " << it.second << " iterations";

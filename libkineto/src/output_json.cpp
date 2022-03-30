@@ -349,7 +349,7 @@ void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
       return;
     }
   }
-  LOG(ERROR) << "Unknown flow type: " << act.flowType();
+  LOG(WARNING) << "Unknown flow type: " << act.flowType();
 }
 
 void ChromeTraceLogger::handleLink(

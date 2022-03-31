@@ -272,7 +272,7 @@ void RoctracerActivityApi::api_callback(uint32_t domain, uint32_t cid, const voi
 
     // Pack callbacks into row structures
 
-    static timespec timestamp;	// FIXME verify thread safety
+    thread_local timespec timestamp;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
       clock_gettime(CLOCK_MONOTONIC, &timestamp);  // record proper clock
@@ -281,6 +281,7 @@ void RoctracerActivityApi::api_callback(uint32_t domain, uint32_t cid, const voi
       timespec endTime;
       timespec startTime { timestamp };
       clock_gettime(CLOCK_MONOTONIC, &endTime);  // record proper clock
+      std::unique_lock<std::mutex> lock(dis->mutex_);
 
       switch (cid) {
         case HIP_API_ID_hipLaunchKernel:

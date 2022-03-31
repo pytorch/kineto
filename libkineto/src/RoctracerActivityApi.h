@@ -160,6 +160,7 @@ class RoctracerActivityApi {
   std::deque<copyRow> copyRows_;
   std::deque<mallocRow> mallocRows_;
   std::map<activity_correlation_id_t, GenericTraceActivity> kernelLaunches_;
+  std::mutex mutex_;
 #endif
 
   int maxGpuBufferCount_{0};

@@ -6,7 +6,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 // Using CUDA 11 and above due to usage of API: cuptiProfilerGetCounterAvailability.
-#if defined(CUDART_VERSION) && CUDART_VERSION >= 10000 && CUDART_VERSION < 11040 && CUDA_VERSION >= 11000
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION >= 10000 && CUDART_VERSION < 11040 && CUDA_VERSION >= 11000
 #define HAS_CUPTI_RANGE_PROFILER 1
 #endif // CUDART_VERSION > 10.00 and < 11.04 && CUDA_VERSION >= 11.00
 #endif // HAS_CUPTI

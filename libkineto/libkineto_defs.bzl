@@ -34,6 +34,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
     return [
         "src/AbstractConfig.cpp",
         "src/CuptiActivityProfiler.cpp",
+        "src/CuptiRangeProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",
         "src/ActivityType.cpp",

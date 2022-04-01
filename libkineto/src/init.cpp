@@ -69,7 +69,7 @@ static void stopProfiler(
   EventProfilerController::stop(ctx);
 }
 
-static CuptiRangeProfilerInit rangeProfilerInit;
+static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
 #endif // HAS_CUPTI
 
 } // namespace KINETO_NAMESPACE
@@ -114,6 +114,11 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
         LOG(INFO) << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
                   << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
       }
+    }
+
+    // initialize CUPTI Range Profiler API
+    if (success) {
+      rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
     }
   }
 

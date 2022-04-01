@@ -16,13 +16,13 @@
 #include <cupti_profiler_target.h>
 #include <cupti_target.h>
 #else
-using CUpti_ProfilerRange = enum
+enum CUpti_ProfilerRange
 {
   CUPTI_AutoRange,
   CUPTI_UserRange,
 };
 
-using CUpti_ProfilerReplayMode = enum
+enum CUpti_ProfilerReplayMode
 {
   CUPTI_KernelReplay,
   CUPTI_UserReplay,

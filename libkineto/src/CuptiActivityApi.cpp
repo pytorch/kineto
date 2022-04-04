@@ -58,41 +58,6 @@ void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
-static int getSMCount() {
-#ifdef HAS_CUPTI
-  // There may be a simpler way to get the number of SMs....
-  // Look for domain_d - this has 80 instances on Volta and
-  // 56 instances on Pascal, corresponding to the number of SMs
-  // FIXME: This does not work on Turing and later
-  uint32_t domainCount{0};
-  CUPTI_CALL(cuptiDeviceGetNumEventDomains(0, &domainCount));
-  std::vector<CUpti_EventDomainID> ids(domainCount);
-  size_t sz = sizeof(CUpti_EventDomainID) * domainCount;
-  CUPTI_CALL(cuptiDeviceEnumEventDomains(0, &sz, ids.data()));
-  for (CUpti_EventDomainID id : ids) {
-    char name[16];
-    name[0] = '\0';
-    sz = sizeof(name);
-    CUPTI_CALL(cuptiEventDomainGetAttribute(
-        id, CUPTI_EVENT_DOMAIN_ATTR_NAME, &sz, name));
-    if (strncmp(name, "domain_d", sz) == 0) {
-      uint32_t count{0};
-      sz = sizeof(count);
-      CUPTI_CALL(cuptiDeviceGetEventDomainAttribute(
-          0, id, CUPTI_EVENT_DOMAIN_ATTR_TOTAL_INSTANCE_COUNT, &sz, &count));
-      return count;
-    }
-  }
-#endif
-
-  return -1;
-}
-
-int CuptiActivityApi::smCount() {
-  static int sm_count = getSMCount();
-  return sm_count;
-}
-
 static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,

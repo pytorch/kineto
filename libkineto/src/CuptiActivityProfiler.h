@@ -18,6 +18,12 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+
+#ifdef HAS_CUPTI
+#include <cupti.h>
+#include "CuptiActivity.h"
+#endif // HAS_CUPTI
+
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"

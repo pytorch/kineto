@@ -7,16 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
-#ifdef HAS_CUPTI
-#include <cupti.h>
-#endif
-
 #include "Config.h"
 #include "GenericTraceActivity.h"
-#ifdef HAS_CUPTI
-#include "CuptiActivity.h"
-#include "CuptiActivity.tpp"
-#endif // HAS_CUPTI
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {
@@ -61,21 +53,6 @@ class MemoryTraceLogger : public ActivityLogger {
   void handleGenericActivity(const GenericTraceActivity& activity) override {
     addActivityWrapper(activity);
   }
-
-#ifdef HAS_CUPTI
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override {
-    addActivityWrapper(activity);
-  }
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override {
-    addActivityWrapper(activity);
-  }
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override {
-    addActivityWrapper(activity);
-  }
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override {
-    addActivityWrapper(activity);
-  }
-#endif // HAS_CUPTI
 
   void handleTraceStart(
       const std::unordered_map<std::string, std::string>& metadata) override {

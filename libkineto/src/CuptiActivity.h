@@ -9,6 +9,7 @@
 #include "ITraceActivity.h"
 #include "GenericTraceActivity.h"
 #include "CuptiActivityPlatform.h"
+#include "GenericTraceActivity.h"
 #include "ThreadUtil.h"
 #include "cupti_strings.h"
 

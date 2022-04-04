@@ -2,7 +2,7 @@
 
 #ifdef HAS_CUPTI
 #include <cuda_runtime_api.h>
-#if defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
 #include <nvperf_cuda_host.h>
 #include <nvperf_host.h>
 #include <nvperf_target.h>
@@ -40,7 +40,7 @@ namespace nvperf {
 // Only supported on CUDA RT Version between 10.0 and 11.04.
 // After CUDA RT 11.04, the structure has changed.
 // TODO update the structure NVPA_RawMetricsConfig to support 11.04
-#if defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
 
 bool getRawMetricRequests(
     NVPA_MetricsContext* metricsContext,

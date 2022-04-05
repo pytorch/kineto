@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <unistd.h>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -105,9 +104,11 @@ CuptiRangeProfilerSession::CuptiRangeProfilerSession(
 
   CuptiRangeProfilerOptions opts{
     .metricNames = cupti_metrics,
+    .deviceId = 0,
     .maxRanges = max_ranges,
     .numNestingLevels = 1,
-    .cuContext = nullptr};
+    .cuContext = nullptr,
+    .unitTest = false};
 
   for (auto device_id : CuptiRBProfilerSession::getActiveDevices()) {
     LOG(INFO) << "Init CUPTI range profiler on gpu = " << device_id

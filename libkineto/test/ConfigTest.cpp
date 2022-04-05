@@ -310,3 +310,16 @@ TEST(ParseTest, RequestTime) {
                 .count();
   EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
 }
+
+TEST(ParseTest, ProfileStartTime) {
+  Config cfg;
+  system_clock::time_point now = system_clock::now();
+  int64_t tgood_ms =
+      duration_cast<milliseconds>(now.time_since_epoch()).count();
+  EXPECT_TRUE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tgood_ms)));
+
+  int64_t tbad_ms =
+      duration_cast<milliseconds>((now - seconds(15)).time_since_epoch())
+          .count();
+  EXPECT_FALSE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tbad_ms)));
+}

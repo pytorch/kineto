@@ -76,6 +76,7 @@ constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
 //               system_clock::now().time_since_epoch()).count()
 //    * Python: <delay_ms> + int(time.time() * 1000)
 //    * Bash: $((<delay_ms> + $(date +%s%3N)))
+//    * Bash: $(date -d "$time + <delay_secs>seconds" +%s%3N)
 // If used for a tracing request, timestamp must be far enough in the future
 // to accommodate ACTIVITIES_WARMUP_PERIOD_SECS as well as any delays in
 // propagating the request to the profiler.
@@ -244,6 +245,23 @@ static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   return t;
 }
 
+static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
+  auto t = time_point<system_clock>(milliseconds(start_time_ms));
+  // This should check that ProfileStartTime is in the future with
+  // enough time for warm-up.
+  // Unfortunately, warm-up duration is unknown at this point.
+  // But we can still check that the start time is not in the past.
+  auto now = system_clock::now();
+  if ((now - t) > kMaxRequestAge) {
+    throw std::invalid_argument(fmt::format(
+      "Invalid {}: {} - start time is more than {}s in the past",
+      kProfileStartTimeKey,
+      getTimeStr(t),
+      kMaxRequestAge.count()));
+  }
+  return t;
+}
+
 void Config::setActivityTypes(
   const std::vector<std::string>& selected_activities) {
   selectedActivityTypes_.clear();
@@ -325,13 +343,12 @@ bool Config::handleOption(const std::string& name, std::string& val) {
 
   // Common
   else if (!name.compare(kRequestTimestampKey)) {
-    VLOG(0) << kRequestTimestampKey
-            << " has been deprecated - please use "
-            << kProfileStartTimeKey;
+    LOG(INFO) << kRequestTimestampKey
+              << " has been deprecated - please use "
+              << kProfileStartTimeKey;
     requestTimestamp_ = handleRequestTimestamp(toInt64(val));
   } else if (!name.compare(kProfileStartTimeKey)) {
-    profileStartTime_ =
-      time_point<system_clock>(milliseconds(toInt64(val)));
+    profileStartTime_ = handleProfileStartTime(toInt64(val));
   } else if (!name.compare(kProfileStartIterationKey)) {
     profileStartIteration_ = toInt32(val);
   } else if (!name.compare(kProfileStartIterationRoundUpKey)) {

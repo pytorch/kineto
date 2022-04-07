@@ -318,6 +318,11 @@ TEST(ParseTest, ProfileStartTime) {
       duration_cast<milliseconds>(now.time_since_epoch()).count();
   EXPECT_TRUE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tgood_ms)));
 
+  // Pass given PROFILE_START_TIME = 0, a timestamp is assigned.
+  tgood_ms = 0;
+  EXPECT_TRUE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tgood_ms)));
+
+  // Fail given PROFILE_START_TIME older than kMaxRequestAge from now.
   int64_t tbad_ms =
       duration_cast<milliseconds>((now - seconds(15)).time_since_epoch())
           .count();

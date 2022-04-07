@@ -246,6 +246,11 @@ static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
 }
 
 static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
+  // If 0, return 0, so that AbstractConfig::parse can fix the timestamp later.
+  if (start_time_ms == 0) {
+    return time_point<system_clock>(milliseconds(0));
+  }
+
   auto t = time_point<system_clock>(milliseconds(start_time_ms));
   // This should check that ProfileStartTime is in the future with
   // enough time for warm-up.

@@ -208,7 +208,10 @@ class Config : public AbstractConfig {
     if  (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }
-
+    // If no one requested timestamp, return 0.
+    if (requestTimestamp_.time_since_epoch().count() == 0) {
+      return requestTimestamp_;
+    }
     // TODO(T94634890): Deperecate requestTimestamp
     return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
   }

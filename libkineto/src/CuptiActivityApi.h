@@ -40,7 +40,6 @@ class CuptiActivityApi {
 
   static CuptiActivityApi& singleton();
 
-  virtual int smCount();
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 

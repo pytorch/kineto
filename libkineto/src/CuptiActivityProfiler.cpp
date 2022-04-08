@@ -36,6 +36,37 @@ using std::string;
 
 namespace KINETO_NAMESPACE {
 
+ConfigDerivedState::ConfigDerivedState(const Config& config) {
+  profileActivityTypes_ = config.selectedActivityTypes();
+  profileStartTime_ = config.requestTimestamp();
+  profileDuration_ = config.activitiesDuration();
+  profileWarmupDuration_ = config.activitiesWarmupDuration();
+  profilingByIter_ = config.hasProfileStartIteration();
+  if (profilingByIter_) {
+    profileStartIter_ = config.profileStartIteration();
+    profileEndIter_ = profileStartIter_ + config.activitiesRunIterations();
+  } else {
+    profileEndIter_ = (std::numeric_limits<decltype(profileEndIter_)>::max)();
+    profileEndTime_ = profileStartTime_ + config.activitiesDuration();
+  }
+}
+
+bool ConfigDerivedState::canStart(
+    const std::chrono::time_point<std::chrono::system_clock>& now) const {
+  if (!profilingByIter_) {
+    if (profileStartTime_ < now) {
+      LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): "
+                 << duration_cast<milliseconds>(now - profileStartTime_).count();
+      return false;
+    } else if ((profileStartTime_ - now) < profileWarmupDuration_) {
+      LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): "
+                 << duration_cast<milliseconds>(profileStartTime_ - now).count();
+      return false;
+    }
+  }
+  return true;
+}
+
 void CuptiActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   std::lock_guard<std::mutex> guard(mutex_);
@@ -136,7 +167,7 @@ void CuptiActivityProfiler::processCpuTrace(
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
     VLOG(2) << act.correlationId() << ": OP " << act.activityName;
-    if (config_->selectedActivityTypes().count(act.type())) {
+    if (derivedConfig_->profileActivityTypes().count(act.type())) {
       act.log(logger);
     }
     clientActivityTraceMap_[act.correlationId()] = &span_pair;
@@ -340,7 +371,7 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   recordStream(act.deviceId(), act.resourceId(), "");
   act.log(*logger);
   updateGpuNetSpan(act);
-  if (config_->selectedActivityTypes().count(ActivityType::GPU_USER_ANNOTATION)) {
+  if (derivedConfig_->profileActivityTypes().count(ActivityType::GPU_USER_ANNOTATION)) {
     const auto& it = userCorrelationMap_.find(act.correlationId());
     if (it != userCorrelationMap_.end()) {
       const auto& it2 = activityMap_.find(it->second);
@@ -415,17 +446,19 @@ void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Ac
 void CuptiActivityProfiler::configureChildProfilers() {
   // If child profilers are enabled create profiler sessions
   int64_t start_time_ms = duration_cast<milliseconds>(
-      profileStartTime_.time_since_epoch()).count();
+    derivedConfig_->profileStartTime().time_since_epoch()).count();
   for (auto& profiler: profilers_) {
+    LOG(INFO) << "Running child profiler " << profiler->name() << " for "
+            << derivedConfig_->profileDuration().count() << " ms";
     auto session = profiler->configure(
         start_time_ms,
-        config_->activitiesDuration().count(),
-        config_->selectedActivityTypes(),
+        derivedConfig_->profileDuration().count(),
+        derivedConfig_->profileActivityTypes(),
         *config_
     );
     if (session) {
       LOG(INFO) << "Running child profiler " << profiler->name() << " for "
-                << config_->activitiesDuration().count() << " ms";
+                << derivedConfig_->profileDuration().count() << " ms";
       sessions_.push_back(std::move(session));
     }
   }
@@ -442,12 +475,6 @@ void CuptiActivityProfiler::configure(
 
   config_ = config.clone();
 
-  if (config_->activitiesDuration().count() == 0) {
-    // Use default if not specified
-    config_->setActivitiesDuration(
-        config_->activitiesDurationDefault());
-  }
-
   // Ensure we're starting in a clean state
   resetTraceData();
 
@@ -457,35 +484,24 @@ void CuptiActivityProfiler::configure(
   Logger::addLoggerObserver(loggerCollectorMetadata_.get());
 #endif // !USE_GOOGLE_LOG
 
-  profileStartTime_ = config_->requestTimestamp();
+  derivedConfig_.reset();
+  derivedConfig_ = std::make_unique<ConfigDerivedState>(*config_);
+  // Check if now is a valid time to start.
 
-  if (config_->hasProfileStartIteration()) {
-    profileStartIter_ = config_->profileStartIteration();
-    profileEndIter_ = profileStartIter_ + config_->activitiesRunIterations();
-  } else {
-
-    profileStartIter_ = -1;
-    profileEndIter_ = (std::numeric_limits<decltype(profileEndIter_)>::max)();
-
-    if (profileStartTime_ < now) {
-      LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): " << duration_cast<milliseconds>(now - profileStartTime_).count();
-      return;
-    } else if ((profileStartTime_ - now) < config_->activitiesWarmupDuration()) {
-      LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): " << duration_cast<milliseconds>(profileStartTime_ - now).count() ;
-      return;
-    }
+  if (!derivedConfig_->canStart(now)) {
+    return;
   }
 
   if (LOG_IS_ON(INFO)) {
     config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
   }
   if (!cpuOnly_ && !libkineto::api().client()) {
-    if (profileStartIter_ < 0) {
-      LOG(INFO) << "GPU-only tracing for "
-                << config_->activitiesDuration().count() << "ms";
-    } else {
+    if (derivedConfig_->isProfilingByIteration()) {
       LOG(INFO) << "GPU-only tracing for "
                 << config_->activitiesRunIterations() << " iterations";
+    } else {
+      LOG(INFO) << "GPU-only tracing for "
+                << config_->activitiesDuration().count() << "ms";
     }
   }
 
@@ -532,11 +548,13 @@ void CuptiActivityProfiler::configure(
   if (libkineto::api().client()) {
     libkineto::api().client()->warmup(config_->isOpInputsCollectionEnabled());
   }
-  if (profileStartIter_ >= 0) {
-    LOG(INFO) << "Tracing starting on iteration = " << profileStartIter_;
+  if (derivedConfig_->isProfilingByIteration()) {
+    LOG(INFO) << "Tracing starting on iteration = "
+              << derivedConfig_->profileStartIteration();
   } else {
+    auto profileStartTime = derivedConfig_->profileStartTime();
     LOG(INFO) << "Tracing starting in "
-              << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
+              << duration_cast<seconds>(profileStartTime - now).count() << "s";
   }
 
   traceBuffers_ = std::make_unique<ActivityBuffers>();
@@ -563,9 +581,9 @@ void CuptiActivityProfiler::stopTraceInternal(const time_point<system_clock>& no
       timestamp = system_clock::now();
     }
 #ifdef HAS_CUPTI
-    cupti_.disableCuptiActivities(config_->selectedActivityTypes());
+    cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
 #else
-    cupti_.disableActivities(config_->selectedActivityTypes());
+    cupti_.disableActivities(derivedConfig_->profileActivityTypes());
 #endif
     if (VLOG_IS_ON(1)) {
       auto t2 = system_clock::now();
@@ -597,33 +615,30 @@ void CuptiActivityProfiler::resetInternal() {
 bool CuptiActivityProfiler::isWarmupDone(
       const time_point<system_clock>& now,
       int64_t currentIter) const {
-  // is it a time based config
-  if (profileStartIter_ < 0) {
+  if (!derivedConfig_->isProfilingByIteration()) {
     // qualify that this check is not being called from application step() API
     // this avoids races between the step() API and periodically invoked
     // profiler run loop step() method
-    return (currentIter < 0) && (now >= profileStartTime_);
+    return (currentIter < 0) && (now >= derivedConfig_->profileStartTime());
   }
   // this is an iteration based config
   if (currentIter < 0) {
     return false;
   }
-  return currentIter >= profileStartIter_;
+  return currentIter >= derivedConfig_->profileStartIteration();
 }
 
 bool CuptiActivityProfiler::isCollectionDone(
       const time_point<system_clock>& now,
       int64_t currentIter) const {
-  // is it a time based config
-  if (profileStartIter_ < 0) {
+  if (!derivedConfig_->isProfilingByIteration()) {
     // qualify that this check is not being called from application step() API
-    return (currentIter < 0) && (now >= profileEndTime_);
+    return (currentIter < 0) && (now >= derivedConfig_->profileEndTime());
   }
-  // this is an iteration based config
   if (currentIter < 0) {
     return false;
   }
-  return currentIter >= profileEndIter_;
+  return currentIter >= derivedConfig_->profileEndIteration();
 }
 
 const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
@@ -648,7 +663,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && currentIter < 0 &&
-          (profileStartIter_ >= 0 || nextWakeupTime < profileStartTime_)) {
+          (derivedConfig_->isProfilingByIteration() ||
+           nextWakeupTime < derivedConfig_->profileStartTime())) {
         cupti_.clearActivities();
       }
 
@@ -664,11 +680,12 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
       if (warmup_done) {
         UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
-        if (profileStartIter_ < 0 &&
-            (now > profileStartTime_ + milliseconds(10))) {
+        if (!derivedConfig_->isProfilingByIteration() &&
+            (now > derivedConfig_->profileStartTime() + milliseconds(10))) {
           LOG(INFO)
               << "Tracing started "
-              << duration_cast<milliseconds>(now - profileStartTime_).count()
+              << duration_cast<milliseconds>(
+                   now - derivedConfig_->profileStartTime()).count()
               << "ms late!";
         } else {
           LOG(INFO) << "Tracing started";
@@ -677,11 +694,11 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         if (libkineto::api().client()) {
           libkineto::api().client()->start();
         }
-        if (nextWakeupTime > profileEndTime_) {
-          new_wakeup_time = profileEndTime_;
+        if (nextWakeupTime > derivedConfig_->profileEndTime()) {
+          new_wakeup_time = derivedConfig_->profileEndTime();
         }
-      } else if (nextWakeupTime > profileStartTime_) {
-        new_wakeup_time = profileStartTime_;
+      } else if (nextWakeupTime > derivedConfig_->profileStartTime()) {
+        new_wakeup_time = derivedConfig_->profileStartTime();
       }
 
       break;
@@ -709,10 +726,11 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         VLOG_IF(0, collection_done) << "Reached profile end time";
 
         UST_LOGGER_MARK_COMPLETED(kCollectionStage);
-      } else if (profileStartIter_ >= 0) {
+      } else if (derivedConfig_->isProfilingByIteration()) {
         // nothing to do here
-      } else if (now < profileEndTime_ && profileEndTime_ < nextWakeupTime) {
-        new_wakeup_time = profileEndTime_;
+      } else if (now < derivedConfig_->profileEndTime() &&
+                 derivedConfig_->profileEndTime() < nextWakeupTime) {
+        new_wakeup_time = derivedConfig_->profileEndTime();
       }
 
       break;

@@ -368,10 +368,6 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   return true;
 }
 
-std::chrono::milliseconds Config::activitiesDurationDefault() const {
-  return kDefaultActivitiesProfileDurationMSecs;
-};
-
 void Config::updateActivityProfilerRequestReceivedTime() {
   activitiesOnDemandTimestamp_ = system_clock::now();
 }

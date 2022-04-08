@@ -38,6 +38,53 @@ class Config;
 class CuptiActivityApi;
 class RoctracerActivityApi;
 
+// This struct is a derived snapshot of the Config. And should not
+// be mutable after construction.
+struct ConfigDerivedState {
+  ConfigDerivedState() = delete;
+  ConfigDerivedState(const Config&);
+  // ConfigDerivedState(const ConfigDerivedState&) = default;
+
+  // Calculate if starting is valid.
+  bool canStart(
+    const std::chrono::time_point<std::chrono::system_clock>& now) const;
+
+  // Set and Get Functions below.
+  const std::set<ActivityType>& profileActivityTypes() const {
+    return profileActivityTypes_;
+  }
+
+  const std::chrono::time_point<std::chrono::system_clock>
+  profileStartTime() const {
+    return profileStartTime_;
+  }
+
+  const std::chrono::time_point<std::chrono::system_clock>
+  profileEndTime() const {
+    return profileEndTime_;
+  }
+
+  const std::chrono::milliseconds
+  profileDuration() const {
+    return profileDuration_;
+  }
+
+  int64_t profileStartIteration() const { return profileStartIter_; }
+  int64_t profileEndIteration() const { return profileEndIter_; }
+  bool isProfilingByIteration() const { return profilingByIter_; }
+
+ private:
+  std::set<ActivityType> profileActivityTypes_;
+  // Start and end time used for triggering and stopping profiling
+  std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
+  std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
+  std::chrono::milliseconds profileDuration_;
+  std::chrono::seconds profileWarmupDuration_;
+  int64_t profileStartIter_ {-1};
+  int64_t profileEndIter_ {-1};
+  bool profilingByIter_ {false};
+};
+
 class CuptiActivityProfiler {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
@@ -96,7 +143,7 @@ class CuptiActivityProfiler {
   void transferCpuTrace(
       std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 
-  Config& config() {
+  const Config& config() {
     return *config_;
   }
 
@@ -271,8 +318,12 @@ class CuptiActivityProfiler {
 
   void checkTimestampOrder(const ITraceActivity* act1);
 
-  // On-demand request configuration
-  std::unique_ptr<Config> config_;
+  // On-demand Request Config (should not be modified)
+  // TODO: remove this config_, dependency needs to be removed from finalizeTrace.
+  std::unique_ptr<const Config> config_;
+
+  // Resolved details about the config and states are stored here.
+  std::unique_ptr<ConfigDerivedState> derivedConfig_;
 
   // Logger used during trace processing
   ActivityLogger* logger_;
@@ -290,12 +341,6 @@ class CuptiActivityProfiler {
     CollectTrace,
     ProcessTrace
   };
-
-  // Start and end time used for triggering and stopping profiling
-  std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
-  std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
-  int64_t profileStartIter_ = -1, profileEndIter_ = -1;
-
 
   // All recorded trace spans, both CPU and GPU
   // Trace Id -> list of iterations.

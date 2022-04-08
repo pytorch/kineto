@@ -335,19 +335,15 @@ class CuptiActivityProfiler {
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};
 
-  // Keep track of the start time of the first net in the current trace.
-  // This is only relevant to Caffe2 as PyTorch does not have nets.
+  // Keep track of the start time and end time for the trace collected.
+  // External threads using startTrace need to manually stopTrace. Part of the mock tests.
   // All CUDA events before this time will be removed
-  // Can be written by external threads during collection.
   int64_t captureWindowStartTime_{0};
   // Similarly, all CUDA API events after the last net event will be removed
   int64_t captureWindowEndTime_{0};
 
   // span name -> iteration count
   std::map<std::string, int> iterationCountMap_;
-  // Flag used to stop tracing from external api callback.
-  // Needs to be atomic since it's set from a different thread.
-  std::atomic_bool stopCollection_{false};
 
   // Buffers where trace data is stored
   std::unique_ptr<ActivityBuffers> traceBuffers_;

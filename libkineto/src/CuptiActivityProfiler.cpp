@@ -64,8 +64,7 @@ CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOn
       flushOverhead_{0, 0},
       setupOverhead_{0, 0},
       cpuOnly_{cpuOnly},
-      currentRunloopState_{RunloopState::WaitForRequest},
-      stopCollection_{false} {}
+      currentRunloopState_{RunloopState::WaitForRequest} {}
 
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
@@ -556,9 +555,7 @@ void CuptiActivityProfiler::startTraceInternal(const time_point<system_clock>& n
 }
 
 void CuptiActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
-  if (captureWindowEndTime_ == 0) {
-    captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
-  }
+  captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     time_point<system_clock> timestamp;
@@ -691,20 +688,9 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
     case RunloopState::CollectTrace:
       VLOG(1) << "State: CollectTrace";
-      // captureWindowStartTime_ can be set by external threads,
-      // so recompute end time.
-      // FIXME: Is this a good idea for synced start?
-      if (profileStartIter_ < 0) {
-        std::lock_guard<std::mutex> guard(mutex_);
-        profileEndTime_ = time_point<system_clock>(
-                              microseconds(captureWindowStartTime_)) +
-            config_->activitiesDuration();
-      }
-
       collection_done = isCollectionDone(now, currentIter);
 
-      // TODO revisit stopCollection_ is not used right now
-      if (collection_done || stopCollection_.exchange(false)
+      if (collection_done
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
           || cupti_.stopCollection
 #endif // HAS_CUPTI || HAS_ROCTRACER

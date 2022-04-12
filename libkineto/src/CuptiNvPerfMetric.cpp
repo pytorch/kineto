@@ -2,7 +2,7 @@
 
 #ifdef HAS_CUPTI
 #include <cuda_runtime_api.h>
-#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000
 #include <nvperf_cuda_host.h>
 #include <nvperf_host.h>
 #include <nvperf_target.h>
@@ -40,7 +40,7 @@ namespace nvperf {
 // Only supported on CUDA RT Version between 10.0 and 11.04.
 // After CUDA RT 11.04, the structure has changed.
 // TODO update the structure NVPA_RawMetricsConfig to support 11.04
-#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000 && CUDART_VERSION < 11040
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000
 
 bool getRawMetricRequests(
     NVPA_MetricsContext* metricsContext,
@@ -142,16 +142,31 @@ bool getProfilerConfigImage(
     return false;
   }
 
-  NVPA_RawMetricsConfigOptions metricsConfigOptions = {
-      NVPA_RAW_METRICS_CONFIG_OPTIONS_STRUCT_SIZE, nullptr};
-  metricsConfigOptions.activityKind = NVPA_ACTIVITY_KIND_PROFILER;
-  metricsConfigOptions.pChipName = chipName.c_str();
-  NVPA_RawMetricsConfig* rawMetricsConfig;
-  if (!NVPW_CALL(
-        NVPA_RawMetricsConfig_Create(
-          &metricsConfigOptions, &rawMetricsConfig))) {
-    return false;
-  }
+  // Starting CUDA 11.4 the metric config create call and struct has changed
+#if CUDART_VERSION < 11040
+   NVPA_RawMetricsConfigOptions metricsConfigOptions = {
+       NVPA_RAW_METRICS_CONFIG_OPTIONS_STRUCT_SIZE, nullptr};
+#else
+   NVPW_CUDA_RawMetricsConfig_Create_Params metricsConfigOptions = {
+       NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE, nullptr};
+#endif // CUDART_VERSION < 11040
+
+   metricsConfigOptions.activityKind = NVPA_ACTIVITY_KIND_PROFILER;
+   metricsConfigOptions.pChipName = chipName.c_str();
+
+   NVPA_RawMetricsConfig* rawMetricsConfig;
+#if CUDART_VERSION < 11040
+   if (!NVPW_CALL(
+         NVPA_RawMetricsConfig_Create(
+           &metricsConfigOptions, &rawMetricsConfig))) {
+     return false;
+   }
+#else
+   if (!NVPW_CALL(NVPW_CUDA_RawMetricsConfig_Create(&metricsConfigOptions))) {
+     return false;
+   }
+  rawMetricsConfig = metricsConfigOptions.pRawMetricsConfig;
+#endif // CUDART_VERSION < 11040
 
   // TODO check if this is required
   if (counterAvailabilityImage) {

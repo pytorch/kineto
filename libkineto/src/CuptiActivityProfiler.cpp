@@ -463,7 +463,7 @@ void CuptiActivityProfiler::configure(
     profileStartIter_ = config_->profileStartIteration();
     profileEndIter_ = profileStartIter_ + config_->activitiesRunIterations();
   } else {
-
+    profileEndTime_ = profileStartTime_ + config_->activitiesDuration();
     profileStartIter_ = -1;
     profileEndIter_ = (std::numeric_limits<decltype(profileEndIter_)>::max)();
 

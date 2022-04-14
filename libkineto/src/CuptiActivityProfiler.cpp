@@ -534,9 +534,12 @@ void CuptiActivityProfiler::configure(
   }
   if (profileStartIter_ >= 0) {
     LOG(INFO) << "Tracing starting on iteration = " << profileStartIter_;
+    LOG(INFO) << "Tracing will end on iteration = " << profileEndIter_;
   } else {
     LOG(INFO) << "Tracing starting in "
               << duration_cast<seconds>(profileStartTime_ - now).count() << "s";
+    LOG(INFO) << "Tracing will end in "
+              << duration_cast<seconds>(profileEndTime_ - now).count() << "s";
   }
 
   traceBuffers_ = std::make_unique<ActivityBuffers>();

@@ -8,9 +8,6 @@
 #include <thread>
 #include <unordered_map>
 
-#ifdef HAS_CUPTI
-#include <cupti.h>
-#endif
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 

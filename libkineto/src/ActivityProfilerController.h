@@ -73,6 +73,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   std::unique_ptr<Config> asyncRequestConfig_;
   std::mutex asyncConfigLock_;
+
   std::unique_ptr<CuptiActivityProfiler> profiler_;
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};

@@ -68,6 +68,38 @@ bool ConfigDerivedState::canStart(
   return true;
 }
 
+bool ConfigDerivedState::isWarmupDone(
+      const time_point<system_clock>& now,
+      int64_t currentIter) const {
+  bool isTimestampBased = !profilingByIter_ && currentIter < 0;
+  if (isTimestampBased) {
+    // qualify that this check is not being called from application step() API
+    // this avoids races between the step() API and periodically invoked
+    // profiler run loop step() method
+    return now >= profileStartTime_;
+  }
+  bool isIterationBased = profilingByIter_ && currentIter >= 0;
+  if (isIterationBased) {
+    return currentIter >= profileStartIter_;
+  }
+  return false;
+}
+
+bool ConfigDerivedState::isCollectionDone(
+      const time_point<system_clock>& now,
+      int64_t currentIter) const {
+  bool isTimestampBased = !profilingByIter_ && currentIter < 0;
+  if (isTimestampBased) {
+    // qualify that this check is not being called from application step() API
+    return now >= profileEndTime_;
+  }
+  bool isIterationBased = profilingByIter_ && currentIter >= 0;
+  if (isIterationBased) {
+    return currentIter >= profileEndIter_;
+  }
+  return false;
+}
+
 void CuptiActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   std::lock_guard<std::mutex> guard(mutex_);
@@ -619,35 +651,6 @@ void CuptiActivityProfiler::resetInternal() {
   currentRunloopState_ = RunloopState::WaitForRequest;
 }
 
-bool CuptiActivityProfiler::isWarmupDone(
-      const time_point<system_clock>& now,
-      int64_t currentIter) const {
-  if (!derivedConfig_->isProfilingByIteration()) {
-    // qualify that this check is not being called from application step() API
-    // this avoids races between the step() API and periodically invoked
-    // profiler run loop step() method
-    return (currentIter < 0) && (now >= derivedConfig_->profileStartTime());
-  }
-  // this is an iteration based config
-  if (currentIter < 0) {
-    return false;
-  }
-  return currentIter >= derivedConfig_->profileStartIteration();
-}
-
-bool CuptiActivityProfiler::isCollectionDone(
-      const time_point<system_clock>& now,
-      int64_t currentIter) const {
-  if (!derivedConfig_->isProfilingByIteration()) {
-    // qualify that this check is not being called from application step() API
-    return (currentIter < 0) && (now >= derivedConfig_->profileEndTime());
-  }
-  if (currentIter < 0) {
-    return false;
-  }
-  return currentIter >= derivedConfig_->profileEndIteration();
-}
-
 const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
     const time_point<system_clock>& now,
     const time_point<system_clock>& nextWakeupTime,
@@ -666,7 +669,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
     case RunloopState::Warmup:
       VLOG(1) << "State: Warmup";
-      warmup_done = isWarmupDone(now, currentIter);
+      warmup_done = derivedConfig_->isWarmupDone(now, currentIter);
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && currentIter < 0 &&
@@ -712,7 +715,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
     case RunloopState::CollectTrace:
       VLOG(1) << "State: CollectTrace";
-      collection_done = isCollectionDone(now, currentIter);
+      collection_done = derivedConfig_->isCollectionDone(now, currentIter);
 
       if (collection_done
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)

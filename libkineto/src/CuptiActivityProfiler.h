@@ -48,6 +48,15 @@ struct ConfigDerivedState final {
   bool canStart(
     const std::chrono::time_point<std::chrono::system_clock>& now) const;
 
+  // TODO: consider using union since only 1 arg is used.
+  bool isWarmupDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
+
+  bool isCollectionDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
+
   // Set and Get Functions below.
   const std::set<ActivityType>& profileActivityTypes() const {
     return profileActivityTypes_;
@@ -229,14 +238,6 @@ class CuptiActivityProfiler {
     int64_t overhead;
     int cntr;
   };
-
-  bool isWarmupDone(
-      const std::chrono::time_point<std::chrono::system_clock>& now,
-      int64_t currentIter) const;
-
-  bool isCollectionDone(
-      const std::chrono::time_point<std::chrono::system_clock>& now,
-      int64_t currentIter) const;
 
   void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);

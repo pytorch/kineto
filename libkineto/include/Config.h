@@ -184,12 +184,6 @@ class Config : public AbstractConfig {
     return activitiesRunIterations_;
   }
 
-  std::chrono::milliseconds activitiesDurationDefault() const;
-
-  void setActivitiesDuration(std::chrono::milliseconds duration) {
-    activitiesDuration_ = duration;
-  }
-
   int activitiesMaxGpuBufferSize() const {
     return activitiesMaxGpuBufferSize_;
   }
@@ -212,7 +206,8 @@ class Config : public AbstractConfig {
     if (requestTimestamp_.time_since_epoch().count() == 0) {
       return requestTimestamp_;
     }
-    // TODO(T94634890): Deperecate requestTimestamp
+
+    // TODO(T94634890): Deprecate requestTimestamp
     return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
   }
 
@@ -409,9 +404,10 @@ class Config : public AbstractConfig {
   std::chrono::time_point<std::chrono::system_clock>
       activitiesOnDemandTimestamp_;
 
-  // Synchronized start timestamp
+  // ActivityProfilers are triggered by either:
+  // Synchronized start timestamps
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
-  // or start iteration
+  // Or start iterations.
   int profileStartIteration_;
   int profileStartIterationRoundUp_;
 

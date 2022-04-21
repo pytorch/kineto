@@ -79,32 +79,32 @@ static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
 using namespace KINETO_NAMESPACE;
 extern "C" {
 
+#ifdef HAS_CUPTI
+static void printCudaVersions() {
+  uint32_t cuptiVersion;
+  CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
+
+  int cudaRuntimeVersion;
+  CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
+
+  int cudaDriverVersion;
+  CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
+
+  LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion << "; Runtime: " << cudaRuntimeVersion << "; Driver: " << cudaDriverVersion;
+}
+
+#endif
 
 // Return true if no CUPTI errors occurred during init
 bool libkineto_init(bool cpuOnly, bool logOnError) {
   bool success = true;
 #ifdef HAS_CUPTI
-  // determine GPU availability on the system
-  cudaError_t error;
-  int deviceCount;
-  error = cudaGetDeviceCount(&deviceCount);
-  bool gpuAvailable = (error != cudaSuccess && deviceCount > 0);
-
-  if (gpuAvailable && !cpuOnly) {
+  if (!cpuOnly) {
     // libcupti will be lazily loaded on this call.
     // If it is not available (e.g. CUDA is not installed),
     // then this call will return an error and we just abort init.
+    printCudaVersions();
 
-    // check Nvidia versions
-    uint32_t cuptiVersion;
-    int cudaRuntimeVersion, cudaDriverVersion;
-
-    CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
-    CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
-    CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
-    LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion << "; Runtime: " << cudaRuntimeVersion << "; Driver: " << cudaDriverVersion;
-
-    // init Callback API
     auto& cbapi = CuptiCallbackApi::singleton();
     bool status = false;
 

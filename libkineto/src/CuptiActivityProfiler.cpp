@@ -335,9 +335,11 @@ void CuptiActivityProfiler::handleOverheadActivity(
     const CUpti_ActivityOverhead* activity,
     ActivityLogger* logger) {
   VLOG(2) << ": CUPTI_ACTIVITY_KIND_OVERHEAD" << " overheadKind=" << activity->overheadKind;
-
   const auto& overhead_activity =
       traceBuffers_->addActivityWrapper(OverheadActivity(activity, nullptr));
+  if (outOfRange(overhead_activity)) {
+    return;
+  }
   overhead_activity.log(*logger);
 }
 

@@ -257,6 +257,9 @@ std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() {
 
 // static
 bool CuptiRBProfilerSession::initCupti() {
+  // This call will try to load the libnvperf_host.so library and is known
+  // to break address sanitizer based flows. Only call this init
+  // when you plan to use CUPTI range profiler
   CUpti_Profiler_Initialize_Params profilerInitializeParams = {
       CUpti_Profiler_Initialize_Params_STRUCT_SIZE, nullptr};
   CUptiResult status = CUPTI_CALL_NOWARN(
@@ -273,10 +276,6 @@ void CuptiRBProfilerSession::deInitCupti() {
 
 // static
 bool CuptiRBProfilerSession::staticInit() {
-  if (!CuptiRBProfilerSession::initCupti()) {
-    return false;
-  }
-
   // Register CUPTI callbacks
   auto& cbapi = CuptiCallbackApi::singleton();
   CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
@@ -305,6 +304,7 @@ bool CuptiRBProfilerSession::staticInit() {
                  << "launch callback";
     return false;
   }
+
   return true;
 }
 
@@ -332,7 +332,11 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
 
   chipName_ = getChipName(opts.deviceId);
 
-  CuptiRBProfilerSession::initCupti();
+  if (!CuptiRBProfilerSession::initCupti()) {
+    LOG(ERROR) << "Failed to initialize CUPTI range profiler.";
+    return;
+  }
+
   LOG(INFO) << "Initializing CUPTI range profiler session : device = " << deviceId_
             << " chip = " << chipName_;
   /* Generate configuration for metrics, this can also be done offline*/

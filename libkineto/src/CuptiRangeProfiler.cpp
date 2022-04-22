@@ -283,7 +283,6 @@ CuptiRangeProfilerInit::CuptiRangeProfilerInit() {
   CuptiRangeProfilerConfig::registerFactory();
 
 #ifdef HAS_CUPTI
-  // TODO should this be revised to avoid overhead
   success = CuptiRBProfilerSession::staticInit();
 #endif
 

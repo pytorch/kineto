@@ -68,6 +68,9 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   void addMetadata(const std::string& key, const std::string& value);
 
  private:
+  bool shouldActivateIterationConfig(int64_t currentIter);
+  bool shouldActivateTimestampConfig(
+      const std::chrono::time_point<std::chrono::system_clock>& now);
   void profilerLoop();
   void activateConfig(std::chrono::time_point<std::chrono::system_clock> now);
 

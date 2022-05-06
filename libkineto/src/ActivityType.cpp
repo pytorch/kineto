@@ -14,7 +14,7 @@ struct ActivityTypeName {
 static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"cpu_op", ActivityType::CPU_OP},
     {"user_annotation", ActivityType::USER_ANNOTATION},
-    {"gpu_user_Annotation", ActivityType::GPU_USER_ANNOTATION},
+    {"gpu_user_annotation", ActivityType::GPU_USER_ANNOTATION},
     {"gpu_memcpy", ActivityType::GPU_MEMCPY},
     {"gpu_memset", ActivityType::GPU_MEMSET},
     {"kernel", ActivityType::CONCURRENT_KERNEL},

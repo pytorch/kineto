@@ -52,6 +52,11 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
     return fileName_;
   }
 
+ protected:
+  void finalizeTraceInternal(
+  int64_t endTime,
+  std::unordered_map<std::string, std::vector<std::string>>& metadata);
+
  private:
 
   // Create a flow event (arrow)

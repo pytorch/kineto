@@ -759,7 +759,6 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);
       processTraceInternal(*logger_);
-      UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
       resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;

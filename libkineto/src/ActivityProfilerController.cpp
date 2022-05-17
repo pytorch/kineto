@@ -265,8 +265,15 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
   profiler_->configure(config, now);
 }
 
+void ActivityProfilerController::startTrace() {
+  UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
+  profiler_->startTrace(std::chrono::system_clock::now());
+}
+
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
   profiler_->stopTrace(std::chrono::system_clock::now());
+  UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();

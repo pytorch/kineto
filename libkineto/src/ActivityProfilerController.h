@@ -32,19 +32,15 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
       const std::string& protocol,
       ActivityLoggerFactory::FactoryFunc factory);
 
+  // These API are used for On-Demand Tracing.
   bool canAcceptConfig() override;
   void acceptConfig(const Config& config) override;
-
   void scheduleTrace(const Config& config);
 
+  // These API are used for Synchronous Tracing.
   void prepareTrace(const Config& config);
-
-  void startTrace() {
-    profiler_->startTrace(std::chrono::system_clock::now());
-  }
-
+  void startTrace();
   void step();
-
   std::unique_ptr<ActivityTraceInterface> stopTrace();
 
   bool isActive() {

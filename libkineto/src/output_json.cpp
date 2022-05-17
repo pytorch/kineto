@@ -357,9 +357,7 @@ void ChromeTraceLogger::handleLink(
   // clang-format on
 }
 
-void ChromeTraceLogger::finalizeTrace(
-    const Config& /*unused*/,
-    std::unique_ptr<ActivityBuffers> /*unused*/,
+void ChromeTraceLogger::finalizeTraceInternal(
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   if (!traceOf_) {
@@ -410,4 +408,12 @@ void ChromeTraceLogger::finalizeTrace(
   traceOf_.close();
 }
 
+void ChromeTraceLogger::finalizeTrace(
+    const Config& /*unused*/,
+    std::unique_ptr<ActivityBuffers> /*unused*/,
+    int64_t endTime,
+    std::unordered_map<std::string, std::vector<std::string>>& metadata) {
+  ChromeTraceLogger::finalizeTraceInternal(endTime, metadata);
+  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
+}
 } // namespace KINETO_NAMESPACE

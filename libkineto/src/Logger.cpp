@@ -131,6 +131,13 @@ void Logger::addLoggerObserverDestination(const std::string& dest) {
   }
 }
 
+void Logger::setLoggerObserverOnDemand() {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->setTriggerOnDemand();
+  }
+}
+
 } // namespace KINETO_NAMESPACE
 
 #endif // USE_GOOGLE_LOG

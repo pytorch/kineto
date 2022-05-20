@@ -41,10 +41,15 @@ std::string& ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
 }
 
 void ChromeTraceLogger::metadataToJSON(
-    const std::unordered_map<std::string, std::string>& metadata) {
+    const std::unordered_map<std::string, std::string>& metadata, bool quote) {
   for (const auto& kv : metadata) {
-    traceOf_ << fmt::format(R"JSON(
+    if (quote) {
+      traceOf_ << fmt::format(R"JSON(
+  "{}": "{}",)JSON", kv.first, kv.second);
+    } else {
+      traceOf_ << fmt::format(R"JSON(
   "{}": {},)JSON", kv.first, kv.second);
+    }
   }
 }
 
@@ -60,7 +65,7 @@ void ChromeTraceLogger::handleTraceStart(
   ],)JSON", devicePropertiesJson());
 #endif
 
-  metadataToJSON(metadata);
+  metadataToJSON(metadata, true /*quote*/);
   traceOf_ << R"JSON(
   "traceEvents": [)JSON";
 }

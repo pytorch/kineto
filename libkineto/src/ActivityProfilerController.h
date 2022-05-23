@@ -8,12 +8,15 @@
 #include <mutex>
 #include <thread>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityLoggerFactory.h"
 #include "CuptiActivityProfiler.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
 #include "ConfigLoader.h"
 #include "CuptiActivityApi.h"
+#include "LoggerCollector.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -27,6 +30,11 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
       delete;
 
   ~ActivityProfilerController();
+
+#if !USE_GOOGLE_LOG
+  static void setLoggerCollectorFactory(
+      std::function<std::unique_ptr<LoggerCollector>()> factory);
+#endif // !USE_GOOGLE_LOG
 
   static void addLoggerFactory(
       const std::string& protocol,

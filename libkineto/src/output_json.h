@@ -76,8 +76,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGenericLink(const ITraceActivity& activity);
 
   void metadataToJSON(
-      const std::unordered_map<std::string, std::string>& metadata,
-      bool quote = false);
+      const std::unordered_map<std::string, std::string>& metadata);
 
   std::string& sanitizeStrForJSON(std::string& value);
 

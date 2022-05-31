@@ -122,6 +122,9 @@ class RunProfile(object):
         self.gpu_summary = None
         self.gpu_tooltip = None
 
+        # Device used, pure CPU run as default
+        self.device = "CPU"
+
         # for memory stats and curve
         self.memory_snapshot: Optional[MemorySnapshot] = None
         self.tid2tree: Dict[int, OperatorNode] = None

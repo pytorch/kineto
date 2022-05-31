@@ -28,6 +28,7 @@ class RunGenerator(object):
         profile_run.has_communication = self.profile_data.has_communication
         profile_run.has_memcpy_or_memset = self.profile_data.has_memcpy_or_memset
         profile_run.profiler_start_ts = self.profile_data.profiler_start_ts
+        profile_run.device = self.profile_data.device
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
 
@@ -94,8 +95,7 @@ class RunGenerator(object):
                          'extra': round(100 * part_cost / self.profile_data.avg_costs.costs[ProfileRole.Total], 2)}
             return cost_dict
 
-        show_gpu = (self.profile_data.has_runtime
-                    or self.profile_data.has_kernel or self.profile_data.has_memcpy_or_memset)
+        show_gpu = self.profile_data.device == "GPU"
 
         column_tootip = {'type': 'string', 'role': 'tooltip', 'p': {'html': 'true'}}
         data = {}

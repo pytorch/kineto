@@ -99,6 +99,7 @@ class TestProfiler(unittest.TestCase):
         self.assertTrue(profile.has_runtime)
         self.assertTrue(profile.has_kernel)
         self.assertTrue(profile.has_memcpy_or_memset)
+        self.assertEqual(profile.device,"GPU")
         step = profile.steps_costs[0]
         self.assertEqual(step.costs[ProfileRole.Kernel], 15)
         self.assertEqual(step.costs[ProfileRole.Memcpy], 10)

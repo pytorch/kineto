@@ -162,10 +162,9 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         name = request.args.get('run')
         run = self._get_run(name)
         data = profile.overview
-        is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         normal_workers = [worker for worker in run.workers if worker != 'All']
         data['environments'] = [{'title': 'Number of Worker(s)', 'value': str(len(normal_workers))},
-                                {'title': 'Device Type', 'value': 'GPU' if is_gpu_used else 'CPU'}]
+                                {'title': 'Device Type', 'value': profile.device}]
         if profile.gpu_summary and profile.gpu_tooltip:
             data['gpu_metrics'] = {'title': 'GPU Summary',
                                    'data': profile.gpu_summary,
@@ -232,7 +231,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def trace_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
-        if not profile.has_kernel:  # Pure CPU.
+        if profile.device == "CPU":
             raw_data = self._cache.read(profile.trace_file_path)
             if not profile.trace_file_path.endswith('.gz'):
                 raw_data = gzip.compress(raw_data, 1)

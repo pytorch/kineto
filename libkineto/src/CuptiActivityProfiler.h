@@ -170,7 +170,7 @@ class CuptiActivityProfiler {
     if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(pid, tid),
-          ActivityLogger::ResourceInfo(
+          libkineto::ResourceInfo(
               pid,
               sysTid,
               sysTid, // sortindex
@@ -263,7 +263,7 @@ class CuptiActivityProfiler {
     if (resourceInfo_.find({device, id}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(device, id),
-          ActivityLogger::ResourceInfo(
+          libkineto::ResourceInfo(
               device, id, id, fmt::format(
                   "stream {} {}", id, postfix)));
     }
@@ -357,7 +357,7 @@ class CuptiActivityProfiler {
   // and stream ids for GPU streams
   std::map<
       std::pair<int64_t, int64_t>,
-      ActivityLogger::ResourceInfo> resourceInfo_;
+      libkineto::ResourceInfo> resourceInfo_;
 
   std::vector<ActivityLogger::OverheadInfo> overheadInfo_;
 

@@ -26,37 +26,16 @@ class ActivityLogger {
 
   virtual ~ActivityLogger() = default;
 
-  struct DeviceInfo {
-    DeviceInfo(int64_t id, const std::string& name, const std::string& label) :
-      id(id), name(name), label(label) {}
-    int64_t id;
-    const std::string name;
-    const std::string label;
-  };
-
-  struct ResourceInfo {
-    ResourceInfo(
-        int64_t deviceId,
-        int64_t id,
-        int64_t sortIndex,
-        const std::string& name) :
-        id(id), sortIndex(sortIndex), deviceId(deviceId), name(name) {}
-    int64_t id;
-    int64_t sortIndex;
-    int64_t deviceId;
-    const std::string name;
-  };
-
   struct OverheadInfo {
     explicit OverheadInfo(const std::string& name) : name(name) {}
     const std::string name;
   };
 
   virtual void handleDeviceInfo(
-      const DeviceInfo& info,
+      const libkineto::DeviceInfo &info,
       uint64_t time) = 0;
 
-  virtual void handleResourceInfo(const ResourceInfo& info, int64_t time) = 0;
+  virtual void handleResourceInfo(const libkineto::ResourceInfo& info, int64_t time) = 0;
 
   virtual void handleOverheadInfo(const OverheadInfo& info, int64_t time) = 0;
 

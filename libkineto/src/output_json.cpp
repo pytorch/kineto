@@ -123,7 +123,7 @@ void ChromeTraceLogger::handleDeviceInfo(
 }
 
 void ChromeTraceLogger::handleResourceInfo(
-    const ResourceInfo& info,
+    const libkineto::ResourceInfo& info,
     int64_t time) {
   if (!traceOf_) {
     return;

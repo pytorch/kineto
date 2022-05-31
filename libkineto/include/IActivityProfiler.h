@@ -34,6 +34,32 @@ enum class TraceStatus {
   WARNING, // One or more warnings occurred.
 };
 
+/* DeviceInfo
+ *   Can be used to specify process name, PID and device label
+ */
+struct DeviceInfo {
+  DeviceInfo(int64_t id, const std::string& name, const std::string& label)
+      : id(id), name(name), label(label) {}
+  int64_t id;               //proces id
+  const std::string name;   //process name
+  const std::string label;  //device label
+};
+
+/* ResourceInfo
+ *   Can be used to specify resource inside device
+ */
+struct ResourceInfo {
+  ResourceInfo(
+      int64_t deviceId,
+      int64_t id,
+      int64_t sortIndex,
+      const std::string& name)
+      : id(id), sortIndex(sortIndex), deviceId(deviceId), name(name) {}
+  int64_t id;             //resource id
+  int64_t sortIndex;      //position in trace view
+  int64_t deviceId;       //id of device which owns this resource (specified in DeviceInfo.id)
+  const std::string name; //resource name
+};
 /* IActivityProfilerSession:
  *   an opaque object that can be used by a high level profiler to
  *   start/stop and return trace events.
@@ -58,6 +84,12 @@ class IActivityProfilerSession {
 
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
+
+  // returns device info used in this trace, could be nullptr
+  virtual std::unique_ptr<DeviceInfo> getDeviceInfo() = 0;
+
+  // return resource info used int this trace, could be empty
+  virtual std::vector<ResourceInfo> getResourceInfos() = 0;
 
   // release ownership of the trace events and metadata
   virtual std::unique_ptr<CpuTraceBuffer> getTraceBuffer() = 0;

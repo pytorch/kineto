@@ -22,6 +22,7 @@ enum class ActivityType {
     CPU_INSTANT_EVENT, // host side point-like events
     PYTHON_FUNCTION,
     OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
+    HPU_OP,
 
     // Optional Activity types
     GLOW_RUNTIME, // host side glow runtime events

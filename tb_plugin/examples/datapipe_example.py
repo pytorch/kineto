@@ -1,3 +1,7 @@
+# This example does not run
+# It uses experimental features from torchvision which have no expectation of backwards compatibility
+# This example is still here purely for educational purposes
+
 import torch
 import torch.nn as nn
 import torch.optim

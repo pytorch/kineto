@@ -11,6 +11,8 @@
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 
+#include "Logger.h"
+
 namespace KINETO_NAMESPACE {
 
 class Config;
@@ -66,6 +68,7 @@ class MemoryTraceLogger : public ActivityLogger {
       std::unordered_map<std::string, std::vector<std::string>>& metadata) override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
+    UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
   }
 
   const std::vector<const ITraceActivity*>* traceActivities() {

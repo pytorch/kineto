@@ -56,10 +56,10 @@ def get_libkineto_public_headers():
     return [
         "include/AbstractConfig.h",
         "include/ActivityProfilerInterface.h",
+        "include/ActivityTraceInterface.h",
         "include/ActivityType.h",
         "include/Config.h",
         "include/ClientInterface.h",
-        "include/GenericTraceActivity.h",
         "include/GenericTraceActivity.h",
         "include/IActivityProfiler.h",
         "include/ILoggerObserver.h",

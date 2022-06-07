@@ -302,6 +302,10 @@ void CuptiActivityApi::disableCuptiActivities(
     }
   }
   externalCorrelationEnabled_ = false;
+
+  if (getenv("TEARDOWN_CUPTI") != nullptr) {
+    CUPTI_CALL(cuptiFinalize());
+  }
 #endif
 }
 

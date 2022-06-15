@@ -37,6 +37,19 @@ class Config;
 class ConfigLoader;
 
 struct CpuTraceBuffer {
+  template <class... Args>
+  void emplace_activity(Args&&... args) {
+    activities.emplace_back(std::forward<Args>(args)...);
+  }
+
+  static GenericTraceActivity& toRef(GenericTraceActivity& ref) {
+    return ref;
+  }
+
+  static const GenericTraceActivity& toRef(const GenericTraceActivity& ref) {
+    return ref;
+  }
+
   TraceSpan span{0, 0, "none"};
   int gpuOpCount;
   std::deque<GenericTraceActivity> activities;

@@ -160,6 +160,12 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
       LOG(INFO) << "Processed " << count_and_size.first
                 << " GPU records (" << count_and_size.second << " bytes)";
       LOGGER_OBSERVER_ADD_EVENT_COUNT(count_and_size.first);
+
+      // resourceOverheadCount_ is set while processing GPU activities
+      if (resourceOverheadCount_ > 0) {
+        LOG(INFO) << "Allocated " << resourceOverheadCount_ << " extra CUPTI buffers.";
+      }
+      LOGGER_OBSERVER_ADD_METADATA("ResourceOverhead", std::to_string(resourceOverheadCount_));
     }
   }
 #endif // HAS_CUPTI
@@ -337,6 +343,11 @@ void CuptiActivityProfiler::handleOverheadActivity(
   VLOG(2) << ": CUPTI_ACTIVITY_KIND_OVERHEAD" << " overheadKind=" << activity->overheadKind;
   const auto& overhead_activity =
       traceBuffers_->addActivityWrapper(OverheadActivity(activity, nullptr));
+  // Monitor memory overhead
+  if (activity->overheadKind == CUPTI_ACTIVITY_OVERHEAD_CUPTI_RESOURCE) {
+    resourceOverheadCount_++;
+  }
+
   if (outOfRange(overhead_activity)) {
     return;
   }
@@ -848,6 +859,7 @@ void CuptiActivityProfiler::resetTraceData() {
   traceBuffers_ = nullptr;
   metadata_.clear();
   sessions_.clear();
+  resourceOverheadCount_ = 0;
 #if !USE_GOOGLE_LOG
   Logger::removeLoggerObserver(loggerCollectorMetadata_.get());
 #endif // !USE_GOOGLE_LOG

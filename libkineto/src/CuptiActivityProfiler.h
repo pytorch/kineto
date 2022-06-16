@@ -402,6 +402,9 @@ class CuptiActivityProfiler {
   // a vector of active profiler plugin sessions
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
 
+  // Number of memory overhead events encountered during the session
+  uint32_t resourceOverheadCount_; 
+
   // LoggerCollector to collect all LOGs during the trace
 #if !USE_GOOGLE_LOG
   std::unique_ptr<LoggerCollector> loggerCollectorMetadata_;

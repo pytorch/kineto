@@ -88,6 +88,7 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::GPU_MEMSET,
                             ActivityType::CONCURRENT_KERNEL,
                             ActivityType::EXTERNAL_CORRELATION,
+                            ActivityType::OVERHEAD,
                             ActivityType::CUDA_RUNTIME}));
 
   Config cfg2;

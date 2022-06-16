@@ -138,6 +138,13 @@ void Logger::setLoggerObserverOnDemand() {
   }
 }
 
+void Logger::addLoggerObserverAddMetadata(const std::string& key, const std::string& value) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  for (auto observer : loggerObservers()) {
+    observer->addMetadata(key, value);
+  }
+}
+
 } // namespace KINETO_NAMESPACE
 
 #endif // USE_GOOGLE_LOG

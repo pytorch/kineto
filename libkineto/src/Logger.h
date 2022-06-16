@@ -19,6 +19,7 @@
 #define LOGGER_OBSERVER_SET_GROUP_TRACE_ID(gtid)
 #define LOGGER_OBSERVER_ADD_DESTINATION(dest)
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND()
+#define LOGGER_OBSERVER_ADD_METADATA(key, value)
 #define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
@@ -119,6 +120,8 @@ class Logger {
   static void addLoggerObserverDestination(const std::string& dest);
 
   static void setLoggerObserverOnDemand();
+
+  static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
 
  private:
   std::stringstream buf_;
@@ -243,6 +246,11 @@ struct __to_constant__ {
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND() \
   libkineto::Logger::setLoggerObserverOnDemand()
+
+// Record this was triggered by On-Demand.
+#define LOGGER_OBSERVER_ADD_METADATA(key, value) \
+  libkineto::Logger::addLoggerObserverAddMetadata(key, value)
+
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) \

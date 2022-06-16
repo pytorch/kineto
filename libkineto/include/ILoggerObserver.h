@@ -43,6 +43,7 @@ class ILoggerObserver {
   virtual void setGroupTraceID(const std::string&) {}
   virtual void addDestination(const std::string& dest) = 0;
   virtual void setTriggerOnDemand() {}
+  virtual void addMetadata(const std::string& key, const std::string& value) = 0;
 
 };
 

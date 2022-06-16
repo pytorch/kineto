@@ -13,6 +13,10 @@
 
 #ifdef HAS_CUPTI
 #include <cupti.h>
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "cuda_call.h"
+#include "cupti_call.h"
 #endif
 
 #include "Config.h"
@@ -128,7 +132,36 @@ CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOn
       flushOverhead_{0, 0},
       setupOverhead_{0, 0},
       cpuOnly_{cpuOnly},
-      currentRunloopState_{RunloopState::WaitForRequest} {}
+      currentRunloopState_{RunloopState::WaitForRequest} {
+
+#ifdef HAS_CUPTI
+    // determine GPU availability on the system
+    cudaError_t error;
+    int deviceCount;
+    error = cudaGetDeviceCount(&deviceCount);
+    bool gpuAvailable = (error == cudaSuccess && deviceCount > 0);
+
+    // System without GPU but with CUDA will link properly but will throw various
+    // runtime errors. Due to exhaustive PyTorch dependendents, Kineto is often initialized
+    // at init among ton of non-GPU systems.
+    if (gpuAvailable) {
+      logCudaVersions();
+    }
+#endif
+  }
+
+#ifdef HAS_CUPTI
+void CuptiActivityProfiler::logCudaVersions() {
+  // check Nvidia versions
+  uint32_t cuptiVersion;
+  int cudaRuntimeVersion, cudaDriverVersion;
+
+  CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
+  CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
+  CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
+  LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion << "; Runtime: " << cudaRuntimeVersion << "; Driver: " << cudaDriverVersion;
+}
+#endif
 
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";

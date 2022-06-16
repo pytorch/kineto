@@ -105,7 +105,7 @@ int RoctracerActivityApi::processActivities(
     a.flow.type = kLinkAsyncCpuGpu;
     a.flow.start = true;
 
-    a.addMetadata("ptr", item.ptr);
+    a.addMetadataQuoted("ptr", fmt::format("{}", item.ptr));
     if (item.cid == HIP_API_ID_hipMalloc) {
       a.addMetadata("size", item.size);
     }
@@ -128,12 +128,12 @@ int RoctracerActivityApi::processActivities(
     a.flow.type = kLinkAsyncCpuGpu;
     a.flow.start = true;
 
-    a.addMetadata("src", item.src);
-    a.addMetadata("dst", item.dst);
+    a.addMetadataQuoted("src", fmt::format("{}", item.src));
+    a.addMetadataQuoted("dst", fmt::format("{}", item.dst));
     a.addMetadata("size", item.size);
     a.addMetadata("kind", item.kind);
     if ((item.cid == HIP_API_ID_hipMemcpyAsync) || (item.cid == HIP_API_ID_hipMemcpyWithStream)) {
-      a.addMetadata("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
+      a.addMetadataQuoted("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
     }
 
     logger.handleGenericActivity(a);
@@ -166,7 +166,7 @@ int RoctracerActivityApi::processActivities(
     a.addMetadata("grid dim", fmt::format("[{}, {}, {}]", item.gridX, item.gridY, item.gridZ));
     a.addMetadata("block dim", fmt::format("[{}, {}, {}]", item.workgroupX, item.workgroupY, item.workgroupZ));
     a.addMetadata("shared size", item.groupSegmentSize);
-    a.addMetadata("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
+    a.addMetadataQuoted("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
 
     // Stash launches to tie to the async ops
     kernelLaunches_[a.id] = a;

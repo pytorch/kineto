@@ -51,7 +51,7 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     op.endTime = endTime;
     op.resource = systemThreadId();
     op.id = correlation;
-    activities.push_back(std::move(op));
+    emplace_activity(std::move(op));
     span.opCount++;
   }
 };

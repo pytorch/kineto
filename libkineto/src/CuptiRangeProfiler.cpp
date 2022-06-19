@@ -159,7 +159,7 @@ void CuptiRangeProfilerSession::addRangeEvents(
   int ridx = 0;
   for (const auto& measurement : result.rangeVals) {
     bool use_kernel_as_range = use_kernel_names && (ridx < num_kernels);
-    activities.emplace_back(
+    traceBuffer_.emplace_activity(
         traceBuffer_.span,
         kProfActivityType,
         use_kernel_as_range ?
@@ -167,13 +167,13 @@ void CuptiRangeProfilerSession::addRangeEvents(
           measurement.rangeName
     );
     auto& event = activities.back();
-    event.startTime = startTime + interval * ridx;
-    event.endTime = startTime + interval * (ridx + 1);
-    event.device = profiler->deviceId();
+    event->startTime = startTime + interval * ridx;
+    event->endTime = startTime + interval * (ridx + 1);
+    event->device = profiler->deviceId();
 
     // add metadata per counter
     for (int i = 0; i < metricNames.size(); i++) {
-      event.addMetadata(metricNames[i], measurement.values[i]);
+      event->addMetadata(metricNames[i], measurement.values[i]);
     }
     ridx++;
   }
@@ -200,7 +200,7 @@ void CuptiRangeProfilerSession::processTrace(ActivityLogger& logger) {
   }
 
   for (const auto& event : traceBuffer_.activities) {
-    logger.handleGenericActivity(event);
+    logger.handleGenericActivity(*event);
   }
 
   LOG(INFO) << "CUPTI Range Profiler added " << traceBuffer_.activities.size()

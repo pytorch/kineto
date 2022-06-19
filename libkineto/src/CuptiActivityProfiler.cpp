@@ -238,14 +238,14 @@ void CuptiActivityProfiler::processCpuTrace(
   CpuGpuSpanPair& span_pair = recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
-    VLOG(2) << act.correlationId() << ": OP " << act.activityName;
-    if (derivedConfig_->profileActivityTypes().count(act.type())) {
-      act.log(logger);
+    VLOG(2) << act->correlationId() << ": OP " << act->activityName;
+    if (derivedConfig_->profileActivityTypes().count(act->type())) {
+      act->log(logger);
     }
-    clientActivityTraceMap_[act.correlationId()] = &span_pair;
-    activityMap_[act.correlationId()] = &act;
+    clientActivityTraceMap_[act->correlationId()] = &span_pair;
+    activityMap_[act->correlationId()] = act.get();
 
-    recordThreadInfo(act.resourceId(), act.getThreadId(), act.deviceId());
+    recordThreadInfo(act->resourceId(), act->getThreadId(), act->deviceId());
   }
   logger.handleTraceSpan(cpu_span);
 }

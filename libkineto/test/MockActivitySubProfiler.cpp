@@ -48,8 +48,10 @@ std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
 
 std::unique_ptr<CpuTraceBuffer> MockProfilerSession::getTraceBuffer() {
   auto buf = std::make_unique<CpuTraceBuffer>();
-  buf->activities.swap(test_activities_);
+  for (auto& i : test_activities_) {
+    buf->emplace_activity(std::move(i));
+  }
+  test_activities_.clear();
   return buf;
 }
 } // namespace libkineto
-

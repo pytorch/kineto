@@ -39,20 +39,23 @@ class ConfigLoader;
 struct CpuTraceBuffer {
   template <class... Args>
   void emplace_activity(Args&&... args) {
-    activities.emplace_back(std::forward<Args>(args)...);
+    activities.emplace_back(
+        std::make_unique<GenericTraceActivity>(std::forward<Args>(args)...));
   }
 
-  static GenericTraceActivity& toRef(GenericTraceActivity& ref) {
-    return ref;
+  static GenericTraceActivity& toRef(
+      std::unique_ptr<GenericTraceActivity>& ref) {
+    return *ref;
   }
 
-  static const GenericTraceActivity& toRef(const GenericTraceActivity& ref) {
-    return ref;
+  static const GenericTraceActivity& toRef(
+      const std::unique_ptr<GenericTraceActivity>& ref) {
+    return *ref;
   }
 
   TraceSpan span{0, 0, "none"};
   int gpuOpCount;
-  std::deque<GenericTraceActivity> activities;
+  std::deque<std::unique_ptr<GenericTraceActivity>> activities;
 };
 
 using ChildActivityProfilerFactory =

@@ -238,6 +238,7 @@ int RoctracerActivityApi::processActivities(
         a.activityName = std::string(name);
         a.flow.id = record->correlation_id;
         a.flow.type = kLinkAsyncCpuGpu;
+        a.flow.start = false;
 
         auto it = kernelNames_.find(record->correlation_id);
         if (it != kernelNames_.end()) {

@@ -57,6 +57,9 @@ int main() {
   // Sets GPU memory utilization
   cache_args.sz_cache_KB = 16000000;
 
+  // Sets the maximum GPU memory
+  cache_args.sz_GPU_memory_KB = 16 * 1024 * 1024;
+
   // If small, density is higher due to shorter kernel times
   cache_args.sz_min_tensor_KB = 64;
 
@@ -105,6 +108,11 @@ int main() {
   // Number of threads that run the stress test
   uint32_t num_workers = 1;
 
+  // Number of increments in the GPU memory usage to see what happens at the
+  // peak memory usage.
+  uint32_t num_tensor_cache_increments = 10;
+  uint32_t num_pairs_per_increment = 10;
+
   // Create more workers
   std::vector<std::thread> v_workers;
   v_workers.reserve(num_workers);
@@ -136,25 +144,40 @@ int main() {
   // Tracing thread
   std::thread kineto_thread;
 
-  // Run with kineto tracing
-  t_start = clock();
-  for (int i = 0; i < num_workers; ++i) {
-    if (i == 0) {
-      // Will run kineto on a different thread
-      kineto_thread = std::thread(trace_collection_thread);
+  // We are gradually increasing the GPU memory usage so that we have GPU traces being
+  // collected while we are almost out-of-memory. This is an attempt to expose errors
+  // that we often see in our fleet like: illegal instruction, uncorrectable NVLink
+  // error, etc.
+
+  for (uint32_t idx = 0; idx < num_tensor_cache_increments; ++idx) {
+    // Run with kineto tracing
+    t_start = clock();
+    for (int i = 0; i < num_workers; ++i) {
+      if (i == 0) {
+        // Will run kineto on a different thread
+        kineto_thread = std::thread(trace_collection_thread);
+      }
+
+      // Run the iterations
+      v_workers.push_back(std::thread(run_stress_test, i, num_workers, true, test_args));
     }
+    for (auto& t : v_workers) {
+      t.join();
+    }
+    kineto_thread.join();
+    v_workers.clear();
 
-    // Run the iterations
-    v_workers.push_back(std::thread(run_stress_test, i, num_workers, true, test_args));
-  }
-  for (auto& t : v_workers) {
-    t.join();
-  }
-  kineto_thread.join();
-  v_workers.clear();
+    t_stop = clock();
+    double t_with_trace = (double)(t_stop - t_start) / 1e+3;
 
-  t_stop = clock();
-  double t_with_trace = (double)(t_stop - t_start) / 1e+3;
+    std::cout << "Run (" << idx << ") time with tracing enabled (ms): " <<
+        t_with_trace << std::endl;
+    std::cout << "Current usable memory pool size (MB) = " <<
+        sz_memory_pool_KB / 1024 << std::endl;
+
+    // The first run is the default run
+    add_pairs_to_tensor_cache(cache_args, num_pairs_per_increment);
+  }
 
   // Run again after kineto tracing
   t_start = clock();
@@ -169,7 +192,6 @@ int main() {
   double t_after_trace = (double)(t_stop - t_start) / 1e+3;
 
   std::cout << "Execution time before tracing (ms): " << t_no_trace << std::endl;
-  std::cout << "Execution time with tracing enabled (ms): " << t_with_trace << std::endl;
   std::cout << "Execution time after tracing (ms): " << t_after_trace << std::endl;
 
   // Free the tensor cache on the GPU

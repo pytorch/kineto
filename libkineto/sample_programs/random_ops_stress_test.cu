@@ -19,7 +19,7 @@ namespace kineto_stress_test {
 // This is similar to the tensor cache that PyTorch is managing.
 tensor_pair* p_memory_pool;
 
-// Size of the memory pool in megabytes
+// Size of the memory pool in kilobytes
 uint32_t sz_memory_pool_KB;
 
 // Number of tensor pairs in the memory pool
@@ -105,26 +105,12 @@ inline void checkCudaStatus(cudaError_t status, int lineNumber = -1) {
   }
 }
 
-void generate_tensor_cache(tensor_cache_args cache_args) {
-  // Estimate the number of tensor pairs
-  uint32_t num_pairs_estimated =
-      cache_args.sz_cache_KB / (3 * (cache_args.sz_max_tensor_KB -
-          cache_args.sz_min_tensor_KB) / 2);
+void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
+    num_added_pairs) {
+  uint32_t num_current_pairs = num_tensor_pairs;
 
-  // Number of actual pairs
-  num_tensor_pairs = 0;
-
-  // At firs the pool is empty
-  sz_memory_pool_KB = 0;
-
-  // Pre-allocate num_pairs_estimated and if num_tensor_pairs comes lower, well,
-  // that's life
-  p_memory_pool =
-      (tensor_pair*)malloc(num_pairs_estimated * sizeof(tensor_pair));
-
-  // Start creating the pool
-  srand(RNG_SEED_1);
-  for (int i = 0; i < num_pairs_estimated; ++i) {
+  for (uint32_t i = num_current_pairs;
+      i < num_current_pairs + num_added_pairs; ++i) {
     uint32_t num_KB =
         rand() % (cache_args.sz_max_tensor_KB - cache_args.sz_min_tensor_KB) +
             cache_args.sz_min_tensor_KB;
@@ -172,12 +158,36 @@ void generate_tensor_cache(tensor_cache_args cache_args) {
     // Now we have a new tensor pair
     num_tensor_pairs++;
     sz_memory_pool_KB += (3 * num_KB);
+  }
+}
 
+void generate_tensor_cache(tensor_cache_args cache_args) {
+  // Estimate the number of tensor pairs
+  uint32_t num_pairs_max =
+      cache_args.sz_GPU_memory_KB / (3 * (cache_args.sz_max_tensor_KB -
+          cache_args.sz_min_tensor_KB) / 2);
+
+  // Number of actual pairs
+  num_tensor_pairs = 0;
+
+  // At firs the pool is empty
+  sz_memory_pool_KB = 0;
+
+  // Pre-allocate num_pairs_max and if num_tensor_pairs comes lower, well,
+  // that's life
+  p_memory_pool =
+      (tensor_pair*)malloc(num_pairs_max * sizeof(tensor_pair));
+
+  // Start creating the pool
+  srand(RNG_SEED_1);
+  for (int i = 0; i < num_pairs_max; ++i) {
     // If we allocated too much, just exit
     if (sz_memory_pool_KB >= cache_args.sz_cache_KB) {
       printf("Allocated %d tensor pairs.\n", num_tensor_pairs);
       break;
     }
+
+    add_pairs_to_tensor_cache(cache_args, 1);
   }
 }
 

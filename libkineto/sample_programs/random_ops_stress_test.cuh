@@ -30,6 +30,7 @@ struct tensor_cache_args {
     uint32_t sz_cache_KB;
     uint32_t sz_min_tensor_KB;
     uint32_t sz_max_tensor_KB;
+    uint32_t sz_GPU_memory_KB;
     float prob_h2d;
     float prob_d2h;
 };
@@ -38,6 +39,17 @@ struct tensor_cache_args {
 // prob_h2d is the probability that we will generate a copy from host to
 // device, in which case we need to pre-generate the buffers on the host.
 void generate_tensor_cache(tensor_cache_args cache_args);
+
+// For some experiments we may need to add additional pairs to stress the
+// GPU memory limits
+void add_pairs_to_tensor_cache(tensor_cache_args cache_args,
+    uint32_t num_added_pairs);
+
+// Size of the memory pool in kilobytes
+extern uint32_t sz_memory_pool_KB;
+
+// Number of tensor pairs in the memory pool
+extern uint32_t num_tensor_pairs;
 
 // Re-initializes the random values in the device buffers
 void re_initialize_buffer_values();

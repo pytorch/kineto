@@ -1,4 +1,5 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// All rights reserved.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,4 +36,3 @@ int main() {
   trace->save(kFileName);
   return 0;
 }
-

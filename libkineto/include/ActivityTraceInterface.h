@@ -1,9 +1,11 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// All rights reserved.
 
 #pragma once
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace libkineto {
 

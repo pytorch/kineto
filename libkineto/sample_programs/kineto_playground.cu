@@ -1,4 +1,5 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// All rights reserved.
 
 #include <stdio.h>
 
@@ -19,7 +20,7 @@ void warmup(void) {
     return;
   }
 
-  cudaFree(mem); 
+  cudaFree(mem);
 }
 
 float *hA, *dA, *hOut;
@@ -69,7 +70,7 @@ __global__ void square(float* A, int N) {
 }
 
 void playground(void) {
-  // Add your experimental CUDA implementation here. 
+  // Add your experimental CUDA implementation here.
 }
 
 void compute(void) {

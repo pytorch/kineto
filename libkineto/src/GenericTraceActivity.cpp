@@ -1,4 +1,5 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// All rights reserved.
 
 #include "GenericTraceActivity.h"
 #include "output_base.h"

@@ -35,4 +35,3 @@ If you plan to contribute new features, please first open an issue and discuss t
 
 ## License
 Kineto has a BSD-style license, as found in the [LICENSE](LICENSE) file.
-

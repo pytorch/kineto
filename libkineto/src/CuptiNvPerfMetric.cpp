@@ -1,4 +1,5 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// All rights reserved.
 
 #ifdef HAS_CUPTI
 #include <cuda_runtime_api.h>

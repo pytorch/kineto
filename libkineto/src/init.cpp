@@ -54,7 +54,11 @@ static void initProfilers(
 // to take the performance hit early on.
 // https://docs.nvidia.com/cupti/r_main.html#r_overhead
 static bool shouldPreloadCuptiInstrumentation() {
-  return getenv("PRELOAD_CUPTI_INSTRUMENTATION");
+#if defined(CUDA_VERSION) && CUDA_VERSION < 11020
+  return true;
+#else
+  return false;
+#endif
 }
 
 static void stopProfiler(

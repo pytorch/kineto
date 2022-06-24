@@ -3,6 +3,7 @@
 #include <Logger.h>
 #include <functional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -200,7 +201,13 @@ void CuptiRangeProfilerSession::processTrace(ActivityLogger& logger) {
   }
 
   for (const auto& event : traceBuffer_.activities) {
-    logger.handleGenericActivity(*event);
+    static_assert(
+        std::is_same<
+            std::remove_reference<decltype(event)>::type,
+            const std::unique_ptr<GenericTraceActivity>>::value,
+        "handleActivity is unsafe and relies on the caller to maintain not "
+        "only lifetime but also address stability.");
+    logger.handleActivity(*event);
   }
 
   LOG(INFO) << "CUPTI Range Profiler added " << traceBuffer_.activities.size()

@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #pragma once
 
@@ -405,7 +408,7 @@ class CuptiActivityProfiler {
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
 
   // Number of memory overhead events encountered during the session
-  uint32_t resourceOverheadCount_; 
+  uint32_t resourceOverheadCount_;
 
   // LoggerCollector to collect all LOGs during the trace
 #if !USE_GOOGLE_LOG

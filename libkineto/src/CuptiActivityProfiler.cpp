@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 #include <limits>
 
@@ -243,7 +244,13 @@ void CuptiActivityProfiler::processCpuTrace(
   for (auto const& act : cpuTrace.activities) {
     VLOG(2) << act->correlationId() << ": OP " << act->activityName;
     if (derivedConfig_->profileActivityTypes().count(act->type())) {
-      act->log(logger);
+      static_assert(
+          std::is_same<
+              std::remove_reference<decltype(act)>::type,
+              const std::unique_ptr<GenericTraceActivity>>::value,
+          "handleActivity is unsafe and relies on the caller to maintain not "
+          "only lifetime but also address stability.");
+      logger.handleActivity(*act);
     }
     clientActivityTraceMap_[act->correlationId()] = &span_pair;
     activityMap_[act->correlationId()] = act.get();

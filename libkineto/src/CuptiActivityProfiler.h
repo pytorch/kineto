@@ -170,7 +170,7 @@ class CuptiActivityProfiler {
     if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(pid, tid),
-          libkineto::ResourceInfo(
+          ResourceInfo(
               pid,
               sysTid,
               sysTid, // sortindex

@@ -186,9 +186,6 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   if (!traceOf_) {
     return;
   }
-  if (span.startTime == 0 && span.endTime == 0 && span.iteration == -1) {
-    return;
-  }
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(

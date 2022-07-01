@@ -23,9 +23,9 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
     {"python_function", ActivityType::PYTHON_FUNCTION},
     {"overhead", ActivityType::OVERHEAD},
-    {"hpu_op", ActivityType::HPU_OP},
     {"glow_runtime", ActivityType::GLOW_RUNTIME},
     {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
+    {"hpu_op", ActivityType::HPU_OP},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT}
 }};
 

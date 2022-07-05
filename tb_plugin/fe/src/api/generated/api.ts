@@ -17,7 +17,7 @@
  */
 
 import * as url from 'url'
-import * as portableFetch from 'portable-fetch'
+import * as isomorphicFetch from 'isomorphic-fetch'
 import { Configuration } from './configuration'
 
 const BASE_PATH = '.'.replace(/\/+$/, '')
@@ -63,7 +63,7 @@ export class BaseAPI {
   constructor(
     configuration?: Configuration,
     protected basePath: string = BASE_PATH,
-    protected fetch: FetchAPI = portableFetch
+    protected fetch: FetchAPI = isomorphicFetch
   ) {
     if (configuration) {
       this.configuration = configuration
@@ -88,9 +88,8 @@ export class RequiredError extends Error {
 /**
  *
  * @export
- * @interface CallStackTableData
  */
-export interface CallStackTableData extends Array<CallStackTableDataInner> {}
+export type CallStackTableData = Array<CallStackTableDataInner>
 /**
  *
  * @export
@@ -859,9 +858,8 @@ export interface OpStats {
 /**
  *
  * @export
- * @interface OperationTableData
  */
-export interface OperationTableData extends Array<OperationTableDataInner> {}
+export type OperationTableData = Array<OperationTableDataInner>
 /**
  *
  * @export
@@ -2850,7 +2848,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         options
       )
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -2883,7 +2881,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).distributedCommopsGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -2916,7 +2914,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).distributedGpuinfoGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -2949,7 +2947,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).distributedOverlapGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -2982,7 +2980,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).distributedWaittimeGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3017,7 +3015,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).kernelGet(run, worker, span, group_by, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3052,7 +3050,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).kernelTableGet(run, worker, span, group_by, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3085,7 +3083,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).kernelTcPieGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3118,7 +3116,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).memoryCurveGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3155,7 +3153,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).memoryEventsGet(run, worker, span, start_ts, end_ts, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3192,7 +3190,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).memoryGet(run, worker, span, start_ts, end_ts, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3225,7 +3223,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).moduleGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3260,7 +3258,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).operationGet(run, worker, span, group_by, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3307,7 +3305,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         options
       )
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3342,7 +3340,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).operationTableGet(run, worker, span, group_by, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3375,7 +3373,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).overviewGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3398,11 +3396,10 @@ export const DefaultApiFp = function (configuration?: Configuration) {
     runsGet(
       options?: any
     ): (fetch?: FetchAPI, basePath?: string) => Promise<Runs> {
-      const localVarFetchArgs = DefaultApiFetchParamCreator(
-        configuration
-      ).runsGet(options)
+      const localVarFetchArgs =
+        DefaultApiFetchParamCreator(configuration).runsGet(options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3433,7 +3430,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).spansGet(run, worker, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3466,7 +3463,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).traceGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3499,7 +3496,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).treeGet(run, worker, span, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3528,7 +3525,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).viewsGet(run, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(
@@ -3559,7 +3556,7 @@ export const DefaultApiFp = function (configuration?: Configuration) {
         configuration
       ).workersGet(run, view, options)
       return (
-        fetch: FetchAPI = portableFetch,
+        fetch: FetchAPI = isomorphicFetch,
         basePath: string = BASE_PATH
       ) => {
         return fetch(

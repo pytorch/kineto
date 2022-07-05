@@ -102,9 +102,10 @@ export const GpuInfoTable: React.FC<IProps> = (props) => {
     cellType: 'node' | 'pid' | 'gpu' | 'key' | 'value'
   }
 
-  const rows = React.useMemo(() => makeTableCellInfo(props.gpuInfo), [
-    props.gpuInfo
-  ])
+  const rows = React.useMemo(
+    () => makeTableCellInfo(props.gpuInfo),
+    [props.gpuInfo]
+  )
 
   const cellToClass = {
     node: classes.nodeTd,

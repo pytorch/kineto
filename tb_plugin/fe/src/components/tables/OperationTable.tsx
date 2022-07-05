@@ -66,15 +66,16 @@ export const OperationTable = (props: IProps) => {
     [run, worker, span, groupBy]
   )
 
-  const expandable: TableProps<OperationTableDataInner>['expandable'] = React.useMemo(
-    () => ({
-      expandIconColumnIndex,
-      expandIcon,
-      expandedRowRender,
-      rowExpandable
-    }),
-    [expandIconColumnIndex, expandedRowRender]
-  )
+  const expandable: TableProps<OperationTableDataInner>['expandable'] =
+    React.useMemo(
+      () => ({
+        expandIconColumnIndex,
+        expandIcon,
+        expandedRowRender,
+        rowExpandable
+      }),
+      [expandIconColumnIndex, expandedRowRender]
+    )
 
   return (
     <Table

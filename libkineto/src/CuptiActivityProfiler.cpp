@@ -21,6 +21,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "cuda_call.h"
 #include "cupti_call.h"
+#include "CudaUtil.h"
 #endif
 
 #include "Config.h"
@@ -139,16 +140,7 @@ CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOn
       currentRunloopState_{RunloopState::WaitForRequest} {
 
 #ifdef HAS_CUPTI
-    // determine GPU availability on the system
-    cudaError_t error;
-    int deviceCount;
-    error = cudaGetDeviceCount(&deviceCount);
-    bool gpuAvailable = (error == cudaSuccess && deviceCount > 0);
-
-    // System without GPU but with CUDA will link properly but will throw various
-    // runtime errors. Due to exhaustive PyTorch dependendents, Kineto is often initialized
-    // at init among ton of non-GPU systems.
-    if (gpuAvailable) {
+    if (isGpuAvailable()) {
       logCudaVersions();
     }
 #endif

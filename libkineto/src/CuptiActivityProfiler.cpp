@@ -781,7 +781,6 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         VLOG_IF(0, collection_done) << "Reached profile end time";
-
         UST_LOGGER_MARK_COMPLETED(kCollectionStage);
       } else if (derivedConfig_->isProfilingByIteration()) {
         // nothing to do here
@@ -805,6 +804,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);
       processTraceInternal(*logger_);
+      UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
       resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;

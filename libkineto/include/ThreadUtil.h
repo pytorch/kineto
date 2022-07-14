@@ -28,3 +28,7 @@ std::string processName(int32_t pid);
 std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors();
 
 } // namespace libkineto
+
+#ifdef HAS_ROCTRACER
+using namespace libkineto;
+#endif

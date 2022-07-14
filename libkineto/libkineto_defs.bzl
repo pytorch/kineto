@@ -32,6 +32,7 @@ def get_libkineto_cupti_srcs(with_api = True):
 def get_libkineto_roctracer_srcs(with_api = True):
     return [
         "src/RoctracerActivityApi.cpp",
+        "src/RoctracerLogger.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
 def get_libkineto_cpu_only_srcs(with_api = True):

@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 // Mediator for initialization and profiler control
 
@@ -28,7 +31,7 @@
 extern "C" {
   void suppressLibkinetoLogMessages();
   int InitializeInjection(void);
-  bool libkineto_init(bool cpuOnly, bool logOnError);
+  void libkineto_init(bool cpuOnly, bool logOnError);
 }
 
 namespace libkineto {
@@ -37,9 +40,25 @@ class Config;
 class ConfigLoader;
 
 struct CpuTraceBuffer {
+  template <class... Args>
+  void emplace_activity(Args&&... args) {
+    activities.emplace_back(
+        std::make_unique<GenericTraceActivity>(std::forward<Args>(args)...));
+  }
+
+  static GenericTraceActivity& toRef(
+      std::unique_ptr<GenericTraceActivity>& ref) {
+    return *ref;
+  }
+
+  static const GenericTraceActivity& toRef(
+      const std::unique_ptr<GenericTraceActivity>& ref) {
+    return *ref;
+  }
+
   TraceSpan span{0, 0, "none"};
   int gpuOpCount;
-  std::deque<GenericTraceActivity> activities;
+  std::deque<std::unique_ptr<GenericTraceActivity>> activities;
 };
 
 using ChildActivityProfilerFactory =

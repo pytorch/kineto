@@ -287,7 +287,7 @@ We describe each of these views below.
     "Kernel Properties + Op Name" will group kernels by combination of kernel name, launching operator name,
     grid, block, registers per thread, and shared memory.
 
-    ![Alt text](./docs/images/trace_view.PNG)
+    ![Alt text](./docs/images/kernel_view_group_by_properties_and_op.PNG)
 
     * Operator: The name of PyTorch operator which launches this kernel.
 

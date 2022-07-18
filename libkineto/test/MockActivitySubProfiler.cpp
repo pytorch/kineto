@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #include <memory>
 #include <set>
@@ -48,8 +51,10 @@ std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
 
 std::unique_ptr<CpuTraceBuffer> MockProfilerSession::getTraceBuffer() {
   auto buf = std::make_unique<CpuTraceBuffer>();
-  buf->activities.swap(test_activities_);
+  for (auto& i : test_activities_) {
+    buf->emplace_activity(std::move(i));
+  }
+  test_activities_.clear();
   return buf;
 }
 } // namespace libkineto
-

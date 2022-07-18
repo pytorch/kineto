@@ -5,11 +5,8 @@
 
 #pragma once
 
-#include <string>
-
 namespace KINETO_NAMESPACE {
 
-std::string demangle(const char* name);
-std::string demangle(const std::string& name);
+bool isGpuAvailable();
 
 } // namespace KINETO_NAMESPACE

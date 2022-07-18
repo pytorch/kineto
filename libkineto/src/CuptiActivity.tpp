@@ -1,9 +1,8 @@
- /*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * All rights reserved.
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree.
- */
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
+
 
 #include "CuptiActivity.h"
 
@@ -177,7 +176,9 @@ inline bool RuntimeActivity::flowStart() const {
       activity_.cbid ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
       activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000;
+          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000 ||
+      activity_.cbid ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000;
 }
 
 inline const std::string RuntimeActivity::metadataJson() const {

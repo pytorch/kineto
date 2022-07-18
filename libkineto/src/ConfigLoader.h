@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #pragma once
 
@@ -137,11 +140,6 @@ class ConfigLoader {
   std::mutex updateThreadMutex_;
   std::atomic_bool stopFlag_{false};
   std::atomic_bool onDemandSignal_{false};
-
-#if !USE_GOOGLE_LOG
-  std::unique_ptr<std::set<ILoggerObserver*>> loggerObservers_;
-  std::mutex loggerObserversMutex_;
-#endif // !USE_GOOGLE_LOG
 };
 
 } // namespace KINETO_NAMESPACE

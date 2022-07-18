@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #include "include/Config.h"
 
@@ -88,6 +91,7 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::GPU_MEMSET,
                             ActivityType::CONCURRENT_KERNEL,
                             ActivityType::EXTERNAL_CORRELATION,
+                            ActivityType::OVERHEAD,
                             ActivityType::CUDA_RUNTIME}));
 
   Config cfg2;

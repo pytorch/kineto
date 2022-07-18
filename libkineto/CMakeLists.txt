@@ -60,7 +60,7 @@ if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER)
     get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " CUPTI unavailable or disabled - not building GPU profilers")
 elseif(NOT LIBKINETO_NOROCTRACER)
-    get_filelist("get_libkineto_roctracer_srcs()" LIBKINETO_SRCS)
+    get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " Building with roctracer")
 else()
     get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
@@ -78,8 +78,7 @@ add_dependencies(kineto_base libkineto_defs.bzl)
 set_target_properties(kineto_base kineto_api PROPERTIES
       CXX_STANDARD 14
       CXX_STANDARD_REQUIRED YES
-      CXX_EXTENSIONS NO
-      CXX_VISIBILITY_PRESET hidden)
+      CXX_EXTENSIONS NO)
 
 set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
 list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
@@ -130,7 +129,7 @@ if (NOT CUDA_INCLUDE_DIRS)
     set(CUDA_INCLUDE_DIRS "${CUDA_SOURCE_DIR}/include")
 endif()
 if (NOT ROCTRACER_INCLUDE_DIR)
-    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/roctracer/include")
+    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
 endif()
 if (NOT ROCM_INCLUDE_DIRS)
     set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")

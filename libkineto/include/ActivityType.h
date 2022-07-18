@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #pragma once
 
@@ -21,11 +24,11 @@ enum class ActivityType {
     CUDA_RUNTIME, // host side cuda runtime events
     CPU_INSTANT_EVENT, // host side point-like events
     PYTHON_FUNCTION,
+    OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
 
     // Optional Activity types
     GLOW_RUNTIME, // host side glow runtime events
     CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
-    OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
 
     ENUM_COUNT, // This is to add buffer and not used for any profiling logic. Add your new type before it.
     OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,

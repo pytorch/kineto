@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #include "CuptiActivityProfiler.h"
 
@@ -8,11 +11,17 @@
 #include <iomanip>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 #include <limits>
 
 #ifdef HAS_CUPTI
 #include <cupti.h>
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "cuda_call.h"
+#include "cupti_call.h"
+#include "CudaUtil.h"
 #endif
 
 #include "Config.h"
@@ -128,7 +137,27 @@ CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOn
       flushOverhead_{0, 0},
       setupOverhead_{0, 0},
       cpuOnly_{cpuOnly},
-      currentRunloopState_{RunloopState::WaitForRequest} {}
+      currentRunloopState_{RunloopState::WaitForRequest} {
+
+#ifdef HAS_CUPTI
+    if (isGpuAvailable()) {
+      logCudaVersions();
+    }
+#endif
+  }
+
+#ifdef HAS_CUPTI
+void CuptiActivityProfiler::logCudaVersions() {
+  // check Nvidia versions
+  uint32_t cuptiVersion;
+  int cudaRuntimeVersion, cudaDriverVersion;
+
+  CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
+  CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
+  CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
+  LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion << "; Runtime: " << cudaRuntimeVersion << "; Driver: " << cudaDriverVersion;
+}
+#endif
 
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
@@ -160,6 +189,12 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
       LOG(INFO) << "Processed " << count_and_size.first
                 << " GPU records (" << count_and_size.second << " bytes)";
       LOGGER_OBSERVER_ADD_EVENT_COUNT(count_and_size.first);
+
+      // resourceOverheadCount_ is set while processing GPU activities
+      if (resourceOverheadCount_ > 0) {
+        LOG(INFO) << "Allocated " << resourceOverheadCount_ << " extra CUPTI buffers.";
+      }
+      LOGGER_OBSERVER_ADD_METADATA("ResourceOverhead", std::to_string(resourceOverheadCount_));
     }
   }
 #endif // HAS_CUPTI
@@ -199,14 +234,20 @@ void CuptiActivityProfiler::processCpuTrace(
   CpuGpuSpanPair& span_pair = recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
-    VLOG(2) << act.correlationId() << ": OP " << act.activityName;
-    if (derivedConfig_->profileActivityTypes().count(act.type())) {
-      act.log(logger);
+    VLOG(2) << act->correlationId() << ": OP " << act->activityName;
+    if (derivedConfig_->profileActivityTypes().count(act->type())) {
+      static_assert(
+          std::is_same<
+              std::remove_reference<decltype(act)>::type,
+              const std::unique_ptr<GenericTraceActivity>>::value,
+          "handleActivity is unsafe and relies on the caller to maintain not "
+          "only lifetime but also address stability.");
+      logger.handleActivity(*act);
     }
-    clientActivityTraceMap_[act.correlationId()] = &span_pair;
-    activityMap_[act.correlationId()] = &act;
+    clientActivityTraceMap_[act->correlationId()] = &span_pair;
+    activityMap_[act->correlationId()] = act.get();
 
-    recordThreadInfo(act.resourceId(), act.getThreadId(), act.deviceId());
+    recordThreadInfo(act->resourceId(), act->getThreadId(), act->deviceId());
   }
   logger.handleTraceSpan(cpu_span);
 }
@@ -337,6 +378,11 @@ void CuptiActivityProfiler::handleOverheadActivity(
   VLOG(2) << ": CUPTI_ACTIVITY_KIND_OVERHEAD" << " overheadKind=" << activity->overheadKind;
   const auto& overhead_activity =
       traceBuffers_->addActivityWrapper(OverheadActivity(activity, nullptr));
+  // Monitor memory overhead
+  if (activity->overheadKind == CUPTI_ACTIVITY_OVERHEAD_CUPTI_RESOURCE) {
+    resourceOverheadCount_++;
+  }
+
   if (outOfRange(overhead_activity)) {
     return;
   }
@@ -735,7 +781,6 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         VLOG_IF(0, collection_done) << "Reached profile end time";
-
         UST_LOGGER_MARK_COMPLETED(kCollectionStage);
       } else if (derivedConfig_->isProfilingByIteration()) {
         // nothing to do here
@@ -861,6 +906,7 @@ void CuptiActivityProfiler::resetTraceData() {
   traceBuffers_ = nullptr;
   metadata_.clear();
   sessions_.clear();
+  resourceOverheadCount_ = 0;
 #if !USE_GOOGLE_LOG
   Logger::removeLoggerObserver(loggerCollectorMetadata_.get());
 #endif // !USE_GOOGLE_LOG

@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #include <memory>
 #include <mutex>
@@ -54,7 +57,11 @@ static void initProfilers(
 // to take the performance hit early on.
 // https://docs.nvidia.com/cupti/r_main.html#r_overhead
 static bool shouldPreloadCuptiInstrumentation() {
-  return getenv("PRELOAD_CUPTI_INSTRUMENTATION");
+#if defined(CUDA_VERSION) && CUDA_VERSION < 11020
+  return true;
+#else
+  return false;
+#endif
 }
 
 static void stopProfiler(
@@ -79,8 +86,7 @@ using namespace KINETO_NAMESPACE;
 extern "C" {
 
 // Return true if no CUPTI errors occurred during init
-bool libkineto_init(bool cpuOnly, bool logOnError) {
-  bool success = true;
+void libkineto_init(bool cpuOnly, bool logOnError) {
 #ifdef HAS_CUPTI
   if (!cpuOnly) {
     // libcupti will be lazily loaded on this call.
@@ -88,6 +94,7 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
     // then this call will return an error and we just abort init.
     auto& cbapi = CuptiCallbackApi::singleton();
     bool status = false;
+    bool initRangeProfiler = true;
 
     if (cbapi.initSuccess()){
       const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
@@ -105,7 +112,7 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
     }
 
     if (!cbapi.initSuccess() || !status) {
-      success = false;
+      initRangeProfiler = false;
       cpuOnly = true;
       if (logOnError) {
         CUPTI_CALL(cbapi.getCuptiStatus());
@@ -117,7 +124,7 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
     }
 
     // initialize CUPTI Range Profiler API
-    if (success) {
+    if (initRangeProfiler) {
       rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
     }
   }
@@ -130,8 +137,6 @@ bool libkineto_init(bool cpuOnly, bool logOnError) {
   ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
-
-  return success;
 }
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment

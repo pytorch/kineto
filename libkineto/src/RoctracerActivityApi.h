@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #pragma once
 
@@ -11,6 +14,7 @@
 #include <unordered_map>
 #include <deque>
 #include <atomic>
+#include <mutex>
 
 #ifdef HAS_ROCTRACER
 #include <roctracer.h>
@@ -169,4 +173,3 @@ class RoctracerActivityApi {
 };
 
 } // namespace KINETO_NAMESPACE
-

@@ -1,4 +1,7 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #include "ActivityProfilerController.h"
 
@@ -23,6 +26,18 @@ namespace KINETO_NAMESPACE {
 
 constexpr milliseconds kProfilerIntervalMsecs(1000);
 
+#if !USE_GOOGLE_LOG
+static std::unique_ptr<LoggerCollector>& loggerCollectorFactory() {
+  static std::unique_ptr<LoggerCollector> factory = nullptr;
+  return factory;
+}
+
+void ActivityProfilerController::setLoggerCollectorFactory(
+    std::function<std::unique_ptr<LoggerCollector>()> factory) {
+  loggerCollectorFactory() = factory();
+}
+#endif // !USE_GOOGLE_LOG
+
 ActivityProfilerController::ActivityProfilerController(
     ConfigLoader& configLoader, bool cpuOnly)
     : configLoader_(configLoader) {
@@ -34,6 +49,12 @@ ActivityProfilerController::ActivityProfilerController(
       CuptiActivityApi::singleton(), cpuOnly);
 #endif
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
+
+#if !USE_GOOGLE_LOG
+  if (loggerCollectorFactory()) {
+    Logger::addLoggerObserver(loggerCollectorFactory().get());
+  }
+#endif // !USE_GOOGLE_LOG
 }
 
 ActivityProfilerController::~ActivityProfilerController() {
@@ -46,6 +67,12 @@ ActivityProfilerController::~ActivityProfilerController() {
     delete profilerThread_;
     profilerThread_ = nullptr;
   }
+
+#if !USE_GOOGLE_LOG
+  if (loggerCollectorFactory()) {
+    Logger::removeLoggerObserver(loggerCollectorFactory().get());
+  }
+#endif // !USE_GOOGLE_LOG
 }
 
 static ActivityLoggerFactory initLoggerFactory() {
@@ -210,6 +237,7 @@ void ActivityProfilerController::activateConfig(
     std::chrono::time_point<std::chrono::system_clock> now) {
   logger_ = makeLogger(*asyncRequestConfig_);
   profiler_->setLogger(logger_.get());
+  LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND();
   profiler_->configure(*asyncRequestConfig_, now);
   asyncRequestConfig_ = nullptr;
 }
@@ -265,12 +293,20 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
   profiler_->configure(config, now);
 }
 
+void ActivityProfilerController::startTrace() {
+  UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
+  profiler_->startTrace(std::chrono::system_clock::now());
+}
+
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
   profiler_->stopTrace(std::chrono::system_clock::now());
+  UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+  // Note: kPostProcessingStage marked in the destructor of ActivityTrace.
+
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
+  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory(), true);
 }
 
 void ActivityProfilerController::addMetadata(

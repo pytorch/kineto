@@ -97,7 +97,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::vector<const ITraceActivity*> activities_;
   std::vector<std::unique_ptr<const ITraceActivity>> wrappers_;
   std::vector<std::pair<DeviceInfo, int64_t>> deviceInfoList_;
-  std::vector<std::pair<libkineto::ResourceInfo, int64_t>> resourceInfoList_;
+  std::vector<std::pair<ResourceInfo, int64_t>> resourceInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;
   std::unordered_map<std::string, std::vector<std::string>> loggerMetadata_;

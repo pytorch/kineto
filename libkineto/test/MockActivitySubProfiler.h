@@ -38,6 +38,14 @@ class MockProfilerSession: public IActivityProfilerSession {
 
     std::unique_ptr<CpuTraceBuffer> getTraceBuffer() override;
 
+    std::unique_ptr<DeviceInfo> getDeviceInfo() override {
+      return {};
+    }
+
+    std::vector<ResourceInfo> getResourceInfos() override {
+      return {};
+    }
+
     int start_count = 0;
     int stop_count = 0;
   private:

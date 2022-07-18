@@ -47,6 +47,16 @@ class CuptiRangeProfilerSession : public IActivityProfilerSession {
   // returns errors with this trace
   std::vector<std::string> errors() override;
 
+  // returns device info used in this trace, could be nullptr
+  std::unique_ptr<DeviceInfo> getDeviceInfo() override {
+    return {};
+  }
+
+  // return resource info used int this trace, could be empty
+  std::vector<ResourceInfo> getResourceInfos() override {
+    return {};
+  }
+
  private:
   void addRangeEvents(
       const CuptiProfilerResult& result,

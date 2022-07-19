@@ -275,6 +275,7 @@ class TestCompareWithAutogradResult(unittest.TestCase):
             get_train_func(use_gpu)(13, p)
         self.compare_results(log_dir, profilers_dict, use_gpu, record_shapes, with_stack)
 
+    @pytest.mark.skip(reason='This type of test should be in PyTorch CI')
     def test_profiler_api_without_gpu(self):
         self.base_profiler_api(False, True, True, False)
 

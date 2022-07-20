@@ -177,6 +177,10 @@ class Config : public AbstractConfig {
     return enableOpInputsCollection_;
   }
 
+  bool isPythonStackTraceEnabled() const {
+    return enablePythonStackTrace_;
+  }
+
   // Trace for this long
   std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
@@ -389,6 +393,9 @@ class Config : public AbstractConfig {
   // Client Interface
   // Enable inputs collection when tracing ops
   bool enableOpInputsCollection_{true};
+
+  // Enable Python Stack Tracing
+  bool enablePythonStackTrace_{false};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;

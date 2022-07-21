@@ -29,6 +29,7 @@ enum class ActivityType {
     // Optional Activity types
     GLOW_RUNTIME, // host side glow runtime events
     CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
+    HPU_OP, // HPU host side runtime event
 
     ENUM_COUNT, // This is to add buffer and not used for any profiling logic. Add your new type before it.
     OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,

@@ -845,6 +845,18 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
     logger.handleResourceInfo(resource, captureWindowStartTime_);
   }
 
+  for (auto &session : sessions_){
+    auto device_info = session->getDeviceInfo();
+    if (device_info != nullptr){
+      logger.handleDeviceInfo(*device_info, captureWindowStartTime_);
+    }
+
+    auto resource_infos = session->getResourceInfos();
+    for (auto resource_info : resource_infos){
+      logger.handleResourceInfo(resource_info, captureWindowStartTime_);
+    }
+  }
+
   for (const auto& iterations : traceSpans_) {
     for (const auto& span_pair : iterations.second) {
       const TraceSpan& gpu_span = span_pair.second;

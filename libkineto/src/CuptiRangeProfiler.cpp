@@ -225,6 +225,14 @@ std::vector<std::string> CuptiRangeProfilerSession::errors() {
   return {};
 }
 
+std::unique_ptr<DeviceInfo> CuptiRangeProfilerSession::getDeviceInfo() {
+  return {};
+}
+
+std::vector<ResourceInfo> CuptiRangeProfilerSession::getResourceInfos() {
+  return {};
+}
+
 /* ----------------------------------------
  * Implement CuptiRangeProfiler
  * ----------------------------------------

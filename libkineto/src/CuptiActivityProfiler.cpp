@@ -28,7 +28,7 @@
 #include "time_since_epoch.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
-#include "CuptiActivity.tpp"
+#include "CuptiActivity.cpp"
 #include "CuptiActivityApi.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER

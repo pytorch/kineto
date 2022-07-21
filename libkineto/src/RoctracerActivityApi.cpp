@@ -39,7 +39,7 @@ RoctracerActivityApi::RoctracerActivityApi()
 
 RoctracerActivityApi::~RoctracerActivityApi() {
   disableActivities(std::set<ActivityType>());
-  endTracing();
+  d->endTracing();
 }
 
 void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
@@ -66,7 +66,7 @@ void RoctracerActivityApi::setMaxBufferSize(int size) {
 }
 
 int RoctracerActivityApi::processActivities(
-    ActivityLogger& logger) {
+    ActivityLogger& logger, std::function<const ITraceActivity*(int32_t)> linkedActivity) {
   // Find offset to map from monotonic clock to system clock.
   // This will break time-ordering of events but is status quo.
 
@@ -78,6 +78,8 @@ int RoctracerActivityApi::processActivities(
   const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
 
   int count = 0;
+
+  auto &externalCorrelations = d->externalCorrelations_[RoctracerLogger::CorrelationDomain::Domain0];
 
   // Basic Api calls
 
@@ -93,6 +95,9 @@ int RoctracerActivityApi::processActivities(
     a.flow.id = item.id;
     a.flow.type = kLinkAsyncCpuGpu;
     a.flow.start = true;
+
+    auto it = externalCorrelations.find(a.id);
+    a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
 
     logger.handleGenericActivity(a);
     ++count;
@@ -111,6 +116,9 @@ int RoctracerActivityApi::processActivities(
     a.flow.id = item.id;
     a.flow.type = kLinkAsyncCpuGpu;
     a.flow.start = true;
+
+    auto it = externalCorrelations.find(a.id);
+    a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
 
     a.addMetadataQuoted("ptr", fmt::format("{}", item.ptr));
     if (item.cid == HIP_API_ID_hipMalloc) {
@@ -134,6 +142,9 @@ int RoctracerActivityApi::processActivities(
     a.flow.id = item.id;
     a.flow.type = kLinkAsyncCpuGpu;
     a.flow.start = true;
+
+    auto it = externalCorrelations.find(a.id);
+    a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
 
     a.addMetadataQuoted("src", fmt::format("{}", item.src));
     a.addMetadataQuoted("dst", fmt::format("{}", item.dst));
@@ -161,6 +172,9 @@ int RoctracerActivityApi::processActivities(
     a.flow.id = item.id;
     a.flow.type = kLinkAsyncCpuGpu;
     a.flow.start = true;
+
+    auto it = externalCorrelations.find(a.id);
+    a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
 
     if (item.functionAddr != nullptr) {
       a.addMetadataQuoted(
@@ -223,6 +237,9 @@ int RoctracerActivityApi::processActivities(
         a.flow.type = kLinkAsyncCpuGpu;
         a.flow.start = true;
 
+        auto it = externalCorrelations.find(a.id);
+        a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
+
         logger.handleGenericActivity(a);
         ++count;
       }
@@ -246,6 +263,9 @@ int RoctracerActivityApi::processActivities(
         a.flow.id = record->correlation_id;
         a.flow.type = kLinkAsyncCpuGpu;
         a.flow.start = false;
+
+        auto eit = externalCorrelations.find(a.id);
+        a.linked = linkedActivity(eit == externalCorrelations.end() ? 0 : eit->second);
 
         auto it = kernelNames_.find(record->correlation_id);
         if (it != kernelNames_.end()) {

@@ -58,7 +58,8 @@ class RoctracerActivityApi {
     const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
-  int processActivities(ActivityLogger& logger);
+  int processActivities(ActivityLogger& logger
+                        , std::function<const ITraceActivity*(int32_t)> linkedActivity);
 
   void setMaxBufferSize(int size);
 
@@ -66,7 +67,6 @@ class RoctracerActivityApi {
 
  private:
   bool registered_{false};
-  void endTracing();
 
   //Name cache
   uint32_t nextStringId_{2};

@@ -66,6 +66,7 @@ constexpr char kActivitiesMaxGpuBufferSizeKey[] =
 
 // Client Interface
 constexpr char kClientInterfaceEnableOpInputsCollection[] = "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
+constexpr char kPythonStackTrace[] = "PYTHON_STACK_TRACE";
 
 constexpr char kActivitiesWarmupIterationsKey[] = "ACTIVITIES_WARMUP_ITERATIONS";
 constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
@@ -347,6 +348,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   // Client Interface
   else if (!name.compare(kClientInterfaceEnableOpInputsCollection)) {
     enableOpInputsCollection_ = toBool(val);
+  } else if (!name.compare(kPythonStackTrace)) {
+    enablePythonStackTrace_ = toBool(val);
   }
 
   // Common

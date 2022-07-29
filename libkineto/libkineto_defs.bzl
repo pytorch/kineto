@@ -11,6 +11,7 @@ def get_libkineto_api_srcs():
 
 def get_libkineto_cupti_srcs(with_api = True):
     return [
+        "src/CudaUtil.cpp",
         "src/CudaDeviceProperties.cpp",
         "src/CuptiActivityApi.cpp",
         "src/CuptiActivityPlatform.cpp",
@@ -39,6 +40,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/CuptiActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",
+        "src/ActivityTrace.cpp",
         "src/ActivityType.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",

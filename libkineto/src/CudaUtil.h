@@ -7,6 +7,10 @@
 
 namespace KINETO_NAMESPACE {
 
+#ifdef HAS_CUPTI
 bool isGpuAvailable();
+#else
+bool isGpuAvailable() { return false; }
+#endif
 
 } // namespace KINETO_NAMESPACE

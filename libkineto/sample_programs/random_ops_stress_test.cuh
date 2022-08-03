@@ -5,9 +5,21 @@
 
 #pragma once
 
+#include <cuda_runtime_api.h>
 #include <cuda.h>
 
 namespace kineto_stress_test {
+
+inline void checkCudaStatus(cudaError_t status, int lineNumber = -1) {
+  if (status != cudaSuccess) {
+    printf(
+        "cuda API failed with status %d: %s at line %d\n",
+        status,
+        cudaGetErrorString(status),
+        lineNumber);
+    exit(-1);
+  }
+}
 
 struct tensor_pair {
   // Number of elements in the float arrays
@@ -71,6 +83,11 @@ struct stress_test_args {
     uint32_t min_idle_us;
     uint32_t max_idle_us;
     bool simulate_host_time;
+    bool use_uvm_buffers;
+    float* uvm_a;
+    float* uvm_b;
+    uint64_t uvm_len;
+    float uvm_kernel_prob;
 };
 
 void run_stress_test(

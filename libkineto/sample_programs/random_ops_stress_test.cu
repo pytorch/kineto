@@ -44,6 +44,9 @@ struct lcg_kernel_input {
   float const* __restrict__ d_b;
   float* __restrict__ d_c;
   int len;
+  float const* __restrict__ uvm_a;
+  float const* __restrict__ uvm_b;
+  uint64_t uvm_len;
   int iters;
 };
 
@@ -79,6 +82,39 @@ __global__ void iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_
   }
 }
 
+template<uint32_t offset_seed_a, uint32_t offset_seed_b>
+__global__ void iterative_lcg_3_with_uvm(lcg_kernel_input input) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  uint64_t uvm_idx = idx;
+
+  float val_uvm_a = 0.0f;
+  float val_uvm_b = 0.0f;
+
+  // Fetch data from UVM
+  for (int i = 0; i < 5 ; ++i) {
+    val_uvm_a += input.uvm_a[uvm_idx % input.uvm_len];
+    val_uvm_b += input.uvm_b[uvm_idx % input.uvm_len];
+    uvm_idx += 4096;
+  }
+
+  // Load device buffers, do some compute, save to device buffer
+  if (idx < input.len) {
+    uint32_t seed_a = (uint32_t)(input.d_a[idx] + val_uvm_a) + offset_seed_a;
+    uint32_t seed_b = (uint32_t)(input.d_b[idx] + val_uvm_a) + offset_seed_b;
+    uint32_t xna = 0;
+    uint32_t xnb = 0;
+
+    for (int i = 0; i < input.iters; ++i) {
+      xna = (LCG_A * seed_a + LCG_C) % LCG_M;
+      xnb = (LCG_A * seed_b + LCG_C) % LCG_M;
+      seed_a = xna;
+      seed_b = xnb;
+    }
+
+    input.d_c[idx] = 0.25 + (float)((xna + xnb) % 1000) / 1000.0;
+  }
+}
+
 // Use this function to vary the kernel name at runtime
 void call_compute_kernel(
   uint32_t thread_blocks,
@@ -91,20 +127,10 @@ void call_compute_kernel(
 
 // Fill the buffers on the host with random values
 void simple_lcg_host(float* h_A, int num_elements) {
+  uint32_t xn = rand();
   for (int i = 0; i < num_elements; ++i) {
-    uint32_t xn = i * (i + 1);
     h_A[i] = (float)((LCG_A * xn + LCG_C) % LCG_M);
-  }
-}
-
-inline void checkCudaStatus(cudaError_t status, int lineNumber = -1) {
-  if (status != cudaSuccess) {
-    printf(
-        "cuda API failed with status %d: %s at line %d\n",
-        status,
-        cudaGetErrorString(status),
-        lineNumber);
-    exit(-1);
+    xn = h_A[i];
   }
 }
 
@@ -118,15 +144,16 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
         rand() % (cache_args.sz_max_tensor_KB - cache_args.sz_min_tensor_KB) +
             cache_args.sz_min_tensor_KB;
     uint32_t num_elements = num_KB * 1024 / sizeof(float);
+    // printf("Generated pair with %d kB buffers and %d float elements.\n", num_KB, num_elements);
 
     // Allocate device buffers
     p_memory_pool[i].n_elements = num_elements;
     checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_A, num_elements * sizeof(float)));
+        cudaMalloc(&p_memory_pool[i].d_A, num_elements * sizeof(float)), __LINE__);
     checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_B, num_elements * sizeof(float)));
+        cudaMalloc(&p_memory_pool[i].d_B, num_elements * sizeof(float)), __LINE__);
     checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_C, num_elements * sizeof(float)));
+        cudaMalloc(&p_memory_pool[i].d_C, num_elements * sizeof(float)), __LINE__);
 
     // Initialize device buffers with random values
     uint32_t thread_blocks = num_elements / 256;
@@ -137,11 +164,11 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
     simple_rng_lcg<<<thread_blocks, 256>>>(
         p_memory_pool[i].d_C, p_memory_pool[i].n_elements);
 
-    // Throw a dice to see if we will do memcopy device to host for this one
-    if (((float)(rand() % 10000) / 10000.0) < cache_args.prob_h2d) {
+    // Throw a dice to see if we will do memcopy host to device for this one and use pinned memory
+    if (((float)(rand() % 100) / 100.0) < cache_args.prob_h2d) {
       p_memory_pool[i].b_copy_h2d = true;
-      p_memory_pool[i].h_A = (float*)malloc(num_elements * sizeof(float));
-      p_memory_pool[i].h_B = (float*)malloc(num_elements * sizeof(float));
+      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
 
       simple_lcg_host(p_memory_pool[i].h_A, num_elements);
       simple_lcg_host(p_memory_pool[i].h_B, num_elements);
@@ -211,7 +238,7 @@ void re_initialize_buffer_values() {
 
 void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream) {
 // Older CUDA versions don't know about async malloc and free
-#if defined(CUDA_VERSION) && CUDA_VERSION > 11000
+#if defined(CUDA_VERSION) && CUDA_VERSION > 11000 && defined(ASYNC_MALLOC)
 
   checkCudaStatus(
     cudaFreeAsync(tensor_pair->d_A, stream),
@@ -263,20 +290,33 @@ void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream
     __LINE__);
 
 #endif // CUDA_VERSION >= 11000
+
+  if (tensor_pair->b_copy_h2d) {
+    checkCudaStatus(cudaFreeHost(tensor_pair->h_A), __LINE__);
+    checkCudaStatus(cudaFreeHost(tensor_pair->h_B), __LINE__);
+
+    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+
+    simple_lcg_host(tensor_pair->h_A, num_elements);
+    simple_lcg_host(tensor_pair->h_B, num_elements);
+  }
 }
 
 void free_tensor_cache() {
   for (uint32_t i = 0; i < num_tensor_pairs; ++i) {
-    checkCudaStatus(cudaFree(p_memory_pool[i].d_A));
-    checkCudaStatus(cudaFree(p_memory_pool[i].d_B));
-    checkCudaStatus(cudaFree(p_memory_pool[i].d_C));
+    checkCudaStatus(cudaFree(p_memory_pool[i].d_A), __LINE__);
+    checkCudaStatus(cudaFree(p_memory_pool[i].d_B), __LINE__);
+    checkCudaStatus(cudaFree(p_memory_pool[i].d_C), __LINE__);
 
-    if (p_memory_pool[i].h_A) {
-      free(p_memory_pool[i].h_A);
-    }
+    if (p_memory_pool[i].b_copy_h2d) {
+      if (p_memory_pool[i].h_A) {
+        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_A), __LINE__);
+      }
 
-    if (p_memory_pool[i].h_B) {
-      free(p_memory_pool[i].h_B);
+      if (p_memory_pool[i].h_B) {
+        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
+      }
     }
   }
 
@@ -326,6 +366,7 @@ void run_stress_test(
   // Measure time
   float t_wall_ms = 0.0;
   clock_t begin = clock();
+  uint32_t num_pairs_per_worker = num_tensor_pairs / num_workers;
 
   // Start running the benchmark
   for (uint32_t i = 0; i < test_args.num_operations; ++i) {
@@ -337,10 +378,9 @@ void run_stress_test(
     }
 
     // Generate stream ID and tensor pair index
-    uint32_t pair_idx = rand() % num_tensor_pairs;
-    pair_idx = pair_idx - (pair_idx % num_workers);
-    pair_idx += thread_id;
-    uint32_t stream_idx = pair_idx % test_args.num_cuda_streams;
+    uint32_t local_pair_idx = i % num_pairs_per_worker;
+    uint32_t pair_idx = thread_id * num_pairs_per_worker + local_pair_idx;
+    uint32_t stream_idx = local_pair_idx % test_args.num_cuda_streams;
 
     // Check if we do a CUDA malloc
     if (((float)(rand() % 10000) / 10000.0) < test_args.prob_cuda_malloc) {
@@ -389,8 +429,24 @@ void run_stress_test(
     kernel_args.len = p_memory_pool[pair_idx].n_elements;
     kernel_args.iters = num_iters_stream;
 
-    call_compute_kernel(thread_blocks, 256, 0, v_streams[stream_idx],
-        kernel_args, i);
+    if (test_args.use_uvm_buffers) {
+      kernel_args.uvm_a = test_args.uvm_a;
+      kernel_args.uvm_b = test_args.uvm_b;
+      kernel_args.uvm_len = test_args.uvm_len;
+    }
+    else {
+      kernel_args.uvm_a = NULL;
+      kernel_args.uvm_b = NULL;
+      kernel_args.uvm_len = 0;
+    }
+
+    bool b_uvm_kernel = ((float)(rand() % 10000) / 10000.0) < test_args.uvm_kernel_prob ? true : false;
+    if ((kernel_args.uvm_len > 0) && (b_uvm_kernel)) {
+      iterative_lcg_3_with_uvm<113, 119><<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(kernel_args);
+    } else {
+      call_compute_kernel(thread_blocks, 256, 0, v_streams[stream_idx],
+          kernel_args, i);
+    }
 
     // Simulate output download
     if (p_memory_pool[pair_idx].b_copy_d2h) {

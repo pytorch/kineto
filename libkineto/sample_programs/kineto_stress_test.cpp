@@ -54,6 +54,32 @@ void trace_collection_thread() {
   trace->save(kFileName);
 }
 
+void uvm_allocation_thread(stress_test_args *test_args) {
+    uint64_t alloc_size = test_args->uvm_len * sizeof(float);
+
+    std::cout << "UVM is used. Allocation size (MB) = " << 2 * alloc_size / (1024 * 1024) << std::endl;
+    int currentDevice = 0;
+    checkCudaStatus(cudaGetDevice(&currentDevice), __LINE__);
+    checkCudaStatus(cudaMallocManaged((void**)&test_args->uvm_a, alloc_size, cudaMemAttachGlobal), __LINE__);
+    checkCudaStatus(cudaMallocManaged((void**)&test_args->uvm_b, alloc_size, cudaMemAttachGlobal), __LINE__);
+    checkCudaStatus(cudaMemAdvise((void*)test_args->uvm_a, alloc_size, cudaMemAdviseSetPreferredLocation, cudaCpuDeviceId), __LINE__);
+    checkCudaStatus(cudaMemAdvise((void*)test_args->uvm_b, alloc_size, cudaMemAdviseSetPreferredLocation, cudaCpuDeviceId), __LINE__);
+    checkCudaStatus(cudaMemAdvise((void*)test_args->uvm_a, alloc_size, cudaMemAdviseSetAccessedBy, currentDevice), __LINE__);
+    checkCudaStatus(cudaMemAdvise((void*)test_args->uvm_b, alloc_size, cudaMemAdviseSetAccessedBy, currentDevice), __LINE__);
+    std::cout << "UVM buffers allocated. Initializing them with values." << std::endl;
+
+    // Put a bunch of non-zero values into the UVM buffers
+    srand(time(NULL));
+    for (uint64_t i = 0; i < 32 * 128 * 1024; ++i) {
+      uint64_t idx_a = rand() % test_args->uvm_len;
+      uint64_t idx_b = rand() % test_args->uvm_len;
+      test_args->uvm_a[idx_a] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+      test_args->uvm_b[idx_b] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    }
+
+    std::cout << "UVM buffers initialized." << std::endl;
+}
+
 int main() {
   tensor_cache_args cache_args;
 
@@ -108,28 +134,71 @@ int main() {
   // launches.
   test_args.simulate_host_time = false;
 
+  // If non-zero, we allocate UVM memory and use it
+  test_args.use_uvm_buffers = false;
+
+  // The probability of running a kernel that uses UVM
+  test_args.uvm_kernel_prob = 0.05;
+
+  // If set true, the UVM allocation and initialization will be done in parallel
+  // with cache allocation (e.g. cudaHostAlloc)
+  bool b_parallel_uvm_alloc = true;
+
+  // Size of a single buffer in FP32 elements in UVM
+  test_args.uvm_len = (uint64_t)(50 * 1024 * 1024) * (uint64_t)(1024 / 4);
+
   // Number of threads that run the stress test
   uint32_t num_workers = 1;
 
   // Number of increments in the GPU memory usage to see what happens at the
   // peak memory usage.
-  uint32_t num_tensor_cache_increments = 10;
+  uint32_t num_tensor_cache_increments = 1;
   uint32_t num_pairs_per_increment = 10;
 
   // Create more workers
   std::vector<std::thread> v_workers;
-  v_workers.reserve(num_workers);
+  if (test_args.use_uvm_buffers) {
+    v_workers.reserve(num_workers + 1);
+  } else {
+    v_workers.reserve(num_workers);
+  }
+
+  // Allocate and initialize UVM in parallel with cudaHostAlloc
+  if (test_args.use_uvm_buffers) {
+    v_workers.push_back(std::thread(uvm_allocation_thread, &test_args));
+  }
+
+  if ((!b_parallel_uvm_alloc) && (test_args.use_uvm_buffers)) {
+    // Wait for initialization to be finished
+    for (auto& t : v_workers) {
+      t.join();
+    }
+    v_workers.clear();
+  }
 
   // Generate for non-kineto tests
+  std::cout << "Generating tensor cache." << std::endl;
   generate_tensor_cache(cache_args);
+  std::cout << "Finished generating tensor cache." << std::endl;
+
+  // Wait for initialization to be finished
+  if ((b_parallel_uvm_alloc) && (test_args.use_uvm_buffers)) {
+    for (auto& t : v_workers) {
+      t.join();
+    }
+    v_workers.clear();
+  }
 
   // Warmup run
+  std::cout << "Running warmup without kineto." <<  std::endl;
   uint32_t num_test_operations = test_args.num_operations;
   test_args.num_operations = 200;
   run_stress_test(0, 1, false, test_args);
   test_args.num_operations = num_test_operations;
+  std::cout << "Warmup run finished." << std::endl;
 
   // Run without kineto tracing
+  std::cout << "Running test without kineto. Num threads = " << num_workers << std::endl;
   clock_t t_start = clock();
   for (int i = 0; i < num_workers; ++i) {
     v_workers.push_back(std::thread(run_stress_test, i, num_workers, false, test_args));
@@ -140,6 +209,7 @@ int main() {
   clock_t t_stop = clock();
   v_workers.clear();
   double t_no_trace = (double)(t_stop - t_start) / 1e+3;
+  std::cout << "Test without kineto completed." << std::endl;
 
   // Re-init the random values
   re_initialize_buffer_values();
@@ -199,6 +269,12 @@ int main() {
 
   // Free the tensor cache on the GPU
   free_tensor_cache();
+
+  // Free UVM
+  if (test_args.use_uvm_buffers) {
+    checkCudaStatus(cudaFree(test_args.uvm_a), __LINE__);
+    checkCudaStatus(cudaFree(test_args.uvm_b), __LINE__);
+  }
 
   return 0;
 }

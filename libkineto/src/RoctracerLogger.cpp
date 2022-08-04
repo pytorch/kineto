@@ -317,6 +317,7 @@ void RoctracerLogger::endTracing() {
 
     roctracer_disable_domain_activity(ACTIVITY_DOMAIN_HCC_OPS);
     roctracer_close_pool_expl(hccPool_);
+    hccPool_ = nullptr;
   }
 }
 

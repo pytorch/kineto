@@ -39,7 +39,6 @@ RoctracerActivityApi::RoctracerActivityApi()
 
 RoctracerActivityApi::~RoctracerActivityApi() {
   disableActivities(std::set<ActivityType>());
-  d->endTracing();
 }
 
 void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {

@@ -233,9 +233,14 @@ EventProfilerController::~EventProfilerController() {
 
 // Must be called under lock
 void EventProfilerController::start(CUcontext ctx, ConfigLoader& configLoader) {
-  profilerMap()[ctx] = unique_ptr<EventProfilerController>(
+  // Avoid static initialization order fiasco:
+  // We need the profilerMap and with it all controllers to be destroyed
+  // before everything the controller accesses gets destroyed.
+  // Hence access the profilerMap after initialization of the controller.
+  auto controller = unique_ptr<EventProfilerController>(
       new EventProfilerController(
           ctx, configLoader, detail::HeartbeatMonitor::instance()));
+  profilerMap()[ctx] = std::move(controller);
 }
 
 // Must be called under lock

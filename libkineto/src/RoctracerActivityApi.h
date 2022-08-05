@@ -20,13 +20,6 @@
 #include "ActivityType.h"
 #include "GenericTraceActivity.h"
 
-
-//#include "core/common/profiler_common.h"
-
-#ifdef HAS_ROCTRACER
-
-#endif
-
 class RoctracerLogger;
 class roctracerRow;
 
@@ -58,8 +51,8 @@ class RoctracerActivityApi {
     const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
-  int processActivities(ActivityLogger& logger
-                        , std::function<const ITraceActivity*(int32_t)> linkedActivity);
+  int processActivities(ActivityLogger& logger,
+                        std::function<const ITraceActivity*(int32_t)> linkedActivity);
 
   void setMaxBufferSize(int size);
 

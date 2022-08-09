@@ -10,7 +10,6 @@
 #include "Logger.h"
 #include "cupti_call.h"
 
-using namespace std::chrono;
 using std::vector;
 
 namespace KINETO_NAMESPACE {

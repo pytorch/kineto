@@ -40,7 +40,6 @@
 #include "ThreadUtil.h"
 
 using namespace std::chrono;
-using namespace libkineto;
 using std::string;
 
 namespace KINETO_NAMESPACE {

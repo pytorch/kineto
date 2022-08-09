@@ -11,7 +11,6 @@
 
 #include <stdlib.h>
 #include <chrono>
-#include <fmt/format.h>
 #include <fstream>
 #include <memory>
 
@@ -20,11 +19,9 @@
 #include "Logger.h"
 
 using namespace std::chrono;
-using std::string;
 
 namespace KINETO_NAMESPACE {
 
-using namespace libkineto;
 
 constexpr char kConfigFileEnvVar[] = "KINETO_CONFIG";
 #ifdef __linux__

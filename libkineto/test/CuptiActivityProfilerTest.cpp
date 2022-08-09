@@ -365,8 +365,6 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
 }
 
 TEST_F(CuptiActivityProfilerTest, SyncTrace) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
@@ -517,8 +515,6 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
 }
 
 TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(

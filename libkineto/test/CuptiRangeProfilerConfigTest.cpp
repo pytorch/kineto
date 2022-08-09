@@ -11,7 +11,6 @@
 #include <time.h>
 #include <chrono>
 
-using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 
 class CuptiRangeProfilerConfigTest : public ::testing::Test {

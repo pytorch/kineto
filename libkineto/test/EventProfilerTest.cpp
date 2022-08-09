@@ -228,7 +228,6 @@ class MockCuptiEvents : public CuptiEventApi {
 TEST(EventGroupSetTest, CollectSample) {
   using ::testing::_;
   using ::testing::Return;
-  using ::testing::SetArgPointee;
   const CUpti_EventGroup g1{nullptr};
   const CUpti_EventGroup g2{reinterpret_cast<void*>(0x1000)};
   CUpti_EventGroup groups[] = {g1, g2};

@@ -22,7 +22,6 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "CuptiCallbackApiMock.h"
 #include "CuptiRangeProfilerApi.h"
 
 #if HAS_CUPTI_RANGE_PROFILER

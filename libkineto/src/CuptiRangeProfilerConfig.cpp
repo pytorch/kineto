@@ -12,7 +12,6 @@
 #include <fmt/format.h>
 #include <ostream>
 
-using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 

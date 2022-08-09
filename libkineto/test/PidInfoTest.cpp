@@ -8,7 +8,6 @@
 #include <atomic>
 #include <thread>
 
-#include <fmt/format.h>
 #include <gtest/gtest.h>
 
 using namespace KINETO_NAMESPACE;

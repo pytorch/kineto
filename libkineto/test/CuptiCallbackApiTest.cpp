@@ -12,7 +12,6 @@
 #include <thread>
 
 using namespace std::chrono;
-using namespace KINETO_NAMESPACE;
 using namespace libkineto;
 
 const size_t some_data = 42;

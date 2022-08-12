@@ -264,6 +264,14 @@ void ChromeTraceLogger::handleActivity(
 
   int64_t ts = op.timestamp();
   int64_t duration = op.duration();
+
+  if (duration < 0) {
+    // This should never happen but can occasionally suffer from regression in handling incomplete events.
+    // Having negative duration in Chrome trace can yield in very poor experience so add an extra guard
+    // before we generate trace events.
+    duration = 0;
+  }
+
   if (op.type() ==  ActivityType::GPU_USER_ANNOTATION) {
     // The GPU user annotations start at the same time as the
     // first associated GPU op. Since they appear later

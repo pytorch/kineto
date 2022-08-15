@@ -1,4 +1,5 @@
-// Copyright (c) Meta Platforms, Inc. and affiliates.
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+
 
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
@@ -66,8 +67,10 @@ constexpr char kActivitiesMaxGpuBufferSizeKey[] =
 
 // Client Interface
 constexpr char kClientInterfaceEnableOpInputsCollection[] = "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
+constexpr char kPythonStackTrace[] = "PYTHON_STACK_TRACE";
 
-constexpr char kActivitiesWarmupIterationsKey[] = "ACTIVITIES_WARMUP_ITERATIONS";
+constexpr char kActivitiesWarmupIterationsKey[] =
+    "ACTIVITIES_WARMUP_ITERATIONS";
 constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
 // Common
 
@@ -108,8 +111,8 @@ constexpr char kProfileStartIterationKey[] = "PROFILE_START_ITERATION";
 //   The profile will then be collected on the next multiple of 1000 ie. 3000
 // Note PROFILE_START_ITERATION_ROUNDUP will also take precedence over
 // PROFILE_START_TIME.
-constexpr char kProfileStartIterationRoundUpKey[]
-  = "PROFILE_START_ITERATION_ROUNDUP";
+constexpr char kProfileStartIterationRoundUpKey[] =
+    "PROFILE_START_ITERATION_ROUNDUP";
 
 // Enable on-demand trigger via kill -USR2 <pid>
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
@@ -135,7 +138,6 @@ constexpr uint8_t kMaxDevices = 8;
 namespace {
 
 struct FactoryMap {
-
   void addFactory(
       std::string name,
       std::function<AbstractConfig*(Config&)> factory) {
@@ -150,8 +152,8 @@ struct FactoryMap {
     }
   }
 
-// Config factories are shared between objects and since
-// config objects can be created by multiple threads, we need a lock.
+  // Config factories are shared between objects and since
+  // config objects can be created by multiple threads, we need a lock.
   std::mutex lock_;
   std::map<std::string, std::function<AbstractConfig*(Config&)>> factories_;
 };
@@ -262,16 +264,16 @@ static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
   auto now = system_clock::now();
   if ((now - t) > kMaxRequestAge) {
     throw std::invalid_argument(fmt::format(
-      "Invalid {}: {} - start time is more than {}s in the past",
-      kProfileStartTimeKey,
-      getTimeStr(t),
-      kMaxRequestAge.count()));
+        "Invalid {}: {} - start time is more than {}s in the past",
+        kProfileStartTimeKey,
+        getTimeStr(t),
+        kMaxRequestAge.count()));
   }
   return t;
 }
 
 void Config::setActivityTypes(
-  const std::vector<std::string>& selected_activities) {
+    const std::vector<std::string>& selected_activities) {
   selectedActivityTypes_.clear();
   if (selected_activities.size() > 0) {
     for (const auto& activity : selected_activities) {
@@ -314,8 +316,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
 
   // Activity Profiler
   else if (!name.compare(kActivitiesDurationKey)) {
-    activitiesDuration_ =
-        duration_cast<milliseconds>(seconds(toInt32(val)));
+    activitiesDuration_ = duration_cast<milliseconds>(seconds(toInt32(val)));
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivityTypesKey)) {
     vector<string> activity_types = splitAndTrim(toLower(val), ',');
@@ -347,6 +348,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   // Client Interface
   else if (!name.compare(kClientInterfaceEnableOpInputsCollection)) {
     enableOpInputsCollection_ = toBool(val);
+  } else if (!name.compare(kPythonStackTrace)) {
+    enablePythonStackTrace_ = toBool(val);
   }
 
   // Common

@@ -22,6 +22,12 @@ namespace kineto_stress_test {
 // This is similar to the tensor cache that PyTorch is managing.
 tensor_pair* p_memory_pool;
 
+// NCCL variables buffers
+ncclUniqueId nccl_id;
+ncclComm_t nccl_communicator;
+float *pBuffNCCLSend;
+float *pBuffNCCLRecv;
+
 // Size of the memory pool in kilobytes
 uint32_t sz_memory_pool_KB;
 
@@ -144,7 +150,6 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
         rand() % (cache_args.sz_max_tensor_KB - cache_args.sz_min_tensor_KB) +
             cache_args.sz_min_tensor_KB;
     uint32_t num_elements = num_KB * 1024 / sizeof(float);
-    // printf("Generated pair with %d kB buffers and %d float elements.\n", num_KB, num_elements);
 
     // Allocate device buffers
     p_memory_pool[i].n_elements = num_elements;
@@ -335,14 +340,13 @@ void free_tensor_cache() {
 void run_stress_test(
     uint32_t thread_id,
     uint32_t num_workers,
-    bool tracing_enabled,
     stress_test_args test_args) {
   // We need to print an output to avoid making the compiler believe
   // that the following is a bunch of dead code.
   float checksum = 0.0;
 
   // Use a fixed random seed to be deterministic
-  srand(RNG_SEED_2);
+  uint32_t rng_state = RNG_SEED_2 + thread_id;
 
   // Check memory usage
   size_t mem_free = 0;
@@ -353,10 +357,14 @@ void run_stress_test(
   mem_used_before = (mem_total - mem_free) / 1024 / 1024;
 
   // Create multiple streams
-  cudaStream_t* v_streams =
-      (cudaStream_t*)malloc(test_args.num_cuda_streams * sizeof(cudaStream_t));
-  for (uint32_t i = 0; i < test_args.num_cuda_streams; ++i) {
-    checkCudaStatus(cudaStreamCreate(v_streams + i), __LINE__);
+  cudaStream_t* v_streams = NULL;
+  if (test_args.pre_alloc_streams) {
+    v_streams = test_args.cuda_streams + (thread_id * test_args.num_cuda_streams);
+  } else {
+    v_streams = (cudaStream_t*)malloc(test_args.num_cuda_streams * sizeof(cudaStream_t));
+    for (uint32_t i = 0; i < test_args.num_cuda_streams; ++i) {
+      checkCudaStatus(cudaStreamCreate(v_streams + i), __LINE__);
+    }
   }
 
   // Create output buffer for async downloads
@@ -372,7 +380,7 @@ void run_stress_test(
   for (uint32_t i = 0; i < test_args.num_operations; ++i) {
     // All good things start with a break. In our case some GPU idle time
     if (test_args.simulate_host_time) {
-      uint32_t gpu_idle_us = rand() % (test_args.max_idle_us -
+      uint32_t gpu_idle_us = rand_r(&rng_state) % (test_args.max_idle_us -
           test_args.min_idle_us) + test_args.min_idle_us;
       usleep(gpu_idle_us);
     }
@@ -383,7 +391,8 @@ void run_stress_test(
     uint32_t stream_idx = local_pair_idx % test_args.num_cuda_streams;
 
     // Check if we do a CUDA malloc
-    if (((float)(rand() % 10000) / 10000.0) < test_args.prob_cuda_malloc) {
+    if (((float)(rand_r(&rng_state) % 10000) / 10000.0) < test_args.prob_cuda_malloc) {
+      checkCudaStatus(cudaDeviceSynchronize(), __LINE__);
       free_and_realloc_tensor_pairs(p_memory_pool + pair_idx,
           v_streams[stream_idx]);
 
@@ -419,7 +428,7 @@ void run_stress_test(
 
     // Launch kernel
     uint32_t num_iters_stream =
-        rand() % (test_args.max_iters_kernel - test_args.min_iters_kernel) +
+        rand_r(&rng_state) % (test_args.max_iters_kernel - test_args.min_iters_kernel) +
             test_args.min_iters_kernel;
     uint32_t thread_blocks = p_memory_pool[pair_idx].n_elements / 256;
     lcg_kernel_input kernel_args;
@@ -440,17 +449,46 @@ void run_stress_test(
       kernel_args.uvm_len = 0;
     }
 
-    bool b_uvm_kernel = ((float)(rand() % 10000) / 10000.0) < test_args.uvm_kernel_prob ? true : false;
+    bool b_do_memset = ((float)(rand_r(&rng_state) % 10000) / 10000.0) < test_args.memset_prob;
+    bool b_uvm_kernel = ((float)(rand_r(&rng_state) % 10000) / 10000.0) < test_args.uvm_kernel_prob ? true : false;
     if ((kernel_args.uvm_len > 0) && (b_uvm_kernel)) {
-      iterative_lcg_3_with_uvm<113, 119><<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(kernel_args);
+      if (b_do_memset) {
+        memset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float));
+        memset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float));
+        // checkCudaStatus(cudaMemset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float)));
+        // checkCudaStatus(cudaMemset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float)));
+      } else {
+        iterative_lcg_3_with_uvm<113, 119><<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(kernel_args);
+      }
     } else {
-      call_compute_kernel(thread_blocks, 256, 0, v_streams[stream_idx],
-          kernel_args, i);
+      // Check to see if we do a simple kernel call or a memset
+      if (b_do_memset) {
+        checkCudaStatus(cudaMemset((void*)kernel_args.d_a, 42, kernel_args.len * sizeof(float)));
+        checkCudaStatus(cudaMemset((void*)kernel_args.d_b, 42, kernel_args.len * sizeof(float)));
+        checkCudaStatus(cudaMemset((void*)kernel_args.d_c, 42, kernel_args.len * sizeof(float)));
+      } else {
+        call_compute_kernel(thread_blocks, 256, 0, v_streams[stream_idx],
+            kernel_args, i);
+      }
+    }
+
+    // Simulate NCCL communication
+    // printf("PID %d pair index %d.\n", getpid(), pair_idx);
+    if ((i % test_args.num_iters_nccl_sync == 0) && (test_args.is_multi_rank)) {
+      uint32_t n_elements = p_memory_pool[pair_idx].n_elements;
+      size_t szTransfer = n_elements * sizeof(float);
+      checkCudaStatus(cudaMemcpy(pBuffNCCLSend, p_memory_pool[pair_idx].d_C,
+          szTransfer, cudaMemcpyDeviceToDevice), __LINE__);
+      NCCLCHECK(ncclAllReduce((const void*)pBuffNCCLSend, (void*)pBuffNCCLRecv, n_elements,
+          ncclFloat, ncclAvg, nccl_communicator, v_streams[stream_idx]));
+      checkCudaStatus(cudaStreamSynchronize(v_streams[stream_idx]), __LINE__);
+      checkCudaStatus(cudaMemcpy(p_memory_pool[pair_idx].d_C, pBuffNCCLRecv,
+          szTransfer, cudaMemcpyDeviceToDevice), __LINE__);
     }
 
     // Simulate output download
     if (p_memory_pool[pair_idx].b_copy_d2h) {
-      uint32_t rand_index = rand() % p_memory_pool[pair_idx].n_elements;
+      uint32_t rand_index = rand_r(&rng_state) % p_memory_pool[pair_idx].n_elements;
       checkCudaStatus(
           cudaMemcpyAsync(
               h_output + i,
@@ -484,12 +522,14 @@ void run_stress_test(
   t_wall_ms = (double)(end - begin) / 1e+3;
 
   // Destroy the streams to avoid memory leaks
-  for (int i = 0; i < test_args.num_cuda_streams; ++i) {
-    checkCudaStatus(cudaStreamDestroy(v_streams[i]), __LINE__);
-  }
+  if (!test_args.pre_alloc_streams) {
+    for (int i = 0; i < test_args.num_cuda_streams; ++i) {
+      checkCudaStatus(cudaStreamDestroy(v_streams[i]), __LINE__);
+    }
 
-  if (v_streams) {
-    free(v_streams);
+    if (v_streams) {
+      free(v_streams);
+    }
   }
 
   // Compute a checksum to have some value as an output of the function
@@ -504,14 +544,15 @@ void run_stress_test(
   size_t mem_used_after = (mem_total - mem_free) / 1024 / 1024;
 
   printf(
-      "Thread Index: %4d; Tracing Enabled: %d; GPU MB at Start: %6zu; Max GPU MB During Run: %6zu; GPU MB at Stop: %6zu; Runtime (ms): %6.3f; Checksum: %.5f\n",
+      "Thread Index: %4d; GPU MB at Start: %6zu; Max GPU MB During Run: %6zu; GPU MB at Stop: %6zu; Runtime (ms): %6.3f; Checksum: %.5f\n",
       thread_id,
-      tracing_enabled,
       mem_used_before,
       mem_used_during,
       mem_used_after,
       t_wall_ms,
       checksum);
+
+  checkCudaStatus(cudaDeviceSynchronize(), __LINE__);
 }
 
 // In case CUPTI compresses data using kernel name as a key to a hash map

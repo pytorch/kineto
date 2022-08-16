@@ -1,4 +1,5 @@
-// Copyright (c) Meta Platforms, Inc. and affiliates.
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+
 
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
@@ -57,6 +58,7 @@ ConfigDerivedState::ConfigDerivedState(const Config& config) {
     profileEndIter_ = (std::numeric_limits<decltype(profileEndIter_)>::max)();
     profileEndTime_ = profileStartTime_ + config.activitiesDuration();
   }
+  profileWithStack_ = config.isPythonStackTraceEnabled();
 }
 
 bool ConfigDerivedState::canStart(
@@ -65,20 +67,22 @@ bool ConfigDerivedState::canStart(
     return true;
   }
   if (profileStartTime_ < now) {
-    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time difference (ms): "
-                << duration_cast<milliseconds>(now - profileStartTime_).count();
+    LOG(ERROR)
+        << "Not starting tracing - start timestamp is in the past. Time difference (ms): "
+        << duration_cast<milliseconds>(now - profileStartTime_).count();
     return false;
   } else if ((profileStartTime_ - now) < profileWarmupDuration_) {
-    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): "
-                << duration_cast<milliseconds>(profileStartTime_ - now).count();
+    LOG(ERROR)
+        << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): "
+        << duration_cast<milliseconds>(profileStartTime_ - now).count();
     return false;
   }
   return true;
 }
 
 bool ConfigDerivedState::isWarmupDone(
-      const time_point<system_clock>& now,
-      int64_t currentIter) const {
+    const time_point<system_clock>& now,
+    int64_t currentIter) const {
   bool isTimestampBased = !profilingByIter_ && currentIter < 0;
   if (isTimestampBased) {
     // qualify that this check is not being called from application step() API
@@ -94,8 +98,8 @@ bool ConfigDerivedState::isWarmupDone(
 }
 
 bool ConfigDerivedState::isCollectionDone(
-      const time_point<system_clock>& now,
-      int64_t currentIter) const {
+    const time_point<system_clock>& now,
+    int64_t currentIter) const {
   bool isTimestampBased = !profilingByIter_ && currentIter < 0;
   if (isTimestampBased) {
     // qualify that this check is not being called from application step() API
@@ -122,15 +126,19 @@ void CuptiActivityProfiler::transferCpuTrace(
   cpuTrace->span.iteration = iterationCountMap_[trace_name]++;
 
   VLOG(0) << "Received iteration " << cpuTrace->span.iteration << " of span "
-          << trace_name << " (" << cpuTrace->activities.size() << " activities / "
-          << cpuTrace->gpuOpCount << " gpu activities)";
+          << trace_name << " (" << cpuTrace->activities.size()
+          << " activities / " << cpuTrace->gpuOpCount << " gpu activities)";
   traceBuffers_->cpu.push_back(std::move(cpuTrace));
 }
 
 #ifdef HAS_ROCTRACER
-CuptiActivityProfiler::CuptiActivityProfiler(RoctracerActivityApi& cupti, bool cpuOnly)
+CuptiActivityProfiler::CuptiActivityProfiler(
+    RoctracerActivityApi& cupti,
+    bool cpuOnly)
 #else
-CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly)
+CuptiActivityProfiler::CuptiActivityProfiler(
+    CuptiActivityApi& cupti,
+    bool cpuOnly)
 #endif
     : cupti_(cupti),
       flushOverhead_{0, 0},
@@ -139,11 +147,11 @@ CuptiActivityProfiler::CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOn
       currentRunloopState_{RunloopState::WaitForRequest} {
 
 #ifdef HAS_CUPTI
-    if (isGpuAvailable()) {
-      logCudaVersions();
-    }
-#endif
+  if (isGpuAvailable()) {
+    logCudaVersions();
   }
+#endif
+}
 
 #ifdef HAS_CUPTI
 void CuptiActivityProfiler::logCudaVersions() {
@@ -154,7 +162,9 @@ void CuptiActivityProfiler::logCudaVersions() {
   CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
   CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
   CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
-  LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion << "; Runtime: " << cudaRuntimeVersion << "; Driver: " << cudaDriverVersion;
+  LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion
+            << "; Runtime: " << cudaRuntimeVersion
+            << "; Driver: " << cudaDriverVersion;
 }
 #endif
 
@@ -184,16 +194,22 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     if (traceBuffers_->gpu) {
       const auto count_and_size = cupti_.processActivities(
           *traceBuffers_->gpu,
-          std::bind(&CuptiActivityProfiler::handleCuptiActivity, this, std::placeholders::_1, &logger));
-      LOG(INFO) << "Processed " << count_and_size.first
-                << " GPU records (" << count_and_size.second << " bytes)";
+          std::bind(
+              &CuptiActivityProfiler::handleCuptiActivity,
+              this,
+              std::placeholders::_1,
+              &logger));
+      LOG(INFO) << "Processed " << count_and_size.first << " GPU records ("
+                << count_and_size.second << " bytes)";
       LOGGER_OBSERVER_ADD_EVENT_COUNT(count_and_size.first);
 
       // resourceOverheadCount_ is set while processing GPU activities
       if (resourceOverheadCount_ > 0) {
-        LOG(INFO) << "Allocated " << resourceOverheadCount_ << " extra CUPTI buffers.";
+        LOG(INFO) << "Allocated " << resourceOverheadCount_
+                  << " extra CUPTI buffers.";
       }
-      LOGGER_OBSERVER_ADD_METADATA("ResourceOverhead", std::to_string(resourceOverheadCount_));
+      LOGGER_OBSERVER_ADD_METADATA(
+          "ResourceOverhead", std::to_string(resourceOverheadCount_));
     }
   }
 #endif // HAS_CUPTI
@@ -206,7 +222,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
 #endif // HAS_ROCTRACER
 
-  for (const auto& session : sessions_){
+  for (const auto& session : sessions_) {
     LOG(INFO) << "Processing child profiler trace";
     session->processTrace(logger);
   }
@@ -215,7 +231,8 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 }
 
 CuptiActivityProfiler::CpuGpuSpanPair& CuptiActivityProfiler::recordTraceSpan(
-    TraceSpan& span, int gpuOpCount) {
+    TraceSpan& span,
+    int gpuOpCount) {
   TraceSpan gpu_span(gpuOpCount, span.iteration, span.name, "GPU: ");
   auto& iterations = traceSpans_[span.name];
   iterations.push_back({span, gpu_span});
@@ -230,7 +247,8 @@ void CuptiActivityProfiler::processCpuTrace(
     return;
   }
 
-  CpuGpuSpanPair& span_pair = recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
+  CpuGpuSpanPair& span_pair =
+      recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
     VLOG(2) << act->correlationId() << ": OP " << act->activityName;
@@ -256,10 +274,12 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
     const CUpti_ActivityExternalCorrelation* correlation) {
   if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0) {
     cpuCorrelationMap_[correlation->correlationId] = correlation->externalId;
-  } else if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1){
+  } else if (
+      correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1) {
     userCorrelationMap_[correlation->correlationId] = correlation->externalId;
   } else {
-    LOG(WARNING) << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
+    LOG(WARNING)
+        << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
   }
 }
 #endif // HAS_CUPTI
@@ -274,8 +294,7 @@ static GenericTraceActivity createUserGpuSpan(
   res.startTime = gpuTraceActivity.timestamp();
   res.device = gpuTraceActivity.deviceId();
   res.resource = gpuTraceActivity.resourceId();
-  res.endTime =
-      gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
+  res.endTime = gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
   res.id = cpuTraceActivity.correlationId();
   return res;
 }
@@ -287,9 +306,9 @@ void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
   CorrelationSpanMap& correlationSpanMap = streamSpanMap_[key];
   auto it = correlationSpanMap.find(userActivity.correlationId());
   if (it == correlationSpanMap.end()) {
-    auto it_success = correlationSpanMap.insert({
-        userActivity.correlationId(), createUserGpuSpan(userActivity, gpuActivity)
-    });
+    auto it_success = correlationSpanMap.insert(
+        {userActivity.correlationId(),
+         createUserGpuSpan(userActivity, gpuActivity)});
     it = it_success.first;
   }
   GenericTraceActivity& span = it->second;
@@ -302,13 +321,14 @@ void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
   }
 }
 
-const CuptiActivityProfiler::CpuGpuSpanPair& CuptiActivityProfiler::defaultTraceSpan() {
+const CuptiActivityProfiler::CpuGpuSpanPair&
+CuptiActivityProfiler::defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
   static CpuGpuSpanPair span_pair(span, span);
   return span_pair;
 }
 
-void CuptiActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger *logger) {
+void CuptiActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger* logger) {
   for (auto const& streamMapPair : streamSpanMap_) {
     for (auto const& correlationSpanPair : streamMapPair.second) {
       correlationSpanPair.second.log(*logger);
@@ -322,8 +342,9 @@ inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
   if (out_of_range) {
     VLOG(2) << "TraceActivity outside of profiling window: " << act.name()
-        << " (" << act.timestamp() << " < " << captureWindowStartTime_ << " or "
-        << (act.timestamp() + act.duration()) << " > " << captureWindowEndTime_;
+            << " (" << act.timestamp() << " < " << captureWindowStartTime_
+            << " or " << (act.timestamp() + act.duration()) << " > "
+            << captureWindowEndTime_;
   }
   return out_of_range;
 }
@@ -360,8 +381,8 @@ void CuptiActivityProfiler::handleRuntimeActivity(
   if (it != resourceInfo_.end()) {
     tid = it->second.id;
   }
-  const ITraceActivity* linked = linkedActivity(
-      activity->correlationId, cpuCorrelationMap_);
+  const ITraceActivity* linked =
+      linkedActivity(activity->correlationId, cpuCorrelationMap_);
   const auto& runtime_activity =
       traceBuffers_->addActivityWrapper(RuntimeActivity(activity, linked, tid));
   checkTimestampOrder(&runtime_activity);
@@ -374,7 +395,8 @@ void CuptiActivityProfiler::handleRuntimeActivity(
 void CuptiActivityProfiler::handleOverheadActivity(
     const CUpti_ActivityOverhead* activity,
     ActivityLogger* logger) {
-  VLOG(2) << ": CUPTI_ACTIVITY_KIND_OVERHEAD" << " overheadKind=" << activity->overheadKind;
+  VLOG(2) << ": CUPTI_ACTIVITY_KIND_OVERHEAD"
+          << " overheadKind=" << activity->overheadKind;
   const auto& overhead_activity =
       traceBuffers_->addActivityWrapper(OverheadActivity(activity, nullptr));
   // Monitor memory overhead
@@ -388,15 +410,14 @@ void CuptiActivityProfiler::handleOverheadActivity(
   overhead_activity.log(*logger);
 }
 
-
 inline void CuptiActivityProfiler::updateGpuNetSpan(
     const ITraceActivity& gpuOp) {
   if (!gpuOp.linkedActivity()) {
     VLOG(0) << "Missing linked activity";
     return;
   }
-  const auto& it = clientActivityTraceMap_.find(
-     gpuOp.linkedActivity()->correlationId());
+  const auto& it =
+      clientActivityTraceMap_.find(gpuOp.linkedActivity()->correlationId());
   if (it == clientActivityTraceMap_.end()) {
     // No correlation id mapping?
     return;
@@ -433,8 +454,7 @@ void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
     LOG(WARNING) << "GPU op timestamp (" << act2->timestamp()
                  << ") < runtime timestamp (" << act1->timestamp() << ") by "
                  << act1->timestamp() - act2->timestamp() << "us";
-    LOG(WARNING) << "Name: " << act2->name()
-                 << " Device: " << act2->deviceId()
+    LOG(WARNING) << "Name: " << act2->name() << " Device: " << act2->deviceId()
                  << " Stream: " << act2->resourceId();
   }
 }
@@ -446,12 +466,12 @@ inline void CuptiActivityProfiler::handleGpuActivity(
     return;
   }
   checkTimestampOrder(&act);
-  VLOG(2) << act.correlationId() << ": "
-          << act.name();
+  VLOG(2) << act.correlationId() << ": " << act.name();
   recordStream(act.deviceId(), act.resourceId(), "");
   act.log(*logger);
   updateGpuNetSpan(act);
-  if (derivedConfig_->profileActivityTypes().count(ActivityType::GPU_USER_ANNOTATION)) {
+  if (derivedConfig_->profileActivityTypes().count(
+          ActivityType::GPU_USER_ANNOTATION)) {
     const auto& it = userCorrelationMap_.find(act.correlationId());
     if (it != userCorrelationMap_.end()) {
       const auto& it2 = activityMap_.find(it->second);
@@ -478,20 +498,22 @@ const ITraceActivity* CuptiActivityProfiler::linkedActivity(
 
 template <class T>
 inline void CuptiActivityProfiler::handleGpuActivity(
-    const T* act, ActivityLogger* logger) {
-  const ITraceActivity* linked = linkedActivity(
-      act->correlationId, cpuCorrelationMap_);
+    const T* act,
+    ActivityLogger* logger) {
+  const ITraceActivity* linked =
+      linkedActivity(act->correlationId, cpuCorrelationMap_);
   const auto& gpu_activity =
       traceBuffers_->addActivityWrapper(GpuActivity<T>(act, linked));
   handleGpuActivity(gpu_activity, logger);
 }
 
-void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger) {
+void CuptiActivityProfiler::handleCuptiActivity(
+    const CUpti_Activity* record,
+    ActivityLogger* logger) {
   switch (record->kind) {
     case CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION:
       handleCorrelationActivity(
-          reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(
-              record));
+          reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(record));
       break;
     case CUPTI_ACTIVITY_KIND_RUNTIME:
       handleRuntimeActivity(
@@ -514,7 +536,8 @@ void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Ac
           reinterpret_cast<const CUpti_ActivityMemset*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_OVERHEAD:
-      handleOverheadActivity (reinterpret_cast<const CUpti_ActivityOverhead*>(record), logger);
+      handleOverheadActivity(
+          reinterpret_cast<const CUpti_ActivityOverhead*>(record), logger);
       break;
     default:
       LOG(WARNING) << "Unexpected activity type: " << record->kind;
@@ -525,17 +548,18 @@ void CuptiActivityProfiler::handleCuptiActivity(const CUpti_Activity* record, Ac
 
 void CuptiActivityProfiler::configureChildProfilers() {
   // If child profilers are enabled create profiler sessions
-  int64_t start_time_ms = duration_cast<milliseconds>(
-    derivedConfig_->profileStartTime().time_since_epoch()).count();
-  for (auto& profiler: profilers_) {
+  int64_t start_time_ms =
+      duration_cast<milliseconds>(
+          derivedConfig_->profileStartTime().time_since_epoch())
+          .count();
+  for (auto& profiler : profilers_) {
     LOG(INFO) << "Running child profiler " << profiler->name() << " for "
-            << derivedConfig_->profileDuration().count() << " ms";
+              << derivedConfig_->profileDuration().count() << " ms";
     auto session = profiler->configure(
         start_time_ms,
         derivedConfig_->profileDuration().count(),
         derivedConfig_->profileActivityTypes(),
-        *config_
-    );
+        *config_);
     if (session) {
       LOG(INFO) << "Running child profiler " << profiler->name() << " for "
                 << derivedConfig_->profileDuration().count() << " ms";
@@ -577,8 +601,8 @@ void CuptiActivityProfiler::configure(
   }
   if (!cpuOnly_ && !libkineto::api().client()) {
     if (derivedConfig_->isProfilingByIteration()) {
-      LOG(INFO) << "GPU-only tracing for "
-                << config_->activitiesRunIterations() << " iterations";
+      LOG(INFO) << "GPU-only tracing for " << config_->activitiesRunIterations()
+                << " iterations";
     } else {
       LOG(INFO) << "GPU-only tracing for "
                 << config_->activitiesDuration().count() << "ms";
@@ -637,10 +661,13 @@ void CuptiActivityProfiler::configure(
   } else {
     LOG(INFO) << "Tracing starting in "
               << duration_cast<seconds>(
-                   derivedConfig_->profileStartTime() - now).count() << "s";
+                     derivedConfig_->profileStartTime() - now)
+                     .count()
+              << "s";
     LOG(INFO) << "Tracing will end in "
-              << duration_cast<seconds>(
-                   derivedConfig_->profileEndTime() - now).count() << "s";
+              << duration_cast<seconds>(derivedConfig_->profileEndTime() - now)
+                     .count()
+              << "s";
   }
 
   traceBuffers_ = std::make_unique<ActivityBuffers>();
@@ -648,17 +675,19 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
-void CuptiActivityProfiler::startTraceInternal(const time_point<system_clock>& now) {
+void CuptiActivityProfiler::startTraceInternal(
+    const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
   VLOG(0) << "Warmup -> CollectTrace";
-  for (auto& session : sessions_){
+  for (auto& session : sessions_) {
     LOG(INFO) << "Starting child profiler session";
     session->start();
   }
   currentRunloopState_ = RunloopState::CollectTrace;
 }
 
-void CuptiActivityProfiler::stopTraceInternal(const time_point<system_clock>& now) {
+void CuptiActivityProfiler::stopTraceInternal(
+    const time_point<system_clock>& now) {
   captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
@@ -682,11 +711,11 @@ void CuptiActivityProfiler::stopTraceInternal(const time_point<system_clock>& no
   if (currentRunloopState_ == RunloopState::CollectTrace) {
     VLOG(0) << "CollectTrace -> ProcessTrace";
   } else {
-    LOG(WARNING) << "Called stopTrace with state == " <<
-        static_cast<std::underlying_type<RunloopState>::type>(
-            currentRunloopState_.load());
+    LOG(WARNING) << "Called stopTrace with state == "
+                 << static_cast<std::underlying_type<RunloopState>::type>(
+                        currentRunloopState_.load());
   }
-  for (auto& session : sessions_){
+  for (auto& session : sessions_) {
     LOG(INFO) << "Stopping child profiler session";
     session->stop();
   }
@@ -705,8 +734,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
   auto new_wakeup_time = nextWakeupTime;
   bool warmup_done = false, collection_done = false;
 
-  VLOG_IF(1, currentIter >= 0) << "Run loop on application step(), iteration = "
-    << currentIter;
+  VLOG_IF(1, currentIter >= 0)
+      << "Run loop on application step(), iteration = " << currentIter;
 
   switch (currentRunloopState_) {
     case RunloopState::WaitForRequest:
@@ -739,17 +768,22 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
         if (!derivedConfig_->isProfilingByIteration() &&
             (now > derivedConfig_->profileStartTime() + milliseconds(10))) {
-          LOG(INFO)
-              << "Tracing started "
-              << duration_cast<milliseconds>(
-                   now - derivedConfig_->profileStartTime()).count()
-              << "ms late!";
+          LOG(INFO) << "Tracing started "
+                    << duration_cast<milliseconds>(
+                           now - derivedConfig_->profileStartTime())
+                           .count()
+                    << "ms late!";
         } else {
           LOG(INFO) << "Tracing started";
         }
         startTrace(now);
         if (libkineto::api().client()) {
+#ifdef USE_KINETO_MIN_CHANGE
+          libkineto::api().client()->start(
+              derivedConfig_->profileWithPythonStack());
+#else
           libkineto::api().client()->start();
+#endif
         }
         if (nextWakeupTime > derivedConfig_->profileEndTime()) {
           new_wakeup_time = derivedConfig_->profileEndTime();

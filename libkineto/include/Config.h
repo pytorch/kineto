@@ -1,4 +1,5 @@
-// Copyright (c) Meta Platforms, Inc. and affiliates.
+// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+
 
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
@@ -177,6 +178,10 @@ class Config : public AbstractConfig {
     return enableOpInputsCollection_;
   }
 
+  bool isPythonStackTraceEnabled() const {
+    return enablePythonStackTrace_;
+  }
+
   // Trace for this long
   std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
@@ -202,7 +207,7 @@ class Config : public AbstractConfig {
   // Timestamp at which the profiling to start, requested by the user.
   const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
       const {
-    if  (profileStartTime_.time_since_epoch().count()) {
+    if (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }
     // If no one requested timestamp, return 0.
@@ -309,8 +314,8 @@ class Config : public AbstractConfig {
 
   void printActivityProfilerConfig(std::ostream& s) const override;
 
-  void validate(
-      const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override;
+  void validate(const std::chrono::time_point<std::chrono::system_clock>&
+                    fallbackProfileStartTime) override;
 
   static void addConfigFactory(
       std::string name,
@@ -389,6 +394,9 @@ class Config : public AbstractConfig {
   // Client Interface
   // Enable inputs collection when tracing ops
   bool enableOpInputsCollection_{true};
+
+  // Enable Python Stack Tracing
+  bool enablePythonStackTrace_{false};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;

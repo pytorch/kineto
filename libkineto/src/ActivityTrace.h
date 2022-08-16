@@ -19,15 +19,23 @@ class ActivityTrace : public ActivityTraceInterface {
  public:
   ActivityTrace(
       std::unique_ptr<MemoryTraceLogger> tmpLogger,
-      const ActivityLoggerFactory& factory,
-      bool shouldPushToLog = false)
+      const ActivityLoggerFactory& factory)
     : memLogger_(std::move(tmpLogger)),
-      loggerFactory_(factory),
-      pushToLog_(shouldPushToLog) {
+      loggerFactory_(factory) {
   }
-  ~ActivityTrace() override;
-  const std::vector<const ITraceActivity*>* activities() override;
-  void save(const std::string& url) override;
+
+  const std::vector<const ITraceActivity*>* activities() override {
+    return memLogger_->traceActivities();
+  }
+
+  void save(const std::string& url) override {
+    std::string prefix;
+    // if no protocol is specified, default to file
+    if (url.find("://") == url.npos) {
+      prefix = "file://";
+    }
+    memLogger_->log(*loggerFactory_.makeLogger(prefix + url));
+  }
 
  private:
   // Activities are logged into a buffer
@@ -35,9 +43,6 @@ class ActivityTrace : public ActivityTraceInterface {
 
   // Alternative logger used by save() if protocol prefix is specified
   const ActivityLoggerFactory& loggerFactory_;
-
-  // Save completion to logs.
-  bool pushToLog_;
 };
 
 } // namespace libkineto

@@ -37,7 +37,6 @@ def get_libkineto_roctracer_srcs(with_api = True):
 def get_libkineto_cpu_only_srcs(with_api = True):
     return [
         "src/AbstractConfig.cpp",
-        "src/ActivityTrace.cpp",
         "src/CuptiActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",

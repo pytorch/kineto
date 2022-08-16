@@ -301,12 +301,12 @@ void ActivityProfilerController::startTrace() {
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
   profiler_->stopTrace(std::chrono::system_clock::now());
   UST_LOGGER_MARK_COMPLETED(kCollectionStage);
-  // Note: kPostProcessingStage marked in the destructor of ActivityTrace.
-
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
+  // Will follow up with another patch for logging URLs when ActivityTrace is moved.
+  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
   profiler_->reset();
-  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory(), true);
+  return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
 }
 
 void ActivityProfilerController::addMetadata(

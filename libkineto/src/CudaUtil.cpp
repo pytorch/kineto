@@ -14,6 +14,7 @@ namespace KINETO_NAMESPACE {
 bool gpuAvailable = false;
 
 bool isGpuAvailable() {
+#ifdef HAS_CUPTI
   static std::once_flag once;
   std::call_once(once, [] {
     // determine GPU availability on the system
@@ -24,6 +25,9 @@ bool isGpuAvailable() {
   });
 
   return gpuAvailable;
+#else
+  return false;
+#endif
 }
 
 } // namespace KINETO_NAMESPACE

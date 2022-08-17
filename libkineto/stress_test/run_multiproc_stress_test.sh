@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 # buck build -c fbcode.platform=platform009 -c fbcode.static_nccl=1 @mode/opt //kineto/libkineto:kineto_stress_test
 

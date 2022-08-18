@@ -312,6 +312,14 @@ class Config : public AbstractConfig {
     requestGroupTraceID_ = gtid;
   }
 
+  size_t cuptiDeviceBufferSize() const {
+    return cuptiDeviceBufferSize_;
+  }
+
+  size_t cuptiDeviceBufferPoolLimit() const {
+    return cuptiDeviceBufferPoolLimit_;
+  }
+
   void updateActivityProfilerRequestReceivedTime();
 
   void printActivityProfilerConfig(std::ostream& s) const override;
@@ -436,6 +444,10 @@ class Config : public AbstractConfig {
   // Logger Metadata
   std::string requestTraceID_;
   std::string requestGroupTraceID_;
+
+  // CUPTI Device Buffer
+  size_t cuptiDeviceBufferSize_;
+  size_t cuptiDeviceBufferPoolLimit_;
 };
 
 } // namespace KINETO_NAMESPACE

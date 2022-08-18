@@ -132,6 +132,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
     }
   }
 
+  CuptiActivityApi::preConfigureCUPTI();
+
   if (shouldPreloadCuptiInstrumentation()) {
     CuptiActivityApi::forceLoadCupti();
   }

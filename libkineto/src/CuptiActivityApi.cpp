@@ -13,6 +13,8 @@
 
 #include "cupti_call.h"
 #include "Logger.h"
+#include "Config.h"
+#include "CudaUtil.h"
 
 using namespace std::chrono;
 
@@ -85,9 +87,41 @@ void CuptiActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
+void CuptiActivityApi::setDeviceBufferSize(size_t size) {
+#ifdef HAS_CUPTI
+  size_t valueSize = sizeof(size_t);
+  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &valueSize, &size));
+#endif
+}
+
+void CuptiActivityApi::setDeviceBufferPoolLimit(size_t limit) {
+#ifdef HAS_CUPTI
+  size_t valueSize = sizeof(size_t);
+  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT, &valueSize, &limit));
+#endif
+}
+
 void CuptiActivityApi::forceLoadCupti() {
 #ifdef HAS_CUPTI
   CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+#endif
+}
+
+
+void CuptiActivityApi::preConfigureCUPTI() {
+#ifdef HAS_CUPTI
+  if (!isGpuAvailable()) {
+    return; 
+  }
+
+// CUPTI 11.4 is extremely efficient with buffering while using smaller buffer size.
+// Only set the buffer size even smaller for 11.4+ otherwise Kineto may end up overallocating
+// buffers
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11040
+  Config defaultConfig;
+  singleton().setDeviceBufferSize(defaultConfig.cuptiDeviceBufferSize());
+  singleton().setDeviceBufferPoolLimit(defaultConfig.cuptiDeviceBufferPoolLimit());
+#endif
 #endif
 }
 

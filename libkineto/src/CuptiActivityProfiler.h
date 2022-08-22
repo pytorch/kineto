@@ -296,6 +296,8 @@ class CuptiActivityProfiler {
       int32_t correlationId,
       const std::unordered_map<int64_t, int64_t>& correlationMap);
 
+  const ITraceActivity* cpuActivity(int32_t correlationId);
+
 #ifdef HAS_CUPTI
   // Process generic CUPTI activity
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);

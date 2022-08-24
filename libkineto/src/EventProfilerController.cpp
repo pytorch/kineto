@@ -376,6 +376,9 @@ void EventProfilerController::profilerLoop() {
     }
     int sleep_time = duration_cast<milliseconds>(now - start_sleep).count();
 
+    if(stopRunloop_)
+      break;
+
     auto start_sample = now;
     profiler_->collectSample();
     now = system_clock::now();

@@ -13,6 +13,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityProfilerProxy.h"
 #include "Config.h"
+#include "DaemonConfigLoader.h"
 #ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
 #include "CuptiActivityApi.h"
@@ -90,6 +91,14 @@ extern "C" {
 
 // Return true if no CUPTI errors occurred during init
 void libkineto_init(bool cpuOnly, bool logOnError) {
+
+  // Factory to connect to open source daemon if present
+#if __linux__
+  if (getenv("KINETO_USE_DAEMON") != nullptr) {
+    DaemonConfigLoader::registerFactory();
+  }
+#endif
+
 #ifdef HAS_CUPTI
   if (!cpuOnly) {
     // libcupti will be lazily loaded on this call.
@@ -140,6 +149,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
+
 }
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment

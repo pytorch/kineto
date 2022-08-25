@@ -29,7 +29,7 @@ namespace libkineto {
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
-class DaemonConfigLoader;
+class IDaemonConfigLoader;
 
 class ConfigLoader {
  public:
@@ -104,14 +104,14 @@ class ConfigLoader {
   void handleOnDemandSignal();
 
   static void setDaemonConfigLoaderFactory(
-      std::function<std::unique_ptr<DaemonConfigLoader>()> factory);
+      std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
 
  private:
   ConfigLoader();
   ~ConfigLoader();
 
   const char* configFileName();
-  DaemonConfigLoader* daemonConfigLoader();
+  IDaemonConfigLoader* daemonConfigLoader();
 
   void startThread();
   void updateConfigThread();
@@ -133,7 +133,7 @@ class ConfigLoader {
   std::mutex configLock_;
   std::atomic<const char*> configFileName_{nullptr};
   std::unique_ptr<Config> config_;
-  std::unique_ptr<DaemonConfigLoader> daemonConfigLoader_;
+  std::unique_ptr<IDaemonConfigLoader> daemonConfigLoader_;
   std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;
 
   std::chrono::seconds configUpdateIntervalSecs_;

@@ -107,6 +107,9 @@ endif()
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
+add_subdirectory(ipcfabric)
+target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
+
 if(NOT TARGET fmt)
   if(NOT FMT_SOURCE_DIR)
     set(FMT_SOURCE_DIR "${LIBKINETO_THIRDPARTY_DIR}/fmt"

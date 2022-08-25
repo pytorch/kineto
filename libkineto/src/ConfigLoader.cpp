@@ -105,14 +105,14 @@ static std::string readConfigFromConfigFile(const char* filename) {
   return conf;
 }
 
-static std::function<std::unique_ptr<DaemonConfigLoader>()>&
+static std::function<std::unique_ptr<IDaemonConfigLoader>()>&
 daemonConfigLoaderFactory() {
-  static std::function<std::unique_ptr<DaemonConfigLoader>()> factory = nullptr;
+  static std::function<std::unique_ptr<IDaemonConfigLoader>()> factory = nullptr;
   return factory;
 }
 
 void ConfigLoader::setDaemonConfigLoaderFactory(
-    std::function<std::unique_ptr<DaemonConfigLoader>()> factory) {
+    std::function<std::unique_ptr<IDaemonConfigLoader>()> factory) {
   daemonConfigLoaderFactory() = factory;
 }
 
@@ -192,7 +192,7 @@ const char* ConfigLoader::configFileName() {
   return configFileName_;
 }
 
-DaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
+IDaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
   if (!daemonConfigLoader_ && daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
     daemonConfigLoader_->setCommunicationFabric(config_->ipcFabricEnabled());

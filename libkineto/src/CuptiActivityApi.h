@@ -62,11 +62,16 @@ class CuptiActivityApi {
       std::function<void(const CUpti_Activity*)> handler);
 
   void setMaxBufferSize(int size);
+  void setDeviceBufferSize(size_t size);
+  void setDeviceBufferPoolLimit(size_t limit);
 
   std::atomic_bool stopCollection{false};
   int64_t flushOverhead{0};
 
   static void forceLoadCupti();
+
+  // CUPTI configuraiton that needs to be set before CUDA context creation
+  static void preConfigureCUPTI();
 
  private:
 #ifdef HAS_CUPTI

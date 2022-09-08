@@ -42,6 +42,10 @@ constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);
 constexpr int kDefaultEventProfilerHearbeatMonitorPeriod(0);
 constexpr seconds kMaxRequestAge(10);
+// 3200000 is the default value set by CUPTI
+constexpr size_t kDefaultCuptiDeviceBufferSize(3200000);
+// Default value set by CUPTI is 250
+constexpr size_t kDefaultCuptiDeviceBufferPoolLimit(20);
 
 // Event Profiler
 constexpr char kEventsKey[] = "EVENTS";
@@ -210,7 +214,9 @@ Config::Config()
       profileStartIterationRoundUp_(-1),
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(false),
-      enableIpcFabric_(false) {
+      enableIpcFabric_(false),
+      cuptiDeviceBufferSize_(kDefaultCuptiDeviceBufferSize),
+      cuptiDeviceBufferPoolLimit_(kDefaultCuptiDeviceBufferPoolLimit) {
   auto factories = configFactories();
   if (factories) {
     factories->addFeatureConfigs(*this);

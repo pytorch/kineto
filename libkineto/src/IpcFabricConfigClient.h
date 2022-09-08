@@ -13,7 +13,9 @@
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 // include logger before to enable ipc fabric to access LOG() macros
+#ifdef ENABLE_IPC_FABRIC
 #include "Logger.h"
+#endif
 
 // Include the IPC Fabric
 #include "FabricManager.h"

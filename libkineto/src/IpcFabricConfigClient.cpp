@@ -9,6 +9,7 @@
 #ifdef __linux__
 
 #include "IpcFabricConfigClient.h"
+#include "Logger.h"
 
 #include <random>
 #include <sstream>

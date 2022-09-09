@@ -24,6 +24,7 @@ IpcFabricConfigClient* getConfigClient() {
 }
 
 std::string DaemonConfigLoader::readBaseConfig() {
+  LOG(INFO) << "Reading base config";
   auto configClient = getConfigClient();
   if (!configClient) {
     LOG_EVERY_N(WARNING, 10) << "Failed to read config: No dyno config client";
@@ -72,7 +73,11 @@ void DaemonConfigLoader::setCommunicationFabric(bool enabled) {
 
 void DaemonConfigLoader::registerFactory() {
   ConfigLoader::setDaemonConfigLoaderFactory(
-      []() { return std::make_unique<DaemonConfigLoader>(); });
+      []() {
+        auto loader = std::make_unique<DaemonConfigLoader>();
+        loader->setCommunicationFabric(true);
+        return loader;
+      });
 }
 
 } // namespace KINETO_NAMESPACE

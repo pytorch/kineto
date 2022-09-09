@@ -71,7 +71,13 @@ static std::vector<int32_t> getPids() {
 }
 
 static int64_t getJobId() {
-  const char* id = getenv("CHRONOS_JOB_INSTANCE_ID");
+  /* Look up a job id using env variables from job schedulers
+   */
+  // SLURM Job ID https://slurm.schedmd.com/sbatch.html#OPT_SLURM_JOB_ID
+  const char* id = getenv("SLURM_JOB_ID");
+
+  // Feel free to add other env variable look ups here
+  // for different schedulers
   if (id == nullptr) {
     return 0;
   }

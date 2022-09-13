@@ -470,33 +470,33 @@ void Config::setReportPeriod(milliseconds msecs) {
 }
 
 void Config::printActivityProfilerConfig(std::ostream& s) const {
-  s << "Log file: " << activitiesLogFile() << std::endl;
+  s << "  Log file: " << activitiesLogFile() << std::endl;
   if (hasProfileStartIteration()) {
-    s << "Trace start Iteration: " << profileStartIteration() << std::endl;
-    s << "Trace warmup Iterations: " << activitiesWarmupIterations() << std::endl;
-    s << "Trace profile Iterations: " << activitiesRunIterations() << std::endl;
+    s << "  Trace start Iteration: " << profileStartIteration() << std::endl;
+    s << "  Trace warmup Iterations: " << activitiesWarmupIterations() << std::endl;
+    s << "  Trace profile Iterations: " << activitiesRunIterations() << std::endl;
     if (profileStartIterationRoundUp() > 0) {
-      s << "Trace start iteration roundup : " << profileStartIterationRoundUp()
+      s << "  Trace start iteration roundup : " << profileStartIterationRoundUp()
         << std::endl;
     }
   } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    LOG(INFO) << "Trace start time: "
+    s << "  Trace start time: "
               << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c));
-    s << "Trace duration: " << activitiesDuration().count() << "ms"
+    s << "  Trace duration: " << activitiesDuration().count() << "ms"
       << std::endl;
-    s << "Warmup duration: " << activitiesWarmupDuration().count() << "s"
+    s << "  Warmup duration: " << activitiesWarmupDuration().count() << "s"
       << std::endl;
   }
 
-  s << "Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
+  s << "  Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
     << "MB" << std::endl;
 
   std::vector<const char*> activities;
   for (const auto& activity : selectedActivityTypes_) {
     activities.push_back(toString(activity));
   }
-  s << "Enabled activities: "
+  s << "  Enabled activities: "
     << fmt::format("{}", fmt::join(activities, ",")) << std::endl;
 
   AbstractConfig::printActivityProfilerConfig(s);

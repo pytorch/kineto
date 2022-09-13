@@ -59,7 +59,8 @@ class LoggerCollector : public ILoggerObserver {
   }
 
   void addDestination(const std::string& dest) override {
-    destinations.insert(dest);
+    if (!dest.empty())
+      destinations.insert(dest);
   }
 
   void addMetadata(const std::string& key, const std::string& value) override {};

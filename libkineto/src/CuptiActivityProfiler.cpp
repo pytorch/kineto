@@ -626,7 +626,6 @@ void CuptiActivityProfiler::configure(
   if (!config_->requestGroupTraceID().empty()) {
     LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
   }
-  LOGGER_OBSERVER_ADD_DESTINATION(config_->activitiesLogUrl());
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {

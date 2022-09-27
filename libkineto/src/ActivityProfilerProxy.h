@@ -15,11 +15,13 @@
 #include <vector>
 
 #include "ActivityType.h"
+#include "DeviceType.h"
 #include "ITraceActivity.h"
 
 namespace libkineto {
   // previous declaration is struct so this one must be too.
   struct CpuTraceBuffer;
+  class ActivityLogger;
 }
 
 namespace KINETO_NAMESPACE {
@@ -36,7 +38,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   ActivityProfilerProxy(bool cpuOnly, ConfigLoader& configLoader);
   ~ActivityProfilerProxy() override;
 
-  void init() override;
+  void init(DeviceType t) override;
   bool isInitialized() override {
     return controller_ != nullptr;
   }

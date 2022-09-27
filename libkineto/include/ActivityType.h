@@ -25,6 +25,7 @@ enum class ActivityType {
     CONCURRENT_KERNEL, // on-device kernels
     EXTERNAL_CORRELATION,
     CUDA_RUNTIME, // host side cuda runtime events
+    XPU_RUNTIME, // host side xpu runtime events
     CPU_INSTANT_EVENT, // host side point-like events
     PYTHON_FUNCTION,
     OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.

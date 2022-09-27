@@ -8,11 +8,14 @@
 
 #include "ActivityProfilerController.h"
 
+#include <assert.h>
 #include <chrono>
 #include <thread>
 
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
+#include "DeviceType.h"
+#include "CuptiActivityProfiler.h"
 #include "CuptiActivityApi.h"
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivityApi.h"
@@ -29,6 +32,20 @@ namespace KINETO_NAMESPACE {
 
 constexpr milliseconds kProfilerIntervalMsecs(1000);
 
+// This list of func pointers are only for extend backend register their
+// own `profiler_`'s constructors.
+typedef std::unique_ptr<ActivityProfilerBase> (*extendProfilerConstructor)(bool cpuOnly);
+// extendProfilerConstructor extendProfilerMap[defaultDeviceTypeCount];
+std::vector<extendProfilerConstructor> extendProfilerMap(defaultDeviceTypeCount, nullptr);
+
+// This API will expose to extend backends to register their customized `profiler_` constructor
+// into ActivityProfilerController. The methods to construct the `profiler_`s will be saved in
+// kineto.
+void registerExtendProfiler(std::unique_ptr<ActivityProfilerBase> (*func)(bool cpuOnly), DeviceType t) {
+  assert((int)t < defaultDeviceTypeCount);
+  extendProfilerMap[(int)t] = func;
+}
+
 #if !USE_GOOGLE_LOG
 static std::unique_ptr<LoggerCollector>& loggerCollectorFactory() {
   static std::unique_ptr<LoggerCollector> factory = nullptr;
@@ -42,15 +59,27 @@ void ActivityProfilerController::setLoggerCollectorFactory(
 #endif // !USE_GOOGLE_LOG
 
 ActivityProfilerController::ActivityProfilerController(
-    ConfigLoader& configLoader, bool cpuOnly)
+    ConfigLoader& configLoader, bool cpuOnly, DeviceType t)
     : configLoader_(configLoader) {
+  if (t == DeviceType::XPU) {
+    if (extendProfilerMap[(int)t] == nullptr)
+      throw std::runtime_error(
+          "For extend backends, the inherited constructor for "
+          "ActivityProfilerBase class must be registered "
+          "before initializing the Controller via `registerExtendProfiler` "
+          "method, but the constructor could not be found.");
+    else
+      profiler_ = extendProfilerMap[(int)t](cpuOnly);
+  } else {
 #ifdef HAS_ROCTRACER
-  profiler_ = std::make_unique<CuptiActivityProfiler>(
-      RoctracerActivityApi::singleton(), cpuOnly);
+    profiler_ = std::make_unique<CuptiActivityProfiler>(
+        RoctracerActivityApi::singleton(), cpuOnly);
 #else
-  profiler_ = std::make_unique<CuptiActivityProfiler>(
-      CuptiActivityApi::singleton(), cpuOnly);
+    profiler_ = std::make_unique<CuptiActivityProfiler>(
+        CuptiActivityApi::singleton(), cpuOnly);
 #endif
+  }
+
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 
 #if !USE_GOOGLE_LOG

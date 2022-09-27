@@ -15,6 +15,8 @@
 #include <map>
 #include <string>
 
+#include "output_base.h"
+
 namespace KINETO_NAMESPACE {
 
 class ActivityLogger;

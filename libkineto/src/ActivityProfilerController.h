@@ -16,10 +16,8 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "libkineto.h"
 #include "ActivityLoggerFactory.h"
-#include "CuptiActivityProfiler.h"
-#include "ActivityProfilerInterface.h"
-#include "ActivityTraceInterface.h"
 #include "ConfigLoader.h"
 #include "CuptiActivityApi.h"
 #include "LoggerCollector.h"
@@ -30,7 +28,7 @@ class Config;
 
 class ActivityProfilerController : public ConfigLoader::ConfigHandler {
  public:
-  explicit ActivityProfilerController(ConfigLoader& configLoader, bool cpuOnly);
+  explicit ActivityProfilerController(ConfigLoader& configLoader, bool cpuOnly, DeviceType t);
   ActivityProfilerController(const ActivityProfilerController&) = delete;
   ActivityProfilerController& operator=(const ActivityProfilerController&) =
       delete;
@@ -87,12 +85,15 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<Config> asyncRequestConfig_;
   std::mutex asyncConfigLock_;
 
-  std::unique_ptr<CuptiActivityProfiler> profiler_;
+//  std::unique_ptr<CuptiActivityProfiler> profiler_;
+  std::unique_ptr<ActivityProfilerBase> profiler_;
   std::unique_ptr<ActivityLogger> logger_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
   std::atomic<std::int64_t> iterationCount_{-1};
   ConfigLoader& configLoader_;
 };
+
+void registerExtendProfiler(std::unique_ptr<ActivityProfilerBase> (*func)(bool cpuOnly), DeviceType t);
 
 } // namespace KINETO_NAMESPACE

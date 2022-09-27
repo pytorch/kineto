@@ -15,6 +15,7 @@
 
 #include "ActivityType.h"
 #include "ActivityTraceInterface.h"
+#include "DeviceType.h"
 #include "IActivityProfiler.h"
 
 namespace libkineto {
@@ -28,7 +29,7 @@ class ActivityProfilerInterface {
  public:
   virtual ~ActivityProfilerInterface() {};
 
-  virtual void init() {}
+  virtual void init(DeviceType t) {}
   virtual bool isInitialized() {
     return false;
   }

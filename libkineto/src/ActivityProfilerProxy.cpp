@@ -11,6 +11,7 @@
 #include "ActivityProfilerController.h"
 #include "Config.h"
 #include "CuptiActivityApi.h"
+#include "DeviceType.h"
 #include "Logger.h"
 #include <chrono>
 #ifdef HAS_ROCTRACER
@@ -28,9 +29,9 @@ ActivityProfilerProxy::~ActivityProfilerProxy() {
   delete controller_;
 };
 
-void ActivityProfilerProxy::init() {
+void ActivityProfilerProxy::init(DeviceType t) {
   if (!controller_) {
-    controller_ = new ActivityProfilerController(configLoader_, cpuOnly_);
+    controller_ = new ActivityProfilerController(configLoader_, cpuOnly_, t);
   }
 }
 

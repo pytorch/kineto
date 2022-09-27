@@ -37,6 +37,7 @@
 #include "GenericTraceActivity.h"
 #include "IActivityProfiler.h"
 #include "LoggerCollector.h"
+#include "ActivityProfilerBase.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -103,14 +104,14 @@ struct ConfigDerivedState final {
   bool profileWithStack_{false};
 };
 
-class CuptiActivityProfiler {
+class CuptiActivityProfiler : public ActivityProfilerBase {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
   CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
 
-  bool isActive() const {
+  bool isActive() const override {
     return currentRunloopState_ != RunloopState::WaitForRequest;
   }
 
@@ -122,32 +123,32 @@ class CuptiActivityProfiler {
   const std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
       const std::chrono::time_point<std::chrono::system_clock>& now,
       const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
-      int64_t currentIter = -1);
+      int64_t currentIter = -1) override;
 
   // Used for async requests
-  void setLogger(ActivityLogger* logger) {
+  void setLogger(ActivityLogger* logger) override {
     logger_ = logger;
   }
 
   // Synchronous control API
   void startTrace(
-      const std::chrono::time_point<std::chrono::system_clock>& now) {
+      const std::chrono::time_point<std::chrono::system_clock>& now) override {
     std::lock_guard<std::mutex> guard(mutex_);
     startTraceInternal(now);
   }
 
-  void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
+  void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) override {
     std::lock_guard<std::mutex> guard(mutex_);
     stopTraceInternal(now);
   }
 
   // Process CPU and GPU traces
-  void processTrace(ActivityLogger& logger) {
+  void processTrace(ActivityLogger& logger) override {
     std::lock_guard<std::mutex> guard(mutex_);
     processTraceInternal(logger);
   }
 
-  void reset() {
+  void reset() override {
     std::lock_guard<std::mutex> guard(mutex_);
     resetInternal();
   }
@@ -155,17 +156,17 @@ class CuptiActivityProfiler {
   // Set up profiler as specified in config.
   void configure(
       const Config& config,
-      const std::chrono::time_point<std::chrono::system_clock>& now);
+      const std::chrono::time_point<std::chrono::system_clock>& now) override;
 
   // Registered with client API to pass CPU trace events over
   void transferCpuTrace(
-      std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
+      std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) override;
 
-  const Config& config() {
+  const Config& config() override {
     return *config_;
   }
 
-  inline void recordThreadInfo() {
+  inline void recordThreadInfo() override {
     int32_t sysTid = systemThreadId();
     // Note we're using the lower 32 bits of the (opaque) pthread id
     // as key, because that's what CUPTI records.
@@ -188,13 +189,13 @@ class CuptiActivityProfiler {
     }
   }
 
-  void addMetadata(const std::string& key, const std::string& value) {
+  void addMetadata(const std::string& key, const std::string& value) override {
     std::lock_guard<std::mutex> guard(mutex_);
     metadata_[key] = value;
   }
 
   void addChildActivityProfiler(
-      std::unique_ptr<IActivityProfiler> profiler) {
+      std::unique_ptr<IActivityProfiler> profiler) override {
     std::lock_guard<std::mutex> guard(mutex_);
     profilers_.push_back(std::move(profiler));
   }

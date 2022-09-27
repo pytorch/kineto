@@ -21,9 +21,11 @@
 #include <vector>
 #include <deque>
 
+#include "ActivityProfilerBase.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityType.h"
 #include "ClientInterface.h"
+#include "DeviceType.h"
 #include "GenericTraceActivity.h"
 #include "TraceSpan.h"
 #include "IActivityProfiler.h"
@@ -41,6 +43,11 @@ namespace libkineto {
 
 class Config;
 class ConfigLoader;
+
+// Claim of registerExtendProfiler method at top for extend backends to use
+void registerExtendProfiler(
+    std::unique_ptr<libkineto::ActivityProfilerBase> (*func)(bool cpuOnly),
+    libkineto::DeviceType t);
 
 struct CpuTraceBuffer {
   template <class... Args>
@@ -92,12 +99,12 @@ class LibkinetoApi {
     return client_;
   }
 
-  void initProfilerIfRegistered() {
+  void initProfilerIfRegistered(DeviceType t = DeviceType::CPU) {
     static std::once_flag once;
     if (activityProfiler_) {
-      std::call_once(once, [this] {
+      std::call_once(once, [this, t] {
         if (!activityProfiler_->isInitialized()) {
-          activityProfiler_->init();
+          activityProfiler_->init(t);
           initChildActivityProfilers();
         }
       });

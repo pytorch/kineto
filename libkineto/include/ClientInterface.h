@@ -15,12 +15,9 @@ class ClientInterface {
   virtual ~ClientInterface() {}
   virtual void init() = 0;
   virtual void warmup(bool setupOpInputsCollection) = 0;
-#ifdef USE_KINETO_MIN_CHANGE
-  virtual void start(bool withStack) = 0;
-#else
   virtual void start() = 0;
-#endif
   virtual void stop() = 0;
+  virtual void set_withstack(bool withStack) = 0;
 };
 
 } // namespace libkineto

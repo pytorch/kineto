@@ -786,12 +786,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         }
         startTrace(now);
         if (libkineto::api().client()) {
-#ifdef USE_KINETO_MIN_CHANGE
-          libkineto::api().client()->start(
-              derivedConfig_->profileWithPythonStack());
-#else
+          libkineto::api().client()->set_withstack(derivedConfig_->profileWithPythonStack());
           libkineto::api().client()->start();
-#endif
         }
         if (nextWakeupTime > derivedConfig_->profileEndTime()) {
           new_wakeup_time = derivedConfig_->profileEndTime();

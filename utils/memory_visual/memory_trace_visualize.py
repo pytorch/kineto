@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import json
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -24,19 +24,30 @@ class MemoryTraceVisualize:
 
     def __init__(
         self,
-        trace_path: str,
         worker: Optional[str] = None,
     ) -> None:
         self.worker = worker if worker else WORKER_NAME
+        self.df_curve = None
+        self.df_stats = None
+
+    def open_with_path(self, trace_path: str):
         with open(trace_path) as input_trace:
             self.df_stats, self.df_curve = self.process(input_trace)
 
-    def process(self, input_trace) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        data = json.load(input_trace)
-        assert "traceEvents" in data, "Wrong trace file (no 'traceEvents')"
+    def open_with_json(self, json_input: Dict[str, Any]):
+        self.df_stats, self.df_curve = self.process(json_input, True)
 
-        trace_json = json.loads(json.dumps(data["traceEvents"]))
-        trace_json = {"schemaVersion": 1, "traceEvents": trace_json}
+    def process(self, input_path_or_json, with_json=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        if not with_json:
+            data = json.load(input_path_or_json)
+            assert "traceEvents" in data, "Wrong trace file (no 'traceEvents')"
+        else:
+            data = input_path_or_json
+
+        trace = json.loads(json.dumps(data["traceEvents"]))
+
+
+        trace_json = {"schemaVersion": 1, "traceEvents": trace}
         profile = RunProfileData.from_json(WORKER_NAME, 0, trace_json)
 
         stat_results = RunProfile.get_memory_stats(profile, memory_metric="MB")

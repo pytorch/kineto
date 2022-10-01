@@ -52,10 +52,10 @@ void empty_cb(
 }
 
 TEST(CuptiCallbackApiTest, SimpleTest) {
-  auto& api = CuptiCallbackApi::singleton();
+  auto api = CuptiCallbackApi::singleton();
 
   auto addSimpleCallback = [&]() -> bool {
-    bool ret = api.registerCallback(
+    bool ret = api->registerCallback(
         CUPTI_CB_DOMAIN_RUNTIME_API,
         CuptiCallbackApi::CUDA_LAUNCH_KERNEL,
         &simple_cb
@@ -70,14 +70,14 @@ TEST(CuptiCallbackApiTest, SimpleTest) {
   simple_cb_calls = 0;
 
   // simulate callback
-  api.__callback_switchboard(
+  api->__callback_switchboard(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
       reinterpret_cast<const CUpti_CallbackData*>(&some_data));
 
   EXPECT_EQ(simple_cb_calls, 1);
 
-  bool ret = api.deleteCallback(
+  bool ret = api->deleteCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CuptiCallbackApi::CUDA_LAUNCH_KERNEL,
       &simple_cb
@@ -85,7 +85,7 @@ TEST(CuptiCallbackApiTest, SimpleTest) {
 
   EXPECT_TRUE(ret) << "Failed to remove callback";
 
-  ret = api.deleteCallback(
+  ret = api->deleteCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CuptiCallbackApi::CUDA_LAUNCH_KERNEL,
       &atomic_cb
@@ -95,14 +95,14 @@ TEST(CuptiCallbackApiTest, SimpleTest) {
 }
 
 TEST(CuptiCallbackApiTest, AllCallbacks) {
-  auto& api = CuptiCallbackApi::singleton();
+  auto api = CuptiCallbackApi::singleton();
 
   auto testCallback = [&](
       CUpti_CallbackDomain domain,
       CUpti_CallbackId cbid,
       CuptiCallbackApi::CuptiCallBackID kineto_cbid) -> bool {
 
-    bool ret = api.registerCallback(domain, kineto_cbid, atomic_cb);
+    bool ret = api->registerCallback(domain, kineto_cbid, atomic_cb);
     EXPECT_TRUE(ret) << "Failed to add callback";
 
     if (!ret) {
@@ -110,11 +110,11 @@ TEST(CuptiCallbackApiTest, AllCallbacks) {
     }
 
     simple_cb_calls = 0;
-    api.__callback_switchboard(domain, cbid, nullptr);
+    api->__callback_switchboard(domain, cbid, nullptr);
     EXPECT_EQ(simple_cb_calls, 1000);
     ret = simple_cb_calls == 1000;
 
-    EXPECT_TRUE(api.deleteCallback(domain, kineto_cbid, atomic_cb));
+    EXPECT_TRUE(api->deleteCallback(domain, kineto_cbid, atomic_cb));
 
     return ret;
   };
@@ -143,13 +143,13 @@ TEST(CuptiCallbackApiTest, AllCallbacks) {
 }
 
 TEST(CuptiCallbackApiTest, ContentionTest) {
-  auto& api = CuptiCallbackApi::singleton();
+  auto api = CuptiCallbackApi::singleton();
   const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RUNTIME_API;
   const CUpti_CallbackId cbid = CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000;
   const CuptiCallbackApi::CuptiCallBackID kineto_cbid =
     CuptiCallbackApi::CUDA_LAUNCH_KERNEL;
 
-  bool ret = api.registerCallback(domain, kineto_cbid, empty_cb);
+  bool ret = api->registerCallback(domain, kineto_cbid, empty_cb);
   EXPECT_TRUE(ret) << "Failed to add callback";
 
   const int iters = 10000;
@@ -163,7 +163,7 @@ TEST(CuptiCallbackApiTest, ContentionTest) {
   auto read_fn = [&](int tid){
     auto start_ts = high_resolution_clock::now();
     for (int i = 0; i < iters; i++) {
-      api.__callback_switchboard(domain, cbid, nullptr);
+      api->__callback_switchboard(domain, cbid, nullptr);
     }
     auto runtime_ms = duration_cast<milliseconds>(
       high_resolution_clock::now() - start_ts);
@@ -176,7 +176,7 @@ TEST(CuptiCallbackApiTest, ContentionTest) {
     read_ths.emplace_back(read_fn, i);
   }
 
-  ret = api.registerCallback(domain, kineto_cbid, atomic_cb);
+  ret = api->registerCallback(domain, kineto_cbid, atomic_cb);
   EXPECT_TRUE(ret) << "Failed to add callback";
 
   for (auto& t : read_ths) {
@@ -186,8 +186,8 @@ TEST(CuptiCallbackApiTest, ContentionTest) {
   //EXPECT_GT(simple_cb_calls, 0)
   //  << "Atomic callback should have been called at least once.";
 
-  api.deleteCallback(domain, kineto_cbid, empty_cb);
-  api.deleteCallback(domain, kineto_cbid, atomic_cb);
+  api->deleteCallback(domain, kineto_cbid, empty_cb);
+  api->deleteCallback(domain, kineto_cbid, atomic_cb);
 }
 
 TEST(CuptiCallbackApiTest, Bechmark) {
@@ -219,18 +219,18 @@ TEST(CuptiCallbackApiTest, Bechmark) {
   LOG(INFO) << "Baseline runtime  = " << delta_baseline_ns.count() << " ns";
 
 
-  auto& api = CuptiCallbackApi::singleton();
-  bool ret = api.registerCallback(domain, kineto_cbid, cbfn);
+  auto api = CuptiCallbackApi::singleton();
+  bool ret = api->registerCallback(domain, kineto_cbid, cbfn);
   EXPECT_TRUE(ret) << "Failed to add callback";
 
   // warmup
   for (int i = 0; i < 50; i++) {
-    api.__callback_switchboard(domain, cbid, nullptr);
+    api->__callback_switchboard(domain, cbid, nullptr);
   }
 
   start_ts = high_resolution_clock::now();
   for (int i = 0; i < iters; i++) {
-    api.__callback_switchboard(domain, cbid, nullptr);
+    api->__callback_switchboard(domain, cbid, nullptr);
   }
 
   auto delta_callback_ns = duration_cast<nanoseconds>(

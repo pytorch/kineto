@@ -229,8 +229,8 @@ void __trackCudaKernelLaunch(
 }
 
 void enableKernelCallbacks() {
-  auto& cbapi = CuptiCallbackApi::singleton();
-  bool status = cbapi.enableCallback(
+  auto cbapi = CuptiCallbackApi::singleton();
+  bool status = cbapi->enableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
   if (!status) {
@@ -242,8 +242,8 @@ void enableKernelCallbacks() {
 }
 
 void disableKernelCallbacks() {
-  auto& cbapi = CuptiCallbackApi::singleton();
-  bool status = cbapi.disableCallback(
+  auto cbapi = CuptiCallbackApi::singleton();
+  bool status = cbapi->disableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
   if (!status) {
@@ -282,26 +282,26 @@ void CuptiRBProfilerSession::deInitCupti() {
 // static
 bool CuptiRBProfilerSession::staticInit() {
   // Register CUPTI callbacks
-  auto& cbapi = CuptiCallbackApi::singleton();
+  auto cbapi = CuptiCallbackApi::singleton();
   CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
-  bool status = cbapi.registerCallback(
+  bool status = cbapi->registerCallback(
       domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, trackCudaCtx);
-  status = status && cbapi.registerCallback(
+  status = status && cbapi->registerCallback(
       domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, trackCudaCtx);
-  status = status && cbapi.enableCallback(
+  status = status && cbapi->enableCallback(
       domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
-  status = status && cbapi.enableCallback(
+  status = status && cbapi->enableCallback(
       domain, CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda context "
                  << "create and destroy callbacks";
-    CUPTI_CALL(cbapi.getCuptiStatus());
+    CUPTI_CALL(cbapi->getCuptiStatus());
     return false;
   }
 
   domain = CUPTI_CB_DOMAIN_RUNTIME_API;
-  status = cbapi.registerCallback(
+  status = cbapi->registerCallback(
       domain, CuptiCallbackApi::CUDA_LAUNCH_KERNEL, trackCudaKernelLaunch);
 
   if (!status) {

@@ -68,7 +68,7 @@ class CuptiCallbackApi {
   CuptiCallbackApi(const CuptiCallbackApi&) = delete;
   CuptiCallbackApi& operator=(const CuptiCallbackApi&) = delete;
 
-  static CuptiCallbackApi& singleton();
+  static std::shared_ptr<CuptiCallbackApi> singleton();
 
   bool initSuccess() const {
     return initSuccess_;
@@ -105,6 +105,7 @@ class CuptiCallbackApi {
  private:
 
   explicit CuptiCallbackApi();
+  friend class std::shared_ptr<CuptiCallbackApi>;
 
   // For callback table design overview see the .cpp file
   using CallbackList = std::list<CuptiCallbackFn>;

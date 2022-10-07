@@ -105,7 +105,7 @@ class Logger {
   }
 
   static void clearLoggerObservers() {
-    std::lock_guard<std::mutex> g(loggerObserversMutex_);
+    std::lock_guard<std::mutex> g(loggerObserversMutex());
     loggerObservers().clear();
   }
 
@@ -141,7 +141,10 @@ class Logger {
     static auto* inst = new std::set<ILoggerObserver*>();
     return *inst;
   }
-  static std::mutex loggerObserversMutex_;
+  static std::mutex& loggerObserversMutex() {
+    static auto* loggerObserversMutex = new std::mutex();
+    return *loggerObserversMutex;
+  }
 };
 
 class VoidLogger {

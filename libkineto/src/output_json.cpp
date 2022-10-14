@@ -350,13 +350,18 @@ void ChromeTraceLogger::handleLink(
     return;
   }
 
+  std::string binding = "";
+  if (type == kFlowEnd) {
+    binding = ", \"bp\": \"e\"";
+  }
+
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "{}", "name": "{}", "bp": "e"
+    "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name, binding);
   // clang-format on
 }
 

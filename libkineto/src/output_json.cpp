@@ -286,7 +286,7 @@ void ChromeTraceLogger::handleActivity(
   const std::string op_metadata = op.metadataJson();
   std::string separator = "";
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
-    separator = ",\n      ";
+    separator = ",";
   }
   int device = op.deviceId();
   int resource = op.resourceId();

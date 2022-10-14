@@ -288,13 +288,6 @@ void ChromeTraceLogger::handleActivity(
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
     separator = ",\n      ";
   }
-  std::string span = "";
-  if (op.traceSpan()) {
-    span = fmt::format(R"JSON(
-      "Trace name": "{}", "Trace iteration": {},)JSON",
-        op.traceSpan()->name,
-        op.traceSpan()->iteration);
-  }
   int device = op.deviceId();
   int resource = op.resourceId();
 
@@ -303,14 +296,13 @@ void ChromeTraceLogger::handleActivity(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
     "ts": {}, "dur": {},
-    "args": {{{}
+    "args": {{
       "External id": {}{}{}
     }}
   }},)JSON",
           toString(op.type()), op.name(), device, resource,
           ts, duration,
           // args
-          span,
           op.correlationId(), separator, op_metadata);
   // clang-format on
   if (op.flowId() > 0) {

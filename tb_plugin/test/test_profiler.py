@@ -2506,8 +2506,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 19367,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 1,
                     "Python thread": 0
                 }
@@ -2522,8 +2520,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 211,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 2,
                     "Python parent id": 1,
                     "Python module id": 0
@@ -2539,8 +2535,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 62,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 3,
                     "Python parent id": 2,
                     "Python thread": 0,
@@ -2557,8 +2551,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 31,
                 "args": {
                     "External id": 12182,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Fwd thread id": 0,
                     "Sequence number": 4006,
                     "python_caller_id": 3
@@ -2574,8 +2566,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 211,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 4,
                     "Python parent id": 1,
                     "Python module id": 0
@@ -2591,8 +2581,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 62,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 5,
                     "Python parent id": 4,
                     "Python thread": 0,
@@ -2609,8 +2597,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 32,
                 "args": {
                     "External id": 12182,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Fwd thread id": 0,
                     "Sequence number": 4006,
                     "python_caller_id": 5
@@ -2626,8 +2612,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 211,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 6,
                     "Python parent id": 1,
                     "Python module id": 0
@@ -2643,8 +2627,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 62,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 7,
                     "Python parent id": 6,
                     "Python thread": 0,
@@ -2661,8 +2643,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 33,
                 "args": {
                     "External id": 12182,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Fwd thread id": 0,
                     "Sequence number": 4006,
                     "python_caller_id": 7
@@ -2678,8 +2658,6 @@ class TestModuleView(unittest.TestCase):
                 "dur": 211,
                 "args": {
                     "External id": 0,
-                    "Trace name": "PyTorch Profiler",
-                    "Trace iteration": 0,
                     "Python id": 8,
                     "Python parent id": 1,
                     "Python module id": 100
@@ -2721,8 +2699,7 @@ class TestDataPipe(unittest.TestCase):
                 "name": "enumerate(DataPipe)#ShufflerIterDataPipe", "pid": 7557, "tid": 7557,
                 "ts": 100, "dur": 23,
                 "args": {
-                    "External id": 34,
-                    "Trace name": "PyTorch Profiler", "Trace iteration": 0
+                    "External id": 34
                 }
             }
         ]"""

@@ -1,9 +1,9 @@
 
 {
   "schemaVersion": 1,
-  
+
   "computeProperties": [
-    
+
     {
       "id": 0, "name": "Tesla V100-DGXS-32GB", "totalGlobalMem": 34084028416,
       "major": 7, "minor": 0,
@@ -41,1799 +41,1479 @@
     }
   ],
   "traceEvents": [
-  
+
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187223197, "dur": 21,
     "args": {
-       "Device": 24572, "External id": 2,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 2
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187223264, "dur": 5,
     "args": {
-       "Device": 24572, "External id": 3,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 3
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zeros", "pid": 24572, "tid": "24572",
     "ts": 1621401187223182, "dur": 99,
     "args": {
-       "Device": 24572, "External id": 1,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 1
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187223376, "dur": 19,
     "args": {
-       "Device": 24572, "External id": 5,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 5
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187223480, "dur": 18,
     "args": {
-       "Device": 24572, "External id": 7,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 7
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187223530, "dur": 5,
     "args": {
-       "Device": 24572, "External id": 8,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 8
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zeros", "pid": 24572, "tid": "24572",
     "ts": 1621401187223469, "dur": 72,
     "args": {
-       "Device": 24572, "External id": 6,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 6
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187223622, "dur": 19,
     "args": {
-       "Device": 24572, "External id": 10,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 10
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187223790, "dur": 12,
     "args": {
-       "Device": 24572, "External id": 13,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 13
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::unsqueeze", "pid": 24572, "tid": "24572",
     "ts": 1621401187223777, "dur": 50,
     "args": {
-       "Device": 24572, "External id": 12,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 12
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187223850, "dur": 7,
     "args": {
-       "Device": 24572, "External id": 15,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 15
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::unsqueeze", "pid": 24572, "tid": "24572",
     "ts": 1621401187223841, "dur": 24,
     "args": {
-       "Device": 24572, "External id": 14,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 14
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187223904, "dur": 16,
     "args": {
-       "Device": 24572, "External id": 18,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 18
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::resize_", "pid": 24572, "tid": "24572",
     "ts": 1621401187223945, "dur": 14,
     "args": {
-       "Device": 24572, "External id": 19,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 19
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::_cat", "pid": 24572, "tid": "24572",
     "ts": 1621401187223888, "dur": 87,
     "args": {
-       "Device": 24572, "External id": 17,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 17
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::cat", "pid": 24572, "tid": "24572",
     "ts": 1621401187223876, "dur": 106,
     "args": {
-       "Device": 24572, "External id": 16,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 16
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::stack", "pid": 24572, "tid": "24572",
     "ts": 1621401187223752, "dur": 245,
     "args": {
        "Device": 24572, "External id": 11,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187224094, "dur": 12,
     "args": {
-       "Device": 24572, "External id": 22,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::unsqueeze", "pid": 24572, "tid": "24572",
     "ts": 1621401187224074, "dur": 43,
     "args": {
-       "Device": 24572, "External id": 21,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 21
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187224137, "dur": 6,
     "args": {
-       "Device": 24572, "External id": 24,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 24
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::unsqueeze", "pid": 24572, "tid": "24572",
     "ts": 1621401187224128, "dur": 21,
     "args": {
-       "Device": 24572, "External id": 23,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 23
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187224184, "dur": 15,
     "args": {
-       "Device": 24572, "External id": 27,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 27
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::resize_", "pid": 24572, "tid": "24572",
     "ts": 1621401187224223, "dur": 12,
     "args": {
-       "Device": 24572, "External id": 28,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 28
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::_cat", "pid": 24572, "tid": "24572",
     "ts": 1621401187224169, "dur": 79,
     "args": {
-       "Device": 24572, "External id": 26,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 26
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::cat", "pid": 24572, "tid": "24572",
     "ts": 1621401187224159, "dur": 96,
     "args": {
-       "Device": 24572, "External id": 25,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 25
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::stack", "pid": 24572, "tid": "24572",
     "ts": 1621401187224056, "dur": 213,
     "args": {
        "Device": 24572, "External id": 20,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "enumerate(DataLoader)#_SingleProcessDataLoaderIter.__next__", "pid": 24572, "tid": "24572",
     "ts": 1621401187223604, "dur": 725,
     "args": {
-       "Device": 24572, "External id": 9,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 9
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187224415, "dur": 54,
     "args": {
-       "Device": 24572, "External id": 30,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 30
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::copy_", "pid": 24572, "tid": "24572",
     "ts": 1621401187224496, "dur": 80,
     "args": {
        "Device": 24572, "External id": 31,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::to", "pid": 24572, "tid": "24572",
     "ts": 1621401187224398, "dur": 193,
     "args": {
        "Device": 24572, "External id": 29,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187224645, "dur": 51,
     "args": {
-       "Device": 24572, "External id": 33,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 33
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::copy_", "pid": 24572, "tid": "24572",
     "ts": 1621401187224720, "dur": 65,
     "args": {
        "Device": 24572, "External id": 34,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::to", "pid": 24572, "tid": "24572",
     "ts": 1621401187224631, "dur": 168,
     "args": {
        "Device": 24572, "External id": 32,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187224956, "dur": 14,
     "args": {
-       "Device": 24572, "External id": 38,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 38
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24572",
     "ts": 1621401187224945, "dur": 37,
     "args": {
-       "Device": 24572, "External id": 37,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 37
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24572",
     "ts": 1621401187224917, "dur": 101,
     "args": {
        "Device": 24572, "External id": 36,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24572",
     "ts": 1621401187225058, "dur": 33,
     "args": {
        "Device": 24572, "External id": 40,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 23
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187225181, "dur": 41,
     "args": {
-       "Device": 24572, "External id": 42,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 42
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mm", "pid": 24572, "tid": "24572",
     "ts": 1621401187225112, "dur": 197,
     "args": {
        "Device": 24572, "External id": 41,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 23
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24572",
     "ts": 1621401187225367, "dur": 17,
     "args": {
-       "Device": 24572, "External id": 44,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 44
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::_unsafe_view", "pid": 24572, "tid": "24572",
     "ts": 1621401187225336, "dur": 79,
     "args": {
        "Device": 24572, "External id": 43,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 24
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::matmul", "pid": 24572, "tid": "24572",
     "ts": 1621401187225037, "dur": 394,
     "args": {
        "Device": 24572, "External id": 39,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 23
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24572",
     "ts": 1621401187225449, "dur": 107,
     "args": {
        "Device": 24572, "External id": 45,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 25
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::linear", "pid": 24572, "tid": "24572",
     "ts": 1621401187224907, "dur": 664,
     "args": {
        "Device": 24572, "External id": 35,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187225662, "dur": 25,
     "args": {
-       "Device": 24572, "External id": 47,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 47
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::resize_", "pid": 24572, "tid": "24572",
     "ts": 1621401187225746, "dur": 30,
     "args": {
-       "Device": 24572, "External id": 50,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 50
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::clamp_min", "pid": 24572, "tid": "24572",
     "ts": 1621401187225721, "dur": 105,
     "args": {
-       "Device": 24572, "External id": 49,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 49
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::clamp", "pid": 24572, "tid": "24572",
     "ts": 1621401187225709, "dur": 128,
     "args": {
-       "Device": 24572, "External id": 48,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 48
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::clamp", "pid": 24572, "tid": "24572",
     "ts": 1621401187225606, "dur": 263,
     "args": {
        "Device": 24572, "External id": 46,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 26
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187225978, "dur": 14,
     "args": {
-       "Device": 24572, "External id": 54,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 54
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24572",
     "ts": 1621401187225968, "dur": 36,
     "args": {
-       "Device": 24572, "External id": 53,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 53
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24572",
     "ts": 1621401187225941, "dur": 98,
     "args": {
        "Device": 24572, "External id": 52,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 27
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24572",
     "ts": 1621401187226077, "dur": 60,
     "args": {
        "Device": 24572, "External id": 56,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 28
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187226233, "dur": 41,
     "args": {
-       "Device": 24572, "External id": 58,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 58
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mm", "pid": 24572, "tid": "24572",
     "ts": 1621401187226161, "dur": 197,
     "args": {
        "Device": 24572, "External id": 57,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 29
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24572",
     "ts": 1621401187226416, "dur": 17,
     "args": {
-       "Device": 24572, "External id": 60,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 60
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::_unsafe_view", "pid": 24572, "tid": "24572",
     "ts": 1621401187226384, "dur": 79,
     "args": {
        "Device": 24572, "External id": 59,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 30
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::matmul", "pid": 24572, "tid": "24572",
     "ts": 1621401187226057, "dur": 422,
     "args": {
        "Device": 24572, "External id": 55,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 28
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24572",
     "ts": 1621401187226497, "dur": 103,
     "args": {
        "Device": 24572, "External id": 61,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 31
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::linear", "pid": 24572, "tid": "24572",
     "ts": 1621401187225932, "dur": 683,
     "args": {
        "Device": 24572, "External id": 51,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 27
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::broadcast_tensors", "pid": 24572, "tid": "24572",
     "ts": 1621401187226708, "dur": 11,
     "args": {
        "Device": 24572, "External id": 62,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 32
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187226827, "dur": 41,
     "args": {
-       "Device": 24572, "External id": 64,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 64
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187226955, "dur": 35,
     "args": {
-       "Device": 24572, "External id": 66,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 66
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187227020, "dur": 11,
     "args": {
-       "Device": 24572, "External id": 67,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 67
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::sum", "pid": 24572, "tid": "24572",
     "ts": 1621401187226930, "dur": 176,
     "args": {
-       "Device": 24572, "External id": 65,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 65
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mse_loss", "pid": 24572, "tid": "24572",
     "ts": 1621401187226753, "dur": 445,
     "args": {
        "Device": 24572, "External id": 63,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 32
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187227327, "dur": 21,
     "args": {
-       "Device": 24572, "External id": 69,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 69
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227368, "dur": 5,
     "args": {
-       "Device": 24572, "External id": 70,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 70
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zeros", "pid": 24572, "tid": "24572",
     "ts": 1621401187227314, "dur": 65,
     "args": {
-       "Device": 24572, "External id": 68,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 68
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187227464, "dur": 18,
     "args": {
-       "Device": 24572, "External id": 72,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 72
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227576, "dur": 49,
     "args": {
-       "Device": 24572, "External id": 74,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 74
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227553, "dur": 97,
     "args": {
        "Device": 24572, "External id": 73,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 33
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227707, "dur": 43,
     "args": {
-       "Device": 24572, "External id": 76,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 76
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227689, "dur": 79,
     "args": {
        "Device": 24572, "External id": 75,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 33
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227823, "dur": 42,
     "args": {
-       "Device": 24572, "External id": 78,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 78
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227805, "dur": 77,
     "args": {
        "Device": 24572, "External id": 77,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 33
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227937, "dur": 41,
     "args": {
-       "Device": 24572, "External id": 80,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 80
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187227919, "dur": 77,
     "args": {
        "Device": 24572, "External id": 79,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 0, "Sequence number": 33
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "Optimizer.zero_grad#SGD.zero_grad", "pid": 24572, "tid": "24572",
     "ts": 1621401187227446, "dur": 606,
     "args": {
-       "Device": 24572, "External id": 71,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 71
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty_strided", "pid": 24572, "tid": "24572",
     "ts": 1621401187228150, "dur": 53,
     "args": {
-       "Device": 24572, "External id": 83,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 83
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty_like", "pid": 24572, "tid": "24572",
     "ts": 1621401187228137, "dur": 81,
     "args": {
-       "Device": 24572, "External id": 82,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 82
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24572",
     "ts": 1621401187228235, "dur": 50,
     "args": {
-       "Device": 24572, "External id": 84,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 84
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::ones_like", "pid": 24572, "tid": "24572",
     "ts": 1621401187228128, "dur": 169,
     "args": {
-       "Device": 24572, "External id": 81,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 81
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187228708, "dur": 79,
     "args": {
-       "Device": 24572, "External id": 89,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 89
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty_like", "pid": 24572, "tid": "24610",
     "ts": 1621401187228680, "dur": 146,
     "args": {
-       "Device": 24572, "External id": 88,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 88
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24610",
     "ts": 1621401187228885, "dur": 93,
     "args": {
-       "Device": 24572, "External id": 91,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 91
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24610",
     "ts": 1621401187228858, "dur": 147,
     "args": {
-       "Device": 24572, "External id": 90,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 90
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zeros_like", "pid": 24572, "tid": "24610",
     "ts": 1621401187228647, "dur": 369,
     "args": {
-       "Device": 24572, "External id": 87,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 87
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mse_loss_backward", "pid": 24572, "tid": "24610",
     "ts": 1621401187229048, "dur": 122,
     "args": {
-       "Device": 24572, "External id": 92,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 92
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mse_loss_backward", "pid": 24572, "tid": "24610",
     "ts": 1621401187228603, "dur": 614,
     "args": {
-       "Device": 24572, "External id": 86,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 86
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "MseLossBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187228516, "dur": 727,
     "args": {
        "Device": 24572, "External id": 85,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 32
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "AddBackward1", "pid": 24572, "tid": "24610",
     "ts": 1621401187229384, "dur": 17,
     "args": {
        "Device": 24572, "External id": 93,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 31
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187229506, "dur": 73,
     "args": {
-       "Device": 24572, "External id": 95,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 95
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::sum", "pid": 24572, "tid": "24610",
     "ts": 1621401187229459, "dur": 279,
     "args": {
-       "Device": 24572, "External id": 94,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 94
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24610",
     "ts": 1621401187229788, "dur": 65,
     "args": {
-       "Device": 24572, "External id": 96,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 96
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24610",
     "ts": 1621401187230059, "dur": 131,
     "args": {
-       "Device": 24572, "External id": 98,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 98
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "torch::autograd::AccumulateGrad", "pid": 24572, "tid": "24610",
     "ts": 1621401187230028, "dur": 228,
     "args": {
-       "Device": 24572, "External id": 97,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 97
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24610",
     "ts": 1621401187230405, "dur": 61,
     "args": {
-       "Device": 24572, "External id": 101,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 101
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::reshape", "pid": 24572, "tid": "24610",
     "ts": 1621401187230383, "dur": 107,
     "args": {
-       "Device": 24572, "External id": 100,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 100
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "UnsafeViewBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187230354, "dur": 146,
     "args": {
        "Device": 24572, "External id": 99,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 30
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187230751, "dur": 22,
     "args": {
-       "Device": 24572, "External id": 105,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 105
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187230732, "dur": 65,
     "args": {
-       "Device": 24572, "External id": 104,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 104
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187230710, "dur": 124,
     "args": {
-       "Device": 24572, "External id": 103,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 103
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::conj", "pid": 24572, "tid": "24610",
     "ts": 1621401187230862, "dur": 7,
     "args": {
-       "Device": 24572, "External id": 106,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 106
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187230935, "dur": 73,
     "args": {
-       "Device": 24572, "External id": 108,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 108
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mm", "pid": 24572, "tid": "24610",
     "ts": 1621401187230889, "dur": 235,
     "args": {
-       "Device": 24572, "External id": 107,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 107
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187231211, "dur": 23,
     "args": {
-       "Device": 24572, "External id": 111,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 111
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187231191, "dur": 69,
     "args": {
-       "Device": 24572, "External id": 110,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 110
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187231168, "dur": 129,
     "args": {
-       "Device": 24572, "External id": 109,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 109
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187231376, "dur": 17,
     "args": {
-       "Device": 24572, "External id": 114,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 114
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187231360, "dur": 49,
     "args": {
-       "Device": 24572, "External id": 113,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 113
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187231340, "dur": 100,
     "args": {
-       "Device": 24572, "External id": 112,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 112
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::conj", "pid": 24572, "tid": "24610",
     "ts": 1621401187231465, "dur": 6,
     "args": {
-       "Device": 24572, "External id": 115,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 115
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187231534, "dur": 72,
     "args": {
-       "Device": 24572, "External id": 117,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 117
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mm", "pid": 24572, "tid": "24610",
     "ts": 1621401187231491, "dur": 225,
     "args": {
-       "Device": 24572, "External id": 116,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 116
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "MmBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187230626, "dur": 1124,
     "args": {
        "Device": 24572, "External id": 102,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 29
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24610",
     "ts": 1621401187231992, "dur": 61,
     "args": {
-       "Device": 24572, "External id": 120,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 120
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::reshape", "pid": 24572, "tid": "24610",
     "ts": 1621401187231970, "dur": 108,
     "args": {
-       "Device": 24572, "External id": 119,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 119
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "ViewBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187231941, "dur": 166,
     "args": {
        "Device": 24572, "External id": 118,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 28
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187232305, "dur": 21,
     "args": {
-       "Device": 24572, "External id": 124,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 124
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187232286, "dur": 62,
     "args": {
-       "Device": 24572, "External id": 123,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 123
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187232265, "dur": 123,
     "args": {
-       "Device": 24572, "External id": 122,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 122
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "TBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187232239, "dur": 161,
     "args": {
        "Device": 24572, "External id": 121,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 27
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24610",
     "ts": 1621401187232535, "dur": 85,
     "args": {
-       "Device": 24572, "External id": 126,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 126
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "torch::autograd::AccumulateGrad", "pid": 24572, "tid": "24610",
     "ts": 1621401187232515, "dur": 148,
     "args": {
-       "Device": 24572, "External id": 125,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 125
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187232790, "dur": 47,
     "args": {
-       "Device": 24572, "External id": 129,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 129
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::fill_", "pid": 24572, "tid": "24610",
     "ts": 1621401187232866, "dur": 68,
     "args": {
-       "Device": 24572, "External id": 130,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 130
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::scalar_tensor", "pid": 24572, "tid": "24610",
     "ts": 1621401187232776, "dur": 174,
     "args": {
-       "Device": 24572, "External id": 128,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 128
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187233023, "dur": 27,
     "args": {
-       "Device": 24572, "External id": 132,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 132
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::_local_scalar_dense", "pid": 24572, "tid": "24610",
     "ts": 1621401187233192, "dur": 6,
     "args": {
-       "Device": 24572, "External id": 135,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 135
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::item", "pid": 24572, "tid": "24610",
     "ts": 1621401187233184, "dur": 24,
     "args": {
-       "Device": 24572, "External id": 134,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 134
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::resize_", "pid": 24572, "tid": "24610",
     "ts": 1621401187233251, "dur": 41,
     "args": {
-       "Device": 24572, "External id": 136,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 136
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::ge", "pid": 24572, "tid": "24610",
     "ts": 1621401187233168, "dur": 182,
     "args": {
-       "Device": 24572, "External id": 133,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 133
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::ge", "pid": 24572, "tid": "24610",
     "ts": 1621401187232971, "dur": 404,
     "args": {
-       "Device": 24572, "External id": 131,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 131
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187233430, "dur": 15,
     "args": {
-       "Device": 24572, "External id": 139,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 139
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::expand", "pid": 24572, "tid": "24610",
     "ts": 1621401187233414, "dur": 62,
     "args": {
-       "Device": 24572, "External id": 138,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 138
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187233508, "dur": 10,
     "args": {
-       "Device": 24572, "External id": 141,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 141
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::expand", "pid": 24572, "tid": "24610",
     "ts": 1621401187233494, "dur": 48,
     "args": {
-       "Device": 24572, "External id": 140,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 140
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187233571, "dur": 10,
     "args": {
-       "Device": 24572, "External id": 143,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 143
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::expand", "pid": 24572, "tid": "24610",
     "ts": 1621401187233558, "dur": 43,
     "args": {
-       "Device": 24572, "External id": 142,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 142
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187233649, "dur": 46,
     "args": {
-       "Device": 24572, "External id": 145,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 145
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::_s_where", "pid": 24572, "tid": "24610",
     "ts": 1621401187233620, "dur": 167,
     "args": {
-       "Device": 24572, "External id": 144,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 144
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::where", "pid": 24572, "tid": "24610",
     "ts": 1621401187233398, "dur": 409,
     "args": {
-       "Device": 24572, "External id": 137,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 137
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "ClampBackward1", "pid": 24572, "tid": "24610",
     "ts": 1621401187232724, "dur": 1110,
     "args": {
        "Device": 24572, "External id": 127,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 26
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "AddBackward1", "pid": 24572, "tid": "24610",
     "ts": 1621401187233941, "dur": 12,
     "args": {
        "Device": 24572, "External id": 146,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 25
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187234021, "dur": 46,
     "args": {
-       "Device": 24572, "External id": 148,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 148
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::sum", "pid": 24572, "tid": "24610",
     "ts": 1621401187233990, "dur": 182,
     "args": {
-       "Device": 24572, "External id": 147,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 147
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24610",
     "ts": 1621401187234208, "dur": 43,
     "args": {
-       "Device": 24572, "External id": 149,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 149
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24610",
     "ts": 1621401187234378, "dur": 84,
     "args": {
-       "Device": 24572, "External id": 151,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 151
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "torch::autograd::AccumulateGrad", "pid": 24572, "tid": "24610",
     "ts": 1621401187234357, "dur": 144,
     "args": {
-       "Device": 24572, "External id": 150,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 150
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::view", "pid": 24572, "tid": "24610",
     "ts": 1621401187234593, "dur": 39,
     "args": {
-       "Device": 24572, "External id": 154,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 154
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::reshape", "pid": 24572, "tid": "24610",
     "ts": 1621401187234580, "dur": 67,
     "args": {
-       "Device": 24572, "External id": 153,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 153
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "UnsafeViewBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187234561, "dur": 92,
     "args": {
        "Device": 24572, "External id": 152,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 24
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187234803, "dur": 14,
     "args": {
-       "Device": 24572, "External id": 158,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 158
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187234792, "dur": 41,
     "args": {
-       "Device": 24572, "External id": 157,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 157
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187234778, "dur": 79,
     "args": {
-       "Device": 24572, "External id": 156,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 156
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::conj", "pid": 24572, "tid": "24610",
     "ts": 1621401187234874, "dur": 4,
     "args": {
-       "Device": 24572, "External id": 159,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 159
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24610",
     "ts": 1621401187234918, "dur": 47,
     "args": {
-       "Device": 24572, "External id": 161,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 161
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::mm", "pid": 24572, "tid": "24610",
     "ts": 1621401187234890, "dur": 149,
     "args": {
-       "Device": 24572, "External id": 160,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 160
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187235092, "dur": 15,
     "args": {
-       "Device": 24572, "External id": 164,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 164
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187235080, "dur": 39,
     "args": {
-       "Device": 24572, "External id": 163,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 163
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187235067, "dur": 75,
     "args": {
-       "Device": 24572, "External id": 162,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 162
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "MmBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187234734, "dur": 424,
     "args": {
        "Device": 24572, "External id": 155,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 23
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::as_strided", "pid": 24572, "tid": "24610",
     "ts": 1621401187235312, "dur": 13,
     "args": {
-       "Device": 24572, "External id": 168,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 168
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::transpose", "pid": 24572, "tid": "24610",
     "ts": 1621401187235301, "dur": 40,
     "args": {
-       "Device": 24572, "External id": 167,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 167
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::t", "pid": 24572, "tid": "24610",
     "ts": 1621401187235288, "dur": 78,
     "args": {
-       "Device": 24572, "External id": 166,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 166
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "TBackward", "pid": 24572, "tid": "24610",
     "ts": 1621401187235271, "dur": 103,
     "args": {
        "Device": 24572, "External id": 165,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 ,
        "Fwd thread id": 1, "Sequence number": 22
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24610",
     "ts": 1621401187235487, "dur": 85,
     "args": {
-       "Device": 24572, "External id": 170,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 170
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "torch::autograd::AccumulateGrad", "pid": 24572, "tid": "24610",
     "ts": 1621401187235467, "dur": 147,
     "args": {
-       "Device": 24572, "External id": 169,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 169
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187235803, "dur": 24,
     "args": {
-       "Device": 24572, "External id": 172,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 172
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zero_", "pid": 24572, "tid": "24572",
     "ts": 1621401187235850, "dur": 5,
     "args": {
-       "Device": 24572, "External id": 173,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 173
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::zeros", "pid": 24572, "tid": "24572",
     "ts": 1621401187235787, "dur": 75,
     "args": {
-       "Device": 24572, "External id": 171,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 171
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::empty", "pid": 24572, "tid": "24572",
     "ts": 1621401187235954, "dur": 20,
     "args": {
-       "Device": 24572, "External id": 175,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 175
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24572",
     "ts": 1621401187236091, "dur": 82,
     "args": {
-       "Device": 24572, "External id": 176,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 176
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24572",
     "ts": 1621401187236221, "dur": 70,
     "args": {
-       "Device": 24572, "External id": 177,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 177
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24572",
     "ts": 1621401187236334, "dur": 68,
     "args": {
-       "Device": 24572, "External id": 178,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 178
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "aten::add_", "pid": 24572, "tid": "24572",
     "ts": 1621401187236444, "dur": 68,
     "args": {
-       "Device": 24572, "External id": 179,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 179
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "Optimizer.step#SGD.step", "pid": 24572, "tid": "24572",
     "ts": 1621401187235935, "dur": 663,
     "args": {
-       "Device": 24572, "External id": 174,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 174
     }
   },
   {
-    "ph": "X", "cat": "Operator", 
+    "ph": "X", "cat": "Operator",
     "name": "ProfilerStep#2", "pid": 24572, "tid": "24572",
     "ts": 1621401187223358, "dur": 13410,
     "args": {
-       "Device": 24572, "External id": 4,
-       "Trace name": "PyTorch Profiler", "Trace iteration": 0 
-       
+       "Device": 24572, "External id": 4
     }
   },
   {
-    "ph": "X", "cat": "Memcpy", 
+    "ph": "X", "cat": "Memcpy",
     "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187224556, "dur": 1,
     "args": {
@@ -1847,7 +1527,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaMemcpyAsync", "pid": 24572, "tid": "24572",
     "ts": 1621401187224533, "dur": 20,
     "args": {
@@ -1860,7 +1540,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaStreamSynchronize", "pid": 24572, "tid": "24572",
     "ts": 1621401187224554, "dur": 8,
     "args": {
@@ -1869,7 +1549,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Memcpy", 
+    "ph": "X", "cat": "Memcpy",
     "name": "Memcpy HtoD (Pageable -> Device)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187224767, "dur": 1,
     "args": {
@@ -1883,7 +1563,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaMemcpyAsync", "pid": 24572, "tid": "24572",
     "ts": 1621401187224752, "dur": 12,
     "args": {
@@ -1896,7 +1576,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaStreamSynchronize", "pid": 24572, "tid": "24572",
     "ts": 1621401187224765, "dur": 7,
     "args": {
@@ -1905,7 +1585,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24572",
     "ts": 1621401187225253, "dur": 2,
     "args": {
@@ -1914,7 +1594,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void gemmSN_TN_kernel_64addr<float, 128, 16, 2, 4, 8, 9, false, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float> >(cublasGemmSmallNParams<cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187225275, "dur": 3,
     "args": {
@@ -1934,7 +1614,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187225258, "dur": 16,
     "args": {
@@ -1947,7 +1627,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::unrolled_elementwise_kernel<at::native::AddFunctor<float>, at::detail::Array<char*, 3>, OffsetCalculator<2, unsigned int>, OffsetCalculator<1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast>(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>, OffsetCalculator<2, unsigned int>, OffsetCalculator<1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187225530, "dur": 2,
     "args": {
@@ -1967,7 +1647,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187225512, "dur": 16,
     "args": {
@@ -1980,7 +1660,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::clamp_min_scalar_kernel_impl(at::TensorIterator&, c10::Scalar)::{lambda()#1}::operator()() const::{lambda()#8}::operator()() const::{lambda(float)#1}, at::detail::Array<char*, 2> >(int, at::native::(anonymous namespace)::clamp_min_scalar_kernel_impl(at::TensorIterator&, c10::Scalar)::{lambda()#1}::operator()() const::{lambda()#8}::operator()() const::{lambda(float)#1}, at::detail::Array<char*, 2>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187225820, "dur": 1,
     "args": {
@@ -2000,7 +1680,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187225803, "dur": 15,
     "args": {
@@ -2013,7 +1693,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24572",
     "ts": 1621401187226305, "dur": 2,
     "args": {
@@ -2022,7 +1702,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void gemmSN_TN_kernel_64addr<float, 128, 16, 2, 4, 8, 9, false, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float> >(cublasGemmSmallNParams<cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187226325, "dur": 2,
     "args": {
@@ -2042,7 +1722,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187226309, "dur": 15,
     "args": {
@@ -2055,7 +1735,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::unrolled_elementwise_kernel<at::native::AddFunctor<float>, at::detail::Array<char*, 3>, OffsetCalculator<2, unsigned int>, OffsetCalculator<1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast>(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>, OffsetCalculator<2, unsigned int>, OffsetCalculator<1, unsigned int>, at::native::memory::LoadWithoutCast, at::native::memory::StoreWithoutCast)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187226575, "dur": 2,
     "args": {
@@ -2075,7 +1755,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187226558, "dur": 15,
     "args": {
@@ -2088,7 +1768,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::mse_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(float, float)#1}, at::detail::Array<char*, 3> >(int, at::native::mse_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(float, float)#1}, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187226912, "dur": 1,
     "args": {
@@ -2108,7 +1788,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187226895, "dur": 16,
     "args": {
@@ -2121,7 +1801,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187227092, "dur": 2,
     "args": {
@@ -2141,7 +1821,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187227075, "dur": 15,
     "args": {
@@ -2154,7 +1834,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187227619, "dur": 1,
     "args": {
@@ -2174,7 +1854,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187227601, "dur": 16,
     "args": {
@@ -2187,7 +1867,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187227745, "dur": 1,
     "args": {
@@ -2207,7 +1887,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187227729, "dur": 14,
     "args": {
@@ -2220,7 +1900,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187227859, "dur": 1,
     "args": {
@@ -2240,7 +1920,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187227844, "dur": 13,
     "args": {
@@ -2253,7 +1933,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187227973, "dur": 1,
     "args": {
@@ -2273,7 +1953,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187227958, "dur": 13,
     "args": {
@@ -2286,7 +1966,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187228279, "dur": 1,
     "args": {
@@ -2306,7 +1986,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187228262, "dur": 15,
     "args": {
@@ -2319,7 +1999,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187228962, "dur": 1,
     "args": {
@@ -2339,7 +2019,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187228932, "dur": 30,
     "args": {
@@ -2352,7 +2032,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::unrolled_elementwise_kernel<at::native::mse_backward_cuda_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(float, float, float)#1}, at::detail::Array<char*, 4>, OffsetCalculator<3, unsigned int>, at::detail::Array<1, unsigned int>, at::native::memory::LoadWithoutCast, OffsetCalculator::StoreWithoutCast>(int, at::native::mse_backward_cuda_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(float, float, float)#1}, at::detail::Array<char*, 4>, OffsetCalculator<3, unsigned int>, at::detail::Array<1, unsigned int>, at::native::memory::LoadWithoutCast, OffsetCalculator::StoreWithoutCast)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187229153, "dur": 2,
     "args": {
@@ -2372,7 +2052,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187229127, "dur": 26,
     "args": {
@@ -2385,7 +2065,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::reduce_kernel<256, 2, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187229711, "dur": 4,
     "args": {
@@ -2405,7 +2085,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187229681, "dur": 30,
     "args": {
@@ -2418,7 +2098,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187230162, "dur": 1,
     "args": {
@@ -2438,7 +2118,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187230133, "dur": 29,
     "args": {
@@ -2451,7 +2131,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24610",
     "ts": 1621401187231063, "dur": 4,
     "args": {
@@ -2460,7 +2140,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24610",
     "ts": 1621401187231069, "dur": 1,
     "args": {
@@ -2469,7 +2149,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "volta_sgemm_128x32_nt", "pid": 0, "tid": "stream 7",
     "ts": 1621401187231100, "dur": 3,
     "args": {
@@ -2489,7 +2169,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187231073, "dur": 27,
     "args": {
@@ -2502,7 +2182,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24610",
     "ts": 1621401187231658, "dur": 3,
     "args": {
@@ -2511,7 +2191,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void gemmSN_NN_kernel<float, 256, 4, 2, 8, 4, 4, false, cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float> >(cublasGemmSmallNParams<cublasGemvTensorStridedBatched<float const>, cublasGemvTensorStridedBatched<float>, float>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187231692, "dur": 2,
     "args": {
@@ -2531,7 +2211,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187231665, "dur": 27,
     "args": {
@@ -2544,7 +2224,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187232603, "dur": 1,
     "args": {
@@ -2564,7 +2244,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187232583, "dur": 19,
     "args": {
@@ -2577,7 +2257,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187232921, "dur": 1,
     "args": {
@@ -2597,7 +2277,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187232901, "dur": 19,
     "args": {
@@ -2610,7 +2290,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BUnaryFunctor<at::native::CompareGEFunctor<float> >, at::detail::Array<char*, 2> >(int, at::native::BUnaryFunctor<at::native::CompareGEFunctor<float> >, at::detail::Array<char*, 2>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187233342, "dur": 1,
     "args": {
@@ -2630,7 +2310,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187233323, "dur": 18,
     "args": {
@@ -2643,7 +2323,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::unrolled_elementwise_kernel<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&, c10::ScalarType)::{lambda()#1}::operator()() const::{lambda()#8}::operator()() const::{lambda(bool, float, float)#1}, at::detail::Array<char*, 4>, OffsetCalculator<3, unsigned int>, at::detail::Array<1, unsigned int>, at::native::memory::LoadWithoutCast, OffsetCalculator::StoreWithoutCast>(int, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&, c10::ScalarType)::{lambda()#1}::operator()() const::{lambda()#8}::operator()() const::{lambda(bool, float, float)#1}, at::detail::Array<char*, 4>, OffsetCalculator<3, unsigned int>, at::detail::Array<1, unsigned int>, at::native::memory::LoadWithoutCast, OffsetCalculator::StoreWithoutCast)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187233770, "dur": 2,
     "args": {
@@ -2663,7 +2343,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187233751, "dur": 19,
     "args": {
@@ -2676,7 +2356,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187234156, "dur": 3,
     "args": {
@@ -2696,7 +2376,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187234135, "dur": 19,
     "args": {
@@ -2709,7 +2389,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187234445, "dur": 1,
     "args": {
@@ -2729,7 +2409,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187234425, "dur": 19,
     "args": {
@@ -2742,7 +2422,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24610",
     "ts": 1621401187235000, "dur": 2,
     "args": {
@@ -2751,7 +2431,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags", "pid": 24572, "tid": "24610",
     "ts": 1621401187235004, "dur": 0,
     "args": {
@@ -2760,7 +2440,7 @@
     }
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "volta_sgemm_128x32_nt", "pid": 0, "tid": "stream 7",
     "ts": 1621401187235025, "dur": 3,
     "args": {
@@ -2780,7 +2460,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187235006, "dur": 17,
     "args": {
@@ -2793,7 +2473,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187235555, "dur": 1,
     "args": {
@@ -2813,7 +2493,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24610",
     "ts": 1621401187235535, "dur": 19,
     "args": {
@@ -2826,7 +2506,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187236158, "dur": 1,
     "args": {
@@ -2846,7 +2526,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187236138, "dur": 18,
     "args": {
@@ -2859,7 +2539,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187236278, "dur": 1,
     "args": {
@@ -2879,7 +2559,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187236261, "dur": 15,
     "args": {
@@ -2892,7 +2572,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187236390, "dur": 1,
     "args": {
@@ -2912,7 +2592,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187236373, "dur": 15,
     "args": {
@@ -2925,7 +2605,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Kernel", 
+    "ph": "X", "cat": "Kernel",
     "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AddFunctor<float>, at::detail::Array<char*, 3> >(int, at::native::AddFunctor<float>, at::detail::Array<char*, 3>)", "pid": 0, "tid": "stream 7",
     "ts": 1621401187236501, "dur": 1,
     "args": {
@@ -2945,7 +2625,7 @@
     "cat": "async", "name": "launch", "bp": "e"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaLaunchKernel", "pid": 24572, "tid": "24572",
     "ts": 1621401187236483, "dur": 15,
     "args": {
@@ -2958,7 +2638,7 @@
     "cat": "async", "name": "launch"
   },
   {
-    "ph": "X", "cat": "Runtime", 
+    "ph": "X", "cat": "Runtime",
     "name": "cudaDeviceSynchronize", "pid": 24572, "tid": "24572",
     "ts": 1621401187236853, "dur": 10,
     "args": {

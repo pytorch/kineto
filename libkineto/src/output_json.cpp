@@ -350,13 +350,17 @@ void ChromeTraceLogger::handleLink(
     return;
   }
 
+  // Flow events much bind to specific slices in order to exist.
+  // Only Flow end needs to specify a binding point to enclosing slice.
+  // Flow start automatically sets binding point to enclosing slice.
+  const auto binding = (type == kFlowEnd) ? ", \"bp\": \"e\"" : "";
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "{}", "name": "{}", "bp": "e"
+    "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name, binding);
   // clang-format on
 }
 

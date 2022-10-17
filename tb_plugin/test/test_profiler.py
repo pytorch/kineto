@@ -2506,8 +2506,7 @@ class TestModuleView(unittest.TestCase):
                 "dur": 19367,
                 "args": {
                     "External id": 0,
-                    "Python id": 1,
-                    "Python thread": 0
+                    "Python id": 1
                 }
             },
             {
@@ -2521,8 +2520,7 @@ class TestModuleView(unittest.TestCase):
                 "args": {
                     "External id": 0,
                     "Python id": 2,
-                    "Python parent id": 1,
-                    "Python module id": 0
+                    "Python parent id": 1
                 }
             },
             {
@@ -2537,7 +2535,6 @@ class TestModuleView(unittest.TestCase):
                     "External id": 0,
                     "Python id": 3,
                     "Python parent id": 2,
-                    "Python thread": 0,
                     "Python module id": 1
                 }
             },
@@ -2583,7 +2580,6 @@ class TestModuleView(unittest.TestCase):
                     "External id": 0,
                     "Python id": 5,
                     "Python parent id": 4,
-                    "Python thread": 0,
                     "Python module id": 1
                 }
             },
@@ -2629,7 +2625,6 @@ class TestModuleView(unittest.TestCase):
                     "External id": 0,
                     "Python id": 7,
                     "Python parent id": 6,
-                    "Python thread": 0,
                     "Python module id": 1
                 }
             },

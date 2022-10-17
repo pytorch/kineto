@@ -184,7 +184,8 @@ inline bool RuntimeActivity::flowStart() const {
 }
 
 inline const std::string RuntimeActivity::metadataJson() const {
-  return fmt::format(R"JSON("cbid": {}, "correlation": {})JSON",
+  return fmt::format(R"JSON(
+      "cbid": {}, "correlation": {})JSON",
       activity_.cbid, activity_.correlationId);
 }
 

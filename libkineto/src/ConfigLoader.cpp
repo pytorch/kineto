@@ -90,7 +90,7 @@ static void setupSignalHandler(bool enableSigUsr2) {
 }
 
 // return an empty string if reading gets any errors. Otherwise a config string.
-static std::string readConfigFromConfigFile(const char* filename) {
+static std::string readConfigFromConfigFile(const char* filename, bool verbose=true) {
   // Read whole file into a string.
   std::ifstream file(filename);
   std::string conf;
@@ -98,8 +98,10 @@ static std::string readConfigFromConfigFile(const char* filename) {
     conf.assign(
         std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
   } catch (std::exception& e) {
-    VLOG(0) << "Error reading " << filename << ": "
-            << e.what();
+    if (verbose) {
+      VLOG(0) << "Error reading " << filename << ": " << e.what();
+    }
+
     conf = "";
   }
   return conf;
@@ -198,6 +200,14 @@ IDaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
     daemonConfigLoader_->setCommunicationFabric(config_->ipcFabricEnabled());
   }
   return daemonConfigLoader_.get();
+}
+
+const char* ConfigLoader::customConfigFileName() {
+  return getenv(kConfigFileEnvVar);
+}
+
+const std::string ConfigLoader::getConfString(){
+  return readConfigFromConfigFile(configFileName(), false);
 }
 
 void ConfigLoader::updateBaseConfig() {

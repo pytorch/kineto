@@ -2643,7 +2643,7 @@
     "ts": 1621401187236853, "dur": 10,
     "args": {
       "cbid": 165, "correlation": 605,
-      "external id": 0, "external ts": 0
+      "external id": 605, "external ts": 0
     }
   },
   {

@@ -283,11 +283,26 @@ void ChromeTraceLogger::handleActivity(
     ts--;
     duration++; // Still need it to end at the orginal point
   }
-  const std::string op_metadata = op.metadataJson();
-  std::string separator = "";
-  if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
-    separator = ",";
+
+  std::string arg_values = "";
+  if (op.correlationId() != 0) {
+    arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
   }
+  const std::string op_metadata = op.metadataJson();
+  if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
+    if (!arg_values.empty()) {
+      arg_values.append(",");
+    }
+    arg_values.append(op_metadata);
+  }
+  std::string args = "";
+  if (!arg_values.empty()) {
+    args = fmt::format(R"JSON(,
+    "args": {{
+      {}
+    }})JSON", arg_values);
+  }
+
   int device = op.deviceId();
   int resource = op.resourceId();
 
@@ -295,15 +310,10 @@ void ChromeTraceLogger::handleActivity(
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}, "dur": {},
-    "args": {{
-      "External id": {}{}{}
-    }}
+    "ts": {}, "dur": {}{}
   }},)JSON",
           toString(op.type()), op.name(), device, resource,
-          ts, duration,
-          // args
-          op.correlationId(), separator, op_metadata);
+          ts, duration, args);
   // clang-format on
   if (op.flowId() > 0) {
     handleGenericLink(op);

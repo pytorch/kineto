@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from plotly.io import to_html
 
 # TODO: import when rebased onto diff stack
+# currently commented import line out and pasted Category enum class to make visualize library independent
 # from torch.profiler._memory_profiler import Category
 class Category(enum.Enum):
     INPUT = enum.auto()
@@ -39,12 +40,13 @@ class MemoryUsageVisualize:
 
     def draw_breakdown(self, return_html_str: bool = False) -> Optional[str]:
         fig = go.Figure()
-        for index in range(6):
+        # iterate over members of class Category (defined in _memory_profiler.py)
+        for index in range(1, 7):
             fig.add_trace(
                 go.Scatter(
                     name=Category(index).name,
                     x=self.df["time"],
-                    y=self.df[self.df.columns[index + 1]],
+                    y=self.df[self.df.columns[index]],
                     line_shape="hv",
                     mode="lines+markers",
                     stackgroup="one",
@@ -53,7 +55,6 @@ class MemoryUsageVisualize:
 
         fig.update_layout(xaxis_title=("Time (ms)"), yaxis_title="Memory Usage (B)")
 
-        fig.show()
         if return_html_str:
             return to_html(fig, include_plotlyjs="cdn")
-        # fig.show()
+        fig.show()

@@ -328,11 +328,10 @@ void ChromeTraceLogger::handleGenericActivity(
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
   static struct {
     int type;
-    char longName[24];
-    char shortName[16];
+    char name[16];
   } flow_names[] = {
-    {kLinkFwdBwd, "forward_backward", "fwd_bwd"},
-    {kLinkAsyncCpuGpu, "async_cpu_to_gpu", "async_gpu"}
+    {kLinkFwdBwd, "fwdbwd"},
+    {kLinkAsyncCpuGpu, "ac2g"}
   };
   for (auto& flow : flow_names) {
     if (act.flowType() == flow.type) {
@@ -340,9 +339,9 @@ void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
       // The source node must return true from flowStart()
       // and the destination node false.
       if (act.flowStart()) {
-        handleLink(kFlowStart, act, act.flowId(), flow.longName, flow.shortName);
+        handleLink(kFlowStart, act, act.flowId(), flow.name);
       } else {
-        handleLink(kFlowEnd, act, act.flowId(), flow.longName, flow.shortName);
+        handleLink(kFlowEnd, act, act.flowId(), flow.name);
       }
       return;
     }
@@ -354,7 +353,6 @@ void ChromeTraceLogger::handleLink(
     char type,
     const ITraceActivity& e,
     int64_t id,
-    const std::string& cat,
     const std::string& name) {
   if (!traceOf_) {
     return;
@@ -370,7 +368,7 @@ void ChromeTraceLogger::handleLink(
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
     "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name, binding);
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), name, name, binding);
   // clang-format on
 }
 

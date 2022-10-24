@@ -100,9 +100,10 @@ class MemoryTraceVisualize:
             xaxis_title="Time (ms)", yaxis_title="Memory Usage (MB)"
         )
 
-        fig.show()
         if return_html_str:
             return to_html(fig, include_plotlyjs="cdn")
+
+        fig.show()
 
     def draw_table(self, return_html_str: bool = False) -> Optional[str]:
         columns = [*self.df_stats.T]

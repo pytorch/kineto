@@ -23,7 +23,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"gpu_user_annotation", ActivityType::GPU_USER_ANNOTATION},
     {"gpu_memcpy", ActivityType::GPU_MEMCPY},
     {"gpu_memset", ActivityType::GPU_MEMSET},
-    {"kernel", ActivityType::CONCURRENT_KERNEL},
+    {"Kernel", ActivityType::CONCURRENT_KERNEL}, // Legacy tools using capitalized Kernel
     {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
     {"cuda_runtime", ActivityType::CUDA_RUNTIME},
     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},

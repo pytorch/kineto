@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import numpy
 import pandas as pd
@@ -23,8 +23,11 @@ class Category(enum.Enum):
     PARAMETER = enum.auto()
     OPTIMIZER_STATE = enum.auto()
 
+
 class MemoryUsageVisualize:
-    def __init__(self, memory_events: numpy.array) -> None:
+    def __init__(
+        self, memory_events: numpy.array, rec_funcs:  Optional[Dict[str, Tuple[int, int]]] = None
+    ) -> None:
         self.df = pd.DataFrame(
             memory_events,
             columns=[
@@ -37,6 +40,7 @@ class MemoryUsageVisualize:
                 "state",
             ],
         )
+        self.rec_funcs = rec_funcs
 
     def draw_breakdown(self, return_html_str: bool = False) -> Optional[str]:
         fig = go.Figure()
@@ -52,6 +56,23 @@ class MemoryUsageVisualize:
                     stackgroup="one",
                 )
             )
+
+        if self.rec_funcs:
+            for name, values in self.rec_funcs.items():
+                fig.add_vline(
+                    x=values[0],
+                    annotation_textangle=-90,
+                    annotation_text=name + "_start",
+                    line_dash="dash",
+                    line_color="red",
+                )
+                fig.add_vline(
+                    x=values[1],
+                    annotation_textangle=-90,
+                    annotation_text=name + "_end",
+                    line_dash="dash",
+                    line_color="green",
+                )
 
         fig.update_layout(xaxis_title=("Time (ms)"), yaxis_title="Memory Usage (B)")
 

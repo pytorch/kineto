@@ -305,6 +305,8 @@ void ChromeTraceLogger::handleActivity(
 
   int device = op.deviceId();
   int resource = op.resourceId();
+  // TODO: Remove this once legacy tools are updated.
+  std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
@@ -312,7 +314,7 @@ void ChromeTraceLogger::handleActivity(
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
     "ts": {}, "dur": {}{}
   }},)JSON",
-          toString(op.type()), op.name(), device, resource,
+          toString(op.type()), op_name, device, resource,
           ts, duration, args);
   // clang-format on
   if (op.flowId() > 0) {

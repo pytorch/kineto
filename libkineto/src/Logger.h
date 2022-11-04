@@ -197,6 +197,11 @@ class VoidLogger {
   LOG_IF(severity, LOG_OCCURRENCES++ % rate == 0) \
       << "(x" << LOG_OCCURRENCES << ") "
 
+#define LOG_FIRST_N(severity, threshold)          \
+  static int LOG_OCCURRENCES = 0;                 \
+  LOG_IF(severity, LOG_OCCURRENCES++ < threshold) \
+      << "(x" << LOG_OCCURRENCES << ") "
+
 template <uint64_t n>
 struct __to_constant__ {
   static const uint64_t val = n;

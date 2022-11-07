@@ -105,7 +105,7 @@ class Logger {
   }
 
   static void clearLoggerObservers() {
-    std::lock_guard<std::mutex> g(loggerObserversMutex_);
+    std::lock_guard<std::mutex> g(loggerObserversMutex());
     loggerObservers().clear();
   }
 
@@ -141,7 +141,10 @@ class Logger {
     static auto* inst = new std::set<ILoggerObserver*>();
     return *inst;
   }
-  static std::mutex loggerObserversMutex_;
+  static std::mutex& loggerObserversMutex() {
+    static auto* loggerObserversMutex = new std::mutex();
+    return *loggerObserversMutex;
+  }
 };
 
 class VoidLogger {
@@ -192,6 +195,11 @@ class VoidLogger {
 #define LOG_EVERY_N(severity, rate)               \
   static int LOG_OCCURRENCES = 0;                 \
   LOG_IF(severity, LOG_OCCURRENCES++ % rate == 0) \
+      << "(x" << LOG_OCCURRENCES << ") "
+
+#define LOG_FIRST_N(severity, threshold)          \
+  static int LOG_OCCURRENCES = 0;                 \
+  LOG_IF(severity, LOG_OCCURRENCES++ < threshold) \
       << "(x" << LOG_OCCURRENCES << ") "
 
 template <uint64_t n>

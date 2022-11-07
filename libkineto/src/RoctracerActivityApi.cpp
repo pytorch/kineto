@@ -175,13 +175,14 @@ int RoctracerActivityApi::processActivities(
     auto it = externalCorrelations.find(a.id);
     a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
 
+    // TODO: Use lowercase kernel, once legacy tools update.
     if (item.functionAddr != nullptr) {
       a.addMetadataQuoted(
-          "kernel", demangle(hipKernelNameRefByPtr(item.functionAddr, item.stream)));
+          "Kernel", demangle(hipKernelNameRefByPtr(item.functionAddr, item.stream)));
     }
     else if (item.function != nullptr) {
       a.addMetadataQuoted(
-          "kernel", demangle(hipKernelNameRef(item.function)));
+          "Kernel", demangle(hipKernelNameRef(item.function)));
     }
     a.addMetadata("grid dim", fmt::format("[{}, {}, {}]", item.gridX, item.gridY, item.gridZ));
     a.addMetadata("block dim", fmt::format("[{}, {}, {}]", item.workgroupX, item.workgroupY, item.workgroupZ));

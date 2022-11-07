@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -34,37 +34,43 @@ class MemoryTraceVisualize:
         with open(trace_path) as input_trace:
             self.df_stats, self.df_curve = self.process(input_trace)
 
-    def open_with_json(self, json_input: Dict[str, Any]):
-        self.df_stats, self.df_curve = self.process(json_input, True)
+    def open_with_json(self, json_input: List[Dict[str, Any]]):
+        self.df_stats, self.df_curve = self.process(json_input, with_json=True)
 
-    def process(self, input_path_or_json, with_json=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        if not with_json:
-            data = json.load(input_path_or_json)
-            assert "traceEvents" in data, "Wrong trace file (no 'traceEvents')"
+    def open_with_trace_events(self, json_input: List[Dict[str, Any]], vents=True):
+        self.df_stats, self.df_curve = self.process(json_input, events=True, with_json=True)
+
+    def process(self, input_path_or_json, events=False, with_json=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        if events:
+            trace = json.loads(json.dumps(input_path_or_json))
         else:
-            data = input_path_or_json
-
-        trace = json.loads(json.dumps(data["traceEvents"]))
-
+            if not with_json:
+                data = json.load(input_path_or_json)
+                assert "traceEvents" in data, "Wrong trace file (no 'traceEvents')"
+                trace = json.loads(json.dumps(data["traceEvents"]))
+            else:
+                trace = input_path_or_json
 
         trace_json = {"schemaVersion": 1, "traceEvents": trace}
         profile = RunProfileData.from_json(WORKER_NAME, 0, trace_json)
 
-        stat_results = RunProfile.get_memory_stats(profile, memory_metric="MB")
+
         curve_results = RunProfile.get_memory_curve(
             profile, time_metric="ms", memory_metric="MB", patch_for_step_plot=True
         )
-        stat_data = stat_results["rows"][stat_results["metadata"]["default_device"]]
-        h_row = [(c["name"]) for c in stat_results["columns"]]
-        df_stats = (
-            pd.DataFrame(stat_data, columns=h_row)
-            .sort_values(by=h_row[2], ascending=False)
-            .T
-        )
-
         # default_device: GPU
         curve = curve_results["rows"][curve_results["metadata"]["default_device"]]
         df_curve = pd.DataFrame(curve).T
+
+        stat_results = RunProfile.get_memory_stats(profile, memory_metric="MB")
+        stat_data = stat_results["rows"][stat_results["metadata"]["default_device"]]
+        h_row = [(c["name"]) for c in stat_results["columns"]]
+        df_stats = (
+           pd.DataFrame(stat_data, columns=h_row)
+           .sort_values(by=h_row[2], ascending=False)
+           .T
+        )
+
         return df_stats, df_curve
 
     def draw_curve(self, return_html_str: bool = False) -> Optional[str]:
@@ -94,9 +100,10 @@ class MemoryTraceVisualize:
             xaxis_title="Time (ms)", yaxis_title="Memory Usage (MB)"
         )
 
-        fig.show()
         if return_html_str:
             return to_html(fig, include_plotlyjs="cdn")
+
+        fig.show()
 
     def draw_table(self, return_html_str: bool = False) -> Optional[str]:
         columns = [*self.df_stats.T]
@@ -136,6 +143,8 @@ class MemoryTraceVisualize:
                 }
             ]
         )
-        fig.show()
+
         if return_html_str:
             return to_html(fig, include_plotlyjs="cdn")
+
+        fig.show()

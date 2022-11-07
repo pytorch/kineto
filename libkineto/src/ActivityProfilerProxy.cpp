@@ -51,13 +51,18 @@ void ActivityProfilerProxy::prepareTrace(
   Config config;
   bool validate_required = true;
 
-  // allow user provided config to override default options
+  // allow user provided config (ExperimentalConfig)to override default options
   if (!configStr.empty()) {
     if (!config.parse(configStr)) {
       LOG(WARNING) << "Failed to parse config : " << configStr;
     }
     // parse also runs validate
     validate_required = false;
+  }
+  // user provided config (KINETO_CONFIG) to override default options
+  auto loaded_config = configLoader_.getConfString();
+  if (!loaded_config.empty()) {
+    config.parse(loaded_config);
   }
 
   config.setClientDefaults();

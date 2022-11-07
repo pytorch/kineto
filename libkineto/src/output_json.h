@@ -65,7 +65,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       char type,
       const ITraceActivity& e,
       int64_t id,
-      const std::string& cat,
       const std::string& name);
 
   void addIterationMarker(const TraceSpan& span);

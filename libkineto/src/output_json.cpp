@@ -283,35 +283,39 @@ void ChromeTraceLogger::handleActivity(
     ts--;
     duration++; // Still need it to end at the orginal point
   }
+
+  std::string arg_values = "";
+  if (op.correlationId() != 0) {
+    arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
+  }
   const std::string op_metadata = op.metadataJson();
-  std::string separator = "";
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
-    separator = ",\n      ";
+    if (!arg_values.empty()) {
+      arg_values.append(",");
+    }
+    arg_values.append(op_metadata);
   }
-  std::string span = "";
-  if (op.traceSpan()) {
-    span = fmt::format(R"JSON(
-      "Trace name": "{}", "Trace iteration": {},)JSON",
-        op.traceSpan()->name,
-        op.traceSpan()->iteration);
+  std::string args = "";
+  if (!arg_values.empty()) {
+    args = fmt::format(R"JSON(,
+    "args": {{
+      {}
+    }})JSON", arg_values);
   }
+
   int device = op.deviceId();
   int resource = op.resourceId();
+  // TODO: Remove this once legacy tools are updated.
+  std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}, "dur": {},
-    "args": {{{}
-      "External id": {}{}{}
-    }}
+    "ts": {}, "dur": {}{}
   }},)JSON",
-          toString(op.type()), op.name(), device, resource,
-          ts, duration,
-          // args
-          span,
-          op.correlationId(), separator, op_metadata);
+          toString(op.type()), op_name, device, resource,
+          ts, duration, args);
   // clang-format on
   if (op.flowId() > 0) {
     handleGenericLink(op);
@@ -326,11 +330,10 @@ void ChromeTraceLogger::handleGenericActivity(
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
   static struct {
     int type;
-    char longName[24];
-    char shortName[16];
+    char name[16];
   } flow_names[] = {
-    {kLinkFwdBwd, "forward_backward", "fwd_bwd"},
-    {kLinkAsyncCpuGpu, "async_cpu_to_gpu", "async_gpu"}
+    {kLinkFwdBwd, "fwdbwd"},
+    {kLinkAsyncCpuGpu, "ac2g"}
   };
   for (auto& flow : flow_names) {
     if (act.flowType() == flow.type) {
@@ -338,9 +341,9 @@ void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
       // The source node must return true from flowStart()
       // and the destination node false.
       if (act.flowStart()) {
-        handleLink(kFlowStart, act, act.flowId(), flow.longName, flow.shortName);
+        handleLink(kFlowStart, act, act.flowId(), flow.name);
       } else {
-        handleLink(kFlowEnd, act, act.flowId(), flow.longName, flow.shortName);
+        handleLink(kFlowEnd, act, act.flowId(), flow.name);
       }
       return;
     }
@@ -352,19 +355,22 @@ void ChromeTraceLogger::handleLink(
     char type,
     const ITraceActivity& e,
     int64_t id,
-    const std::string& cat,
     const std::string& name) {
   if (!traceOf_) {
     return;
   }
 
+  // Flow events much bind to specific slices in order to exist.
+  // Only Flow end needs to specify a binding point to enclosing slice.
+  // Flow start automatically sets binding point to enclosing slice.
+  const auto binding = (type == kFlowEnd) ? ", \"bp\": \"e\"" : "";
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "{}", "name": "{}", "bp": "e"
+    "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), name, name, binding);
   // clang-format on
 }
 

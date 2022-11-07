@@ -106,6 +106,8 @@ class ConfigLoader {
   static void setDaemonConfigLoaderFactory(
       std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
 
+  const std::string getConfString();
+
  private:
   ConfigLoader();
   ~ConfigLoader();
@@ -129,6 +131,8 @@ class ConfigLoader {
 
   std::string readOnDemandConfigFromDaemon(
       std::chrono::time_point<std::chrono::system_clock> now);
+
+  const char* customConfigFileName();
 
   std::mutex configLock_;
   std::atomic<const char*> configFileName_{nullptr};

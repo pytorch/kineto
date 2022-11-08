@@ -47,7 +47,7 @@ static void initProfilers(
     VLOG(0) << "libkineto profilers activated";
   }
   if (getenv("KINETO_DISABLE_EVENT_PROFILER") != nullptr) {
-    VLOG(0) << "Event profiler disabled via env var";
+    LOG(INFO) << "Kineto EventProfiler disabled via env var, skipping start";
   } else {
     ConfigLoader& config_loader = libkineto::api().configLoader();
     config_loader.initBaseConfig();
@@ -77,7 +77,12 @@ static void stopProfiler(
 
   LOG(INFO) << "CUDA Context destroyed";
   std::lock_guard<std::mutex> lock(initMutex);
-  EventProfilerController::stop(ctx);
+
+  if (getenv("KINETO_DISABLE_EVENT_PROFILER") != nullptr) {
+    LOG(INFO) << "Kineto EventProfiler disabled via env var, skipping stop";
+  } else {
+    EventProfilerController::stop(ctx);
+  }
 }
 
 static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;

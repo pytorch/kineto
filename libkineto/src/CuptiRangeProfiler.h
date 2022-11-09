@@ -114,8 +114,6 @@ class CuptiRangeProfiler : public libkineto::IActivityProfiler {
 
 struct CuptiRangeProfilerInit {
   CuptiRangeProfilerInit();
-  ~CuptiRangeProfilerInit();
-
   bool success = false;
 };
 

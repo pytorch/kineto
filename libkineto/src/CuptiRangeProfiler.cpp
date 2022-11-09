@@ -317,10 +317,4 @@ CuptiRangeProfilerInit::CuptiRangeProfilerInit() {
   });
 }
 
-CuptiRangeProfilerInit::~CuptiRangeProfilerInit() {
-  if (success) {
-    CuptiRBProfilerSession::deInitCupti();
-  }
-}
-
 } // namespace KINETO_NAMESPACE

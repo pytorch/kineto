@@ -344,9 +344,14 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kActivitiesLogFileKey)) {
     activitiesLogFile_ = val;
     activitiesLogUrl_ = fmt::format("file://{}", val);
-    size_t jidx = activitiesLogUrl_.find(".json");
+    size_t jidx = activitiesLogUrl_.find(".pt.trace.json");
     if (jidx != std::string::npos) {
-      activitiesLogUrl_.replace(jidx, 5, fmt::format("_{}.json", processId()));
+      activitiesLogUrl_.replace(jidx, 14, fmt::format("_{}.pt.trace.json", processId()));
+    } else {
+      jidx = activitiesLogUrl_.find(".json");
+      if (jidx != std::string::npos) {
+        activitiesLogUrl_.replace(jidx, 5, fmt::format("_{}.json", processId()));
+      }
     }
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivitiesMaxGpuBufferSizeKey)) {

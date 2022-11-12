@@ -68,6 +68,10 @@ class Config : public AbstractConfig {
     return activitiesLogToMemory_;
   }
 
+  bool eventProfilerEnabled() const {
+    return !eventNames_.empty() || !metricNames_.empty();
+  }
+
   // Is profiling enabled for the given device?
   bool eventProfilerEnabledForDevice(uint32_t dev) const {
     return 0 != (eventProfilerDeviceMask_ & (1 << dev));

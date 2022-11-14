@@ -110,6 +110,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
     // If it is not available (e.g. CUDA is not installed),
     // then this call will return an error and we just abort init.
     auto cbapi = CuptiCallbackApi::singleton();
+    cbapi->initCallbackApi();
     bool status = false;
     bool initRangeProfiler = true;
 

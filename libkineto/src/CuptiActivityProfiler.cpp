@@ -759,7 +759,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       if (!cpuOnly_ && currentIter < 0 &&
           (derivedConfig_->isProfilingByIteration() ||
            nextWakeupTime < derivedConfig_->profileStartTime())) {
-        cupti_.clearActivities();
+        cupti_.clearCuptiActivities();
       }
 
       if (cupti_.stopCollection) {
@@ -931,7 +931,8 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
 void CuptiActivityProfiler::resetTraceData() {
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
-    cupti_.clearActivities();
+    cupti_.clearCuptiActivities();
+    cupti_.teardownCuptiContext();
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
   activityMap_.clear();

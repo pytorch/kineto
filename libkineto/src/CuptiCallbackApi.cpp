@@ -6,7 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiCallbackApi.h"
+#include "CuptiActivityApi.h"
 
 #include <assert.h>
 #include <chrono>
@@ -96,6 +99,17 @@ void CuptiCallbackApi::__callback_switchboard(
           break;
         default:
           break;
+      }
+      // This is required to teardown cupti after profiling to prevent QPS slowdown.
+      if (CuptiActivityApi::singleton().teardownCupti_) {
+        if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+          // Teardown CUPTI calling cuptiFinalize()
+          CUPTI_CALL(cuptiFinalize());
+          initSuccess_ = false;
+          CuptiActivityApi::singleton().teardownCupti_ = 0;
+          CuptiActivityApi::singleton().finalizeCond_.notify_all();
+          return;
+        }
       }
       break;
 

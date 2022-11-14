@@ -126,7 +126,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
             domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
         status = status && cbapi->enableCallback(
             domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED);
-        }
+      }
     }
 
     if (!cbapi->initSuccess() || !status) {

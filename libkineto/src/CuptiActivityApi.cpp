@@ -20,11 +20,12 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-// TODO: do we want this to be configurable?
-// Set to 2MB to avoid constantly creating buffers (espeically for networks
-// that has many small memcpy such as sparseNN)
-// Consider putting this on huge pages?
-constexpr size_t kBufSize(2 * 1024 * 1024);
+// Set to 4MB to avoid constantly creating buffers (especially for networks
+// that have many small memcpy such as sparseNN). CUPTI recommends between
+// 1MB to 10MB.
+// Given the kDefaultActivitiesMaxGpuBufferSize is around 128MB, in the worst
+// case, there will be 32 buffers contending for the mutex.
+constexpr size_t kBufSize(4 * 1024 * 1024);
 
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static CuptiActivityApi instance;
@@ -111,7 +112,7 @@ void CuptiActivityApi::forceLoadCupti() {
 void CuptiActivityApi::preConfigureCUPTI() {
 #ifdef HAS_CUPTI
   if (!isGpuAvailable()) {
-    return; 
+    return;
   }
 #endif
 }

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <list>
 #include <memory>
@@ -19,8 +20,11 @@
 #include <cupti.h>
 #endif
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityType.h"
 #include "CuptiActivityBuffer.h"
+#include "CuptiCallbackApi.h"
 
 
 namespace KINETO_NAMESPACE {
@@ -37,6 +41,10 @@ class CuptiActivityApi {
     Default,
     User
   };
+  // Control Variables shared with CuptiCallbackApi for teardown
+  std::atomic<uint32_t> teardownCupti_{0};
+  std::mutex finalizeMutex_;
+  std::condition_variable finalizeCond_;
 
   CuptiActivityApi() = default;
   CuptiActivityApi(const CuptiActivityApi&) = delete;
@@ -53,7 +61,8 @@ class CuptiActivityApi {
     const std::set<ActivityType>& selected_activities);
   void disableCuptiActivities(
     const std::set<ActivityType>& selected_activities);
-  void clearActivities();
+  void clearCuptiActivities();
+  void teardownCuptiContext();
 
   virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers();
 
@@ -74,6 +83,13 @@ class CuptiActivityApi {
   static void preConfigureCUPTI();
 
  private:
+  int maxGpuBufferCount_{0};
+  CuptiActivityBufferMap allocatedGpuTraceBuffers_;
+  std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
+  std::mutex mutex_;
+  std::atomic<uint32_t> tracingEnabled_{0};
+  bool externalCorrelationEnabled_{false};
+
 #ifdef HAS_CUPTI
   int processActivitiesForBuffer(
       uint8_t* buf,
@@ -88,12 +104,6 @@ class CuptiActivityApi {
       size_t /* unused */,
       size_t validSize);
 #endif // HAS_CUPTI
-
-  int maxGpuBufferCount_{0};
-  CuptiActivityBufferMap allocatedGpuTraceBuffers_;
-  std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
-  std::mutex mutex_;
-  bool externalCorrelationEnabled_{false};
 
  protected:
 #ifdef HAS_CUPTI

@@ -200,7 +200,9 @@ std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors() {
   std::vector<std::pair<int32_t, std::string>> pairs;
   pairs.reserve(kMaxParentPids + 1);
   int32_t curr_pid = processId();
-  for (int i = 0; i <= kMaxParentPids && curr_pid > 1; i++) {
+  // Usually we want to skip the root process (PID 1), but when running
+  // inside a contaienr the process itself has PID 1, so we need to include it
+  for (int i = 0; i <= kMaxParentPids && (i == 0 || curr_pid > 1); i++) {
     std::pair<int32_t, std::string> ppid_and_comm = parentPidAndCommand(curr_pid);
     pairs.push_back(std::make_pair(curr_pid, ppid_and_comm.second));
     curr_pid = ppid_and_comm.first;

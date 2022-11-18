@@ -370,7 +370,7 @@ void CuptiActivityApi::teardownContext() {
       CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 
       teardownCupti_ = 1;
-      std::unique_lock lck(finalizeMutex_);
+      std::unique_lock<std::mutex> lck(finalizeMutex_);
       finalizeCond_.wait(lck, [&]{return teardownCupti_ == 0;});
       lck.unlock();
       LOG(INFO) << "teardownCupti complete";

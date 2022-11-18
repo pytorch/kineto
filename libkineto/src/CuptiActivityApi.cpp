@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <chrono>
 #include <mutex>
+#include <thread>
 
 #include "cupti_call.h"
 #include "Logger.h"

@@ -61,8 +61,8 @@ class CuptiActivityApi {
     const std::set<ActivityType>& selected_activities);
   void disableCuptiActivities(
     const std::set<ActivityType>& selected_activities);
-  void clearCuptiActivities();
-  void teardownCuptiContext();
+  void clearActivities();
+  void teardownContext();
 
   virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers();
 

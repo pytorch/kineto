@@ -207,7 +207,7 @@ const std::pair<int, int> CuptiActivityApi::processActivities(
   return res;
 }
 
-void CuptiActivityApi::clearCuptiActivities() {
+void CuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
@@ -340,7 +340,7 @@ void CuptiActivityApi::disableCuptiActivities(
 #endif
 }
 
-void CuptiActivityApi::teardownCuptiContext() {
+void CuptiActivityApi::teardownContext() {
 #ifdef HAS_CUPTI
   if (!tracingEnabled_) {
     return;

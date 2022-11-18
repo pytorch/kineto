@@ -50,6 +50,7 @@ class RoctracerActivityApi {
   void disableActivities(
     const std::set<ActivityType>& selected_activities);
   void clearActivities();
+  void teardownContext() {}
 
   int processActivities(ActivityLogger& logger,
                         std::function<const ITraceActivity*(int32_t)> linkedActivity);

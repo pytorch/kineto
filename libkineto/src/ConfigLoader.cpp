@@ -162,7 +162,7 @@ void ConfigLoader::startThread() {
   }
 }
 
-ConfigLoader::~ConfigLoader() {
+void ConfigLoader::stopThread() {
   if (updateThread_) {
     stopFlag_ = true;
     {
@@ -170,7 +170,12 @@ ConfigLoader::~ConfigLoader() {
       updateThreadCondVar_.notify_one();
     }
     updateThread_->join();
+    updateThread_ = nullptr;
   }
+}
+
+ConfigLoader::~ConfigLoader() {
+  stopThread();
 #if !USE_GOOGLE_LOG
   Logger::clearLoggerObservers();
 #endif // !USE_GOOGLE_LOG
@@ -262,6 +267,11 @@ void ConfigLoader::configureFromDaemon(
 }
 
 void ConfigLoader::updateConfigThread() {
+  // It's important to hang to this reference until the thread stops.
+  // Otherwise, the Config's static members may be destroyed before this
+  // function finishes.
+  auto handle = Config::getStaticObjectsLifetimeHandle();
+
   auto now = system_clock::now();
   auto next_config_load_time = now;
   auto next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;

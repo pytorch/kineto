@@ -684,8 +684,7 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
   initScratchBufferParams.counterDataImageSize =
     calculateSizeParams.counterDataImageSize;
 
-  initScratchBufferParams.pCounterDataImage =
-    initializeParams.pCounterDataImage;
+  initScratchBufferParams.pCounterDataImage = initializeParams.pCounterDataImage;
   initScratchBufferParams.counterDataScratchBufferSize =
     scratchBufferSizeParams.counterDataScratchBufferSize;
   initScratchBufferParams.pCounterDataScratchBuffer =
@@ -695,6 +694,12 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
       &initScratchBufferParams));
 
   return true;
+}
+
+CuptiRBProfilerSession::~CuptiRBProfilerSession() {
+  if (initSuccess_) {
+    CuptiRBProfilerSession::deInitCupti();
+  }
 }
 
 #else
@@ -707,6 +712,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
       maxRanges_(opts.maxRanges),
       numNestingLevels_(opts.numNestingLevels),
       cuContext_(opts.cuContext) {};
+CuptiRBProfilerSession::~CuptiRBProfilerSession() {}
 void CuptiRBProfilerSession::stop() {}
 void CuptiRBProfilerSession::enable() {}
 void CuptiRBProfilerSession::disable() {}

@@ -234,12 +234,18 @@ EventProfilerController::~EventProfilerController() {
   VLOG(0) << "Stopped event profiler";
 }
 
+bool& EventProfilerController::started() {
+  static bool started = false;
+  return started;
+}
+
 // Must be called under lock
 void EventProfilerController::start(CUcontext ctx, ConfigLoader& configLoader) {
   // Avoid static initialization order fiasco:
   // We need the profilerMap and with it all controllers to be destroyed
   // before everything the controller accesses gets destroyed.
   // Hence access the profilerMap after initialization of the controller.
+  started() = true;
   auto controller = unique_ptr<EventProfilerController>(
       new EventProfilerController(
           ctx, configLoader, detail::HeartbeatMonitor::instance()));
@@ -247,7 +253,11 @@ void EventProfilerController::start(CUcontext ctx, ConfigLoader& configLoader) {
 }
 
 // Must be called under lock
-void EventProfilerController::stop(CUcontext ctx) {
+void EventProfilerController::stopIfEnabled(CUcontext ctx) {
+  // Avoid creating static singleton profilerMap if start was never called.
+  if (!started()) {
+    return;
+  }
   profilerMap()[ctx] = nullptr;
 }
 

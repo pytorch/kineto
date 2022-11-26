@@ -932,6 +932,7 @@ void CuptiActivityProfiler::resetTraceData() {
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     cupti_.clearActivities();
+    cupti_.teardownContext();
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
   activityMap_.clear();

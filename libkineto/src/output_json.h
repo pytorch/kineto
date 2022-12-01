@@ -50,7 +50,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void finalizeTrace(
       const Config& config,
-      std::unique_ptr<ActivityBuffers> buffers,
       int64_t endTime,
       std::unordered_map<std::string, std::vector<std::string>>& metadata) override;
 

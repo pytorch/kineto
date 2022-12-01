@@ -19,43 +19,39 @@ namespace libkineto {
 
 class MockProfilerSession: public IActivityProfilerSession {
 
-  public:
-    explicit MockProfilerSession() {}
+ public:
+  virtual ~MockProfilerSession() {}
 
-    void start() override {
-      start_count++;
-      status_ = TraceStatus::RECORDING;
-    }
+  std::mutex& mutex() override {
+    return mutex_;
+  }
 
-    void stop() override {
-      stop_count++;
-      status_ = TraceStatus::PROCESSING;
-    }
+  TraceStatus status() override {
+    return status_;
+  }
 
-    std::vector<std::string> errors() override {
-      return {};
-    }
+  void status(TraceStatus status) override {
+    status_ = status;
+  }
 
-    void processTrace(ActivityLogger& logger) override;
+  std::vector<std::string> errors() override {
+    return {};
+  }
 
-    void set_test_activities(std::deque<GenericTraceActivity>&& acs) {
-      test_activities_ = std::move(acs);
-    }
+  void log(ActivityLogger& logger) override;
 
-    std::unique_ptr<CpuTraceBuffer> getTraceBuffer() override;
+  void setTestActivities(std::vector<const ITraceActivity*>* acs) {
+    testActivities_ = acs;
+  }
 
-    std::unique_ptr<DeviceInfo> getDeviceInfo() override {
-      return {};
-    }
+  const std::vector<const ITraceActivity*>* activities() {
+    return testActivities_;
+  }
 
-    std::vector<ResourceInfo> getResourceInfos() override {
-      return {};
-    }
-
-    int start_count = 0;
-    int stop_count = 0;
-  private:
-    std::deque<GenericTraceActivity> test_activities_;
+private:
+  TraceStatus status_;
+  std::mutex mutex_;
+  std::vector<const ITraceActivity*>* testActivities_;
 };
 
 
@@ -64,22 +60,35 @@ class MockActivityProfiler: public IActivityProfiler {
  public:
   explicit MockActivityProfiler(std::deque<GenericTraceActivity>& activities);
 
-  const std::string& name() const override;
+  virtual ~MockActivityProfiler() {};
 
-  const std::set<ActivityType>& availableActivities() const override;
+  const std::string name() const override;
 
-  std::unique_ptr<IActivityProfilerSession> configure(
-      const std::set<ActivityType>& activity_types,
-      const Config& config) override;
+  const std::set<ActivityType>& supportedActivityTypes() const override;
 
-  std::unique_ptr<IActivityProfilerSession> configure(
-      int64_t ts_ms,
-      int64_t duration_ms,
-      const std::set<ActivityType>& activity_types,
-      const Config& config) override;
+  void init(ICompositeProfiler* parent) = 0;
+  bool isInitialized() const = 0;
+  bool isActive() const = 0;
+
+  std::shared_ptr<IActivityProfilerSession> configure(
+      const Config& options,
+      ICompositeProfilerSession* parentSession) override;
+
+  void start(IActivityProfilerSession& session) override {
+    start_count++;
+    session_->status(TraceStatus::RECORDING);
+  }
+
+  void stop(IActivityProfilerSession& session) override {
+    stop_count++;
+    session_->status(TraceStatus::PROCESSING);
+  }
+
+  int start_count = 0;
+  int stop_count = 0;
 
  private:
-  std::deque<GenericTraceActivity> test_activities_;
+  std::shared_ptr<MockProfilerSession> session_;
 };
 
 } // namespace libkineto

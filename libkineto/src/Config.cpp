@@ -295,6 +295,11 @@ void Config::setActivityTypes(
   }
 }
 
+void Config::setActivityTypes(
+  const std::set<ActivityType>& selectedActivities) {
+  selectedActivityTypes_ = selectedActivities;
+}
+
 bool Config::handleOption(const std::string& name, std::string& val) {
   // Event Profiler
   if (!name.compare(kEventsKey)) {

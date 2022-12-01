@@ -9,11 +9,10 @@
 #include <memory>
 #include <mutex>
 
-// TODO(T90238193)
-// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ActivityProfilerProxy.h"
+#include "ActivityProfiler.h"
 #include "Config.h"
-#include "DaemonConfigLoader.h"
+#include "CuptiActivityApi.h"
+#include "CuptiActivityProfiler.h"
 #ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
 #include "CuptiActivityApi.h"
@@ -22,6 +21,7 @@
 #endif
 #include "cupti_call.h"
 #include "libkineto.h"
+#include "output_json.h"
 
 #include "Logger.h"
 
@@ -42,7 +42,7 @@ static void initProfilers(
   std::lock_guard<std::mutex> lock(initMutex);
 
   if (!initialized) {
-    libkineto::api().initProfilerIfRegistered();
+    libkineto::api().activityProfiler().init();
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }
@@ -154,9 +154,15 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   }
 #endif // HAS_CUPTI
 
-  ConfigLoader& config_loader = libkineto::api().configLoader();
-  libkineto::api().registerProfiler(
-      std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
+  auto& profiler = libkineto::api().activityProfiler();
+  profiler.registerProfiler(
+      "CuptiProfiler", [cpuOnly]() {
+        return std::make_unique<CuptiActivityProfiler>(
+            "CuptiProfiler", CuptiActivityApi::singleton(), cpuOnly);
+  });
+  profiler.registerLogger("file", [](const std::string& url) {
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+  });
 
 }
 

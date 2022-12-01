@@ -29,7 +29,7 @@ namespace detail {
 class HeartbeatMonitor;
 }
 
-class EventProfilerController : public ConfigLoader::ConfigHandler {
+class EventProfilerController : public IConfigHandler {
  public:
   EventProfilerController(const EventProfilerController&) = delete;
   EventProfilerController& operator=(const EventProfilerController&) = delete;
@@ -47,7 +47,8 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
 
   bool canAcceptConfig() override;
 
-  void acceptConfig(const Config& config) override;
+  std::future<std::shared_ptr<IProfilerSession>>
+  acceptConfig(const Config& config) override;
 
  private:
   explicit EventProfilerController(

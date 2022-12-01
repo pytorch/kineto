@@ -15,26 +15,26 @@
 #include <map>
 #include <string>
 
-namespace KINETO_NAMESPACE {
+#include "output_base.h"
 
-class ActivityLogger;
+namespace KINETO_NAMESPACE {
 
 class ActivityLoggerFactory {
 
  public:
-  using FactoryFunc =
+  using Creator =
     std::function<std::unique_ptr<ActivityLogger>(const std::string& url)>;
 
   // Add logger factory for a protocol prefix
-  void addProtocol(const std::string& protocol, FactoryFunc f) {
-    factories_[tolower(protocol)] = f;
+  void addProtocol(const std::string& protocol, Creator f) {
+    creators_[tolower(protocol)] = f;
   }
 
   // Create a logger, invoking the factory for the protocol specified in url
   std::unique_ptr<ActivityLogger> makeLogger(const std::string& url) const {
     std::string protocol = extractProtocol(url);
-    auto it = factories_.find(tolower(protocol));
-    if (it != factories_.end()) {
+    auto it = creators_.find(tolower(protocol));
+    if (it != creators_.end()) {
       return it->second(stripProtocol(url));
     }
     throw std::invalid_argument(fmt::format(
@@ -60,7 +60,7 @@ class ActivityLoggerFactory {
     return pos == url.npos ? url : url.substr(pos + 3);
   }
 
-  std::map<std::string, FactoryFunc> factories_;
+  std::map<std::string, Creator> creators_;
 };
 
 } // namespace KINETO_NAMESPACE

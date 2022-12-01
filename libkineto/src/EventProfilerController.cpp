@@ -266,18 +266,23 @@ bool EventProfilerController::canAcceptConfig() {
   return !newOnDemandConfig_;
 }
 
-void EventProfilerController::acceptConfig(const Config& config) {
+std::future<std::shared_ptr<IProfilerSession>>
+EventProfilerController::acceptConfig(const Config& config) {
+  std::promise<std::shared_ptr<IProfilerSession>> promise;
+  auto res = promise.get_future();
+  promise.set_value(nullptr);
   if (config.eventProfilerOnDemandDuration().count() == 0) {
     // Ignore - not for this profiler
-    return;
+    return res;
   }
   std::lock_guard<std::mutex> guard(mutex_);
   if (newOnDemandConfig_) {
-    LOG(WARNING) << "On demand request already queued - ignoring new request";
-    return;
+    LOG(ERROR) << "On demand request already queued - ignoring new request";
+    return res;
   }
   newOnDemandConfig_ = config.clone();
   LOG(INFO) << "Received new on-demand config";
+  return res;
 }
 
 bool EventProfilerController::enableForDevice(Config& cfg) {

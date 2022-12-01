@@ -12,8 +12,8 @@
 #include <list>
 #include <memory>
 
-#include "libkineto.h"
 #include "CuptiActivityBuffer.h"
+#include "CpuTraceBuffer.h"
 
 namespace KINETO_NAMESPACE {
 

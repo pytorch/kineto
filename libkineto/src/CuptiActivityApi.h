@@ -24,8 +24,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityType.h"
 #include "CuptiActivityBuffer.h"
-#include "CuptiCallbackApi.h"
-
+#include "ICorrelationObserver.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -35,17 +34,8 @@ using namespace libkineto;
 using CUpti_Activity = void;
 #endif
 
-class CuptiActivityApi {
+class CuptiActivityApi : public ICorrelationObserver {
  public:
-  enum CorrelationFlowType {
-    Default,
-    User
-  };
-  // Control Variables shared with CuptiCallbackApi for teardown
-  std::atomic<uint32_t> teardownCupti_{0};
-  std::mutex finalizeMutex_;
-  std::condition_variable finalizeCond_;
-
   CuptiActivityApi() = default;
   CuptiActivityApi(const CuptiActivityApi&) = delete;
   CuptiActivityApi& operator=(const CuptiActivityApi&) = delete;
@@ -54,13 +44,12 @@ class CuptiActivityApi {
 
   static CuptiActivityApi& singleton();
 
-  static void pushCorrelationID(int id, CorrelationFlowType type);
-  static void popCorrelationID(CorrelationFlowType type);
+  void pushCorrelationId(ActivityType kind, uint64_t id) override;
+  void popCorrelationId(ActivityType kind) override;
 
-  void enableCuptiActivities(
+  virtual void enableCuptiActivities(
     const std::set<ActivityType>& selected_activities);
-  void disableCuptiActivities(
-    const std::set<ActivityType>& selected_activities);
+ virtual void disableCuptiActivities();
   void clearActivities();
   void teardownContext();
 
@@ -74,7 +63,20 @@ class CuptiActivityApi {
   void setDeviceBufferSize(size_t size);
   void setDeviceBufferPoolLimit(size_t limit);
 
-  std::atomic_bool stopCollection{false};
+  /*
+  virtual bool active() {
+#ifdef HAS_CUPTI
+    return activeGpuActivites_.size() > 0;
+#else
+    return false;
+#endif
+  }
+  */
+
+  bool error() {
+    return error_;
+  }
+
   int64_t flushOverhead{0};
 
   static void forceLoadCupti();
@@ -103,7 +105,16 @@ class CuptiActivityApi {
       uint8_t* buffer,
       size_t /* unused */,
       size_t validSize);
+
+  std::vector<CUpti_ActivityKind> activeGpuActivites_;
 #endif // HAS_CUPTI
+
+  int maxGpuBufferCount_{0};
+  CuptiActivityBufferMap allocatedGpuTraceBuffers_;
+  std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
+  std::mutex mutex_;
+  bool externalCorrelationEnabled_{false};
+  std::atomic_bool error_{false};
 
  protected:
 #ifdef HAS_CUPTI

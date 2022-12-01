@@ -34,37 +34,33 @@ CuptiActivityApi& CuptiActivityApi::singleton() {
   return instance;
 }
 
-void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
+void CuptiActivityApi::pushCorrelationId(ActivityType kind, uint64_t id) {
 #ifdef HAS_CUPTI
-  if (!singleton().externalCorrelationEnabled_) {
+  if (!externalCorrelationEnabled_) {
     return;
   }
   VLOG(2) << "pushCorrelationID(" << id << ")";
-  switch(type) {
-    case Default:
-      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
-        break;
-    case User:
-      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+  if (kind == ActivityType::USER_ANNOTATION) {
+    CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
         CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
+  } else {
+    CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
   }
 #endif
 }
 
-void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
+void CuptiActivityApi::popCorrelationId(ActivityType kind) {
 #ifdef HAS_CUPTI
-  if (!singleton().externalCorrelationEnabled_) {
+  if (!externalCorrelationEnabled_) {
     return;
   }
-  switch(type) {
-    case Default:
-      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
-        break;
-    case User:
-      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+  if (kind == ActivityType::USER_ANNOTATION) {
+    CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
         CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
+  } else {
+    CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
   }
 #endif
 }
@@ -130,11 +126,12 @@ void CuptiActivityApi::bufferRequested(
     uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
   std::lock_guard<std::mutex> guard(mutex_);
   if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
-    stopCollection = true;
+    disableCuptiActivities();
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << allocatedGpuTraceBuffers_.size()
                  << " > " << maxGpuBufferCount_
-                 << ") - terminating tracing";
+                 << ") - terminated tracing early";
+    error_ = true;
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);
@@ -250,6 +247,7 @@ void CuptiActivityApi::bufferCompleted(
   if (it == allocatedGpuTraceBuffers_.end()) {
     LOG(ERROR) << "bufferCompleted called with unknown buffer: "
                << (void*) buffer;
+    error_ = true;
     return;
   }
 
@@ -284,59 +282,42 @@ void CuptiActivityApi::enableCuptiActivities(
   }
 
   externalCorrelationEnabled_ = false;
+  error_ = false;
+  activeGpuActivites_.clear();
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
-      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
+      activeGpuActivites_.push_back(CUPTI_ACTIVITY_KIND_MEMCPY);
     }
     if (activity == ActivityType::GPU_MEMSET) {
-      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
+      activeGpuActivites_.push_back(CUPTI_ACTIVITY_KIND_MEMSET);
     }
     if (activity == ActivityType::CONCURRENT_KERNEL) {
-      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+      activeGpuActivites_.push_back(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL);
     }
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
-      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
+      activeGpuActivites_.push_back(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION);
       externalCorrelationEnabled_ = true;
     }
     if (activity == ActivityType::CUDA_RUNTIME) {
-      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+      activeGpuActivites_.push_back(CUPTI_ACTIVITY_KIND_RUNTIME);
     }
     if (activity == ActivityType::OVERHEAD) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));
     }
   }
-
-  tracingEnabled_ = 1;
+  for (CUpti_ActivityKind kind : activeGpuActivites_) {
+    CUPTI_CALL(cuptiActivityEnable(kind));
+  }
 #endif
-
-  // Explicitly enabled, so reset this flag if set
-  stopCollection = false;
 }
 
-void CuptiActivityApi::disableCuptiActivities(
-    const std::set<ActivityType>& selected_activities) {
+void CuptiActivityApi::disableCuptiActivities() {
 #ifdef HAS_CUPTI
-  for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::GPU_MEMCPY) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
-    }
-    if (activity == ActivityType::GPU_MEMSET) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
-    }
-    if (activity == ActivityType::CONCURRENT_KERNEL) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-    }
-    if (activity == ActivityType::EXTERNAL_CORRELATION) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
-    }
-    if (activity == ActivityType::CUDA_RUNTIME) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
-    }
-    if (activity == ActivityType::OVERHEAD) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
-    }
-  }
   externalCorrelationEnabled_ = false;
+  for (CUpti_ActivityKind kind : activeGpuActivites_) {
+    CUPTI_CALL(cuptiActivityDisable(kind));
+  }
+  activeGpuActivites_.clear();
 #endif
 }
 

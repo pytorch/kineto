@@ -17,6 +17,8 @@
 #include <thread>
 
 #include "Config.h"
+#include "IConfigLoader.h"
+#include "IConfigHandler.h"
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -31,30 +33,19 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 class IDaemonConfigLoader;
 
-class ConfigLoader {
+class ConfigLoader : public IConfigLoader {
  public:
+  virtual ~ConfigLoader();
 
   static ConfigLoader& instance();
 
-  enum ConfigKind {
-    ActivityProfiler = 0,
-    EventProfiler,
-    NumConfigKinds
-  };
-
-  struct ConfigHandler {
-    virtual ~ConfigHandler() {}
-    virtual bool canAcceptConfig() = 0;
-    virtual void acceptConfig(const Config& cfg) = 0;
-  };
-
-  void addHandler(ConfigKind kind, ConfigHandler* handler) {
+  void addHandler(ConfigKind kind, IConfigHandler* handler) override {
     std::lock_guard<std::mutex> lock(updateThreadMutex_);
     handlers_[kind].push_back(handler);
     startThread();
   }
 
-  void removeHandler(ConfigKind kind, ConfigHandler* handler) {
+  void removeHandler(ConfigKind kind, IConfigHandler* handler) override {
     std::lock_guard<std::mutex> lock(updateThreadMutex_);
     auto it = std::find(
         handlers_[kind].begin(), handlers_[kind].end(), handler);
@@ -66,7 +57,7 @@ class ConfigLoader {
   void notifyHandlers(const Config& cfg) {
     std::lock_guard<std::mutex> lock(updateThreadMutex_);
     for (auto& key_val : handlers_) {
-      for (ConfigHandler* handler : key_val.second) {
+      for (IConfigHandler* handler : key_val.second) {
         handler->acceptConfig(cfg);
       }
     }
@@ -74,7 +65,7 @@ class ConfigLoader {
 
   bool canHandlerAcceptConfig(ConfigKind kind) {
     std::lock_guard<std::mutex> lock(updateThreadMutex_);
-    for (ConfigHandler* handler : handlers_[kind]) {
+    for (IConfigHandler* handler : handlers_[kind]) {
       if (!handler->canAcceptConfig()) {
         return false;
       }
@@ -110,7 +101,6 @@ class ConfigLoader {
 
  private:
   ConfigLoader();
-  ~ConfigLoader();
 
   const char* configFileName();
   IDaemonConfigLoader* daemonConfigLoader();
@@ -138,8 +128,8 @@ class ConfigLoader {
   std::mutex configLock_;
   std::atomic<const char*> configFileName_{nullptr};
   std::unique_ptr<Config> config_;
-  std::unique_ptr<IDaemonConfigLoader> daemonConfigLoader_;
-  std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;
+  std::unique_ptr<DaemonConfigLoader> daemonConfigLoader_;
+  std::map<ConfigKind, std::vector<IConfigHandler*>> handlers_;
 
   std::chrono::seconds configUpdateIntervalSecs_;
   std::chrono::seconds onDemandConfigUpdateIntervalSecs_;

@@ -9,15 +9,25 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 
 namespace libkineto {
 
 template <class ClockT>
 inline int64_t timeSinceEpoch(
-      const std::chrono::time_point<ClockT>& t) {
-    return std::chrono::duration_cast<std::chrono::microseconds>(
-               t.time_since_epoch())
-        .count();
+      const std::chrono::time_point<std::chrono::system_clock>& t) {
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+      t.time_since_epoch()).count();
+}
+
+int64_t timeSinceEpoch();
+
+#ifdef KINETO_UNIT_TEST
+void setMockTimeSinceEpoch(std::function<int64_t()> f);
+#endif
+
+inline int64_t toMilliseconds(int64_t us) {
+  return us / 1000;
 }
 
 } // namespace libkineto

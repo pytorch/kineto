@@ -90,7 +90,8 @@ static void setupSignalHandler(bool enableSigUsr2) {
 }
 
 // return an empty string if reading gets any errors. Otherwise a config string.
-static std::string readConfigFromConfigFile(const char* filename, bool verbose=true) {
+static std::string readConfigFromConfigFile(const char* filename) {
+  LOG(INFO) << "Reading " << filename;
   // Read whole file into a string.
   std::ifstream file(filename);
   std::string conf;
@@ -226,6 +227,7 @@ void ConfigLoader::updateBaseConfig() {
     config_str = daemonConfigLoader()->readBaseConfig();
   }
   if (config_str != config_->source()) {
+    LOG(INFO) << "Updating config!";
     std::lock_guard<std::mutex> lock(configLock_);
     config_ = std::make_unique<Config>();
     config_->parse(config_str);
@@ -258,6 +260,7 @@ void ConfigLoader::configureFromDaemon(
     Config& config) {
   const std::string config_str = readOnDemandConfigFromDaemon(now);
   if (config_str.empty()) {
+    VLOG(1) << "Empty config";
     return;
   }
 
@@ -312,6 +315,7 @@ void ConfigLoader::updateConfigThread() {
           onDemandConfig->verboseLogLevel(),
           onDemandConfig->verboseLogModules());
     }
+    LOG(INFO) << "Tick";
   }
 }
 

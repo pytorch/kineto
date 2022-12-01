@@ -376,7 +376,6 @@ void ChromeTraceLogger::handleLink(
 
 void ChromeTraceLogger::finalizeTrace(
     const Config& /*unused*/,
-    std::unique_ptr<ActivityBuffers> /*unused*/,
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   if (!traceOf_) {

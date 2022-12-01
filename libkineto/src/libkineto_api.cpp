@@ -8,16 +8,20 @@
 
 #include "libkineto.h"
 
+#include "ActivityProfiler.h"
 #include "ConfigLoader.h"
 #include "ThreadUtil.h"
 
 namespace libkineto {
 
 LibkinetoApi& api() {
-  static LibkinetoApi instance(ConfigLoader::instance());
+  static auto profiler = std::make_unique<ActivityProfiler>(
+      "kineto", ConfigLoader::instance());
+  static LibkinetoApi instance(ConfigLoader::instance(), std::move(profiler));
   return instance;
 }
 
+/*
 void LibkinetoApi::initClientIfRegistered() {
   if (client_) {
     if (clientRegisterThread_ != threadId()) {
@@ -43,5 +47,6 @@ void LibkinetoApi::registerClient(ClientInterface* client) {
   // and only call it if it's the same thread that called registerClient
   clientRegisterThread_ = threadId();
 }
+*/
 
 } // namespace libkineto

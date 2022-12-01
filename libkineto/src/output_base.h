@@ -14,8 +14,8 @@
 #include <thread>
 #include <unordered_map>
 
-#include "ActivityBuffers.h"
 #include "GenericTraceActivity.h"
+#include "ResourceInfo.h"
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 
@@ -31,11 +31,6 @@ class ActivityLogger {
  public:
 
   virtual ~ActivityLogger() = default;
-
-  struct OverheadInfo {
-    explicit OverheadInfo(const std::string& name) : name(name) {}
-    const std::string name;
-  };
 
   virtual void handleDeviceInfo(
       const DeviceInfo &info,
@@ -61,7 +56,6 @@ class ActivityLogger {
 
   virtual void finalizeTrace(
       const KINETO_NAMESPACE::Config& config,
-      std::unique_ptr<ActivityBuffers> buffers,
       int64_t endTime,
       std::unordered_map<std::string, std::vector<std::string>>& metadata) = 0;
 

@@ -166,10 +166,8 @@ struct FactoryMap {
 
 std::shared_ptr<FactoryMap> configFactories() {
   // Ensure this is safe to call during shutdown, even as static
-  // destructors are invoked. Once factories destructor has been
-  // invoked, weak_ptr.lock() will return nullptr.
-  // But calls before that point will have a valid shared_ptr,
-  // delaying destruction of the underlying FactoryMap.
+  // destructors are invoked. getStaticObjectLifetimeHandle hangs onto
+  // FactoryMap delaying its destruction.
   static auto factories = std::make_shared<FactoryMap>();
   static std::weak_ptr<FactoryMap> weak_ptr = factories;
   return weak_ptr.lock();
@@ -221,6 +219,10 @@ Config::Config()
   if (factories) {
     factories->addFeatureConfigs(*this);
   }
+}
+
+std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {
+  return configFactories();
 }
 
 uint8_t Config::createDeviceMask(const string& val) {

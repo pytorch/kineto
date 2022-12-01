@@ -116,6 +116,7 @@ class ConfigLoader {
   IDaemonConfigLoader* daemonConfigLoader();
 
   void startThread();
+  void stopThread();
   void updateConfigThread();
   void updateBaseConfig();
 

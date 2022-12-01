@@ -9,6 +9,7 @@
 #include <asm/unistd.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <stdexcept>
@@ -37,6 +38,9 @@
  * class that are trivially copyable (i.e. std::is_trivially_copyable), like
  * Plain Old Data (POD) classes.
  *    (https://en.cppreference.com/w/cpp/types/is_trivially_copyable)
+ *
+ *  You can list local domain sockets using-
+ *    netstat -a -p --unix on Linux
  */
 
 namespace dynolog {
@@ -80,10 +84,20 @@ class EndPoint final {
     }
     struct sockaddr_un addr;
     size_t addrlen = setAddress_(address, addr);
+    if (addr.sun_path[0] != '\0') {
+      // delete domain socket file just in case before binding
+      unlink(addr.sun_path);
+    }
 
     int ret = bind(socket_fd_, (const struct sockaddr*)&addr, addrlen);
     if (ret == -1) {
       throw std::runtime_error(std::strerror(errno));
+    }
+    if (addr.sun_path[0] != '\0') {
+      // set correct permissions for the socket. We avoid using umask because
+      // of multithreaded nature. A short window exists between bind and chmod
+      // where the permissions are wrong but it's ok for our use case.
+      chmod(addr.sun_path, 0666);
     }
   }
 
@@ -133,7 +147,7 @@ class EndPoint final {
   }
 
   // If false, must retry. Only enabled for bound sockets.
-  [[nodiscard]] bool tryRcvMsg(TCtxt& ctxt) {
+  [[nodiscard]] bool tryRcvMsg(TCtxt& ctxt) noexcept {
     ssize_t ret = recvmsg(socket_fd_, &ctxt.msghdr, MSG_DONTWAIT);
 
     if (ret > 0) { // XXX: Enforce correct number of bytes sent.
@@ -149,7 +163,7 @@ class EndPoint final {
     throw std::runtime_error(std::strerror(errno));
   }
 
-  [[nodiscard]] bool tryPeekMsg(TCtxt& ctxt) {
+  [[nodiscard]] bool tryPeekMsg(TCtxt& ctxt) noexcept {
     ssize_t ret = recvmsg(socket_fd_, &ctxt.msghdr, MSG_DONTWAIT | MSG_PEEK);
     if (ret > 0) { // XXX: Enforce correct number of bytes sent.
       return true;
@@ -164,7 +178,26 @@ class EndPoint final {
   }
 
   const char* getName(TCtxt const& ctxt) const noexcept {
-    return ctxt.msg_name.sun_path + 1;
+    const char* socket_dir = getenv("KINETO_IPC_SOCKET_DIR");
+    bool is_domain_socket = socket_dir && socket_dir[0];
+    if (is_domain_socket) {
+      int socket_dirname_len = strlen(socket_dir);
+      if (strncmp(socket_dir, ctxt.msg_name.sun_path, socket_dirname_len) !=
+              0 ||
+          ctxt.msg_name.sun_path[socket_dirname_len] != '/') {
+        throw std::invalid_argument(
+            "Unexpected socket name: " + std::string(ctxt.msg_name.sun_path) +
+            ". Expected to start with " + std::string(socket_dir));
+      }
+      return ctxt.msg_name.sun_path + socket_dirname_len + 1;
+    } else {
+      if (ctxt.msg_name.sun_path[0] != '\0') {
+        throw std::invalid_argument(
+            "Expected abstract socket, got " +
+            std::string(ctxt.msg_name.sun_path));
+      }
+      return ctxt.msg_name.sun_path + 1;
+    }
   }
 
   std::vector<fd_t> getFds(const TCtxt& ctxt) const {
@@ -184,14 +217,22 @@ class EndPoint final {
           "Abstract UNIX Socket path cannot be larger than kMaxNameLen - 2");
     }
     dest.sun_family = AF_UNIX;
-    dest.sun_path[0] = '\0';
-    if (src.size() == 0) {
-      return sizeof(sa_family_t); // autobind socket.
+    const char* socket_dir = getenv("KINETO_IPC_SOCKET_DIR");
+    bool is_domain_socket = socket_dir && socket_dir[0];
+    if (is_domain_socket) {
+      std::string full_path = std::string(socket_dir) + "/" + src;
+      full_path.copy(dest.sun_path, full_path.size());
+      dest.sun_path[full_path.size()] = '\0';
+      return sizeof(sa_family_t) + full_path.size() + 1;
+    } else {
+      dest.sun_path[0] = '\0';
+      if (src.size() == 0) {
+        return sizeof(sa_family_t); // autobind socket.
+      }
+      src.copy(dest.sun_path + 1, src.size());
+      dest.sun_path[src.size() + 1] = '\0';
+      return sizeof(sa_family_t) + src.size() + 2;
     }
-
-    src.copy(dest.sun_path + 1, src.size());
-    dest.sun_path[src.size() + 1] = '\0';
-    return sizeof(sa_family_t) + src.size() + 2;
   }
 
   auto buildCtxt_(const std::vector<Payload>& payload, unsigned num_fds) {

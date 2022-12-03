@@ -12,6 +12,7 @@
 #include <fstream>
 #include <time.h>
 #include <map>
+#include <unistd.h>
 
 #include "Config.h"
 #ifdef HAS_CUPTI
@@ -73,11 +74,19 @@ static std::string defaultFileName() {
 }
 
 void ChromeTraceLogger::openTraceFile() {
-  traceOf_.open(fileName_, std::ofstream::out | std::ofstream::trunc);
+  char tempBuf[] = "/tmp/libkineto_activities_tmp.json.XXXXXX";
+  int fd = mkstemp(tempBuf);
+  if (fd == -1) {
+    PLOG(ERROR) << "Failed to create temp file " << tempFileName_;
+    return;
+  }
+  tempFileName_ = tempBuf;
+  traceOf_.open(tempFileName_, std::ofstream::out | std::ofstream::trunc);
+  close(fd);
   if (!traceOf_) {
     PLOG(ERROR) << "Failed to open '" << fileName_ << "'";
   } else {
-    LOG(INFO) << "Tracing to " << fileName_;
+    LOG(INFO) << "Tracing to temporary file " << fileName_;
   }
 }
 
@@ -425,6 +434,11 @@ void ChromeTraceLogger::finalizeTrace(
   // clang-format on
 
   traceOf_.close();
+  if (rename(tempFileName_.c_str(), fileName_.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to rename " << tempFileName_ << " to " << fileName_;
+  } else {
+    LOG(INFO) << "Renamed the trace file to " << fileName_;
+  }
 }
 
 } // namespace KINETO_NAMESPACE

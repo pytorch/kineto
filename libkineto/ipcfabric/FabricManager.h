@@ -17,6 +17,8 @@
 #include "Endpoint.h"
 #include "Utils.h"
 
+// If building inside Kineto, use its logger, otherwise use glog
+#ifdef KINETO_NAMESPACE
 // We need to include the Logger header here for LOG() macros.
 // However this can alias with other files that include this and 
 // also use glog. TODO(T131440833)
@@ -26,6 +28,9 @@
 // add to namespace to get logger
 using namespace libkineto;
 #endif
+#else // KINETO_NAMESPACE
+#include <glog/logging.h>
+#endif // KINETO_NAMESPACE
 
 namespace dynolog::ipcfabric {
 
@@ -46,14 +51,13 @@ struct Message {
     // TODO CXX 17 - https://github.com/pytorch/kineto/issues/650
     // if constexpr (std::is_same_v<std::string, T>) {
     // Without constexpr following is not possible
-#if 0
-    if (std::is_same<std::string, T>::value == true) {
+#if __cplusplus >= 201703L
+    if constexpr (std::is_same<std::string, T>::value == true) {
       msg->metadata.size = data.size();
       msg->buf = std::make_unique<unsigned char[]>(msg->metadata.size);
       memcpy(msg->buf.get(), data.c_str(), msg->metadata.size);
     } else {
 #endif
-    {
       // ensure memcpy works on T
       // TODO CXX 17 - https://github.com/pytorch/kineto/issues/650
       // static_assert(std::is_trivially_copyable_v<T>);
@@ -61,7 +65,9 @@ struct Message {
       msg->metadata.size = sizeof(data);
       msg->buf = std::make_unique<unsigned char[]>(msg->metadata.size);
       memcpy(msg->buf.get(), &data, msg->metadata.size);
+#if __cplusplus >= 201703L
     }
+#endif
     return msg;
   }
 
@@ -91,7 +97,7 @@ struct Message {
   std::string src;
 };
 
-#ifdef ENABLE_IPC_FABRIC
+#if !defined(KINETO_NAMESPACE) || defined(ENABLE_IPC_FABRIC)
 class FabricManager {
  public:
   FabricManager(const FabricManager&) = delete;

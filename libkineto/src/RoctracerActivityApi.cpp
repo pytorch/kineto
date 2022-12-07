@@ -80,6 +80,8 @@ int RoctracerActivityApi::processActivities(
   clock_gettime(CLOCK_REALTIME, &t00);
 
   const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
+  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
+  // Convert the guards rather than each timestamp.
   startTime = (startTime * 1000) - toffset;
   endTime = (endTime * 1000) - toffset;
 

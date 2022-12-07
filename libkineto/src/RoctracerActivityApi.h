@@ -53,7 +53,8 @@ class RoctracerActivityApi {
   void teardownContext() {}
 
   int processActivities(ActivityLogger& logger,
-                        std::function<const ITraceActivity*(int32_t)> linkedActivity);
+                        std::function<const ITraceActivity*(int32_t)> linkedActivity,
+                        int64_t startTime, int64_t endTime);
 
   void setMaxBufferSize(int size);
 

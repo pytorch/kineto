@@ -220,7 +220,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(
         logger,
-        std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1));
+        std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
+        captureWindowStartTime_,
+        captureWindowEndTime_);
     LOG(INFO) << "Processed " << count << " GPU records";
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }

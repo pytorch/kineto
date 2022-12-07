@@ -65,7 +65,7 @@ void RoctracerActivityApi::setMaxBufferSize(int size) {
 }
 
 inline bool inRange(int64_t start, int64_t end, int64_t stamp) {
-    return ((stamp > start) and (stamp < end));
+    return ((stamp > start) && (stamp < end));
 }
 
 int RoctracerActivityApi::processActivities(
@@ -81,7 +81,7 @@ int RoctracerActivityApi::processActivities(
 
   const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
   startTime = (startTime * 1000) - toffset;
-  endTime = (startTime * 1000) - toffset;
+  endTime = (endTime * 1000) - toffset;
 
   int count = 0;
 

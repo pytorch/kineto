@@ -457,8 +457,8 @@ void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
   if (act1->timestamp() > act2->timestamp()) {
     LOG_FIRST_N(WARNING, 10) << "GPU op timestamp (" << act2->timestamp()
                              << ") < runtime timestamp (" << act1->timestamp() << ") by "
-                             << act1->timestamp() - act2->timestamp() << "us" << std::endl
-                             << "Name: " << act2->name() << " Device: " << act2->deviceId()
+                             << act1->timestamp() - act2->timestamp() << "us"
+                             << " Name: " << act2->name() << " Device: " << act2->deviceId()
                              << " Stream: " << act2->resourceId();
   }
 }

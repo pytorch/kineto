@@ -90,7 +90,8 @@ IpcFabricConfigClient::IpcFabricConfigClient() : jobId_(getJobId()), pids_(getPi
   std::string ep_name = "dynoconfigclient" + uuid::generate_uuid_v4();
 
   fabricManager_ = ::dynolog::ipcfabric::FabricManager::factory(ep_name);
-  LOG(INFO) << "Setting up IPC Fabric at endpoint: " << ep_name;
+  LOG(INFO) << "Setting up IPC Fabric at endpoint: " << ep_name
+            << " status = " << (fabricManager_ ? "initialized" : "failed (null)");
 }
 
 int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {

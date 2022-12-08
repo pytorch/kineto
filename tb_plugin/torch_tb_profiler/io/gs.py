@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 from google.cloud import storage
+from google.auth import exceptions
 
 from .. import utils
 from .base import BaseFileSystem, RemotePath, StatData
@@ -122,6 +123,12 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         return bucket, path
 
     def create_google_cloud_client(self):
-        # TODO: support client with credential?
-        client = storage.Client.create_anonymous_client()
+        try:
+            client = storage.Client()
+            logger.debug('Using default Google Cloud credentials.')
+        except exceptions.DefaultCredentialsError:
+            client = storage.Client.create_anonymous_client()
+            logger.debug(
+                'Default Google Cloud credentials not available. '
+                'Falling back to anonymous credentials.')
         return client

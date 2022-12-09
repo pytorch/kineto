@@ -426,6 +426,9 @@ void ChromeTraceLogger::finalizeTrace(
   // clang-format on
 
   traceOf_.close();
+  // On some systems, rename() fails if the destination file exists.
+  // So, remove the destination file first.
+  remove(fileName_.c_str());
   if (rename(tempFileName_.c_str(), fileName_.c_str()) != 0) {
     PLOG(ERROR) << "Failed to rename " << tempFileName_ << " to " << fileName_;
   } else {

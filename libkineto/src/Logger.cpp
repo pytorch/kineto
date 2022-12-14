@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -24,11 +30,6 @@ std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wglobal-constructors"
-std::mutex Logger::loggerObserversMutex_;
-#pragma GCC diagnostic pop
-
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
@@ -51,7 +52,7 @@ Logger::~Logger() {
 #endif
 
   {
-    std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+    std::lock_guard<std::mutex> guard(loggerObserversMutex());
     for (auto* observer : loggerObservers()) {
       // Output to observers. Current Severity helps keep track of which bucket the output goes.
       if (observer) {
@@ -80,61 +81,68 @@ void Logger::addLoggerObserver(ILoggerObserver* observer) {
   if (observer == nullptr) {
     return;
   }
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   loggerObservers().insert(observer);
 }
 
 void Logger::removeLoggerObserver(ILoggerObserver* observer) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   loggerObservers().erase(observer);
 }
 
 void Logger::addLoggerObserverDevice(int64_t device) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->addDevice(device);
   }
 }
 
 void Logger::addLoggerObserverEventCount(int64_t count) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->addEventCount(count);
   }
 }
 
 void Logger::setLoggerObserverTraceDurationMS(int64_t duration) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->setTraceDurationMS(duration);
   }
 }
 
 void Logger::setLoggerObserverTraceID(const std::string& tid) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->setTraceID(tid);
   }
 }
 
 void Logger::setLoggerObserverGroupTraceID(const std::string& gtid) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->setGroupTraceID(gtid);
   }
 }
 
 void Logger::addLoggerObserverDestination(const std::string& dest) {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->addDestination(dest);
   }
 }
 
 void Logger::setLoggerObserverOnDemand() {
-  std::lock_guard<std::mutex> guard(loggerObserversMutex_);
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->setTriggerOnDemand();
+  }
+}
+
+void Logger::addLoggerObserverAddMetadata(const std::string& key, const std::string& value) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->addMetadata(key, value);
   }
 }
 

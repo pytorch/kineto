@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -11,6 +17,7 @@ class ClientInterface {
   virtual void warmup(bool setupOpInputsCollection) = 0;
   virtual void start() = 0;
   virtual void stop() = 0;
+  virtual void set_withstack(bool withStack) = 0;
 };
 
 } // namespace libkineto

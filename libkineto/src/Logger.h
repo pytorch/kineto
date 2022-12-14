@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -19,6 +25,7 @@
 #define LOGGER_OBSERVER_SET_GROUP_TRACE_ID(gtid)
 #define LOGGER_OBSERVER_ADD_DESTINATION(dest)
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND()
+#define LOGGER_OBSERVER_ADD_METADATA(key, value)
 #define UST_LOGGER_MARK_COMPLETED(stage)
 
 #else // !USE_GOOGLE_LOG
@@ -98,7 +105,7 @@ class Logger {
   }
 
   static void clearLoggerObservers() {
-    std::lock_guard<std::mutex> g(loggerObserversMutex_);
+    std::lock_guard<std::mutex> g(loggerObserversMutex());
     loggerObservers().clear();
   }
 
@@ -120,6 +127,8 @@ class Logger {
 
   static void setLoggerObserverOnDemand();
 
+  static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
+
  private:
   std::stringstream buf_;
   std::ostream& out_;
@@ -132,7 +141,10 @@ class Logger {
     static auto* inst = new std::set<ILoggerObserver*>();
     return *inst;
   }
-  static std::mutex loggerObserversMutex_;
+  static std::mutex& loggerObserversMutex() {
+    static auto* loggerObserversMutex = new std::mutex();
+    return *loggerObserversMutex;
+  }
 };
 
 class VoidLogger {
@@ -183,6 +195,11 @@ class VoidLogger {
 #define LOG_EVERY_N(severity, rate)               \
   static int LOG_OCCURRENCES = 0;                 \
   LOG_IF(severity, LOG_OCCURRENCES++ % rate == 0) \
+      << "(x" << LOG_OCCURRENCES << ") "
+
+#define LOG_FIRST_N(severity, threshold)          \
+  static int LOG_OCCURRENCES = 0;                 \
+  LOG_IF(severity, LOG_OCCURRENCES++ < threshold) \
       << "(x" << LOG_OCCURRENCES << ") "
 
 template <uint64_t n>
@@ -243,6 +260,11 @@ struct __to_constant__ {
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND() \
   libkineto::Logger::setLoggerObserverOnDemand()
+
+// Record this was triggered by On-Demand.
+#define LOGGER_OBSERVER_ADD_METADATA(key, value) \
+  libkineto::Logger::addLoggerObserverAddMetadata(key, value)
+
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) \

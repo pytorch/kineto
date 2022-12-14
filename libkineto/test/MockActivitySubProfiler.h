@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -37,6 +43,14 @@ class MockProfilerSession: public IActivityProfilerSession {
     }
 
     std::unique_ptr<CpuTraceBuffer> getTraceBuffer() override;
+
+    std::unique_ptr<DeviceInfo> getDeviceInfo() override {
+      return {};
+    }
+
+    std::vector<ResourceInfo> getResourceInfos() override {
+      return {};
+    }
 
     int start_count = 0;
     int stop_count = 0;

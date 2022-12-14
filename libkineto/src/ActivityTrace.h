@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -23,7 +29,7 @@ class ActivityTrace : public ActivityTraceInterface {
 
   const std::vector<const ITraceActivity*>* activities() override {
     return memLogger_->traceActivities();
-  };
+  }
 
   void save(const std::string& url) override {
     std::string prefix;
@@ -32,7 +38,7 @@ class ActivityTrace : public ActivityTraceInterface {
       prefix = "file://";
     }
     memLogger_->log(*loggerFactory_.makeLogger(prefix + url));
-  };
+  }
 
  private:
   // Activities are logged into a buffer

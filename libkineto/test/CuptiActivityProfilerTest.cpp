@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <fmt/format.h>
 #include <gmock/gmock.h>
@@ -51,7 +57,7 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     op.endTime = endTime;
     op.resource = systemThreadId();
     op.id = correlation;
-    activities.push_back(std::move(op));
+    emplace_activity(std::move(op));
     span.opCount++;
   }
 };
@@ -362,8 +368,6 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
 }
 
 TEST_F(CuptiActivityProfilerTest, SyncTrace) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
@@ -514,8 +518,6 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
 }
 
 TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(

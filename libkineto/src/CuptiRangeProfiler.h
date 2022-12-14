@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -46,6 +52,12 @@ class CuptiRangeProfilerSession : public IActivityProfilerSession {
 
   // returns errors with this trace
   std::vector<std::string> errors() override;
+
+  // returns device info used in this trace, could be nullptr
+  std::unique_ptr<DeviceInfo> getDeviceInfo() override;
+
+  // returns resource info used in this trace, could be empty
+  std::vector<ResourceInfo> getResourceInfos() override;
 
  private:
   void addRangeEvents(
@@ -102,8 +114,6 @@ class CuptiRangeProfiler : public libkineto::IActivityProfiler {
 
 struct CuptiRangeProfilerInit {
   CuptiRangeProfilerInit();
-  ~CuptiRangeProfilerInit();
-
   bool success = false;
 };
 

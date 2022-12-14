@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -65,7 +71,7 @@ class CuptiRBProfilerSession {
 
   explicit CuptiRBProfilerSession(const CuptiRangeProfilerOptions& opts);
 
-  virtual ~CuptiRBProfilerSession() = default;
+  virtual ~CuptiRBProfilerSession();
 
   // Start profiling session
   // This function has to be called from the CPU thread running

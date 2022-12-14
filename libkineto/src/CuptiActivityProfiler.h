@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -80,6 +86,9 @@ struct ConfigDerivedState final {
   int64_t profileStartIteration() const { return profileStartIter_; }
   int64_t profileEndIteration() const { return profileEndIter_; }
   bool isProfilingByIteration() const { return profilingByIter_; }
+  bool profileWithPythonStack() const {
+    return profileWithStack_;
+  }
 
  private:
   std::set<ActivityType> profileActivityTypes_;
@@ -88,9 +97,10 @@ struct ConfigDerivedState final {
   std::chrono::time_point<std::chrono::system_clock> profileEndTime_;
   std::chrono::milliseconds profileDuration_;
   std::chrono::seconds profileWarmupDuration_;
-  int64_t profileStartIter_ {-1};
-  int64_t profileEndIter_ {-1};
-  bool profilingByIter_ {false};
+  int64_t profileStartIter_{-1};
+  int64_t profileEndIter_{-1};
+  bool profilingByIter_{false};
+  bool profileWithStack_{false};
 };
 
 class CuptiActivityProfiler {
@@ -170,7 +180,7 @@ class CuptiActivityProfiler {
     if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(pid, tid),
-          ActivityLogger::ResourceInfo(
+          ResourceInfo(
               pid,
               sysTid,
               sysTid, // sortindex
@@ -239,6 +249,8 @@ class CuptiActivityProfiler {
     int cntr;
   };
 
+  void logCudaVersions();
+
   void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
 
@@ -263,7 +275,7 @@ class CuptiActivityProfiler {
     if (resourceInfo_.find({device, id}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(device, id),
-          ActivityLogger::ResourceInfo(
+          ResourceInfo(
               device, id, id, fmt::format(
                   "stream {} {}", id, postfix)));
     }
@@ -283,6 +295,8 @@ class CuptiActivityProfiler {
   const ITraceActivity* linkedActivity(
       int32_t correlationId,
       const std::unordered_map<int64_t, int64_t>& correlationMap);
+
+  const ITraceActivity* cpuActivity(int32_t correlationId);
 
 #ifdef HAS_CUPTI
   // Process generic CUPTI activity
@@ -357,7 +371,7 @@ class CuptiActivityProfiler {
   // and stream ids for GPU streams
   std::map<
       std::pair<int64_t, int64_t>,
-      ActivityLogger::ResourceInfo> resourceInfo_;
+      ResourceInfo> resourceInfo_;
 
   std::vector<ActivityLogger::OverheadInfo> overheadInfo_;
 
@@ -401,6 +415,9 @@ class CuptiActivityProfiler {
 
   // a vector of active profiler plugin sessions
   std::vector<std::unique_ptr<IActivityProfilerSession>> sessions_;
+
+  // Number of memory overhead events encountered during the session
+  uint32_t resourceOverheadCount_;
 
   // LoggerCollector to collect all LOGs during the trace
 #if !USE_GOOGLE_LOG

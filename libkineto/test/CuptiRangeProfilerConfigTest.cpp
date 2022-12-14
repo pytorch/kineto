@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "include/Config.h"
 #include "src/CuptiRangeProfilerConfig.h"
@@ -8,7 +14,6 @@
 #include <time.h>
 #include <chrono>
 
-using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 
 class CuptiRangeProfilerConfigTest : public ::testing::Test {

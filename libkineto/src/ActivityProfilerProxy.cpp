@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "ActivityProfilerProxy.h"
 
@@ -7,6 +13,9 @@
 #include "CuptiActivityApi.h"
 #include "Logger.h"
 #include <chrono>
+#ifdef HAS_ROCTRACER
+#include "RoctracerActivityApi.h"
+#endif
 
 namespace KINETO_NAMESPACE {
 
@@ -41,13 +50,18 @@ void ActivityProfilerProxy::prepareTrace(
   Config config;
   bool validate_required = true;
 
-  // allow user provided config to override default options
+  // allow user provided config (ExperimentalConfig)to override default options
   if (!configStr.empty()) {
     if (!config.parse(configStr)) {
       LOG(WARNING) << "Failed to parse config : " << configStr;
     }
     // parse also runs validate
     validate_required = false;
+  }
+  // user provided config (KINETO_CONFIG) to override default options
+  auto loaded_config = configLoader_.getConfString();
+  if (!loaded_config.empty()) {
+    config.parse(loaded_config);
   }
 
   config.setClientDefaults();
@@ -80,11 +94,20 @@ bool ActivityProfilerProxy::isActive() {
 void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
   CuptiActivityApi::pushCorrelationID(id,
     CuptiActivityApi::CorrelationFlowType::Default);
+#ifdef HAS_ROCTRACER
+  // FIXME: bad design here
+  RoctracerActivityApi::pushCorrelationID(id,
+    RoctracerActivityApi::CorrelationFlowType::Default);
+#endif
 }
 
 void ActivityProfilerProxy::popCorrelationId() {
   CuptiActivityApi::popCorrelationID(
     CuptiActivityApi::CorrelationFlowType::Default);
+#ifdef HAS_ROCTRACER
+  RoctracerActivityApi::popCorrelationID(
+    RoctracerActivityApi::CorrelationFlowType::Default);
+#endif
 }
 
 void ActivityProfilerProxy::pushUserCorrelationId(uint64_t id) {

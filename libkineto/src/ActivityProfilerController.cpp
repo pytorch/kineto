@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "ActivityProfilerController.h"
 
@@ -298,9 +304,10 @@ void ActivityProfilerController::startTrace() {
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() {
   profiler_->stopTrace(std::chrono::system_clock::now());
   UST_LOGGER_MARK_COMPLETED(kCollectionStage);
-
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
+  // Will follow up with another patch for logging URLs when ActivityTrace is moved.
+  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
   profiler_->reset();
   return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
 }

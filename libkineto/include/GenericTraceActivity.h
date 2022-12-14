@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -58,7 +64,7 @@ class GenericTraceActivity : public ITraceActivity {
   }
 
   const ITraceActivity* linkedActivity() const override {
-    return nullptr;
+    return linked;
   }
 
   int flowType() const override {
@@ -116,6 +122,7 @@ class GenericTraceActivity : public ITraceActivity {
     uint32_t type : 4;
     uint32_t start : 1;
   } flow;
+  const ITraceActivity* linked{nullptr};
 
  private:
   const TraceSpan* traceSpan_;

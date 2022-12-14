@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "ConfigLoader.h"
 
@@ -8,7 +14,6 @@
 
 #include <stdlib.h>
 #include <chrono>
-#include <fmt/format.h>
 #include <fstream>
 #include <memory>
 
@@ -17,11 +22,9 @@
 #include "Logger.h"
 
 using namespace std::chrono;
-using std::string;
 
 namespace KINETO_NAMESPACE {
 
-using namespace libkineto;
 
 constexpr char kConfigFileEnvVar[] = "KINETO_CONFIG";
 #ifdef __linux__
@@ -87,7 +90,7 @@ static void setupSignalHandler(bool enableSigUsr2) {
 }
 
 // return an empty string if reading gets any errors. Otherwise a config string.
-static std::string readConfigFromConfigFile(const char* filename) {
+static std::string readConfigFromConfigFile(const char* filename, bool verbose=true) {
   // Read whole file into a string.
   std::ifstream file(filename);
   std::string conf;
@@ -95,21 +98,23 @@ static std::string readConfigFromConfigFile(const char* filename) {
     conf.assign(
         std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
   } catch (std::exception& e) {
-    VLOG(0) << "Error reading " << filename << ": "
-            << e.what();
+    if (verbose) {
+      VLOG(0) << "Error reading " << filename << ": " << e.what();
+    }
+
     conf = "";
   }
   return conf;
 }
 
-static std::function<std::unique_ptr<DaemonConfigLoader>()>&
+static std::function<std::unique_ptr<IDaemonConfigLoader>()>&
 daemonConfigLoaderFactory() {
-  static std::function<std::unique_ptr<DaemonConfigLoader>()> factory = nullptr;
+  static std::function<std::unique_ptr<IDaemonConfigLoader>()> factory = nullptr;
   return factory;
 }
 
 void ConfigLoader::setDaemonConfigLoaderFactory(
-    std::function<std::unique_ptr<DaemonConfigLoader>()> factory) {
+    std::function<std::unique_ptr<IDaemonConfigLoader>()> factory) {
   daemonConfigLoaderFactory() = factory;
 }
 
@@ -157,7 +162,7 @@ void ConfigLoader::startThread() {
   }
 }
 
-ConfigLoader::~ConfigLoader() {
+void ConfigLoader::stopThread() {
   if (updateThread_) {
     stopFlag_ = true;
     {
@@ -165,7 +170,12 @@ ConfigLoader::~ConfigLoader() {
       updateThreadCondVar_.notify_one();
     }
     updateThread_->join();
+    updateThread_ = nullptr;
   }
+}
+
+ConfigLoader::~ConfigLoader() {
+  stopThread();
 #if !USE_GOOGLE_LOG
   Logger::clearLoggerObservers();
 #endif // !USE_GOOGLE_LOG
@@ -189,12 +199,20 @@ const char* ConfigLoader::configFileName() {
   return configFileName_;
 }
 
-DaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
+IDaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
   if (!daemonConfigLoader_ && daemonConfigLoaderFactory()) {
     daemonConfigLoader_ = daemonConfigLoaderFactory()();
     daemonConfigLoader_->setCommunicationFabric(config_->ipcFabricEnabled());
   }
   return daemonConfigLoader_.get();
+}
+
+const char* ConfigLoader::customConfigFileName() {
+  return getenv(kConfigFileEnvVar);
+}
+
+const std::string ConfigLoader::getConfString(){
+  return readConfigFromConfigFile(configFileName(), false);
 }
 
 void ConfigLoader::updateBaseConfig() {
@@ -249,6 +267,11 @@ void ConfigLoader::configureFromDaemon(
 }
 
 void ConfigLoader::updateConfigThread() {
+  // It's important to hang to this reference until the thread stops.
+  // Otherwise, the Config's static members may be destroyed before this
+  // function finishes.
+  auto handle = Config::getStaticObjectsLifetimeHandle();
+
   auto now = system_clock::now();
   auto next_config_load_time = now;
   auto next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;

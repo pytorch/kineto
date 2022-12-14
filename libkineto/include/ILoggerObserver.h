@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -43,6 +49,7 @@ class ILoggerObserver {
   virtual void setGroupTraceID(const std::string&) {}
   virtual void addDestination(const std::string& dest) = 0;
   virtual void setTriggerOnDemand() {}
+  virtual void addMetadata(const std::string& key, const std::string& value) = 0;
 
 };
 

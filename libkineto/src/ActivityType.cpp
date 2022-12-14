@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "ActivityType.h"
 
@@ -22,9 +28,10 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"cuda_runtime", ActivityType::CUDA_RUNTIME},
     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
     {"python_function", ActivityType::PYTHON_FUNCTION},
+    {"overhead", ActivityType::OVERHEAD},
     {"glow_runtime", ActivityType::GLOW_RUNTIME},
     {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
-    {"overhead", ActivityType::OVERHEAD},
+    {"hpu_op", ActivityType::HPU_OP},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT}
 }};
 

@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -53,8 +59,12 @@ class LoggerCollector : public ILoggerObserver {
   }
 
   void addDestination(const std::string& dest) override {
-    destinations.insert(dest);
+    if (!dest.empty()) {
+      destinations.insert(dest);
+    }
   }
+
+  void addMetadata(const std::string& key, const std::string& value) override {};
 
  protected:
   std::map<LoggerOutputType, std::vector<std::string>> buckets_;

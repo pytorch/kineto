@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -10,8 +16,6 @@
 #include "Config.h"
 #include "GenericTraceActivity.h"
 #include "output_base.h"
-
-#include "Logger.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -68,7 +72,6 @@ class MemoryTraceLogger : public ActivityLogger {
       std::unordered_map<std::string, std::vector<std::string>>& metadata) override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
-    UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
   }
 
   const std::vector<const ITraceActivity*>* traceActivities() {

@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
 #include <cstdint>
@@ -20,3 +28,7 @@ std::string processName(int32_t pid);
 std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors();
 
 } // namespace libkineto
+
+#ifdef HAS_ROCTRACER
+using namespace libkineto;
+#endif

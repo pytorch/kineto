@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "EventProfilerController.h"
 
@@ -228,15 +234,30 @@ EventProfilerController::~EventProfilerController() {
   VLOG(0) << "Stopped event profiler";
 }
 
-// Must be called under lock
-void EventProfilerController::start(CUcontext ctx, ConfigLoader& configLoader) {
-  profilerMap()[ctx] = unique_ptr<EventProfilerController>(
-      new EventProfilerController(
-          ctx, configLoader, detail::HeartbeatMonitor::instance()));
+bool& EventProfilerController::started() {
+  static bool started = false;
+  return started;
 }
 
 // Must be called under lock
-void EventProfilerController::stop(CUcontext ctx) {
+void EventProfilerController::start(CUcontext ctx, ConfigLoader& configLoader) {
+  // Avoid static initialization order fiasco:
+  // We need the profilerMap and with it all controllers to be destroyed
+  // before everything the controller accesses gets destroyed.
+  // Hence access the profilerMap after initialization of the controller.
+  started() = true;
+  auto controller = unique_ptr<EventProfilerController>(
+      new EventProfilerController(
+          ctx, configLoader, detail::HeartbeatMonitor::instance()));
+  profilerMap()[ctx] = std::move(controller);
+}
+
+// Must be called under lock
+void EventProfilerController::stopIfEnabled(CUcontext ctx) {
+  // Avoid creating static singleton profilerMap if start was never called.
+  if (!started()) {
+    return;
+  }
   profilerMap()[ctx] = nullptr;
 }
 
@@ -364,6 +385,9 @@ void EventProfilerController::profilerLoop() {
       now = system_clock::now();
     }
     int sleep_time = duration_cast<milliseconds>(now - start_sleep).count();
+
+    if(stopRunloop_)
+      break;
 
     auto start_sample = now;
     profiler_->collectSample();

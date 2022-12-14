@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +25,6 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "CuptiCallbackApiMock.h"
 #include "CuptiRangeProfilerApi.h"
 
 #if HAS_CUPTI_RANGE_PROFILER
@@ -224,8 +229,8 @@ void __trackCudaKernelLaunch(
 }
 
 void enableKernelCallbacks() {
-  auto& cbapi = CuptiCallbackApi::singleton();
-  bool status = cbapi.enableCallback(
+  auto cbapi = CuptiCallbackApi::singleton();
+  bool status = cbapi->enableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
   if (!status) {
@@ -237,8 +242,8 @@ void enableKernelCallbacks() {
 }
 
 void disableKernelCallbacks() {
-  auto& cbapi = CuptiCallbackApi::singleton();
-  bool status = cbapi.disableCallback(
+  auto cbapi = CuptiCallbackApi::singleton();
+  bool status = cbapi->disableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
   if (!status) {
@@ -277,26 +282,26 @@ void CuptiRBProfilerSession::deInitCupti() {
 // static
 bool CuptiRBProfilerSession::staticInit() {
   // Register CUPTI callbacks
-  auto& cbapi = CuptiCallbackApi::singleton();
+  auto cbapi = CuptiCallbackApi::singleton();
   CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
-  bool status = cbapi.registerCallback(
+  bool status = cbapi->registerCallback(
       domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, trackCudaCtx);
-  status = status && cbapi.registerCallback(
+  status = status && cbapi->registerCallback(
       domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, trackCudaCtx);
-  status = status && cbapi.enableCallback(
+  status = status && cbapi->enableCallback(
       domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
-  status = status && cbapi.enableCallback(
+  status = status && cbapi->enableCallback(
       domain, CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda context "
                  << "create and destroy callbacks";
-    CUPTI_CALL(cbapi.getCuptiStatus());
+    CUPTI_CALL(cbapi->getCuptiStatus());
     return false;
   }
 
   domain = CUPTI_CB_DOMAIN_RUNTIME_API;
-  status = cbapi.registerCallback(
+  status = cbapi->registerCallback(
       domain, CuptiCallbackApi::CUDA_LAUNCH_KERNEL, trackCudaKernelLaunch);
 
   if (!status) {
@@ -679,8 +684,7 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
   initScratchBufferParams.counterDataImageSize =
     calculateSizeParams.counterDataImageSize;
 
-  initScratchBufferParams.pCounterDataImage =
-    initializeParams.pCounterDataImage;
+  initScratchBufferParams.pCounterDataImage = initializeParams.pCounterDataImage;
   initScratchBufferParams.counterDataScratchBufferSize =
     scratchBufferSizeParams.counterDataScratchBufferSize;
   initScratchBufferParams.pCounterDataScratchBuffer =
@@ -690,6 +694,12 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
       &initScratchBufferParams));
 
   return true;
+}
+
+CuptiRBProfilerSession::~CuptiRBProfilerSession() {
+  if (initSuccess_) {
+    CuptiRBProfilerSession::deInitCupti();
+  }
 }
 
 #else
@@ -702,6 +712,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
       maxRanges_(opts.maxRanges),
       numNestingLevels_(opts.numNestingLevels),
       cuContext_(opts.cuContext) {};
+CuptiRBProfilerSession::~CuptiRBProfilerSession() {}
 void CuptiRBProfilerSession::stop() {}
 void CuptiRBProfilerSession::enable() {}
 void CuptiRBProfilerSession::disable() {}

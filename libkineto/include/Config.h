@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -60,6 +66,10 @@ class Config : public AbstractConfig {
 
   bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
+  }
+
+  bool eventProfilerEnabled() const {
+    return !eventNames_.empty() || !metricNames_.empty();
   }
 
   // Is profiling enabled for the given device?
@@ -174,6 +184,10 @@ class Config : public AbstractConfig {
     return enableOpInputsCollection_;
   }
 
+  bool isPythonStackTraceEnabled() const {
+    return enablePythonStackTrace_;
+  }
+
   // Trace for this long
   std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
@@ -199,7 +213,7 @@ class Config : public AbstractConfig {
   // Timestamp at which the profiling to start, requested by the user.
   const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
       const {
-    if  (profileStartTime_.time_since_epoch().count()) {
+    if (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }
     // If no one requested timestamp, return 0.
@@ -302,18 +316,32 @@ class Config : public AbstractConfig {
     requestGroupTraceID_ = gtid;
   }
 
+  size_t cuptiDeviceBufferSize() const {
+    return cuptiDeviceBufferSize_;
+  }
+
+  size_t cuptiDeviceBufferPoolLimit() const {
+    return cuptiDeviceBufferPoolLimit_;
+  }
+
   void updateActivityProfilerRequestReceivedTime();
 
   void printActivityProfilerConfig(std::ostream& s) const override;
 
-  void validate(
-      const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override;
+  void validate(const std::chrono::time_point<std::chrono::system_clock>&
+                    fallbackProfileStartTime) override;
 
   static void addConfigFactory(
       std::string name,
       std::function<AbstractConfig*(Config&)> factory);
 
   void print(std::ostream& s) const;
+
+  // Config relies on some state with global static lifetime. If other
+  // threads are using the config, it's possible that the global state
+  // is destroyed before the threads stop. By hanging onto this handle,
+  // correct destruction order can be ensured.
+  static std::shared_ptr<void> getStaticObjectsLifetimeHandle();
 
  private:
   explicit Config(const Config& other) = default;
@@ -387,6 +415,9 @@ class Config : public AbstractConfig {
   // Enable inputs collection when tracing ops
   bool enableOpInputsCollection_{true};
 
+  // Enable Python Stack Tracing
+  bool enablePythonStackTrace_{false};
+
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;
   int activitiesRunIterations_;
@@ -423,6 +454,10 @@ class Config : public AbstractConfig {
   // Logger Metadata
   std::string requestTraceID_;
   std::string requestGroupTraceID_;
+
+  // CUPTI Device Buffer
+  size_t cuptiDeviceBufferSize_;
+  size_t cuptiDeviceBufferPoolLimit_;
 };
 
 } // namespace KINETO_NAMESPACE

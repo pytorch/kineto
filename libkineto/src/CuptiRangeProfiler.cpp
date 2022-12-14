@@ -1,8 +1,15 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <Logger.h>
 #include <functional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -159,7 +166,7 @@ void CuptiRangeProfilerSession::addRangeEvents(
   int ridx = 0;
   for (const auto& measurement : result.rangeVals) {
     bool use_kernel_as_range = use_kernel_names && (ridx < num_kernels);
-    activities.emplace_back(
+    traceBuffer_.emplace_activity(
         traceBuffer_.span,
         kProfActivityType,
         use_kernel_as_range ?
@@ -167,13 +174,13 @@ void CuptiRangeProfilerSession::addRangeEvents(
           measurement.rangeName
     );
     auto& event = activities.back();
-    event.startTime = startTime + interval * ridx;
-    event.endTime = startTime + interval * (ridx + 1);
-    event.device = profiler->deviceId();
+    event->startTime = startTime + interval * ridx;
+    event->endTime = startTime + interval * (ridx + 1);
+    event->device = profiler->deviceId();
 
     // add metadata per counter
     for (int i = 0; i < metricNames.size(); i++) {
-      event.addMetadata(metricNames[i], measurement.values[i]);
+      event->addMetadata(metricNames[i], measurement.values[i]);
     }
     ridx++;
   }
@@ -200,7 +207,13 @@ void CuptiRangeProfilerSession::processTrace(ActivityLogger& logger) {
   }
 
   for (const auto& event : traceBuffer_.activities) {
-    logger.handleGenericActivity(event);
+    static_assert(
+        std::is_same<
+            std::remove_reference<decltype(event)>::type,
+            const std::unique_ptr<GenericTraceActivity>>::value,
+        "handleActivity is unsafe and relies on the caller to maintain not "
+        "only lifetime but also address stability.");
+    logger.handleActivity(*event);
   }
 
   LOG(INFO) << "CUPTI Range Profiler added " << traceBuffer_.activities.size()
@@ -212,6 +225,14 @@ void CuptiRangeProfilerSession::processTrace(ActivityLogger& logger) {
 }
 
 std::vector<std::string> CuptiRangeProfilerSession::errors() {
+  return {};
+}
+
+std::unique_ptr<DeviceInfo> CuptiRangeProfilerSession::getDeviceInfo() {
+  return {};
+}
+
+std::vector<ResourceInfo> CuptiRangeProfilerSession::getResourceInfos() {
   return {};
 }
 
@@ -294,12 +315,6 @@ CuptiRangeProfilerInit::CuptiRangeProfilerInit() {
   api().registerProfilerFactory([&]() {
     return std::make_unique<CuptiRangeProfiler>();
   });
-}
-
-CuptiRangeProfilerInit::~CuptiRangeProfilerInit() {
-  if (success) {
-    CuptiRBProfilerSession::deInitCupti();
-  }
 }
 
 } // namespace KINETO_NAMESPACE

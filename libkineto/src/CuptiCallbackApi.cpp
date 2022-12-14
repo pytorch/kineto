@@ -1,6 +1,15 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiCallbackApi.h"
+#include "CuptiActivityApi.h"
 
 #include <assert.h>
 #include <chrono>
@@ -18,6 +27,10 @@ namespace KINETO_NAMESPACE {
 
 // limit on number of handles per callback type
 constexpr size_t MAX_CB_FNS_PER_CB = 8;
+
+// Use this value in enabledCallbacks_ set, when all cbids in a domain
+// is enabled, not a specific cbid.
+constexpr uint32_t MAX_CUPTI_CALLBACK_ID_ALL = 0xffffffff;
 
 // Reader Writer lock types
 using ReaderWriterLock = std::shared_timed_mutex;
@@ -63,7 +76,7 @@ static void callback_switchboard(
 
   // below statement is likey going to call a mutex
   // on the singleton access
-  CuptiCallbackApi::singleton().__callback_switchboard(
+  CuptiCallbackApi::singleton()->__callback_switchboard(
       domain, cbid, cbInfo);
 }
 
@@ -76,7 +89,6 @@ void CuptiCallbackApi::__callback_switchboard(
   CallbackList *cblist = nullptr;
 
   switch (domain) {
-
     // add the fastest path for kernel launch callbacks
     // as these are the most frequent ones
     case CUPTI_CB_DOMAIN_RUNTIME_API:
@@ -87,6 +99,17 @@ void CuptiCallbackApi::__callback_switchboard(
           break;
         default:
           break;
+      }
+      // This is required to teardown cupti after profiling to prevent QPS slowdown.
+      if (CuptiActivityApi::singleton().teardownCupti_) {
+        if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+          // Teardown CUPTI calling cuptiFinalize()
+          CUPTI_CALL(cuptiFinalize());
+          initSuccess_ = false;
+          CuptiActivityApi::singleton().teardownCupti_ = 0;
+          CuptiActivityApi::singleton().finalizeCond_.notify_all();
+          return;
+        }
       }
       break;
 
@@ -135,12 +158,17 @@ void CuptiCallbackApi::__callback_switchboard(
   }
 }
 
-CuptiCallbackApi& CuptiCallbackApi::singleton() {
-  static CuptiCallbackApi instance;
+std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
+	static const std::shared_ptr<CuptiCallbackApi>
+		instance = [] {
+			std::shared_ptr<CuptiCallbackApi> inst =
+				std::shared_ptr<CuptiCallbackApi>(new CuptiCallbackApi());
+			return inst;
+	}();
   return instance;
 }
 
-CuptiCallbackApi::CuptiCallbackApi() {
+void CuptiCallbackApi::initCallbackApi() {
 #ifdef HAS_CUPTI
   lastCuptiStatus_ = CUPTI_ERROR_UNKNOWN;
   lastCuptiStatus_ = CUPTI_CALL_NOWARN(
@@ -239,6 +267,7 @@ bool CuptiCallbackApi::enableCallback(
   if (initSuccess_) {
     lastCuptiStatus_ = CUPTI_CALL_NOWARN(
         cuptiEnableCallback(1, subscriber_, domain, cbid));
+    enabledCallbacks_.insert({domain, cbid});
     return (lastCuptiStatus_ == CUPTI_SUCCESS);
   }
 #endif
@@ -251,6 +280,51 @@ bool CuptiCallbackApi::disableCallback(
   if (initSuccess_) {
     lastCuptiStatus_ = CUPTI_CALL_NOWARN(
         cuptiEnableCallback(0, subscriber_, domain, cbid));
+    enabledCallbacks_.erase({domain, cbid});
+    return (lastCuptiStatus_ == CUPTI_SUCCESS);
+  }
+#endif
+  return false;
+}
+
+bool CuptiCallbackApi::enableCallbackDomain(
+    CUpti_CallbackDomain domain) {
+#ifdef HAS_CUPTI
+  if (initSuccess_) {
+    lastCuptiStatus_ = CUPTI_CALL_NOWARN(
+        cuptiEnableDomain(1, subscriber_, domain));
+    enabledCallbacks_.insert({domain, MAX_CUPTI_CALLBACK_ID_ALL});
+    return (lastCuptiStatus_ == CUPTI_SUCCESS);
+  }
+#endif
+  return false;
+}
+
+bool CuptiCallbackApi::disableCallbackDomain(
+    CUpti_CallbackDomain domain) {
+#ifdef HAS_CUPTI
+  if (initSuccess_) {
+    lastCuptiStatus_ = CUPTI_CALL_NOWARN(
+        cuptiEnableDomain(0, subscriber_, domain));
+    enabledCallbacks_.erase({domain, MAX_CUPTI_CALLBACK_ID_ALL});
+    return (lastCuptiStatus_ == CUPTI_SUCCESS);
+  }
+#endif
+  return false;
+}
+
+bool CuptiCallbackApi::reenableCallbacks() {
+#ifdef HAS_CUPTI
+  if (initSuccess_) {
+    for (auto& cbpair : enabledCallbacks_) {
+      if ((uint32_t)cbpair.second == MAX_CUPTI_CALLBACK_ID_ALL) {
+        lastCuptiStatus_ = CUPTI_CALL_NOWARN(
+            cuptiEnableDomain(1, subscriber_, cbpair.first));
+      } else {
+        lastCuptiStatus_ = CUPTI_CALL_NOWARN(
+            cuptiEnableCallback(1, subscriber_, cbpair.first, cbpair.second));
+      }
+    }
     return (lastCuptiStatus_ == CUPTI_SUCCESS);
   }
 #endif

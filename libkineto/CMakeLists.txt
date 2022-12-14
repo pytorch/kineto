@@ -1,3 +1,9 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -82,6 +88,7 @@ set_target_properties(kineto_base kineto_api PROPERTIES
 
 set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
 list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
+list(APPEND KINETO_COMPILE_OPTIONS "-DENABLE_IPC_FABRIC")
 if(NOT MSVC)
   list(APPEND KINETO_COMPILE_OPTIONS "-std=c++14")
 else()
@@ -100,6 +107,9 @@ endif()
 
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
+
+add_subdirectory(ipcfabric)
+target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
 
 if(NOT TARGET fmt)
   if(NOT FMT_SOURCE_DIR)

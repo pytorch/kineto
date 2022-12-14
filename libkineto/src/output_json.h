@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -52,11 +58,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
     return fileName_;
   }
 
- protected:
-  void finalizeTraceInternal(
-  int64_t endTime,
-  std::unordered_map<std::string, std::vector<std::string>>& metadata);
-
  private:
 
   // Create a flow event (arrow)
@@ -64,7 +65,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       char type,
       const ITraceActivity& e,
       int64_t id,
-      const std::string& cat,
       const std::string& name);
 
   void addIterationMarker(const TraceSpan& span);
@@ -81,6 +81,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   std::string& sanitizeStrForJSON(std::string& value);
 
   std::string fileName_;
+  std::string tempFileName_;
   std::ofstream traceOf_;
 };
 

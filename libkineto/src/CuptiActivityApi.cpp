@@ -1,22 +1,33 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "CuptiActivityApi.h"
 
 #include <assert.h>
 #include <chrono>
+#include <mutex>
+#include <thread>
 
 #include "cupti_call.h"
 #include "Logger.h"
+#include "Config.h"
+#include "CudaUtil.h"
 
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-// TODO: do we want this to be configurable?
-// Set to 2MB to avoid constantly creating buffers (espeically for networks
-// that has many small memcpy such as sparseNN)
-// Consider putting this on huge pages?
-constexpr size_t kBufSize(2 * 1024 * 1024);
+// Set to 4MB to avoid constantly creating buffers (especially for networks
+// that have many small memcpy such as sparseNN). CUPTI recommends between
+// 1MB to 10MB.
+// Given the kDefaultActivitiesMaxGpuBufferSize is around 128MB, in the worst
+// case, there will be 32 buffers contending for the mutex.
+constexpr size_t kBufSize(4 * 1024 * 1024);
 
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static CuptiActivityApi instance;
@@ -79,9 +90,31 @@ void CuptiActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
+void CuptiActivityApi::setDeviceBufferSize(size_t size) {
+#ifdef HAS_CUPTI
+  size_t valueSize = sizeof(size_t);
+  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &valueSize, &size));
+#endif
+}
+
+void CuptiActivityApi::setDeviceBufferPoolLimit(size_t limit) {
+#ifdef HAS_CUPTI
+  size_t valueSize = sizeof(size_t);
+  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT, &valueSize, &limit));
+#endif
+}
+
 void CuptiActivityApi::forceLoadCupti() {
 #ifdef HAS_CUPTI
   CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+#endif
+}
+
+void CuptiActivityApi::preConfigureCUPTI() {
+#ifdef HAS_CUPTI
+  if (!isGpuAvailable()) {
+    return;
+  }
 #endif
 }
 
@@ -246,8 +279,8 @@ void CuptiActivityApi::enableCuptiActivities(
 #ifdef HAS_CUPTI
   static bool registered = false;
   if (!registered) {
-    CUPTI_CALL(
-        cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
+  CUPTI_CALL(
+      cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
   }
 
   externalCorrelationEnabled_ = false;
@@ -272,6 +305,8 @@ void CuptiActivityApi::enableCuptiActivities(
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));
     }
   }
+
+  tracingEnabled_ = 1;
 #endif
 
   // Explicitly enabled, so reset this flag if set
@@ -302,9 +337,58 @@ void CuptiActivityApi::disableCuptiActivities(
     }
   }
   externalCorrelationEnabled_ = false;
+#endif
+}
 
+void CuptiActivityApi::teardownContext() {
+#ifdef HAS_CUPTI
+  if (!tracingEnabled_) {
+    return;
+  }
   if (getenv("TEARDOWN_CUPTI") != nullptr) {
-    CUPTI_CALL(cuptiFinalize());
+    LOG(INFO) << "teardownCupti starting";
+
+    // PyTorch Profiler is synchronous, so teardown needs to be run async in this thread.
+    std::thread teardownThread([&] {
+      auto cbapi_ = CuptiCallbackApi::singleton();
+      if (!cbapi_->initSuccess()) {
+        cbapi_->initCallbackApi();
+        if (!cbapi_->initSuccess()) {
+          LOG(WARNING) << "CUPTI Callback failed to init, skipping teardown";
+          return;
+        }
+      }
+      // Subscribe callbacks to call cuptiFinalize in the exit callback of these APIs
+      bool status = cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      status = status && cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      if (!status) {
+        LOG(WARNING) << "CUPTI Callback failed to enable for domain, skipping teardown";
+        return;
+      }
+
+      // Force Flush before finalize
+      CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+
+      teardownCupti_ = 1;
+      std::unique_lock<std::mutex> lck(finalizeMutex_);
+      finalizeCond_.wait(lck, [&]{return teardownCupti_ == 0;});
+      lck.unlock();
+      LOG(INFO) << "teardownCupti complete";
+
+      teardownCupti_ = 0;
+      tracingEnabled_ = 0;
+
+      // Re-enable callbacks from the past.
+      cbapi_->initCallbackApi();
+      cbapi_->reenableCallbacks();
+      status = cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      status = status && cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      if (!status) {
+        LOG(WARNING) << "CUPTI Callback failed to disable for domain";
+      }
+      cbapi_.reset();
+    });
+    teardownThread.detach();
   }
 #endif
 }

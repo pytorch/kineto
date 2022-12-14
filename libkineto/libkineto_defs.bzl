@@ -1,5 +1,5 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
@@ -12,6 +12,7 @@ def get_libkineto_api_srcs():
 def get_libkineto_cupti_srcs(with_api = True):
     return [
         "src/CudaDeviceProperties.cpp",
+        "src/CudaUtil.cpp",
         "src/CuptiActivityApi.cpp",
         "src/CuptiActivityPlatform.cpp",
         "src/CuptiCallbackApi.cpp",
@@ -31,6 +32,7 @@ def get_libkineto_cupti_srcs(with_api = True):
 def get_libkineto_roctracer_srcs(with_api = True):
     return [
         "src/RoctracerActivityApi.cpp",
+        "src/RoctracerLogger.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
 def get_libkineto_cpu_only_srcs(with_api = True):
@@ -43,9 +45,11 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
         "src/CuptiActivityApi.cpp",
+        "src/DaemonConfigLoader.cpp",
         "src/Demangle.cpp",
         "src/GenericTraceActivity.cpp",
         "src/ILoggerObserver.cpp",
+        "src/IpcFabricConfigClient.cpp",
         "src/Logger.cpp",
         "src/init.cpp",
         "src/output_csv.cpp",

@@ -1,4 +1,10 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "output_json.h"
 
@@ -11,13 +17,10 @@
 #ifdef HAS_CUPTI
 #include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
-#include "Demangle.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
 
-using std::endl;
-using namespace libkineto;
 
 namespace KINETO_NAMESPACE {
 
@@ -70,11 +73,12 @@ static std::string defaultFileName() {
 }
 
 void ChromeTraceLogger::openTraceFile() {
-  traceOf_.open(fileName_, std::ofstream::out | std::ofstream::trunc);
+  tempFileName_ = fileName_ + ".tmp";
+  traceOf_.open(tempFileName_, std::ofstream::out | std::ofstream::trunc);
   if (!traceOf_) {
     PLOG(ERROR) << "Failed to open '" << fileName_ << "'";
   } else {
-    LOG(INFO) << "Tracing to " << fileName_;
+    LOG(INFO) << "Tracing to temporary file " << fileName_;
   }
 }
 
@@ -264,6 +268,14 @@ void ChromeTraceLogger::handleActivity(
 
   int64_t ts = op.timestamp();
   int64_t duration = op.duration();
+
+  if (duration < 0) {
+    // This should never happen but can occasionally suffer from regression in handling incomplete events.
+    // Having negative duration in Chrome trace can yield in very poor experience so add an extra guard
+    // before we generate trace events.
+    duration = 0;
+  }
+
   if (op.type() ==  ActivityType::GPU_USER_ANNOTATION) {
     // The GPU user annotations start at the same time as the
     // first associated GPU op. Since they appear later
@@ -272,35 +284,39 @@ void ChromeTraceLogger::handleActivity(
     ts--;
     duration++; // Still need it to end at the orginal point
   }
+
+  std::string arg_values = "";
+  if (op.correlationId() != 0) {
+    arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
+  }
   const std::string op_metadata = op.metadataJson();
-  std::string separator = "";
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
-    separator = ",\n      ";
+    if (!arg_values.empty()) {
+      arg_values.append(",");
+    }
+    arg_values.append(op_metadata);
   }
-  std::string span = "";
-  if (op.traceSpan()) {
-    span = fmt::format(R"JSON(
-      "Trace name": "{}", "Trace iteration": {},)JSON",
-        op.traceSpan()->name,
-        op.traceSpan()->iteration);
+  std::string args = "";
+  if (!arg_values.empty()) {
+    args = fmt::format(R"JSON(,
+    "args": {{
+      {}
+    }})JSON", arg_values);
   }
+
   int device = op.deviceId();
   int resource = op.resourceId();
+  // TODO: Remove this once legacy tools are updated.
+  std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}, "dur": {},
-    "args": {{{}
-      "External id": {}{}{}
-    }}
+    "ts": {}, "dur": {}{}
   }},)JSON",
-          toString(op.type()), op.name(), device, resource,
-          ts, duration,
-          // args
-          span,
-          op.correlationId(), separator, op_metadata);
+          toString(op.type()), op_name, device, resource,
+          ts, duration, args);
   // clang-format on
   if (op.flowId() > 0) {
     handleGenericLink(op);
@@ -315,11 +331,10 @@ void ChromeTraceLogger::handleGenericActivity(
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
   static struct {
     int type;
-    char longName[24];
-    char shortName[16];
+    char name[16];
   } flow_names[] = {
-    {kLinkFwdBwd, "forward_backward", "fwd_bwd"},
-    {kLinkAsyncCpuGpu, "async_cpu_to_gpu", "async_gpu"}
+    {kLinkFwdBwd, "fwdbwd"},
+    {kLinkAsyncCpuGpu, "ac2g"}
   };
   for (auto& flow : flow_names) {
     if (act.flowType() == flow.type) {
@@ -327,9 +342,9 @@ void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
       // The source node must return true from flowStart()
       // and the destination node false.
       if (act.flowStart()) {
-        handleLink(kFlowStart, act, act.flowId(), flow.longName, flow.shortName);
+        handleLink(kFlowStart, act, act.flowId(), flow.name);
       } else {
-        handleLink(kFlowEnd, act, act.flowId(), flow.longName, flow.shortName);
+        handleLink(kFlowEnd, act, act.flowId(), flow.name);
       }
       return;
     }
@@ -341,23 +356,28 @@ void ChromeTraceLogger::handleLink(
     char type,
     const ITraceActivity& e,
     int64_t id,
-    const std::string& cat,
     const std::string& name) {
   if (!traceOf_) {
     return;
   }
 
+  // Flow events much bind to specific slices in order to exist.
+  // Only Flow end needs to specify a binding point to enclosing slice.
+  // Flow start automatically sets binding point to enclosing slice.
+  const auto binding = (type == kFlowEnd) ? ", \"bp\": \"e\"" : "";
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "{}", "name": "{}", "bp": "e"
+    "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp(), cat, name);
+      type, id, e.deviceId(), e.resourceId(), e.timestamp(), name, name, binding);
   // clang-format on
 }
 
-void ChromeTraceLogger::finalizeTraceInternal(
+void ChromeTraceLogger::finalizeTrace(
+    const Config& /*unused*/,
+    std::unique_ptr<ActivityBuffers> /*unused*/,
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   if (!traceOf_) {
@@ -406,14 +426,14 @@ void ChromeTraceLogger::finalizeTraceInternal(
   // clang-format on
 
   traceOf_.close();
+  // On some systems, rename() fails if the destination file exists.
+  // So, remove the destination file first.
+  remove(fileName_.c_str());
+  if (rename(tempFileName_.c_str(), fileName_.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to rename " << tempFileName_ << " to " << fileName_;
+  } else {
+    LOG(INFO) << "Renamed the trace file to " << fileName_;
+  }
 }
 
-void ChromeTraceLogger::finalizeTrace(
-    const Config& /*unused*/,
-    std::unique_ptr<ActivityBuffers> /*unused*/,
-    int64_t endTime,
-    std::unordered_map<std::string, std::vector<std::string>>& metadata) {
-  ChromeTraceLogger::finalizeTraceInternal(endTime, metadata);
-  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
-}
 } // namespace KINETO_NAMESPACE

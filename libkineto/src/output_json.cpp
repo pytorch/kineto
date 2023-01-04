@@ -12,7 +12,6 @@
 #include <fstream>
 #include <time.h>
 #include <map>
-#include <unistd.h>
 
 #include "Config.h"
 #ifdef HAS_CUPTI
@@ -74,15 +73,8 @@ static std::string defaultFileName() {
 }
 
 void ChromeTraceLogger::openTraceFile() {
-  char tempBuf[] = "/tmp/libkineto_activities_tmp.json.XXXXXX";
-  int fd = mkstemp(tempBuf);
-  if (fd == -1) {
-    PLOG(ERROR) << "Failed to create temp file " << tempFileName_;
-    return;
-  }
-  tempFileName_ = tempBuf;
+  tempFileName_ = fileName_ + ".tmp";
   traceOf_.open(tempFileName_, std::ofstream::out | std::ofstream::trunc);
-  close(fd);
   if (!traceOf_) {
     PLOG(ERROR) << "Failed to open '" << fileName_ << "'";
   } else {
@@ -434,6 +426,9 @@ void ChromeTraceLogger::finalizeTrace(
   // clang-format on
 
   traceOf_.close();
+  // On some systems, rename() fails if the destination file exists.
+  // So, remove the destination file first.
+  remove(fileName_.c_str());
   if (rename(tempFileName_.c_str(), fileName_.c_str()) != 0) {
     PLOG(ERROR) << "Failed to rename " << tempFileName_ << " to " << fileName_;
   } else {

@@ -108,9 +108,6 @@ endif()
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
-add_subdirectory(ipcfabric)
-target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
-
 if(NOT TARGET fmt)
   if(NOT FMT_SOURCE_DIR)
     set(FMT_SOURCE_DIR "${LIBKINETO_THIRDPARTY_DIR}/fmt"
@@ -145,13 +142,23 @@ if (NOT ROCM_INCLUDE_DIRS)
     set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
 endif()
 
+set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
+set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
+
 message(INFO " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
 message(INFO " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
+message(INFO " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
+message(INFO " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
+
+add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
+target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>
+      $<BUILD_INTERFACE:${DYNOLOG_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
+      $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${CUPTI_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>
       $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>

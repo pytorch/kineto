@@ -51,7 +51,10 @@ class IpcFabricConfigClient {
   }
 
  protected:
+  // Temporarily keep both int and string job id until IPC related code is updated to handle
+  // string job id.
   int64_t jobId_;
+  std::string jobIdStr_;
   std::vector<int32_t> pids_;
   bool ipcFabricEnabled_;
 

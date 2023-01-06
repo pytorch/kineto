@@ -47,11 +47,15 @@ static void initProfilers(
     VLOG(0) << "libkineto profilers activated";
   }
   if (getenv("KINETO_DISABLE_EVENT_PROFILER") != nullptr) {
-    VLOG(0) << "Event profiler disabled via env var";
+    LOG(INFO) << "Kineto EventProfiler disabled via env var, skipping start";
   } else {
     ConfigLoader& config_loader = libkineto::api().configLoader();
     config_loader.initBaseConfig();
-    EventProfilerController::start(ctx, config_loader);
+    auto config = config_loader.getConfigCopy();
+    if (config->eventProfilerEnabled()) {
+      EventProfilerController::start(ctx, config_loader);
+      LOG(INFO) << "EventProfiler started";
+    }
   }
 }
 
@@ -75,9 +79,9 @@ static void stopProfiler(
   CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
   CUcontext ctx = d->context;
 
-  LOG(INFO) << "CUDA Context destroyed";
+  VLOG(0) << "CUDA Context destroyed";
   std::lock_guard<std::mutex> lock(initMutex);
-  EventProfilerController::stop(ctx);
+  EventProfilerController::stopIfEnabled(ctx);
 }
 
 static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
@@ -106,6 +110,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
     // If it is not available (e.g. CUDA is not installed),
     // then this call will return an error and we just abort init.
     auto cbapi = CuptiCallbackApi::singleton();
+    cbapi->initCallbackApi();
     bool status = false;
     bool initRangeProfiler = true;
 
@@ -121,7 +126,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
             domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
         status = status && cbapi->enableCallback(
             domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED);
-        }
+      }
     }
 
     if (!cbapi->initSuccess() || !status) {

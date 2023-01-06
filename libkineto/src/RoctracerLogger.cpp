@@ -272,6 +272,7 @@ void RoctracerLogger::startLogging() {
     loggedIds_.add("hipPeekAtLastError");
     loggedIds_.add("hipModuleGetFunction");
     loggedIds_.add("hipEventCreateWithFlags");
+    loggedIds_.add("hipGetDeviceCount");
 
     // Enable API callbacks
     if (loggedIds_.invertMode() == true) {

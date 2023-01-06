@@ -68,6 +68,10 @@ class Config : public AbstractConfig {
     return activitiesLogToMemory_;
   }
 
+  bool eventProfilerEnabled() const {
+    return !eventNames_.empty() || !metricNames_.empty();
+  }
+
   // Is profiling enabled for the given device?
   bool eventProfilerEnabledForDevice(uint32_t dev) const {
     return 0 != (eventProfilerDeviceMask_ & (1 << dev));
@@ -332,6 +336,12 @@ class Config : public AbstractConfig {
       std::function<AbstractConfig*(Config&)> factory);
 
   void print(std::ostream& s) const;
+
+  // Config relies on some state with global static lifetime. If other
+  // threads are using the config, it's possible that the global state
+  // is destroyed before the threads stop. By hanging onto this handle,
+  // correct destruction order can be ensured.
+  static std::shared_ptr<void> getStaticObjectsLifetimeHandle();
 
  private:
   explicit Config(const Config& other) = default;

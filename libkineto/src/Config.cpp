@@ -166,10 +166,8 @@ struct FactoryMap {
 
 std::shared_ptr<FactoryMap> configFactories() {
   // Ensure this is safe to call during shutdown, even as static
-  // destructors are invoked. Once factories destructor has been
-  // invoked, weak_ptr.lock() will return nullptr.
-  // But calls before that point will have a valid shared_ptr,
-  // delaying destruction of the underlying FactoryMap.
+  // destructors are invoked. getStaticObjectLifetimeHandle hangs onto
+  // FactoryMap delaying its destruction.
   static auto factories = std::make_shared<FactoryMap>();
   static std::weak_ptr<FactoryMap> weak_ptr = factories;
   return weak_ptr.lock();
@@ -221,6 +219,10 @@ Config::Config()
   if (factories) {
     factories->addFeatureConfigs(*this);
   }
+}
+
+std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {
+  return configFactories();
 }
 
 uint8_t Config::createDeviceMask(const string& val) {
@@ -344,9 +346,14 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kActivitiesLogFileKey)) {
     activitiesLogFile_ = val;
     activitiesLogUrl_ = fmt::format("file://{}", val);
-    size_t jidx = activitiesLogUrl_.find(".json");
+    size_t jidx = activitiesLogUrl_.find(".pt.trace.json");
     if (jidx != std::string::npos) {
-      activitiesLogUrl_.replace(jidx, 5, fmt::format("_{}.json", processId()));
+      activitiesLogUrl_.replace(jidx, 14, fmt::format("_{}.pt.trace.json", processId()));
+    } else {
+      jidx = activitiesLogUrl_.find(".json");
+      if (jidx != std::string::npos) {
+        activitiesLogUrl_.replace(jidx, 5, fmt::format("_{}.json", processId()));
+      }
     }
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivitiesMaxGpuBufferSizeKey)) {

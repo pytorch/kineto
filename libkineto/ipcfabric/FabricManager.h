@@ -17,6 +17,8 @@
 #include "Endpoint.h"
 #include "Utils.h"
 
+// If building inside Kineto, use its logger, otherwise use glog
+#ifdef KINETO_NAMESPACE
 // We need to include the Logger header here for LOG() macros.
 // However this can alias with other files that include this and 
 // also use glog. TODO(T131440833)
@@ -26,6 +28,9 @@
 // add to namespace to get logger
 using namespace libkineto;
 #endif
+#else // KINETO_NAMESPACE
+#include <glog/logging.h>
+#endif // KINETO_NAMESPACE
 
 namespace dynolog::ipcfabric {
 
@@ -46,14 +51,13 @@ struct Message {
     // TODO CXX 17 - https://github.com/pytorch/kineto/issues/650
     // if constexpr (std::is_same_v<std::string, T>) {
     // Without constexpr following is not possible
-#if 0
-    if (std::is_same<std::string, T>::value == true) {
+#if __cplusplus >= 201703L
+    if constexpr (std::is_same<std::string, T>::value == true) {
       msg->metadata.size = data.size();
       msg->buf = std::make_unique<unsigned char[]>(msg->metadata.size);
       memcpy(msg->buf.get(), data.c_str(), msg->metadata.size);
     } else {
 #endif
-    {
       // ensure memcpy works on T
       // TODO CXX 17 - https://github.com/pytorch/kineto/issues/650
       // static_assert(std::is_trivially_copyable_v<T>);
@@ -61,7 +65,9 @@ struct Message {
       msg->metadata.size = sizeof(data);
       msg->buf = std::make_unique<unsigned char[]>(msg->metadata.size);
       memcpy(msg->buf.get(), &data, msg->metadata.size);
+#if __cplusplus >= 201703L
     }
+#endif
     return msg;
   }
 
@@ -91,7 +97,7 @@ struct Message {
   std::string src;
 };
 
-#ifdef ENABLE_IPC_FABRIC
+#if !defined(KINETO_NAMESPACE) || defined(ENABLE_IPC_FABRIC)
 class FabricManager {
  public:
   FabricManager(const FabricManager&) = delete;
@@ -139,52 +145,57 @@ class FabricManager {
   }
 
   bool recv() {
-    Metadata receive_metadata;
-    std::vector<Payload> peek_payload{
-        Payload(sizeof(struct Metadata), &receive_metadata)};
-    auto peek_ctxt = ep_.buildRcvCtxt(peek_payload);
-    // unix socket only fills the data for the iov that have a non NULL buffer.
-    // Leverage that to read metadata to find buffer size by:
-    //   1) FabricManager assumes metadata in first iov, data in second
-    //   2) peek with only metadata buffer in iov
-    //   3) read metadata
-    //   4) use metadata to find the desired size for the buffer to allocate.
-    //   5) read metadata + data with allocated buffer
-    bool success;
     try {
-      success = ep_.tryPeekMsg(*peek_ctxt);
-    } catch (std::exception& e) {
-      LOG(ERROR) << "Error when tryPeekMsg(): " << e.what();
-      return false;
-    }
-    if (success) {
-      std::unique_ptr<Message> msg = std::make_unique<Message>(Message());
-      msg->metadata = receive_metadata;
-      // new unsigned char[N] guarantees the maximum alignment to hold any
-      // object thus we don't need to worry about memory alignment here see
-      // https://stackoverflow.com/questions/10587879/does-new-char-actually-guarantee-aligned-memory-for-a-class-type
-      // and
-      // https://stackoverflow.com/questions/39668561/allocate-n-bytes-by-new-and-fill-it-with-any-type
-      msg->buf = std::unique_ptr<unsigned char[]>(
-          new unsigned char[receive_metadata.size]);
-      msg->src = std::string(ep_.getName(*peek_ctxt));
-      std::vector<Payload> payload{
-          Payload(sizeof(struct Metadata), (void*)&msg->metadata),
-          Payload(receive_metadata.size, msg->buf.get())};
-      auto recv_ctxt = ep_.buildRcvCtxt(payload);
-
-      // the deque can potentially grow very large
+      Metadata receive_metadata;
+      std::vector<Payload> peek_payload{
+          Payload(sizeof(struct Metadata), &receive_metadata)};
+      auto peek_ctxt = ep_.buildRcvCtxt(peek_payload);
+      // unix socket only fills the data for the iov that have a non NULL buffer.
+      // Leverage that to read metadata to find buffer size by:
+      //   1) FabricManager assumes metadata in first iov, data in second
+      //   2) peek with only metadata buffer in iov
+      //   3) read metadata
+      //   4) use metadata to find the desired size for the buffer to allocate.
+      //   5) read metadata + data with allocated buffer
+      bool success;
       try {
-        success = ep_.tryRcvMsg(*recv_ctxt);
+        success = ep_.tryPeekMsg(*peek_ctxt);
       } catch (std::exception& e) {
-        LOG(ERROR) << "Error when tryRcvMsg(): " << e.what();
+        LOG(ERROR) << "Error when tryPeekMsg(): " << e.what();
         return false;
       }
       if (success) {
-        std::lock_guard<std::mutex> wguard(dequeLock_);
-        message_deque_.push_back(std::move(msg));
-        return true;
+        std::unique_ptr<Message> msg = std::make_unique<Message>(Message());
+        msg->metadata = receive_metadata;
+        // new unsigned char[N] guarantees the maximum alignment to hold any
+        // object thus we don't need to worry about memory alignment here see
+        // https://stackoverflow.com/questions/10587879/does-new-char-actually-guarantee-aligned-memory-for-a-class-type
+        // and
+        // https://stackoverflow.com/questions/39668561/allocate-n-bytes-by-new-and-fill-it-with-any-type
+        msg->buf = std::unique_ptr<unsigned char[]>(
+            new unsigned char[receive_metadata.size]);
+        msg->src = std::string(ep_.getName(*peek_ctxt));
+        std::vector<Payload> payload{
+            Payload(sizeof(struct Metadata), (void*)&msg->metadata),
+            Payload(receive_metadata.size, msg->buf.get())};
+        auto recv_ctxt = ep_.buildRcvCtxt(payload);
+
+        // the deque can potentially grow very large
+        try {
+          success = ep_.tryRcvMsg(*recv_ctxt);
+        } catch (std::exception& e) {
+          LOG(ERROR) << "Error when tryRcvMsg(): " << e.what();
+          return false;
+        }
+        if (success) {
+          std::lock_guard<std::mutex> wguard(dequeLock_);
+          message_deque_.push_back(std::move(msg));
+          return true;
+        }
       }
+    } catch (std::exception& e) {
+      LOG(ERROR) << "Error in recv(): " << e.what();
+      return false;
     }
     return false;
   }

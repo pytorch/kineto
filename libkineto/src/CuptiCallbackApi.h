@@ -64,11 +64,13 @@ class CuptiCallbackApi {
     __RESOURCE_CB_DOMAIN_END = RESOURCE_CONTEXT_DESTROYED + 1,
   };
 
-
+  CuptiCallbackApi() = default;
   CuptiCallbackApi(const CuptiCallbackApi&) = delete;
   CuptiCallbackApi& operator=(const CuptiCallbackApi&) = delete;
 
   static std::shared_ptr<CuptiCallbackApi> singleton();
+
+  void initCallbackApi();
 
   bool initSuccess() const {
     return initSuccess_;
@@ -91,8 +93,14 @@ class CuptiCallbackApi {
     CuptiCallBackID cbid,
     CuptiCallbackFn cbfn);
 
+  // Cupti Callback may be enable for domain and cbid pairs, or domains alone.
   bool enableCallback(CUpti_CallbackDomain domain, CUpti_CallbackId cbid);
   bool disableCallback(CUpti_CallbackDomain domain, CUpti_CallbackId cbid);
+  bool enableCallbackDomain(CUpti_CallbackDomain domain);
+  bool disableCallbackDomain(CUpti_CallbackDomain domain);
+  // Provide this API for when cuptiFinalize is executed, to allow the process
+  // to re-enabled all previously running callback subscriptions.
+  bool reenableCallbacks();
 
 
   // Please do not use this method. This has to be exposed as public
@@ -104,7 +112,6 @@ class CuptiCallbackApi {
 
  private:
 
-  explicit CuptiCallbackApi();
   friend class std::shared_ptr<CuptiCallbackApi>;
 
   // For callback table design overview see the .cpp file
@@ -127,6 +134,10 @@ class CuptiCallbackApi {
 
   CallbackTable callbacks_;
   bool initSuccess_ = false;
+  // Record a list of enabled callbacks, so that after teardown, we can re-enable
+  // the callbacks that were turned off to clean cupti context.
+  // As an implementation detail, cbid == 0xffffffff means enable the domain.
+  std::set<std::pair<CUpti_CallbackDomain, CUpti_CallbackId>> enabledCallbacks_;
 
 #ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;

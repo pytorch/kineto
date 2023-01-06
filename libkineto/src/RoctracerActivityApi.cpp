@@ -64,8 +64,13 @@ void RoctracerActivityApi::setMaxBufferSize(int size) {
   //maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
+inline bool inRange(int64_t start, int64_t end, int64_t stamp) {
+    return ((stamp > start) && (stamp < end));
+}
+
 int RoctracerActivityApi::processActivities(
-    ActivityLogger& logger, std::function<const ITraceActivity*(int32_t)> linkedActivity) {
+    ActivityLogger& logger, std::function<const ITraceActivity*(int32_t)> linkedActivity,
+    int64_t startTime, int64_t endTime) {
   // Find offset to map from monotonic clock to system clock.
   // This will break time-ordering of events but is status quo.
 
@@ -75,6 +80,10 @@ int RoctracerActivityApi::processActivities(
   clock_gettime(CLOCK_REALTIME, &t00);
 
   const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
+  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
+  // Convert the guards rather than each timestamp.
+  startTime = (startTime * 1000) - toffset;
+  endTime = (endTime * 1000) - toffset;
 
   int count = 0;
 
@@ -83,6 +92,8 @@ int RoctracerActivityApi::processActivities(
   // Basic Api calls
 
   for (auto &item : d->rows_) {
+    if (!inRange(startTime, endTime, item.begin))
+        continue;
     GenericTraceActivity a;
     a.startTime = (item.begin + toffset) / 1000;
     a.endTime = (item.end + toffset) / 1000;
@@ -104,6 +115,8 @@ int RoctracerActivityApi::processActivities(
 
   // Malloc/Free calls
   for (auto &item : d->mallocRows_) {
+    if (!inRange(startTime, endTime, item.begin))
+        continue;
     GenericTraceActivity a;
     a.startTime = (item.begin + toffset) / 1000;
     a.endTime = (item.end + toffset) / 1000;
@@ -130,6 +143,8 @@ int RoctracerActivityApi::processActivities(
 
   // HipMemcpy calls
   for (auto &item : d->copyRows_) {
+    if (!inRange(startTime, endTime, item.begin))
+        continue;
     GenericTraceActivity a;
     a.startTime = (item.begin + toffset) / 1000;
     a.endTime = (item.end + toffset) / 1000;
@@ -160,6 +175,8 @@ int RoctracerActivityApi::processActivities(
   // Kernel Launch Api calls
 
   for (auto &item : d->kernelRows_) {
+    if (!inRange(startTime, endTime, item.begin))
+        continue;
     GenericTraceActivity a;
     a.startTime = (item.begin + toffset) / 1000;
     a.endTime = (item.end + toffset) / 1000;
@@ -240,8 +257,10 @@ int RoctracerActivityApi::processActivities(
         auto it = externalCorrelations.find(a.id);
         a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
 
-        logger.handleGenericActivity(a);
-        ++count;
+        if (inRange(startTime, endTime, record->begin_ns)) {
+            logger.handleGenericActivity(a);
+            ++count;
+        }
       }
       else if (record->domain == ACTIVITY_DOMAIN_HCC_OPS) {
         // Overlay launch metadata for kernels
@@ -272,8 +291,10 @@ int RoctracerActivityApi::processActivities(
           a.activityName = strings_[it->second];
         }
 
-        logger.handleGenericActivity(a);
-        ++count;
+        if (inRange(startTime, endTime, record->begin_ns)) {
+            logger.handleGenericActivity(a);
+            ++count;
+        }
       }
 
       roctracer_next_record(record, &record);

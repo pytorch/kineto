@@ -71,7 +71,7 @@ class CuptiRBProfilerSession {
 
   explicit CuptiRBProfilerSession(const CuptiRangeProfilerOptions& opts);
 
-  virtual ~CuptiRBProfilerSession() = default;
+  virtual ~CuptiRBProfilerSession();
 
   // Start profiling session
   // This function has to be called from the CPU thread running

@@ -220,7 +220,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(
         logger,
-        std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1));
+        std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
+        captureWindowStartTime_,
+        captureWindowEndTime_);
     LOG(INFO) << "Processed " << count << " GPU records";
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
@@ -457,8 +459,8 @@ void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
   if (act1->timestamp() > act2->timestamp()) {
     LOG_FIRST_N(WARNING, 10) << "GPU op timestamp (" << act2->timestamp()
                              << ") < runtime timestamp (" << act1->timestamp() << ") by "
-                             << act1->timestamp() - act2->timestamp() << "us" << std::endl
-                             << "Name: " << act2->name() << " Device: " << act2->deviceId()
+                             << act1->timestamp() - act2->timestamp() << "us"
+                             << " Name: " << act2->name() << " Device: " << act2->deviceId()
                              << " Stream: " << act2->resourceId();
   }
 }
@@ -932,6 +934,7 @@ void CuptiActivityProfiler::resetTraceData() {
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     cupti_.clearActivities();
+    cupti_.teardownContext();
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
   activityMap_.clear();

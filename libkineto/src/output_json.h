@@ -81,6 +81,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   std::string& sanitizeStrForJSON(std::string& value);
 
   std::string fileName_;
+  std::string tempFileName_;
   std::ofstream traceOf_;
 };
 

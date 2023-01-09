@@ -139,4 +139,12 @@ void ActivityProfilerProxy::addChildActivityProfiler(
   controller_->addChildActivityProfiler(std::move(profiler));
 }
 
+void ActivityProfilerProxy::logInvariantViolation(
+    const std::string& profile_id,
+    const std::string& assertion,
+    const std::string& error,
+    const std::string& group_profile_id) {
+    controller_->logInvariantViolation(profile_id, assertion, error, group_profile_id);
+}
+
 } // namespace libkineto

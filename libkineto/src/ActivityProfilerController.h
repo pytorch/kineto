@@ -81,6 +81,12 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   void addMetadata(const std::string& key, const std::string& value);
 
+  void logInvariantViolation(
+    const std::string& profile_id,
+    const std::string& assertion,
+    const std::string& error,
+    const std::string& group_profile_id = "");
+
  private:
   bool shouldActivateIterationConfig(int64_t currentIter);
   bool shouldActivateTimestampConfig(

@@ -327,4 +327,14 @@ void ActivityProfilerController::addMetadata(
   profiler_->addMetadata(key, value);
 }
 
+void ActivityProfilerController::logInvariantViolation(
+    const std::string& profile_id,
+    const std::string& assertion,
+    const std::string& error,
+    const std::string& group_profile_id) {
+  if (invariantViolationsLoggerFactory()) {
+    invariantViolationsLoggerFactory()->logInvariantViolation(profile_id, assertion, error, group_profile_id);
+  }
+}
+
 } // namespace KINETO_NAMESPACE

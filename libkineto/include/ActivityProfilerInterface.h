@@ -92,6 +92,14 @@ class ActivityProfilerInterface {
   // to enable custom framework events.
   virtual void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) {}
+
+  // Log Invariant Violation to factories enabled. This helps record
+  // instances when the profiler behaves unexpectedly.
+  virtual void logInvariantViolation(
+      const std::string&,
+      const std::string&,
+      const std::string&,
+      const std::string& = "") {}
 };
 
 } // namespace libkineto

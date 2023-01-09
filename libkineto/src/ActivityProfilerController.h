@@ -23,6 +23,7 @@
 #include "ConfigLoader.h"
 #include "CuptiActivityApi.h"
 #include "LoggerCollector.h"
+#include "InvariantViolations.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -45,6 +46,9 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   static void addLoggerFactory(
       const std::string& protocol,
       ActivityLoggerFactory::FactoryFunc factory);
+
+  static void setInvariantViolationsLoggerFactory(
+      const std::function<std::unique_ptr<InvariantViolationsLogger>()>& factory);
 
   // These API are used for On-Demand Tracing.
   bool canAcceptConfig() override;

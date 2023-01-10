@@ -103,6 +103,16 @@ static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
   return loggerFactory().makeLogger(config.activitiesLogUrl());
 }
 
+static std::unique_ptr<InvariantViolationsLogger>& invariantViolationsLoggerFactory() {
+  static std::unique_ptr<InvariantViolationsLogger> factory = nullptr;
+  return factory;
+}
+
+void ActivityProfilerController::setInvariantViolationsLoggerFactory(
+    const std::function<std::unique_ptr<InvariantViolationsLogger>()>& factory) {
+  invariantViolationsLoggerFactory() = factory();
+}
+
 bool ActivityProfilerController::canAcceptConfig() {
   return !profiler_->isActive();
 }

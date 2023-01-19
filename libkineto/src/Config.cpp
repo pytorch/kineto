@@ -31,12 +31,13 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
+constexpr std::chrono::milliseconds Config::kControllerIntervalMsecs;
+
 constexpr milliseconds kDefaultSamplePeriodMsecs(1000);
 constexpr milliseconds kDefaultMultiplexPeriodMsecs(1000);
 constexpr milliseconds kDefaultActivitiesProfileDurationMSecs(500);
 constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
 constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
-constexpr seconds kDefaultBufferUntilWarmup(10);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);
@@ -454,9 +455,9 @@ void Config::validate(
   if (!hasProfileStartTime()) {
     VLOG(0)
         << "No explicit timestamp has been set. "
-        << "Defaulting it to now + activitiesWarmupDuration with buffer.";
+        << "Defaulting it to now + activitiesWarmupDuration with a buffer of double the period of the monitoring thread.";
     profileStartTime_ = fallbackProfileStartTime +
-        activitiesWarmupDuration() + kDefaultBufferUntilWarmup;
+        activitiesWarmupDuration() + 2 * Config::kControllerIntervalMsecs;
   }
 
   if (profileStartIterationRoundUp_ == 0) {

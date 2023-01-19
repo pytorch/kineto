@@ -299,6 +299,8 @@ class Config : public AbstractConfig {
     return activitiesOnDemandTimestamp_;
   }
 
+  static constexpr std::chrono::milliseconds kControllerIntervalMsecs{1000};
+
   // Users may request and set trace id and group trace id.
   const std::string& requestTraceID() const {
     return requestTraceID_;

@@ -27,8 +27,6 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-constexpr milliseconds kProfilerIntervalMsecs(1000);
-
 #if !USE_GOOGLE_LOG
 static std::unique_ptr<LoggerCollector>& loggerCollectorFactory() {
   static std::unique_ptr<LoggerCollector> factory = nullptr;
@@ -129,11 +127,11 @@ bool ActivityProfilerController::shouldActivateTimestampConfig(
   if (asyncRequestConfig_->hasProfileStartIteration()) {
     return false;
   }
-  // Note on now + kProfilerIntervalMsecs
+  // Note on now + Config::kControllerIntervalMsecs:
   // Profiler interval does not align perfectly up to startTime - warmup.
   // Waiting until the next tick won't allow sufficient time for the profiler to warm up.
   // So check if we are very close to the warmup time and trigger warmup.
-  if (now + kProfilerIntervalMsecs
+  if (now + Config::kControllerIntervalMsecs
       >= (asyncRequestConfig_->requestTimestamp() - asyncRequestConfig_->activitiesWarmupDuration())) {
     LOG(INFO) << "Received on-demand activity trace request by "
               << " profile timestamp = "
@@ -188,7 +186,7 @@ void ActivityProfilerController::profilerLoop() {
   VLOG(0) << "Entering activity profiler loop";
 
   auto now = system_clock::now();
-  auto next_wakeup_time = now + kProfilerIntervalMsecs;
+  auto next_wakeup_time = now + Config::kControllerIntervalMsecs;
 
   while (!stopRunloop_) {
     now = system_clock::now();
@@ -209,7 +207,7 @@ void ActivityProfilerController::profilerLoop() {
     }
 
     while (next_wakeup_time < now) {
-      next_wakeup_time += kProfilerIntervalMsecs;
+      next_wakeup_time += Config::kControllerIntervalMsecs;
     }
 
     if (profiler_->isActive()) {
@@ -240,7 +238,7 @@ void ActivityProfilerController::step() {
 
   if (profiler_->isActive()) {
     auto now = system_clock::now();
-    auto next_wakeup_time = now + kProfilerIntervalMsecs;
+    auto next_wakeup_time = now + Config::kControllerIntervalMsecs;
     profiler_->performRunLoopStep(now, next_wakeup_time, currentIter);
   }
 }

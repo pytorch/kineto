@@ -173,7 +173,8 @@ class NodeParserMixin:
                             EventTypes.OPERATOR,
                             EventTypes.PL_MODULE,
                             EventTypes.PROFILER_STEP,
-                            EventTypes.MODULE]:
+                            EventTypes.MODULE,
+                            EventTypes.USER_ANNOTATION]:
             if event.type == EventTypes.PROFILER_STEP:
                 op_node = ProfilerStepNode.create(event)
             elif event.type == EventTypes.MODULE:
@@ -197,7 +198,8 @@ class NodeParserMixin:
                 self.use_dp = True
             if event.name == 'DistributedDataParallel.forward':
                 self.use_ddp = True
-            tid2list[int(tid)].append(op_node)
+            if op_node:
+                tid2list[int(tid)].append(op_node)
         elif event.type == EventTypes.PL_PROFILE:
             op_node = PLProfileNode.create(event)
             pl_tid2list[int(tid)].append(op_node)
@@ -276,7 +278,7 @@ class StepParser:
             self.role_ranges[ProfileRole.Memset].append((ts, ts + dur))
         elif evt_type == EventTypes.RUNTIME:
             self.role_ranges[ProfileRole.Runtime].append((ts, ts + dur))
-        elif (evt_type == EventTypes.OPERATOR and (
+        elif ((evt_type == EventTypes.OPERATOR or evt_type == EventTypes.USER_ANNOTATION) and (
                 (event.name.startswith('enumerate(DataLoader)#') and event.name.endswith('.__next__'))
                 or event.name.startswith('enumerate(DataPipe)#'))):
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))

@@ -299,6 +299,8 @@ def create_operator_node(event: OperatorEvent):
         return DataLoaderNode.create(event)
     elif event.name.startswith('Optimizer.step'):
         return OptimizerNode.create(event)
+    elif event.type == EventTypes.USER_ANNOTATION:
+        return None
     else:
         return OperatorNode.create(event)
 

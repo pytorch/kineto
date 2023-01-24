@@ -219,6 +219,9 @@ Config::Config()
   if (factories) {
     factories->addFeatureConfigs(*this);
   }
+#if __linux__
+  enableIpcFabric_ = (getenv(kUseDaemonEnvVar) != nullptr);
+#endif
 }
 
 std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {

@@ -460,4 +460,6 @@ class Config : public AbstractConfig {
   size_t cuptiDeviceBufferPoolLimit_;
 };
 
+constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
+
 } // namespace KINETO_NAMESPACE

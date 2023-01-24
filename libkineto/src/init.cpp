@@ -95,6 +95,13 @@ extern "C" {
 
 // Return true if no CUPTI errors occurred during init
 void libkineto_init(bool cpuOnly, bool logOnError) {
+  // Start with initializing the log level
+  const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
+  if (logLevelEnv) {
+    // atoi returns 0 on error, so that's what we want - default to VERBOSE
+    static_assert (static_cast<int>(VERBOSE) == 0);
+    SET_LOG_SEVERITY_LEVEL(atoi(logLevelEnv));
+  }
 
   // Factory to connect to open source daemon if present
 #if __linux__
@@ -169,7 +176,11 @@ int InitializeInjection(void) {
 }
 
 void suppressLibkinetoLogMessages() {
-  SET_LOG_SEVERITY_LEVEL(ERROR);
+  // Only suppress messages if explicit override wasn't provided
+  const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
+  if (!logLevelEnv || !*logLevelEnv) {
+    SET_LOG_SEVERITY_LEVEL(ERROR);
+  }
 }
 
 } // extern C

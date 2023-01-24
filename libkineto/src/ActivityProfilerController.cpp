@@ -103,6 +103,16 @@ static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
   return loggerFactory().makeLogger(config.activitiesLogUrl());
 }
 
+static std::unique_ptr<InvariantViolationsLogger>& invariantViolationsLoggerFactory() {
+  static std::unique_ptr<InvariantViolationsLogger> factory = nullptr;
+  return factory;
+}
+
+void ActivityProfilerController::setInvariantViolationsLoggerFactory(
+    const std::function<std::unique_ptr<InvariantViolationsLogger>()>& factory) {
+  invariantViolationsLoggerFactory() = factory();
+}
+
 bool ActivityProfilerController::canAcceptConfig() {
   return !profiler_->isActive();
 }
@@ -315,6 +325,16 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
 void ActivityProfilerController::addMetadata(
     const std::string& key, const std::string& value) {
   profiler_->addMetadata(key, value);
+}
+
+void ActivityProfilerController::logInvariantViolation(
+    const std::string& profile_id,
+    const std::string& assertion,
+    const std::string& error,
+    const std::string& group_profile_id) {
+  if (invariantViolationsLoggerFactory()) {
+    invariantViolationsLoggerFactory()->logInvariantViolation(profile_id, assertion, error, group_profile_id);
+  }
 }
 
 } // namespace KINETO_NAMESPACE

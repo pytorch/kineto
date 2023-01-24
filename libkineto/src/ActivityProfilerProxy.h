@@ -70,6 +70,12 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   virtual void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) override;
 
+  void logInvariantViolation(
+      const std::string& profile_id,
+      const std::string& assertion,
+      const std::string& error,
+      const std::string& group_profile_id = "") override;
+
  private:
   bool cpuOnly_{true};
   ConfigLoader& configLoader_;

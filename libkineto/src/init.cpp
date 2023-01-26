@@ -98,8 +98,11 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   // Start with initializing the log level
   const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
   if (logLevelEnv) {
+    // TODO CXX 17 - https://github.com/pytorch/kineto/issues/650
+#if __cplusplus >= 201703L
     // atoi returns 0 on error, so that's what we want - default to VERBOSE
     static_assert (static_cast<int>(VERBOSE) == 0);
+#endif
     SET_LOG_SEVERITY_LEVEL(atoi(logLevelEnv));
   }
 

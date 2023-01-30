@@ -9,6 +9,7 @@
 #include "ActivityProfilerController.h"
 
 #include <chrono>
+#include <functional>
 #include <thread>
 
 #include "ActivityLoggerFactory.h"

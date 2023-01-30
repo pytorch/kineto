@@ -9,6 +9,7 @@
 #include "EventProfilerController.h"
 
 #include <chrono>
+#include <functional>
 #include <thread>
 #include <vector>
 

@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <memory>
 
 #include "DaemonConfigLoader.h"

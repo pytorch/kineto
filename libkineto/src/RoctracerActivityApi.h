@@ -12,6 +12,7 @@
 #include <map>
 #include <set>
 #include <atomic>
+#include <functional>
 
 #ifdef HAS_ROCTRACER
 #include <roctracer.h>

@@ -14,6 +14,7 @@
 #include <fmt/format.h>
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <istream>
 #include <mutex>

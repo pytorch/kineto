@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <chrono>
+#include <functional>
 #include <time.h>
 
 #include "RoctracerActivityApi.h"

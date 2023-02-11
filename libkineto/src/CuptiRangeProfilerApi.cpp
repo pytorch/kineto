@@ -143,12 +143,15 @@ void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
     VLOG(0) << "CUPTI Profiler observed CUDA Context created = "
             << ctx << " device id = " << device_id;
     active_devices.insert(device_id);
+  //  TODO Revisit
+#if 0
     if constexpr (kSetCounterAvail) {
       if (active_devices.size() == 1) {
       CuptiRBProfilerSession::setCounterAvailabilityImage(
           getCounterAvailiability(ctx));
       }
     }
+#endif
     ctx_to_dev[ctx] = device_id;
 
   } else if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING) {

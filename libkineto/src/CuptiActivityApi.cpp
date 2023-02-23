@@ -277,11 +277,8 @@ void CuptiActivityApi::bufferCompleted(
 void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
-  static bool registered = false;
-  if (!registered) {
   CUPTI_CALL(
       cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
-  }
 
   externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {

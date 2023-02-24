@@ -141,7 +141,7 @@ class CuptiCallbackApi {
 
 #ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;
-  CUpti_SubscriberHandle subscriber_;
+  CUpti_SubscriberHandle subscriber_ {0};
 #endif
 };
 

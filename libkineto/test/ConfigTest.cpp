@@ -114,6 +114,10 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = cpu_op"));
   EXPECT_EQ(cfg2.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::CPU_OP}));
+
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = xpu_Runtime"));
+  EXPECT_EQ(cfg2.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::XPU_RUNTIME}));
 }
 
 TEST(ParseTest, SamplePeriod) {

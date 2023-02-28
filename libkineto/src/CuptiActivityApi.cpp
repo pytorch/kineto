@@ -376,6 +376,7 @@ void CuptiActivityApi::teardownContext() {
       tracingEnabled_ = 0;
 
       // Re-enable callbacks from the past.
+      LOG(INFO) << "Re-enabling previous CUPTI callbacks";
       cbapi_->initCallbackApi();
       cbapi_->reenableCallbacks();
       status = cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);

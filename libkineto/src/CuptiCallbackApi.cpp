@@ -103,6 +103,7 @@ void CuptiCallbackApi::__callback_switchboard(
       // This is required to teardown cupti after profiling to prevent QPS slowdown.
       if (CuptiActivityApi::singleton().teardownCupti_) {
         if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+          LOG(INFO) << "  Calling cuptiFinalize in exit callsite";
           // Teardown CUPTI calling cuptiFinalize()
           CUPTI_CALL(cuptiFinalize());
           initSuccess_ = false;
@@ -172,10 +173,12 @@ std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
 void CuptiCallbackApi::initCallbackApi() {
 #ifdef HAS_CUPTI
   lastCuptiStatus_ = CUPTI_ERROR_UNKNOWN;
+  LOG(INFO) << "  Calling cuptiSubscribe, subscriber:" << subscriber_;
   lastCuptiStatus_ = CUPTI_CALL_NOWARN(
     cuptiSubscribe(&subscriber_,
       (CUpti_CallbackFunc)callback_switchboard,
       nullptr));
+  LOG(INFO) << "    subscriber: " << subscriber_;
 
   initSuccess_ = (lastCuptiStatus_ == CUPTI_SUCCESS);
 #endif

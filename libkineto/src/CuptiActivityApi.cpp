@@ -375,14 +375,20 @@ void CuptiActivityApi::teardownContext() {
       teardownCupti_ = 0;
       tracingEnabled_ = 0;
 
+      // Remove the callbacks used specifically for cuptiFinalize
+      cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+
       // Re-enable callbacks from the past.
       LOG(INFO) << "Re-enabling previous CUPTI callbacks";
       cbapi_->initCallbackApi();
-      cbapi_->reenableCallbacks();
-      status = cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
-      status = status && cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
-      if (!status) {
-        LOG(WARNING) << "CUPTI Callback failed to disable for domain";
+      if (cbapi_->initSuccess()) {
+        status = cbapi_->reenableCallbacks();
+        if (!status) {
+          LOG(WARNING) << "Failed to reenableCallbacks";
+        }
+      } else {
+        LOG(WARNING) << "Failed to initCallbackApi";
       }
       cbapi_.reset();
     });

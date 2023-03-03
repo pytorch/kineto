@@ -173,12 +173,10 @@ std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
 void CuptiCallbackApi::initCallbackApi() {
 #ifdef HAS_CUPTI
   lastCuptiStatus_ = CUPTI_ERROR_UNKNOWN;
-  LOG(INFO) << "  Calling cuptiSubscribe, subscriber:" << subscriber_;
   lastCuptiStatus_ = CUPTI_CALL_NOWARN(
     cuptiSubscribe(&subscriber_,
       (CUpti_CallbackFunc)callback_switchboard,
       nullptr));
-  LOG(INFO) << "    subscriber: " << subscriber_;
 
   initSuccess_ = (lastCuptiStatus_ == CUPTI_SUCCESS);
 #endif

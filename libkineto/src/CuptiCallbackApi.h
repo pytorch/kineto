@@ -80,6 +80,10 @@ class CuptiCallbackApi {
   CUptiResult getCuptiStatus() const {
     return lastCuptiStatus_;
   }
+
+  CUpti_SubscriberHandle getCuptiSubscriber() const {
+    return subscriber_;
+  }
 #endif
 
   bool registerCallback(

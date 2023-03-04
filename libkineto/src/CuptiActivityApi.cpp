@@ -366,6 +366,7 @@ void CuptiActivityApi::teardownContext() {
       // Force Flush before finalize
       CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 
+      LOG(INFO) << "  CUPTI subscriber before finalize:" << cbapi_->getCuptiSubscriber();
       teardownCupti_ = 1;
       std::unique_lock<std::mutex> lck(finalizeMutex_);
       finalizeCond_.wait(lck, [&]{return teardownCupti_ == 0;});
@@ -380,9 +381,11 @@ void CuptiActivityApi::teardownContext() {
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
 
       // Re-enable callbacks from the past.
-      LOG(INFO) << "Re-enabling previous CUPTI callbacks";
+      LOG(INFO) << "Re-enable previous CUPTI callbacks starting";
+      LOG(INFO) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
       cbapi_->initCallbackApi();
       if (cbapi_->initSuccess()) {
+        LOG(INFO) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
         status = cbapi_->reenableCallbacks();
         if (!status) {
           LOG(WARNING) << "Failed to reenableCallbacks";
@@ -391,6 +394,7 @@ void CuptiActivityApi::teardownContext() {
         LOG(WARNING) << "Failed to initCallbackApi";
       }
       cbapi_.reset();
+      LOG(INFO) << "Re-enable previous CUPTI callbacks complete";
     });
     teardownThread.detach();
   }

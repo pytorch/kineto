@@ -105,6 +105,7 @@ void CuptiCallbackApi::__callback_switchboard(
         if (cbInfo->callbackSite == CUPTI_API_EXIT) {
           LOG(INFO) << "  Calling cuptiFinalize in exit callsite";
           // Teardown CUPTI calling cuptiFinalize()
+          CUPTI_CALL(cuptiUnsubscribe(subscriber_));
           CUPTI_CALL(cuptiFinalize());
           initSuccess_ = false;
           subscriber_ = 0;

@@ -273,11 +273,16 @@ std::unique_ptr<IActivityProfilerSession> CuptiRangeProfiler::configure(
   if (activity_types_.find(kProfActivityType) == activity_types_.end()) {
     return nullptr;
   }
+  bool has_gpu_event_types = (
+      activity_types_.count(ActivityType::GPU_MEMCPY) +
+      activity_types_.count(ActivityType::GPU_MEMSET) +
+      activity_types_.count(ActivityType::CONCURRENT_KERNEL)
+    ) > 0;
 
-  if (activity_types_.size() > 1) {
-    LOG(WARNING) << kProfilerName << " cannot be run in combination with"
+  if (has_gpu_event_types) {
+    LOG(WARNING) << kProfilerName << " cannot run in combination with"
                 << " other cuda activity profilers, please configure"
-                << " only one activity type  : cuda_profiler_range";
+                << " with cuda_profiler_range and optionally cpu_op/user_annotations";
     return nullptr;
   }
 

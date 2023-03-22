@@ -93,6 +93,9 @@ class RunProfileData(object):
         self.comm_overlap_costs = None
         self.memory_snapshot: Optional[MemorySnapshot] = None
 
+        # Device used, pure CPU run as default
+        self.device = "CPU"
+
         # recommendation based on analysis result.
         self.recommendations = []
 
@@ -178,6 +181,8 @@ class RunProfileData(object):
         self.use_dp = parser.use_dp
         self.use_ddp = parser.use_ddp
         self.role_ranges = parser.role_ranges
+
+        self.device = "GPU" if self.has_runtime or self.has_kernel or self.has_memcpy_or_memset else "CPU"
 
         self.comm_lib = parser.comm_lib
         self.has_communication = parser.has_communication

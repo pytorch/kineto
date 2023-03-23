@@ -277,26 +277,6 @@ void CuptiActivityApi::bufferCompleted(
 void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
-  // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
-  auto cbapi_ = CuptiCallbackApi::singleton();
-  if (!tracingEnabled_ && !cbapi_->initSuccess()) {
-    // Re-enable callbacks from the past if they exist.
-    LOG(INFO) << "Re-enable previous CUPTI callbacks starting";
-    LOG(INFO) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
-    cbapi_->initCallbackApi();
-    if (cbapi_->initSuccess()) {
-      LOG(INFO) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
-      bool status = cbapi_->reenableCallbacks();
-      if (!status) {
-        LOG(WARNING) << "Failed to reenableCallbacks";
-      }
-    } else {
-      LOG(WARNING) << "Failed to initCallbackApi";
-    }
-    LOG(INFO) << "Re-enable previous CUPTI callbacks complete";
-  }
-  cbapi_.reset();
-
   CUPTI_CALL(
       cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
 
@@ -399,7 +379,22 @@ void CuptiActivityApi::teardownContext() {
       // Remove the callbacks used specifically for cuptiFinalize
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+
+      // Re-enable callbacks from the past.
+      LOG(INFO) << "Re-enable previous CUPTI callbacks starting";
+      LOG(INFO) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
+      cbapi_->initCallbackApi();
+      if (cbapi_->initSuccess()) {
+        LOG(INFO) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
+        status = cbapi_->reenableCallbacks();
+        if (!status) {
+          LOG(WARNING) << "Failed to reenableCallbacks";
+        }
+      } else {
+        LOG(WARNING) << "Failed to initCallbackApi";
+      }
       cbapi_.reset();
+      LOG(INFO) << "Re-enable previous CUPTI callbacks complete";
     });
     teardownThread.detach();
   }

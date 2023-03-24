@@ -60,7 +60,6 @@ ConfigDerivedState::ConfigDerivedState(const Config& config) {
     profileEndIter_ = (std::numeric_limits<decltype(profileEndIter_)>::max)();
     profileEndTime_ = profileStartTime_ + config.activitiesDuration();
   }
-  profileWithStack_ = config.isPythonStackTraceEnabled();
 }
 
 bool ConfigDerivedState::canStart(
@@ -660,7 +659,12 @@ void CuptiActivityProfiler::configure(
   }
 
   if (libkineto::api().client()) {
-    libkineto::api().client()->warmup(config_->isOpInputsCollectionEnabled());
+    libkineto::api().client()->prepare(
+      config_->isReportInputShapesEnabled(),
+      config_->isProfileMemoryEnabled(),
+      config_->isWithStackEnabled(),
+      config_->isWithFlopsEnabled(),
+      config_->isWithModulesEnabled());
   }
 
   if (derivedConfig_->isProfilingByIteration()) {
@@ -788,7 +792,6 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         }
         startTrace(now);
         if (libkineto::api().client()) {
-          libkineto::api().client()->set_withstack(derivedConfig_->profileWithPythonStack());
           libkineto::api().client()->start();
         }
         if (nextWakeupTime > derivedConfig_->profileEndTime()) {

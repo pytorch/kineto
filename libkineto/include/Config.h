@@ -180,12 +180,24 @@ class Config : public AbstractConfig {
     selectedActivityTypes_ = types;
   }
 
-  bool isOpInputsCollectionEnabled() const {
-    return enableOpInputsCollection_;
+  bool isReportInputShapesEnabled() const {
+    return enableReportInputShapes_;
   }
 
-  bool isPythonStackTraceEnabled() const {
-    return enablePythonStackTrace_;
+  bool isProfileMemoryEnabled() const {
+    return enableProfileMemory_;
+  }
+
+  bool isWithStackEnabled() const {
+    return enableWithStack_;
+  }
+
+  bool isWithFlopsEnabled() const {
+    return enableWithFlops_;
+  }
+
+  bool isWithModulesEnabled() const {
+    return enableWithModules_;
   }
 
   // Trace for this long
@@ -411,12 +423,12 @@ class Config : public AbstractConfig {
   std::chrono::seconds activitiesWarmupDuration_;
   int activitiesWarmupIterations_;
 
-  // Client Interface
-  // Enable inputs collection when tracing ops
-  bool enableOpInputsCollection_{true};
-
-  // Enable Python Stack Tracing
-  bool enablePythonStackTrace_{false};
+  // Enable Profiler Config Options
+  bool enableReportInputShapes_{true};
+  bool enableProfileMemory_{false};
+  bool enableWithStack_{false};
+  bool enableWithFlops_{false};
+  bool enableWithModules_{false};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;

@@ -73,8 +73,15 @@ constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 
 // Client Interface
+// TODO: keep supporting these older config options, deprecate in the future using replacements.
 constexpr char kClientInterfaceEnableOpInputsCollection[] = "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
 constexpr char kPythonStackTrace[] = "PYTHON_STACK_TRACE";
+// Profiler Config Options
+constexpr char kProfileReportInputShapes[] = "PROFILE_REPORT_INPUT_SHAPES";
+constexpr char kProfileProfileMemory[] = "PROFILE_PROFILE_MEMORY";
+constexpr char kProfileWithStack[] = "PROFILE_WITH_STACK";
+constexpr char kProfileWithFlops[] = "PROFILE_WITH_FLOPS";
+constexpr char kProfileWithModules[] = "PROFILE_WITH_MODULES";
 
 constexpr char kActivitiesWarmupIterationsKey[] =
     "ACTIVITIES_WARMUP_ITERATIONS";
@@ -368,11 +375,24 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesWarmupIterations_ = toInt32(val);
   }
 
-  // Client Interface
+  // TODO: Deprecate Client Interface
   else if (!name.compare(kClientInterfaceEnableOpInputsCollection)) {
-    enableOpInputsCollection_ = toBool(val);
+    enableReportInputShapes_ = toBool(val);
   } else if (!name.compare(kPythonStackTrace)) {
-    enablePythonStackTrace_ = toBool(val);
+    enableWithStack_ = toBool(val);
+  }
+
+  // Profiler Config
+  else if (!name.compare(kProfileReportInputShapes)) {
+    enableReportInputShapes_ = toBool(val);
+  } else if (!name.compare(kProfileProfileMemory)) {
+    enableProfileMemory_ = toBool(val);
+  } else if (!name.compare(kProfileWithStack)) {
+    enableWithStack_ = toBool(val);
+  } else if (!name.compare(kProfileWithFlops)) {
+    enableWithFlops_ = toBool(val);
+  } else if (!name.compare(kProfileWithModules)) {
+    enableWithModules_ = toBool(val);
   }
 
   // Common

@@ -424,7 +424,8 @@ class Config : public AbstractConfig {
   int activitiesWarmupIterations_;
 
   // Enable Profiler Config Options
-  bool enableReportInputShapes_{true};
+  // Temporarily disable shape collection until we re-roll out the feature for on-demand cases
+  bool enableReportInputShapes_{false};
   bool enableProfileMemory_{false};
   bool enableWithStack_{false};
   bool enableWithFlops_{false};

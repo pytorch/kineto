@@ -29,6 +29,29 @@ namespace KINETO_NAMESPACE {
 // case, there will be 32 buffers contending for the mutex.
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
+#ifdef HAS_CUPTI
+bool cuptiLazyInit_() {
+  return getenv("TEARDOWN_CUPTI") != nullptr && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
+}
+
+inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
+  // Re-enable callbacks from the past if they exist.
+  LOG(INFO) << "Re-enable previous CUPTI callbacks - starting";
+  LOG(INFO) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
+  cbapi_->initCallbackApi();
+  if (cbapi_->initSuccess()) {
+    LOG(INFO) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
+    bool status = cbapi_->reenableCallbacks();
+    if (!status) {
+      LOG(WARNING) << "Failed to reenableCallbacks";
+    }
+  } else {
+    LOG(WARNING) << "Failed to initCallbackApi";
+  }
+  LOG(INFO) << "Re-enable previous CUPTI callbacks - complete";
+}
+#endif
+
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static CuptiActivityApi instance;
   return instance;
@@ -277,6 +300,13 @@ void CuptiActivityApi::bufferCompleted(
 void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
+  // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
+  auto cbapi_ = CuptiCallbackApi::singleton();
+  if (!tracingEnabled_ && !cbapi_->initSuccess() && cuptiLazyInit_()) {
+    reenableCuptiCallbacks_(cbapi_);
+  }
+  cbapi_.reset();
+
   CUPTI_CALL(
       cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
 
@@ -380,21 +410,11 @@ void CuptiActivityApi::teardownContext() {
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
 
-      // Re-enable callbacks from the past.
-      LOG(INFO) << "Re-enable previous CUPTI callbacks starting";
-      LOG(INFO) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
-      cbapi_->initCallbackApi();
-      if (cbapi_->initSuccess()) {
-        LOG(INFO) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
-        status = cbapi_->reenableCallbacks();
-        if (!status) {
-          LOG(WARNING) << "Failed to reenableCallbacks";
-        }
-      } else {
-        LOG(WARNING) << "Failed to initCallbackApi";
+      // Re-init CUPTI Callbacks if Lazy Re-init is not enabled.
+      if (!cuptiLazyInit_()) {
+        reenableCuptiCallbacks_(cbapi_);
       }
       cbapi_.reset();
-      LOG(INFO) << "Re-enable previous CUPTI callbacks complete";
     });
     teardownThread.detach();
   }

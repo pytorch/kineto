@@ -173,7 +173,7 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
         p_memory_pool[i].d_C, p_memory_pool[i].n_elements);
 
     // Throw a dice to see if we will do memcopy host to device for this one and use pinned memory
-    if (((float)(rand() % 100) / 100.0) < cache_args.prob_h2d) {
+    if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_h2d) {
       p_memory_pool[i].b_copy_h2d = true;
       checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
       checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
@@ -187,7 +187,7 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
     }
 
     // Simulate output download
-    if (((float)(rand() % 10000) / 10000.0) < cache_args.prob_d2h) {
+    if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_d2h) {
       p_memory_pool[i].b_copy_d2h = true;
     } else {
       p_memory_pool[i].b_copy_d2h = false;
@@ -394,7 +394,7 @@ void run_stress_test(
     uint32_t stream_idx = local_pair_idx % test_args.num_cuda_streams;
 
     // Check if we do a CUDA malloc
-    if (((float)(rand_r(&rng_state) % 10000) / 10000.0) < test_args.prob_cuda_malloc) {
+    if (((float)(rand_r(&rng_state) % 32767) / 32767.0) < test_args.prob_cuda_malloc) {
       checkCudaStatus(cudaDeviceSynchronize(), __LINE__);
       free_and_realloc_tensor_pairs(p_memory_pool + pair_idx,
           v_streams[stream_idx]);
@@ -452,8 +452,8 @@ void run_stress_test(
       kernel_args.uvm_len = 0;
     }
 
-    bool b_do_memset = ((float)(rand_r(&rng_state) % 10000) / 10000.0) < test_args.memset_prob;
-    bool b_uvm_kernel = ((float)(rand_r(&rng_state) % 10000) / 10000.0) < test_args.uvm_kernel_prob ? true : false;
+    bool b_do_memset = ((float)(rand_r(&rng_state) % 32767) / 32767.0) < test_args.memset_prob;
+    bool b_uvm_kernel = ((float)(rand_r(&rng_state) % 32767) / 32767.0) < test_args.uvm_kernel_prob ? true : false;
     if ((kernel_args.uvm_len > 0) && (b_uvm_kernel)) {
       if (b_do_memset) {
         memset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float));

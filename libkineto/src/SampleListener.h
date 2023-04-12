@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>

@@ -32,6 +32,7 @@ enum class ActivityType {
     // Optional Activity types
     GLOW_RUNTIME, // host side glow runtime events
     CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
+    MTIA_CCP_EVENTS, // MTIA ondevice CCP events
     HPU_OP, // HPU host side runtime event
     XPU_RUNTIME, // host side xpu runtime events
 

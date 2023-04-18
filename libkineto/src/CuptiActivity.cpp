@@ -159,6 +159,10 @@ inline void RuntimeActivity::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);
 }
 
+inline void DriverActivity::log(ActivityLogger& logger) const {
+  logger.handleActivity(*this);
+}
+
 inline void OverheadActivity::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);
 }
@@ -187,6 +191,22 @@ inline const std::string RuntimeActivity::metadataJson() const {
   return fmt::format(R"JSON(
       "cbid": {}, "correlation": {})JSON",
       activity_.cbid, activity_.correlationId);
+}
+
+inline bool DriverActivity::flowStart() const {
+  return activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel;
+}
+
+inline const std::string DriverActivity::metadataJson() const {
+  return fmt::format(R"JSON(
+      "cbid": {}, "correlation": {})JSON",
+      activity_.cbid, activity_.correlationId);
+}
+
+inline const std::string DriverActivity::name() const {
+  // currently only cuLaunchKernel is expected
+  assert(activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel);
+  return "cuLaunchKernel";
 }
 
 template<class T>

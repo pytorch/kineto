@@ -37,6 +37,8 @@ using namespace KINETO_NAMESPACE;
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #define CUDA_MEMCPY CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020
 
+#define CU_LAUNCH_KERNEL CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
+
 namespace {
 const TraceSpan& defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
@@ -55,6 +57,7 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     GenericTraceActivity op(span, ActivityType::CPU_OP, name);
     op.startTime = startTime;
     op.endTime = endTime;
+    op.device = systemThreadId();
     op.resource = systemThreadId();
     op.id = correlation;
     emplace_activity(std::move(op));
@@ -79,6 +82,17 @@ struct MockCuptiActivityBuffer {
     auto& act = createActivity<CUpti_ActivityAPI>(
         start_us, end_us, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_RUNTIME;
+    act.cbid = cbid;
+    act.threadId = threadId();
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
+  void addDriverActivity(
+      CUpti_driver_api_trace_cbid_enum cbid,
+      int64_t start_us, int64_t end_us, int64_t correlation) {
+    auto& act = createActivity<CUpti_ActivityAPI>(
+        start_us, end_us, correlation);
+    act.kind = CUPTI_ACTIVITY_KIND_DRIVER;
     act.cbid = cbid;
     act.threadId = threadId();
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
@@ -391,6 +405,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   cpuOps->addOp("op1", 120, 150, 1);
   cpuOps->addOp("op2", 130, 140, 2);
   cpuOps->addOp("op3", 200, 250, 3);
+  cpuOps->addOp("op4", 260, 280, 4);
   profiler.transferCpuTrace(std::move(cpuOps));
 
   // And some GPU ops
@@ -398,9 +413,11 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 133, 138, 1);
   gpuOps->addRuntimeActivity(CUDA_MEMCPY, 210, 220, 2);
   gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 230, 245, 3);
+  gpuOps->addDriverActivity(CU_LAUNCH_KERNEL, 265, 275, 4);
   gpuOps->addKernelActivity(150, 170, 1);
   gpuOps->addMemcpyActivity(240, 250, 2);
   gpuOps->addKernelActivity(260, 320, 3);
+  gpuOps->addKernelActivity(330, 350, 4);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Have the profiler process them
@@ -412,7 +429,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(trace.activities()->size(), 9);
+  EXPECT_EQ(trace.activities()->size(), 12);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
   for (auto& activity : *trace.activities()) {
@@ -425,16 +442,18 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(activityCounts["op1"], 1);
   EXPECT_EQ(activityCounts["op2"], 1);
   EXPECT_EQ(activityCounts["op3"], 1);
+  EXPECT_EQ(activityCounts["op4"], 1);
   EXPECT_EQ(activityCounts["cudaLaunchKernel"], 2);
+  EXPECT_EQ(activityCounts["cuLaunchKernel"], 1);
   EXPECT_EQ(activityCounts["cudaMemcpy"], 1);
-  EXPECT_EQ(activityCounts["kernel"], 2);
+  EXPECT_EQ(activityCounts["kernel"], 3);
   EXPECT_EQ(activityCounts["Memcpy HtoD (Pinned -> Device)"], 1);
 
   auto sysTid = systemThreadId();
   // Ops and runtime events are on thread sysTid
-  EXPECT_EQ(resourceIds[sysTid], 6);
+  EXPECT_EQ(resourceIds[sysTid], 8);
   // Kernels are on stream 1, memcpy on stream 2
-  EXPECT_EQ(resourceIds[1], 2);
+  EXPECT_EQ(resourceIds[1], 3);
   EXPECT_EQ(resourceIds[2], 1);
 
 #ifdef __linux__

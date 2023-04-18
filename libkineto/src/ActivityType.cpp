@@ -26,6 +26,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"kernel", ActivityType::CONCURRENT_KERNEL},
     {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
     {"cuda_runtime", ActivityType::CUDA_RUNTIME},
+    {"cuda_driver", ActivityType::CUDA_DRIVER},
     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
     {"python_function", ActivityType::PYTHON_FUNCTION},
     {"overhead", ActivityType::OVERHEAD},

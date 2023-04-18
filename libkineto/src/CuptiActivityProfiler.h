@@ -305,6 +305,8 @@ class CuptiActivityProfiler {
       const CUpti_ActivityExternalCorrelation* correlation);
   void handleRuntimeActivity(
       const CUpti_ActivityAPI* activity, ActivityLogger* logger);
+  void handleDriverActivity(
+      const CUpti_ActivityAPI* activity, ActivityLogger* logger);
   void handleOverheadActivity(
       const CUpti_ActivityOverhead* activity, ActivityLogger* logger);
   void handleGpuActivity(const ITraceActivity& act,

@@ -37,9 +37,7 @@ static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 
 std::string& ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
 // Replace all backslashes with forward slash because Windows paths causing JSONDecodeError.
-#ifdef _WIN32
   std::replace(value.begin(), value.end(), '\\', '/');
-#endif
   return value;
 }
 
@@ -315,7 +313,7 @@ void ChromeTraceLogger::handleActivity(
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
     "ts": {}, "dur": {}{}
   }},)JSON",
-          toString(op.type()), op_name, device, resource,
+          toString(op.type()), sanitizeStrForJSON(op_name), device, resource,
           ts, duration, args);
   // clang-format on
   if (op.flowId() > 0) {

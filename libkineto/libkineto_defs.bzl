@@ -51,6 +51,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/ILoggerObserver.cpp",
         "src/IpcFabricConfigClient.cpp",
         "src/Logger.cpp",
+        "src/LoggingAPI.cpp",
         "src/init.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",

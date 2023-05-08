@@ -28,6 +28,8 @@
 #include "TraceSpan.h"
 #include "IActivityProfiler.h"
 #include "ActivityTraceInterface.h"
+#include "ILoggerObserver.h"
+#include "LoggingAPI.h"
 
 #include "ThreadUtil.h"
 

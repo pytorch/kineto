@@ -37,7 +37,6 @@ constexpr char kOnDemandConfigFile[] = "libkineto.conf";
 #endif
 
 constexpr std::chrono::seconds kConfigUpdateIntervalSecs(300);
-constexpr std::chrono::seconds kOnDemandConfigUpdateIntervalSecs(5);
 
 #ifdef __linux__
 static struct sigaction originalUsr2Handler = {};
@@ -145,7 +144,9 @@ int ConfigLoader::contextCountForGpu(uint32_t device) {
 
 ConfigLoader::ConfigLoader()
     : configUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
-      onDemandConfigUpdateIntervalSecs_(kOnDemandConfigUpdateIntervalSecs),
+      // on-demand config will be overwritten by the value read from the regular config
+      // so the initial value is not important
+      onDemandConfigUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
       stopFlag_(false),
       onDemandSignal_(false) {
 }
@@ -273,37 +274,44 @@ void ConfigLoader::updateConfigThread() {
   // function finishes.
   auto handle = Config::getStaticObjectsLifetimeHandle();
 
-  auto now = system_clock::now();
-  auto next_config_load_time = now;
-  auto next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;
-  seconds interval = configUpdateIntervalSecs_;
-  if (interval > onDemandConfigUpdateIntervalSecs_) {
-    interval = onDemandConfigUpdateIntervalSecs_;
-  }
+  // We're trying to update two configs here:
+  // 1. Base config - this is the config that is read from the config file
+  // 2. On-demand config - this is the config that is read via IPC channel
+  //    from daemon. It's layered on top of the base config.
+  // They have different update intervals (on demand is more frequent).
+  // Besides, on-demand update frequency can be configured via base config.
+
+  // initialze with some time buffer in the past
+  auto prev_config_load_time = system_clock::now() - configUpdateIntervalSecs_ * 2;
+  auto prev_on_demand_load_time = prev_config_load_time;
   auto onDemandConfig = std::make_unique<Config>();
 
   // This can potentially sleep for long periods of time, so allow
-  // the desctructor to wake it to avoid a 5-minute long destruct period.
+  // the destructor to wake it to avoid a 5-minute long destruct period.
   for (;;) {
-    {
+    auto interval = std::min(
+        configUpdateIntervalSecs_ + prev_config_load_time,
+        onDemandConfigUpdateIntervalSecs_ + prev_on_demand_load_time) - system_clock::now();
+    if (interval.count() > 0) {
       std::unique_lock<std::mutex> lock(updateThreadMutex_);
       updateThreadCondVar_.wait_for(lock, interval);
     }
     if (stopFlag_) {
       break;
     }
-    now = system_clock::now();
-    if (now > next_config_load_time) {
+    auto now = system_clock::now();
+    if (now > prev_config_load_time + configUpdateIntervalSecs_) {
       updateBaseConfig();
-      next_config_load_time = now + configUpdateIntervalSecs_;
+      onDemandConfigUpdateIntervalSecs_ = config_->onDemandConfigUpdateIntervalSecs();
+      prev_config_load_time = now;
     }
     if (onDemandSignal_.exchange(false)) {
       onDemandConfig = config_->clone();
       configureFromSignal(now, *onDemandConfig);
-    } else if (now > next_on_demand_load_time) {
+    } else if (now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
       onDemandConfig = std::make_unique<Config>();
       configureFromDaemon(now, *onDemandConfig);
-      next_on_demand_load_time = now + onDemandConfigUpdateIntervalSecs_;
+      prev_on_demand_load_time = now;
     }
     if (onDemandConfig->verboseLogLevel() >= 0) {
       LOG(INFO) << "Setting verbose level to "

@@ -289,6 +289,10 @@ class Config : public AbstractConfig {
     return enableIpcFabric_;
   }
 
+  std::chrono::seconds onDemandConfigUpdateIntervalSecs() const {
+    return onDemandConfigUpdateIntervalSecs_;
+  }
+
   static std::chrono::milliseconds alignUp(
       std::chrono::milliseconds duration,
       std::chrono::milliseconds alignment) {
@@ -465,6 +469,7 @@ class Config : public AbstractConfig {
 
   // Enable IPC Fabric instead of thrift communication
   bool enableIpcFabric_;
+  std::chrono::seconds onDemandConfigUpdateIntervalSecs_;
 
   // Logger Metadata
   std::string requestTraceID_;

@@ -44,6 +44,7 @@ constexpr int kDefaultSamplesPerReport(1);
 constexpr int kDefaultMaxEventProfilersPerGpu(1);
 constexpr int kDefaultEventProfilerHearbeatMonitorPeriod(0);
 constexpr seconds kMaxRequestAge(10);
+constexpr seconds kDefaultOnDemandConfigUpdateIntervalSecs(5);
 // 3200000 is the default value set by CUPTI
 constexpr size_t kDefaultCuptiDeviceBufferSize(3200000);
 // Default value set by CUPTI is 250
@@ -136,6 +137,8 @@ constexpr char kEnableSigUsr2Key[] = "ENABLE_SIGUSR2";
 // Enable communication through IPC Fabric
 // and disable thrift communication with dynolog daemon
 constexpr char kEnableIpcFabricKey[] = "ENABLE_IPC_FABRIC";
+// Period to pull on-demand config from dynolog daemon
+constexpr char kOnDemandConfigUpdateIntervalSecsKey[] = "ON_DEMAND_CONFIG_UPDATE_INTERVAL_SECS";
 
 // Verbose log level
 // The actual glog is not used and --v and --vmodule has no effect.
@@ -222,6 +225,7 @@ Config::Config()
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(false),
       enableIpcFabric_(false),
+      onDemandConfigUpdateIntervalSecs_(kDefaultOnDemandConfigUpdateIntervalSecs),
       cuptiDeviceBufferSize_(kDefaultCuptiDeviceBufferSize),
       cuptiDeviceBufferPoolLimit_(kDefaultCuptiDeviceBufferPoolLimit) {
   auto factories = configFactories();
@@ -412,6 +416,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     enableSigUsr2_ = toBool(val);
   } else if (!name.compare(kEnableIpcFabricKey)) {
     enableIpcFabric_ = toBool(val);
+  } else if (!name.compare(kOnDemandConfigUpdateIntervalSecsKey)) {
+    onDemandConfigUpdateIntervalSecs_ = seconds(toInt32(val));
   } else {
     return false;
   }

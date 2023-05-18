@@ -36,19 +36,20 @@ bool cuptiLazyInit_() {
 
 inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
   // Re-enable callbacks from the past if they exist.
-  LOG(INFO) << "Re-enable previous CUPTI callbacks - starting";
-  LOG(INFO) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
+  LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
+  VLOG(1) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
   cbapi_->initCallbackApi();
   if (cbapi_->initSuccess()) {
-    LOG(INFO) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
+    VLOG(1) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
     bool status = cbapi_->reenableCallbacks();
     if (!status) {
-      LOG(WARNING) << "Failed to reenableCallbacks";
+      LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
+    } else {
+      LOG(INFO) << "Re-enable previous CUPTI callbacks - Successful";
     }
   } else {
-    LOG(WARNING) << "Failed to initCallbackApi";
+    LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
   }
-  LOG(INFO) << "Re-enable previous CUPTI callbacks - complete";
 }
 #endif
 

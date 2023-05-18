@@ -41,7 +41,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
 #if !USE_GOOGLE_LOG
   static void setLoggerCollectorFactory(
-      std::function<std::unique_ptr<LoggerCollector>()> factory);
+      std::function<std::shared_ptr<LoggerCollector>()> factory);
 #endif // !USE_GOOGLE_LOG
 
   static void addLoggerFactory(
@@ -100,6 +100,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   std::unique_ptr<CuptiActivityProfiler> profiler_;
   std::unique_ptr<ActivityLogger> logger_;
+  std::shared_ptr<LoggerCollector> loggerCollectorFactory_;
   std::thread* profilerThread_{nullptr};
   std::atomic_bool stopRunloop_{false};
   std::atomic<std::int64_t> iterationCount_{-1};

@@ -29,13 +29,13 @@ using namespace std::chrono;
 namespace KINETO_NAMESPACE {
 
 #if !USE_GOOGLE_LOG
-static std::unique_ptr<LoggerCollector>& loggerCollectorFactory() {
-  static std::unique_ptr<LoggerCollector> factory = nullptr;
+static std::shared_ptr<LoggerCollector>& loggerCollectorFactory() {
+  static std::shared_ptr<LoggerCollector> factory = nullptr;
   return factory;
 }
 
 void ActivityProfilerController::setLoggerCollectorFactory(
-    std::function<std::unique_ptr<LoggerCollector>()> factory) {
+    std::function<std::shared_ptr<LoggerCollector>()> factory) {
   loggerCollectorFactory() = factory();
 }
 #endif // !USE_GOOGLE_LOG
@@ -54,7 +54,10 @@ ActivityProfilerController::ActivityProfilerController(
 
 #if !USE_GOOGLE_LOG
   if (loggerCollectorFactory()) {
-    Logger::addLoggerObserver(loggerCollectorFactory().get());
+    // Keep a reference to the logger collector factory to handle safe
+    // static de-initialization.
+    loggerCollectorFactory_ = loggerCollectorFactory();
+    Logger::addLoggerObserver(loggerCollectorFactory_.get());
   }
 #endif // !USE_GOOGLE_LOG
 }
@@ -72,7 +75,7 @@ ActivityProfilerController::~ActivityProfilerController() {
 
 #if !USE_GOOGLE_LOG
   if (loggerCollectorFactory()) {
-    Logger::removeLoggerObserver(loggerCollectorFactory().get());
+    Logger::removeLoggerObserver(loggerCollectorFactory_.get());
   }
 #endif // !USE_GOOGLE_LOG
 }

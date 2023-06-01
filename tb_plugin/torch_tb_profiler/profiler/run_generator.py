@@ -502,7 +502,8 @@ class DistributedRunGenerator(object):
                 ]
                 steps_to_overlap['all'][data.worker] = [
                     sum(x) for x in zip(steps_to_overlap['all'][data.worker], steps_to_overlap[step_name][data.worker])]
-            steps_to_overlap['all'][data.worker] = [x/step_number for x in steps_to_overlap['all'][data.worker]]
+            steps_to_overlap['all'][data.worker] = [int(x / max(1, step_number)) for x in
+                                                    steps_to_overlap['all'][data.worker]]
         for k, v in steps_to_overlap.items():
             steps_to_overlap[k] = OrderedDict(sorted(v.items()))
         result['data'] = steps_to_overlap
@@ -528,7 +529,8 @@ class DistributedRunGenerator(object):
                 ]
                 steps_to_wait['all'][data.worker] = [
                     sum(x) for x in zip(steps_to_wait['all'][data.worker], steps_to_wait[step][data.worker])]
-            steps_to_wait['all'][data.worker] = [x/step_number for x in steps_to_wait['all'][data.worker]]
+            steps_to_wait['all'][data.worker] = [int(x / max(1, step_number)) for x in
+                                                 steps_to_wait['all'][data.worker]]
 
         for k, v in steps_to_wait.items():
             steps_to_wait[k] = OrderedDict(sorted(v.items()))

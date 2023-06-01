@@ -286,7 +286,7 @@ class StepParser:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
-            if event.name in GlooOpNameSet:
+            if event.name in GlooOpNameSet or event.name in NcclOpNameSet:
                 self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
             else:
                 self.role_ranges[ProfileRole.CpuOp].append((ts, ts + dur))

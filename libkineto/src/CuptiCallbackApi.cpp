@@ -179,7 +179,7 @@ void CuptiCallbackApi::initCallbackApi() {
       (CUpti_CallbackFunc)callback_switchboard,
       nullptr));
   if (lastCuptiStatus_ != CUPTI_SUCCESS) {
-    LOG(WARNING)  << "Failed cuptiSubscribe, status: " << lastCuptiStatus_;
+    VLOG(1)  << "Failed cuptiSubscribe, status: " << lastCuptiStatus_;
   }
 
   initSuccess_ = (lastCuptiStatus_ == CUPTI_SUCCESS);

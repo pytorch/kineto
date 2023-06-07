@@ -12,12 +12,10 @@ from .node import (CommunicationNode, DeviceNode, ModuleNode, OperatorNode, PLMo
                    ProfilerStepNode, RuntimeNode, create_operator_node)
 from .op_tree import OpTreeBuilder
 from .range_utils import merge_ranges
-from .trace import BaseEvent, DurationEvent, EventTypes, KernelEvent
+from .trace import BaseEvent, DurationEvent, EventTypes, KernelEvent, NcclOpNameSet, GlooOpNameSet
 
 logger = utils.get_logger()
 
-NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
-GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
 CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
 
 
@@ -285,7 +283,7 @@ class StepParser:
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
             self.steps_names.append(str(event.step))
-        elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR]:
+        elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.USER_ANNOTATION]:
             if event.name in GlooOpNameSet or event.name in NcclOpNameSet:
                 self.role_ranges[ProfileRole.Communication].append((ts, ts + dur))
             else:

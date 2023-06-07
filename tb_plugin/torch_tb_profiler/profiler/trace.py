@@ -10,6 +10,8 @@ __all__ = ['EventTypes', 'create_event']
 
 logger = utils.get_logger()
 
+NcclOpNameSet = ['nccl:broadcast', 'nccl:reduce', 'nccl:all_reduce', 'nccl:all_gather', 'nccl:reduce_scatter']
+GlooOpNameSet = ['gloo:broadcast', 'gloo:reduce', 'gloo:all_reduce', 'gloo:all_gather', 'gloo:reduce_scatter']
 
 class DeviceType(IntEnum):
     CPU = 0
@@ -188,6 +190,8 @@ def create_trace_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
         name = event.get('name')
         if name and name.startswith('ProfilerStep#'):
             return ProfilerStepEvent(event)
+        if name in GlooOpNameSet or name in NcclOpNameSet:
+            return OperatorEvent(event_type, event)
     elif event_type == EventTypes.OPERATOR:
         name = event.get('name')
         if name and name.startswith('ProfilerStep#'):

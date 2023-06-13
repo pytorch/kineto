@@ -18,7 +18,10 @@
         "num_ranks": 0,
         "sz_nccl_buff_KB": 18432,
         "num_iters_nccl_sync": 1000,
-        "pre_alloc_streams": true
+        "pre_alloc_streams": true,
+        "monitor_mem_usage": false,
+        "trace_length_us": 1000000,
+        "cupti_buffer_mb": 0
     },
     "cache_args": {
         "sz_cache_KB": 16000000,

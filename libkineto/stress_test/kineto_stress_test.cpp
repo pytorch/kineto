@@ -64,6 +64,9 @@ void read_inputs_from_json(std::string sJsonFile, stress_test_args *test_args,
     test_args->sz_nccl_buff_KB = (uint32_t)jsonTestArgs["sz_nccl_buff_KB"].asInt();
     test_args->num_iters_nccl_sync = (uint32_t)jsonTestArgs["num_iters_nccl_sync"].asInt();
     test_args->pre_alloc_streams = (bool)jsonTestArgs["pre_alloc_streams"].asBool();
+    test_args->monitor_mem_usage = (bool)jsonTestArgs["monitor_mem_usage"].asBool();
+    test_args->trace_length_us = (uint32_t)jsonTestArgs["trace_length_us"].asInt();
+    test_args->cupti_buffer_mb = (uint32_t)jsonTestArgs["cupti_buffer_mb"].asInt();
 
     folly::dynamic cacheArgs = sJsonParsed["cache_args"];
     cache_args->sz_cache_KB = (uint32_t)cacheArgs["sz_cache_KB"].asInt();
@@ -79,14 +82,16 @@ void read_inputs_from_json(std::string sJsonFile, stress_test_args *test_args,
   }
 }
 
-void trace_collection_thread() {
-  useconds_t t_trace_length_us = 2000000;
+void trace_collection_thread(uint32_t trace_length_us,
+  uint32_t cupti_buffer_mb) {
 
-  // Configure CUPTI buffer sizes
-  // size_t attrValue = 0, attrValueSize = sizeof(size_t);
-  // attrValue = 3 * 1024 * 1024;
-  // cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
-  //    &attrValueSize, &attrValue);
+  if (cupti_buffer_mb > 0) {
+    // Configure CUPTI buffer sizes
+    size_t attrValue = 0, attrValueSize = sizeof(size_t);
+    attrValue = (size_t)(cupti_buffer_mb * 1024 * 1024);
+    cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE,
+      &attrValueSize, &attrValue);
+  }
 
   // Config Kineto
   std::set<libkineto::ActivityType> types = {
@@ -103,7 +108,7 @@ void trace_collection_thread() {
 
   // Collect the trace
   profiler.startTrace();
-  usleep(t_trace_length_us);
+  usleep(trace_length_us);
   auto trace = profiler.stopTrace();
 
   // Save the trace
@@ -170,6 +175,12 @@ int main(int argc, char *argv[]) {
 
   tensor_cache_args cache_args;
   stress_test_args test_args;
+
+  if (argc < 2) {
+    std::cout << "Please specify input JSON file." << std::endl;
+    std::cout << "Usage: " << argv[0] << " <json_file>" << std::endl;
+    return -1;
+  }
 
   // Parse input json file
   read_inputs_from_json(argv[1], &test_args, &cache_args);
@@ -284,7 +295,8 @@ int main(int argc, char *argv[]) {
   for (uint32_t idx = 0; idx < cache_args.num_increments; ++idx) {
     // Run with kineto tracing
     t_start = clock();
-    kineto_thread = std::thread(trace_collection_thread);
+    kineto_thread = std::thread(trace_collection_thread, test_args.trace_length_us,
+      test_args.cupti_buffer_mb);
     run_parallel_stress_test(test_args);
     kineto_thread.join();
     t_stop = clock();
@@ -310,7 +322,8 @@ int main(int argc, char *argv[]) {
   t_stop = clock();
   double t_after_trace = (double)(t_stop - t_start) / 1e+3;
   std::cout << "Rank " << test_args.rank << " after kineto test completed. Duration (ms) = "
-      << t_after_trace << std::endl;
+      << t_after_trace << "; Kernel Launch Throughput = " << (double)test_args.num_operations / (t_after_trace / 1000)
+      << " kernels/second" << std::endl;
 
   // Final barrier before destroying everything
   if (test_args.is_multi_rank) {

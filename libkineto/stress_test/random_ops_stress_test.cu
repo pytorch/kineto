@@ -64,15 +64,11 @@ struct lcg_kernel_input {
 // the kernel is memory bandwidth bound. If iterations count is
 // high, the kernel is compute bound.
 
-// The kernel name is so long because we wanted to test if the number
-// of characters in the kernel name influences the number of
-// records that can be kept in the buffer.
-
 // We use the template call to be able to change the kernel name with
 // a simple hardcoded constant number
 
 template<uint32_t offset_seed_a, uint32_t offset_seed_b>
-__global__ void iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers(lcg_kernel_input input) {
+__global__ void iterative_lcg_3_buffers(lcg_kernel_input input) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < input.len) {
     uint32_t seed_a = (uint32_t)input.d_a[idx] + offset_seed_a;
@@ -503,11 +499,13 @@ void run_stress_test(
     }
 
     // Get memory during execution
-    if (i % 10000 == 0) {
-      checkCudaStatus(cudaMemGetInfo(&mem_free, &mem_total), __LINE__);
-      size_t mem_crnt = (mem_total - mem_free) / 1024 / 1024;
-      if (mem_crnt >= mem_used_during) {
-        mem_used_during = mem_crnt;
+    if (test_args.monitor_mem_usage) {
+      if (i % 10000 == 0) {
+        checkCudaStatus(cudaMemGetInfo(&mem_free, &mem_total), __LINE__);
+        size_t mem_crnt = (mem_total - mem_free) / 1024 / 1024;
+        if (mem_crnt >= mem_used_during) {
+          mem_used_during = mem_crnt;
+        }
       }
     }
   }
@@ -572,127 +570,127 @@ void call_compute_kernel(
 ) {
   switch (op_id % 20) {
     case 0:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<0, 1><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<0, 1><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 1:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<1, 2><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<1, 2><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 2:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<2, 3><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<2, 3><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 3:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<3, 4><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<3, 4><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 4:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<4, 5><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<4, 5><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 5:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<5, 6><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<5, 6><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 6:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<6, 7><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<6, 7><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 7:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<7, 8><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<7, 8><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 8:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<8, 9><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<8, 9><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 9:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<9, 10><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<9, 10><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 10:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<10, 11><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<10, 11><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 11:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<11, 12><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<11, 12><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 12:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<12, 13><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<12, 13><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 13:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<13, 14><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<13, 14><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 14:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<14, 15><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<14, 15><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 15:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<15, 16><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<15, 16><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 16:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<16, 17><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<16, 17><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 17:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<17, 18><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<17, 18><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 18:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<18, 19><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<18, 19><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 19:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<19, 20><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<19, 20><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 20:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<20, 1><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<20, 1><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 21:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<21, 2><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<21, 2><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 22:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<22, 3><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<22, 3><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 23:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<23, 4><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<23, 4><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 24:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<24, 5><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<24, 5><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 25:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<25, 6><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<25, 6><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 26:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<26, 7><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<26, 7><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 27:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<27, 8><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<27, 8><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 28:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<28, 9><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<28, 9><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 29:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<29, 10><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<29, 10><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 30:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<30, 11><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<30, 11><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 31:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<31, 12><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<31, 12><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 32:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<32, 13><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<32, 13><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 33:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<33, 14><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<33, 14><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 34:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<34, 15><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<34, 15><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 35:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<35, 16><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<35, 16><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 36:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<36, 17><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<36, 17><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 37:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<37, 18><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<37, 18><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 38:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<38, 19><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<38, 19><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     case 39:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<39, 20><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<39, 20><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
     default:
-      iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers_iterative_lcg_3_buffers<0, 0><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
+      iterative_lcg_3_buffers<0, 0><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
   }
 }

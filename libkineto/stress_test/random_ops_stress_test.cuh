@@ -196,6 +196,17 @@ struct stress_test_args {
     // the experiment
     bool pre_alloc_streams {false};
 
+    // If true, we use cudaGetMemInfo throughout the stress test to
+    // measure peak memory usage
+    bool monitor_mem_usage {false};
+
+    // Number of microseconds for trace collection
+    uint32_t trace_length_us {1000000};
+
+    // Size of the CUPTI activity buffer in MB. If it's 0, we don't
+    // explicitly set a value
+    uint32_t cupti_buffer_mb {0};
+
     // The CUDA streams vector
     cudaStream_t *cuda_streams {nullptr};
 };

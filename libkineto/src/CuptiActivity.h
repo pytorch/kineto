@@ -124,6 +124,28 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
   const int32_t threadId_;
 };
 
+// CUpti_ActivitySynchronization - CUDA synchronization events
+struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
+  explicit CudaSyncActivity(
+      const CUpti_ActivitySynchronization* activity,
+      const ITraceActivity* linked,
+      int32_t srcStream)
+      : CuptiActivity(activity, linked), srcStream_(srcStream) {}
+  int64_t correlationId() const override {return raw().correlationId;}
+  int64_t deviceId() const override;
+  int64_t resourceId() const override;
+  ActivityType type() const override {return ActivityType::CUDA_SYNC;}
+  bool flowStart() const override {return false;}
+  const std::string name() const override;
+  void log(ActivityLogger& logger) const override;
+  const std::string metadataJson() const override;
+  const CUpti_ActivitySynchronization& raw() const {return CuptiActivity<CUpti_ActivitySynchronization>::raw();}
+
+ private:
+  const int32_t srcStream_;
+};
+
+
 // Base class for GPU activities.
 // Can also be instantiated directly.
 template<class T>

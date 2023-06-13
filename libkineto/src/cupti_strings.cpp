@@ -505,4 +505,23 @@ const char* runtimeCbidName(CUpti_CallbackId cbid) {
   return runtimeCbidNames[cbid];
 }
 
+// From https://docs.nvidia.com/cupti/modules.html#group__CUPTI__ACTIVITY__API_1g80e1eb47615e31021f574df8ebbe5d9a
+//   enum CUpti_ActivitySynchronizationType
+const char* syncTypeString(
+    CUpti_ActivitySynchronizationType kind) {
+  switch (kind) {
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE:
+      return "Event Sync";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT:
+      return "Stream Wait Event";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE:
+      return "Stream Sync";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_CONTEXT_SYNCHRONIZE:
+      return "Context Sync";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_UNKNOWN:
+    default:
+      return "Unknown Sync";
+  }
+  return "<unknown>";
+}
 } // namespace libkineto

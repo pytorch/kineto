@@ -16,5 +16,6 @@ const char* memoryKindString(CUpti_ActivityMemoryKind kind);
 const char* memcpyKindString(CUpti_ActivityMemcpyKind kind);
 const char* runtimeCbidName(CUpti_CallbackId cbid);
 const char* overheadKindString(CUpti_ActivityOverheadKind kind);
+const char* syncTypeString(CUpti_ActivitySynchronizationType kind);
 
 } // namespace libkineto

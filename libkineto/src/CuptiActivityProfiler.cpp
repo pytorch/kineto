@@ -11,10 +11,12 @@
 #include <fmt/format.h>
 #include <time.h>
 #include <atomic>
+#include <functional>
 #include <iomanip>
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 #include <limits>
 
@@ -44,6 +46,38 @@
 
 using namespace std::chrono;
 using std::string;
+
+struct CtxEventPair {
+  uint32_t ctx = 0;
+  uint32_t eventId = 0;
+
+  bool operator==(const CtxEventPair& other) const {
+    return (this->ctx == other.ctx) && (this->eventId == other.eventId);
+  }
+};
+
+template<>
+struct std::hash<CtxEventPair> {
+	std::size_t operator()(const CtxEventPair& c) const {
+		return std::hash<uint32_t>()(c.ctx) ^ std::hash<uint32_t>()(c.eventId);
+	}
+};
+
+namespace {
+
+// Map (ctx, eventId) -> stream that recorded the cudaEvent
+std::unordered_map<CtxEventPair, uint32_t>& waitEventMap() {
+  static std::unordered_map<CtxEventPair, uint32_t> waitEventMap_;
+  return waitEventMap_;
+}
+
+// Map ctx -> deviceId
+std::unordered_map<uint32_t, uint32_t>& ctxToDeviceId() {
+  static std::unordered_map<uint32_t, uint32_t> ctxToDeviceId_;
+  return ctxToDeviceId_;
+};
+
+}
 
 namespace KINETO_NAMESPACE {
 
@@ -441,6 +475,63 @@ void CuptiActivityProfiler::handleOverheadActivity(
   overhead_activity.log(*logger);
 }
 
+
+int32_t getStreamForWaitEvent(uint32_t ctx, uint32_t eventId) {
+  auto key = CtxEventPair{ctx, eventId};
+  auto it = waitEventMap().find(key);
+  if (it != waitEventMap().end()) {
+    return it->second;
+  }
+  return -1;
+}
+
+void CuptiActivityProfiler::handleCudaEventActivity(
+    const CUpti_ActivityCudaEvent* activity) {
+  VLOG(2) << ": CUPTI_ACTIVITY_KIND_CUDA_EVENT"
+          << " corrId=" << activity->correlationId
+          << " eventId=" << activity->eventId
+          << " streamId=" << activity->streamId
+          << " contextId=" << activity->contextId;
+
+  // Update the stream the cudaEvent was last recorded on
+  auto key = CtxEventPair{activity->contextId, activity->eventId};
+  waitEventMap()[key] = activity->streamId;
+}
+
+void CuptiActivityProfiler::handleCudaSyncActivity(
+    const CUpti_ActivitySynchronization* activity,
+    ActivityLogger* logger) {
+  VLOG(2) << ": CUPTI_ACTIVITY_KIND_SYNCHRONIZATION"
+          << " type=" << syncTypeString(activity->type)
+          << " corrId=" << activity->correlationId
+          << " streamId=" << activity->streamId
+          << " eventId=" << activity->cudaEventId
+          << " contextId=" << activity->contextId;
+
+  if(!config_->activitiesCudaSyncWaitEvents() && isEventSync(activity->type)) {
+    return;
+  }
+
+  if(int32_t(activity->streamId) != -1) {
+    recordStream(
+        contextIdtoDeviceId(activity->contextId), activity->streamId, "");
+  } else {
+    recordDevice(contextIdtoDeviceId(activity->contextId));
+  }
+
+  const ITraceActivity* linked =
+      linkedActivity(activity->correlationId, cpuCorrelationMap_);
+  int32_t src_stream = getStreamForWaitEvent(
+      activity->contextId, activity->cudaEventId);
+  const auto& cuda_sync_activity = traceBuffers_->addActivityWrapper(
+      CudaSyncActivity(activity, linked, src_stream));
+
+  if (outOfRange(cuda_sync_activity)) {
+    return;
+  }
+  cuda_sync_activity.log(*logger);
+}
+
 inline void CuptiActivityProfiler::updateGpuNetSpan(
     const ITraceActivity& gpuOp) {
   if (!gpuOp.linkedActivity()) {
@@ -538,6 +629,19 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   handleGpuActivity(gpu_activity, logger);
 }
 
+
+template <class T>
+inline void updateCtxToDeviceId(const T* act) {
+  if (ctxToDeviceId().count(act->contextId) == 0) {
+    ctxToDeviceId()[act->contextId] = act->deviceId;
+  }
+}
+
+uint32_t contextIdtoDeviceId(uint32_t contextId) {
+  auto it = ctxToDeviceId().find(contextId);
+  return it != ctxToDeviceId().end() ? it->second : 0;
+}
+
 void CuptiActivityProfiler::handleCuptiActivity(
     const CUpti_Activity* record,
     ActivityLogger* logger) {
@@ -553,6 +657,16 @@ void CuptiActivityProfiler::handleCuptiActivity(
     case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
       handleGpuActivity(
           reinterpret_cast<const CUpti_ActivityKernel4*>(record), logger);
+      updateCtxToDeviceId(
+          reinterpret_cast<const CUpti_ActivityKernel4*>(record));
+      break;
+    case CUPTI_ACTIVITY_KIND_SYNCHRONIZATION:
+      handleCudaSyncActivity(
+          reinterpret_cast<const CUpti_ActivitySynchronization*>(record), logger);
+      break;
+    case CUPTI_ACTIVITY_KIND_CUDA_EVENT:
+      handleCudaEventActivity(
+          reinterpret_cast<const CUpti_ActivityCudaEvent*>(record));
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY:
       handleGpuActivity(

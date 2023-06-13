@@ -18,6 +18,9 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
+// forward declaration
+uint32_t contextIdtoDeviceId(uint32_t contextId);
+
 template<>
 inline const std::string GpuActivity<CUpti_ActivityKernel4>::name() const {
   return demangle(raw().name);
@@ -26,6 +29,57 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::name() const {
 template<>
 inline ActivityType GpuActivity<CUpti_ActivityKernel4>::type() const {
   return ActivityType::CONCURRENT_KERNEL;
+}
+
+inline bool isEventSync(CUpti_ActivitySynchronizationType type) {
+  return (
+    type == CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE ||
+    type == CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT);
+}
+
+inline std::string eventSyncInfo(
+    const CUpti_ActivitySynchronization& act, int32_t srcStream) {
+  return fmt::format(R"JSON(
+      "wait_on_stream": {},
+      "wait_on_cuda_event_id": {},)JSON",
+      srcStream,
+      act.cudaEventId
+  );
+}
+
+inline const std::string CudaSyncActivity::name() const {
+  return syncTypeString(raw().type);
+}
+
+inline int64_t CudaSyncActivity::deviceId() const {
+  return contextIdtoDeviceId(raw().contextId);
+}
+
+int64_t CudaSyncActivity::resourceId() const {
+  // For Context and Device Sync events stream ID is invalid and
+  // set to CUPTI_SYNCHRONIZATION_INVALID_VALUE (-1)
+  // converting to an integer will automatically wrap the number to -1
+  // in the trace.
+  return int32_t(raw().streamId);
+}
+
+inline void CudaSyncActivity::log(ActivityLogger& logger) const {
+  logger.handleActivity(*this);
+}
+
+inline const std::string CudaSyncActivity::metadataJson() const {
+  const CUpti_ActivitySynchronization& sync = raw();
+  // clang-format off
+  return fmt::format(R"JSON(
+      "cuda_sync_kind": "{}",{}
+      "stream": {}, "correlation": {},
+      "device": {}, "context": {})JSON",
+      syncTypeString(sync.type),
+      isEventSync(raw().type) ? eventSyncInfo(raw(), srcStream_) : "",
+      sync.streamId, sync.correlationId,
+      deviceId(), sync.contextId);
+  // clang-format on
+  return "";
 }
 
 template<class T>
@@ -184,7 +238,13 @@ inline bool RuntimeActivity::flowStart() const {
       activity_.cbid ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000 ||
       activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000;
+          CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000 ||
+      activity_.cbid ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020 ||
+      activity_.cbid ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020 ||
+      activity_.cbid ==
+          CUPTI_RUNTIME_TRACE_CBID_cudaStreamWaitEvent_v3020;
 }
 
 inline const std::string RuntimeActivity::metadataJson() const {

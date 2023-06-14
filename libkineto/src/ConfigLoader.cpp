@@ -191,15 +191,20 @@ void ConfigLoader::handleOnDemandSignal() {
   }
 }
 
-const char* ConfigLoader::configFileName() {
-  if (!configFileName_) {
-    configFileName_ = getenv(kConfigFileEnvVar);
+namespace {
+
+const char* configFileName() {
+  static const char* configFileName__ = []() {
+    const char* configFileName_ = getenv(kConfigFileEnvVar);
     if (configFileName_ == nullptr) {
       configFileName_ = kConfigFile;
     }
-  }
-  return configFileName_;
+    return configFileName_;
+  }();
+  return configFileName__;
 }
+
+} // namespace
 
 IDaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
   if (!daemonConfigLoader_ && daemonConfigLoaderFactory()) {

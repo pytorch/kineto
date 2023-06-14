@@ -73,7 +73,6 @@ constexpr char kActivitiesDurationMsecsKey[] = "ACTIVITIES_DURATION_MSECS";
 constexpr char kActivitiesWarmupDurationSecsKey[] = "ACTIVITIES_WARMUP_PERIOD_SECS";
 constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
-constexpr char kActivitiesDisplayCudaSyncWaitEvents[] = "ACTIVITIES_DISPLAY_CUDA_SYNC_WAIT_EVENTS";
 
 // Client Interface
 // TODO: keep supporting these older config options, deprecate in the future using replacements.
@@ -217,7 +216,6 @@ Config::Config()
       activitiesMaxGpuBufferSize_(kDefaultActivitiesMaxGpuBufferSize),
       activitiesWarmupDuration_(kDefaultActivitiesWarmupDurationSecs),
       activitiesWarmupIterations_(0),
-      activitiesCudaSyncWaitEvents_(true),
       activitiesDuration_(kDefaultActivitiesProfileDurationMSecs),
       activitiesRunIterations_(0),
       activitiesOnDemandTimestamp_(milliseconds(0)),
@@ -380,8 +378,6 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesWarmupDuration_ = seconds(toInt32(val));
   } else if (!name.compare(kActivitiesWarmupIterationsKey)) {
     activitiesWarmupIterations_ = toInt32(val);
-  } else if (!name.compare(kActivitiesDisplayCudaSyncWaitEvents)) {
-    activitiesCudaSyncWaitEvents_ = toBool(val);
   }
 
   // TODO: Deprecate Client Interface

@@ -222,15 +222,6 @@ class Config : public AbstractConfig {
     return activitiesWarmupIterations_;
   }
 
-  // Show CUDA Synchronization Stream Wait Events
-  bool activitiesCudaSyncWaitEvents() const {
-    return activitiesCudaSyncWaitEvents_;
-  }
-
-  void setActivitiesCudaSyncWaitEvents(bool enable) {
-    activitiesCudaSyncWaitEvents_ = enable;
-  }
-
   // Timestamp at which the profiling to start, requested by the user.
   const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
       const {
@@ -437,7 +428,6 @@ class Config : public AbstractConfig {
   int activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;
   int activitiesWarmupIterations_;
-  bool activitiesCudaSyncWaitEvents_;
 
   // Enable Profiler Config Options
   // Temporarily disable shape collection until we re-roll out the feature for on-demand cases

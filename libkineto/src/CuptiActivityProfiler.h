@@ -266,29 +266,14 @@ class CuptiActivityProfiler {
       libkineto::CpuTraceBuffer& cpuTrace,
       ActivityLogger& logger);
 
-  inline bool hasDeviceResource(int device, int id) {
-    return resourceInfo_.find({device, id}) != resourceInfo_.end();
-  }
-
   // Create resource names for streams
   inline void recordStream(int device, int id, const char* postfix) {
-    if (!hasDeviceResource(device, id)) {
+    if (resourceInfo_.find({device, id}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
-        std::make_pair(device, id),
-        ResourceInfo(
-          device, id, id, fmt::format(
-            "stream {} {}", id, postfix)));
-    }
-  }
-
-  // Create resource names overall for device, id = -1
-  inline void recordDevice(int device) {
-    constexpr int id = -1;
-    if (!hasDeviceResource(device, id)) {
-      resourceInfo_.emplace(
-        std::make_pair(device, id),
-        ResourceInfo(
-          device, id, id, fmt::format("Device {}", device)));
+          std::make_pair(device, id),
+          ResourceInfo(
+              device, id, id, fmt::format(
+                  "stream {} {}", id, postfix)));
     }
   }
 
@@ -324,9 +309,6 @@ class CuptiActivityProfiler {
       const CUpti_ActivityAPI* activity, ActivityLogger* logger);
   void handleOverheadActivity(
       const CUpti_ActivityOverhead* activity, ActivityLogger* logger);
-  void handleCudaEventActivity(const CUpti_ActivityCudaEvent* activity);
-  void handleCudaSyncActivity(
-      const CUpti_ActivitySynchronization* activity, ActivityLogger* logger);
   void handleGpuActivity(const ITraceActivity& act,
       ActivityLogger* logger);
   template <class T>

@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
   run_parallel_stress_test(test_args);
   clock_t t_stop = clock();
   double t_no_trace = (double)(t_stop - t_start) / 1e+3;
-  std::cout << "Rank " << test_args.rank << " no kineto test completed. Duration (ms) = "
+  std::cout << "Rank " << test_args.rank << " before kineto tracing. Duration (ms) = "
       << t_no_trace << std::endl;
 
   // Re-generate tensor cache values
@@ -339,36 +339,41 @@ int main(int argc, char *argv[]) {
     MPICHECK(MPI_Barrier(MPI_COMM_WORLD));
   }
 
-  // Tracing thread
-  std::thread kineto_thread;
+  // If configured we are collecting a few traces
+  if (test_args.trace_length_us > 0) {
+    // Tracing thread
+    std::thread kineto_thread;
 
-  // We are gradually increasing the GPU memory usage so that we have GPU traces being
-  // collected while we are almost out-of-memory. This is an attempt to expose errors
-  // that we often see in our fleet like: illegal instruction, uncorrectable NVLink
-  // error, etc.
+    // We are gradually increasing the GPU memory usage so that we have GPU traces being
+    // collected while we are almost out-of-memory. This is an attempt to expose errors
+    // that we often see in our fleet like: illegal instruction, uncorrectable NVLink
+    // error, etc.
 
-  for (uint32_t idx = 0; idx < cache_args.num_increments; ++idx) {
-    // Run with kineto tracing
-    t_start = clock();
-    kineto_thread = std::thread(trace_collection_thread, test_args.trace_length_us,
-      test_args.cupti_buffer_mb);
-    run_parallel_stress_test(test_args);
-    kineto_thread.join();
-    t_stop = clock();
-    double t_with_trace = (double)(t_stop - t_start) / 1e+3;
+    for (uint32_t idx = 0; idx < cache_args.num_increments; ++idx) {
+      // Run with kineto tracing
+      t_start = clock();
+      kineto_thread = std::thread(trace_collection_thread, test_args.trace_length_us,
+        test_args.cupti_buffer_mb);
+      run_parallel_stress_test(test_args);
+      kineto_thread.join();
+      t_stop = clock();
+      double t_with_trace = (double)(t_stop - t_start) / 1e+3;
 
-    std::cout << "Rank " << test_args.rank << " kineto run " << idx
-        << " completed. Used GPU memory (MB) = " << sz_memory_pool_KB / 1024
-        << "; Duration (ms) = " << t_with_trace << std::endl;
+      std::cout << "Rank " << test_args.rank << " kineto run " << idx
+          << " completed. Used GPU memory (MB) = " << sz_memory_pool_KB / 1024
+          << "; Duration (ms) = " << t_with_trace << std::endl;
 
-    // The first run is the default run
-    add_pairs_to_tensor_cache(cache_args, cache_args.num_pairs_per_increment);
-  }
+      // The first run is the default run
+      add_pairs_to_tensor_cache(cache_args, cache_args.num_pairs_per_increment);
+    }
 
-  // Re-generate tensor cache values
-  re_initialize_buffer_values();
-  if (test_args.is_multi_rank) {
-    MPICHECK(MPI_Barrier(MPI_COMM_WORLD));
+    // Re-generate tensor cache values
+    re_initialize_buffer_values();
+    if (test_args.is_multi_rank) {
+      MPICHECK(MPI_Barrier(MPI_COMM_WORLD));
+    }
+  } else {
+    std::cout << "Rank " << test_args.rank << " has tracing disabled (trace_length = 0)!" << std::endl;
   }
 
   // Run again after kineto tracing
@@ -376,7 +381,7 @@ int main(int argc, char *argv[]) {
   run_parallel_stress_test(test_args);
   t_stop = clock();
   double t_after_trace = (double)(t_stop - t_start) / 1e+3;
-  std::cout << "Rank " << test_args.rank << " after kineto test completed. Duration (ms) = "
+  std::cout << "Rank " << test_args.rank << " after kineto tracing. Duration (ms) = "
       << t_after_trace << "; Kernel Launch Throughput = " << (double)test_args.num_operations / (t_after_trace / 1000)
       << " kernels/second" << std::endl;
 

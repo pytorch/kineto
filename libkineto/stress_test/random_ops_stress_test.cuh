@@ -103,7 +103,8 @@ struct stress_test_args {
     // measure peak memory usage
     bool monitor_mem_usage {false};
 
-    // Number of microseconds for trace collection
+    // Number of microseconds for trace collection. If 0 the trace is
+    // not collected
     uint32_t trace_length_us {1000000};
 
     // Size of the CUPTI activity buffer in MB. If it's 0, we don't

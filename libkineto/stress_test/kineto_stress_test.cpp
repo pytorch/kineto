@@ -26,6 +26,8 @@
 
 #include "mpi.h"
 #include "kineto/libkineto/stress_test/random_ops_stress_test.cuh"
+#include "kineto/libkineto/stress_test/tensor_cache.cuh"
+#include "kineto/libkineto/stress_test/utils.h"
 
 using namespace kineto_stress_test;
 
@@ -64,6 +66,8 @@ void read_inputs_from_json(std::string sJsonFile, stress_test_args *test_args,
     test_args->sz_nccl_buff_KB = (uint32_t)jsonTestArgs["sz_nccl_buff_KB"].asInt();
     test_args->num_iters_nccl_sync = (uint32_t)jsonTestArgs["num_iters_nccl_sync"].asInt();
     test_args->pre_alloc_streams = (bool)jsonTestArgs["pre_alloc_streams"].asBool();
+    test_args->use_memcpy_stream = (bool)jsonTestArgs["use_memcpy_stream"].asBool();
+    test_args->use_uvm_stream = (bool)jsonTestArgs["use_uvm_stream"].asBool();
     test_args->monitor_mem_usage = (bool)jsonTestArgs["monitor_mem_usage"].asBool();
     test_args->trace_length_us = (uint32_t)jsonTestArgs["trace_length_us"].asInt();
     test_args->cupti_buffer_mb = (uint32_t)jsonTestArgs["cupti_buffer_mb"].asInt();
@@ -160,6 +164,61 @@ void run_parallel_stress_test(stress_test_args test_args) {
   }
 }
 
+void create_cuda_streams(stress_test_args& test_args) {
+  test_args.compute_streams = (cudaStream_t*)malloc(test_args.num_cuda_streams *
+    test_args.num_workers * sizeof(cudaStream_t));
+  for (uint32_t i = 0; i < test_args.num_cuda_streams * test_args.num_workers; ++i) {
+    checkCudaStatus(cudaStreamCreateWithFlags(test_args.compute_streams + i, cudaStreamNonBlocking), __LINE__);
+  }
+
+  if (test_args.use_memcpy_stream) {
+    test_args.memcpy_streams = (cudaStream_t*)malloc(test_args.num_workers * sizeof(cudaStream_t));
+    for (uint32_t i = 0; i < test_args.num_workers; ++i) {
+      checkCudaStatus(cudaStreamCreateWithFlags(test_args.memcpy_streams + i, cudaStreamNonBlocking), __LINE__);
+    }
+  }
+
+  if (test_args.use_uvm_stream) {
+    test_args.uvm_streams = (cudaStream_t*)malloc(test_args.num_workers * sizeof(cudaStream_t));
+    for (uint32_t i = 0; i < test_args.num_workers; ++i) {
+      checkCudaStatus(cudaStreamCreateWithFlags(test_args.uvm_streams + i, cudaStreamNonBlocking), __LINE__);
+    }
+  }
+}
+
+void cleanup_cuda_streams(stress_test_args& test_args) {
+  for (int i = 0; i < test_args.num_cuda_streams * test_args.num_workers; ++i) {
+    checkCudaStatus(cudaStreamSynchronize(test_args.compute_streams[i]), __LINE__);
+    checkCudaStatus(cudaStreamDestroy(test_args.compute_streams[i]), __LINE__);
+  }
+
+  if (test_args.compute_streams) {
+    free(test_args.compute_streams);
+  }
+
+  if (test_args.use_memcpy_stream) {
+    for (int i = 0; i < test_args.num_workers; ++i) {
+      checkCudaStatus(cudaStreamSynchronize(test_args.memcpy_streams[i]), __LINE__);
+      checkCudaStatus(cudaStreamDestroy(test_args.memcpy_streams[i]), __LINE__);
+    }
+
+    if (test_args.memcpy_streams) {
+      free(test_args.memcpy_streams);
+    }
+  }
+
+  if (test_args.use_uvm_stream) {
+    for (int i = 0; i < test_args.num_workers; ++i) {
+      checkCudaStatus(cudaStreamSynchronize(test_args.uvm_streams[i]), __LINE__);
+      checkCudaStatus(cudaStreamDestroy(test_args.uvm_streams[i]), __LINE__);
+    }
+
+    if (test_args.uvm_streams) {
+      free(test_args.uvm_streams);
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
 
   /////////////////////////////////////////////////////////////////////////////
@@ -226,11 +285,7 @@ int main(int argc, char *argv[]) {
 
   // Pre-allocate CUDA streams
   if (test_args.pre_alloc_streams) {
-    test_args.cuda_streams = (cudaStream_t*)malloc(test_args.num_cuda_streams *
-        test_args.num_workers * sizeof(cudaStream_t));
-    for (uint32_t i = 0; i < test_args.num_cuda_streams * test_args.num_workers; ++i) {
-      checkCudaStatus(cudaStreamCreateWithFlags(test_args.cuda_streams + i, cudaStreamNonBlocking), __LINE__);
-    }
+    create_cuda_streams(test_args);
   }
 
   std::thread uvm_init_thread;
@@ -332,13 +387,7 @@ int main(int argc, char *argv[]) {
 
   // Destroy CUDA streams
   if (test_args.pre_alloc_streams) {
-    for (int i = 0; i < test_args.num_cuda_streams * test_args.num_workers; ++i) {
-      checkCudaStatus(cudaStreamSynchronize(test_args.cuda_streams[i]), __LINE__);
-      checkCudaStatus(cudaStreamDestroy(test_args.cuda_streams[i]), __LINE__);
-    }
-    if (test_args.cuda_streams) {
-      free(test_args.cuda_streams);
-    }
+    cleanup_cuda_streams(test_args);
   }
 
   // Free the tensor cache on the GPU

@@ -6,108 +6,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "utils.h"
+
 #pragma once
 
-#include <cuda_runtime_api.h>
-#include <cuda.h>
-#include "nccl.h"
-
 namespace kineto_stress_test {
-
-inline void checkCudaStatus(cudaError_t status, int lineNumber = -1) {
-  if (status != cudaSuccess) {
-    printf(
-        "PID %d --> CUDA API failed with status %d: %s at line %d\n",
-        getpid(),
-        status,
-        cudaGetErrorString(status),
-        lineNumber);
-    exit(-1);
-  }
-}
-
-#define MPICHECK(cmd) do {                              \
-  int e = cmd;                                          \
-  if( e != MPI_SUCCESS ) {                              \
-    printf("PID %d --> Failed: MPI error %s:%d '%d'\n", \
-        getpid(), __FILE__,__LINE__, e);                \
-    exit(EXIT_FAILURE);                                 \
-  }                                                     \
-} while(0)
-
-#define NCCLCHECK(cmd) do {                                 \
-  ncclResult_t r = cmd;                                     \
-  if (r!= ncclSuccess) {                                    \
-    printf("PID %d --> Failed, NCCL error %s:%d '%s'\n",    \
-        getpid(), __FILE__,__LINE__,ncclGetErrorString(r)); \
-    exit(EXIT_FAILURE);                                     \
-  }                                                         \
-} while(0)
-
-struct tensor_pair {
-  // Number of elements in the float arrays
-  uint32_t n_elements;
-
-  // If true, we pre-generate host buffers and use copy host to dev
-  bool b_copy_h2d;
-
-  // If true we download the output buffer to simulate output download
-  bool b_copy_d2h;
-
-  // GPU buffers
-  float* d_A;
-  float* d_B;
-  float* d_C;
-
-  // Host buffers
-  float* h_A;
-  float* h_B;
-};
-
-struct tensor_cache_args {
-    // Sets GPU memory utilization
-    uint32_t sz_cache_KB {1024 * 128};
-
-    // If small, density is higher due to shorter kernel times
-    uint32_t sz_min_tensor_KB {16};
-
-    // If large, we will have kernels with high duration thus smaller
-    // event density. That's because kernels will have to run on larger
-    // buffer sizes.
-    uint32_t sz_max_tensor_KB {2048};
-
-    // Sets the maximum GPU memory
-    uint32_t sz_GPU_memory_KB {1024 * 1024 * 16};
-
-    // Simulates the chance of uploading a batch to the GPU.
-    // It reduces event density if it's set too high
-    double prob_h2d {0.005};
-
-    // Simulates the chance of downloading results from the GPU.
-    // It reduces event density if it's set too high
-    double prob_d2h {0.0001};
-
-    // Number of increments in the GPU memory usage to see what happens at the
-    // peak memory usage.
-    uint32_t num_increments {1};
-    uint32_t num_pairs_per_increment {1};
-};
-
-// Generates all the buffer pairs, using a minimum and a maximum size.
-// prob_h2d is the probability that we will generate a copy from host to
-// device, in which case we need to pre-generate the buffers on the host.
-void generate_tensor_cache(tensor_cache_args cache_args);
-
-// For some experiments we may need to add additional pairs to stress the
-// GPU memory limits
-void add_pairs_to_tensor_cache(tensor_cache_args cache_args,
-    uint32_t num_added_pairs);
-
-// Size of the memory pool in kilobytes
-extern uint32_t sz_memory_pool_KB;
-
-// Number of tensor pairs in the memory pool
-extern uint32_t num_tensor_pairs;
 
 // The unique identifier used for NCCL communication
 extern ncclUniqueId nccl_id;
@@ -119,14 +22,8 @@ extern ncclComm_t nccl_communicator;
 extern float* pBuffNCCLSend;
 extern float* pBuffNCCLRecv;
 
-// Re-initializes the random values in the device buffers
-void re_initialize_buffer_values();
-
-// Frees the host and device tensors
-void free_tensor_cache();
-
 struct stress_test_args {
-  // Number of threads that run the stress test
+    // Number of threads that run the stress test
     uint32_t num_workers {1};
 
     // Number of operations per stress test
@@ -162,8 +59,6 @@ struct stress_test_args {
 
     // If non-zero, we allocate UVM memory and use it
     bool use_uvm_buffers {false};
-    float* uvm_a {nullptr};
-    float* uvm_b {nullptr};
 
     // Size of a single buffer in FP32 elements in UVM
     uint64_t uvm_len {0};
@@ -196,6 +91,14 @@ struct stress_test_args {
     // the experiment
     bool pre_alloc_streams {false};
 
+    // If true, h2d and d2h transfers would be scheduled on their own
+    // CUDA stream
+    bool use_memcpy_stream {false};
+
+    // If true, kernels using UVM would be scheduled on their own
+    // CUDA stream
+    bool use_uvm_stream {false};
+
     // If true, we use cudaGetMemInfo throughout the stress test to
     // measure peak memory usage
     bool monitor_mem_usage {false};
@@ -207,9 +110,43 @@ struct stress_test_args {
     // explicitly set a value
     uint32_t cupti_buffer_mb {0};
 
+    /* VARIABLES */
+
     // The CUDA streams vector
-    cudaStream_t *cuda_streams {nullptr};
+    cudaStream_t *compute_streams {nullptr};
+
+    // The explicit memcpy stream
+    cudaStream_t *memcpy_streams {nullptr};
+
+    // The explicit UVM stream
+    cudaStream_t *uvm_streams {nullptr};
+
+    // UVM buffers
+    float* uvm_a {nullptr};
+    float* uvm_b {nullptr};
 };
+
+// We are using this to reduce the number of code lines
+struct lcg_kernel_input {
+  float const* __restrict__ d_a;
+  float const* __restrict__ d_b;
+  float* __restrict__ d_c;
+  int len;
+  float const* __restrict__ uvm_a;
+  float const* __restrict__ uvm_b;
+  uint64_t uvm_len;
+  int iters;
+};
+
+// Use this function to vary the kernel name at runtime
+void call_compute_kernel(
+  uint32_t thread_blocks,
+  uint32_t threads_per_block,
+  uint32_t shmem_sz,
+  cudaStream_t stream,
+  lcg_kernel_input kernel_args,
+  uint32_t op_id
+);
 
 void run_stress_test(
     uint32_t thread_id,

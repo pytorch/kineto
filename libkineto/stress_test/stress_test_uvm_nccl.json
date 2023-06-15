@@ -10,7 +10,7 @@
         "max_idle_us": 1,
         "simulate_host_time": false,
         "num_workers": 1,
-        "use_uvm_buffers": true,
+        "use_uvm_buffers": false,
         "uvm_kernel_prob": 0.01,
         "parallel_uvm_alloc": true,
         "uvm_len": 4026531840,
@@ -19,6 +19,8 @@
         "sz_nccl_buff_KB": 18432,
         "num_iters_nccl_sync": 1000,
         "pre_alloc_streams": true,
+        "use_memcpy_stream": true,
+        "use_uvm_stream": true,
         "monitor_mem_usage": false,
         "trace_length_us": 1000000,
         "cupti_buffer_mb": 0

@@ -10,54 +10,17 @@
 #include <unistd.h>
 
 #include "random_ops_stress_test.cuh"
+#include "tensor_cache.cuh"
 
 namespace kineto_stress_test {
 
-// Random number generation constants. They should not be modified, otherwise
-// it's likely that most values will converge to 0.
-#define LCG_A 8121
-#define LCG_C 28411
-#define LCG_M 134456
-#define RNG_SEED_1 1025
-#define RNG_SEED_2 2049
-
-// We pre-create a memory pool of buffers on which we do various operations.
-// This is similar to the tensor cache that PyTorch is managing.
-tensor_pair* p_memory_pool;
+#define RNG_SEED 2049
 
 // NCCL variables buffers
 ncclUniqueId nccl_id;
 ncclComm_t nccl_communicator;
 float *pBuffNCCLSend;
 float *pBuffNCCLRecv;
-
-// Size of the memory pool in kilobytes
-uint32_t sz_memory_pool_KB;
-
-// Number of tensor pairs in the memory pool
-uint32_t num_tensor_pairs;
-
-// A kernel that fills a device buffer with random values
-__global__ void simple_rng_lcg(float* d_A, int num_elements) {
-  int tid = blockDim.x * blockIdx.x + threadIdx.x;
-  if (tid < num_elements) {
-    uint32_t xn = tid * (tid + 1);
-    d_A[tid] = (float)((LCG_A * xn + LCG_C) % LCG_M);
-  }
-}
-
-// We are using this to reduce the number of code lines
-
-struct lcg_kernel_input {
-  float const* __restrict__ d_a;
-  float const* __restrict__ d_b;
-  float* __restrict__ d_c;
-  int len;
-  float const* __restrict__ uvm_a;
-  float const* __restrict__ uvm_b;
-  uint64_t uvm_len;
-  int iters;
-};
 
 // C = A + B kernel where A and B are generated using a linear
 // congruential generator. If the number of iterations is small
@@ -120,222 +83,6 @@ __global__ void iterative_lcg_3_with_uvm(lcg_kernel_input input) {
   }
 }
 
-// Use this function to vary the kernel name at runtime
-void call_compute_kernel(
-  uint32_t thread_blocks,
-  uint32_t threads_per_block,
-  uint32_t shmem_sz,
-  cudaStream_t stream,
-  lcg_kernel_input kernel_args,
-  uint32_t op_id
-);
-
-// Fill the buffers on the host with random values
-void simple_lcg_host(float* h_A, int num_elements) {
-  uint32_t xn = rand();
-  for (int i = 0; i < num_elements; ++i) {
-    h_A[i] = (float)((LCG_A * xn + LCG_C) % LCG_M);
-    xn = h_A[i];
-  }
-}
-
-void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
-    num_added_pairs) {
-  uint32_t num_current_pairs = num_tensor_pairs;
-
-  for (uint32_t i = num_current_pairs;
-      i < num_current_pairs + num_added_pairs; ++i) {
-    uint32_t num_KB =
-        rand() % (cache_args.sz_max_tensor_KB - cache_args.sz_min_tensor_KB) +
-            cache_args.sz_min_tensor_KB;
-    uint32_t num_elements = num_KB * 1024 / sizeof(float);
-
-    // Allocate device buffers
-    p_memory_pool[i].n_elements = num_elements;
-    checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_A, num_elements * sizeof(float)), __LINE__);
-    checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_B, num_elements * sizeof(float)), __LINE__);
-    checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_C, num_elements * sizeof(float)), __LINE__);
-
-    // Initialize device buffers with random values
-    uint32_t thread_blocks = num_elements / 256;
-    simple_rng_lcg<<<thread_blocks, 256>>>(
-        p_memory_pool[i].d_A, p_memory_pool[i].n_elements);
-    simple_rng_lcg<<<thread_blocks, 256>>>(
-        p_memory_pool[i].d_B, p_memory_pool[i].n_elements);
-    simple_rng_lcg<<<thread_blocks, 256>>>(
-        p_memory_pool[i].d_C, p_memory_pool[i].n_elements);
-
-    // Throw a dice to see if we will do memcopy host to device for this one and use pinned memory
-    if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_h2d) {
-      p_memory_pool[i].b_copy_h2d = true;
-      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-
-      simple_lcg_host(p_memory_pool[i].h_A, num_elements);
-      simple_lcg_host(p_memory_pool[i].h_B, num_elements);
-    } else {
-      p_memory_pool[i].b_copy_h2d = false;
-      p_memory_pool[i].h_A = NULL;
-      p_memory_pool[i].h_B = NULL;
-    }
-
-    // Simulate output download
-    if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_d2h) {
-      p_memory_pool[i].b_copy_d2h = true;
-    } else {
-      p_memory_pool[i].b_copy_d2h = false;
-    }
-
-    // Now we have a new tensor pair
-    num_tensor_pairs++;
-    sz_memory_pool_KB += (3 * num_KB);
-  }
-}
-
-void generate_tensor_cache(tensor_cache_args cache_args) {
-  // Estimate the number of tensor pairs
-  uint32_t num_pairs_max =
-      cache_args.sz_GPU_memory_KB / (3 * (cache_args.sz_max_tensor_KB -
-          cache_args.sz_min_tensor_KB) / 2);
-
-  // Number of actual pairs
-  num_tensor_pairs = 0;
-
-  // At firs the pool is empty
-  sz_memory_pool_KB = 0;
-
-  // Pre-allocate num_pairs_max and if num_tensor_pairs comes lower, well,
-  // that's life
-  p_memory_pool =
-      (tensor_pair*)malloc(num_pairs_max * sizeof(tensor_pair));
-
-  // Start creating the pool
-  srand(RNG_SEED_1);
-  for (int i = 0; i < num_pairs_max; ++i) {
-    // If we allocated too much, just exit
-    if (sz_memory_pool_KB >= cache_args.sz_cache_KB) {
-      printf("Allocated %d tensor pairs.\n", num_tensor_pairs);
-      break;
-    }
-
-    add_pairs_to_tensor_cache(cache_args, 1);
-  }
-}
-
-void re_initialize_buffer_values() {
-  for (uint32_t i = 0; i < num_tensor_pairs; ++i) {
-    uint32_t num_elements = p_memory_pool[i].n_elements;
-
-    // Initialize device buffers with random values
-    uint32_t thread_blocks = num_elements / 256;
-    simple_rng_lcg<<<thread_blocks, 256>>>(
-        p_memory_pool[i].d_A, p_memory_pool[i].n_elements);
-    simple_rng_lcg<<<thread_blocks, 256>>>(
-        p_memory_pool[i].d_B, p_memory_pool[i].n_elements);
-    simple_rng_lcg<<<thread_blocks, 256>>>(
-        p_memory_pool[i].d_C, p_memory_pool[i].n_elements);
-  }
-}
-
-void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream) {
-// Older CUDA versions don't know about async malloc and free
-#if defined(CUDA_VERSION) && CUDA_VERSION > 11000 && defined(ASYNC_MALLOC)
-
-  checkCudaStatus(
-    cudaFreeAsync(tensor_pair->d_A, stream),
-        __LINE__);
-  checkCudaStatus(
-    cudaFreeAsync(tensor_pair->d_B, stream),
-        __LINE__);
-  checkCudaStatus(
-    cudaFreeAsync(tensor_pair->d_C, stream),
-        __LINE__);
-
-  // Allocate device buffers
-  uint32_t num_elements = tensor_pair->n_elements;
-  checkCudaStatus(
-    cudaMallocAsync(
-        &tensor_pair->d_A,
-        num_elements * sizeof(float),
-        stream),
-      __LINE__);
-  checkCudaStatus(
-    cudaMallocAsync(
-        &tensor_pair->d_B,
-        num_elements * sizeof(float),
-        stream),
-        __LINE__);
-  checkCudaStatus(
-    cudaMallocAsync(
-        &tensor_pair->d_C,
-        num_elements * sizeof(float),
-        stream),
-        __LINE__);
-
-#else
-
-  checkCudaStatus(cudaFree(tensor_pair->d_A), __LINE__);
-  checkCudaStatus(cudaFree(tensor_pair->d_B), __LINE__);
-  checkCudaStatus(cudaFree(tensor_pair->d_C), __LINE__);
-
-  // Allocate device buffers
-  uint32_t num_elements = tensor_pair->n_elements;
-  checkCudaStatus(cudaMalloc(&tensor_pair->d_A,
-    num_elements * sizeof(float)),
-    __LINE__);
-  checkCudaStatus(cudaMalloc(&tensor_pair->d_B,
-    num_elements * sizeof(float)),
-    __LINE__);
-  checkCudaStatus(cudaMalloc(&tensor_pair->d_C,
-    num_elements * sizeof(float)),
-    __LINE__);
-
-#endif // CUDA_VERSION >= 11000
-
-  if (tensor_pair->b_copy_h2d) {
-    checkCudaStatus(cudaFreeHost(tensor_pair->h_A), __LINE__);
-    checkCudaStatus(cudaFreeHost(tensor_pair->h_B), __LINE__);
-
-    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-
-    simple_lcg_host(tensor_pair->h_A, num_elements);
-    simple_lcg_host(tensor_pair->h_B, num_elements);
-  }
-}
-
-void free_tensor_cache() {
-  for (uint32_t i = 0; i < num_tensor_pairs; ++i) {
-    checkCudaStatus(cudaFree(p_memory_pool[i].d_A), __LINE__);
-    checkCudaStatus(cudaFree(p_memory_pool[i].d_B), __LINE__);
-    checkCudaStatus(cudaFree(p_memory_pool[i].d_C), __LINE__);
-
-    if (p_memory_pool[i].b_copy_h2d) {
-      if (p_memory_pool[i].h_A) {
-        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_A), __LINE__);
-      }
-
-      if (p_memory_pool[i].h_B) {
-        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
-      }
-    }
-  }
-
-  if (p_memory_pool) {
-    free(p_memory_pool);
-  }
-
-  size_t mem_free = 0;
-  size_t mem_total = 0;
-  cudaMemGetInfo(&mem_free, &mem_total);
-  size_t mem_used = (mem_total - mem_free) / 1024 / 1024;
-
-  printf("GPU MB after freeing tensor cache: %6zu\n", mem_used);
-}
-
 void run_stress_test(
     uint32_t thread_id,
     uint32_t num_workers,
@@ -345,7 +92,7 @@ void run_stress_test(
   float checksum = 0.0;
 
   // Use a fixed random seed to be deterministic
-  uint32_t rng_state = RNG_SEED_2 + thread_id;
+  uint32_t rng_state = RNG_SEED + thread_id;
 
   // Check memory usage
   size_t mem_free = 0;
@@ -357,12 +104,34 @@ void run_stress_test(
 
   // Create multiple streams
   cudaStream_t* v_streams = NULL;
+  cudaStream_t memcpy_stream = NULL;
+  cudaStream_t uvm_stream = NULL;
+
+  // Allocate streams within the test function as this can run on multiple threads
+  // and we want to see the effect of parallel stream creation
+
   if (test_args.pre_alloc_streams) {
-    v_streams = test_args.cuda_streams + (thread_id * test_args.num_cuda_streams);
+    v_streams = test_args.compute_streams + (thread_id * test_args.num_cuda_streams);
+
+    if (test_args.use_memcpy_stream) {
+      memcpy_stream = test_args.memcpy_streams[thread_id];
+    }
+
+    if (test_args.use_uvm_stream) {
+      uvm_stream = test_args.uvm_streams[thread_id];
+    }
   } else {
     v_streams = (cudaStream_t*)malloc(test_args.num_cuda_streams * sizeof(cudaStream_t));
     for (uint32_t i = 0; i < test_args.num_cuda_streams; ++i) {
       checkCudaStatus(cudaStreamCreate(v_streams + i), __LINE__);
+    }
+
+    if (test_args.use_memcpy_stream) {
+      checkCudaStatus(cudaStreamCreate(&memcpy_stream), __LINE__);
+    }
+
+    if (test_args.use_uvm_stream) {
+      checkCudaStatus(cudaStreamCreate(&uvm_stream), __LINE__);
     }
   }
 
@@ -387,22 +156,35 @@ void run_stress_test(
     // Generate stream ID and tensor pair index
     uint32_t local_pair_idx = i % num_pairs_per_worker;
     uint32_t pair_idx = thread_id * num_pairs_per_worker + local_pair_idx;
+
+    // Select the stream to run the operation on
     uint32_t stream_idx = local_pair_idx % test_args.num_cuda_streams;
+    cudaStream_t current_stream = v_streams[stream_idx];
+    cudaStream_t current_memcpy_stream = v_streams[stream_idx];
+    if (test_args.use_memcpy_stream) {
+      current_memcpy_stream = memcpy_stream;
+    }
+    cudaStream_t current_uvm_stream = v_streams[stream_idx];
+    if (test_args.use_uvm_stream) {
+      current_uvm_stream = uvm_stream;
+    }
 
     // Check if we do a CUDA malloc
     if (((float)(rand_r(&rng_state) % 32767) / 32767.0) < test_args.prob_cuda_malloc) {
       checkCudaStatus(cudaDeviceSynchronize(), __LINE__);
-      free_and_realloc_tensor_pairs(p_memory_pool + pair_idx,
-          v_streams[stream_idx]);
+      free_and_realloc_tensor_pairs(p_memory_pool + pair_idx, current_stream);
 
       // Initialize device buffers with random values
       uint32_t thread_blocks = p_memory_pool[pair_idx].n_elements / 256;
-      simple_rng_lcg<<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(
+      simple_rng_lcg<<<thread_blocks, 256, 0, current_stream>>>(
           p_memory_pool[pair_idx].d_A, p_memory_pool[pair_idx].n_elements);
-      simple_rng_lcg<<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(
+      CUDA_KERNEL_LAUNCH_CHECK();
+      simple_rng_lcg<<<thread_blocks, 256, 0, current_stream>>>(
           p_memory_pool[pair_idx].d_B, p_memory_pool[pair_idx].n_elements);
-      simple_rng_lcg<<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(
+      CUDA_KERNEL_LAUNCH_CHECK();
+      simple_rng_lcg<<<thread_blocks, 256, 0, current_stream>>>(
           p_memory_pool[pair_idx].d_C, p_memory_pool[pair_idx].n_elements);
+      CUDA_KERNEL_LAUNCH_CHECK();
     }
 
     // Do a CUDA memcpy if needed
@@ -413,7 +195,7 @@ void run_stress_test(
               p_memory_pool[pair_idx].h_A,
               p_memory_pool[pair_idx].n_elements * sizeof(float),
               cudaMemcpyHostToDevice,
-              v_streams[stream_idx]),
+              current_memcpy_stream),
           __LINE__);
       checkCudaStatus(
           cudaMemcpyAsync(
@@ -421,7 +203,7 @@ void run_stress_test(
               p_memory_pool[pair_idx].h_B,
               p_memory_pool[pair_idx].n_elements * sizeof(float),
               cudaMemcpyHostToDevice,
-              v_streams[stream_idx]),
+              current_memcpy_stream),
           __LINE__);
     }
 
@@ -457,7 +239,8 @@ void run_stress_test(
         // checkCudaStatus(cudaMemset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float)));
         // checkCudaStatus(cudaMemset((void*)test_args.uvm_a, 42, kernel_args.len * sizeof(float)));
       } else {
-        iterative_lcg_3_with_uvm<113, 119><<<thread_blocks, 256, 0, v_streams[stream_idx]>>>(kernel_args);
+        iterative_lcg_3_with_uvm<113, 119><<<thread_blocks, 256, 0, current_uvm_stream>>>(kernel_args);
+        CUDA_KERNEL_LAUNCH_CHECK();
       }
     } else {
       // Check to see if we do a simple kernel call or a memset
@@ -466,7 +249,7 @@ void run_stress_test(
         checkCudaStatus(cudaMemset((void*)kernel_args.d_b, 42, kernel_args.len * sizeof(float)));
         checkCudaStatus(cudaMemset((void*)kernel_args.d_c, 42, kernel_args.len * sizeof(float)));
       } else {
-        call_compute_kernel(thread_blocks, 256, 0, v_streams[stream_idx],
+        call_compute_kernel(thread_blocks, 256, 0, current_stream,
             kernel_args, i);
       }
     }
@@ -479,8 +262,8 @@ void run_stress_test(
       checkCudaStatus(cudaMemcpy(pBuffNCCLSend, p_memory_pool[pair_idx].d_C,
           szTransfer, cudaMemcpyDeviceToDevice), __LINE__);
       NCCLCHECK(ncclAllReduce((const void*)pBuffNCCLSend, (void*)pBuffNCCLRecv, n_elements,
-          ncclFloat, ncclAvg, nccl_communicator, v_streams[stream_idx]));
-      checkCudaStatus(cudaStreamSynchronize(v_streams[stream_idx]), __LINE__);
+          ncclFloat, ncclAvg, nccl_communicator, current_stream));
+      checkCudaStatus(cudaStreamSynchronize(current_stream), __LINE__);
       checkCudaStatus(cudaMemcpy(p_memory_pool[pair_idx].d_C, pBuffNCCLRecv,
           szTransfer, cudaMemcpyDeviceToDevice), __LINE__);
     }
@@ -494,7 +277,7 @@ void run_stress_test(
               p_memory_pool[pair_idx].d_C + rand_index,
               sizeof(float),
               cudaMemcpyDeviceToHost,
-              v_streams[stream_idx]),
+              current_memcpy_stream),
           __LINE__);
     }
 
@@ -515,6 +298,14 @@ void run_stress_test(
     checkCudaStatus(cudaStreamSynchronize(v_streams[i]), __LINE__);
   }
 
+  if (test_args.use_memcpy_stream) {
+    checkCudaStatus(cudaStreamSynchronize(memcpy_stream), __LINE__);
+  }
+
+  if (test_args.use_uvm_stream) {
+    checkCudaStatus(cudaStreamSynchronize(uvm_stream), __LINE__);
+  }
+
   // Measure execution time only until the streams are synchronized.
   // If we measure the time it takes to destroy them we may get high
   // run to run variation.
@@ -526,6 +317,14 @@ void run_stress_test(
   if (!test_args.pre_alloc_streams) {
     for (int i = 0; i < test_args.num_cuda_streams; ++i) {
       checkCudaStatus(cudaStreamDestroy(v_streams[i]), __LINE__);
+    }
+
+    if (test_args.use_memcpy_stream) {
+      checkCudaStatus(cudaStreamDestroy(memcpy_stream), __LINE__);
+    }
+
+    if (test_args.use_uvm_stream) {
+      checkCudaStatus(cudaStreamDestroy(uvm_stream), __LINE__);
     }
 
     if (v_streams) {
@@ -693,6 +492,7 @@ void call_compute_kernel(
       iterative_lcg_3_buffers<0, 0><<<thread_blocks, threads_per_block, 0, stream>>>(kernel_args);
       break;
   }
+  CUDA_KERNEL_LAUNCH_CHECK();
 }
 
 } // namespace kineto_stress_test

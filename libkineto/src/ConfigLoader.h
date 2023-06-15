@@ -113,7 +113,6 @@ class ConfigLoader {
   ConfigLoader();
   ~ConfigLoader();
 
-  const char* configFileName();
   IDaemonConfigLoader* daemonConfigLoader();
 
   void startThread();
@@ -137,7 +136,6 @@ class ConfigLoader {
   const char* customConfigFileName();
 
   std::mutex configLock_;
-  std::atomic<const char*> configFileName_{nullptr};
   std::unique_ptr<Config> config_;
   std::unique_ptr<IDaemonConfigLoader> daemonConfigLoader_;
   std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;

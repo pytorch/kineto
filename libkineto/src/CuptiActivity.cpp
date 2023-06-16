@@ -55,7 +55,7 @@ inline int64_t CudaSyncActivity::deviceId() const {
   return contextIdtoDeviceId(raw().contextId);
 }
 
-int64_t CudaSyncActivity::resourceId() const {
+inline int64_t CudaSyncActivity::resourceId() const {
   // For Context and Device Sync events stream ID is invalid and
   // set to CUPTI_SYNCHRONIZATION_INVALID_VALUE (-1)
   // converting to an integer will automatically wrap the number to -1

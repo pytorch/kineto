@@ -343,6 +343,8 @@ int RoctracerActivityApi::processActivities(
           default:
             if (!isLogged(ActivityType::CONCURRENT_KERNEL))
               filtered = true;
+            if (record->op == HIP_OP_ID_BARRIER)  // Don't record barriers/markers
+              filtered = true;
             a.activityType = ActivityType::CONCURRENT_KERNEL;
             break;
         }

@@ -7,6 +7,7 @@ import os
 import time
 from contextlib import contextmanager
 from math import pow
+import numpy as np
 
 from . import consts
 
@@ -120,3 +121,76 @@ def timing(description: str, force: bool = False) -> None:
         logger.info(f'{description}: {elapsed_time}')
     else:
         yield
+
+
+def _areas_of_triangles(a, bs, c):
+    """Calculate areas of triangles from duples of vertex coordinates.
+
+    Uses implicit numpy broadcasting along first axis of ``bs``.
+
+    Returns
+    -------
+    numpy.array
+        Array of areas of shape (len(bs),)
+    """
+    bs_minus_a = bs - a
+    a_minus_bs = a - bs
+    return 0.5 * abs(
+        (a[0] - c[0]) * (bs_minus_a[:, 1]) - (a_minus_bs[:, 0]) * (c[1] - a[1])
+    )
+
+
+def lttb_sample(memory_curves, n_out = 10240):
+    """
+    sample ``memory_curves`` to ``n_out`` points using the LTTB algorithm.
+
+    Parameters
+    ----------
+    memory_curves : dict(str, list(list(time,allocated,reverved)))
+        A dict, key for device (cpu, gpu0, gpu1, ...), 
+        value is a list of list of (time,allocated,reverved)
+    n_out : int
+        Number of data points to downsample to
+    
+    Returns
+    -------
+    sumpled memory_curves with at most n_out points.
+    """
+    sampled_memory_curves = {}
+    for key in memory_curves:
+        data = memory_curves[key]
+        length = len(data)
+        if n_out >= length:
+            sampled_memory_curves[key] = memory_curves[key]
+            continue
+
+        # Split data into bins
+        n_bins = n_out - 2
+        data = np.array(data)
+        data_bins = np.array_split(data[1 : length - 1], n_bins)
+
+        # Prepare output array
+        # First and last points are the same as in the input.
+        out = np.zeros((n_out, 3))
+        out[0] = data[0]
+        out[len(out) - 1] = data[length - 1]
+
+        # note that we only need to perform LTTB on (time,allocated)
+        # Largest Triangle Three Buckets (LTTB):
+        # In each bin, find the point that makes the largest triangle
+        # with the point saved in the previous bin
+        # and the centroid of the points in the next bin.
+        for i in range(len(data_bins)):
+            this_bin = data_bins[i]
+            if i < n_bins - 1:
+                next_bin = data_bins[i + 1]
+            else:
+                next_bin = data[len(data) - 1 :]
+            a = out[i]
+            bs = this_bin
+            c = next_bin.mean(axis=0)
+            areas = _areas_of_triangles(a, bs, c)
+            out[i + 1] = bs[np.argmax(areas)]
+
+        sampled_memory_curves[key] = out.tolist()
+    return sampled_memory_curves

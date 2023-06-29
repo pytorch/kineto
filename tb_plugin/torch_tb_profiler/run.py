@@ -9,7 +9,7 @@ from .profiler.diffrun import compare_op_tree, diff_summary
 from .profiler.memory_parser import MemoryMetrics, MemoryRecord, MemorySnapshot
 from .profiler.module_op import Stats
 from .profiler.node import OperatorNode
-from .utils import Canonicalizer, DisplayRounder
+from .utils import Canonicalizer, DisplayRounder, lttb_sample
 
 logger = utils.get_logger()
 
@@ -293,6 +293,8 @@ class RunProfile(object):
             if dev.startswith('GPU'):
                 default_device = dev
                 break
+
+        curves = lttb_sample(curves)
 
         return {
             'metadata': {

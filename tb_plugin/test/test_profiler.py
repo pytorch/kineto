@@ -2368,6 +2368,22 @@ class TestDistributed(unittest.TestCase):
                          [['gloo:broadcast', 3, 637440, 212480, 44, 15, 44, 15],
                           ['gloo:all_reduce', 2, 16392000, 8196000, 54, 27, 34, 17]])
 
+    def test_distributed_nccl_user_annotation_has_communication(self):
+        # tests https://github.com/pytorch/kineto/issues/640
+        json_content0 = """[
+          {
+            "ph": "X", "cat": "user_annotation", "name": "nccl:all_reduce", "pid": 128, "tid": 999,
+            "ts": 1686070155939447, "dur": 71,
+            "args": {
+              "Trace name": "PyTorch Profiler", "Trace iteration": 0,
+              "External id": 647,
+              "Profiler Event Index": 134
+            }
+          }
+        ]"""
+
+        profile0 = parse_json_trace(json_content0, 'worker0')
+        self.assertTrue(profile0.has_communication)
 
 class TestMemoryCurve(unittest.TestCase):
 

@@ -31,13 +31,18 @@ namespace KINETO_NAMESPACE {
 static bool initialized = false;
 static std::mutex initMutex;
 
+bool enableEventProfiler() {
+  if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 static void initProfilers(
     CUpti_CallbackDomain /*domain*/,
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* cbInfo) {
-  CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
-  CUcontext ctx = d->context;
-
   VLOG(0) << "CUDA Context created";
   std::lock_guard<std::mutex> lock(initMutex);
 
@@ -46,15 +51,19 @@ static void initProfilers(
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }
-  if (getenv("KINETO_DISABLE_EVENT_PROFILER") != nullptr) {
-    LOG(INFO) << "Kineto EventProfiler disabled via env var, skipping start";
+
+  if (!enableEventProfiler()) {
+    VLOG(0) << "Kineto EventProfiler disabled, skipping start";
+    return;
   } else {
+    CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
+    CUcontext ctx = d->context;
     ConfigLoader& config_loader = libkineto::api().configLoader();
     config_loader.initBaseConfig();
     auto config = config_loader.getConfigCopy();
     if (config->eventProfilerEnabled()) {
       EventProfilerController::start(ctx, config_loader);
-      LOG(INFO) << "EventProfiler started";
+      LOG(INFO) << "Kineto EventProfiler started";
     }
   }
 }
@@ -76,12 +85,15 @@ static void stopProfiler(
     CUpti_CallbackDomain /*domain*/,
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* cbInfo) {
-  CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
-  CUcontext ctx = d->context;
-
   VLOG(0) << "CUDA Context destroyed";
   std::lock_guard<std::mutex> lock(initMutex);
-  EventProfilerController::stopIfEnabled(ctx);
+
+  if (enableEventProfiler()) {
+    CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
+    CUcontext ctx = d->context;
+    EventProfilerController::stopIfEnabled(ctx);
+    LOG(INFO) << "Kineto EventProfiler stopped";
+  }
 }
 
 static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;

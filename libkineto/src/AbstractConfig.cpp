@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -156,8 +157,8 @@ bool AbstractConfig::parse(const string& conf) {
           }
         }
       } catch (const std::exception& e) {
-        LOG(ERROR) << "Failed to parse config line: " << line;
-        LOG(ERROR) << e.what();
+        LOG(ERROR) << "Failed to parse config: " << e.what()
+                   << " ; line: "<< line;
         return false;
       }
       if (!handled) {
@@ -180,7 +181,7 @@ bool AbstractConfig::parse(const string& conf) {
 bool AbstractConfig::handleOption(
     const std::string& /* unused */,
     std::string& /* unused */) {
-  LOG(ERROR) << "handleOption unimplemented";
+  // Unimplemented
   return false;
 }
 

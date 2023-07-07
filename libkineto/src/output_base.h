@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -13,10 +14,6 @@
 #include <thread>
 #include <unordered_map>
 
-#ifdef HAS_CUPTI
-#include <cupti.h>
-#include "CuptiActivity.h"
-#endif // HAS_CUPTI
 #include "ActivityBuffers.h"
 #include "GenericTraceActivity.h"
 #include "ThreadUtil.h"
@@ -24,8 +21,6 @@
 
 namespace KINETO_NAMESPACE {
   class Config;
-  class GpuKernelActivity;
-  struct RuntimeActivity;
 }
 
 namespace libkineto {
@@ -37,43 +32,25 @@ class ActivityLogger {
 
   virtual ~ActivityLogger() = default;
 
-  struct DeviceInfo {
-    DeviceInfo(int64_t id, const std::string& name, const std::string& label) :
-      id(id), name(name), label(label) {}
-    int64_t id;
-    const std::string name;
-    const std::string label;
-  };
-
-  struct ResourceInfo {
-    ResourceInfo(int64_t deviceId, int64_t id, const std::string& name) :
-        id(id), deviceId(deviceId), name(name) {}
-    int64_t id;
-    int64_t deviceId;
+  struct OverheadInfo {
+    explicit OverheadInfo(const std::string& name) : name(name) {}
     const std::string name;
   };
 
   virtual void handleDeviceInfo(
-      const DeviceInfo& info,
+      const DeviceInfo &info,
       uint64_t time) = 0;
 
   virtual void handleResourceInfo(const ResourceInfo& info, int64_t time) = 0;
 
+  virtual void handleOverheadInfo(const OverheadInfo& info, int64_t time) = 0;
+
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
-  virtual void handleGenericActivity(
+  virtual void handleActivity(
       const libkineto::ITraceActivity& activity) = 0;
-
-#ifdef HAS_CUPTI
-  virtual void handleGpuActivity(
-      const GpuActivity<CUpti_ActivityKernel4>& activity) = 0;
-  virtual void handleGpuActivity(
-      const GpuActivity<CUpti_ActivityMemcpy>& activity) = 0;
-  virtual void handleGpuActivity(
-      const GpuActivity<CUpti_ActivityMemcpy2>& activity) = 0;
-  virtual void handleGpuActivity(
-      const GpuActivity<CUpti_ActivityMemset>& activity) = 0;
-#endif // HAS_CUPTI
+  virtual void handleGenericActivity(
+      const libkineto::GenericTraceActivity& activity) = 0;
 
   virtual void handleTraceStart(
       const std::unordered_map<std::string, std::string>& metadata) = 0;

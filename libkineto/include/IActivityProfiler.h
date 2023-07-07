@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -11,6 +12,7 @@
 #include <set>
 #include <vector>
 
+#include "Config.h"
 #include "GenericTraceActivity.h"
 
 /* This file includes an abstract base class for an activity profiler
@@ -20,6 +22,9 @@
  */
 
 namespace libkineto {
+
+using namespace KINETO_NAMESPACE;
+struct CpuTraceBuffer;
 
 #ifdef _MSC_VER
 // workaround for the predefined ERROR macro on Windows
@@ -35,6 +40,32 @@ enum class TraceStatus {
   WARNING, // One or more warnings occurred.
 };
 
+/* DeviceInfo:
+ *   Can be used to specify process name, PID and device label
+ */
+struct DeviceInfo {
+  DeviceInfo(int64_t id, const std::string& name, const std::string& label)
+      : id(id), name(name), label(label) {}
+  int64_t id;               // process id
+  const std::string name;   // process name
+  const std::string label;  // device label
+};
+
+/* ResourceInfo:
+ *   Can be used to specify resource inside device
+ */
+struct ResourceInfo {
+  ResourceInfo(
+      int64_t deviceId,
+      int64_t id,
+      int64_t sortIndex,
+      const std::string& name)
+      : id(id), sortIndex(sortIndex), deviceId(deviceId), name(name) {}
+  int64_t id;             // resource id
+  int64_t sortIndex;      // position in trace view
+  int64_t deviceId;       // id of device which owns this resource (specified in DeviceInfo.id)
+  const std::string name; // resource name
+};
 /* IActivityProfilerSession:
  *   an opaque object that can be used by a high level profiler to
  *   start/stop and return trace events.
@@ -54,14 +85,20 @@ class IActivityProfilerSession {
     return status_;
   }
 
-  // returns list of Trace Activities
-  virtual std::vector<GenericTraceActivity>& activities() = 0;
-
   // returns errors with this trace
   virtual std::vector<std::string> errors() = 0;
 
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
+
+  // returns device info used in this trace, could be nullptr
+  virtual std::unique_ptr<DeviceInfo> getDeviceInfo() = 0;
+
+  // returns resource info used in this trace, could be empty
+  virtual std::vector<ResourceInfo> getResourceInfos() = 0;
+
+  // release ownership of the trace events and metadata
+  virtual std::unique_ptr<CpuTraceBuffer> getTraceBuffer() = 0;
 
   // XXX define trace formats
   // virtual save(string name, TraceFormat format)
@@ -90,17 +127,17 @@ class IActivityProfiler {
   virtual const std::set<ActivityType>& availableActivities() const = 0;
 
   // Calls prepare() on registered tracer providers passing in the relevant
-  // activity types. Returns a profiler session handle (including uuid?).
+  // activity types. Returns a profiler session handle
   virtual std::unique_ptr<IActivityProfilerSession> configure(
       const std::set<ActivityType>& activity_types,
-      const std::string& config="") = 0;
+      const Config& config) = 0;
 
   // asynchronous version of the above with future timestamp and duration.
   virtual std::unique_ptr<IActivityProfilerSession> configure(
       int64_t ts_ms,
       int64_t duration_ms,
       const std::set<ActivityType>& activity_types,
-      const std::string& config = "") = 0;
+      const Config& config) = 0;
 };
 
 } // namespace libkineto

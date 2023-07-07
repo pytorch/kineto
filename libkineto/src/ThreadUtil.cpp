@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #include "ThreadUtil.h"
 
 #ifndef _MSC_VER
@@ -57,12 +65,16 @@ int32_t systemThreadId() {
 
 int32_t threadId() {
   if (!_tid) {
-#ifndef _MSC_VER
+#ifdef __APPLE__
+    uint64_t tid;
+    pthread_threadid_np(nullptr, &tid);
+    _tid = tid;
+#elif defined _MSC_VER
+  _tid = (int32_t)GetCurrentThreadId();
+#else
   pthread_t pth = pthread_self();
   int32_t* ptr = reinterpret_cast<int32_t*>(&pth);
   _tid = *ptr;
-#else
-  _tid = (int32_t)GetCurrentThreadId();
 #endif
   }
   return _tid;
@@ -188,7 +200,9 @@ std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors() {
   std::vector<std::pair<int32_t, std::string>> pairs;
   pairs.reserve(kMaxParentPids + 1);
   int32_t curr_pid = processId();
-  for (int i = 0; i <= kMaxParentPids && curr_pid > 1; i++) {
+  // Usually we want to skip the root process (PID 1), but when running
+  // inside a container the process itself has PID 1, so we need to include it
+  for (int i = 0; i <= kMaxParentPids && (i == 0 || curr_pid > 1); i++) {
     std::pair<int32_t, std::string> ppid_and_comm = parentPidAndCommand(curr_pid);
     pairs.push_back(std::make_pair(curr_pid, ppid_and_comm.second));
     curr_pid = ppid_and_comm.first;

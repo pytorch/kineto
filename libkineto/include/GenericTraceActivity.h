@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -42,6 +43,10 @@ class GenericTraceActivity : public ITraceActivity {
     return resource;
   }
 
+  int32_t getThreadId() const override {
+    return threadId;
+  }
+
   int64_t timestamp() const override {
     return startTime;
   }
@@ -59,7 +64,7 @@ class GenericTraceActivity : public ITraceActivity {
   }
 
   const ITraceActivity* linkedActivity() const override {
-    return nullptr;
+    return linked;
   }
 
   int flowType() const override {
@@ -84,9 +89,9 @@ class GenericTraceActivity : public ITraceActivity {
 
   void log(ActivityLogger& logger) const override;
 
-  //Encode client side metadata as a key/value string.
-  template<typename T>
-  void addMetadata(const std::string& key, T value) {
+  //Encode client side metadata as a key/value
+  template <typename ValType>
+  void addMetadata(const std::string& key, const ValType& value) {
     metadata_.push_back(fmt::format("\"{}\": {}", key, value));
   }
 
@@ -98,13 +103,14 @@ class GenericTraceActivity : public ITraceActivity {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
-  virtual ~GenericTraceActivity() {};
+  virtual ~GenericTraceActivity() override {};
 
   int64_t startTime{0};
   int64_t endTime{0};
   int32_t id{0};
   int32_t device{0};
   int32_t resource{0};
+  int32_t threadId{0};
   ActivityType activityType;
   std::string activityName;
   struct Flow {
@@ -116,6 +122,7 @@ class GenericTraceActivity : public ITraceActivity {
     uint32_t type : 4;
     uint32_t start : 1;
   } flow;
+  const ITraceActivity* linked{nullptr};
 
  private:
   const TraceSpan* traceSpan_;

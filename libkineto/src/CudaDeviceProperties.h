@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Kineto Contributors
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -10,11 +11,16 @@
 #include <stdint.h>
 #include <string>
 
+#include <cupti.h>
+
 namespace KINETO_NAMESPACE {
 
 int smCount(uint32_t deviceId);
+float blocksPerSm(const CUpti_ActivityKernel4& kernel);
+float warpsPerSm(const CUpti_ActivityKernel4& kernel);
 
 // Return estimated achieved occupancy for a kernel
+float kernelOccupancy(const CUpti_ActivityKernel4& kernel);
 float kernelOccupancy(
     uint32_t deviceId,
     uint16_t registersPerThread,

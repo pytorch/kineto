@@ -1,4 +1,10 @@
-// (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <stdio.h>
 
@@ -19,42 +25,65 @@ void warmup(void) {
     return;
   }
 
-  cudaFree(mem); 
+  cudaFree(mem);
 }
 
-void basicMemcpyMemset(void) {
-  size_t size = (1 << 8) * sizeof(float);
-  float *hostMemSrc, *deviceMem, *hostMemDst;
+float *hA, *dA, *hOut;
+int num = 50'000;
+
+void basicMemcpyToDevice(void) {
+  size_t size = num * sizeof(float);
   cudaError_t err;
 
-  hostMemSrc = (float*)malloc(size);
-  hostMemDst = (float*)malloc(size);
-  err = cudaMalloc(&deviceMem, size);
+  hA = (float*)malloc(size);
+  hOut = (float*)malloc(size);
+  err = cudaMalloc(&dA, size);
   if (err != cudaSuccess) {
     printf("cudaMalloc failed during %s", __func__);
     return;
   }
 
-  memset(hostMemSrc, 1, size);
-  cudaMemcpy(deviceMem, hostMemSrc, size, cudaMemcpyHostToDevice);
+  memset(hA, 1, size);
+  err = cudaMemcpy(dA, hA, size, cudaMemcpyHostToDevice);
+  if (err != cudaSuccess) {
+    printf("cudaMemcpy failed during %s", __func__);
+    return;
+  }
+}
+
+void basicMemcpyFromDevice(void) {
+
+  size_t size = num * sizeof(float);
+  cudaError_t err;
+
+  err = cudaMemcpy(hOut, dA, size, cudaMemcpyDeviceToHost);
   if (err != cudaSuccess) {
     printf("cudaMemcpy failed during %s", __func__);
     return;
   }
 
-  cudaMemcpy(hostMemDst, deviceMem, size, cudaMemcpyDeviceToHost);
-  if (err != cudaSuccess) {
-    printf("cudaMemcpy failed during %s", __func__);
-    return;
-  }
+  free(hA);
+  free(hOut);
+  cudaFree(dA);
+}
 
-  free(hostMemSrc);
-  free(hostMemDst);
-  cudaFree(deviceMem);
+__global__ void square(float* A, int N) {
+  int i = blockDim.x * blockIdx.x + threadIdx.x;
+  if (i < N) {
+    A[i] *= A[i];
+  }
 }
 
 void playground(void) {
-  // Add your experimental CUDA implementation here. 
+  // Add your experimental CUDA implementation here.
 }
 
+void compute(void) {
+  int threadsPerBlock = 256;
+  int blocksPerGrid = (num + threadsPerBlock - 1) / threadsPerBlock;
+  for (int i = 0; i < 10; i++) {
+    square<<<blocksPerGrid, threadsPerBlock>>> (dA, num);
+  }
 }
+
+} // namespace kineto

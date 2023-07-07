@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -50,8 +51,9 @@ class ActivityProfilerInterface {
   // Call prepareTrace to enable tracing, then run the region to trace
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
-  // TODO: Add optional config string param
-  virtual void prepareTrace(const std::set<ActivityType>& activityTypes) {}
+  virtual void prepareTrace(
+      const std::set<ActivityType>& activityTypes,
+      const std::string& configStr = "") {}
 
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.
@@ -62,6 +64,10 @@ class ActivityProfilerInterface {
   virtual std::unique_ptr<ActivityTraceInterface> stopTrace() {
     return nullptr;
   }
+
+  // Re-evaluate internal state to allow for triggering operations based
+  // on number of iteration. each implicitly increments the iteration count
+  virtual void step() {}
 
   // *** TraceActivity API ***
   // FIXME: Pass activityProfiler interface into clientInterface?
@@ -86,6 +92,14 @@ class ActivityProfilerInterface {
   // to enable custom framework events.
   virtual void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) {}
+
+  // Log Invariant Violation to factories enabled. This helps record
+  // instances when the profiler behaves unexpectedly.
+  virtual void logInvariantViolation(
+      const std::string&,
+      const std::string&,
+      const std::string&,
+      const std::string& = "") {}
 };
 
 } // namespace libkineto

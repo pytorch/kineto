@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -47,8 +48,12 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   void scheduleTrace(const std::string& configStr) override;
   void scheduleTrace(const Config& config);
 
-  void prepareTrace(const std::set<ActivityType>& activityTypes) override;
+  void prepareTrace(
+      const std::set<ActivityType>& activityTypes,
+      const std::string& configStr = "") override;
+
   void startTrace() override;
+  void step() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
 
   void pushCorrelationId(uint64_t id) override;
@@ -64,6 +69,12 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   virtual void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) override;
+
+  void logInvariantViolation(
+      const std::string& profile_id,
+      const std::string& assertion,
+      const std::string& error,
+      const std::string& group_profile_id = "") override;
 
  private:
   bool cpuOnly_{true};

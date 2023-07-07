@@ -6,18 +6,20 @@ import bisect
 import os
 import sys
 from collections import defaultdict
+from typing import List, Tuple
 
 from .. import consts, io, utils
-from ..run import Run
-from .multiprocessing import Process, Queue
+from ..multiprocessing import Process, Queue
+from ..run import Run, RunProfile
 from .data import DistributedRunProfileData, RunProfileData
+from .node import CommunicationNode
 from .run_generator import DistributedRunGenerator, RunGenerator
 
 logger = utils.get_logger()
 
 
 class RunLoader(object):
-    def __init__(self, name, run_dir, caches):
+    def __init__(self, name, run_dir, caches: io.Cache):
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches
@@ -52,17 +54,17 @@ class RunLoader(object):
             span_index = None if span is None else span_index_map[(worker, span)]
             p = Process(target=self._process_data, args=(worker, span_index, path))
             p.start()
-        logger.info("started all processing")
+        logger.info('started all processing')
 
         distributed_run = Run(self.run_name, self.run_dir)
         run = Run(self.run_name, self.run_dir)
         num_items = len(workers)
         while num_items > 0:
-            item = self.queue.get()
+            item: Tuple[RunProfile, DistributedRunProfileData] = self.queue.get()
             num_items -= 1
             r, d = item
             if r or d:
-                logger.debug("Loaded profile via mp.Queue")
+                logger.debug('Loaded profile via mp.Queue')
             if r is not None:
                 run.add_profile(r)
             if d is not None:
@@ -81,28 +83,28 @@ class RunLoader(object):
         absl.logging.use_absl_handler()
 
         try:
-            logger.debug("Parse trace, run_dir=%s, worker=%s", self.run_dir, path)
+            logger.debug('Parse trace, run_dir=%s, worker=%s', self.run_dir, path)
             local_file = self.caches.get_remote_cache(io.join(self.run_dir, path))
-            data, trace_path = RunProfileData.parse(worker, span, local_file)
-            if trace_path != local_file:
-                self.caches.add_file(local_file, trace_path)
+            data = RunProfileData.parse(worker, span, local_file, self.caches.cache_dir)
+            if data.trace_file_path != local_file:
+                self.caches.add_file(local_file, data.trace_file_path)
 
             generator = RunGenerator(worker, span, data)
             profile = generator.generate_run_profile()
             dist_data = DistributedRunProfileData(data)
 
-            logger.debug("Sending back profile via mp.Queue")
+            logger.debug('Sending back profile via mp.Queue')
             self.queue.put((profile, dist_data))
         except KeyboardInterrupt:
-            logger.warning("tb_plugin receive keyboard interrupt signal, process %d will exit" % (os.getpid()))
+            logger.warning('tb_plugin receive keyboard interrupt signal, process %d will exit' % (os.getpid()))
             sys.exit(1)
         except Exception as ex:
-            logger.warning("Failed to parse profile data for Run %s on %s. Exception=%s",
-                               self.run_name, worker, ex, exc_info=True)
+            logger.warning('Failed to parse profile data for Run %s on %s. Exception=%s',
+                           self.run_name, worker, ex, exc_info=True)
             self.queue.put((None, None))
-        logger.debug("finishing process data")
+        logger.debug('finishing process data')
 
-    def _process_spans(self, distributed_run):
+    def _process_spans(self, distributed_run: Run):
         spans = distributed_run.get_spans()
         if spans is None:
             return [self._process_distributed_profiles(distributed_run.get_profiles(), None)]
@@ -115,23 +117,24 @@ class RunLoader(object):
                     span_profiles.append(p)
             return span_profiles
 
-    def _process_distributed_profiles(self, profiles, span):
+    def _process_distributed_profiles(self, profiles: List[DistributedRunProfileData], span):
         has_communication = True
-        comm_node_lists = []
+        comm_node_lists: List[List[CommunicationNode]] = []
         for data in profiles:
-            logger.debug("Processing profile data")
+            logger.debug('Processing profile data')
             # Set has_communication to False and disable distributed view if any one worker has no communication
             if data.has_communication and data.comm_node_list:
                 comm_node_lists.append(data.comm_node_list)
                 if len(comm_node_lists[-1]) != len(comm_node_lists[0]):
-                    logger.error("Number of communication operation nodes don't match between workers in run: %s" % self.run_name)
+                    logger.error("Number of communication operation nodes don't match between workers in run: %s"
+                                 % self.run_name)
                     has_communication = False
             else:
                 has_communication = False
-            logger.debug("Processing profile data finish")
+            logger.debug('Processing profile data finish')
 
         if not has_communication:
-            logger.debug("There is no communication profile in this run.")
+            logger.debug('There is no communication profile in this run.')
             return None
 
         worker_num = len(comm_node_lists)
@@ -144,7 +147,8 @@ class RunLoader(object):
                 for k in range(worker_num):
                     kernel_ranges = comm_node_lists[k][i].kernel_ranges
                     if len(kernel_ranges) != kernel_range_size:
-                        logger.error("Number of communication kernels don't match between workers in run: %s" % self.run_name)
+                        logger.error("Number of communication kernels don't match between workers in run: %s"
+                                     % self.run_name)
                         has_communication = False
                         return None
                     if kernel_ranges:

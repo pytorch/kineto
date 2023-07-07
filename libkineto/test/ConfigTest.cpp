@@ -1,11 +1,12 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "src/Config.h"
+#include "include/Config.h"
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>
@@ -72,9 +73,9 @@ TEST(ParseTest, Format) {
 TEST(ParseTest, DefaultActivityTypes) {
   Config cfg;
   cfg.validate(std::chrono::system_clock::now());
-  auto all_activities = activityTypes();
+  auto default_activities = defaultActivityTypes();
   EXPECT_EQ(cfg.selectedActivityTypes(),
-    std::set<ActivityType>(all_activities.begin(), all_activities.end()));
+    std::set<ActivityType>(default_activities.begin(), default_activities.end()));
 }
 
 TEST(ParseTest, ActivityTypes) {
@@ -93,8 +94,9 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::GPU_MEMSET,
                             ActivityType::CONCURRENT_KERNEL,
                             ActivityType::EXTERNAL_CORRELATION,
-                            ActivityType::GLOW_RUNTIME,
-                            ActivityType::CUDA_RUNTIME}));
+                            ActivityType::OVERHEAD,
+                            ActivityType::CUDA_RUNTIME,
+                            ActivityType::CUDA_DRIVER}));
 
   Config cfg2;
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,kernel"));
@@ -113,6 +115,10 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = cpu_op"));
   EXPECT_EQ(cfg2.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::CPU_OP}));
+
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = xpu_Runtime"));
+  EXPECT_EQ(cfg2.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::XPU_RUNTIME}));
 }
 
 TEST(ParseTest, SamplePeriod) {
@@ -315,4 +321,22 @@ TEST(ParseTest, RequestTime) {
   tbad_ms = duration_cast<milliseconds>((now + seconds(10)).time_since_epoch())
                 .count();
   EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
+}
+
+TEST(ParseTest, ProfileStartTime) {
+  Config cfg;
+  system_clock::time_point now = system_clock::now();
+  int64_t tgood_ms =
+      duration_cast<milliseconds>(now.time_since_epoch()).count();
+  EXPECT_TRUE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tgood_ms)));
+
+  // Pass given PROFILE_START_TIME = 0, a timestamp is assigned.
+  tgood_ms = 0;
+  EXPECT_TRUE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tgood_ms)));
+
+  // Fail given PROFILE_START_TIME older than kMaxRequestAge from now.
+  int64_t tbad_ms =
+      duration_cast<milliseconds>((now - seconds(15)).time_since_epoch())
+          .count();
+  EXPECT_FALSE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tbad_ms)));
 }

@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -36,7 +37,7 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
   ~EventProfilerController();
 
   static void start(CUcontext ctx, ConfigLoader& configLoader);
-  static void stop(CUcontext ctx);
+  static void stopIfEnabled(CUcontext ctx);
 
   static void addLoggerFactory(
       std::function<std::unique_ptr<SampleListener>(const Config&)> factory);
@@ -55,6 +56,7 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
       detail::HeartbeatMonitor& heartbeatMonitor);
   bool enableForDevice(Config& cfg);
   void profilerLoop();
+  static bool& started();
 
   ConfigLoader& configLoader_;
   std::unique_ptr<Config> newOnDemandConfig_;

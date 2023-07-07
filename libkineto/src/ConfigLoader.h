@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -11,11 +12,16 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
 
 #include "Config.h"
+
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "ILoggerObserver.h"
 
 namespace libkineto {
   class LibkinetoApi;
@@ -24,7 +30,7 @@ namespace libkineto {
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
-class DaemonConfigLoader;
+class IDaemonConfigLoader;
 
 class ConfigLoader {
  public:
@@ -99,16 +105,18 @@ class ConfigLoader {
   void handleOnDemandSignal();
 
   static void setDaemonConfigLoaderFactory(
-      std::function<std::unique_ptr<DaemonConfigLoader>()> factory);
+      std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
+
+  const std::string getConfString();
 
  private:
   ConfigLoader();
   ~ConfigLoader();
 
-  const char* configFileName();
-  DaemonConfigLoader* daemonConfigLoader();
+  IDaemonConfigLoader* daemonConfigLoader();
 
   void startThread();
+  void stopThread();
   void updateConfigThread();
   void updateBaseConfig();
 
@@ -125,10 +133,11 @@ class ConfigLoader {
   std::string readOnDemandConfigFromDaemon(
       std::chrono::time_point<std::chrono::system_clock> now);
 
+  const char* customConfigFileName();
+
   std::mutex configLock_;
-  std::atomic<const char*> configFileName_{nullptr};
   std::unique_ptr<Config> config_;
-  std::unique_ptr<DaemonConfigLoader> daemonConfigLoader_;
+  std::unique_ptr<IDaemonConfigLoader> daemonConfigLoader_;
   std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;
 
   std::chrono::seconds configUpdateIntervalSecs_;

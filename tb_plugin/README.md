@@ -219,7 +219,7 @@ We describe each of these views below.
     CallStack: All call stacks of this operator if it has been recorded in profiling trace file.
                To dump this call stack information, you should set the 'with_stack' parameter in torch.profiler API.
                The TensorBoard has integrated to VSCode, if you launch TensorBoard in VSCode, clicking this CallStack will forward to corresponding line of source code as below:
-           
+
    ![Alt text](./docs/images/vscode_stack.PNG)
 
     Note: Each above duration means wall-clock time. It doesn't mean the GPU or CPU during this period is fully utilized.
@@ -270,7 +270,7 @@ We describe each of these views below.
 
     * Mean Blocks Per SM: Blocks per SM = Blocks of this kernel / SM number of this GPU. If this number is less than 1, it indicates the GPU multiprocessors are not fully utilized. "Mean Blocks per SM" is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
-    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](./docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight. 
+    * Mean Est. Achieved Occupancy: The definition of Est. Achieved Occupancy can refer to [gpu_utilization](./docs/gpu_utilization.md), It is weighted average of all runs of this kernel name, using each run’s duration as weight.
 
     The top left pie chart is a visualization of "Total Duration" column.
     It makes the breakdowns visible at a glance.
@@ -287,7 +287,7 @@ We describe each of these views below.
     "Kernel Properties + Op Name" will group kernels by combination of kernel name, launching operator name,
     grid, block, registers per thread, and shared memory.
 
-    ![Alt text](./docs/images/trace_view.PNG)
+    ![Alt text](./docs/images/kernel_view_group_by_properties_and_op.PNG)
 
     * Operator: The name of PyTorch operator which launches this kernel.
 
@@ -387,9 +387,9 @@ We describe each of these views below.
 
       * Self Size Increase: The memory increase size associated with the operator itself excluding that of its children. It sums up all allocation bytes and minus all the memory release bytes.
 
-      * Allocation Count: The allocation count including all children operators. 
+      * Allocation Count: The allocation count including all children operators.
 
-      * Self Allocation Count: The allocation count belonging to the operator itself excluding its children. 
+      * Self Allocation Count: The allocation count belonging to the operator itself excluding its children.
 
       * Allocation Size: The allocation size including all children operators. It sums up all allocation bytes without considering the memory free.
 
@@ -428,6 +428,48 @@ one worker is much larger than others, there may be a problem of loading balance
         * Avg Latency (us): Average latency of each operator of this type.
         * Data Transfer Time (us): Total time actually used for data transfer in operator of this type.
         * Ave Data Transfer Time (us): Average time actually used for data transfer in each operator of this type.
+
+* Module View
+
+    If the torch.nn.Module information is dumped into the result Chrome tracing file by Pytorch profiler, the plugin could display the nn.Module hierarchy and summary.
+
+    ![Alt text](./docs/images/module_view.png)
+
+    *   The top table shows each torch.nn.Module statistics information including:
+        * Occurrences: how many times the module is called in the training process.
+        * Operators: how many operators the module invokes.
+        * Host Total Time: The accumulated time spent on Host, including the child submodule.
+        * Host Self Time: The accumulated time spent on Host, not including the child submodule.
+        * Device Total Time: The accumulated time spent on GPU of the operators contained in the module, including the child submodule.
+        * Device Self Time: The accumulated time spent on GPU of the operators contained in the module, not including the child submodule.
+
+    *   The middle flamegraph shows the torch.nn.Module hierarchy information
+    *   The bottom graph shows the main thread operators tree.
+
+* Lightning View
+
+    If the Chrome tracing file is from PytorchLightning job, the plugin will show a Lightning View which is customized for Pytorch Lightning.
+    All the data of this view is from PytorchLightning framework.
+
+    ![Alt text](./docs/images/lightning_view.png)
+
+    *   The top table shows the model structure. The meaning of metrics in the table is same as Module View.
+    *   The middle flamegraph shows the model hierarchy information.
+    *   The bottom graph shows the call tree of all hooks in PytorchLightning.
+
+* Diff Run View
+
+    The diff run feature helps to compare two run by logical timeline. The key comparision operators include backward, dataloader, torch.nn.Module, optimizer. If each operator contains these sub-operators internally, the diff run could be zoom in by click the bar.
+
+    ![Alt text](./docs/images/diff_view.png)
+
+    *   The top bar chart shows each operator type and trend comparision result.
+    *   The middle line chart shows the delta and accumulated execution time difference against each operator type.
+    *   The bottom table show the operators difference for the following categories:
+        * Host Total Duration: The accumulated time spent on Host, including this operator’s child operators.
+        * Host Self Duration: The accumulated time spent on Host, not including this operator’s child operators.
+        * Device Total Duration: The accumulated time spent on GPU, including this operator’s child operators.
+        * Device Self Duration: The accumulated time spent on GPU, not including this operator’s child operators.
 
 ### PyTorch Profiler TensorBoard Plugin 0.2 Release Notes
 

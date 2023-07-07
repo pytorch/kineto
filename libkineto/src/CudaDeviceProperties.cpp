@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Kineto Contributors
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -36,6 +37,7 @@ static const std::vector<cudaDeviceProp> createDeviceProps() {
       return {};
     }
     props.push_back(prop);
+    LOGGER_OBSERVER_ADD_DEVICE(i);
   }
   return props;
 }
@@ -82,6 +84,36 @@ int smCount(uint32_t deviceId) {
   const std::vector<cudaDeviceProp> &props = deviceProps();
   return deviceId >= props.size() ? 0 :
      props[deviceId].multiProcessorCount;
+}
+
+float blocksPerSm(const CUpti_ActivityKernel4& kernel) {
+  return (kernel.gridX * kernel.gridY * kernel.gridZ) /
+      (float) smCount(kernel.deviceId);
+}
+
+float warpsPerSm(const CUpti_ActivityKernel4& kernel) {
+  constexpr int threads_per_warp = 32;
+  return blocksPerSm(kernel) *
+      (kernel.blockX * kernel.blockY * kernel.blockZ) /
+      threads_per_warp;
+}
+
+float kernelOccupancy(const CUpti_ActivityKernel4& kernel) {
+  float blocks_per_sm = -1.0;
+  int sm_count = smCount(kernel.deviceId);
+  if (sm_count) {
+    blocks_per_sm =
+        (kernel.gridX * kernel.gridY * kernel.gridZ) / (float) sm_count;
+  }
+  return kernelOccupancy(
+      kernel.deviceId,
+      kernel.registersPerThread,
+      kernel.staticSharedMemory,
+      kernel.dynamicSharedMemory,
+      kernel.blockX,
+      kernel.blockY,
+      kernel.blockZ,
+      blocks_per_sm);
 }
 
 float kernelOccupancy(

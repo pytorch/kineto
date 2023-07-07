@@ -1,3 +1,9 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -61,7 +67,7 @@ if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER)
     get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " CUPTI unavailable or disabled - not building GPU profilers")
 elseif(NOT LIBKINETO_NOROCTRACER)
-    get_filelist("get_libkineto_roctracer_srcs()" LIBKINETO_SRCS)
+    get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " Building with roctracer")
 else()
     get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
@@ -79,11 +85,11 @@ add_dependencies(kineto_base libkineto_defs.bzl)
 set_target_properties(kineto_base kineto_api PROPERTIES
       CXX_STANDARD 14
       CXX_STANDARD_REQUIRED YES
-      CXX_EXTENSIONS NO
-      CXX_VISIBILITY_PRESET hidden)
+      CXX_EXTENSIONS NO)
 
 set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
 list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
+list(APPEND KINETO_COMPILE_OPTIONS "-DENABLE_IPC_FABRIC")
 if(NOT MSVC)
   list(APPEND KINETO_COMPILE_OPTIONS "-std=c++14")
 else()
@@ -92,10 +98,15 @@ else()
   list(APPEND KINETO_COMPILE_OPTIONS "-DNOGDI")
 endif()
 if (NOT LIBKINETO_NOCUPTI)
-    list(APPEND KINETO_COMPILE_OPTIONS "-DHAS_CUPTI")
+  list(APPEND KINETO_COMPILE_OPTIONS "-DHAS_CUPTI")
+endif()
+if (CUDA_nvperf_host_LIBRARY)
+  list(APPEND KINETO_COMPILE_OPTIONS "-DUSE_CUPTI_RANGE_PROFILER")
 endif()
 if (NOT LIBKINETO_NOROCTRACER)
     target_compile_options(kineto_base PRIVATE "-DHAS_ROCTRACER")
+    target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_HCC__")
+    target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_AMD__")
 endif()
 
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
@@ -129,19 +140,29 @@ if (NOT CUDA_INCLUDE_DIRS)
     set(CUDA_INCLUDE_DIRS "${CUDA_SOURCE_DIR}/include")
 endif()
 if (NOT ROCTRACER_INCLUDE_DIR)
-    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/roctracer/include")
+    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
 endif()
 if (NOT ROCM_INCLUDE_DIRS)
     set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
 endif()
 
+set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
+set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
+
 message(INFO " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
 message(INFO " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
+message(INFO " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
+message(INFO " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
+
+add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
+target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>
+      $<BUILD_INTERFACE:${DYNOLOG_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
+      $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${CUPTI_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>
       $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
@@ -178,6 +199,9 @@ endif()
 
 if(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto "${CUDA_cupti_LIBRARY}")
+endif()
+if(CUDA_nvperf_host_LIBRARY)
+  target_link_libraries(kineto "${CUDA_nvperf_host_LIBRARY}")
 endif()
 target_link_libraries(kineto $<BUILD_INTERFACE:fmt::fmt-header-only>)
 add_dependencies(kineto fmt::fmt-header-only)

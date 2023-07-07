@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -19,9 +20,9 @@
 #endif
 
 #include "include/libkineto.h"
+#include "include/Config.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/ActivityTrace.h"
-#include "src/Config.h"
 #include "src/CuptiActivityApi.h"
 #include "src/output_base.h"
 #include "src/output_json.h"
@@ -35,6 +36,9 @@ using namespace KINETO_NAMESPACE;
 
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #define CUDA_MEMCPY CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020
+#define CUDA_STREAM_SYNC CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020
+
+#define CU_LAUNCH_KERNEL CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
 
 namespace {
 const TraceSpan& defaultTraceSpan() {
@@ -54,9 +58,10 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     GenericTraceActivity op(span, ActivityType::CPU_OP, name);
     op.startTime = startTime;
     op.endTime = endTime;
+    op.device = systemThreadId();
     op.resource = systemThreadId();
     op.id = correlation;
-    activities.push_back(std::move(op));
+    emplace_activity(std::move(op));
     span.opCount++;
   }
 };
@@ -83,12 +88,24 @@ struct MockCuptiActivityBuffer {
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
+  void addDriverActivity(
+      CUpti_driver_api_trace_cbid_enum cbid,
+      int64_t start_us, int64_t end_us, int64_t correlation) {
+    auto& act = createActivity<CUpti_ActivityAPI>(
+        start_us, end_us, correlation);
+    act.kind = CUPTI_ACTIVITY_KIND_DRIVER;
+    act.cbid = cbid;
+    act.threadId = threadId();
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
   void addKernelActivity(
       int64_t start_us, int64_t end_us, int64_t correlation) {
     auto& act = createActivity<CUpti_ActivityKernel4>(
         start_us, end_us, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
     act.deviceId = 0;
+    act.contextId = 0;
     act.streamId = 1;
     act.name = "kernel";
     act.gridX = act.gridY = act.gridZ = 1;
@@ -106,6 +123,18 @@ struct MockCuptiActivityBuffer {
     act.copyKind = CUPTI_ACTIVITY_MEMCPY_KIND_HTOD;
     act.srcKind = CUPTI_ACTIVITY_MEMORY_KIND_PINNED;
     act.dstKind = CUPTI_ACTIVITY_MEMORY_KIND_DEVICE;
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
+  void addSyncActivity(
+      int64_t start_us, int64_t end_us, int64_t correlation,
+      CUpti_ActivitySynchronizationType type) {
+    auto& act = createActivity<CUpti_ActivitySynchronization>(
+        start_us, end_us, correlation);
+    act.kind = CUPTI_ACTIVITY_KIND_SYNCHRONIZATION;
+    act.type = type;
+    act.contextId = 0;
+    act.streamId = 1;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -132,10 +161,6 @@ struct MockCuptiActivityBuffer {
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
-  virtual int smCount() override {
-    return 10;
-  }
-
   virtual const std::pair<int, int> processActivities(
       CuptiActivityBufferMap&, /*unused*/
       std::function<void(const CUpti_Activity*)> handler) override {
@@ -181,6 +206,21 @@ class CuptiActivityProfilerTest : public ::testing::Test {
   ActivityLoggerFactory loggerFactory;
 };
 
+void checkTracefile(const char* filename) {
+#ifdef __linux__
+  // Check that the expected file was written and that it has some content
+  int fd = open(filename, O_RDONLY);
+  if (!fd) {
+    perror(filename);
+  }
+  EXPECT_TRUE(fd);
+  // Should expect at least 100 bytes
+  struct stat buf{};
+  fstat(fd, &buf);
+  EXPECT_GT(buf.st_size, 100);
+  close(fd);
+#endif
+}
 
 TEST(CuptiActivityProfiler, AsyncTrace) {
   std::vector<std::string> log_modules(
@@ -195,6 +235,7 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
 
   Config cfg;
 
+  int iter = 0;
   int warmup = 5;
   auto now = system_clock::now();
   auto startTime = now + seconds(10);
@@ -229,6 +270,13 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
       /* Current time */ now, /* Next wakeup time */ now);
 
   auto next = now + milliseconds(1000);
+
+  // performRunLoopStep can also be called by an application thread to update iteration count
+  // since this config does not use iteration this should have no effect on the state
+  while (++iter < 20) {
+    profiler.performRunLoopStep(now, now, iter);
+  }
+
   // Runloop should now be in collect state, so start workload
   // Perform another runloop step, passing in the end profile time as current.
   // This should terminate collection
@@ -236,32 +284,118 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
       /* Current time */ next, /* Next wakeup time */ next);
   // One step needed for each of the Process and Finalize phases
   // Doesn't really matter what times we pass in here.
-  //
+
+  EXPECT_TRUE(profiler.isActive());
+
   auto nextnext = next + milliseconds(1000);
+
+  while (++iter < 40) {
+    profiler.performRunLoopStep(next, next, iter);
+  }
+
+  EXPECT_TRUE(profiler.isActive());
+
   profiler.performRunLoopStep(nextnext,nextnext);
   profiler.performRunLoopStep(nextnext,nextnext);
 
   // Assert that tracing has completed
   EXPECT_FALSE(profiler.isActive());
 
-#ifdef __linux__
-  // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
-  if (!fd) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
-#endif
+  checkTracefile(filename);
 }
 
+TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(1, log_modules);
+
+  auto runIterTest = [&](
+    int start_iter, int warmup_iters, int trace_iters) {
+
+    LOG(INFO ) << "Async Trace Test: start_iteration = " << start_iter
+               << " warmup iterations = " << warmup_iters
+               << " trace iterations = " << trace_iters;
+
+    MockCuptiActivities activities;
+    CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
+
+    char filename[] = "/tmp/libkineto_testXXXXXX.json";
+    mkstemps(filename, 5);
+
+    Config cfg;
+
+    int iter = 0;
+    auto now = system_clock::now();
+
+    bool success = cfg.parse(fmt::format(R"CFG(
+      PROFILE_START_ITERATION = {}
+      ACTIVITIES_WARMUP_ITERATIONS={}
+      ACTIVITIES_ITERATIONS={}
+      ACTIVITIES_DURATION_SECS = 1
+      ACTIVITIES_LOG_FILE = {}
+    )CFG", start_iter, warmup_iters, trace_iters, filename));
+
+    EXPECT_TRUE(success);
+    EXPECT_FALSE(profiler.isActive());
+
+    auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
+
+    // Usually configuration is done when now is startIter - warmup iter to kick off warmup
+    // but start right away in the test
+    while (iter < (start_iter - warmup_iters)) {
+      profiler.performRunLoopStep(now, now, iter++);
+    }
+
+    profiler.configure(cfg, now);
+    profiler.setLogger(logger.get());
+
+    EXPECT_TRUE(profiler.isActive());
+
+    // fast forward in time, mimicking what will happen in reality
+    now += seconds(10);
+    auto next = now + milliseconds(1000);
+
+    // this call to runloop step should not be effecting the state
+    profiler.performRunLoopStep(now, next);
+    EXPECT_TRUE(profiler.isActive());
+
+    // start trace collection
+    while (iter < start_iter) {
+      profiler.performRunLoopStep(now, next, iter++);
+    }
+
+    // Runloop should now be in collect state, so start workload
+
+    while (iter < (start_iter + trace_iters)) {
+      profiler.performRunLoopStep(now, next, iter++);
+    }
+
+    // One step is required for each of the Process and Finalize phases
+    // Doesn't really matter what times we pass in here.
+    if (iter >= (start_iter + trace_iters)) {
+      profiler.performRunLoopStep(now, next, iter++);
+    }
+    EXPECT_TRUE(profiler.isActive());
+
+    auto nextnext = next + milliseconds(1000);
+
+    profiler.performRunLoopStep(nextnext, nextnext);
+    profiler.performRunLoopStep(nextnext, nextnext);
+
+    // Assert that tracing has completed
+    EXPECT_FALSE(profiler.isActive());
+
+    checkTracefile(filename);
+  };
+
+  // start iter = 50, warmup iters = 5, trace iters = 10
+  runIterTest(50, 5, 10);
+  // should be able to start at 0 iteration
+  runIterTest(0, 0, 2);
+  runIterTest(0, 5, 5);
+}
 
 TEST_F(CuptiActivityProfilerTest, SyncTrace) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
@@ -285,6 +419,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   cpuOps->addOp("op1", 120, 150, 1);
   cpuOps->addOp("op2", 130, 140, 2);
   cpuOps->addOp("op3", 200, 250, 3);
+  cpuOps->addOp("op4", 260, 280, 4);
   profiler.transferCpuTrace(std::move(cpuOps));
 
   // And some GPU ops
@@ -292,9 +427,13 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 133, 138, 1);
   gpuOps->addRuntimeActivity(CUDA_MEMCPY, 210, 220, 2);
   gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 230, 245, 3);
+  gpuOps->addDriverActivity(CU_LAUNCH_KERNEL, 265, 275, 4);
+  gpuOps->addRuntimeActivity(CUDA_STREAM_SYNC, 246, 340, 5);
   gpuOps->addKernelActivity(150, 170, 1);
   gpuOps->addMemcpyActivity(240, 250, 2);
   gpuOps->addKernelActivity(260, 320, 3);
+  gpuOps->addKernelActivity(330, 350, 4);
+  gpuOps->addSyncActivity(321, 323, 5, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Have the profiler process them
@@ -306,7 +445,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(trace.activities()->size(), 9);
+  EXPECT_EQ(trace.activities()->size(), 14);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
   for (auto& activity : *trace.activities()) {
@@ -319,16 +458,20 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(activityCounts["op1"], 1);
   EXPECT_EQ(activityCounts["op2"], 1);
   EXPECT_EQ(activityCounts["op3"], 1);
+  EXPECT_EQ(activityCounts["op4"], 1);
   EXPECT_EQ(activityCounts["cudaLaunchKernel"], 2);
+  EXPECT_EQ(activityCounts["cuLaunchKernel"], 1);
   EXPECT_EQ(activityCounts["cudaMemcpy"], 1);
-  EXPECT_EQ(activityCounts["kernel"], 2);
+  EXPECT_EQ(activityCounts["cudaStreamSynchronize"], 1);
+  EXPECT_EQ(activityCounts["kernel"], 3);
+  EXPECT_EQ(activityCounts["Stream Sync"], 1);
   EXPECT_EQ(activityCounts["Memcpy HtoD (Pinned -> Device)"], 1);
 
   auto sysTid = systemThreadId();
-  // Ops and runtime events are on thread sysTid
-  EXPECT_EQ(resourceIds[sysTid], 6);
-  // Kernels are on stream 1, memcpy on stream 2
-  EXPECT_EQ(resourceIds[1], 2);
+  // Ops and runtime events are on thread sysTid along with the flow start events
+  EXPECT_EQ(resourceIds[sysTid], 9);
+  // Kernels and sync event are on stream 1, memcpy on stream 2
+  EXPECT_EQ(resourceIds[1], 4);
   EXPECT_EQ(resourceIds[2], 1);
 
 #ifdef __linux__
@@ -348,9 +491,70 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 #endif
 }
 
+TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
+  // Verbose logging is useful for debugging
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  // Start and stop profiling
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_us = 100;
+  int64_t duration_us = 300;
+  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + microseconds(duration_us));
+
+  int64_t kernelLaunchTime = 120;
+  profiler.recordThreadInfo();
+
+  // set up CPU event
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_us, start_time_us + duration_us);
+  cpuOps->addOp("annotation", kernelLaunchTime, kernelLaunchTime + 10, 1);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  // set up a couple of GPU events and correlate with above CPU event.
+  // CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1 is used for user annotations.
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, 1);
+  gpuOps->addKernelActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
+  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, 1);
+  gpuOps->addKernelActivity(kernelLaunchTime + 15, kernelLaunchTime + 25, 1);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  // process trace
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  std::map<std::string, int> counts;
+  for (auto& activity : *trace.activities()) {
+    counts[activity->name()]++;
+  }
+
+  // We should now have an additional annotation activity created
+  // on the GPU timeline.
+  EXPECT_EQ(counts["annotation"], 2);
+  EXPECT_EQ(counts["kernel"], 2);
+
+  auto& annotation = trace.activities()->at(0);
+  auto& kernel1 = trace.activities()->at(1);
+  auto& kernel2 = trace.activities()->at(2);
+  auto& gpu_annotation = trace.activities()->at(3);
+  EXPECT_EQ(gpu_annotation->type(), ActivityType::GPU_USER_ANNOTATION);
+  EXPECT_EQ(gpu_annotation->timestamp(), kernel1->timestamp());
+  EXPECT_EQ(
+      gpu_annotation->duration(),
+      kernel2->timestamp() + kernel2->duration() - kernel1->timestamp());
+  EXPECT_EQ(gpu_annotation->deviceId(), kernel1->deviceId());
+  EXPECT_EQ(gpu_annotation->resourceId(), kernel1->resourceId());
+  EXPECT_EQ(gpu_annotation->correlationId(), annotation->correlationId());
+  EXPECT_EQ(gpu_annotation->name(),  annotation->name());
+}
+
 TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
-  using ::testing::Return;
-  using ::testing::ByMove;
 
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules(
@@ -366,7 +570,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   int64_t duration_us = 1000;
   auto start_time = time_point<system_clock>(microseconds(start_time_us));
 
-  std::vector<GenericTraceActivity> test_activities{3, ev};
+  std::deque<GenericTraceActivity> test_activities{3, ev};
   test_activities[0].startTime = start_time_us;
   test_activities[0].endTime = start_time_us + 5000;
   test_activities[0].activityName = "SubGraph A execution";

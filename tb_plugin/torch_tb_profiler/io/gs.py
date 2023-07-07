@@ -1,9 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-import tempfile
-
 from google.cloud import storage
+from google.auth import exceptions
 
 from .. import utils
 from .base import BaseFileSystem, RemotePath, StatData
@@ -16,7 +15,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
 
     def __init__(self):
         if not storage:
-            raise ImportError("google-cloud-storage must be installed for Google Cloud Blob support.")
+            raise ImportError('google-cloud-storage must be installed for Google Cloud Blob support.')
 
     def exists(self, dirname):
         """Returns whether the path is a directory or not."""
@@ -34,22 +33,19 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
     def glob(self, filename):
         raise NotImplementedError
 
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-        bucket_name, path = self.bucket_and_path(filename)
+    def download_file(self, file_to_download, file_to_save):
+        bucket_name, path = self.bucket_and_path(file_to_download)
         client = self.create_google_cloud_client()
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(path)
-        blob.download_to_filename(fp.name)
-        return fp.name
+        blob.download_to_filename(file_to_save)
 
     def isdir(self, dirname):
         """Returns whether the path is a directory or not."""
         basename, parts = self.split_blob_path(dirname)
         if basename is None or parts is None:
             return False
-        if basename == "":
+        if basename == '':
             # root container case
             return True
         else:
@@ -86,13 +82,14 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         results = {}
         for blob in blobs:
             dirname, basename = self.split(blob.name)
-            dirname = "gs://{}/{}".format(bucket_name, dirname)
+            dirname = 'gs://{}/{}'.format(bucket_name, dirname)
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value
 
     def split_blob_path(self, blob_path):
-        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
+        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path).
+        Finally, split the relative path.
         return (basename(blob_path), [relative splitted paths])
         If blob_path doesn't exist, return (None, None)
         For example,
@@ -118,14 +115,20 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
 
     def bucket_and_path(self, url):
         """Split an S3-prefixed URL into bucket and path."""
-        if url.startswith("gs://"):
-            url = url[len("gs://"):]
-        idx = url.index("/")
+        if url.startswith('gs://'):
+            url = url[len('gs://'):]
+        idx = url.index('/')
         bucket = url[:idx]
         path = url[(idx + 1):]
         return bucket, path
 
     def create_google_cloud_client(self):
-        # TODO: support client with credential?
-        client = storage.Client.create_anonymous_client()
+        try:
+            client = storage.Client()
+            logger.debug('Using default Google Cloud credentials.')
+        except exceptions.DefaultCredentialsError:
+            client = storage.Client.create_anonymous_client()
+            logger.debug(
+                'Default Google Cloud credentials not available. '
+                'Falling back to anonymous credentials.')
         return client

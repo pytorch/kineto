@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -17,6 +18,10 @@
 #include <mutex>
 #include <set>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "CuptiCallbackApiMock.h"
+
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
@@ -30,20 +35,6 @@ using namespace libkineto;
  *  Note: one design choice we made is to only support simple function pointers
  *  in order to speed up the implementation for fast path.
  */
-
-#ifndef HAS_CUPTI
-enum CUpti_CallbackDomain {
-  CUPTI_CB_DOMAIN_RESOURCE,
-  CUPTI_CB_DOMAIN_RUNTIME_API,
-};
-enum CUpti_CallbackData {
-  CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
-  CUPTI_CBID_RESOURCE_CONTEXT_CREATED,
-  CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING,
-};
-
-using CUpti_CallbackId = size_t;
-#endif
 
 using CuptiCallbackFn = void(*)(
     CUpti_CallbackDomain domain,
@@ -73,11 +64,13 @@ class CuptiCallbackApi {
     __RESOURCE_CB_DOMAIN_END = RESOURCE_CONTEXT_DESTROYED + 1,
   };
 
-
+  CuptiCallbackApi() = default;
   CuptiCallbackApi(const CuptiCallbackApi&) = delete;
   CuptiCallbackApi& operator=(const CuptiCallbackApi&) = delete;
 
-  static CuptiCallbackApi& singleton();
+  static std::shared_ptr<CuptiCallbackApi> singleton();
+
+  void initCallbackApi();
 
   bool initSuccess() const {
     return initSuccess_;
@@ -86,6 +79,10 @@ class CuptiCallbackApi {
 #ifdef HAS_CUPTI
   CUptiResult getCuptiStatus() const {
     return lastCuptiStatus_;
+  }
+
+  CUpti_SubscriberHandle getCuptiSubscriber() const {
+    return subscriber_;
   }
 #endif
 
@@ -100,8 +97,14 @@ class CuptiCallbackApi {
     CuptiCallBackID cbid,
     CuptiCallbackFn cbfn);
 
+  // Cupti Callback may be enable for domain and cbid pairs, or domains alone.
   bool enableCallback(CUpti_CallbackDomain domain, CUpti_CallbackId cbid);
   bool disableCallback(CUpti_CallbackDomain domain, CUpti_CallbackId cbid);
+  bool enableCallbackDomain(CUpti_CallbackDomain domain);
+  bool disableCallbackDomain(CUpti_CallbackDomain domain);
+  // Provide this API for when cuptiFinalize is executed, to allow the process
+  // to re-enabled all previously running callback subscriptions.
+  bool reenableCallbacks();
 
 
   // Please do not use this method. This has to be exposed as public
@@ -113,7 +116,7 @@ class CuptiCallbackApi {
 
  private:
 
-  explicit CuptiCallbackApi();
+  friend class std::shared_ptr<CuptiCallbackApi>;
 
   // For callback table design overview see the .cpp file
   using CallbackList = std::list<CuptiCallbackFn>;
@@ -135,10 +138,14 @@ class CuptiCallbackApi {
 
   CallbackTable callbacks_;
   bool initSuccess_ = false;
+  // Record a list of enabled callbacks, so that after teardown, we can re-enable
+  // the callbacks that were turned off to clean cupti context.
+  // As an implementation detail, cbid == 0xffffffff means enable the domain.
+  std::set<std::pair<CUpti_CallbackDomain, CUpti_CallbackId>> enabledCallbacks_;
 
 #ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;
-  CUpti_SubscriberHandle subscriber_;
+  CUpti_SubscriberHandle subscriber_ {0};
 #endif
 };
 

@@ -2,7 +2,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 import os
-import tempfile
 
 from azure.storage.blob import ContainerClient
 
@@ -18,15 +17,15 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
 
     def __init__(self):
         if not ContainerClient:
-            raise ImportError("azure-storage-blob must be installed for Azure Blob support.")
-        self.connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", None)
+            raise ImportError('azure-storage-blob must be installed for Azure Blob support.')
+        self.connection_string = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', None)
 
     def exists(self, dirname):
         """Returns whether the path is a directory or not."""
         basename, parts = self.split_blob_path(dirname)
         if basename is None or parts is None:
             return False
-        if basename == "":
+        if basename == '':
             # root container case
             return True
         else:
@@ -34,7 +33,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
 
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         """Reads contents of a file to a string."""
-        logger.info("azure blob: starting reading file %s" % filename)
+        logger.info('azure blob: starting reading file %s' % filename)
         account, container, path = self.container_and_path(filename)
         client = self.create_container_client(account, container)
         blob_client = client.get_blob_client(path)
@@ -48,7 +47,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
             continuation_token = downloader.size
 
         data = downloader.readall()
-        logger.info("azure blob: file %s download is done, size is %d" % (filename, len(data)))
+        logger.info('azure blob: file %s download is done, size is %d' % (filename, len(data)))
         if binary_mode:
             return as_bytes(data), continuation_token
         else:
@@ -61,37 +60,34 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
 
         if binary_mode:
             if not isinstance(file_content, bytes):
-                raise TypeError("File content type must be bytes")
+                raise TypeError('File content type must be bytes')
         else:
             file_content = as_bytes(file_content)
         client.upload_blob(path, file_content)
 
-    def download_file(self, filename):
-        fp = tempfile.NamedTemporaryFile('w+t', suffix='.%s' % self.basename(filename), delete=False)
-        fp.close()
-
-        logger.info("azure blob: starting downloading file %s as %s" % (filename, fp.name))
-        account, container, path = self.container_and_path(filename)
+    def download_file(self, file_to_download, file_to_save):
+        logger.info('azure blob: starting downloading file %s as %s' % (file_to_download, file_to_save))
+        account, container, path = self.container_and_path(file_to_download)
         client = self.create_container_client(account, container)
         blob_client = client.get_blob_client(path)
         if not blob_client.exists():
             raise FileNotFoundError("file %s doesn't exist!" % path)
 
         downloader = blob_client.download_blob()
-        with open(fp.name, 'wb') as downloaded_file:
+        with open(file_to_save, 'wb') as downloaded_file:
             data = downloader.readall()
             downloaded_file.write(data)
-            logger.info("azure blob: file %s is downloaded as %s, size is %d" % (filename, fp.name, len(data)))
-            return fp.name
+            logger.info('azure blob: file %s is downloaded as %s, size is %d' %
+                        (file_to_download, file_to_save, len(data)))
 
     def glob(self, filename):
         """Returns a list of files that match the given pattern(s)."""
         # Only support prefix with * at the end and no ? in the string
-        star_i = filename.find("*")
-        quest_i = filename.find("?")
+        star_i = filename.find('*')
+        quest_i = filename.find('?')
         if quest_i >= 0:
             raise NotImplementedError(
-                "{} not supported by compat glob".format(filename)
+                '{} not supported by compat glob'.format(filename)
             )
         if star_i != len(filename) - 1:
             return []
@@ -108,7 +104,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         basename, parts = self.split_blob_path(dirname)
         if basename is None or parts is None:
             return False
-        if basename == "":
+        if basename == '':
             # root container case
             return True
         else:
@@ -145,13 +141,14 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         results = {}
         for blob in blobs:
             dirname, basename = self.split(blob.name)
-            dirname = "https://{}/{}/{}".format(account, container, dirname)
+            dirname = 'https://{}/{}/{}'.format(account, container, dirname)
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value
 
     def split_blob_path(self, blob_path):
-        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path). Finally, split the relative path.
+        """ Find the first blob start with blob_path, then get the relative path starting from dirname(blob_path).
+        Finally, split the relative path.
         return (basename(blob_path), [relative splitted paths])
         If blob_path doesn't exist, return (None, None)
         For example,
@@ -179,12 +176,12 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         """Split an Azure blob -prefixed URL into container and blob path."""
         root, parts = parse_blob_url(url)
         if len(parts) != 2:
-            raise ValueError("Invalid azure blob url %s" % url)
+            raise ValueError('Invalid azure blob url %s' % url)
         return root, parts[0], parts[1]
 
     def create_container_client(self, account, container):
         if self.connection_string:
             client = ContainerClient.from_connection_string(self.connection_string, container)
         else:
-            client = ContainerClient.from_container_url("https://{}/{}".format(account, container))
+            client = ContainerClient.from_container_url('https://{}/{}'.format(account, container))
         return client

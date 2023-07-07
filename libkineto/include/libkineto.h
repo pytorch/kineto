@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -27,13 +28,15 @@
 #include "TraceSpan.h"
 #include "IActivityProfiler.h"
 #include "ActivityTraceInterface.h"
+#include "ILoggerObserver.h"
+#include "LoggingAPI.h"
 
 #include "ThreadUtil.h"
 
 extern "C" {
   void suppressLibkinetoLogMessages();
   int InitializeInjection(void);
-  bool libkineto_init(bool cpuOnly, bool logOnError);
+  void libkineto_init(bool cpuOnly, bool logOnError);
 }
 
 namespace libkineto {
@@ -42,9 +45,25 @@ class Config;
 class ConfigLoader;
 
 struct CpuTraceBuffer {
+  template <class... Args>
+  void emplace_activity(Args&&... args) {
+    activities.emplace_back(
+        std::make_unique<GenericTraceActivity>(std::forward<Args>(args)...));
+  }
+
+  static GenericTraceActivity& toRef(
+      std::unique_ptr<GenericTraceActivity>& ref) {
+    return *ref;
+  }
+
+  static const GenericTraceActivity& toRef(
+      const std::unique_ptr<GenericTraceActivity>& ref) {
+    return *ref;
+  }
+
   TraceSpan span{0, 0, "none"};
   int gpuOpCount;
-  std::deque<GenericTraceActivity> activities;
+  std::deque<std::unique_ptr<GenericTraceActivity>> activities;
 };
 
 using ChildActivityProfilerFactory =
@@ -76,9 +95,14 @@ class LibkinetoApi {
   }
 
   void initProfilerIfRegistered() {
-    if (activityProfiler_ && !activityProfiler_->isInitialized()) {
-      activityProfiler_->init();
-      initChildActivityProfilers();
+    static std::once_flag once;
+    if (activityProfiler_) {
+      std::call_once(once, [this] {
+        if (!activityProfiler_->isInitialized()) {
+          activityProfiler_->init();
+          initChildActivityProfilers();
+        }
+      });
     }
   }
 

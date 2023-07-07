@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -13,9 +14,6 @@
 #include <thread>
 #include <unordered_map>
 
-#ifdef HAS_CUPTI
-#include <cupti.h>
-#endif
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 
@@ -38,18 +36,14 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       const DeviceInfo& info,
       uint64_t time) override;
 
+  void handleOverheadInfo(const OverheadInfo& info, int64_t time) override;
+
   void handleResourceInfo(const ResourceInfo& info, int64_t time) override;
 
   void handleTraceSpan(const TraceSpan& span) override;
 
-  void handleGenericActivity(const ITraceActivity& activity) override;
-
-#ifdef HAS_CUPTI
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityKernel4>& activity) override;
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy>& activity) override;
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemcpy2>& activity) override;
-  void handleGpuActivity(const GpuActivity<CUpti_ActivityMemset>& activity) override;
-#endif // HAS_CUPTI
+  void handleActivity(const ITraceActivity& activity) override;
+  void handleGenericActivity(const GenericTraceActivity& activity) override;
 
   void handleTraceStart(
       const std::unordered_map<std::string, std::string>& metadata) override;
@@ -71,7 +65,6 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       char type,
       const ITraceActivity& e,
       int64_t id,
-      const std::string& cat,
       const std::string& name);
 
   void addIterationMarker(const TraceSpan& span);
@@ -82,9 +75,13 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleGenericLink(const ITraceActivity& activity);
 
-  void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
+  void metadataToJSON(
+      const std::unordered_map<std::string, std::string>& metadata);
+
+  std::string& sanitizeStrForJSON(std::string& value);
 
   std::string fileName_;
+  std::string tempFileName_;
   std::ofstream traceOf_;
 };
 

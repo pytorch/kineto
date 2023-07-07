@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -63,6 +64,27 @@ const char* memoryKindString(
       return "Unrecognized";
   }
 }
+
+const char* overheadKindString(
+    CUpti_ActivityOverheadKind kind) {
+  switch (kind) {
+    case CUPTI_ACTIVITY_OVERHEAD_UNKNOWN:
+      return "Unknown";
+    case CUPTI_ACTIVITY_OVERHEAD_DRIVER_COMPILER:
+      return "Driver Compiler";
+    case CUPTI_ACTIVITY_OVERHEAD_CUPTI_BUFFER_FLUSH:
+      return "Buffer Flush";
+    case CUPTI_ACTIVITY_OVERHEAD_CUPTI_INSTRUMENTATION:
+      return "Instrumentation";
+    case CUPTI_ACTIVITY_OVERHEAD_CUPTI_RESOURCE:
+      return "Resource";
+    case CUPTI_ACTIVITY_OVERHEAD_FORCE_INT:
+      return "Force Int";
+    default:
+      return "Unrecognized";
+  }
+}
+
 
 
 static const char* runtimeCbidNames[] = {
@@ -483,4 +505,23 @@ const char* runtimeCbidName(CUpti_CallbackId cbid) {
   return runtimeCbidNames[cbid];
 }
 
+// From https://docs.nvidia.com/cupti/modules.html#group__CUPTI__ACTIVITY__API_1g80e1eb47615e31021f574df8ebbe5d9a
+//   enum CUpti_ActivitySynchronizationType
+const char* syncTypeString(
+    CUpti_ActivitySynchronizationType kind) {
+  switch (kind) {
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE:
+      return "Event Sync";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT:
+      return "Stream Wait Event";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE:
+      return "Stream Sync";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_CONTEXT_SYNCHRONIZE:
+      return "Context Sync";
+    case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_UNKNOWN:
+    default:
+      return "Unknown Sync";
+  }
+  return "<unknown>";
+}
 } // namespace libkineto

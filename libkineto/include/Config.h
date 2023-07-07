@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -65,6 +66,10 @@ class Config : public AbstractConfig {
 
   bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
+  }
+
+  bool eventProfilerEnabled() const {
+    return !eventNames_.empty() || !metricNames_.empty();
   }
 
   // Is profiling enabled for the given device?
@@ -175,20 +180,34 @@ class Config : public AbstractConfig {
     selectedActivityTypes_ = types;
   }
 
+  bool isReportInputShapesEnabled() const {
+    return enableReportInputShapes_;
+  }
+
+  bool isProfileMemoryEnabled() const {
+    return enableProfileMemory_;
+  }
+
+  bool isWithStackEnabled() const {
+    return enableWithStack_;
+  }
+
+  bool isWithFlopsEnabled() const {
+    return enableWithFlops_;
+  }
+
+  bool isWithModulesEnabled() const {
+    return enableWithModules_;
+  }
+
   // Trace for this long
   std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
   }
 
-  std::chrono::milliseconds activitiesDurationDefault() const;
-
-  void setActivitiesDuration(std::chrono::milliseconds duration) {
-    activitiesDuration_ = duration;
-  }
-
   // Trace for this many iterations, determined by external API
-  int activitiesExternalIterations() const {
-    return activitiesExternalAPIIterations_;
+  int activitiesRunIterations() const {
+    return activitiesRunIterations_;
   }
 
   int activitiesMaxGpuBufferSize() const {
@@ -199,20 +218,61 @@ class Config : public AbstractConfig {
     return activitiesWarmupDuration_;
   }
 
+  int activitiesWarmupIterations() const {
+    return activitiesWarmupIterations_;
+  }
+
+  // Show CUDA Synchronization Stream Wait Events
+  bool activitiesCudaSyncWaitEvents() const {
+    return activitiesCudaSyncWaitEvents_;
+  }
+
+  void setActivitiesCudaSyncWaitEvents(bool enable) {
+    activitiesCudaSyncWaitEvents_ = enable;
+  }
+
   // Timestamp at which the profiling to start, requested by the user.
   const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
       const {
-    if  (profileStartTime_.time_since_epoch().count()) {
+    if (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }
+    // If no one requested timestamp, return 0.
+    if (requestTimestamp_.time_since_epoch().count() == 0) {
+      return requestTimestamp_;
+    }
 
-    // TODO(T94634890): Deperecate requestTimestamp
+    // TODO(T94634890): Deprecate requestTimestamp
     return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
   }
 
   bool hasProfileStartTime() const {
     return requestTimestamp_.time_since_epoch().count() > 0 ||
         profileStartTime_.time_since_epoch().count() > 0;
+  }
+
+  int profileStartIteration() const {
+    return profileStartIteration_;
+  }
+
+  bool hasProfileStartIteration() const {
+    return profileStartIteration_ >= 0 && activitiesRunIterations_ > 0;
+  }
+
+  void setProfileStartIteration(int iter) {
+    profileStartIteration_ = iter;
+  }
+
+  int profileStartIterationRoundUp() const {
+    return profileStartIterationRoundUp_;
+  }
+
+  // calculate the start iteration accounting for warmup
+  int startIterationIncludingWarmup() const {
+    if (!hasProfileStartIteration()) {
+      return -1;
+    }
+    return profileStartIteration_ - activitiesWarmupIterations_;
   }
 
   const std::chrono::seconds maxRequestAge() const;
@@ -238,6 +298,10 @@ class Config : public AbstractConfig {
     return enableIpcFabric_;
   }
 
+  std::chrono::seconds onDemandConfigUpdateIntervalSecs() const {
+    return onDemandConfigUpdateIntervalSecs_;
+  }
+
   static std::chrono::milliseconds alignUp(
       std::chrono::milliseconds duration,
       std::chrono::milliseconds alignment) {
@@ -260,18 +324,51 @@ class Config : public AbstractConfig {
     return activitiesOnDemandTimestamp_;
   }
 
+  static constexpr std::chrono::milliseconds kControllerIntervalMsecs{1000};
+
+  // Users may request and set trace id and group trace id.
+  const std::string& requestTraceID() const {
+    return requestTraceID_;
+  }
+
+  void setRequestTraceID(const std::string& tid) {
+    requestTraceID_ = tid;
+  }
+
+  const std::string& requestGroupTraceID() const {
+    return requestGroupTraceID_;
+  }
+
+  void setRequestGroupTraceID(const std::string& gtid) {
+    requestGroupTraceID_ = gtid;
+  }
+
+  size_t cuptiDeviceBufferSize() const {
+    return cuptiDeviceBufferSize_;
+  }
+
+  size_t cuptiDeviceBufferPoolLimit() const {
+    return cuptiDeviceBufferPoolLimit_;
+  }
+
   void updateActivityProfilerRequestReceivedTime();
 
   void printActivityProfilerConfig(std::ostream& s) const override;
 
-  void validate(
-      const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override;
+  void validate(const std::chrono::time_point<std::chrono::system_clock>&
+                    fallbackProfileStartTime) override;
 
   static void addConfigFactory(
       std::string name,
       std::function<AbstractConfig*(Config&)> factory);
 
   void print(std::ostream& s) const;
+
+  // Config relies on some state with global static lifetime. If other
+  // threads are using the config, it's possible that the global state
+  // is destroyed before the threads stop. By hanging onto this handle,
+  // correct destruction order can be ensured.
+  static std::shared_ptr<void> getStaticObjectsLifetimeHandle();
 
  private:
   explicit Config(const Config& other) = default;
@@ -291,7 +388,7 @@ class Config : public AbstractConfig {
   // Sets the default activity types to be traced
   void selectDefaultActivityTypes() {
     // If the user has not specified an activity list, add all types
-    for (ActivityType t : activityTypes()) {
+    for (ActivityType t : defaultActivityTypes()) {
       selectedActivityTypes_.insert(t);
     }
   }
@@ -339,10 +436,22 @@ class Config : public AbstractConfig {
 
   int activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;
+  int activitiesWarmupIterations_;
+  bool activitiesCudaSyncWaitEvents_;
+
+  // Enable Profiler Config Options
+  // Temporarily disable shape collection until we re-roll out the feature for on-demand cases
+  bool enableReportInputShapes_{false};
+  bool enableProfileMemory_{false};
+  bool enableWithStack_{false};
+  bool enableWithFlops_{false};
+  bool enableWithModules_{false};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;
-  int activitiesExternalAPIIterations_;
+  int activitiesRunIterations_;
+
+  // Below are not used
   // Use this net name for iteration count
   std::string activitiesExternalAPIIterationsTarget_;
   // Only profile nets that includes this in the name
@@ -355,8 +464,13 @@ class Config : public AbstractConfig {
   std::chrono::time_point<std::chrono::system_clock>
       activitiesOnDemandTimestamp_;
 
-  // Synchronized start timestamp
+  // ActivityProfilers are triggered by either:
+  // Synchronized start timestamps
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
+  // Or start iterations.
+  int profileStartIteration_;
+  int profileStartIterationRoundUp_;
+
   // DEPRECATED
   std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;
 
@@ -365,6 +479,17 @@ class Config : public AbstractConfig {
 
   // Enable IPC Fabric instead of thrift communication
   bool enableIpcFabric_;
+  std::chrono::seconds onDemandConfigUpdateIntervalSecs_;
+
+  // Logger Metadata
+  std::string requestTraceID_;
+  std::string requestGroupTraceID_;
+
+  // CUPTI Device Buffer
+  size_t cuptiDeviceBufferSize_;
+  size_t cuptiDeviceBufferPoolLimit_;
 };
+
+constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
 } // namespace KINETO_NAMESPACE

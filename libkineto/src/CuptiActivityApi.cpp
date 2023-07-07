@@ -1,6 +1,7 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
+ *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
@@ -9,19 +10,48 @@
 
 #include <assert.h>
 #include <chrono>
+#include <mutex>
+#include <thread>
 
 #include "cupti_call.h"
 #include "Logger.h"
+#include "Config.h"
+#include "CudaUtil.h"
 
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-// TODO: do we want this to be configurable?
-// Set to 2MB to avoid constantly creating buffers (espeically for networks
-// that has many small memcpy such as sparseNN)
-// Consider putting this on huge pages?
-constexpr size_t kBufSize(2 * 1024 * 1024);
+// Set to 4MB to avoid constantly creating buffers (especially for networks
+// that have many small memcpy such as sparseNN). CUPTI recommends between
+// 1MB to 10MB.
+// Given the kDefaultActivitiesMaxGpuBufferSize is around 128MB, in the worst
+// case, there will be 32 buffers contending for the mutex.
+constexpr size_t kBufSize(4 * 1024 * 1024);
+
+#ifdef HAS_CUPTI
+bool cuptiLazyInit_() {
+  return getenv("TEARDOWN_CUPTI") != nullptr && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
+}
+
+inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
+  // Re-enable callbacks from the past if they exist.
+  LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
+  VLOG(1) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
+  cbapi_->initCallbackApi();
+  if (cbapi_->initSuccess()) {
+    VLOG(1) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
+    bool status = cbapi_->reenableCallbacks();
+    if (!status) {
+      LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
+    } else {
+      LOG(INFO) << "Re-enable previous CUPTI callbacks - Successful";
+    }
+  } else {
+    LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
+  }
+}
+#endif
 
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static CuptiActivityApi instance;
@@ -63,41 +93,6 @@ void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
-static int getSMCount() {
-#ifdef HAS_CUPTI
-  // There may be a simpler way to get the number of SMs....
-  // Look for domain_d - this has 80 instances on Volta and
-  // 56 instances on Pascal, corresponding to the number of SMs
-  // FIXME: This does not work on Turing and later
-  uint32_t domainCount{0};
-  CUPTI_CALL(cuptiDeviceGetNumEventDomains(0, &domainCount));
-  std::vector<CUpti_EventDomainID> ids(domainCount);
-  size_t sz = sizeof(CUpti_EventDomainID) * domainCount;
-  CUPTI_CALL(cuptiDeviceEnumEventDomains(0, &sz, ids.data()));
-  for (CUpti_EventDomainID id : ids) {
-    char name[16];
-    name[0] = '\0';
-    sz = sizeof(name);
-    CUPTI_CALL(cuptiEventDomainGetAttribute(
-        id, CUPTI_EVENT_DOMAIN_ATTR_NAME, &sz, name));
-    if (strncmp(name, "domain_d", sz) == 0) {
-      uint32_t count{0};
-      sz = sizeof(count);
-      CUPTI_CALL(cuptiDeviceGetEventDomainAttribute(
-          0, id, CUPTI_EVENT_DOMAIN_ATTR_TOTAL_INSTANCE_COUNT, &sz, &count));
-      return count;
-    }
-  }
-#endif
-
-  return -1;
-}
-
-int CuptiActivityApi::smCount() {
-  static int sm_count = getSMCount();
-  return sm_count;
-}
-
 static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,
@@ -117,6 +112,34 @@ static bool nextActivityRecord(
 
 void CuptiActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
+}
+
+void CuptiActivityApi::setDeviceBufferSize(size_t size) {
+#ifdef HAS_CUPTI
+  size_t valueSize = sizeof(size_t);
+  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &valueSize, &size));
+#endif
+}
+
+void CuptiActivityApi::setDeviceBufferPoolLimit(size_t limit) {
+#ifdef HAS_CUPTI
+  size_t valueSize = sizeof(size_t);
+  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT, &valueSize, &limit));
+#endif
+}
+
+void CuptiActivityApi::forceLoadCupti() {
+#ifdef HAS_CUPTI
+  CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+#endif
+}
+
+void CuptiActivityApi::preConfigureCUPTI() {
+#ifdef HAS_CUPTI
+  if (!isGpuAvailable()) {
+    return;
+  }
+#endif
 }
 
 #ifdef HAS_CUPTI
@@ -278,11 +301,15 @@ void CuptiActivityApi::bufferCompleted(
 void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
-  static bool registered = false;
-  if (!registered) {
-    CUPTI_CALL(
-        cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
+  // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
+  auto cbapi_ = CuptiCallbackApi::singleton();
+  if (!tracingEnabled_ && !cbapi_->initSuccess() && cuptiLazyInit_()) {
+    reenableCuptiCallbacks_(cbapi_);
   }
+  cbapi_.reset();
+
+  CUPTI_CALL(
+      cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
 
   externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {
@@ -299,10 +326,21 @@ void CuptiActivityApi::enableCuptiActivities(
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
       externalCorrelationEnabled_ = true;
     }
+    if (activity == ActivityType::CUDA_SYNC) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
+    }
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
+    if (activity == ActivityType::CUDA_DRIVER) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
+    }
+    if (activity == ActivityType::OVERHEAD) {
+      CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));
+    }
   }
+
+  tracingEnabled_ = 1;
 #endif
 
   // Explicitly enabled, so reset this flag if set
@@ -325,11 +363,74 @@ void CuptiActivityApi::disableCuptiActivities(
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
     }
+    if (activity == ActivityType::CUDA_SYNC) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
+    }
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
+    if (activity == ActivityType::CUDA_DRIVER) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
+    }
+    if (activity == ActivityType::OVERHEAD) {
+      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
+    }
   }
   externalCorrelationEnabled_ = false;
+#endif
+}
+
+void CuptiActivityApi::teardownContext() {
+#ifdef HAS_CUPTI
+  if (!tracingEnabled_) {
+    return;
+  }
+  if (getenv("TEARDOWN_CUPTI") != nullptr) {
+    LOG(INFO) << "teardownCupti starting";
+
+    // PyTorch Profiler is synchronous, so teardown needs to be run async in this thread.
+    std::thread teardownThread([&] {
+      auto cbapi_ = CuptiCallbackApi::singleton();
+      if (!cbapi_->initSuccess()) {
+        cbapi_->initCallbackApi();
+        if (!cbapi_->initSuccess()) {
+          LOG(WARNING) << "CUPTI Callback failed to init, skipping teardown";
+          return;
+        }
+      }
+      // Subscribe callbacks to call cuptiFinalize in the exit callback of these APIs
+      bool status = cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      status = status && cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      if (!status) {
+        LOG(WARNING) << "CUPTI Callback failed to enable for domain, skipping teardown";
+        return;
+      }
+
+      // Force Flush before finalize
+      CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+
+      LOG(INFO) << "  CUPTI subscriber before finalize:" << cbapi_->getCuptiSubscriber();
+      teardownCupti_ = 1;
+      std::unique_lock<std::mutex> lck(finalizeMutex_);
+      finalizeCond_.wait(lck, [&]{return teardownCupti_ == 0;});
+      lck.unlock();
+      LOG(INFO) << "teardownCupti complete";
+
+      teardownCupti_ = 0;
+      tracingEnabled_ = 0;
+
+      // Remove the callbacks used specifically for cuptiFinalize
+      cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+
+      // Re-init CUPTI Callbacks if Lazy Re-init is not enabled.
+      if (!cuptiLazyInit_()) {
+        reenableCuptiCallbacks_(cbapi_);
+      }
+      cbapi_.reset();
+    });
+    teardownThread.detach();
+  }
 #endif
 }
 

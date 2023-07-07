@@ -1,4 +1,10 @@
-// (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <kineto_playground.cuh>
 
@@ -19,6 +25,7 @@ int main() {
   std::set<libkineto::ActivityType> types;
 
   auto& profiler = libkineto::api().activityProfiler();
+  libkineto::api().initProfilerIfRegistered();
   profiler.prepareTrace(types);
 
   // Good to warm up after prepareTrace to get cupti initialization to settle

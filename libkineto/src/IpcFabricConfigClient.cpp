@@ -17,7 +17,7 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 namespace KINETO_NAMESPACE {
 

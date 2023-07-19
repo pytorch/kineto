@@ -16,7 +16,7 @@
 
 #include "ActivityBuffers.h"
 #include "GenericTraceActivity.h"
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {

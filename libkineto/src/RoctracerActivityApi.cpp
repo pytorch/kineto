@@ -13,9 +13,9 @@
 
 #include "RoctracerActivityApi.h"
 #include "RoctracerLogger.h"
-#include "Demangle.h"
+#include "kineto/libkineto/utils/Demangle.h"
 #include "output_base.h"
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 typedef uint64_t timestamp_t;
 

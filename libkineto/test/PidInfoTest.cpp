@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "include/ThreadUtil.h"
+#include "utils/ThreadUtil.h"
 
 #include <atomic>
 #include <thread>

@@ -15,7 +15,7 @@
 
 #include "Config.h"
 #ifdef HAS_CUPTI
-#include "CudaDeviceProperties.h"
+#include "kineto/libkineto/utils/CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "TraceSpan.h"
 

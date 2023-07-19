@@ -24,9 +24,9 @@
 #include <cupti.h>
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "cuda_call.h"
-#include "cupti_call.h"
-#include "CudaUtil.h"
+#include "kineto/libkineto/utils/cuda_call.h"
+#include "kineto/libkineto/utils/cupti_call.h"
+#include "kineto/libkineto/utils/CudaUtil.h"
 #endif
 
 #include "Config.h"
@@ -42,7 +42,7 @@
 #include "output_base.h"
 
 #include "Logger.h"
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 using namespace std::chrono;
 using std::string;

@@ -11,7 +11,7 @@
 #include <chrono>
 
 #include "Logger.h"
-#include "cupti_call.h"
+#include "kineto/libkineto/utils/cupti_call.h"
 
 using std::vector;
 

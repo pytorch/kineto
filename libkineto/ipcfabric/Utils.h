@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <sys/types.h>
+#include <cstdint>
+
 namespace dynolog {
 namespace ipcfabric {
 

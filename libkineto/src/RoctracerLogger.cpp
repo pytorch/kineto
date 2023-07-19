@@ -12,7 +12,7 @@
 #include <chrono>
 #include <time.h>
 
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 typedef uint64_t timestamp_t;
 
@@ -360,4 +360,3 @@ bool ApiIdList::contains(uint32_t apiId)
 {
   return (filter_.find(apiId) != filter_.end()) ? !invert_ : invert_;  // XOR
 }
-

@@ -22,7 +22,7 @@
 #include <fmt/chrono.h>
 #include <fmt/format.h>
 
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 namespace KINETO_NAMESPACE {
 

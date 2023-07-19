@@ -16,12 +16,12 @@
 #include <unordered_map>
 
 #ifdef HAS_CUPTI
-#include "cupti_call.h"
+#include "kineto/libkineto/utils/cupti_call.h"
 #endif
 
 #include "time_since_epoch.h"
 #include "Logger.h"
-#include "Demangle.h"
+#include "kineto/libkineto/utils/Demangle.h"
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -30,7 +30,7 @@
 #if HAS_CUPTI_RANGE_PROFILER
 #include <cupti.h>
 #include <nvperf_host.h>
-#include "cupti_call.h"
+#include "kineto/libkineto/utils/cupti_call.h"
 #endif // HAS_CUPTI_RANGE_PROFILER
 
 namespace KINETO_NAMESPACE {

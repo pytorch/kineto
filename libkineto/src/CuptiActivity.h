@@ -16,8 +16,8 @@
 #include "GenericTraceActivity.h"
 #include "CuptiActivityPlatform.h"
 #include "GenericTraceActivity.h"
-#include "ThreadUtil.h"
-#include "cupti_strings.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
+#include "kineto/libkineto/utils/cupti_strings.h"
 
 namespace libkineto {
   class ActivityLogger;

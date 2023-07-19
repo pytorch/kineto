@@ -13,10 +13,10 @@
 #include <mutex>
 #include <thread>
 
-#include "cupti_call.h"
+#include "kineto/libkineto/utils/cupti_call.h"
 #include "Logger.h"
 #include "Config.h"
-#include "CudaUtil.h"
+#include "kineto/libkineto/utils/CudaUtil.h"
 
 using namespace std::chrono;
 

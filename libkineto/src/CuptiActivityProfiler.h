@@ -30,7 +30,7 @@
 #include "CuptiActivity.h"
 #endif // HAS_CUPTI
 
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"
 #include "output_base.h"

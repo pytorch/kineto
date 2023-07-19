@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-#include "src/cupti_strings.h"
+#include "utils/cupti_strings.h"
 
 using namespace KINETO_NAMESPACE;
 

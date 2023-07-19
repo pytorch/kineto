@@ -13,7 +13,7 @@
 #include <thread>
 #include <vector>
 
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 #include "ITraceActivity.h"
 #include "TraceSpan.h"
 

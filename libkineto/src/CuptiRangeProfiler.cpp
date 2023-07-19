@@ -19,7 +19,7 @@
 #include "output_base.h"
 #include "CuptiRangeProfiler.h"
 #include "CuptiRangeProfilerConfig.h"
-#include "Demangle.h"
+#include "kineto/libkineto/utils/Demangle.h"
 
 namespace KINETO_NAMESPACE {
 

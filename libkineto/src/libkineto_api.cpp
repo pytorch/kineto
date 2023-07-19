@@ -9,7 +9,7 @@
 #include "libkineto.h"
 
 #include "ConfigLoader.h"
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 namespace libkineto {
 

@@ -18,7 +18,7 @@
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivityApi.h"
 #endif
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"
 

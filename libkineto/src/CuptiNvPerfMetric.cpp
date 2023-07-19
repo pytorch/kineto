@@ -17,7 +17,7 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ScopeExit.h"
+#include "kineto/libkineto/utils/ScopeExit.h"
 #include "CuptiNvPerfMetric.h"
 #include "Logger.h"
 

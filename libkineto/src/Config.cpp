@@ -23,7 +23,7 @@
 #include <time.h>
 
 #include "Logger.h"
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 using namespace std::chrono;
 

@@ -31,7 +31,7 @@
 #include "ILoggerObserver.h"
 #include "LoggingAPI.h"
 
-#include "ThreadUtil.h"
+#include "kineto/libkineto/utils/ThreadUtil.h"
 
 extern "C" {
   void suppressLibkinetoLogMessages();

@@ -103,7 +103,7 @@ class GenericTraceActivity : public ITraceActivity {
     return fmt::format("{}", fmt::join(metadata_, ", "));
   }
 
-  virtual ~GenericTraceActivity() {};
+  virtual ~GenericTraceActivity() override {};
 
   int64_t startTime{0};
   int64_t endTime{0};

@@ -32,7 +32,9 @@ using std::vector;
 
 namespace KINETO_NAMESPACE {
 
+#if __clang__ && __cplusplus < 201703L
 constexpr std::chrono::milliseconds Config::kControllerIntervalMsecs;
+#endif
 
 constexpr milliseconds kDefaultSamplePeriodMsecs(1000);
 constexpr milliseconds kDefaultMultiplexPeriodMsecs(1000);

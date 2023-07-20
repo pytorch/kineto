@@ -230,21 +230,24 @@ inline const std::string OverheadActivity::metadataJson() const {
 }
 
 inline bool RuntimeActivity::flowStart() const {
-  return activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000 ||
+  bool should_correlate =
+      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000 ||
       (activity_.cbid >= CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020 &&
        activity_.cbid <= CUPTI_RUNTIME_TRACE_CBID_cudaMemset2DAsync_v3020) ||
       activity_.cbid ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
       activity_.cbid ==
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000 ||
-      activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000 ||
-      activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020 ||
-      activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020 ||
-      activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaStreamWaitEvent_v3020;
+      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000 ||
+      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020 ||
+      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020 ||
+      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaStreamWaitEvent_v3020;
+
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
+  should_correlate |=
+      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060;
+#endif
+  return should_correlate;
 }
 
 inline const std::string RuntimeActivity::metadataJson() const {

@@ -273,6 +273,7 @@ void RoctracerLogger::startLogging() {
     loggedIds_.add("hipModuleGetFunction");
     loggedIds_.add("hipEventCreateWithFlags");
     loggedIds_.add("hipGetDeviceCount");
+    loggedIds_.add("hipDevicePrimaryCtxGetState");
 
     // Enable API callbacks
     if (loggedIds_.invertMode() == true) {

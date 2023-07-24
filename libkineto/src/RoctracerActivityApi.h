@@ -72,6 +72,11 @@ class RoctracerActivityApi {
 
   std::map<activity_correlation_id_t, GenericTraceActivity> kernelLaunches_;
 
+  // Enabled Activity Filters
+  uint32_t activityMask_{0};
+  uint32_t activityMaskSnapshot_{0};
+  bool isLogged(libkineto::ActivityType atype);
+
   RoctracerLogger *d;
 };
 

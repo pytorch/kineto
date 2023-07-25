@@ -82,7 +82,7 @@ add_custom_target(libkineto_defs.bzl DEPENDS libkineto_defs.bzl)
 add_dependencies(kineto_base libkineto_defs.bzl)
 
 set_target_properties(kineto_base kineto_api PROPERTIES
-      CXX_STANDARD 14
+      CXX_STANDARD 17
       CXX_STANDARD_REQUIRED YES
       CXX_EXTENSIONS NO)
 
@@ -90,9 +90,9 @@ set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
 list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
 list(APPEND KINETO_COMPILE_OPTIONS "-DENABLE_IPC_FABRIC")
 if(NOT MSVC)
-  list(APPEND KINETO_COMPILE_OPTIONS "-std=c++14")
+  list(APPEND KINETO_COMPILE_OPTIONS "-std=c++17")
 else()
-  list(APPEND KINETO_COMPILE_OPTIONS "/std:c++14")
+  list(APPEND KINETO_COMPILE_OPTIONS "/std:c++17")
   list(APPEND KINETO_COMPILE_OPTIONS "-DWIN32_LEAN_AND_MEAN")
   list(APPEND KINETO_COMPILE_OPTIONS "-DNOGDI")
 endif()

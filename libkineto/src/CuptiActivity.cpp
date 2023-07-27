@@ -243,7 +243,7 @@ inline bool RuntimeActivity::flowStart() const {
       activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020 ||
       activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaStreamWaitEvent_v3020;
 
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
+#if defined(CUPTI_API_VERSION) && CUPTI_API_VERSION >= 17
   should_correlate |=
       activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060;
 #endif

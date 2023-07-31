@@ -49,6 +49,8 @@ class HadoopFileSystem(RemotePath, BaseFileSystem):
     def listdir(self, dirname):
         fs = self.get_fs()
         full_path = fs.listdir(dirname, detail=False)
+        # strip the protocol from the root path because the path returned by
+        # pyarrow listdir is not prefixed with the protocol.
         root_path_to_strip = fs._strip_protocol(dirname)
         return [os.path.relpath(path, root_path_to_strip) for path in full_path]
     

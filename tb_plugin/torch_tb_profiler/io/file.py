@@ -44,6 +44,12 @@ try:
 except ImportError:
     GS_ENABLED = False
 
+try:
+    # Imports the HDFS library
+    from fsspec.implementations.arrow import HadoopFileSystem
+    HDFS_ENABLED = True
+except ImportError:
+    HDFS_ENABLED = False
 
 _DEFAULT_BLOCK_SIZE = 16 * 1024 * 1024
 
@@ -351,6 +357,10 @@ if BLOB_ENABLED:
 if GS_ENABLED:
     from .gs import GoogleBlobSystem
     register_filesystem("gs", GoogleBlobSystem())
+
+if HDFS_ENABLED:
+    from .hdfs import HadoopFileSystem
+    register_filesystem("hdfs", HadoopFileSystem())
 
 
 class File(object):

@@ -47,7 +47,10 @@ class HadoopFileSystem(RemotePath, BaseFileSystem):
         return self.get_fs().isdir(dirname)
     
     def listdir(self, dirname):
-        return self.get_fs().ls(dirname)
+        fs = self.get_fs()
+        full_path = fs.listdir(dirname, detail=False)
+        root_path_to_strip = fs._strip_protocol(dirname)
+        return [os.path.relpath(path, root_path_to_strip) for path in full_path]
     
     def makedirs(self, path):
         return self.get_fs().makedirs(path, exist_ok=True)
@@ -60,4 +63,5 @@ class HadoopFileSystem(RemotePath, BaseFileSystem):
         return False
     
     def download_file(self, file_to_download, file_to_save):
+        logger.info(f"downloading {file_to_download} to {file_to_save}")
         return self.get_fs().download(file_to_download, file_to_save, recursive=True)

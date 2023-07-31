@@ -63,5 +63,4 @@ class HadoopFileSystem(RemotePath, BaseFileSystem):
         return False
     
     def download_file(self, file_to_download, file_to_save):
-        logger.info(f"downloading {file_to_download} to {file_to_save}")
         return self.get_fs().download(file_to_download, file_to_save, recursive=True)

@@ -98,7 +98,7 @@ and give optimization recommendations.
   
   * HDFS (hdfs://)
 
-    install `fsspec` and `pyarrow`. Optionally set environment variable `HADOOP_HOME`.
+    Install `fsspec` and `pyarrow`. Optionally set environment variable `HADOOP_HOME`.
 
   ---
   > **_NOTES:_** For AWS S3, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.

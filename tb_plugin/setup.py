@@ -37,7 +37,8 @@ TESTS_REQUIRED = INSTALL_REQUIRED + [
 EXTRAS = {
     "s3": ["boto3"],
     "blob": ["azure-storage-blob"],
-    "gs": ["google-cloud-storage"]
+    "gs": ["google-cloud-storage"],
+    "hdfs": ["fsspec", "pyarrow"]
 }
 
 

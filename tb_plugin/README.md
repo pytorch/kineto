@@ -10,6 +10,8 @@ and give optimization recommendations.
 
   `pip install torch-tb-profiler`
 
+  To install with S3 / AzureBlob / GCS / HDFS extension, `pip install torch-tb-profiler[s3/blob/gs/hdfs]`, for example `pip install torch-tb-profiler[s3]`
+
 * Or you can install from source
 
   Clone the git repository:
@@ -93,6 +95,10 @@ and give optimization recommendations.
   * Google Cloud (GS://)
 
     Install `google-cloud-storage`.
+  
+  * HDFS (hdfs://)
+
+    Install `fsspec` and `pyarrow`. Optionally set environment variable `HADOOP_HOME`.
 
   ---
   > **_NOTES:_** For AWS S3, Google Cloud and Azure Blob, the trace files need to be put on a top level folder under bucket/container.

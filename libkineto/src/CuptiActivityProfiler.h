@@ -99,6 +99,12 @@ struct ConfigDerivedState final {
   bool profilingByIter_{false};
 };
 
+namespace detail {
+  inline size_t hash_combine(size_t seed, size_t value) {
+    return seed ^ (value + 0x9e3779b9 + (seed << 6u) + (seed >> 2u));
+  }
+} // namespace detail
+
 class CuptiActivityProfiler {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
@@ -419,6 +425,28 @@ class CuptiActivityProfiler {
 
   // span name -> iteration count
   std::map<std::string, int> iterationCountMap_;
+
+  struct DevStream {
+    int64_t ctx = 0;
+    int64_t stream = 0;
+    bool operator==(const DevStream& other) const {
+      return (this->ctx == other.ctx) && (this->stream == other.stream);
+    }
+  };
+
+  struct DevStreamHash {
+  	std::size_t operator()(const DevStream& c) const {
+  		return detail::hash_combine(
+        std::hash<int64_t>()(c.ctx),
+        std::hash<int64_t>()(c.stream)
+      );
+  	}
+  };
+
+  // This set tracks the (device, cuda streams) observed in the trace
+  // doing CUDA kernels/memcopies. This prevents emitting CUDA sync
+  // events on streams with no activity.
+  std::unordered_set<DevStream, DevStreamHash> seenDeviceStreams_;
 
   // Buffers where trace data is stored
   std::unique_ptr<ActivityBuffers> traceBuffers_;

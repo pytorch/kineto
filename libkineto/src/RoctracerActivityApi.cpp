@@ -192,7 +192,7 @@ int RoctracerActivityApi::processActivities(
       a.addMetadataQuoted("src", fmt::format("{}", item.src));
       a.addMetadataQuoted("dst", fmt::format("{}", item.dst));
       a.addMetadata("size", item.size);
-      a.addMetadata("kind", item.kind);
+      a.addMetadata("kind", fmt::format("{}", fmt::underlying(item.kind)));
       if ((item.cid == HIP_API_ID_hipMemcpyAsync) || (item.cid == HIP_API_ID_hipMemcpyWithStream)) {
         a.addMetadataQuoted("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
       }

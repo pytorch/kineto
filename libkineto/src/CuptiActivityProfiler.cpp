@@ -58,9 +58,12 @@ struct CtxEventPair {
 
 template<>
 struct std::hash<CtxEventPair> {
-	std::size_t operator()(const CtxEventPair& c) const {
-		return std::hash<uint32_t>()(c.ctx) ^ std::hash<uint32_t>()(c.eventId);
-	}
+  std::size_t operator()(const CtxEventPair& c) const {
+    return KINETO_NAMESPACE::detail::hash_combine(
+      std::hash<uint32_t>()(c.ctx),
+      std::hash<uint32_t>()(c.eventId)
+    );
+  }
 };
 
 namespace {
@@ -508,15 +511,26 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
           << " eventId=" << activity->cudaEventId
           << " contextId=" << activity->contextId;
 
-  if(!config_->activitiesCudaSyncWaitEvents() && isEventSync(activity->type)) {
+  if (!config_->activitiesCudaSyncWaitEvents() && isEventSync(activity->type)) {
     return;
   }
 
-  if(int32_t(activity->streamId) != -1) {
-    recordStream(
-        contextIdtoDeviceId(activity->contextId), activity->streamId, "");
+  auto device_id = contextIdtoDeviceId(activity->contextId);
+
+  // Event Sync events tend to be noisy, only pass these events if
+  // there was some GPU kernel/memcopy/memset observed on it till now.
+  if (isEventSync(activity->type) &&
+      (seenDeviceStreams_.find({device_id, activity->streamId}) ==
+       seenDeviceStreams_.end())) {
+    VLOG(2) << "Skipping Event Sync (corrId=" << activity->correlationId
+            << ") as no kernels have run yet on stream = " << activity->streamId;
+    return;
+  }
+
+  if (int32_t(activity->streamId) != -1) {
+    recordStream(device_id, activity->streamId, "");
   } else {
-    recordDevice(contextIdtoDeviceId(activity->contextId));
+    recordDevice(device_id);
   }
 
   const ITraceActivity* linked =
@@ -590,6 +604,8 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   checkTimestampOrder(&act);
   VLOG(2) << act.correlationId() << ": " << act.name();
   recordStream(act.deviceId(), act.resourceId(), "");
+  seenDeviceStreams_.insert({act.deviceId(), act.resourceId()});
+
   act.log(*logger);
   updateGpuNetSpan(act);
   if (derivedConfig_->profileActivityTypes().count(
@@ -1090,6 +1106,7 @@ void CuptiActivityProfiler::resetTraceData() {
   gpuUserEventMap_.clear();
   traceSpans_.clear();
   clientActivityTraceMap_.clear();
+  seenDeviceStreams_.clear();
   traceBuffers_ = nullptr;
   metadata_.clear();
   sessions_.clear();

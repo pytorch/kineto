@@ -128,13 +128,13 @@ struct MockCuptiActivityBuffer {
 
   void addSyncActivity(
       int64_t start_us, int64_t end_us, int64_t correlation,
-      CUpti_ActivitySynchronizationType type) {
+      CUpti_ActivitySynchronizationType type, int64_t stream = 1) {
     auto& act = createActivity<CUpti_ActivitySynchronization>(
         start_us, end_us, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_SYNCHRONIZATION;
     act.type = type;
     act.contextId = 0;
-    act.streamId = 1;
+    act.streamId = stream;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -434,6 +434,14 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addKernelActivity(260, 320, 3);
   gpuOps->addKernelActivity(330, 350, 4);
   gpuOps->addSyncActivity(321, 323, 5, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE);
+  // Add wait event on kernel stream 1
+  gpuOps->addSyncActivity(
+      324, 326, 6, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      1 /*stream*/);
+  // This event should be ignored because it is not on a stream that has no GPU kernels
+  gpuOps->addSyncActivity(
+      326, 330, 7, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      4 /*stream*/);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Have the profiler process them
@@ -445,7 +453,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(trace.activities()->size(), 14);
+  EXPECT_EQ(trace.activities()->size(), 15);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
   for (auto& activity : *trace.activities()) {
@@ -470,8 +478,8 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   auto sysTid = systemThreadId();
   // Ops and runtime events are on thread sysTid along with the flow start events
   EXPECT_EQ(resourceIds[sysTid], 9);
-  // Kernels and sync event are on stream 1, memcpy on stream 2
-  EXPECT_EQ(resourceIds[1], 4);
+  // Kernels and sync events are on stream 1, memcpy on stream 2
+  EXPECT_EQ(resourceIds[1], 5);
   EXPECT_EQ(resourceIds[2], 1);
 
 #ifdef __linux__

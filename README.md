@@ -16,9 +16,9 @@ Libkineto is an in-process profiling library integrated with the PyTorch Profile
 
 ## Holistic Trace Analysis
 
-Holistic Trace Analysis(HTA) is an open source project performance debugging library aimed at
+Holistic Trace Analysis (HTA) is an open source performance debugging library aimed at
 distributed workloads. HTA takes as input PyTorch Profiler traces and elevates the performance
-bottlnecks to enable faster debugging. Here's a partial list of features in HTA:
+bottlenecks to enable faster debugging. Here's a partial list of features in HTA:
 
 1. [Temporal Breakdown](https://hta.readthedocs.io/en/latest/source/features/temporal_breakdown.html): Breakdown of GPU time in terms of time spent in computation, communication, memory events, and idle time on a single node and across all ranks.
 1. [Idle Time Breakdown](https://hta.readthedocs.io/en/latest/source/features/idle_time_breakdown.html): Breakdown of GPU idle time into waiting for the host, waiting for another kernel or attributed to an unknown cause.

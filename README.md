@@ -2,20 +2,33 @@
 
 Kineto is part of the PyTorch Profiler.
 
-The Kineto project was started to help enable
+The Kineto project enables:
 - **performance observability and diagnostics** across common ML bottleneck components
 - **actionable recommendations** for common issues
 - integration of external system-level profiling tools
 - integration with popular visualization platforms and analysis pipelines
 
-A central component is libkineto, a profiling library with special focus on low-overhead GPU timeline tracing.
-
-The PyTorch Profiler TensorBoard plugin provides powerful and intuitive visualizations of profiling results, as well as actionable recommendations, and is the best way to experience the new PyTorch Profiler.
+A central component is Libkineto, a profiling library with special focus on low-overhead GPU timeline tracing.
 
 ## Libkineto
+
 Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the `libkineto` folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
 
-## PyTorch TensorBoard Profiler
+## Holistic Trace Analysis
+
+Holistic Trace Analysis(HTA) is an open source project performance debugging library aimed at
+distributed workloads. HTA takes as input PyTorch Profiler traces and elevates the performance
+bottlnecks to enable faster debugging. Here's a partial list of features in HTA:
+
+1. [Temporal Breakdown](https://hta.readthedocs.io/en/latest/source/features/temporal_breakdown.html): Breakdown of GPU time in terms of time spent in computation, communication, memory events, and idle time on a single node and across all ranks.
+1. [Idle Time Breakdown](https://hta.readthedocs.io/en/latest/source/features/idle_time_breakdown.html): Breakdown of GPU idle time into waiting for the host, waiting for another kernel or attributed to an unknown cause.
+1. [Kernel Breakdown](https://hta.readthedocs.io/en/latest/source/features/kernel_breakdown.html): Find kernels with the longest duration on each rank.
+1. [Kernel Duration Distribution](https://hta.readthedocs.io/en/latest/source/features/kernel_breakdown.html#kernel-duration-distribution): Distribution of average time taken by longest kernels across different ranks.
+1. [Communication Computation Overlap](https://hta.readthedocs.io/en/latest/source/features/comm_comp_overlap.html): Calculate the percentage of time when communication overlaps computation.
+
+For a complete list see [here](http://hta.readthedocs.io).
+
+## PyTorch TensorBoard Profiler (Deprecated)
 The goal of the PyTorch TensorBoard Profiler is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the TensorBoard UI.
 Please refer to the [README](tb_plugin/README.md) file in the `tb_plugin` folder.
 

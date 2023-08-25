@@ -18,7 +18,7 @@ class DeviceType(IntEnum):
     CUDA = 1
 
 
-class EventTypes(object):
+class EventTypes:
     TRACE = 'Trace'
     OPERATOR = 'Operator'
     PROFILER_STEP = 'ProfilerStep'
@@ -53,7 +53,7 @@ EventTypeMap = {
 }
 
 
-class BaseEvent(object):
+class BaseEvent:
     def __init__(self, type, data):
         self.type: str = type
         self.name: str = data.get('name')

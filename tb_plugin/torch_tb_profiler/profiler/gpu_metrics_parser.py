@@ -13,7 +13,7 @@ logger = utils.get_logger()
 
 
 # For calculating GPU utilization, and approximated SM efficiency.
-class GPUMetricsParser(object):
+class GPUMetricsParser:
     def __init__(self):
         # All gpu ids that used by any kernel.
         self.gpu_ids = set()

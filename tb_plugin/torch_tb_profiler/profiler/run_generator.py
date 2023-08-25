@@ -14,7 +14,7 @@ from .overall_parser import ProfileRole
 logger = utils.get_logger()
 
 
-class RunGenerator(object):
+class RunGenerator:
     def __init__(self, worker, span, profile_data: RunProfileData):
         self.worker = worker
         self.span = span
@@ -427,7 +427,7 @@ class RunGenerator(object):
         return gpu_info
 
 
-class DistributedRunGenerator(object):
+class DistributedRunGenerator:
     def __init__(self, all_profile_data: Iterable[DistributedRunProfileData], span):
         self.all_profile_data = all_profile_data
         self.span = span

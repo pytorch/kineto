@@ -14,7 +14,7 @@ from .utils import Canonicalizer, DisplayRounder, lttb_sample
 logger = utils.get_logger()
 
 
-class Run(object):
+class Run:
     """ A profiler run. For visualization purpose only.
     May contain profiling results from multiple workers. E.g. distributed scenario.
     """
@@ -90,7 +90,7 @@ class Run(object):
             return self.profiles.values()
 
 
-class RunProfile(object):
+class RunProfile:
     """ Cooked profiling result for a worker. For visualization purpose only.
     """
 
@@ -473,7 +473,7 @@ class RunProfile(object):
         return diff_stats
 
 
-class DistributedRunProfile(object):
+class DistributedRunProfile:
     """ Profiling all workers in a view.
     """
 

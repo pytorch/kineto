@@ -11,7 +11,7 @@ from .range_utils import (get_ranges_sum, intersection_ranges_lists,
 logger = utils.get_logger()
 
 
-class OverallParser(object):
+class OverallParser:
     class Costs:
         def __init__(self, costs: List[float] = None):
             # the cost length is len(ProfileRole)

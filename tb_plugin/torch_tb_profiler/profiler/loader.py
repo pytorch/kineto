@@ -18,7 +18,7 @@ from .run_generator import DistributedRunGenerator, RunGenerator
 logger = utils.get_logger()
 
 
-class RunLoader(object):
+class RunLoader:
     def __init__(self, name, run_dir, caches: io.Cache):
         self.run_name = name
         self.run_dir = run_dir

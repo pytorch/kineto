@@ -363,7 +363,7 @@ if HDFS_ENABLED:
     register_filesystem("hdfs", HadoopFileSystem())
 
 
-class File(object):
+class File:
     def __init__(self, filename, mode):
         if mode not in ("r", "rb", "br", "w", "wb", "bw"):
             raise ValueError("mode {} not supported by File".format(mode))

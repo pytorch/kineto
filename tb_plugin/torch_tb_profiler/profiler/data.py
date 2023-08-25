@@ -26,7 +26,7 @@ from .trace import BaseEvent, EventTypes, MemoryEvent
 logger = utils.get_logger()
 
 
-class RunProfileData(object):
+class RunProfileData:
     def __init__(self, worker: str, span: str, trace_json: Dict):
         self.worker = worker
         self.span = span

@@ -24,7 +24,9 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityType.h"
 #include "CuptiActivityBuffer.h"
+#ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
+#endif
 
 
 namespace KINETO_NAMESPACE {

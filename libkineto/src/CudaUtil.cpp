@@ -8,8 +8,11 @@
 
 #include "CudaUtil.h"
 
+#ifdef HAS_CUPTI
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+
 #include <mutex>
 
 namespace KINETO_NAMESPACE {

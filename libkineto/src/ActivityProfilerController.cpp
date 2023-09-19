@@ -14,10 +14,12 @@
 
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
+
 #include "CuptiActivityApi.h"
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivityApi.h"
 #endif
+
 #include "ThreadUtil.h"
 #include "output_json.h"
 #include "output_membuf.h"

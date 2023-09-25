@@ -443,6 +443,19 @@ class CuptiActivityProfiler {
   	}
   };
 
+  struct ErrorCounts {
+    int32_t invalid_external_correlation_events = 0;
+    int32_t out_of_range_events = 0;
+    int32_t gpu_and_cpu_op_out_of_order = 0;
+    int32_t blocklisted_runtime_events = 0;
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+    int32_t unexepected_cuda_events = 0;
+    bool cupti_stopped_early = false;
+#endif // HAS_CUPTI || HAS_ROCTRACER
+  };
+
+  friend std::ostream& operator<<(std::ostream& oss, const ErrorCounts& ecs);
+
   // This set tracks the (device, cuda streams) observed in the trace
   // doing CUDA kernels/memcopies. This prevents emitting CUDA sync
   // events on streams with no activity.
@@ -462,6 +475,8 @@ class CuptiActivityProfiler {
 
   // Number of memory overhead events encountered during the session
   uint32_t resourceOverheadCount_;
+
+  ErrorCounts ecs_;
 
   // LoggerCollector to collect all LOGs during the trace
 #if !USE_GOOGLE_LOG

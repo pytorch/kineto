@@ -38,11 +38,16 @@ inline bool isEventSync(CUpti_ActivitySynchronizationType type) {
 }
 
 inline std::string eventSyncInfo(
-    const CUpti_ActivitySynchronization& act, int32_t srcStream) {
+    const CUpti_ActivitySynchronization& act,
+    int32_t srcStream,
+    int32_t srcCorrId
+    ) {
   return fmt::format(R"JSON(
       "wait_on_stream": {},
+      "wait_on_cuda_event_record_corr_id": {},
       "wait_on_cuda_event_id": {},)JSON",
       srcStream,
+      srcCorrId,
       act.cudaEventId
   );
 }
@@ -75,7 +80,7 @@ inline const std::string CudaSyncActivity::metadataJson() const {
       "stream": {}, "correlation": {},
       "device": {}, "context": {})JSON",
       syncTypeString(sync.type),
-      isEventSync(raw().type) ? eventSyncInfo(raw(), srcStream_) : "",
+      isEventSync(raw().type) ? eventSyncInfo(raw(), srcStream_, srcCorrId_) : "",
       sync.streamId, sync.correlationId,
       deviceId(), sync.contextId);
   // clang-format on

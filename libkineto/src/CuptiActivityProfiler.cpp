@@ -13,6 +13,7 @@
 #include <atomic>
 #include <functional>
 #include <iomanip>
+#include <optional>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -66,11 +67,18 @@ struct std::hash<CtxEventPair> {
   }
 };
 
+struct WaitEventInfo {
+  // CUDA stream that the CUDA event was recorded on
+  uint32_t stream;
+  // Correlation ID of the cudaEventRecord event
+  uint32_t correlationId;
+};
+
 namespace {
 
-// Map (ctx, eventId) -> stream that recorded the cudaEvent
-std::unordered_map<CtxEventPair, uint32_t>& waitEventMap() {
-  static std::unordered_map<CtxEventPair, uint32_t> waitEventMap_;
+// Map (ctx, eventId) -> (stream, corr Id) that recorded the CUDA event
+std::unordered_map<CtxEventPair, WaitEventInfo>& waitEventMap() {
+  static std::unordered_map<CtxEventPair, WaitEventInfo> waitEventMap_;
   return waitEventMap_;
 }
 
@@ -415,12 +423,10 @@ inline static bool isBlockListedRuntimeCbid(CUpti_CallbackId cbid) {
   if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020 ||
-      // Don't care about cudaEvents
+      // Support cudaEventRecord and cudaEventSynchronize, revisit if others are needed
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreate_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreateWithFlags_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventRecord_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventSynchronize_v3020) {
+      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020) {
     return true;
   }
 
@@ -499,13 +505,14 @@ void CuptiActivityProfiler::handleOverheadActivity(
 }
 
 
-int32_t getStreamForWaitEvent(uint32_t ctx, uint32_t eventId) {
+std::optional<WaitEventInfo> getWaitEventInfo(
+    uint32_t ctx, uint32_t eventId) {
   auto key = CtxEventPair{ctx, eventId};
   auto it = waitEventMap().find(key);
   if (it != waitEventMap().end()) {
     return it->second;
   }
-  return -1;
+  return std::nullopt;
 }
 
 void CuptiActivityProfiler::handleCudaEventActivity(
@@ -516,9 +523,9 @@ void CuptiActivityProfiler::handleCudaEventActivity(
           << " streamId=" << activity->streamId
           << " contextId=" << activity->contextId;
 
-  // Update the stream the cudaEvent was last recorded on
+  // Update the stream, corrID the cudaEvent was last recorded on
   auto key = CtxEventPair{activity->contextId, activity->eventId};
-  waitEventMap()[key] = activity->streamId;
+  waitEventMap()[key] = WaitEventInfo{activity->streamId, activity->correlationId};
 }
 
 void CuptiActivityProfiler::handleCudaSyncActivity(
@@ -555,10 +562,19 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
 
   const ITraceActivity* linked =
       linkedActivity(activity->correlationId, cpuCorrelationMap_);
-  int32_t src_stream = getStreamForWaitEvent(
-      activity->contextId, activity->cudaEventId);
+  int32_t src_stream = -1, src_corrid = -1;
+
+  if (isEventSync(activity->type)) {
+    auto maybe_wait_event_info = getWaitEventInfo(
+        activity->contextId, activity->cudaEventId);
+    if (maybe_wait_event_info) {
+      src_stream = maybe_wait_event_info->stream;
+      src_corrid = maybe_wait_event_info->correlationId;
+    }
+  }
+
   const auto& cuda_sync_activity = traceBuffers_->addActivityWrapper(
-      CudaSyncActivity(activity, linked, src_stream));
+      CudaSyncActivity(activity, linked, src_stream, src_corrid));
 
   if (outOfRange(cuda_sync_activity)) {
     return;

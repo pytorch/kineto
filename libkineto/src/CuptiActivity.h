@@ -129,8 +129,11 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
   explicit CudaSyncActivity(
       const CUpti_ActivitySynchronization* activity,
       const ITraceActivity* linked,
-      int32_t srcStream)
-      : CuptiActivity(activity, linked), srcStream_(srcStream) {}
+      int32_t srcStream,
+      int32_t srcCorrId)
+      : CuptiActivity(activity, linked),
+        srcStream_(srcStream),
+        srcCorrId_(srcCorrId) {}
   int64_t correlationId() const override {return raw().correlationId;}
   int64_t deviceId() const override;
   int64_t resourceId() const override;
@@ -143,6 +146,7 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
 
  private:
   const int32_t srcStream_;
+  const int32_t srcCorrId_;
 };
 
 

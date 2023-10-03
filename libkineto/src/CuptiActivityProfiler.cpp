@@ -159,15 +159,15 @@ bool ConfigDerivedState::isCollectionDone(
 }
 
 std::ostream& operator<<(std::ostream& oss, const CuptiActivityProfiler::ErrorCounts& ecs) {
-  oss << "Out-of-range events = " << ecs.out_of_range_events
-      << ", blocklisted runtime events = " << ecs.blocklisted_runtime_events
-      << "\n";
-  oss << "Invalid ext correlation events = " << ecs.invalid_external_correlation_events
-      << ", CPU GPU out-of-order events = " << ecs.gpu_and_cpu_op_out_of_order
-      << "\n";
+  oss << "Out-of-range = " << ecs.out_of_range_events
+      << ", Blocklisted runtime = " << ecs.blocklisted_runtime_events
+      << ", Invalid ext correlations = " << ecs.invalid_external_correlation_events
+      << ", CPU GPU out-of-order = " << ecs.gpu_and_cpu_op_out_of_order
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-  oss << "Unexpected CUDA events = " << ecs.unexepected_cuda_events
+      << ", Unexpected CUDA events = " << ecs.unexepected_cuda_events
       << ", CUPTI stopped early? = " << ecs.cupti_stopped_early;
+#else
+      ;
 #endif // HAS_CUPTI || HAS_ROCTRACER
   return oss;
 }

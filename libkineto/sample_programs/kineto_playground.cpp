@@ -9,11 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <iostream>
 
-#include <common/logging/logging.h>
 #include <libkineto.h>
 
-#include "kineto/libkineto/sample_programs/kineto_playground.cuh"
+#include "kineto_playground.cuh"
 
 using namespace kineto;
 
@@ -26,9 +26,10 @@ int main() {
 
   // Empty types set defaults to all types
   std::set<libkineto::ActivityType> types;
+  libkineto_init(false, true);
+  libkineto::api().initProfilerIfRegistered();
 
   auto& profiler = libkineto::api().activityProfiler();
-  libkineto::api().initProfilerIfRegistered();
   profiler.prepareTrace(types);
 
   // Good to warm up after prepareTrace to get cupti initialization to settle
@@ -37,7 +38,7 @@ int main() {
   playground();
 
   auto trace = profiler.stopTrace();
-  LOG(INFO) << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
+  std::cout << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
   trace->save(kFileName);
   return 0;
 }

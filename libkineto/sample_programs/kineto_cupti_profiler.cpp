@@ -11,11 +11,12 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <iostream>
 
-#include <common/logging/logging.h>
 #include <libkineto.h>
 
-#include "kineto/libkineto/sample_programs/kineto_playground.cuh"
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "kineto_playground.cuh"
 
 using namespace kineto;
 
@@ -28,6 +29,9 @@ int main() {
   std::set<libkineto::ActivityType> types_cupti_prof = {
     libkineto::ActivityType::CUDA_PROFILER_RANGE,
   };
+
+  libkineto_init(false, true);
+  libkineto::api().initProfilerIfRegistered();
 
   // Use a special kineto__cuda_core_flop metric that counts individual
   // CUDA core floating point instructions by operation type (fma,fadd,fmul,dadd ...)
@@ -51,7 +55,7 @@ int main() {
   basicMemcpyFromDevice();
 
   auto trace = profiler.stopTrace();
-  LOG(INFO) << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
+  std::cout << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
   trace->save(kFileName);
   return 0;
 }

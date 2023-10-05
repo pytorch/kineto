@@ -187,10 +187,10 @@ class NodeParserMixin:
                     self.comm_lib.add(CommLibTypes.Nccl)
                 if event.name in GlooOpNameSet:
                     self.comm_lib.add(CommLibTypes.Gloo)
-                    ts = event.ts
-                    dur = event.duration
-                    comm_node.kernel_ranges.append((ts, ts + dur))
-                    comm_node.total_time = dur
+                ts = event.ts
+                dur = event.duration
+                comm_node.kernel_ranges.append((ts, ts + dur))
+                comm_node.total_time = dur
                 self.communication_data[op_node.external_id] = comm_node
             if event.name == 'DataParallel.forward':
                 self.use_dp = True

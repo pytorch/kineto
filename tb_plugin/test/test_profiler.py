@@ -2125,14 +2125,14 @@ class TestDistributed(unittest.TestCase):
         dist_profile = loader._process_distributed_profiles([dist_data0, dist_data1], 0)
         self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker0'], [30, 75, 75, 55])
         self.assertEqual(dist_profile.steps_to_overlap['data']['0']['worker1'], [121, 40, 74, 0])
-        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [1074, 498])
-        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [1074, 15])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker0'], [1169, 464])
+        self.assertEqual(dist_profile.steps_to_wait['data']['0']['worker1'], [1169, 3])
         self.assertEqual(dist_profile.comm_ops['data']['worker0']['rows'],
-                         [['nccl:broadcast', 1, 212480, 212480, 16, 16, 16, 16],
-                          ['nccl:all_reduce', 1, 8196000, 8196000, 1556, 1556, 1058, 1058]])
+                         [['nccl:broadcast', 1, 212480, 212480, 75, 75, 36, 36],
+                          ['nccl:all_reduce', 1, 8196000, 8196000, 1558, 1558, 1133, 1133]])
         self.assertEqual(dist_profile.comm_ops['data']['worker1']['rows'],
-                         [['nccl:broadcast', 1, 212480, 212480, 31, 31, 16, 16],
-                          ['nccl:all_reduce', 1, 8196000, 8196000, 1058, 1058, 1058, 1058]])
+                         [['nccl:broadcast', 1, 212480, 212480, 39, 39, 36, 36],
+                          ['nccl:all_reduce', 1, 8196000, 8196000, 1133, 1133, 1133, 1133]])
 
     def test_distributed_gloo_gpu(self):
         json_content0 = """[

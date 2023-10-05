@@ -68,6 +68,10 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
                     bytes_one_value = 4
                 elif comm_node.input_type[i] == 'c10::Half':
                     bytes_one_value = 2
+                elif comm_node.input_type[i] == 'c10::BFloat16':
+                    bytes_one_value = 2
+                elif comm_node.input_type[i] == 'unsigned char':
+                    bytes_one_value = 1
                 else:
                     logger.warning('Found an unknown tensor type: {}'.format(comm_node.input_type[i]))
                     bytes_one_value = 0

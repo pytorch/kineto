@@ -363,6 +363,8 @@ int RoctracerActivityApi::processActivities(
 
 void RoctracerActivityApi::clearActivities() {
   d->clearLogs();
+  kernelLaunches_.clear();
+  kernelNames_.clear();    
 }
 
 

@@ -40,6 +40,9 @@
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivityApi.h"
 #endif
+#ifdef HAS_DEVICE_ACTIVITY
+#include "DeviceActivityInterface.h"
+#endif
 #include "output_base.h"
 
 #include "Logger.h"
@@ -163,12 +166,12 @@ std::ostream& operator<<(std::ostream& oss, const CuptiActivityProfiler::ErrorCo
       << ", Blocklisted runtime = " << ecs.blocklisted_runtime_events
       << ", Invalid ext correlations = " << ecs.invalid_external_correlation_events
       << ", CPU GPU out-of-order = " << ecs.gpu_and_cpu_op_out_of_order
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
       << ", Unexpected CUDA events = " << ecs.unexepected_cuda_events
       << ", CUPTI stopped early? = " << ecs.cupti_stopped_early;
 #else
       ;
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
   return oss;
 }
 
@@ -194,6 +197,10 @@ void CuptiActivityProfiler::transferCpuTrace(
 #ifdef HAS_ROCTRACER
 CuptiActivityProfiler::CuptiActivityProfiler(
     RoctracerActivityApi& cupti,
+    bool cpuOnly)
+#elif HAS_DEVICE_ACTIVITY
+CuptiActivityProfiler::CuptiActivityProfiler(
+    DeviceActivityInterface& cupti,
     bool cpuOnly)
 #else
 CuptiActivityProfiler::CuptiActivityProfiler(
@@ -273,7 +280,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     }
   }
 #endif // HAS_CUPTI
-#ifdef HAS_ROCTRACER
+#if defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(
@@ -284,7 +291,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     LOG(INFO) << "Processed " << count << " GPU records";
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
-#endif // HAS_ROCTRACER
+#endif // HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
 
   for (const auto& session : sessions_) {
     LOG(INFO) << "Processing child profiler trace";
@@ -825,15 +832,16 @@ void CuptiActivityProfiler::configure(
     LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
   }
 
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
   if (!cpuOnly_) {
     // Enabling CUPTI activity tracing incurs a larger perf hit at first,
     // presumably because structures are allocated and initialized, callbacks
     // are activated etc. After a while the overhead decreases and stabilizes.
     // It's therefore useful to perform some warmup before starting recording.
     LOG(INFO) << "Enabling GPU tracing";
+#ifndef HAS_DEVICE_ACTIVITY
     cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
-
+#endif
     time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
       timestamp = system_clock::now();
@@ -849,7 +857,7 @@ void CuptiActivityProfiler::configure(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_ROCTRACER
 
   if (profilers_.size() > 0) {
     configureChildProfilers();
@@ -900,7 +908,7 @@ void CuptiActivityProfiler::startTraceInternal(
 void CuptiActivityProfiler::stopTraceInternal(
     const time_point<system_clock>& now) {
   captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
   if (!cpuOnly_) {
     time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
@@ -917,7 +925,7 @@ void CuptiActivityProfiler::stopTraceInternal(
           setupOverhead_, duration_cast<microseconds>(t2 - timestamp).count());
     }
   }
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
 
   if (currentRunloopState_ == RunloopState::CollectTrace) {
     VLOG(0) << "CollectTrace -> ProcessTrace";
@@ -957,7 +965,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
     case RunloopState::Warmup:
       VLOG(1) << "State: Warmup";
       warmup_done = derivedConfig_->isWarmupDone(now, currentIter);
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
       // Flushing can take a while so avoid doing it close to the start time
       if (!cpuOnly_ && currentIter < 0 &&
           (derivedConfig_->isProfilingByIteration() ||
@@ -973,7 +981,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         VLOG(0) << "Warmup -> WaitForRequest";
         break;
       }
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
 
       if (warmup_done) {
         UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
@@ -1005,9 +1013,9 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       collection_done = derivedConfig_->isCollectionDone(now, currentIter);
 
       if (collection_done
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
           || cupti_.stopCollection
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
       ){
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete.";
@@ -1017,9 +1025,9 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
           libkineto::api().client()->stop();
         }
 
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
         ecs_.cupti_stopped_early = cupti_.stopCollection;
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
 
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
@@ -1135,12 +1143,12 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
 }
 
 void CuptiActivityProfiler::resetTraceData() {
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
   if (!cpuOnly_) {
     cupti_.clearActivities();
     cupti_.teardownContext();
   }
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
   activityMap_.clear();
   cpuCorrelationMap_.clear();
   correlatedCudaActivities_.clear();

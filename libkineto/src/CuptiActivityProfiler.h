@@ -43,6 +43,7 @@ namespace KINETO_NAMESPACE {
 class Config;
 class CuptiActivityApi;
 class RoctracerActivityApi;
+class DeviceActivityInterface;
 
 // This struct is a derived snapshot of the Config. And should not
 // be mutable after construction.
@@ -109,6 +110,7 @@ class CuptiActivityProfiler {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
   CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
+  CuptiActivityProfiler(DeviceActivityInterface& deviceActivityApi, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
 
@@ -367,6 +369,8 @@ class CuptiActivityProfiler {
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
   RoctracerActivityApi& cupti_;		// Design failure here
+#elif HAS_DEVICE_ACTIVITY
+  DeviceActivityInterface& cupti_;
 #else
   CuptiActivityApi& cupti_;
 #endif
@@ -448,10 +452,10 @@ class CuptiActivityProfiler {
     int32_t out_of_range_events = 0;
     int32_t gpu_and_cpu_op_out_of_order = 0;
     int32_t blocklisted_runtime_events = 0;
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER) || defined(HAS_DEVICE_ACTIVITY)
     int32_t unexepected_cuda_events = 0;
     bool cupti_stopped_early = false;
-#endif // HAS_CUPTI || HAS_ROCTRACER
+#endif // HAS_CUPTI || HAS_ROCTRACER || HAS_DEVICE_ACTIVITY
   };
 
   friend std::ostream& operator<<(std::ostream& oss, const ErrorCounts& ecs);

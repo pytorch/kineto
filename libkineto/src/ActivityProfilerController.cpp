@@ -19,6 +19,9 @@
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivityApi.h"
 #endif
+#ifdef HAS_DEVICE_ACTIVITY
+#include "DeviceActivityInterface.h"
+#endif
 
 #include "ThreadUtil.h"
 #include "output_json.h"
@@ -48,6 +51,9 @@ ActivityProfilerController::ActivityProfilerController(
 #ifdef HAS_ROCTRACER
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       RoctracerActivityApi::singleton(), cpuOnly);
+#elif HAS_DEVICE_ACTIVITY
+  profiler_ = std::make_unique<CuptiActivityProfiler>(
+      *device_activity_singleton, cpuOnly);
 #else
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityApi::singleton(), cpuOnly);

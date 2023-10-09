@@ -29,6 +29,7 @@ set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
+option(KINETO_USE_DEVICE_ACTIVITY "using DeviceActivityInterface to collect device activity" OFF)
 
 set(LIBKINETO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBKINETO_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -53,21 +54,24 @@ endif()
 
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
 # Otherwise, CUPTI is disabled if not found
-IF (NOT CUDA_SOURCE_DIR OR NOT CUPTI_INCLUDE_DIR OR NOT CUDA_cupti_LIBRARY)
+IF (NOT CUDA_SOURCE_DIR OR NOT CUPTI_INCLUDE_DIR OR NOT CUDA_cupti_LIBRARY OR KINETO_USE_DEVICE_ACTIVITY)
     set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
 endif()
 
-IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
+IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR OR KINETO_USE_DEVICE_ACTIVITY)
     set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
 endif()
 
 # Define file lists
-if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER)
+if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND NOT KINETO_USE_DEVICE_ACTIVITY)
     get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " CUPTI unavailable or disabled - not building GPU profilers")
 elseif(NOT LIBKINETO_NOROCTRACER)
     get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
     message(INFO " Building with roctracer")
+elseif(KINETO_USE_DEVICE_ACTIVITY)
+    get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
+    message(INFO " Building with device activity")
 else()
     get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
 endif()
@@ -107,6 +111,10 @@ if (NOT LIBKINETO_NOROCTRACER)
     target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_HCC__")
     target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_AMD__")
 endif()
+if (KINETO_USE_DEVICE_ACTIVITY)
+  list(APPEND KINETO_COMPILE_OPTIONS "-DHAS_DEVICE_ACTIVITY")
+endif()
+message(STATUS "Kineto: KINETO_COMPILE_OPTIONS = ${KINETO_COMPILE_OPTIONS}")
 
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")

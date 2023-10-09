@@ -35,8 +35,14 @@ struct TraceSpan;
 // Abstract base class, templated on Cupti activity type
 template<class T>
 struct CuptiActivity : public ITraceActivity {
-  explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
-      : activity_(*activity), linked_(linked) {}
+  explicit CuptiActivity(
+    const T* activity,
+    const ITraceActivity* linked,
+    ITraceActivity* linkedMetaActivity = nullptr)
+      : activity_(*activity)
+      , linked_(linked)
+      , linkedMetaActivity_(linkedMetaActivity) {}
+
   int64_t timestamp() const override {
     return nsToUs(unixEpochTimestamp(activity_.start));
   }
@@ -47,6 +53,8 @@ struct CuptiActivity : public ITraceActivity {
   int64_t correlationId() const override {return 0;}
   int32_t getThreadId() const override {return 0;}
   const ITraceActivity* linkedActivity() const override {return linked_;}
+  const ITraceActivity* linkedMetaActivity() const override {return linkedMetaActivity_;}
+  void linkMetaActivity(ITraceActivity* activity) override { linkedMetaActivity_ = activity; }
   int flowType() const override {return kLinkAsyncCpuGpu;}
   int flowId() const override {return correlationId();}
   const T& raw() const {return activity_;}
@@ -55,6 +63,7 @@ struct CuptiActivity : public ITraceActivity {
  protected:
   const T& activity_;
   const ITraceActivity* linked_{nullptr};
+  ITraceActivity* linkedMetaActivity_ = nullptr;
 };
 
 // CUpti_ActivityAPI - CUDA runtime activities
@@ -150,8 +159,8 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
 // Can also be instantiated directly.
 template<class T>
 struct GpuActivity : public CuptiActivity<T> {
-  explicit GpuActivity(const T* activity, const ITraceActivity* linked)
-      : CuptiActivity<T>(activity, linked) {}
+  explicit GpuActivity(const T* activity, const ITraceActivity* linked, ITraceActivity* linkedMetaActivity = nullptr)
+      : CuptiActivity<T>(activity, linked, linkedMetaActivity) {}
   int64_t correlationId() const override {return raw().correlationId;}
   int64_t deviceId() const override {return raw().deviceId;}
   int64_t resourceId() const override {return raw().streamId;}

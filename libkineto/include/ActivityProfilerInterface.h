@@ -80,6 +80,15 @@ class ActivityProfilerInterface {
   virtual void pushUserCorrelationId(uint64_t){}
   virtual void popUserCorrelationId(){}
 
+  // Correlation ids for user defined meta info.
+  virtual void pushMetaCorrelationId(uint64_t){}
+  virtual void popMetaCorrelationId(){}
+
+  // Used to pass user defined trace-activities.
+  // To provide custom meta-info for executed gpu kernels.
+  virtual void pushSingleMetaActivity(std::unique_ptr<GenericTraceActivity>) {}
+  virtual void popSingleMetaActivity() {}
+
   // Saves information for the current thread to be used in profiler output
   // Client must record any new kernel thread where the activity has occured.
   virtual void recordThreadInfo() {}

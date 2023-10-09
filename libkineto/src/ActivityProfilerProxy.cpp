@@ -120,9 +120,27 @@ void ActivityProfilerProxy::popUserCorrelationId() {
     CuptiActivityApi::CorrelationFlowType::User);
 }
 
+void ActivityProfilerProxy::pushMetaCorrelationId(uint64_t id) {
+  CuptiActivityApi::pushCorrelationID(
+    id, CuptiActivityApi::CorrelationFlowType::Meta);
+}
+
+void ActivityProfilerProxy::popMetaCorrelationId() {
+  CuptiActivityApi::popCorrelationID(CuptiActivityApi::CorrelationFlowType::Meta);
+}
+
 void ActivityProfilerProxy::transferCpuTrace(
    std::unique_ptr<CpuTraceBuffer> traceBuffer) {
   controller_->transferCpuTrace(std::move(traceBuffer));
+}
+
+void ActivityProfilerProxy::pushSingleMetaActivity(
+  std::unique_ptr<GenericTraceActivity> activity) {
+  controller_->pushSingleMetaActivity(std::move(activity));
+}
+
+void ActivityProfilerProxy::popSingleMetaActivity() {
+  controller_->popSingleMetaActivity();
 }
 
 void ActivityProfilerProxy::addMetadata(

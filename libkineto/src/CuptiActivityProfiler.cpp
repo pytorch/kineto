@@ -169,6 +169,24 @@ void CuptiActivityProfiler::transferCpuTrace(
   traceBuffers_->cpu.push_back(std::move(cpuTrace));
 }
 
+void CuptiActivityProfiler::pushSingleMetaActivity(std::unique_ptr<GenericTraceActivity> activity) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  if (!pushedMetaActivities_.empty()) {
+      activity->linkMetaActivity(pushedMetaActivities_.front());
+  }
+  pushedMetaActivities_.push_front(activity.get());
+  CuptiActivityApi::pushCorrelationID(activity->id, CuptiActivityApi::CorrelationFlowType::Meta);
+  traceBuffers_->meta.push_back(std::move(activity));
+}
+
+void CuptiActivityProfiler::popSingleMetaActivity() {
+  std::lock_guard<std::mutex> guard(mutex_);
+  if (!pushedMetaActivities_.empty()) {
+      pushedMetaActivities_.pop_front();
+  }
+  CuptiActivityApi::popCorrelationID(CuptiActivityApi::CorrelationFlowType::Meta);
+}
+
 #ifdef HAS_ROCTRACER
 CuptiActivityProfiler::CuptiActivityProfiler(
     RoctracerActivityApi& cupti,
@@ -220,6 +238,11 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
             << cpu_trace->span.endTime;
     processCpuTrace(*cpu_trace, logger);
     LOGGER_OBSERVER_ADD_EVENT_COUNT(cpu_trace->activities.size());
+  }
+
+  LOG(INFO) << "Processing " << traceBuffers_->meta.size() << " Meta info activities";
+  for (auto& meta_activity : traceBuffers_->meta) {
+    metaActivityMap_[meta_activity->correlationId()] = meta_activity.get();
   }
 
 #ifdef HAS_CUPTI
@@ -316,9 +339,10 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
     const CUpti_ActivityExternalCorrelation* correlation) {
   if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0) {
     cpuCorrelationMap_[correlation->correlationId] = correlation->externalId;
-  } else if (
-      correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1) {
+  } else if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1) {
     userCorrelationMap_[correlation->correlationId] = correlation->externalId;
+  } else if (correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM2) {
+    metaCorrelationMap_[correlation->correlationId] = correlation->externalId;
   } else {
     LOG(WARNING)
         << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
@@ -634,14 +658,34 @@ const ITraceActivity* CuptiActivityProfiler::linkedActivity(
   return nullptr;
 }
 
+ITraceActivity* CuptiActivityProfiler::linkedMetaActivity(
+    int32_t correlationId,
+    const std::unordered_map<int64_t, int64_t>& correlationMap) {
+  auto it = correlationMap.find(correlationId);
+  if (it != correlationMap.end()) {
+    auto it2 = metaActivityMap_.find(it->second);
+    if (it2 != metaActivityMap_.end()) {
+      return it2->second;
+    }
+  }
+  return nullptr;
+}
+
 template <class T>
 inline void CuptiActivityProfiler::handleGpuActivity(
     const T* act,
     ActivityLogger* logger) {
+  /// Get linked CPU activity.
   const ITraceActivity* linked =
       linkedActivity(act->correlationId, cpuCorrelationMap_);
+
+
+    /// Get linked meta activity.
+    ITraceActivity* metaActivity =
+        linkedMetaActivity(act->correlationId, metaCorrelationMap_);
+
   const auto& gpu_activity =
-      traceBuffers_->addActivityWrapper(GpuActivity<T>(act, linked));
+      traceBuffers_->addActivityWrapper(GpuActivity<T>(act, linked, metaActivity));
   handleGpuActivity(gpu_activity, logger);
 }
 
@@ -1102,6 +1146,7 @@ void CuptiActivityProfiler::resetTraceData() {
 #endif // HAS_CUPTI || HAS_ROCTRACER
   activityMap_.clear();
   cpuCorrelationMap_.clear();
+  metaCorrelationMap_.clear();
   correlatedCudaActivities_.clear();
   gpuUserEventMap_.clear();
   traceSpans_.clear();

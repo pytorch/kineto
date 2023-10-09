@@ -67,6 +67,14 @@ class GenericTraceActivity : public ITraceActivity {
     return linked;
   }
 
+  const ITraceActivity* linkedMetaActivity() const override {
+    return linkedMetaActivity_;
+  }
+
+  void linkMetaActivity(ITraceActivity* activity) override {
+    linkedMetaActivity_ = activity;
+  }
+
   int flowType() const override {
     return flow.type;
   }
@@ -123,6 +131,7 @@ class GenericTraceActivity : public ITraceActivity {
     uint32_t start : 1;
   } flow;
   const ITraceActivity* linked{nullptr};
+  ITraceActivity* linkedMetaActivity_ = nullptr;
 
  private:
   const TraceSpan* traceSpan_;

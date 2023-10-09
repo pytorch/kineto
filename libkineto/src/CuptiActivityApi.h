@@ -41,7 +41,8 @@ class CuptiActivityApi {
  public:
   enum CorrelationFlowType {
     Default,
-    User
+    User,
+    Meta
   };
   // Control Variables shared with CuptiCallbackApi for teardown
   std::atomic<uint32_t> teardownCupti_{0};

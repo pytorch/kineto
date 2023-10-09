@@ -72,6 +72,9 @@ void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
     case User:
       CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
         CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
+    case Meta:
+      CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM2, id));
   }
 #endif
 }
@@ -89,6 +92,9 @@ void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
     case User:
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
         CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
+    case Meta:
+      CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
+        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM2, nullptr));
   }
 #endif
 }

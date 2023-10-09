@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <list>
 #include <map>
 #include <memory>
@@ -163,6 +164,9 @@ class CuptiActivityProfiler {
   void transferCpuTrace(
       std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 
+  void pushSingleMetaActivity(std::unique_ptr<GenericTraceActivity> activity);
+  void popSingleMetaActivity();
+
   const Config& config() {
     return *config_;
   }
@@ -236,6 +240,8 @@ class CuptiActivityProfiler {
   GpuUserEventMap gpuUserEventMap_;
   // id -> activity*
   std::unordered_map<int64_t, const ITraceActivity*> activityMap_;
+  std::unordered_map<int64_t, ITraceActivity*> metaActivityMap_;
+
   // cuda runtime id -> pytorch op id
   // CUPTI provides a mechanism for correlating Cuda events to arbitrary
   // external events, e.g.operator activities from PyTorch.
@@ -244,6 +250,7 @@ class CuptiActivityProfiler {
   std::unordered_map<int64_t, const ITraceActivity*>
       correlatedCudaActivities_;
   std::unordered_map<int64_t, int64_t> userCorrelationMap_;
+  std::unordered_map<int64_t, int64_t> metaCorrelationMap_;
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
   struct profilerOverhead {
@@ -310,6 +317,10 @@ class CuptiActivityProfiler {
   int netId(const std::string& netName);
 
   const ITraceActivity* linkedActivity(
+      int32_t correlationId,
+      const std::unordered_map<int64_t, int64_t>& correlationMap);
+
+    ITraceActivity* linkedMetaActivity(
       int32_t correlationId,
       const std::unordered_map<int64_t, int64_t>& correlationMap);
 
@@ -450,6 +461,8 @@ class CuptiActivityProfiler {
 
   // Buffers where trace data is stored
   std::unique_ptr<ActivityBuffers> traceBuffers_;
+
+  std::deque<ITraceActivity*> pushedMetaActivities_;
 
   // Trace metadata
   std::unordered_map<std::string, std::string> metadata_;

@@ -216,10 +216,10 @@ int CuptiActivityApi::processActivitiesForBuffer(
 }
 #endif
 
-const std::pair<int, int> CuptiActivityApi::processActivities(
+const std::pair<int, size_t> CuptiActivityApi::processActivities(
     CuptiActivityBufferMap& buffers,
     std::function<void(const CUpti_Activity*)> handler) {
-  std::pair<int, int> res{0, 0};
+  std::pair<int, size_t> res{0, 0};
 #ifdef HAS_CUPTI
   for (auto& pair : buffers) {
     // No lock needed - only accessed from this thread

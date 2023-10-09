@@ -161,7 +161,7 @@ struct MockCuptiActivityBuffer {
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
-  virtual const std::pair<int, int> processActivities(
+  virtual const std::pair<int, size_t> processActivities(
       CuptiActivityBufferMap&, /*unused*/
       std::function<void(const CUpti_Activity*)> handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {

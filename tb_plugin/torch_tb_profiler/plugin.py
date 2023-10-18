@@ -48,7 +48,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
           context: A base_plugin.TBContext instance.
         """
         super(TorchProfilerPlugin, self).__init__(context)
-        self.logdir = io.abspath(context.logdir.rstrip('/'))
+        if not context.logdir and context.flags.logdir_spec:
+            dirs = context.flags.logdir_spec.split(',')
+            if len(dirs) > 1:
+                logger.warning(f"Multiple directories are specified by --logdir_spec flag. TorchProfilerPlugin will load the first one: \n {dirs[0]}")
+            self.logdir = io.abspath(dirs[0].rstrip('/'))
+        else:
+            self.logdir = io.abspath(context.logdir.rstrip('/'))
 
         self._load_lock = threading.Lock()
         self._load_threads = []

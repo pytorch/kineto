@@ -28,6 +28,15 @@ static constexpr int kSchemaVersion = 1;
 static constexpr char kFlowStart = 's';
 static constexpr char kFlowEnd = 'f';
 
+// CPU op name that is used to store collectives metadata
+// TODO: share the same string across c10d, profiler and libkineto
+static constexpr const char* kParamCommsCallName = "record_param_comms";
+// Collective function metadata populated from CPU op to GPU kernel
+static constexpr const char* kDtype = "dtype";
+static constexpr const char* kInMsgSize = "In msg size";
+static constexpr const char* kOutMsgSize = "Out msg size";
+static constexpr const char* kGroupSize = "Group size";
+
 #ifdef __linux__
 static constexpr char kDefaultLogFileFmt[] =
     "/tmp/libkineto_activities_{}.json";
@@ -294,6 +303,34 @@ void ChromeTraceLogger::handleActivity(
     }
     arg_values.append(op_metadata);
   }
+
+  // Populate NCCL collective metadata from CPU to GPU
+  if (op.type() == ActivityType::CONCURRENT_KERNEL && op.linkedActivity() &&
+      op.linkedActivity()->name() == kParamCommsCallName) {
+    const auto* collectiveRecord = op.linkedActivity();
+    // Get the value out of the collective record
+    const auto& inMsgSize = collectiveRecord->getMetadataValue(kInMsgSize);
+    const auto& outMsgSize = collectiveRecord->getMetadataValue(kOutMsgSize);
+    const auto& groupSize = collectiveRecord->getMetadataValue(kGroupSize);
+    const auto& dtype = collectiveRecord->getMetadataValue(kDtype);
+    if (!inMsgSize.empty() && !outMsgSize.empty() && !groupSize.empty() &&
+        !dtype.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(
+          "\"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}",
+          kInMsgSize,
+          inMsgSize,
+          kOutMsgSize,
+          outMsgSize,
+          kGroupSize,
+          groupSize,
+          kDtype,
+          dtype));
+    }
+  }
+
   std::string args = "";
   if (!arg_values.empty()) {
     args = fmt::format(R"JSON(,

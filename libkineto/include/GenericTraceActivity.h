@@ -11,10 +11,12 @@
 #include <fmt/format.h>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
+#include <sstream>
 
-#include "ThreadUtil.h"
 #include "ITraceActivity.h"
+#include "ThreadUtil.h"
 #include "TraceSpan.h"
 
 namespace libkineto {
@@ -26,14 +28,13 @@ constexpr unsigned int kLinkAsyncCpuGpu = 2;
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-non-private-member-variables-in-classes
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
 class GenericTraceActivity : public ITraceActivity {
-
  public:
-  GenericTraceActivity() : activityType(ActivityType::ENUM_COUNT), traceSpan_(NULL) {}
+  GenericTraceActivity()
+      : activityType(ActivityType::ENUM_COUNT), traceSpan_(NULL) {}
 
   GenericTraceActivity(
       const TraceSpan& trace, ActivityType type, const std::string& name)
-      : activityType(type), activityName(name), traceSpan_(&trace) {
-  }
+      : activityType(type), activityName(name), traceSpan_(&trace) {}
 
   int64_t deviceId() const override {
     return device;
@@ -89,18 +90,35 @@ class GenericTraceActivity : public ITraceActivity {
 
   void log(ActivityLogger& logger) const override;
 
-  //Encode client side metadata as a key/value
+  // Encode client side metadata as a key/value
   template <typename ValType>
   void addMetadata(const std::string& key, const ValType& value) {
-    metadata_.push_back(fmt::format("\"{}\": {}", key, value));
+    metadataMap_.emplace(key, std::make_pair(fmt::format("{}", value), false));
   }
 
   void addMetadataQuoted(const std::string& key, const std::string& value) {
-    metadata_.push_back(fmt::format("\"{}\": \"{}\"", key, value));
+    metadataMap_.emplace(key, std::make_pair(value, true));
+  }
+
+  const std::string getMetadataValue(const std::string& key) const override {
+    if (auto it = metadataMap_.find(key); it != metadataMap_.end()) {
+      return it->second.first;
+    }
+    return "";
   }
 
   const std::string metadataJson() const override {
-    return fmt::format("{}", fmt::join(metadata_, ", "));
+    std::stringstream json;
+    bool first = true;
+    for (const auto& [key, val] : metadataMap_) {
+      if (!first) {
+        json << ", ";
+      }
+      val.second ? json << fmt::format("\"{}\": \"{}\"", key, val.first)
+                 : json << fmt::format("\"{}\": {}", key, val.first);
+      first = false;
+    }
+    return json.str();
   }
 
   virtual ~GenericTraceActivity() override {};
@@ -126,7 +144,8 @@ class GenericTraceActivity : public ITraceActivity {
 
  private:
   const TraceSpan* traceSpan_;
-  std::vector<std::string> metadata_;
+  // Metadata map: { key: (value, quoted)}
+  std::unordered_map<std::string, std::pair<std::string, bool>> metadataMap_;
 };
 
 } // namespace libkineto

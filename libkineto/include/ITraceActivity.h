@@ -48,6 +48,11 @@ struct ITraceActivity {
   // Return json formatted metadata
   // FIXME: Return iterator to dynamic type map here instead
   virtual const std::string metadataJson() const = 0;
+  // Return the metadata value in string format with key
+  // @lint-ignore CLANGTIDY: clang-diagnostic-unused-parameter
+  virtual const std::string getMetadataValue(const std::string& key) const {
+    return "";
+  }
 
   static int64_t nsToUs(int64_t ns) {
     // It's important that this conversion is the same everywhere.

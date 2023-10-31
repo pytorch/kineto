@@ -30,8 +30,13 @@ namespace KINETO_NAMESPACE {
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
 #ifdef HAS_CUPTI
-bool cuptiLazyInit_() {
-  return getenv("TEARDOWN_CUPTI") != nullptr && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
+inline bool cuptiTearDown_() {
+  auto teardown_env = getenv("TEARDOWN_CUPTI");
+  return teardown_env != nullptr && strcmp(teardown_env, "1") == 0;
+}
+
+inline bool cuptiLazyInit_() {
+  return cuptiTearDown_() && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
 }
 
 inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
@@ -385,7 +390,7 @@ void CuptiActivityApi::teardownContext() {
   if (!tracingEnabled_) {
     return;
   }
-  if (getenv("TEARDOWN_CUPTI") != nullptr) {
+  if (cuptiTearDown_()) {
     LOG(INFO) << "teardownCupti starting";
 
     // PyTorch Profiler is synchronous, so teardown needs to be run async in this thread.

@@ -11,6 +11,9 @@
 #include <cstring>
 #include <chrono>
 #include <time.h>
+#include <mutex>
+#include <condition_variable>
+#include <unistd.h>
 
 #include "ThreadUtil.h"
 
@@ -23,6 +26,18 @@ static timestamp_t timespec_to_ns(const timespec& time) {
 using namespace std::chrono;
 
 constexpr size_t kBufSize(2 * 1024 * 1024);
+
+class Flush
+{
+public:
+  std::atomic<bool> doFlush_ {false};
+  std::mutex mutex_;
+  std::condition_variable wait_;
+  static thread_local uint64_t trip_;
+  uint64_t correlationId_ {0};
+};
+static Flush s_flush;
+thread_local uint64_t Flush::trip_;
 
 RoctracerLogger& RoctracerLogger::singleton() {
   static RoctracerLogger instance;
@@ -241,6 +256,10 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
           dis->externalCorrelations_[it][data->correlation_id] = t_externalIds[it].back();
         }
       }
+      // If we are stopping the tracer, implement reliable flushing
+      if (s_flush.doFlush_) {
+        s_flush.trip_ = data->correlation_id;
+      }
     }  // phase exit
   }
 }
@@ -252,6 +271,22 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
   auto &gpuTraceBuffers = singleton().gpuTraceBuffers_;
   memcpy(buffer, begin, size);
   gpuTraceBuffers->emplace_back(buffer, size);
+
+  // If we are stopping the tracer, implement reliable flushing
+  if (s_flush.doFlush_) {
+    std::unique_lock<std::mutex> lock(s_flush.mutex_);
+    // scan the records looking for the final correlation id
+    const roctracer_record_t* record = (const roctracer_record_t*)(begin);
+    const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
+
+    while (record < end_record) {
+      if (record->correlation_id == s_flush.correlationId_) {
+	s_flush.correlationId_ = 0;  // Clear id to signal we found it
+        break;
+      }
+      roctracer_next_record(record, &record);
+    }
+  }
 }
 
 void RoctracerLogger::startLogging() {
@@ -312,12 +347,38 @@ void RoctracerLogger::startLogging() {
   }
 
   externalCorrelationEnabled_ = true;
+  logging_ = true;
   roctracer_start();
 }
 
 void RoctracerLogger::stopLogging() {
+  if (logging_ == false)
+    return;
+
+  // If we are stopping the tracer, implement reliable flushing
+  std::unique_lock<std::mutex> lock(s_flush.mutex_);
+
+  s_flush.doFlush_ = true;
+
+  // Enqueue a memcpy as a marker
+  char buf[4096];
+  char *gbuf;
+  hipMalloc(&gbuf, 4096);
+  hipMemcpyHtoDAsync(gbuf, buf, 4096, NULL);  // api_callback() will occur on our thread
+  s_flush.correlationId_ = s_flush.trip_;     // get correlationid from the tripwire
+
+  while (s_flush.correlationId_ != 0) {
+    lock.unlock();
+    roctracer_flush_activity_expl(hccPool_);
+    usleep(1000);
+    lock.lock();
+  }
+
+  s_flush.doFlush_ = false;
+  hipFree(gbuf);
+
   roctracer_stop();
-  roctracer_flush_activity_expl(hccPool_);
+  logging_ = false;
 }
 
 void RoctracerLogger::endTracing() {

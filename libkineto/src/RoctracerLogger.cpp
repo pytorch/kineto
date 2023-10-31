@@ -12,7 +12,6 @@
 #include <chrono>
 #include <time.h>
 #include <mutex>
-#include <condition_variable>
 #include <unistd.h>
 
 #include "ThreadUtil.h"
@@ -32,7 +31,6 @@ class Flush
 public:
   std::atomic<bool> doFlush_ {false};
   std::mutex mutex_;
-  std::condition_variable wait_;
   static thread_local uint64_t trip_;
   uint64_t correlationId_ {0};
 };

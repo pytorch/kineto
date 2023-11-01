@@ -35,7 +35,7 @@ public:
   uint64_t correlationId_ {0};
   void reportCorrelation(const uint64_t &cid) {
     uint64_t prev = maxCorrelationId_;
-    while (prev < cid && maxCorrelationId_.compare_exchange_weak(prev, cid))
+    while (prev < cid && !maxCorrelationId_.compare_exchange_weak(prev, cid))
       {}
   }
 };

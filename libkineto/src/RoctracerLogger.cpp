@@ -31,11 +31,15 @@ class Flush
 public:
   std::atomic<bool> doFlush_ {false};
   std::mutex mutex_;
-  static thread_local uint64_t trip_;
+  std::atomic<uint64_t> maxCorrelationId_;
   uint64_t correlationId_ {0};
+  void reportCorrelation(const uint64_t &cid) {
+    uint64_t prev = maxCorrelationId_;
+    while (prev < cid && maxCorrelationId_.compare_exchange_weak(prev, cid))
+      {}
+  }
 };
 static Flush s_flush;
-thread_local uint64_t Flush::trip_;
 
 RoctracerLogger& RoctracerLogger::singleton() {
   static RoctracerLogger instance;
@@ -104,6 +108,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
         case HIP_API_ID_hipExtLaunchKernel:
         case HIP_API_ID_hipLaunchCooperativeKernel:     // Should work here
           {
+          s_flush.reportCorrelation(data->correlation_id);
           auto &args = data->args.hipLaunchKernel;
           dis->kernelRows_.emplace_back(data->correlation_id,
                               domain,
@@ -129,6 +134,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
         case HIP_API_ID_hipModuleLaunchKernel:
         case HIP_API_ID_hipExtModuleLaunchKernel:
           {
+          s_flush.reportCorrelation(data->correlation_id);
           auto &args = data->args.hipModuleLaunchKernel;
           dis->kernelRows_.emplace_back(data->correlation_id,
                               domain,
@@ -221,6 +227,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
         case HIP_API_ID_hipMemcpyAsync:
         case HIP_API_ID_hipMemcpyWithStream:
           {
+            s_flush.reportCorrelation(data->correlation_id);
             auto &args = data->args.hipMemcpyAsync;
             dis->copyRows_.emplace_back(data->correlation_id,
                               domain,
@@ -357,14 +364,9 @@ void RoctracerLogger::stopLogging() {
   std::unique_lock<std::mutex> lock(s_flush.mutex_);
 
   s_flush.doFlush_ = true;
+  s_flush.correlationId_ = s_flush.maxCorrelationId_;  // load ending id from the running max
 
-  // Enqueue a memcpy as a marker
-  char buf[4096];
-  char *gbuf;
-  hipMalloc(&gbuf, 4096);
-  hipMemcpyHtoDAsync(gbuf, buf, 4096, NULL);  // api_callback() will occur on our thread
-  s_flush.correlationId_ = s_flush.trip_;     // get correlationid from the tripwire
-
+  // Poll on the worker finding the record and clearing s_flush.correlationId_
   while (s_flush.correlationId_ != 0) {
     lock.unlock();
     roctracer_flush_activity_expl(hccPool_);
@@ -373,7 +375,6 @@ void RoctracerLogger::stopLogging() {
   }
 
   s_flush.doFlush_ = false;
-  hipFree(gbuf);
 
   roctracer_stop();
   logging_ = false;

@@ -261,10 +261,6 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
           dis->externalCorrelations_[it][data->correlation_id] = t_externalIds[it].back();
         }
       }
-      // If we are stopping the tracer, implement reliable flushing
-      if (s_flush.doFlush_) {
-        s_flush.trip_ = data->correlation_id;
-      }
     }  // phase exit
   }
 }

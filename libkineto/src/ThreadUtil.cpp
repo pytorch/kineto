@@ -92,7 +92,7 @@ static constexpr const char* basename(const char* s, int off = 0) {
 }
 #if defined(_WIN32)
 void *getKernel32Func(const char* procName) {
-  return GetProcAddress(GetModuleHandleA("KERNEL32.DLL"), procName);
+  return reinterpret_cast<void*>(GetProcAddress(GetModuleHandleA("KERNEL32.DLL"), procName));
 }
 #endif
 }

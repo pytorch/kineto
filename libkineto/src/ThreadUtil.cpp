@@ -8,12 +8,12 @@
 
 #include "ThreadUtil.h"
 
-#ifndef _MSC_VER
+#ifndef _WIN32
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#else // _MSC_VER
+#else // _WIN32
 #include <locale>
 #include <codecvt>
 #define WIN32_LEAN_AND_MEAN
@@ -21,7 +21,7 @@
 #include <windows.h>
 #include <processthreadsapi.h>
 #undef ERROR
-#endif // _MSC_VER
+#endif // _WIN32
 
 #ifdef __ANDROID__
 #include <sys/prctl.h>
@@ -41,7 +41,7 @@ thread_local int32_t _sysTid = 0;
 
 int32_t processId() {
   if (!_pid) {
-#ifndef _MSC_VER
+#ifndef _WIN32
     _pid = (int32_t)getpid();
 #else
     _pid = (int32_t)GetCurrentProcessId();
@@ -54,7 +54,7 @@ int32_t systemThreadId() {
   if (!_sysTid) {
 #ifdef __APPLE__
     _sysTid = (int32_t)syscall(SYS_thread_selfid);
-#elif defined _MSC_VER
+#elif defined _WIN32
     _sysTid = (int32_t)GetCurrentThreadId();
 #elif defined __FreeBSD__
     syscall(SYS_thr_self, &_sysTid);
@@ -71,7 +71,7 @@ int32_t threadId() {
     uint64_t tid;
     pthread_threadid_np(nullptr, &tid);
     _tid = tid;
-#elif defined _MSC_VER
+#elif defined _WIN32
   _tid = (int32_t)GetCurrentThreadId();
 #else
   pthread_t pth = pthread_self();
@@ -90,7 +90,7 @@ static constexpr const char* basename(const char* s, int off = 0) {
       ? s
       : s[off] == '/' ? basename(&s[off + 1]) : basename(s, off + 1);
 }
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 void *getKernel32Func(const char* procName) {
   return GetProcAddress(GetModuleHandleA("KERNEL32.DLL"), procName);
 }
@@ -100,7 +100,7 @@ void *getKernel32Func(const char* procName) {
 bool setThreadName(const std::string& name) {
 #ifdef __APPLE__
   return 0 == pthread_setname_np(name.c_str());
-#elif defined _MSC_VER
+#elif defined _WIN32
   // Per https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
   // Use runtime linking to set thread description
   static auto _SetThreadDescription = reinterpret_cast<decltype(&SetThreadDescription)>(getKernel32Func("SetThreadDescription"));
@@ -117,7 +117,7 @@ bool setThreadName(const std::string& name) {
 }
 
 std::string getThreadName() {
-#ifndef _MSC_VER
+#ifndef _WIN32
   char buf[kMaxThreadNameLength] = "";
   if (
 #ifndef __ANDROID__
@@ -129,7 +129,7 @@ std::string getThreadName() {
     return "Unknown";
   }
   return buf;
-#else // _MSC_VER
+#else // _WIN32
   static auto _GetThreadDescription = reinterpret_cast<decltype(&GetThreadDescription)>(getKernel32Func("GetThreadDescription"));
   if (!_GetThreadDescription) {
     return "Unknown";

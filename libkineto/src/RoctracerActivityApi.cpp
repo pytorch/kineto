@@ -367,7 +367,6 @@ void RoctracerActivityApi::clearActivities() {
   kernelNames_.clear();    
 }
 
-
 void RoctracerActivityApi::enableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER

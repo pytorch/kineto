@@ -36,6 +36,8 @@ static constexpr const char* kDtype = "dtype";
 static constexpr const char* kInMsgSize = "In msg size";
 static constexpr const char* kOutMsgSize = "Out msg size";
 static constexpr const char* kGroupSize = "Group size";
+static constexpr const char* kInSplit = "In split size";
+static constexpr const char* kOutSplit = "Out split size";
 
 #ifdef __linux__
 static constexpr char kDefaultLogFileFmt[] =
@@ -328,6 +330,20 @@ void ChromeTraceLogger::handleActivity(
           groupSize,
           kDtype,
           dtype));
+    }
+    // In/out split size are valid for all_to_all
+    const auto& inSplitSize = collectiveRecord->getMetadataValue(kInSplit);
+    const auto& outSplitSize = collectiveRecord->getMetadataValue(kOutSplit);
+    if (!inSplitSize.empty() && !outSplitSize.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(
+          "\"{}\": {}, \"{}\": {}",
+          kInSplit,
+          inSplitSize,
+          kOutSplit,
+          outSplitSize));
     }
   }
 

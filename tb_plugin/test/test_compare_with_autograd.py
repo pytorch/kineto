@@ -9,9 +9,9 @@ import torch.optim
 import torch.utils.data
 import torchvision
 import torchvision.transforms as T
-import torchvision.models as models
 import torch_tb_profiler.io as io
 from torch_tb_profiler.profiler import RunLoader
+from torchvision import models
 
 
 def create_log_dir():
@@ -174,7 +174,7 @@ def get_plugin_result(run, record_shapes=False, with_stack=False):
 
 
 def get_train_func(use_gpu=True):
-    model = models.resnet50(pretrained=True)
+    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
     if use_gpu:
         model.cuda()
     cudnn.benchmark = True

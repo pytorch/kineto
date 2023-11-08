@@ -322,6 +322,14 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::stopTrace() 
   profiler_->processTrace(*logger);
   // Will follow up with another patch for logging URLs when ActivityTrace is moved.
   UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
+
+  // Logger Metadata contains a map of LOGs collected in Kineto
+  //   logger_level -> List of log lines
+  // This will be added into the trace as metadata.
+  std::unordered_map<std::string, std::vector<std::string>>
+    loggerMD = profiler_->getLoggerMetadata();
+  logger->setLoggerMetadata(std::move(loggerMD));
+
   profiler_->reset();
   return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
 }

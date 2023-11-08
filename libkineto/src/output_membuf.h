@@ -96,6 +96,11 @@ class MemoryTraceLogger : public ActivityLogger {
     logger.finalizeTrace(*config_, nullptr, endTime_, loggerMetadata_);
   }
 
+  void setLoggerMetadata(
+      std::unordered_map<std::string, std::vector<std::string>>&& lmd) {
+    loggerMetadata_ = std::move(lmd);
+  }
+
  private:
 
   std::unique_ptr<Config> config_;

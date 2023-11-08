@@ -201,6 +201,8 @@ class CuptiActivityProfiler {
     profilers_.push_back(std::move(profiler));
   }
 
+  std::unordered_map<std::string, std::vector<std::string>> getLoggerMetadata();
+
  protected:
 
   using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;

@@ -1122,16 +1122,27 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
     traceBuffers_->cpu.push_back(std::move(trace_buffer));
   }
 
+  // Logger Metadata contains a map of LOGs collected in Kineto
+  //   logger_level -> List of log lines
+  // This will be added into the trace as metadata.
+  std::unordered_map<std::string, std::vector<std::string>>
+    loggerMD = getLoggerMetadata();
+  logger.finalizeTrace(
+      config, std::move(traceBuffers_), captureWindowEndTime_, loggerMD);
+}
+
+std::unordered_map<std::string, std::vector<std::string>>
+CuptiActivityProfiler::getLoggerMetadata() {
+  std::unordered_map<std::string, std::vector<std::string>> loggerMD;
+
 #if !USE_GOOGLE_LOG
   // Save logs from LoggerCollector objects into Trace metadata.
-  auto LoggerMD = loggerCollectorMetadata_->extractCollectorMetadata();
-  std::unordered_map<std::string, std::vector<std::string>> LoggerMDString;
-  for (auto& md : LoggerMD) {
-    LoggerMDString[toString(md.first)] = md.second;
+  auto LoggerMDMap = loggerCollectorMetadata_->extractCollectorMetadata();
+  for (auto& md : LoggerMDMap) {
+    loggerMD[toString(md.first)] = md.second;
   }
 #endif // !USE_GOOGLE_LOG
-
-  logger.finalizeTrace(config, std::move(traceBuffers_), captureWindowEndTime_, LoggerMDString);
+  return loggerMD;
 }
 
 void CuptiActivityProfiler::resetTraceData() {

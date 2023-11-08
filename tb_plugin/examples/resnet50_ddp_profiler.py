@@ -9,20 +9,20 @@ import torch.optim
 import torch.profiler
 import torch.utils.data
 import torchvision
-import torchvision.models as models
 import torchvision.transforms as T
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torchvision import models
 
 
 def example(rank, use_gpu=True):
     if use_gpu:
         torch.cuda.set_device(rank)
-        model = models.resnet50(pretrained=True).to(rank)
+        model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1).to(rank)
         model.cuda()
         cudnn.benchmark = True
         model = DDP(model, device_ids=[rank])
     else:
-        model = models.resnet50(pretrained=True)
+        model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
         model = DDP(model)
 
     # Use gradient compression to reduce communication

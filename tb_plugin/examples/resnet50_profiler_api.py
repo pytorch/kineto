@@ -5,11 +5,11 @@ import torch.optim
 import torch.utils.data
 import torchvision
 import torchvision.transforms as T
-import torchvision.models as models
 
 import torch.profiler
+from torchvision import models
 
-model = models.resnet50(pretrained=True)
+model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
 model.cuda()
 cudnn.benchmark = True
 

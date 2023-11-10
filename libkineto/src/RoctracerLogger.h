@@ -176,7 +176,6 @@ class RoctracerLogger {
 
   std::unique_ptr<std::list<RoctracerActivityBuffer>> gpuTraceBuffers_;
   bool externalCorrelationEnabled_{true};
-  bool logging_{false};
 
   friend class onnxruntime::profiling::RocmProfiler;
   friend class libkineto::RoctracerActivityApi;

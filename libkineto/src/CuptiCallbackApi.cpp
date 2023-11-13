@@ -15,7 +15,6 @@
 #include <chrono>
 #include <algorithm>
 #include <mutex>
-#include <shared_mutex>
 
 #ifdef HAS_CUPTI
 #include "cupti_call.h"
@@ -31,13 +30,6 @@ constexpr size_t MAX_CB_FNS_PER_CB = 8;
 // Use this value in enabledCallbacks_ set, when all cbids in a domain
 // is enabled, not a specific cbid.
 constexpr uint32_t MAX_CUPTI_CALLBACK_ID_ALL = 0xffffffff;
-
-// Reader Writer lock types
-using ReaderWriterLock = std::shared_timed_mutex;
-using ReaderLockGuard = std::shared_lock<ReaderWriterLock>;
-using WriteLockGuard = std::unique_lock<ReaderWriterLock>;
-
-static ReaderWriterLock callbackLock_;
 
 /* Callback Table :
  *  Overall goal of the design is to optimize the lookup of function

@@ -10,7 +10,6 @@
 #include <Logger.h>
 
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <fmt/format.h>
 #include <ostream>

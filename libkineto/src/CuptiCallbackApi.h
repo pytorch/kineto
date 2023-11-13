@@ -16,6 +16,7 @@
 #include <list>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <set>
 
 // TODO(T90238193)
@@ -143,6 +144,12 @@ class CuptiCallbackApi {
   // As an implementation detail, cbid == 0xffffffff means enable the domain.
   std::set<std::pair<CUpti_CallbackDomain, CUpti_CallbackId>> enabledCallbacks_;
 
+
+  // Reader Writer lock types
+  using ReaderWriterLock = std::shared_timed_mutex;
+  using ReaderLockGuard = std::shared_lock<ReaderWriterLock>;
+  using WriteLockGuard = std::unique_lock<ReaderWriterLock>;
+  ReaderWriterLock callbackLock_;
 #ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;
   CUpti_SubscriberHandle subscriber_ {0};

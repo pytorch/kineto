@@ -173,16 +173,40 @@ std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
 
 void CuptiCallbackApi::initCallbackApi() {
 #ifdef HAS_CUPTI
+  if (initSuccess_) {
+    return;
+  }
+
   lastCuptiStatus_ = CUPTI_ERROR_UNKNOWN;
   lastCuptiStatus_ = CUPTI_CALL_NOWARN(
     cuptiSubscribe(&subscriber_,
       (CUpti_CallbackFunc)callback_switchboard,
       nullptr));
   if (lastCuptiStatus_ != CUPTI_SUCCESS) {
-    VLOG(1)  << "Failed cuptiSubscribe, status: " << lastCuptiStatus_;
+    LOG(WARNING) << "Failed cuptiSubscribe, status: " << lastCuptiStatus_;
+    LOG(WARNING) << "CUPTI initialization failed - "
+                 << "CUDA profiler activities will be missing";
+    if (lastCuptiStatus_ == CUPTI_ERROR_INSUFFICIENT_PRIVILEGES) {
+      LOG(INFO) << "For CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
+                << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
+    }
   }
 
   initSuccess_ = (lastCuptiStatus_ == CUPTI_SUCCESS);
+#endif
+}
+
+void CuptiCallbackApi::deinitCallbackApi() {
+#ifdef HAS_CUPTI
+  if (!initSuccess_) {
+    return;
+  }
+  lastCuptiStatus_ = CUPTI_CALL_NOWARN(
+    cuptiUnsubscribe(subscriber_));
+  if (lastCuptiStatus_ != CUPTI_SUCCESS) {
+    LOG(WARNING) << "Failed cuptiUnsubscribe, status: " << lastCuptiStatus_;
+  }
+  initSuccess_ = false;
 #endif
 }
 
@@ -270,6 +294,7 @@ bool CuptiCallbackApi::deleteCallback(
 bool CuptiCallbackApi::enableCallback(
     CUpti_CallbackDomain domain, CUpti_CallbackId cbid) {
 #ifdef HAS_CUPTI
+  initCallbackApi();
   if (initSuccess_) {
     lastCuptiStatus_ = CUPTI_CALL_NOWARN(
         cuptiEnableCallback(1, subscriber_, domain, cbid));
@@ -296,6 +321,7 @@ bool CuptiCallbackApi::disableCallback(
 bool CuptiCallbackApi::enableCallbackDomain(
     CUpti_CallbackDomain domain) {
 #ifdef HAS_CUPTI
+  initCallbackApi();
   if (initSuccess_) {
     lastCuptiStatus_ = CUPTI_CALL_NOWARN(
         cuptiEnableDomain(1, subscriber_, domain));
@@ -321,6 +347,7 @@ bool CuptiCallbackApi::disableCallbackDomain(
 
 bool CuptiCallbackApi::reenableCallbacks() {
 #ifdef HAS_CUPTI
+  initCallbackApi();
   if (initSuccess_) {
     for (auto& cbpair : enabledCallbacks_) {
       if ((uint32_t)cbpair.second == MAX_CUPTI_CALLBACK_ID_ALL) {

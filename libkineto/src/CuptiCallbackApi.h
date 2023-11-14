@@ -71,8 +71,9 @@ class CuptiCallbackApi {
   static std::shared_ptr<CuptiCallbackApi> singleton();
 
   void initCallbackApi();
+  void deinitCallbackApi();
 
-  bool initSuccess() const {
+  bool initStatus() const {
     return initSuccess_;
   }
 

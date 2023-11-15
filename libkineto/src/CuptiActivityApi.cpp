@@ -41,19 +41,13 @@ inline bool cuptiLazyInit_() {
 
 inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
   // Re-enable callbacks from the past if they exist.
-  LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
-  VLOG(1) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
-  cbapi_->initCallbackApi();
-  if (cbapi_->initSuccess()) {
-    VLOG(1) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
-    bool status = cbapi_->reenableCallbacks();
-    if (!status) {
-      LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
-    } else {
-      LOG(INFO) << "Re-enable previous CUPTI callbacks - Successful";
-    }
+  VLOG(1) << "Re-enable previous CUPTI callbacks - Starting";
+  bool status = cbapi_->reenableCallbacks();
+  LOG(INFO) << "  CUPTI subscriber after enable:" << cbapi_->getCuptiSubscriber();
+  if (!status) {
+    LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
   } else {
-    LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
+    VLOG(1) << "Re-enable previous CUPTI callbacks - Successful";
   }
 }
 #endif
@@ -306,10 +300,13 @@ void CuptiActivityApi::bufferCompleted(
 void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_CUPTI
-  // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
   auto cbapi_ = CuptiCallbackApi::singleton();
-  if (!tracingEnabled_ && !cbapi_->initSuccess() && cuptiLazyInit_()) {
-    reenableCuptiCallbacks_(cbapi_);
+  if (!tracingEnabled_ && !cbapi_->initStatus()) {
+    cbapi_->initCallbackApi();
+    // Lazily support init of CUPTI Callbacks.
+    if (cuptiLazyInit_()) {
+      reenableCuptiCallbacks_(cbapi_);
+    }
   }
   cbapi_.reset();
 
@@ -396,13 +393,6 @@ void CuptiActivityApi::teardownContext() {
     // PyTorch Profiler is synchronous, so teardown needs to be run async in this thread.
     std::thread teardownThread([&] {
       auto cbapi_ = CuptiCallbackApi::singleton();
-      if (!cbapi_->initSuccess()) {
-        cbapi_->initCallbackApi();
-        if (!cbapi_->initSuccess()) {
-          LOG(WARNING) << "CUPTI Callback failed to init, skipping teardown";
-          return;
-        }
-      }
       // Subscribe callbacks to call cuptiFinalize in the exit callback of these APIs
       bool status = cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
       status = status && cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
@@ -414,7 +404,7 @@ void CuptiActivityApi::teardownContext() {
       // Force Flush before finalize
       CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 
-      LOG(INFO) << "  CUPTI subscriber before finalize:" << cbapi_->getCuptiSubscriber();
+      VLOG(1) << "  CUPTI subscriber before finalize:" << cbapi_->getCuptiSubscriber();
       teardownCupti_ = 1;
       std::unique_lock<std::mutex> lck(finalizeMutex_);
       finalizeCond_.wait(lck, [&]{return teardownCupti_ == 0;});
@@ -427,6 +417,7 @@ void CuptiActivityApi::teardownContext() {
       // Remove the callbacks used specifically for cuptiFinalize
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
       cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      cbapi_->deinitCallbackApi();
 
       // Re-init CUPTI Callbacks if Lazy Re-init is not enabled.
       if (!cuptiLazyInit_()) {

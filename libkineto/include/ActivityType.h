@@ -29,13 +29,13 @@ enum class ActivityType {
     CPU_INSTANT_EVENT, // host side point-like events
     PYTHON_FUNCTION,
     OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
+    MTIA_RUNTIME, // host side MTIA runtime events
+    MTIA_CCP_EVENTS, // MTIA ondevice CCP events
 
     // Optional Activity types
     CUDA_SYNC, // synchronization events between runtime and kernels
     GLOW_RUNTIME, // host side glow runtime events
-    MTIA_RUNTIME, // host side MTIA runtime events
     CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
-    MTIA_CCP_EVENTS, // MTIA ondevice CCP events
     HPU_OP, // HPU host side runtime event
     XPU_RUNTIME, // host side xpu runtime events
 

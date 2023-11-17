@@ -37,6 +37,7 @@ extern "C" {
   void suppressLibkinetoLogMessages();
   int InitializeInjection(void);
   void libkineto_init(bool cpuOnly, bool logOnError);
+  bool hasTestEnvVar();
 }
 
 namespace libkineto {

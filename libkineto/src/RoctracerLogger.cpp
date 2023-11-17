@@ -11,6 +11,8 @@
 #include <cstring>
 #include <chrono>
 #include <time.h>
+#include <mutex>
+#include <unistd.h>
 
 #include "ThreadUtil.h"
 
@@ -23,6 +25,20 @@ static timestamp_t timespec_to_ns(const timespec& time) {
 using namespace std::chrono;
 
 constexpr size_t kBufSize(2 * 1024 * 1024);
+
+class Flush
+{
+public:
+  std::mutex mutex_;
+  std::atomic<uint64_t> maxCorrelationId_;
+  uint64_t maxCompletedCorrelationId_ {0};
+  void reportCorrelation(const uint64_t &cid) {
+    uint64_t prev = maxCorrelationId_;
+    while (prev < cid && !maxCorrelationId_.compare_exchange_weak(prev, cid))
+      {}
+  }
+};
+static Flush s_flush;
 
 RoctracerLogger& RoctracerLogger::singleton() {
   static RoctracerLogger instance;
@@ -91,6 +107,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
         case HIP_API_ID_hipExtLaunchKernel:
         case HIP_API_ID_hipLaunchCooperativeKernel:     // Should work here
           {
+          s_flush.reportCorrelation(data->correlation_id);
           auto &args = data->args.hipLaunchKernel;
           dis->kernelRows_.emplace_back(data->correlation_id,
                               domain,
@@ -116,6 +133,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
         case HIP_API_ID_hipModuleLaunchKernel:
         case HIP_API_ID_hipExtModuleLaunchKernel:
           {
+          s_flush.reportCorrelation(data->correlation_id);
           auto &args = data->args.hipModuleLaunchKernel;
           dis->kernelRows_.emplace_back(data->correlation_id,
                               domain,
@@ -252,6 +270,18 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
   auto &gpuTraceBuffers = singleton().gpuTraceBuffers_;
   memcpy(buffer, begin, size);
   gpuTraceBuffers->emplace_back(buffer, size);
+
+  // Log latest completed correlation id.  Used to ensure we have flushed all data on stop
+  std::unique_lock<std::mutex> lock(s_flush.mutex_);
+  const roctracer_record_t* record = (const roctracer_record_t*)(begin);
+  const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
+
+  while (record < end_record) {
+    if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
+       s_flush.maxCompletedCorrelationId_ = record->correlation_id;
+    }
+    roctracer_next_record(record, &record);
+  }
 }
 
 void RoctracerLogger::startLogging() {
@@ -312,12 +342,31 @@ void RoctracerLogger::startLogging() {
   }
 
   externalCorrelationEnabled_ = true;
+  logging_ = true;
   roctracer_start();
 }
 
 void RoctracerLogger::stopLogging() {
-  roctracer_stop();
+  if (logging_ == false)
+    return;
+  logging_ = false;
+
   roctracer_flush_activity_expl(hccPool_);
+
+  // If we are stopping the tracer, implement reliable flushing
+  std::unique_lock<std::mutex> lock(s_flush.mutex_);
+
+  auto correlationId = s_flush.maxCorrelationId_.load();  // load ending id from the running max
+
+  // Poll on the worker finding the final correlation id
+  while (s_flush.maxCompletedCorrelationId_ < correlationId) {
+    lock.unlock();
+    roctracer_flush_activity_expl(hccPool_);
+    usleep(1000);
+    lock.lock();
+  }
+
+  roctracer_stop();
 }
 
 void RoctracerLogger::endTracing() {

@@ -96,7 +96,9 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::EXTERNAL_CORRELATION,
                             ActivityType::OVERHEAD,
                             ActivityType::CUDA_RUNTIME,
-                            ActivityType::CUDA_DRIVER}));
+                            ActivityType::CUDA_DRIVER,
+                            ActivityType::MTIA_RUNTIME,
+                            ActivityType::MTIA_CCP_EVENTS}));
 
   Config cfg2;
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,kernel"));

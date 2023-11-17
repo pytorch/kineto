@@ -185,10 +185,16 @@ int InitializeInjection(void) {
   return 1;
 }
 
+bool hasTestEnvVar() {
+  return getenv("GTEST_OUTPUT") != nullptr || getenv("FB_TEST") != nullptr
+     || getenv("PYTORCH_TEST") != nullptr || getenv("TEST_PILOT") != nullptr;
+}
+
 void suppressLibkinetoLogMessages() {
   // Only suppress messages if explicit override wasn't provided
   const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
-  if (!logLevelEnv || !*logLevelEnv) {
+  // For unit tests, don't suppress log verbosity.
+  if (!hasTestEnvVar() && (!logLevelEnv || !*logLevelEnv)) {
     SET_LOG_SEVERITY_LEVEL(ERROR);
   }
 }

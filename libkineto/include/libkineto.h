@@ -153,7 +153,6 @@ class LibkinetoApi {
   ClientInterface* client_{};
   int32_t clientRegisterThread_{0};
 
-  bool isLoaded_{false};
   std::vector<ChildActivityProfilerFactory> childProfilerFactories_;
 };
 

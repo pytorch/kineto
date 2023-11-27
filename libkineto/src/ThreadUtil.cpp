@@ -56,6 +56,8 @@ int32_t systemThreadId() {
     _sysTid = (int32_t)syscall(SYS_thread_selfid);
 #elif defined _MSC_VER
     _sysTid = (int32_t)GetCurrentThreadId();
+#elif defined __FreeBSD__
+    syscall(SYS_thr_self, &_sysTid);
 #else
     _sysTid = (int32_t)syscall(SYS_gettid);
 #endif

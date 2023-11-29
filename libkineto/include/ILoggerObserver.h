@@ -20,6 +20,8 @@ constexpr char kPostProcessingStage[] = "Post Processing";
 #include <map>
 #include <vector>
 
+#include <stdint.h>
+
 namespace libkineto {
 
 enum LoggerOutputType {

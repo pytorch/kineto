@@ -351,6 +351,7 @@ void RoctracerLogger::stopLogging() {
     return;
   logging_ = false;
 
+  hipDeviceSynchronize();
   roctracer_flush_activity_expl(hccPool_);
 
   // If we are stopping the tracer, implement reliable flushing
@@ -359,7 +360,8 @@ void RoctracerLogger::stopLogging() {
   auto correlationId = s_flush.maxCorrelationId_.load();  // load ending id from the running max
 
   // Poll on the worker finding the final correlation id
-  while (s_flush.maxCompletedCorrelationId_ < correlationId) {
+  int timeout = 50;
+  while ((s_flush.maxCompletedCorrelationId_ < correlationId) && --timeout) {
     lock.unlock();
     roctracer_flush_activity_expl(hccPool_);
     usleep(1000);

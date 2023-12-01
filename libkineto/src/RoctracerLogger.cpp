@@ -14,6 +14,7 @@
 #include <mutex>
 #include <unistd.h>
 
+#include "Logger.h"
 #include "ThreadUtil.h"
 
 typedef uint64_t timestamp_t;
@@ -351,7 +352,10 @@ void RoctracerLogger::stopLogging() {
     return;
   logging_ = false;
 
-  hipDeviceSynchronize();
+  hipError_t err = hipDeviceSynchronize();
+  if (err != hipSuccess) {
+    LOG(ERROR) << "hipDeviceSynchronize failed with code " << err;
+  }
   roctracer_flush_activity_expl(hccPool_);
 
   // If we are stopping the tracer, implement reliable flushing

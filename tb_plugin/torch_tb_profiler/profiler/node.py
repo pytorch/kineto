@@ -17,13 +17,14 @@ ExcludeOpName = ['DataParallel.forward', 'DistributedDataParallel.forward']
 
 class BaseNode(ABC):
     def __init__(self, name: str, start_time: int, end_time: int, type: str, tid: int,
-                 external_id: Optional[int] = None):
+                 external_id: Optional[int] = None, linked_id: Optional[int] = None):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
         self.type = type
         self.tid = tid
         self.external_id = external_id  # For consistency check.
+        self.linked_id = linked_id
 
     @staticmethod
     def get_node_argument(event: DurationEvent):
@@ -37,6 +38,9 @@ class BaseNode(ABC):
         external_id = getattr(event, 'external_id', None)
         if external_id is not None:
             kwargs['external_id'] = external_id
+        linked_id = getattr(event, 'linked_id', None)
+        if linked_id is not None:
+            kwargs['linked_id'] = linked_id
 
         return kwargs
 

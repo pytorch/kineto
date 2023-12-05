@@ -152,7 +152,7 @@ class NodeParserMixin:
             device_nodes = corrid_to_device.pop(corrid, None)
             rt_node = RuntimeNode.create(event, device_nodes)
             corrid_to_runtime[corrid] = rt_node
-            externalid_to_runtime[rt_node.external_id].append(rt_node)
+            externalid_to_runtime[rt_node.linked_id].append(rt_node)
             # Some runtimes has external_id 0, which will not be correlated to any operator.
             # So get them and attach them to root node.
             if rt_node.external_id == 0:

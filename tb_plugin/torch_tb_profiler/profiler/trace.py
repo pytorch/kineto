@@ -40,6 +40,8 @@ EventTypeMap = {
     'cpu_op': EventTypes.OPERATOR,
     'operator': EventTypes.OPERATOR,
     'runtime': EventTypes.RUNTIME,
+    'cuda_driver': EventTypes.RUNTIME,
+    'cuda_runtime': EventTypes.RUNTIME,
     'kernel': EventTypes.KERNEL,
     'memcpy': EventTypes.MEMCPY,
     'gpu_memcpy': EventTypes.MEMCPY,
@@ -74,6 +76,7 @@ class DurationEvent(BaseEvent):
             extern_id = self.args.get('External id')
         self.external_id = extern_id
         self.correlation_id: Optional[int] = self.args.get('correlation')
+        self.linked_id: Optional[int] = self.args.get('Linked id')
 
 
 class KernelEvent(DurationEvent):

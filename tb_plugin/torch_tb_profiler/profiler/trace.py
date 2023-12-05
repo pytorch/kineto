@@ -190,8 +190,7 @@ def create_trace_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
         name = event.get('name')
         if name and name.startswith('ProfilerStep#'):
             return ProfilerStepEvent(event)
-        if name in GlooOpNameSet or name in NcclOpNameSet:
-            return OperatorEvent(event_type, event)
+        return OperatorEvent(event_type, event)
     elif event_type == EventTypes.OPERATOR:
         name = event.get('name')
         if name and name.startswith('ProfilerStep#'):

@@ -291,7 +291,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     session->processTrace(logger);
   }
 
-  LOG(INFO) << "Error info: " << ecs_;
+  LOG(INFO) << "Record counts: " << ecs_;
 
   finalizeTrace(*config_, logger);
 }

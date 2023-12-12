@@ -121,7 +121,7 @@ class GenericTraceActivity : public ITraceActivity {
     return json.str();
   }
 
-  virtual ~GenericTraceActivity() override {};
+  virtual ~GenericTraceActivity() override {}
 
   int64_t startTime{0};
   int64_t endTime{0};

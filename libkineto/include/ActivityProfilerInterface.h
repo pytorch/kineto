@@ -26,7 +26,7 @@ class Config;
 class ActivityProfilerInterface {
 
  public:
-  virtual ~ActivityProfilerInterface() {};
+  virtual ~ActivityProfilerInterface() {}
 
   virtual void init() {}
   virtual bool isInitialized() {

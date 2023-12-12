@@ -18,7 +18,7 @@
 namespace libkineto {
 
 struct LoggerTypeName {
-  constexpr LoggerTypeName(const char* n, LoggerOutputType t) : name(n), type(t) {};
+  constexpr LoggerTypeName(const char* n, LoggerOutputType t) : name(n), type(t) {}
   const char* name;
   LoggerOutputType type;
 };

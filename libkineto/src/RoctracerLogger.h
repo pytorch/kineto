@@ -130,6 +130,24 @@ struct mallocRow : public roctracerRow {
   size_t size;
 };
 
+struct roctracerOpRow {
+  roctracerOpRow(uint64_t id, uint32_t domain, uint32_t kind, uint32_t op
+               , uint32_t device, uint32_t queue, uint64_t begin
+               , uint64_t end, const std::string &kernelName)
+    : id(id), domain(domain), kind(kind), op(op), device(device)
+    , queue(queue), begin(begin), end(end), kernelName(kernelName) {}
+
+  uint64_t id;  // correlation_id
+  uint32_t domain;
+  uint32_t kind;
+  uint32_t op;
+  uint32_t device;
+  uint32_t queue;
+  uint64_t begin;
+  uint64_t end;
+  std::string kernelName;
+};
+
 
 class RoctracerLogger {
  public:
@@ -172,9 +190,9 @@ class RoctracerLogger {
   std::deque<kernelRow> kernelRows_;
   std::deque<copyRow> copyRows_;
   std::deque<mallocRow> mallocRows_;
+  std::deque<roctracerOpRow> opRows_;
   std::map<uint64_t,uint64_t> externalCorrelations_[CorrelationDomain::size];	// tracer -> ext
 
-  std::unique_ptr<std::list<RoctracerActivityBuffer>> gpuTraceBuffers_;
   bool externalCorrelationEnabled_{true};
   bool logging_{false};
 

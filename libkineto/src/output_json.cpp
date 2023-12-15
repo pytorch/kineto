@@ -33,8 +33,8 @@ static constexpr char kFlowEnd = 'f';
 static constexpr const char* kParamCommsCallName = "record_param_comms";
 // Collective function metadata populated from CPU op to GPU kernel
 static constexpr const char* kDtype = "dtype";
-static constexpr const char* kInMsgSize = "In msg size";
-static constexpr const char* kOutMsgSize = "Out msg size";
+static constexpr const char* kInMsgNelems = "In msg nelems";
+static constexpr const char* kOutMsgNelems = "Out msg nelems";
 static constexpr const char* kGroupSize = "Group size";
 static constexpr const char* kInSplit = "In split size";
 static constexpr const char* kOutSplit = "Out split size";
@@ -311,8 +311,8 @@ void ChromeTraceLogger::handleActivity(
       op.linkedActivity()->name() == kParamCommsCallName) {
     const auto* collectiveRecord = op.linkedActivity();
     // Get the value out of the collective record
-    const auto& inMsgSize = collectiveRecord->getMetadataValue(kInMsgSize);
-    const auto& outMsgSize = collectiveRecord->getMetadataValue(kOutMsgSize);
+    const auto& inMsgSize = collectiveRecord->getMetadataValue(kInMsgNelems);
+    const auto& outMsgSize = collectiveRecord->getMetadataValue(kOutMsgNelems);
     const auto& groupSize = collectiveRecord->getMetadataValue(kGroupSize);
     const auto& dtype = collectiveRecord->getMetadataValue(kDtype);
     if (!inMsgSize.empty() && !outMsgSize.empty() && !groupSize.empty() &&
@@ -322,9 +322,9 @@ void ChromeTraceLogger::handleActivity(
       }
       arg_values.append(fmt::format(
           "\"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}",
-          kInMsgSize,
+          kInMsgNelems,
           inMsgSize,
-          kOutMsgSize,
+          kOutMsgNelems,
           outMsgSize,
           kGroupSize,
           groupSize,

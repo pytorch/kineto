@@ -267,7 +267,8 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
 // Clone this here.  Static value that may not be present in earlier rocm headers
 typedef enum {
   HIP_OP_DISPATCH_KIND_UNKNOWN_ = 0,
-  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0
+  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0,
+  HIP_OP_DISPATCH_KIND_TASK_ = 0x11F1
 } hip_op_dispatch_kind_t_;
 
 void RoctracerLogger::activity_callback(const char* begin, const char* end, void* arg)
@@ -292,7 +293,8 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
                record->thread_id,
                record->begin_ns,
                record->end_ns,
-               (record->kind == HIP_OP_DISPATCH_KIND_KERNEL_)
+               ((record->kind == HIP_OP_DISPATCH_KIND_KERNEL_)
+                 || (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
                  ? demangle(record->kernel_name)
                  : std::string()
              );

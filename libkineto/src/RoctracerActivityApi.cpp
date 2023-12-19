@@ -39,7 +39,8 @@ typedef enum {
 
 typedef enum {
   HIP_OP_DISPATCH_KIND_UNKNOWN_ = 0,
-  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0
+  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0,
+  HIP_OP_DISPATCH_KIND_TASK_ = 0x11F1
 } hip_op_dispatch_kind_t_;
 
 typedef enum {
@@ -289,6 +290,7 @@ int RoctracerActivityApi::processActivities(
         a.activityType = ActivityType::GPU_MEMSET;
         break;
       case HIP_OP_DISPATCH_KIND_KERNEL_:
+      case HIP_OP_DISPATCH_KIND_TASK_:
       default:
         if (!isLogged(ActivityType::CONCURRENT_KERNEL))
           filtered = true;

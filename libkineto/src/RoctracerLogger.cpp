@@ -16,6 +16,7 @@
 
 #include "Logger.h"
 #include "ThreadUtil.h"
+#include "Demangle.h"
 
 typedef uint64_t timestamp_t;
 
@@ -47,7 +48,6 @@ RoctracerLogger& RoctracerLogger::singleton() {
 }
 
 RoctracerLogger::RoctracerLogger() {
-  gpuTraceBuffers_ = std::make_unique<std::list<RoctracerActivityBuffer>>();
 }
 
 RoctracerLogger::~RoctracerLogger() {
@@ -78,7 +78,7 @@ void RoctracerLogger::clearLogs() {
   kernelRows_.clear();
   copyRows_.clear();
   mallocRows_.clear();
-  gpuTraceBuffers_->clear();
+  opRows_.clear();
   for (int i = 0; i < CorrelationDomain::size; ++i) {
     externalCorrelations_[i].clear();
   }
@@ -264,13 +264,16 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
   }
 }
 
+// Clone this here.  Static value that may not be present in earlier rocm headers
+typedef enum {
+  HIP_OP_DISPATCH_KIND_UNKNOWN_ = 0,
+  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0,
+  HIP_OP_DISPATCH_KIND_TASK_ = 0x11F1
+} hip_op_dispatch_kind_t_;
+
 void RoctracerLogger::activity_callback(const char* begin, const char* end, void* arg)
 {
-  size_t size = end - begin;
-  uint8_t *buffer = (uint8_t*) malloc(size);
-  auto &gpuTraceBuffers = singleton().gpuTraceBuffers_;
-  memcpy(buffer, begin, size);
-  gpuTraceBuffers->emplace_back(buffer, size);
+  RoctracerLogger *dis = &singleton();
 
   // Log latest completed correlation id.  Used to ensure we have flushed all data on stop
   std::unique_lock<std::mutex> lock(s_flush.mutex_);
@@ -281,6 +284,20 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
        s_flush.maxCompletedCorrelationId_ = record->correlation_id;
     }
+
+    dis->opRows_.emplace_back(record->correlation_id,
+               record->domain,
+               record->kind,
+               record->op,
+               record->process_id,
+               record->thread_id,
+               record->begin_ns,
+               record->end_ns,
+               ((record->kind == HIP_OP_DISPATCH_KIND_KERNEL_)
+                 || (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
+                 ? demangle(record->kernel_name)
+                 : std::string()
+             );
     roctracer_next_record(record, &record);
   }
 }

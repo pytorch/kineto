@@ -39,7 +39,8 @@ typedef enum {
 
 typedef enum {
   HIP_OP_DISPATCH_KIND_UNKNOWN_ = 0,
-  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0
+  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0,
+  HIP_OP_DISPATCH_KIND_TASK_ = 0x11F1
 } hip_op_dispatch_kind_t_;
 
 typedef enum {
@@ -235,27 +236,6 @@ int RoctracerActivityApi::processActivities(
       a.addMetadata("shared size", item.groupSegmentSize);
       a.addMetadataQuoted("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
 
-      // Stash launches to tie to the async ops
-      kernelLaunches_[a.id] = a;
-
-      // Stash kernel names to tie to the async ops
-      std::string name;
-      if (item.functionAddr != nullptr) {
-        name = demangle(hipKernelNameRefByPtr(item.functionAddr, item.stream));
-      }
-      else if (item.function != nullptr) {
-        name = demangle(hipKernelNameRef(item.function));
-      }
-      if (!name.empty()) {
-        uint32_t string_id = reverseStrings_[name];
-        if (string_id == 0) {
-          string_id = nextStringId_++;
-          reverseStrings_[name] = string_id;
-          strings_[string_id] = name;
-        }
-        kernelNames_[item.id] = string_id;
-      }
-
       logger.handleGenericActivity(a);
       ++count;
     }
@@ -263,99 +243,66 @@ int RoctracerActivityApi::processActivities(
 
   // Async Ops
 
-  for (auto& buffer : *d->gpuTraceBuffers_) {
-    const roctracer_record_t* record = (const roctracer_record_t*)(buffer.data_);
-    const roctracer_record_t* end_record = (const roctracer_record_t*)(buffer.data_ + buffer.validSize_);
+  for (auto &item : d->opRows_) {
+    if (!inRange(startTime, endTime, item.begin))
+          continue;
     GenericTraceActivity a;
 
-    while (record < end_record) {
-      if (record->domain == ACTIVITY_DOMAIN_HIP_API) {
-        const char *name = roctracer_op_string(record->domain, record->op, record->kind);
-        a.device = record->process_id;
-        a.resource = record->thread_id;
+    // Overlay launch metadata for kernels
+    auto kit = kernelLaunches_.find(item.id);
+    if (kit != kernelLaunches_.end()) {
+      a = (*kit).second;
+    }
 
-        a.startTime = (record->begin_ns + toffset) / 1000;
-        a.endTime = (record->end_ns + toffset) / 1000;
-        a.id = record->correlation_id;
+    const char *name = roctracer_op_string(item.domain, item.op, item.kind);
+    a.device = item.device;
+    a.resource = item.queue;
 
-        a.activityType = ActivityType::CUDA_RUNTIME;
-        a.activityName = std::string(name);
-        a.flow.id = record->correlation_id;
-        a.flow.type = kLinkAsyncCpuGpu;
-        a.flow.start = true;
+    a.startTime = (item.begin + toffset) / 1000;
+    a.endTime = (item.end + toffset) / 1000;
+    a.id = item.id;
 
-        auto it = externalCorrelations.find(a.id);
-        a.linked = linkedActivity(it == externalCorrelations.end() ? 0 : it->second);
+    a.activityType = ActivityType::CONCURRENT_KERNEL;
+    a.activityName = item.kernelName.length() > 0 ? item.kernelName : std::string(name);
+    a.flow.id = item.id;
+    a.flow.type = kLinkAsyncCpuGpu;
+    a.flow.start = false;
 
-        if (inRange(startTime, endTime, record->begin_ns)) {
-            logger.handleGenericActivity(a);
-            ++count;
-        }
-      }
-      else if (record->domain == ACTIVITY_DOMAIN_HCC_OPS) {
-        // Overlay launch metadata for kernels
-        auto kit = kernelLaunches_.find(record->correlation_id);
-        if (kit != kernelLaunches_.end()) {
-          a = (*kit).second;
-        }
+    auto eit = externalCorrelations.find(a.id);
+    a.linked = linkedActivity(eit == externalCorrelations.end() ? 0 : eit->second);
 
-        const char *name = roctracer_op_string(record->domain, record->op, record->kind);
-        a.device = record->device_id;
-        a.resource = record->queue_id;
+    bool filtered = false;
 
-        a.startTime = (record->begin_ns + toffset) / 1000;
-        a.endTime = (record->end_ns + toffset) / 1000;
-        a.id = record->correlation_id;
-
+    switch (item.kind) {
+      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+        if (!isLogged(ActivityType::GPU_MEMCPY))
+          filtered = true;
+        a.activityType = ActivityType::GPU_MEMCPY;
+        break;
+      case HIP_OP_COPY_KIND_FILL_BUFFER_:
+        if (!isLogged(ActivityType::GPU_MEMSET))
+          filtered = true;
+        a.activityType = ActivityType::GPU_MEMSET;
+        break;
+      case HIP_OP_DISPATCH_KIND_KERNEL_:
+      case HIP_OP_DISPATCH_KIND_TASK_:
+      default:
+        if (!isLogged(ActivityType::CONCURRENT_KERNEL))
+          filtered = true;
+        if (item.op == HIP_OP_ID_BARRIER)  // Don't record barriers/markers
+          filtered = true;
         a.activityType = ActivityType::CONCURRENT_KERNEL;
-        a.activityName = std::string(name);
-        a.flow.id = record->correlation_id;
-        a.flow.type = kLinkAsyncCpuGpu;
-        a.flow.start = false;
+        break;
+    }
 
-        auto eit = externalCorrelations.find(a.id);
-        a.linked = linkedActivity(eit == externalCorrelations.end() ? 0 : eit->second);
-
-        auto it = kernelNames_.find(record->correlation_id);
-        if (it != kernelNames_.end()) {
-          a.activityName = strings_[it->second];
-        }
-
-        bool filtered = false;
-
-        switch (record->kind) {
-          case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-          case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-          case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-          case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
-          case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
-          case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
-            if (!isLogged(ActivityType::GPU_MEMCPY))
-              filtered = true;
-            a.activityType = ActivityType::GPU_MEMCPY;
-            break;
-          case HIP_OP_COPY_KIND_FILL_BUFFER_:
-            if (!isLogged(ActivityType::GPU_MEMSET))
-              filtered = true;
-            a.activityType = ActivityType::GPU_MEMSET;
-            break;
-          case HIP_OP_DISPATCH_KIND_KERNEL_:
-          default:
-            if (!isLogged(ActivityType::CONCURRENT_KERNEL))
-              filtered = true;
-            if (record->op == HIP_OP_ID_BARRIER)  // Don't record barriers/markers
-              filtered = true;
-            a.activityType = ActivityType::CONCURRENT_KERNEL;
-            break;
-        }
-
-        if (!filtered && inRange(startTime, endTime, record->begin_ns)) {
-            logger.handleGenericActivity(a);
-            ++count;
-        }
-      }
-
-      roctracer_next_record(record, &record);
+    if (!filtered && inRange(startTime, endTime, item.begin)) {
+        logger.handleGenericActivity(a);
+        ++count;
     }
   }
   return count;

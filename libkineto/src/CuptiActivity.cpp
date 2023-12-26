@@ -101,6 +101,9 @@ constexpr int64_t us(int64_t timestamp) {
 template<>
 inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() const {
   const CUpti_ActivityKernel4& kernel = raw();
+  float blocksPerSmVal = blocksPerSm(kernel);
+  float warpsPerSmVal = warpsPerSm(kernel);
+
   // clang-format off
   return fmt::format(R"JSON(
       "queued": {}, "device": {}, "context": {},
@@ -116,8 +119,8 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() cons
       kernel.streamId, kernel.correlationId,
       kernel.registersPerThread,
       kernel.staticSharedMemory + kernel.dynamicSharedMemory,
-      blocksPerSm(kernel),
-      warpsPerSm(kernel),
+      std::isinf(blocksPerSmVal) ? "\"inf\"" : std::to_string(blocksPerSmVal),
+      std::isinf(warpsPerSmVal) ? "\"inf\"" : std::to_string(warpsPerSmVal),
       kernel.gridX, kernel.gridY, kernel.gridZ,
       kernel.blockX, kernel.blockY, kernel.blockZ,
       (int) (0.5 + kernelOccupancy(kernel) * 100.0));

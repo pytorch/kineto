@@ -12,6 +12,7 @@
 #include <strings.h>
 #include <time.h>
 #include <chrono>
+#include <folly/json.h>
 
 #ifdef __linux__
 #include <sys/stat.h>
@@ -34,6 +35,16 @@
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 
+const std::string kParamCommsCallName = "record_param_comms";
+static constexpr auto kCommuName = "Collective name";
+static constexpr auto kDtype = "dtype";
+static constexpr auto kInMsgNelems = "In msg nelems";
+static constexpr auto kOutMsgNelems = "Out msg nelems";
+static constexpr auto kInSplit = "In split size";
+static constexpr auto kOutSplit = "Out split size";
+static constexpr auto kGroupSize = "Group size";
+static constexpr int32_t kTruncatLength = 30;
+
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #define CUDA_MEMCPY CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020
 #define CUDA_STREAM_SYNC CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020
@@ -54,13 +65,23 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
     gpuOpCount = 0;
   }
 
-  void addOp(std::string name, int64_t startTime, int64_t endTime, int64_t correlation) {
+  void addOp(
+      std::string name,
+      int64_t startTime,
+      int64_t endTime,
+      int64_t correlation,
+      const std::unordered_map<std::string, std::string>& metadataMap = {}) {
     GenericTraceActivity op(span, ActivityType::CPU_OP, name);
     op.startTime = startTime;
     op.endTime = endTime;
     op.device = systemThreadId();
     op.resource = systemThreadId();
     op.id = correlation;
+
+    for (const auto& [key, val] : metadataMap) {
+      op.addMetadata(key, val);
+    }
+
     emplace_activity(std::move(op));
     span.opCount++;
   }
@@ -135,6 +156,24 @@ struct MockCuptiActivityBuffer {
     act.type = type;
     act.contextId = 0;
     act.streamId = stream;
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
+  void addCollectiveActivity(
+      int64_t start_us, int64_t end_us, int64_t correlation) {
+    auto& act = createActivity<CUpti_ActivityKernel4>(
+        start_us, end_us, correlation);
+    act.name = "collective_gpu";
+    act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
+    act.queued = 0;
+    act.deviceId = 0;
+    act.contextId = 1;
+    act.streamId = 0;
+    act.registersPerThread = 32;
+    act.staticSharedMemory = 1024;
+    act.dynamicSharedMemory = 1024;
+    act.gridX = act.gridY = act.gridZ = 1;
+    act.blockX = act.blockY = act.blockZ = 1;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -496,6 +535,142 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
+#endif
+}
+
+TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
+  // Set logging level for debugging purpose
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  // Start and stop profiling
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_us = 100;
+  int64_t duration_us = 300;
+  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + microseconds(duration_us));
+
+  int64_t kernelLaunchTime = 120;
+  profiler.recordThreadInfo();
+
+  // Prepare metadata map
+  std::unordered_map<std::string, std::string> metadataMap;
+  metadataMap.emplace(kCommuName, fmt::format("\"{}\"", "_allgather_base"));
+  metadataMap.emplace(kDtype, fmt::format("\"{}\"", "Float"));
+  metadataMap.emplace(kInMsgNelems, "65664");
+  metadataMap.emplace(kOutMsgNelems, "131328");
+  metadataMap.emplace(kGroupSize, "2");
+
+  std::vector<int64_t> inSplitSizes(50, 0);
+  std::string inSplitSizesStr = "";
+  // Logic is copied from: https://fburl.com/code/811a3wq8
+  if (!inSplitSizes.empty() && inSplitSizes.size() <= kTruncatLength) {
+    inSplitSizesStr = fmt::format("\"[{}]\"", fmt::join(inSplitSizes, ", "));
+    metadataMap.emplace(kInSplit, inSplitSizesStr);
+  } else if (inSplitSizes.size() > kTruncatLength) {
+    inSplitSizesStr = fmt::format(
+        "\"[{}, ...]\"",
+        fmt::join(
+            inSplitSizes.begin(), inSplitSizes.begin() + kTruncatLength, ", "));
+    metadataMap.emplace(kInSplit, inSplitSizesStr);
+  }
+
+  std::vector<int64_t> outSplitSizes(20, 1);
+  std::string outSplitSizesStr = "";
+  // Logic is copied from: https://fburl.com/code/811a3wq8
+  if (!outSplitSizes.empty() && outSplitSizes.size() <= kTruncatLength) {
+    outSplitSizesStr = fmt::format("\"[{}]\"", fmt::join(outSplitSizes, ", "));
+    metadataMap.emplace(kOutSplit, outSplitSizesStr);
+  } else if (outSplitSizes.size() > kTruncatLength) {
+    outSplitSizesStr = fmt::format(
+        "\"[{}, ...]\"",
+        fmt::join(
+            outSplitSizes.begin(),
+            outSplitSizes.begin() + kTruncatLength,
+            ", "));
+    metadataMap.emplace(kOutSplit, outSplitSizesStr);
+  }
+
+  // Set up CPU events
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_us, start_time_us + duration_us);
+  cpuOps->addOp(
+      kParamCommsCallName,
+      kernelLaunchTime,
+      kernelLaunchTime + 10,
+      1,
+      metadataMap);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  // Set up corresponding GPU events and connect with CPU events
+  // via correlationId
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, 1);
+  gpuOps->addCollectiveActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  // Process trace
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.setLogger(logger.get());
+
+  // Check the content of GPU event and we should see extra
+  // collective fields get populated from CPU event.
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  EXPECT_EQ(2, trace.activities()->size());
+  auto& cpu_annotation = trace.activities()->at(0);
+  auto& gpu_annotation = trace.activities()->at(1);
+  EXPECT_EQ(cpu_annotation->name(), kParamCommsCallName);
+  EXPECT_EQ(gpu_annotation->name(), "collective_gpu");
+
+  // Check vector with length > 30 get truncated successfully
+  std::vector<int64_t> expectedInSplit(kTruncatLength, 0);
+  auto expectedInSplitStr =
+      fmt::format("\"[{}, ...]\"", fmt::join(expectedInSplit, ", "));
+  EXPECT_EQ(cpu_annotation->getMetadataValue(kInSplit), expectedInSplitStr);
+
+#ifdef __linux__
+  // Test saved output can be loaded as JSON
+  char filename[] = "/tmp/libkineto_testXXXXXX.json";
+  mkstemps(filename, 5);
+  LOG(INFO) << "Logging to tmp file: " << filename;
+  trace.save(filename);
+
+  // Check that the saved JSON file can be loaded and deserialized
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open the trace JSON file.");
+  }
+  std::string jsonStr(
+      (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  folly::dynamic jsonData = folly::parseJson(jsonStr);
+
+  // Convert the folly::dynamic object to a string and check
+  // if the substring exists
+  std::string jsonString = folly::toJson(jsonData);
+  auto countSubstrings = [](const std::string& source,
+                            const std::string& substring) {
+    size_t count = 0;
+    size_t pos = source.find(substring);
+    while (pos != std::string::npos) {
+      ++count;
+      pos = source.find(substring, pos + substring.length());
+    }
+    return count;
+  };
+
+  EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
+  EXPECT_EQ(2, countSubstrings(jsonString, kInMsgNelems));
+  EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
+  EXPECT_EQ(2, countSubstrings(jsonString, kOutMsgNelems));
+  EXPECT_EQ(2, countSubstrings(jsonString, "131328"));
+  EXPECT_EQ(2, countSubstrings(jsonString, kInSplit));
+  EXPECT_EQ(2, countSubstrings(jsonString, expectedInSplitStr));
+  EXPECT_EQ(2, countSubstrings(jsonString, kOutSplit));
+  EXPECT_EQ(2, countSubstrings(jsonString, outSplitSizesStr));
 #endif
 }
 

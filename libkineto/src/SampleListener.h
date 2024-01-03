@@ -139,7 +139,7 @@ class SampleListener {
   SampleListener(const SampleListener&) = delete;
   SampleListener& operator=(const SampleListener&) = delete;
 
-  virtual ~SampleListener(){};
+  virtual ~SampleListener(){}
 
   // Report bucketed & aggregated values for event
   virtual void handleSample(int device, const Sample& sample, bool from_new_version) = 0;

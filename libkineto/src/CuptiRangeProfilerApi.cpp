@@ -47,12 +47,6 @@ TraceSpan CuptiRBProfilerSession::getProfilerTraceSpan() {
 constexpr char kRootUserRangeName[] = "__profile__";
 constexpr int kCallbacksCountToFlush = 500;
 
-// Should we set Counter availability image ourselves?
-// Disabled this right now as this call conflicts with DCGM
-// It is not clear why it should conflict except it being a profiler API call
-//  TODO Revisit
-constexpr bool kSetCounterAvail = false;
-
 // Shared state to track one Cupti Profiler API per Device
 namespace {
 // per device profiler maps
@@ -143,15 +137,6 @@ void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
     VLOG(0) << "CUPTI Profiler observed CUDA Context created = "
             << ctx << " device id = " << device_id;
     active_devices.insert(device_id);
-  //  TODO Revisit
-#if 0
-    if constexpr (kSetCounterAvail) {
-      if (active_devices.size() == 1) {
-      CuptiRBProfilerSession::setCounterAvailabilityImage(
-          getCounterAvailiability(ctx));
-      }
-    }
-#endif
     ctx_to_dev[ctx] = device_id;
 
   } else if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING) {

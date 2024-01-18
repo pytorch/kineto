@@ -28,6 +28,7 @@
 #include "kineto/libkineto/stress_test/random_ops_stress_test.cuh"
 #include "kineto/libkineto/stress_test/tensor_cache.cuh"
 #include "kineto/libkineto/stress_test/utils.h"
+#include "kineto/libkineto/fb/nccl_profiler/NcclProfiler.h"
 
 using namespace kineto_stress_test;
 
@@ -104,7 +105,8 @@ void trace_collection_thread(uint32_t trace_length_us,
     libkineto::ActivityType::GPU_MEMSET,
     libkineto::ActivityType::CUDA_RUNTIME,
     libkineto::ActivityType::EXTERNAL_CORRELATION,
-    libkineto::ActivityType::OVERHEAD
+    libkineto::ActivityType::OVERHEAD,
+    libkineto::ActivityType::COLLECTIVE_COMM
   };
   auto& profiler = libkineto::api().activityProfiler();
   libkineto::api().initProfilerIfRegistered();

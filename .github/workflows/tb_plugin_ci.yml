@@ -24,9 +24,9 @@ jobs:
           echo $GITHUB_BASE_REF
           if [ $GITHUB_BASE_REF == "plugin/vnext" ]
           then
-            echo "::set-output name=matrix::{\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\"]}"
+            echo "matrix={\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\"]}" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=matrix::{\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\", \"2.0\", \"stable\"]}"
+            echo "matrix={\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\", \"2.0\", \"stable\"]}" >> $GITHUB_OUTPUT
           fi
 
   build:

@@ -24,9 +24,9 @@ jobs:
           echo $GITHUB_BASE_REF
           if [ $GITHUB_BASE_REF == "plugin/vnext" ]
           then
-            echo "::set-output name=matrix::{\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\"]}"
+            echo "matrix={\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\"]}" >> "$GITHUB_OUTPUT"
           else
-            echo "::set-output name=matrix::{\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\", \"2.0\", \"stable\"]}"
+            echo "matrix={\"python-version\":[3.8], \"cuda-version\":[\"cpu\"], \"pytorch-version\":[\"nightly\", \"2.0\", \"stable\"]}" >> "$GITHUB_OUTPUT"
           fi
 
   build:
@@ -40,14 +40,14 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: 'x64'
+          architecture: "x64"
       - name: Test
         env:
           CUDA_VERSION: ${{ matrix.cuda-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
           TORCH_PROFILER_LOG_LEVEL: DEBUG
           GRPC_VERBOSITY: DEBUG
-          GRPC_ENABLE_FORK_SUPPORT: 'False'
+          GRPC_ENABLE_FORK_SUPPORT: "False"
         run: |
           set -e
           cd tb_plugin

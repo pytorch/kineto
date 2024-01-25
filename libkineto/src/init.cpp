@@ -13,6 +13,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityProfilerProxy.h"
 #include "Config.h"
+#include "ConfigLoader.h"
 #include "DaemonConfigLoader.h"
 #ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
@@ -27,10 +28,15 @@
 
 namespace KINETO_NAMESPACE {
 
-#ifdef HAS_CUPTI
+#if __linux__ || defined(HAS_CUPTI)
 static bool initialized = false;
-static std::mutex initMutex;
+static std::mutex& initMutex() {
+  static std::mutex initMutex_;
+  return initMutex_;
+}
+#endif
 
+#ifdef HAS_CUPTI
 bool enableEventProfiler() {
   if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
     return true;
@@ -44,7 +50,7 @@ static void initProfilers(
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context created";
-  std::lock_guard<std::mutex> lock(initMutex);
+  std::lock_guard<std::mutex> lock(initMutex());
 
   if (!initialized) {
     libkineto::api().initProfilerIfRegistered();
@@ -86,7 +92,7 @@ static void stopProfiler(
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context destroyed";
-  std::lock_guard<std::mutex> lock(initMutex);
+  std::lock_guard<std::mutex> lock(initMutex());
 
   if (enableEventProfiler()) {
     CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
@@ -118,7 +124,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   // Factory to connect to open source daemon if present
 #if __linux__
   if (getenv(kUseDaemonEnvVar) != nullptr) {
-    LOG(INFO) << "Registering daemon config loader";
+    LOG(INFO) << "Registering daemon config loader, cpuOnly =  "
+              << cpuOnly;
     DaemonConfigLoader::registerFactory();
   }
 #endif
@@ -175,6 +182,20 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
 
+#if __linux__
+  // When CUDA/GPU is used the profiler initialization happens on the
+  // creation of the first CUDA stream (see initProfilers()).
+  // This section bootstraps the profiler and its connection to a profiling daemon
+  // in the CPU only case.
+  if (cpuOnly && getenv(kUseDaemonEnvVar) != nullptr) {
+    std::lock_guard<std::mutex> lock(initMutex());
+    if (!initialized) {
+      libkineto::api().initProfilerIfRegistered();
+      initialized = true;
+    }
+    config_loader.initBaseConfig();
+  }
+#endif
 }
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment

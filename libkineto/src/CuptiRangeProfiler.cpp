@@ -106,7 +106,7 @@ CuptiRangeProfilerSession::CuptiRangeProfilerSession(
 
   int max_ranges = cupti_config.cuptiProfilerMaxRanges();
   for (const auto& m : cupti_metrics) {
-    LOG(INFO) << "\t" << m;
+    LOG(INFO) << "    " << m;
   }
 
   CuptiRangeProfilerOptions opts;
@@ -116,7 +116,7 @@ CuptiRangeProfilerSession::CuptiRangeProfilerSession(
   opts.numNestingLevels = 1;
   opts.cuContext = nullptr;
   opts.unitTest = false;
-  
+
   for (auto device_id : CuptiRBProfilerSession::getActiveDevices()) {
     LOG(INFO) << "Init CUPTI range profiler on gpu = " << device_id
               << " max ranges = " << max_ranges;

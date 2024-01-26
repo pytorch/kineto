@@ -363,7 +363,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
     return;
   }
 
-  LOG(INFO) << "Size of structs\n"
+  LOG(INFO) << "Size of structs"
             << " config image size = " << configImage.size()  << " B"
             << " counter data image prefix = "
             << counterDataImagePrefix.size()  << " B"

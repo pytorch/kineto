@@ -538,15 +538,16 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
           << " eventId=" << activity->cudaEventId
           << " contextId=" << activity->contextId;
 
-  if (!config_->activitiesCudaSyncWaitEvents() && isEventSync(activity->type)) {
+  if (!config_->activitiesCudaSyncWaitEvents() &&
+      isWaitEventSync(activity->type)) {
     return;
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
 
-  // Event Sync events tend to be noisy, only pass these events if
+  // Stream Wait Events tend to be noisy, only pass these events if
   // there was some GPU kernel/memcopy/memset observed on it till now.
-  if (isEventSync(activity->type) &&
+  if (isWaitEventSync(activity->type) &&
       (seenDeviceStreams_.find({device_id, activity->streamId}) ==
        seenDeviceStreams_.end())) {
     VLOG(2) << "Skipping Event Sync (corrId=" << activity->correlationId

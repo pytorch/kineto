@@ -31,6 +31,10 @@ inline ActivityType GpuActivity<CUpti_ActivityKernel4>::type() const {
   return ActivityType::CONCURRENT_KERNEL;
 }
 
+inline bool isWaitEventSync(CUpti_ActivitySynchronizationType type) {
+  return (type == CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT);
+}
+
 inline bool isEventSync(CUpti_ActivitySynchronizationType type) {
   return (
     type == CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE ||

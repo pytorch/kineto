@@ -48,6 +48,7 @@ static constexpr int32_t kTruncatLength = 30;
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #define CUDA_MEMCPY CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020
 #define CUDA_STREAM_SYNC CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020
+#define CUDA_EVENT_SYNC CUPTI_RUNTIME_TRACE_CBID_cudaEventSynchronize_v3020
 
 #define CU_LAUNCH_KERNEL CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
 
@@ -468,6 +469,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 230, 245, 3);
   gpuOps->addDriverActivity(CU_LAUNCH_KERNEL, 265, 275, 4);
   gpuOps->addRuntimeActivity(CUDA_STREAM_SYNC, 246, 340, 5);
+  gpuOps->addRuntimeActivity(CUDA_EVENT_SYNC, 341, 350, 6);
   gpuOps->addKernelActivity(150, 170, 1);
   gpuOps->addMemcpyActivity(240, 250, 2);
   gpuOps->addKernelActivity(260, 320, 3);
@@ -481,6 +483,10 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addSyncActivity(
       326, 330, 7, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       4 /*stream*/);
+  // Comes from CudaEventSynchronize call on CPU
+  gpuOps->addSyncActivity(
+      327, 326, 6, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
+      -1 /*stream*/);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Have the profiler process them
@@ -492,7 +498,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(trace.activities()->size(), 15);
+  EXPECT_EQ(trace.activities()->size(), 17);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
   for (auto& activity : *trace.activities()) {
@@ -510,13 +516,15 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(activityCounts["cuLaunchKernel"], 1);
   EXPECT_EQ(activityCounts["cudaMemcpy"], 1);
   EXPECT_EQ(activityCounts["cudaStreamSynchronize"], 1);
+  EXPECT_EQ(activityCounts["cudaEventSynchronize"], 1);
   EXPECT_EQ(activityCounts["kernel"], 3);
   EXPECT_EQ(activityCounts["Stream Sync"], 1);
+  EXPECT_EQ(activityCounts["Event Sync"], 1);
   EXPECT_EQ(activityCounts["Memcpy HtoD (Pinned -> Device)"], 1);
 
   auto sysTid = systemThreadId();
   // Ops and runtime events are on thread sysTid along with the flow start events
-  EXPECT_EQ(resourceIds[sysTid], 9);
+  EXPECT_EQ(resourceIds[sysTid], 10);
   // Kernels and sync events are on stream 1, memcpy on stream 2
   EXPECT_EQ(resourceIds[1], 5);
   EXPECT_EQ(resourceIds[2], 1);

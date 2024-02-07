@@ -22,7 +22,7 @@
 #include "GenericTraceActivity.h"
 
 class RoctracerLogger;
-class roctracerRow;
+struct roctracerRow;
 
 namespace KINETO_NAMESPACE {
 

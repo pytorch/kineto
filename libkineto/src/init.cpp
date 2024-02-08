@@ -97,13 +97,10 @@ static void stopProfiler(
     const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context destroyed";
   std::lock_guard<std::mutex> lock(initMutex());
-
-  if (enableEventProfiler()) {
-    CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
-    CUcontext ctx = d->context;
-    EventProfilerController::stopIfEnabled(ctx);
-    LOG(INFO) << "Kineto EventProfiler stopped";
-  }
+  CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
+  CUcontext ctx = d->context;
+  EventProfilerController::stopIfEnabled(ctx);
+  LOG(INFO) << "Kineto EventProfiler stopped";
 }
 
 static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
@@ -148,14 +145,22 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
       const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
       status = cbapi->registerCallback(
           domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, initProfilers);
-      status = status && cbapi->registerCallback(
-          domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, stopProfiler);
-
       if (status) {
         status = cbapi->enableCallback(
             domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
-        status = status && cbapi->enableCallback(
-            domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED);
+      }
+
+      // Register stopProfiler callback only for event profiler.
+      // This callback is not required for activities tracing.
+      if (enableEventProfiler()) {
+        if (status) {
+          status = cbapi->registerCallback(
+              domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, stopProfiler);
+        }
+        if (status) {
+          status = cbapi->enableCallback(
+              domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED);
+        }
       }
     }
 

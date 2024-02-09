@@ -30,13 +30,8 @@ namespace KINETO_NAMESPACE {
 
 #if __linux__ || defined(HAS_CUPTI)
 static bool initialized = false;
-static std::mutex& initMutex() {
-  static std::mutex initMutex_;
-  return initMutex_;
-}
 
 static void initProfilersCPU() {
-  std::lock_guard<std::mutex> lock(initMutex());
   if (!initialized) {
     libkineto::api().initProfilerIfRegistered();
     initialized = true;
@@ -47,6 +42,11 @@ static void initProfilersCPU() {
 #endif // __linux__ || defined(HAS_CUPTI)
 
 #ifdef HAS_CUPTI
+static std::mutex& initEventMutex() {
+  static std::mutex initMutex_;
+  return initMutex_;
+}
+
 bool enableEventProfiler() {
   if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
     return true;
@@ -66,12 +66,14 @@ static void initProfilers(
     VLOG(0) << "Kineto EventProfiler disabled, skipping start";
     return;
   } else {
+    std::lock_guard<std::mutex> lock(initEventMutex());
     CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
     CUcontext ctx = d->context;
     ConfigLoader& config_loader = libkineto::api().configLoader();
     config_loader.initBaseConfig();
     auto config = config_loader.getConfigCopy();
     if (config->eventProfilerEnabled()) {
+      // This function needs to be called under lock.
       EventProfilerController::start(ctx, config_loader);
       LOG(INFO) << "Kineto EventProfiler started";
     }
@@ -96,9 +98,10 @@ static void stopProfiler(
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context destroyed";
-  std::lock_guard<std::mutex> lock(initMutex());
+  std::lock_guard<std::mutex> lock(initEventMutex());
   CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
   CUcontext ctx = d->context;
+  // This function needs to be called under lock.
   EventProfilerController::stopIfEnabled(ctx);
   LOG(INFO) << "Kineto EventProfiler stopped";
 }

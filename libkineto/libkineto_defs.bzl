@@ -14,7 +14,6 @@ def get_libkineto_cupti_srcs(with_api = True):
         "src/CudaDeviceProperties.cpp",
         "src/CudaUtil.cpp",
         "src/CuptiActivityApi.cpp",
-        "src/CuptiActivityPlatform.cpp",
         "src/CuptiCallbackApi.cpp",
         "src/CuptiEventApi.cpp",
         "src/CuptiMetricApi.cpp",

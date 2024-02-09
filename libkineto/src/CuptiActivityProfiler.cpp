@@ -840,6 +840,14 @@ void CuptiActivityProfiler::configure(
       timestamp = system_clock::now();
     }
 #ifdef HAS_CUPTI
+#ifdef _WIN32
+    CUPTI_CALL(
+        cuptiActivityRegisterTimestampCallback([]() -> uint64_t {
+          auto system = std::chrono::time_point_cast<std::chrono::nanoseconds>(
+              std::chrono::system_clock::now());
+          return system.time_since_epoch().count();
+        }));
+#endif
     cupti_.enableCuptiActivities(config_->selectedActivityTypes());
 #else
     cupti_.enableActivities(config_->selectedActivityTypes());

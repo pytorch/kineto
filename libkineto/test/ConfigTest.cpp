@@ -97,6 +97,7 @@ TEST(ParseTest, ActivityTypes) {
                             ActivityType::OVERHEAD,
                             ActivityType::CUDA_RUNTIME,
                             ActivityType::CUDA_DRIVER,
+                            ActivityType::CUDA_SYNC,
                             ActivityType::MTIA_RUNTIME,
                             ActivityType::MTIA_CCP_EVENTS}));
 

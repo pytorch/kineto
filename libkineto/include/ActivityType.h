@@ -31,9 +31,9 @@ enum class ActivityType {
     OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
     MTIA_RUNTIME, // host side MTIA runtime events
     MTIA_CCP_EVENTS, // MTIA ondevice CCP events
+    CUDA_SYNC, // synchronization events between runtime and kernels
 
     // Optional Activity types
-    CUDA_SYNC, // synchronization events between runtime and kernels
     GLOW_RUNTIME, // host side glow runtime events
     CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
     HPU_OP, // HPU host side runtime event
@@ -41,7 +41,7 @@ enum class ActivityType {
     COLLECTIVE_COMM, // collective communication
 
     ENUM_COUNT, // This is to add buffer and not used for any profiling logic. Add your new type before it.
-    OPTIONAL_ACTIVITY_TYPE_START = CUDA_SYNC,
+    OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
 };
 
 const char* toString(ActivityType t);

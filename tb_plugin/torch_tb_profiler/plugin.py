@@ -487,6 +487,8 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             /run2
                 /[worker1].pt.trace.json
         """
+        if not io.isdir(self.logdir):
+            return
         for root, _, files in io.walk(self.logdir):
             for file in files:
                 if utils.is_chrome_trace_file(file):

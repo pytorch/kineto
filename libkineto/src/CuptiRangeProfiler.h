@@ -35,7 +35,7 @@ class CuptiRangeProfilerSession : public IActivityProfilerSession {
       const Config& config,
       ICuptiRBProfilerSessionFactory& factory);
 
-  ~CuptiRangeProfilerSession() override {};
+  ~CuptiRangeProfilerSession() override {}
 
   // start profiling
   void start() override;

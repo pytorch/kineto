@@ -64,7 +64,7 @@ class LoggerCollector : public ILoggerObserver {
     }
   }
 
-  void addMetadata(const std::string& key, const std::string& value) override {};
+  void addMetadata(const std::string& key, const std::string& value) override {}
 
  protected:
   std::map<LoggerOutputType, std::vector<std::string>> buckets_;

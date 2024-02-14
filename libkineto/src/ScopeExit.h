@@ -24,7 +24,7 @@ class ScopeExit {
 template <typename T>
 ScopeExit<T> makeScopeExit(T t) {
   return ScopeExit<T>(t);
-};
+}
 
 // Add a level of indirection so __LINE__ is expanded
 #define __kINETO_CONCAT(name, line) name##line

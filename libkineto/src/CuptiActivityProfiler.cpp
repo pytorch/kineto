@@ -86,7 +86,7 @@ std::unordered_map<CtxEventPair, WaitEventInfo>& waitEventMap() {
 std::unordered_map<uint32_t, uint32_t>& ctxToDeviceId() {
   static std::unordered_map<uint32_t, uint32_t> ctxToDeviceId_;
   return ctxToDeviceId_;
-};
+}
 
 }
 

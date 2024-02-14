@@ -26,7 +26,7 @@ ActivityProfilerProxy::ActivityProfilerProxy(
 
 ActivityProfilerProxy::~ActivityProfilerProxy() {
   delete controller_;
-};
+}
 
 void ActivityProfilerProxy::init() {
   if (!controller_) {

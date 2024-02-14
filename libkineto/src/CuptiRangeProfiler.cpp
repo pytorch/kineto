@@ -296,7 +296,7 @@ CuptiRangeProfiler::configure(
     const std::set<ActivityType>& activity_types,
     const Config& config) {
   return configure(activity_types, config);
-};
+}
 
 /* ----------------------------------------
  * CuptiRangeProfilerInit :

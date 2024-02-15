@@ -30,6 +30,7 @@ set(KINETO_LIBRARY_TYPE "default" CACHE STRING
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
 
+set(LIBKINETO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LIBKINETO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBKINETO_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(LIBKINETO_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -49,6 +50,72 @@ endif()
 if (NOT ROCM_SOURCE_DIR)
     set(ROCM_SOURCE_DIR "$ENV{ROCM_SOURCE_DIR}")
     message(INFO " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
+endif()
+
+if (KINETO_BUILD_TESTS)
+  enable_testing()
+  if (NOT CUPTI_INCLUDE_DIR)
+    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
+        ${CUDA_SOURCE_DIR}/extras/CUPTI/include
+        ${CUDA_INCLUDE_DIRS}
+        ${CUDA_SOURCE_DIR}
+        ${CUDA_SOURCE_DIR}/include
+        NO_DEFAULT_PATH)
+  endif()
+
+  if (NOT CUDA_cupti_LIBRARY)
+    if(NOT MSVC)
+      set(CUPTI_LIB_NAME "libcupti.so")
+    else()
+      set(CUPTI_LIB_NAME "cupti.lib")
+    endif()
+    find_library(CUPTI_LIBRARY_PATH ${CUPTI_LIB_NAME} PATHS
+        ${CUDA_SOURCE_DIR}
+        ${CUDA_SOURCE_DIR}/extras/CUPTI/lib64
+        ${CUDA_SOURCE_DIR}/lib
+        ${CUDA_SOURCE_DIR}/lib64
+        NO_DEFAULT_PATH)
+  endif()
+
+  if (NOT CUDA_nvperf_host_LIBRARY)
+    set(CUDA_NVPERF_HOST_LIB_NAME "libnvperf_host.so")
+    find_library(CUDA_NVPERF_HOST_LIB_PATH ${CUDA_NVPERF_HOST_LIB_NAME} PATHS
+        ${CUDA_SOURCE_DIR}
+        ${CUDA_SOURCE_DIR}/extras/CUPTI/lib64
+        ${CUDA_SOURCE_DIR}/lib
+        ${CUDA_SOURCE_DIR}/lib64
+        NO_DEFAULT_PATH)
+  endif()
+
+  if (NOT CUDA_cudart_LIBRARY)
+    set(CUDA_CUDART_LIB_NAME "libcudart.so")
+    find_library(CUDA_CUDART_LIB_PATH ${CUDA_CUDART_LIB_NAME} PATHS
+        ${CUDA_SOURCE_DIR}
+        ${CUDA_SOURCE_DIR}/lib
+        ${CUDA_SOURCE_DIR}/lib64
+        NO_DEFAULT_PATH)
+  endif()
+
+  if(CUDA_NVPERF_HOST_LIB_PATH)
+    set(CUDA_nvperf_host_LIBRARY ${CUDA_NVPERF_HOST_LIB_PATH})
+    message(INFO "  CUDA_nvperf_host_LIBRARY = ${CUDA_nvperf_host_LIBRARY}")
+  endif()
+
+  if(CUDA_CUDART_LIB_PATH)
+    set(CUDA_cudart_LIBRARY ${CUDA_CUDART_LIB_PATH})
+    message(INFO "  CUDA_cudart_LIBRARY = ${CUDA_cudart_LIBRARY}")
+  endif()
+
+  if(CUPTI_LIBRARY_PATH AND CUPTI_INCLUDE_DIR)
+    message(INFO "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
+    set(CUDA_cupti_LIBRARY ${CUPTI_LIBRARY_PATH})
+    message(INFO "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
+    message(INFO "Found CUPTI")
+    set(LIBKINETO_NOCUPTI OFF CACHE STRING "" FORCE)
+  else()
+    message(STATUS "Could not find CUPTI library")
+    set(LIBKINETO_NOCUPTI ON CACHE STRING "" FORCE)
+  endif()
 endif()
 
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
@@ -217,4 +284,6 @@ install(EXPORT kinetoLibraryConfig DESTINATION share/cmake/kineto
 
 if(KINETO_BUILD_TESTS)
   add_subdirectory(test)
+  add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
+  add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/folly")
 endif()

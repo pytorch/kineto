@@ -7,3 +7,6 @@
 [submodule "libkineto/third_party/dynolog"]
 	path = libkineto/third_party/dynolog
 	url = https://github.com/facebookincubator/dynolog.git
+[submodule "libkineto/third_party/folly"]
+	path = libkineto/third_party/folly
+	url = https://github.com/facebook/folly.git

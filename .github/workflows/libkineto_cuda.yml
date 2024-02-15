@@ -1,0 +1,73 @@
+name: libkineto PR Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Use TorchBench's docker image which has all basic dependencies.
+env:
+  CONDA_ENV: "torchbench"
+  DOCKER_IMAGE: "ghcr.io/pytorch/torchbench:latest"
+  SETUP_SCRIPT: "/workspace/setup_instance.sh"
+
+jobs:
+  pr-test:
+    # AWS linux instance label: c5.2xlarge
+    runs-on: [linux.2xlarge]
+    timeout-minutes: 180 # 3 hours
+    steps:
+      - name: Checkout Kineto
+        uses: actions/checkout@v3
+        with:
+          path: kineto
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          cd kineto
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+      - name: Pull docker image
+        uses: pytorch/test-infra/.github/actions/pull-docker-image@main
+        with:
+          docker-image: ${{ env.DOCKER_IMAGE }}
+      - name: Get env vars
+        run: |
+          echo GITHUB_WORKFLOW   = $GITHUB_WORKFLOW
+          echo HOME              = $HOME
+          echo GITHUB_ACTION     = $GITHUB_ACTION
+          echo GITHUB_ACTIONS    = $GITHUB_ACTIONS
+          echo GITHUB_REPOSITORY = $GITHUB_REPOSITORY
+          echo GITHUB_EVENT_NAME = $GITHUB_EVENT_NAME
+          echo GITHUB_EVENT_PATH = $GITHUB_EVENT_PATH
+          echo GITHUB_WORKSPACE  = $GITHUB_WORKSPACE
+          echo GITHUB_SHA        = $GITHUB_SHA
+          echo GITHUB_REF        = $GITHUB_REF
+      - name: Build libkineto (static and shared library) and tests
+        run: |
+          container_name=$(docker run \
+            -e CONDA_ENV="${CONDA_ENV}" \
+            -e SETUP_SCRIPT="${SETUP_SCRIPT}" \
+            --tty \
+            --detach \
+            --shm-size=32gb \
+            -v "${PWD}/kineto:/kineto" \
+            -w / \
+            "${{ env.DOCKER_IMAGE }}" \
+            tail -f /dev/null
+          )
+          echo "Container name: ${container_name}"
+          docker exec -t -w "/" "${container_name}" bash -c "sudo chown -R runner /kineto; sudo chgrp -R runner /kineto"
+          docker exec -t -w "/kineto" "${container_name}" bash -c "set -e; mkdir build_static; mkdir build_shared"
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/; make -j"
+          docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c "cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/; make -j"
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "make test"
+      - name: Teardown Linux
+        uses: pytorch/test-infra/.github/actions/teardown-linux@main
+        if: always()
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}-${{ github.event_name == 'workflow_dispatch' }}
+  cancel-in-progress: true

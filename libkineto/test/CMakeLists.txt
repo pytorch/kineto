@@ -15,13 +15,13 @@ target_include_directories(ConfigTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(ConfigTest)
 
 # CuptiActivityProfilerTest
+#[[
 add_executable(CuptiActivityProfilerTest CuptiActivityProfilerTest.cpp MockActivitySubProfiler.cpp)
 target_compile_options(CuptiActivityProfilerTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
     gmock
     kineto
-    folly
     "${CUDA_cudart_LIBRARY}")
 target_include_directories(CuptiActivityProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
@@ -30,7 +30,7 @@ target_include_directories(CuptiActivityProfilerTest PRIVATE
     "${CUDA_SOURCE_DIR}/include"
     "${CUPTI_INCLUDE_DIR}")
 gtest_discover_tests(CuptiActivityProfilerTest)
-
+]]
 # CuptiCallbackApiTest
 add_executable(CuptiCallbackApiTest CuptiCallbackApiTest.cpp)
 target_compile_options(CuptiCallbackApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")

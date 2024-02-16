@@ -285,5 +285,4 @@ install(EXPORT kinetoLibraryConfig DESTINATION share/cmake/kineto
 if(KINETO_BUILD_TESTS)
   add_subdirectory(test)
   add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
-  add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/folly")
 endif()

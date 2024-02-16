@@ -61,9 +61,9 @@ jobs:
           echo "Container name: ${container_name}"
           docker exec -t -w "/" "${container_name}" bash -c "sudo chown -R runner /kineto; sudo chgrp -R runner /kineto"
           docker exec -t -w "/kineto" "${container_name}" bash -c "set -e; mkdir build_static; mkdir build_shared"
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c ". /workspace/setup_instance.sh; export LIBRARY_PATH=${CUDA_PATH}/lib64; cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/; make -j"
-          docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c ". /workspace/setup_instance.sh; export LIBRARY_PATH=${CUDA_PATH}/lib64; cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/; make -j"
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c ". /workspace/setup_instance.sh; export LIBRARY_PATH=${CUDA_PATH}/lib64; make test"
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c ". /workspace/setup_instance.sh; cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/; make -j"
+          docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c ". /workspace/setup_instance.sh; cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/; make -j"
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c ". /workspace/setup_instance.sh; make test"
       - name: Teardown Linux
         uses: pytorch/test-infra/.github/actions/teardown-linux@main
         if: always()

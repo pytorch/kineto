@@ -10,7 +10,10 @@ include(GoogleTest)
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
 target_compile_options(ConfigTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_link_libraries(ConfigTest PRIVATE gtest_main kineto)
+target_link_libraries(ConfigTest PRIVATE
+    gtest_main
+    kineto
+    "${CUDA_cudart_LIBRARY}")
 target_include_directories(ConfigTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(ConfigTest)
 
@@ -65,7 +68,8 @@ add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
 target_compile_options(CuptiRangeProfilerConfigTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     gtest_main
-    kineto)
+    kineto
+    "${CUDA_cudart_LIBRARY}")
 target_include_directories(CuptiRangeProfilerConfigTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include")
@@ -89,7 +93,10 @@ gtest_discover_tests(CuptiRangeProfilerTest)
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
 target_compile_options(CuptiStringsTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_link_libraries(CuptiStringsTest PRIVATE gtest_main kineto)
+target_link_libraries(CuptiStringsTest PRIVATE
+    gtest_main
+    kineto
+    "${CUDA_cudart_LIBRARY}")
 target_include_directories(CuptiStringsTest PRIVATE
     "${LIBKINETO_DIR}"
     "${CUDA_SOURCE_DIR}/include"
@@ -114,7 +121,10 @@ gtest_discover_tests(EventProfilerTest)
 # LoggerObserverTest
 add_executable(LoggerObserverTest LoggerObserverTest.cpp)
 target_compile_options(LoggerObserverTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_link_libraries(LoggerObserverTest PRIVATE gtest_main kineto)
+target_link_libraries(LoggerObserverTest PRIVATE
+    gtest_main
+    kineto
+    "${CUDA_cudart_LIBRARY}")
 target_include_directories(LoggerObserverTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
@@ -124,7 +134,10 @@ gtest_discover_tests(LoggerObserverTest)
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_compile_options(PidInfoTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_link_libraries(PidInfoTest PRIVATE gtest_main kineto)
+target_link_libraries(PidInfoTest PRIVATE
+    gtest_main
+    kineto
+    "${CUDA_cudart_LIBRARY}")
 target_include_directories(PidInfoTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(PidInfoTest)
 

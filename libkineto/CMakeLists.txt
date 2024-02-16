@@ -54,6 +54,11 @@ endif()
 
 if (KINETO_BUILD_TESTS)
   enable_testing()
+  if (NOT CUDA_SOURCE_DIR)
+    set(CUDA_SOURCE_DIR "$ENV{CUDA_HOME}")
+    message(INFO " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
+  endif()
+
   if (NOT CUPTI_INCLUDE_DIR)
     find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
         ${CUDA_SOURCE_DIR}/extras/CUPTI/include

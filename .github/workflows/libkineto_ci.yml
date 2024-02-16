@@ -44,7 +44,7 @@ jobs:
         set -e
         mkdir build_static
         cd build_static
-        cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/
+        cmake  -DKINETO_BUILD_TESTS=OFF -DKINETO_LIBRARY_TYPE=static ../libkineto/
         make -j
 
     - name: Build shared lib
@@ -52,5 +52,5 @@ jobs:
         set -e
         mkdir build_shared
         cd build_shared
-        cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/
+        cmake  -DKINETO_BUILD_TESTS=OFF -DKINETO_LIBRARY_TYPE=shared ../libkineto/
         make -j

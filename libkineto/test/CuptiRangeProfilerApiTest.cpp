@@ -74,8 +74,11 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
   CuptiRangeProfilerOptions opts{
+    .metricNames = {"metricNames"},
     .deviceId = 0,
-    .cuContext = ctx0};
+    .maxRanges = 1,
+    .numNestingLevels = 1,
+    .cuContext = ctx0 };
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());
@@ -108,8 +111,11 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
   CuptiRangeProfilerOptions opts{
+    .metricNames = {"metricNames"},
     .deviceId = 0,
-    .cuContext = ctx0};
+    .maxRanges = 1,
+    .numNestingLevels = 1,
+    .cuContext = ctx0 };
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());

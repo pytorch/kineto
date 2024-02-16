@@ -253,7 +253,9 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "static")
     $<TARGET_OBJECTS:kineto_api>)
 elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
   add_library(kineto SHARED
-    $<TARGET_OBJECTS:kineto_base>)
+    $<TARGET_OBJECTS:kineto_base>
+    $<TARGET_OBJECTS:kineto_api>
+)
   set_property(TARGET kineto_base PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_target_properties(kineto PROPERTIES
     CXX_VISIBILITY_PRESET hidden)

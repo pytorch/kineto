@@ -494,7 +494,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   profiler.processTrace(*logger);
 
   // Profiler can be reset at this point - logger owns the activities
-  profiler_->reset();
+  profiler.reset();
 
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), loggerFactory);
@@ -625,6 +625,9 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   profiler.processTrace(*logger);
   profiler.setLogger(logger.get());
 
+  // Profiler can be reset at this point - logger owns the activities
+  profiler.reset();
+
   // Check the content of GPU event and we should see extra
   // collective fields get populated from CPU event.
   ActivityTrace trace(std::move(logger), loggerFactory);
@@ -719,6 +722,9 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler.processTrace(*logger);
 
+  // Profiler can be reset at this point - logger owns the activities
+  profiler.reset();
+
   ActivityTrace trace(std::move(logger), loggerFactory);
   std::map<std::string, int> counts;
   for (auto& activity : *trace.activities()) {
@@ -795,6 +801,9 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler.processTrace(*logger);
   profiler.setLogger(logger.get());
+
+  // Profiler can be reset at this point - logger owns the activities
+  profiler.reset();
 
   ActivityTrace trace(std::move(logger), loggerFactory);
   trace.save(filename);

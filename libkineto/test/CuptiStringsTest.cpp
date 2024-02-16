@@ -24,7 +24,7 @@ TEST(CuptiStringsTest, Valid) {
   ASSERT_STREQ(
       runtimeCbidName(CUPTI_RUNTIME_TRACE_CBID_cudaStreamSetAttribute_ptsz_v11000),
       "cudaStreamSetAttribute_ptsz");
-#if defined(CUPTI_API_VERSION) && CUPTI_API_VERSION >= 17
+#if defined(CUPTI_API_VERSION) && CUPTI_API_VERSION >= 18
   ASSERT_STREQ(
       runtimeCbidName(CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060),
       "cudaLaunchKernelExC");

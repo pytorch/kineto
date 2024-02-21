@@ -15,8 +15,8 @@
 #include <thread>
 #include <vector>
 
-#include <folly/dynamic.h>
-#include <folly/json.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 
 #include <libkineto.h>
 #include <cuda.h>

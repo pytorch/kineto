@@ -12,7 +12,7 @@
 #include <strings.h>
 #include <time.h>
 #include <chrono>
-#include <folly/json.h>
+#include <folly/json/json.h>
 
 #ifdef __linux__
 #include <sys/stat.h>

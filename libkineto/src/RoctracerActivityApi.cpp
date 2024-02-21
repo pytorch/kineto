@@ -167,6 +167,9 @@ int RoctracerActivityApi::processActivities(
         a.addMetadata("size", item.size);
       }
 
+      // Stash launches to tie to the async ops
+      kernelLaunches_[a.id] = a;
+
       logger.handleGenericActivity(a);
       ++count;
     }
@@ -197,6 +200,9 @@ int RoctracerActivityApi::processActivities(
       if ((item.cid == HIP_API_ID_hipMemcpyAsync) || (item.cid == HIP_API_ID_hipMemcpyWithStream)) {
         a.addMetadataQuoted("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
       }
+
+      // Stash launches to tie to the async ops
+      kernelLaunches_[a.id] = a;
 
       logger.handleGenericActivity(a);
       ++count;
@@ -235,6 +241,9 @@ int RoctracerActivityApi::processActivities(
       a.addMetadata("block dim", fmt::format("[{}, {}, {}]", item.workgroupX, item.workgroupY, item.workgroupZ));
       a.addMetadata("shared size", item.groupSegmentSize);
       a.addMetadataQuoted("stream", fmt::format("{}", reinterpret_cast<void*>(item.stream)));
+
+      // Stash launches to tie to the async ops
+      kernelLaunches_[a.id] = a;
 
       logger.handleGenericActivity(a);
       ++count;
@@ -311,7 +320,7 @@ int RoctracerActivityApi::processActivities(
 void RoctracerActivityApi::clearActivities() {
   d->clearLogs();
   kernelLaunches_.clear();
-  kernelNames_.clear();    
+  kernelNames_.clear();
 }
 
 

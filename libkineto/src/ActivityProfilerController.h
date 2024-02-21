@@ -88,6 +88,20 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
     const std::string& error,
     const std::string& group_profile_id = "");
 
+  void pushCorrelationId(uint64_t id) {
+    profiler_->pushCorrelationId(id);
+  }
+  void popCorrelationId() {
+    profiler_->popCorrelationId();
+  }
+
+  void pushUserCorrelationId(uint64_t id) {
+    profiler_->pushUserCorrelationId(id);
+  }
+  void popUserCorrelationId() {
+    profiler_->popUserCorrelationId();
+  }
+
  private:
   bool shouldActivateIterationConfig(int64_t currentIter);
   bool shouldActivateTimestampConfig(

@@ -43,6 +43,8 @@ class CuptiRangeProfilerSession : public IActivityProfilerSession {
   // stop profiling
   void stop() override;
 
+  void reset() override {}
+
   // process trace events with logger
   void processTrace(libkineto::ActivityLogger& logger) override;
 

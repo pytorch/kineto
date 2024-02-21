@@ -16,6 +16,7 @@
 #include "Config.h"
 #include "GenericTraceActivity.h"
 #include "output_base.h"
+#include "ActivityBuffers.h"
 
 namespace KINETO_NAMESPACE {
 

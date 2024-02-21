@@ -10,7 +10,6 @@
 
 #include "ActivityProfilerController.h"
 #include "Config.h"
-#include "CuptiActivityApi.h"
 #include "Logger.h"
 #include <chrono>
 #ifdef HAS_ROCTRACER
@@ -92,8 +91,7 @@ bool ActivityProfilerProxy::isActive() {
 }
 
 void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
-  CuptiActivityApi::pushCorrelationID(id,
-    CuptiActivityApi::CorrelationFlowType::Default);
+  controller_->pushCorrelationId(id);
 #ifdef HAS_ROCTRACER
   // FIXME: bad design here
   RoctracerActivityApi::pushCorrelationID(id,
@@ -102,8 +100,7 @@ void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
 }
 
 void ActivityProfilerProxy::popCorrelationId() {
-  CuptiActivityApi::popCorrelationID(
-    CuptiActivityApi::CorrelationFlowType::Default);
+  controller_->popCorrelationId();
 #ifdef HAS_ROCTRACER
   RoctracerActivityApi::popCorrelationID(
     RoctracerActivityApi::CorrelationFlowType::Default);
@@ -111,13 +108,11 @@ void ActivityProfilerProxy::popCorrelationId() {
 }
 
 void ActivityProfilerProxy::pushUserCorrelationId(uint64_t id) {
-  CuptiActivityApi::pushCorrelationID(id,
-    CuptiActivityApi::CorrelationFlowType::User);
+  controller_->pushUserCorrelationId(id);
 }
 
 void ActivityProfilerProxy::popUserCorrelationId() {
-  CuptiActivityApi::popCorrelationID(
-    CuptiActivityApi::CorrelationFlowType::User);
+  controller_->popUserCorrelationId();
 }
 
 void ActivityProfilerProxy::transferCpuTrace(

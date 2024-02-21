@@ -35,12 +35,13 @@
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
 #include "CuptiActivity.cpp"
-#include "CuptiActivityApi.h"
 #endif // HAS_CUPTI
+#include "CuptiActivityApi.h"
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivityApi.h"
 #endif
 #include "output_base.h"
+#include "ActivityBuffers.h"
 
 #include "Logger.h"
 #include "ThreadUtil.h"
@@ -288,7 +289,10 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 
   for (const auto& session : sessions_) {
     LOG(INFO) << "Processing child profiler trace";
-    session->processTrace(logger);
+    session->processTrace(logger,
+        std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
+        captureWindowStartTime_,
+        captureWindowEndTime_);
   }
 
   LOG(INFO) << "Record counts: " << ecs_;
@@ -944,6 +948,9 @@ void CuptiActivityProfiler::stopTraceInternal(
 
 void CuptiActivityProfiler::resetInternal() {
   resetTraceData();
+  for (auto& session : sessions_) {
+    session->reset();
+  }
   currentRunloopState_ = RunloopState::WaitForRequest;
 }
 
@@ -1080,7 +1087,8 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
         {pid, process_name, "CPU"}, captureWindowStartTime_);
-    if (!cpuOnly_) {
+    if (!cpuOnly_ &&
+        !libkineto::hasPrivateUse1Type(config.selectedActivityTypes())) {
       // GPU events use device id as pid (0-7).
       constexpr int kMaxGpuCount = 8;
       for (int gpu = 0; gpu < kMaxGpuCount; gpu++) {
@@ -1128,7 +1136,9 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
 
   for (auto& session : sessions_){
     auto trace_buffer = session->getTraceBuffer();
-    traceBuffers_->cpu.push_back(std::move(trace_buffer));
+    if (trace_buffer) {
+      traceBuffers_->cpu.push_back(std::move(trace_buffer));
+    }
   }
 
   // Logger Metadata contains a map of LOGs collected in Kineto
@@ -1152,6 +1162,38 @@ CuptiActivityProfiler::getLoggerMetadata() {
   }
 #endif // !USE_GOOGLE_LOG
   return loggerMD;
+}
+
+void CuptiActivityProfiler::pushCorrelationId(uint64_t id) {
+  CuptiActivityApi::pushCorrelationID(id,
+    CuptiActivityApi::CorrelationFlowType::Default);
+  for (auto& session : sessions_) {
+    session->pushCorrelationId(id);
+  }
+}
+
+void CuptiActivityProfiler::popCorrelationId() {
+  CuptiActivityApi::popCorrelationID(
+    CuptiActivityApi::CorrelationFlowType::Default);
+  for (auto& session : sessions_) {
+    session->popCorrelationId();
+  }
+}
+
+void CuptiActivityProfiler::pushUserCorrelationId(uint64_t id) {
+  CuptiActivityApi::pushCorrelationID(id,
+    CuptiActivityApi::CorrelationFlowType::User);
+  for (auto& session : sessions_) {
+    session->pushUserCorrelationId(id);
+  }
+}
+
+void CuptiActivityProfiler::popUserCorrelationId() {
+  CuptiActivityApi::popCorrelationID(
+    CuptiActivityApi::CorrelationFlowType::User);
+  for (auto& session : sessions_) {
+    session->popUserCorrelationId();
+  }
 }
 
 void CuptiActivityProfiler::resetTraceData() {

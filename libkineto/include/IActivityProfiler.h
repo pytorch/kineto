@@ -81,6 +81,8 @@ class IActivityProfilerSession {
   // stop the trace collection synchronously
   virtual void stop() = 0;
 
+  virtual void reset() = 0;
+
   TraceStatus status() {
     return status_;
   }
@@ -90,6 +92,12 @@ class IActivityProfilerSession {
 
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
+
+  virtual void processTrace(ActivityLogger& logger,
+    std::function<const ITraceActivity*(int32_t)> getLinkedActivity,
+    int64_t startTime, int64_t endTime) {
+    processTrace(logger);
+  }
 
   // returns device info used in this trace, could be nullptr
   virtual std::unique_ptr<DeviceInfo> getDeviceInfo() = 0;
@@ -102,6 +110,12 @@ class IActivityProfilerSession {
 
   // XXX define trace formats
   // virtual save(string name, TraceFormat format)
+
+  virtual void pushCorrelationId(uint64_t id) {}
+  virtual void popCorrelationId() {}
+
+  virtual void pushUserCorrelationId(uint64_t id) {}
+  virtual void popUserCorrelationId() {}
 
  protected:
   TraceStatus status_ = TraceStatus::READY;

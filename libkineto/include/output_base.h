@@ -14,13 +14,14 @@
 #include <thread>
 #include <unordered_map>
 
-#include "ActivityBuffers.h"
+#include "IActivityProfiler.h"
 #include "GenericTraceActivity.h"
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
   class Config;
+  struct ActivityBuffers;
 }
 
 namespace libkineto {
@@ -69,4 +70,4 @@ class ActivityLogger {
   ActivityLogger() = default;
 };
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto

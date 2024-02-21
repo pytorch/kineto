@@ -290,7 +290,8 @@ void ChromeTraceLogger::handleActivity(
     duration = 0;
   }
 
-  if (op.type() ==  ActivityType::GPU_USER_ANNOTATION) {
+  if (op.type() ==  ActivityType::GPU_USER_ANNOTATION ||
+      op.type() ==  ActivityType::PRIVATEUSE1_USER_ANNOTATION) {
     // The GPU user annotations start at the same time as the
     // first associated GPU op. Since they appear later
     // in the trace file, this causes a visualization issue in Chrome.

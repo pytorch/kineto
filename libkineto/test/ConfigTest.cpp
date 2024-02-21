@@ -122,6 +122,12 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = xpu_Runtime"));
   EXPECT_EQ(cfg2.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::XPU_RUNTIME}));
+
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=privateuse1_Runtime,privateuse1_kernel"));
+  EXPECT_EQ(cfg2.selectedActivityTypes(),
+    std::set<ActivityType>({ActivityType::PRIVATEUSE1_RUNTIME,
+                            ActivityType::PRIVATEUSE1_CONCURRENT_KERNEL}));
+  EXPECT_TRUE(hasPrivateUse1Type(cfg2.selectedActivityTypes()));
 }
 
 TEST(ParseTest, SamplePeriod) {

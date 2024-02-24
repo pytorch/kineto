@@ -42,7 +42,6 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"privateuse1_memcpy", ActivityType::PRIVATEUSE1_MEMCPY},
     {"privateuse1_memset", ActivityType::PRIVATEUSE1_MEMSET},
     {"privateuse1_kernel", ActivityType::PRIVATEUSE1_CONCURRENT_KERNEL},
-    {"privateuse1_external_correlation", ActivityType::PRIVATEUSE1_EXTERNAL_CORRELATION},
     {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
     {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
     {"privateuse1_sync", ActivityType::PRIVATEUSE1_SYNC},

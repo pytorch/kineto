@@ -46,7 +46,6 @@ enum class ActivityType {
     PRIVATEUSE1_MEMCPY,
     PRIVATEUSE1_MEMSET,
     PRIVATEUSE1_CONCURRENT_KERNEL, // privateUse1 on-device kernels
-    PRIVATEUSE1_EXTERNAL_CORRELATION,
     PRIVATEUSE1_RUNTIME, // host side privateUse1 runtime events
     PRIVATEUSE1_DRIVER, // host side privateUse1 driver events
     PRIVATEUSE1_SYNC, // synchronization events between runtime and kernels

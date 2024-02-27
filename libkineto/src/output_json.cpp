@@ -296,7 +296,8 @@ void ChromeTraceLogger::handleActivity(
 
   std::string arg_values = "";
   if (op.correlationId() != 0) {
-    arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
+    arg_values.append(fmt::format("\"External id\": {}",
+      op.linkedActivity() ? op.linkedActivity()->correlationId() : op.correlationId()));
   }
   const std::string op_metadata = op.metadataJson();
   if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {

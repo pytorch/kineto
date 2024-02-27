@@ -14,8 +14,6 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ITraceActivity.h"
 #include "GenericTraceActivity.h"
-#include "CuptiActivityPlatform.h"
-#include "GenericTraceActivity.h"
 #include "ThreadUtil.h"
 #include "cupti_strings.h"
 
@@ -38,7 +36,7 @@ struct CuptiActivity : public ITraceActivity {
   explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
   int64_t timestamp() const override {
-    return nsToUs(unixEpochTimestamp(activity_.start));
+    return nsToUs(activity_.start);
   }
   int64_t duration() const override {
     return nsToUs(activity_.end - activity_.start);
@@ -106,7 +104,7 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
       : CuptiActivity(activity, linked), threadId_(threadId) {}
 
   int64_t timestamp() const override {
-    return nsToUs(unixEpochTimestamp(activity_.start));
+    return nsToUs(activity_.start);
   }
   int64_t duration() const override {
     return nsToUs(activity_.end - activity_.start);

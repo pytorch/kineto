@@ -20,7 +20,8 @@ set -ex
 
 
 # install pytorch
-pip install numpy tensorboard typing-extensions pillow pytest
+# bug fix: added mpmath=1.3.0 due to AttributeError: module 'mpmath' has no attribute 'rational'
+pip install numpy tensorboard typing-extensions pillow pytest mpmath==1.3.0
 if [ "$PYTORCH_VERSION" = "nightly" ]; then
     pip install --pre torch -f "https://download.pytorch.org/whl/nightly/$CUDA_VERSION/torch_nightly.html"
     pip install --pre torchvision --no-deps -f "https://download.pytorch.org/whl/nightly/$CUDA_VERSION/torch_nightly.html"

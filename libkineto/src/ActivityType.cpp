@@ -38,13 +38,8 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"hpu_op", ActivityType::HPU_OP},
     {"xpu_runtime", ActivityType::XPU_RUNTIME},
     {"collective_comm", ActivityType::COLLECTIVE_COMM},
-    {"privateuse1_user_annotation", ActivityType::PRIVATEUSE1_USER_ANNOTATION},
-    {"privateuse1_memcpy", ActivityType::PRIVATEUSE1_MEMCPY},
-    {"privateuse1_memset", ActivityType::PRIVATEUSE1_MEMSET},
-    {"privateuse1_kernel", ActivityType::PRIVATEUSE1_CONCURRENT_KERNEL},
     {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
     {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
-    {"privateuse1_sync", ActivityType::PRIVATEUSE1_SYNC},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT}
 }};
 
@@ -69,8 +64,8 @@ ActivityType toActivityType(const std::string& str) {
 
 bool hasPrivateUse1Type(const std::set<ActivityType>& activityTypes) {
   for (const auto type : activityTypes) {
-    if (type >= ActivityType::PRIVATEUSE1_ACTIVITY_TYPE_START &&
-        type <= ActivityType::PRIVATEUSE1_ACTIVITY_TYPE_END) {
+    if (type == ActivityType::PRIVATEUSE1_RUNTIME ||
+        type == ActivityType::PRIVATEUSE1_DRIVER) {
       return true;
     }
   }

@@ -40,20 +40,11 @@ enum class ActivityType {
     HPU_OP, // HPU host side runtime event
     XPU_RUNTIME, // host side xpu runtime events
     COLLECTIVE_COMM, // collective communication
-
-    // PrivateUse1 Activity types
-    PRIVATEUSE1_USER_ANNOTATION,
-    PRIVATEUSE1_MEMCPY,
-    PRIVATEUSE1_MEMSET,
-    PRIVATEUSE1_CONCURRENT_KERNEL, // privateUse1 on-device kernels
     PRIVATEUSE1_RUNTIME, // host side privateUse1 runtime events
     PRIVATEUSE1_DRIVER, // host side privateUse1 driver events
-    PRIVATEUSE1_SYNC, // synchronization events between runtime and kernels
 
     ENUM_COUNT, // This is to add buffer and not used for any profiling logic. Add your new type before it.
     OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
-    PRIVATEUSE1_ACTIVITY_TYPE_START = PRIVATEUSE1_USER_ANNOTATION,
-    PRIVATEUSE1_ACTIVITY_TYPE_END = PRIVATEUSE1_SYNC,
 };
 
 const char* toString(ActivityType t);

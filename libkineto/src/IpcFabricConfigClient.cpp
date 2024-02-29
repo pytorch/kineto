@@ -167,7 +167,7 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
 
   try {
     if (!fabricManager_->sync_send(*msg, std::string(kDynoIpcName))) {
-      LOG(ERROR) << "Failed to send config type=" << type << " to dyno: IPC sync_send fail";
+      LOG(WARNING) << "Failed to send config type=" << type << " to dyno: IPC sync_send fail";
       free(req);
       req = nullptr;
       return "";
@@ -175,11 +175,11 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
     free(req);
     msg = fabricManager_->poll_recv(maxIpcRetries, kSleepUs);
     if (!msg) {
-      LOG(ERROR) << "Failed to receive ondemand config type=" << type << " from dyno: IPC recv fail";
+      LOG(WARNING) << "Failed to receive ondemand config type=" << type << " from dyno: IPC recv fail";
       return "";
     }
   } catch (const std::runtime_error& ex) {
-    LOG(ERROR) << "Failed to recv ondemand config over ipc fabric: " << ex.what();
+    LOG(WARNING) << "Failed to recv ondemand config over ipc fabric: " << ex.what();
     free(req);
     return "";
   }

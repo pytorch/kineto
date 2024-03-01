@@ -862,3 +862,86 @@ TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
 
   EXPECT_FALSE(profiler.isActive());
 }
+
+TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
+  // Check for Json string sanitation
+  // based on AsyncTrace test
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(1, log_modules);
+
+  MockCuptiActivities activities;
+  CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
+
+  char filename[] = "/tmp/libkineto_testXXXXXX.json";
+  mkstemps(filename, 5);
+
+  Config cfg;
+
+  auto now = system_clock::now();
+  auto startTime = now + seconds(2);
+
+  bool success = cfg.parse(fmt::format(R"CFG(
+    ACTIVITIES_WARMUP_PERIOD_SECS = 1
+    ACTIVITIES_DURATION_SECS = 1
+    ACTIVITIES_LOG_FILE = {}
+    PROFILE_START_TIME = {}
+  )CFG", filename, duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+
+  EXPECT_TRUE(success);
+  EXPECT_FALSE(profiler.isActive());
+
+  auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
+
+  // Usually configuration is done when now is startTime - warmup to kick off warmup
+  // but start right away in the test
+  profiler.configure(cfg, now);
+  profiler.setLogger(logger.get());
+
+  EXPECT_TRUE(profiler.isActive());
+
+  // Add test metadata
+  std::string keyPrefix = "TEST_METADATA_";
+  profiler.addMetadata(keyPrefix + "NORMAL", "\"metadata value\"");
+  profiler.addMetadata(keyPrefix + "NEWLINE", "\"metadata \nvalue\"");
+  profiler.addMetadata(keyPrefix + "BACKSLASH", "\"/test/metadata\\path\"");
+
+  // Profiling activity at start up/during active/after duration
+  auto next = startTime + milliseconds(1000);
+  auto after = next + milliseconds(1000);
+
+  profiler.performRunLoopStep(startTime, startTime);
+  EXPECT_TRUE(profiler.isActive());
+
+  profiler.performRunLoopStep(next, next);
+  EXPECT_TRUE(profiler.isActive());
+
+  profiler.performRunLoopStep(after, after);
+  EXPECT_FALSE(profiler.isActive());
+
+#ifdef __linux__
+  // Check that the saved JSON file can be loaded and deserialized
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open the trace JSON file.");
+  }
+  std::string jsonStr(
+      (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+  auto countSubstrings = [](const std::string& source,
+                            const std::string& substring) {
+    size_t count = 0;
+    size_t pos = source.find(substring);
+    while (pos != std::string::npos) {
+      ++count;
+      pos = source.find(substring, pos + substring.length());
+    }
+    return count;
+  };
+
+  // Check if metadata has been correctly sanitized
+  EXPECT_EQ(3, countSubstrings(jsonStr, keyPrefix));
+  EXPECT_EQ(2, countSubstrings(jsonStr, "metadata value"));
+  EXPECT_EQ(1, countSubstrings(jsonStr, "/test/metadata/path"));
+#endif
+}

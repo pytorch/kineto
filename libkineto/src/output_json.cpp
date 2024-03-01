@@ -46,17 +46,20 @@ static constexpr char kDefaultLogFileFmt[] =
 static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 #endif
 
-std::string& ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
-// Replace all backslashes with forward slash because Windows paths causing JSONDecodeError.
+void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
+  // Replace all backslashes with forward slash because Windows paths causing JSONDecodeError.
   std::replace(value.begin(), value.end(), '\\', '/');
-  return value;
+  // Remove all new line characters
+  value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
 }
 
 void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
-  for (const auto& kv : metadata) {
+  for (auto [k, v]: metadata) {
+    std::string sanitizedValue = v;
+    sanitizeStrForJSON(sanitizedValue);
     traceOf_ << fmt::format(R"JSON(
-  "{}": {},)JSON", kv.first, kv.second);
+  "{}": {},)JSON", k, sanitizedValue);
   }
 }
 
@@ -360,6 +363,7 @@ void ChromeTraceLogger::handleActivity(
   int resource = op.resourceId();
   // TODO: Remove this once legacy tools are updated.
   std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
+  sanitizeStrForJSON(op_name);
 
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
@@ -367,7 +371,7 @@ void ChromeTraceLogger::handleActivity(
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
     "ts": {}, "dur": {}{}
   }},)JSON",
-          toString(op.type()), sanitizeStrForJSON(op_name), device, resource,
+          toString(op.type()), op_name, device, resource,
           ts, duration, args);
   // clang-format on
   if (op.flowId() > 0) {
@@ -436,6 +440,7 @@ void ChromeTraceLogger::finalizeTrace(
     LOG(ERROR) << "Failed to write to log file!";
     return;
   }
+  sanitizeStrForJSON(fileName_);
   LOG(INFO) << "Chrome Trace written to " << fileName_;
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
@@ -457,7 +462,8 @@ void ChromeTraceLogger::finalizeTrace(
       //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
       //   ...
       int mdv_count = kv.second.size();
-      for (const auto& v : kv.second) {
+      for (auto v : kv.second) {
+        sanitizeStrForJSON(v);
         value.append("\"" + v + "\"");
         if(mdv_count > 1) {
           value.append(",");
@@ -465,7 +471,7 @@ void ChromeTraceLogger::finalizeTrace(
         }
       }
       value.append("]");
-      PreparedMetadata[kv.first] = sanitizeStrForJSON(value);
+      PreparedMetadata[kv.first] = value;
     }
   }
   metadataToJSON(PreparedMetadata);
@@ -474,7 +480,7 @@ void ChromeTraceLogger::finalizeTrace(
   // Putting this here because the last entry MUST not end with a comma.
   traceOf_ << fmt::format(R"JSON(
   "traceName": "{}"
-}})JSON", sanitizeStrForJSON(fileName_));
+}})JSON", fileName_);
   // clang-format on
 
   traceOf_.close();

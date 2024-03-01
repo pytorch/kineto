@@ -4,7 +4,7 @@
 
 1. install [Node.js](https://nodejs.org/)
   * ```bash
-    curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt-get install -y nodejs```
 2. install [Yarn](https://yarnpkg.com/)
   * ```bash

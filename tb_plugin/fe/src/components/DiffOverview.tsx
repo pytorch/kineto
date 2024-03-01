@@ -529,70 +529,230 @@ export const DiffOverview: React.FC<IProps> = (props: IProps) => {
     selectedUnderlyingData: ColumnUnderlyingData
   ) => {
     let tableDataSource: TableRow[] = []
+    let tempLeftNameSet: string[] = []
+    let tempRightNameSet: string[] = []
+
+    for (let i = 0; i < selectedUnderlyingData.leftAggs.length; i++){
+      tempLeftNameSet.push(selectedUnderlyingData.leftAggs[i].name)
+    }
+
+    for (let j = 0; j < selectedUnderlyingData.rightAggs.length; j++){
+      tempRightNameSet.push(selectedUnderlyingData.rightAggs[j].name)
+    }
 
     for (let i = 0; i < selectedUnderlyingData.leftAggs.length; i++) {
       let left = selectedUnderlyingData.leftAggs[i]
-      let right = selectedUnderlyingData.rightAggs[i]
+      let right: any = null
+      let idxRight = tempRightNameSet.indexOf(left.name)
+      if (idxRight != -1){
+        right = selectedUnderlyingData.rightAggs[idxRight]
 
-      let deltaCallsPercentNumber =
+        let deltaCallsPercentNumber =
         ((right.calls - left.calls) / left.calls) * 100
 
+        let deltaHostDurationPercentNumber =
+          ((right.host_duration - left.host_duration) / left.host_duration) * 100
+
+        let deltaSelfHostDurationPercentNumber =
+          ((right.self_host_duration - left.self_host_duration) /
+            left.self_host_duration) *
+          100
+
+        let deltaDeviceDurationPercentNumber =
+          ((right.device_duration - left.device_duration) /
+            left.device_duration) *
+          100
+
+        let deltaSelfDeviceDurationPercentNumber =
+          ((right.self_device_duration - left.self_device_duration) /
+            left.self_device_duration) *
+          100
+
+        tableDataSource.push({
+          key: i,
+          operator: left.name,
+          baselineCalls: left.calls,
+          expCalls: right.calls,
+          deltaCalls: right.calls - left.calls,
+          deltaCallsPercentNumber: deltaCallsPercentNumber,
+          deltaCallsPercent: toPercentString(deltaCallsPercentNumber),
+
+          baselineHostDuration: left.host_duration,
+          expHostDuration: right.host_duration,
+          deltaHostDuration: right.host_duration - left.host_duration,
+          deltaHostDurationPercentNumber: deltaHostDurationPercentNumber,
+          deltaHostDurationPercent: toPercentString(
+            deltaHostDurationPercentNumber
+          ),
+
+          baselineSelfHostDuration: left.self_host_duration,
+          expSelfHostDuration: right.self_host_duration,
+          deltaSelfHostDuration:
+            right.self_host_duration - left.self_host_duration,
+          deltaSelfHostDurationPercentNumber: deltaSelfHostDurationPercentNumber,
+          deltaSelfHostDurationPercent: toPercentString(
+            deltaSelfHostDurationPercentNumber
+          ),
+
+          baselineDeviceDuration: left.device_duration,
+          expDeviceDuration: right.device_duration,
+          deltaDeviceDuration: right.device_duration - left.device_duration,
+          deltaDeviceDurationPercentNumber: deltaDeviceDurationPercentNumber,
+          deltaDeviceDurationPercent: toPercentString(
+            deltaDeviceDurationPercentNumber
+          ),
+
+          baselineSelfDeviceDuration: left.self_device_duration,
+          expSelfDeviceDuration: right.self_device_duration,
+          deltaSelfDeviceDuration:
+            right.self_device_duration - left.self_device_duration,
+          deltaSelfDeviceDurationPercentNumber: deltaSelfDeviceDurationPercentNumber,
+          deltaSelfDeviceDurationPercent: toPercentString(
+            deltaSelfDeviceDurationPercentNumber
+          )
+        })
+      } else {
+        let deltaCallsPercentNumber =
+        ((0 - left.calls) / left.calls) * 100
+
+        let deltaKernelCallsPercentNumber =
+          ((0 - left.kernel_calls) / left.kernel_calls) * 100
+
+        let deltaHostDurationPercentNumber =
+          ((0 - left.host_duration) / left.host_duration) * 100
+
+        let deltaSelfHostDurationPercentNumber =
+          ((0 - left.self_host_duration) /
+            left.self_host_duration) *
+          100
+
+        let deltaDeviceDurationPercentNumber =
+          ((0 - left.device_duration) /
+            left.device_duration) *
+          100
+
+        let deltaSelfDeviceDurationPercentNumber =
+          ((0 - left.self_device_duration) /
+            left.self_device_duration) *
+          100
+
+        tableDataSource.push({
+          key: i,
+          operator: left.name,
+          baselineCalls: left.calls,
+          expCalls: 0,
+          deltaCalls: 0 - left.calls,
+          deltaCallsPercentNumber: deltaCallsPercentNumber,
+          deltaCallsPercent: toPercentString(deltaCallsPercentNumber),
+
+          baselineHostDuration: left.host_duration,
+          expHostDuration: 0,
+          deltaHostDuration: 0 - left.host_duration,
+          deltaHostDurationPercentNumber: deltaHostDurationPercentNumber,
+          deltaHostDurationPercent: toPercentString(
+            deltaHostDurationPercentNumber
+          ),
+
+          baselineSelfHostDuration: left.self_host_duration,
+          expSelfHostDuration: 0,
+          deltaSelfHostDuration:
+            0 - left.self_host_duration,
+          deltaSelfHostDurationPercentNumber: deltaSelfHostDurationPercentNumber,
+          deltaSelfHostDurationPercent: toPercentString(
+            deltaSelfHostDurationPercentNumber
+          ),
+
+          baselineDeviceDuration: left.device_duration,
+          expDeviceDuration: 0,
+          deltaDeviceDuration: 0 - left.device_duration,
+          deltaDeviceDurationPercentNumber: deltaDeviceDurationPercentNumber,
+          deltaDeviceDurationPercent: toPercentString(
+            deltaDeviceDurationPercentNumber
+          ),
+
+          baselineSelfDeviceDuration: left.self_device_duration,
+          expSelfDeviceDuration: 0,
+          deltaSelfDeviceDuration:
+            0 - left.self_device_duration,
+          deltaSelfDeviceDurationPercentNumber: deltaSelfDeviceDurationPercentNumber,
+          deltaSelfDeviceDurationPercent: toPercentString(
+            deltaSelfDeviceDurationPercentNumber
+          )
+        })
+      }
+    }
+
+    let newIdx = selectedUnderlyingData.leftAggs.length - 1
+    for (let k = 0; k < selectedUnderlyingData.rightAggs.length; k++){
+      let right = selectedUnderlyingData.rightAggs[k]
+      if (tempLeftNameSet.indexOf(right.name) != -1){
+        continue
+      }
+      
+      newIdx += 1
+
+      let deltaCallsPercentNumber =
+      ((right.calls - 0) / 0) * 100
+
+      let deltaKernelCallsPercentNumber =
+        ((right.kernel_calls - 0) / 0) * 100
+
       let deltaHostDurationPercentNumber =
-        ((right.host_duration - left.host_duration) / left.host_duration) * 100
+        ((right.host_duration - 0) / 0) * 100
 
       let deltaSelfHostDurationPercentNumber =
-        ((right.self_host_duration - left.self_host_duration) /
-          left.self_host_duration) *
+        ((right.self_host_duration - 0) /
+          0) *
         100
 
       let deltaDeviceDurationPercentNumber =
-        ((right.device_duration - left.device_duration) /
-          left.device_duration) *
+        ((right.device_duration - 0) /
+          0) *
         100
 
       let deltaSelfDeviceDurationPercentNumber =
-        ((right.self_device_duration - left.self_device_duration) /
-          left.self_device_duration) *
+        ((right.self_device_duration - 0) /
+          0) *
         100
 
       tableDataSource.push({
-        key: i,
-        operator: left.name,
-        baselineCalls: left.calls,
+        key: newIdx,
+        operator: right.name,
+        baselineCalls: 0,
         expCalls: right.calls,
-        deltaCalls: right.calls - left.calls,
+        deltaCalls: right.calls - 0,
         deltaCallsPercentNumber: deltaCallsPercentNumber,
         deltaCallsPercent: toPercentString(deltaCallsPercentNumber),
 
-        baselineHostDuration: left.host_duration,
+        baselineHostDuration: 0,
         expHostDuration: right.host_duration,
-        deltaHostDuration: right.host_duration - left.host_duration,
+        deltaHostDuration: right.host_duration - 0,
         deltaHostDurationPercentNumber: deltaHostDurationPercentNumber,
         deltaHostDurationPercent: toPercentString(
           deltaHostDurationPercentNumber
         ),
 
-        baselineSelfHostDuration: left.self_host_duration,
+        baselineSelfHostDuration: 0,
         expSelfHostDuration: right.self_host_duration,
         deltaSelfHostDuration:
-          right.self_host_duration - left.self_host_duration,
+          right.self_host_duration - 0,
         deltaSelfHostDurationPercentNumber: deltaSelfHostDurationPercentNumber,
         deltaSelfHostDurationPercent: toPercentString(
           deltaSelfHostDurationPercentNumber
         ),
 
-        baselineDeviceDuration: left.device_duration,
+        baselineDeviceDuration: 0,
         expDeviceDuration: right.device_duration,
-        deltaDeviceDuration: right.device_duration - left.device_duration,
+        deltaDeviceDuration: right.device_duration - 0,
         deltaDeviceDurationPercentNumber: deltaDeviceDurationPercentNumber,
         deltaDeviceDurationPercent: toPercentString(
           deltaDeviceDurationPercentNumber
         ),
 
-        baselineSelfDeviceDuration: left.self_device_duration,
+        baselineSelfDeviceDuration: 0,
         expSelfDeviceDuration: right.self_device_duration,
         deltaSelfDeviceDuration:
-          right.self_device_duration - left.self_device_duration,
+          right.self_device_duration - 0,
         deltaSelfDeviceDurationPercentNumber: deltaSelfDeviceDurationPercentNumber,
         deltaSelfDeviceDurationPercent: toPercentString(
           deltaSelfDeviceDurationPercentNumber

@@ -69,7 +69,7 @@ inline int64_t CudaSyncActivity::resourceId() const {
   // set to CUPTI_SYNCHRONIZATION_INVALID_VALUE (-1)
   // converting to an integer will automatically wrap the number to -1
   // in the trace.
-  return int32_t(raw().streamId);
+  return static_cast<int32_t>(raw().streamId);
 }
 
 inline void CudaSyncActivity::log(ActivityLogger& logger) const {
@@ -85,8 +85,10 @@ inline const std::string CudaSyncActivity::metadataJson() const {
       "device": {}, "context": {})JSON",
       syncTypeString(sync.type),
       isEventSync(raw().type) ? eventSyncInfo(raw(), srcStream_, srcCorrId_) : "",
-      sync.streamId, sync.correlationId,
-      deviceId(), sync.contextId);
+      static_cast<int32_t>(sync.streamId),
+      sync.correlationId,
+      deviceId(),
+      sync.contextId);
   // clang-format on
   return "";
 }

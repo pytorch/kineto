@@ -43,6 +43,8 @@ static constexpr auto kOutMsgNelems = "Out msg nelems";
 static constexpr auto kInSplit = "In split size";
 static constexpr auto kOutSplit = "Out split size";
 static constexpr auto kGroupSize = "Group size";
+static constexpr const char* kProcessGroupId = "Process Group ID";
+static constexpr const char* kGroupRanks = "Process Group Ranks";
 static constexpr int32_t kTruncatLength = 30;
 
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
@@ -571,6 +573,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   metadataMap.emplace(kInMsgNelems, "65664");
   metadataMap.emplace(kOutMsgNelems, "131328");
   metadataMap.emplace(kGroupSize, "2");
+  metadataMap.emplace(kProcessGroupId, "0");
 
   std::vector<int64_t> inSplitSizes(50, 0);
   std::string inSplitSizesStr = "";
@@ -600,6 +603,23 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
             outSplitSizes.begin() + kTruncatLength,
             ", "));
     metadataMap.emplace(kOutSplit, outSplitSizesStr);
+  }
+
+  std::vector<int64_t> groupRanks(64, 0);
+  std::string groupRanksStr = "";
+  if (!groupRanks.empty() && groupRanks.size() <= kTruncatLength) {
+    metadataMap.emplace(
+        kGroupRanks, fmt::format("\"[{}]\"", fmt::join(groupRanks, ", ")));
+  } else if (groupRanks.size() > kTruncatLength) {
+    metadataMap.emplace(
+        kGroupRanks,
+        fmt::format(
+            "\"[{}, ..., {}]\"",
+            fmt::join(
+                groupRanks.begin(),
+                groupRanks.begin() + kTruncatLength - 1,
+                ", "),
+            groupRanks.back()));
   }
 
   // Set up CPU events
@@ -642,6 +662,11 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   auto expectedInSplitStr =
       fmt::format("\"[{}, ...]\"", fmt::join(expectedInSplit, ", "));
   EXPECT_EQ(cpu_annotation->getMetadataValue(kInSplit), expectedInSplitStr);
+  std::vector<int64_t> expectedGroupRanks(kTruncatLength-1, 0);
+  auto expectedGroupRanksStr =
+      fmt::format("\"[{}, ..., {}]\"", fmt::join(expectedGroupRanks, ", "), "0");
+  EXPECT_EQ(cpu_annotation->getMetadataValue(kGroupRanks), expectedGroupRanksStr);
+
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
@@ -682,6 +707,9 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   EXPECT_EQ(2, countSubstrings(jsonString, expectedInSplitStr));
   EXPECT_EQ(2, countSubstrings(jsonString, kOutSplit));
   EXPECT_EQ(2, countSubstrings(jsonString, outSplitSizesStr));
+  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupId));
+  EXPECT_EQ(2, countSubstrings(jsonString, kGroupRanks));
+  EXPECT_EQ(2, countSubstrings(jsonString, expectedGroupRanksStr));
 #endif
 }
 

@@ -38,6 +38,8 @@ static constexpr const char* kOutMsgNelems = "Out msg nelems";
 static constexpr const char* kGroupSize = "Group size";
 static constexpr const char* kInSplit = "In split size";
 static constexpr const char* kOutSplit = "Out split size";
+static constexpr const char* kProcessGroupId = "Process Group ID";
+static constexpr const char* kGroupRanks = "Process Group Ranks";
 
 #ifdef __linux__
 static constexpr char kDefaultLogFileFmt[] =
@@ -348,6 +350,20 @@ void ChromeTraceLogger::handleActivity(
           inSplitSize,
           kOutSplit,
           outSplitSize));
+    }
+    const auto& processGroupId =
+        collectiveRecord->getMetadataValue(kProcessGroupId);
+    const auto& groupRanks = collectiveRecord->getMetadataValue(kGroupRanks);
+    if (!processGroupId.empty() && !groupRanks.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(
+          "\"{}\": {}, \"{}\": {}",
+          kProcessGroupId,
+          processGroupId,
+          kGroupRanks,
+          groupRanks));
     }
   }
 

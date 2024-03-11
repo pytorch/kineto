@@ -66,6 +66,10 @@ struct ResourceInfo {
   int64_t deviceId;       // id of device which owns this resource (specified in DeviceInfo.id)
   const std::string name; // resource name
 };
+
+using getLinkedActivityCallback =
+  std::function<const ITraceActivity*(int32_t)>;
+
 /* IActivityProfilerSession:
  *   an opaque object that can be used by a high level profiler to
  *   start/stop and return trace events.
@@ -81,8 +85,6 @@ class IActivityProfilerSession {
   // stop the trace collection synchronously
   virtual void stop() = 0;
 
-  virtual void reset() = 0;
-
   TraceStatus status() {
     return status_;
   }
@@ -94,7 +96,7 @@ class IActivityProfilerSession {
   virtual void processTrace(ActivityLogger& logger) = 0;
 
   virtual void processTrace(ActivityLogger& logger,
-    std::function<const ITraceActivity*(int32_t)> getLinkedActivity,
+    getLinkedActivityCallback getLinkedActivity,
     int64_t startTime, int64_t endTime) {
     processTrace(logger);
   }

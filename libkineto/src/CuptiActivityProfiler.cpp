@@ -289,6 +289,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 
   for (const auto& session : sessions_) {
     LOG(INFO) << "Processing child profiler trace";
+    // cpuActivity() function here is used to get the linked cpuActivity for
+    // session's activities. Passing captureWindowStartTime_ and captureWindowEndTime_
+    // in order to specify the range of activities that need to be processed.
     session->processTrace(logger,
         std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
         captureWindowStartTime_,
@@ -948,9 +951,6 @@ void CuptiActivityProfiler::stopTraceInternal(
 
 void CuptiActivityProfiler::resetInternal() {
   resetTraceData();
-  for (auto& session : sessions_) {
-    session->reset();
-  }
   currentRunloopState_ = RunloopState::WaitForRequest;
 }
 

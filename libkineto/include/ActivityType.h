@@ -40,6 +40,9 @@ enum class ActivityType {
     HPU_OP, // HPU host side runtime event
     XPU_RUNTIME, // host side xpu runtime events
     COLLECTIVE_COMM, // collective communication
+
+    // PRIVATEUSE1 Activity types are used for custom backends.
+    // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
     PRIVATEUSE1_RUNTIME, // host side privateUse1 runtime events
     PRIVATEUSE1_DRIVER, // host side privateUse1 driver events
 

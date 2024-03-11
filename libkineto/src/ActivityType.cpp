@@ -63,15 +63,9 @@ ActivityType toActivityType(const std::string& str) {
 }
 
 bool hasPrivateUse1Type(const std::set<ActivityType>& activityTypes) {
-  for (const auto type : activityTypes) {
-    if (type == ActivityType::PRIVATEUSE1_RUNTIME ||
-        type == ActivityType::PRIVATEUSE1_DRIVER) {
-      return true;
-    }
-  }
-  return false;
+  return activityTypes.count(ActivityType::PRIVATEUSE1_RUNTIME) ||
+         activityTypes.count(ActivityType::PRIVATEUSE1_DRIVER);
 }
-
 
 const std::array<ActivityType, activityTypeCount> activityTypes() {
   std::array<ActivityType, activityTypeCount> res;

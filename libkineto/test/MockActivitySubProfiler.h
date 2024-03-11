@@ -32,8 +32,6 @@ class MockProfilerSession: public IActivityProfilerSession {
       status_ = TraceStatus::PROCESSING;
     }
 
-    void reset() override {}
-
     std::vector<std::string> errors() override {
       return {};
     }

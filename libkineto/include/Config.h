@@ -18,9 +18,7 @@
 #include <string>
 #include <vector>
 
-namespace KINETO_NAMESPACE {
-
-using namespace libkineto;
+namespace libkineto {
 
 class Config : public AbstractConfig {
  public:
@@ -492,4 +490,4 @@ class Config : public AbstractConfig {
 
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto

@@ -20,7 +20,6 @@
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
-  class Config;
   struct ActivityBuffers;
 }
 
@@ -61,7 +60,7 @@ class ActivityLogger {
   }
 
   virtual void finalizeTrace(
-      const KINETO_NAMESPACE::Config& config,
+      const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
       int64_t endTime,
       std::unordered_map<std::string, std::vector<std::string>>& metadata) = 0;

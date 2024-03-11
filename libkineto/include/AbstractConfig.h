@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace KINETO_NAMESPACE {
+namespace libkineto {
 
 class AbstractConfig {
  public:
@@ -116,4 +116,4 @@ class AbstractConfig {
   std::map<std::string, AbstractConfig*> featureConfigs_{};
 };
 
-} // namespace KINETO_NAMESPACE
+} // namespace libkineto

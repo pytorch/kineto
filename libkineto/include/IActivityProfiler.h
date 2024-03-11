@@ -23,7 +23,6 @@
 
 namespace libkineto {
 
-using namespace KINETO_NAMESPACE;
 struct CpuTraceBuffer;
 
 #ifdef _MSC_VER

@@ -111,6 +111,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() cons
   float warpsPerSmVal = warpsPerSm(kernel);
 
   // clang-format off
+  // see [Note: Temp Libkineto Nanosecond]
   return fmt::format(R"JSON(
       "queued": {}, "device": {}, "context": {},
       "stream": {}, "correlation": {},
@@ -121,7 +122,11 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() cons
       "grid": [{}, {}, {}],
       "block": [{}, {}, {}],
       "est. achieved occupancy %": {})JSON",
+#ifdef TMP_LIBKINETO_NANOSECOND
+      kernel.queued, kernel.deviceId, kernel.contextId,
+#else
       us(kernel.queued), kernel.deviceId, kernel.contextId,
+#endif
       kernel.streamId, kernel.correlationId,
       kernel.registersPerThread,
       kernel.staticSharedMemory + kernel.dynamicSharedMemory,

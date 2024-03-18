@@ -35,11 +35,22 @@ template<class T>
 struct CuptiActivity : public ITraceActivity {
   explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
+  // see [Note: Temp Libkineto Nanosecond]
   int64_t timestamp() const override {
+#ifdef TMP_LIBKINETO_NANOSECOND
+    return activity_.start;
+#else
     return nsToUs(activity_.start);
+#endif
   }
+
+  // see [Note: Temp Libkineto Nanosecond]
   int64_t duration() const override {
+#ifdef TMP_LIBKINETO_NANOSECOND
+    return activity_.end - activity_.start;
+#else
     return nsToUs(activity_.end - activity_.start);
+#endif
   }
   // TODO(T107507796): Deprecate ITraceActivity
   int64_t correlationId() const override {return 0;}
@@ -103,11 +114,21 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
       int32_t threadId=0)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
 
+  // see [Note: Temp Libkineto Nanosecond]
   int64_t timestamp() const override {
+#ifdef TMP_LIBKINETO_NANOSECOND
+    return activity_.start;
+#else
     return nsToUs(activity_.start);
+#endif
   }
+  // see [Note: Temp Libkineto Nanosecond]
   int64_t duration() const override {
+#ifdef TMP_LIBKINETO_NANOSECOND
+    return activity_.end - activity_.start;
+#else
     return nsToUs(activity_.end - activity_.start);
+#endif
   }
   // TODO: Update this with PID ordering
   int64_t deviceId() const override {return -1;}

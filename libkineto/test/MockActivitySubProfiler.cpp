@@ -34,7 +34,7 @@ const std::set<ActivityType>& MockActivityProfiler::availableActivities() const 
 
 MockActivityProfiler::MockActivityProfiler(
     std::deque<GenericTraceActivity>& activities) :
-  test_activities_(activities) {};
+  test_activities_(activities) {}
 
 std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
       const std::set<ActivityType>& /*activity_types*/,
@@ -42,7 +42,7 @@ std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
   auto session = std::make_unique<MockProfilerSession>();
 	session->set_test_activities(std::move(test_activities_));
   return session;
-};
+}
 
 std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
       int64_t /*ts_ms*/,
@@ -50,7 +50,7 @@ std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
       const std::set<ActivityType>& activity_types,
       const Config& config) {
   return configure(activity_types, config);
-};
+}
 
 std::unique_ptr<CpuTraceBuffer> MockProfilerSession::getTraceBuffer() {
   auto buf = std::make_unique<CpuTraceBuffer>();

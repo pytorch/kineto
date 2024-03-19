@@ -43,7 +43,7 @@ class RunProfileData:
         trace_body = trace_json['traceEvents']
         fwd_bwd_events = []
         for data in trace_body:
-            if data.get('cat') == 'forward_backward':
+            if data.get('cat') == 'fwdbwd':
                 fwd_bwd_events.append(data)
             else:
                 event = trace.create_event(data, self.is_pytorch_lightning)

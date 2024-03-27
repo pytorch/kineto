@@ -23,7 +23,6 @@
 
 namespace libkineto {
 
-using namespace KINETO_NAMESPACE;
 struct CpuTraceBuffer;
 
 #ifdef _MSC_VER
@@ -66,6 +65,10 @@ struct ResourceInfo {
   int64_t deviceId;       // id of device which owns this resource (specified in DeviceInfo.id)
   const std::string name; // resource name
 };
+
+using getLinkedActivityCallback =
+  std::function<const ITraceActivity*(int32_t)>;
+
 /* IActivityProfilerSession:
  *   an opaque object that can be used by a high level profiler to
  *   start/stop and return trace events.
@@ -91,6 +94,12 @@ class IActivityProfilerSession {
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
 
+  virtual void processTrace(ActivityLogger& logger,
+    getLinkedActivityCallback /*getLinkedActivity*/,
+    int64_t /*startTime*/, int64_t /*endTime*/) {
+    processTrace(logger);
+  }
+
   // returns device info used in this trace, could be nullptr
   virtual std::unique_ptr<DeviceInfo> getDeviceInfo() = 0;
 
@@ -102,6 +111,12 @@ class IActivityProfilerSession {
 
   // XXX define trace formats
   // virtual save(string name, TraceFormat format)
+
+  virtual void pushCorrelationId(uint64_t /*id*/) {}
+  virtual void popCorrelationId() {}
+
+  virtual void pushUserCorrelationId(uint64_t /*id*/) {}
+  virtual void popUserCorrelationId() {}
 
  protected:
   TraceStatus status_ = TraceStatus::READY;

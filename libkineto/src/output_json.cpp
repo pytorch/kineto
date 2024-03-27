@@ -598,6 +598,12 @@ void ChromeTraceLogger::finalizeTrace(
     std::unique_ptr<ActivityBuffers> /*unused*/,
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
+  finalizeTrace(endTime, metadata);
+}
+
+void ChromeTraceLogger::finalizeTrace(
+    int64_t endTime,
+    std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   if (!traceOf_) {
     LOG(ERROR) << "Failed to write to log file!";
     return;

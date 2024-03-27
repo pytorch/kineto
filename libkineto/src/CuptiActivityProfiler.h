@@ -203,6 +203,12 @@ class CuptiActivityProfiler {
 
   std::unordered_map<std::string, std::vector<std::string>> getLoggerMetadata();
 
+  void pushCorrelationId(uint64_t id);
+  void popCorrelationId();
+
+  void pushUserCorrelationId(uint64_t id);
+  void popUserCorrelationId();
+
  protected:
 
   using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;

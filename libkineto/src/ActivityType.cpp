@@ -38,6 +38,8 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
     {"hpu_op", ActivityType::HPU_OP},
     {"xpu_runtime", ActivityType::XPU_RUNTIME},
     {"collective_comm", ActivityType::COLLECTIVE_COMM},
+    {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
+    {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT}
 }};
 
@@ -58,6 +60,11 @@ ActivityType toActivityType(const std::string& str) {
     }
   }
   throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
+}
+
+bool hasPrivateUse1Type(const std::set<ActivityType>& activityTypes) {
+  return activityTypes.count(ActivityType::PRIVATEUSE1_RUNTIME) ||
+         activityTypes.count(ActivityType::PRIVATEUSE1_DRIVER);
 }
 
 const std::array<ActivityType, activityTypeCount> activityTypes() {

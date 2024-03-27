@@ -73,6 +73,7 @@ def get_libkineto_public_headers():
         "include/ThreadUtil.h",
         "include/libkineto.h",
         "include/time_since_epoch.h",
+        "include/output_base.h",
     ]
 
 # kineto code should be updated to not have to

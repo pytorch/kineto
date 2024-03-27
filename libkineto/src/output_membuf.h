@@ -13,9 +13,12 @@
 #include <unordered_map>
 #include <vector>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "Config.h"
 #include "GenericTraceActivity.h"
 #include "output_base.h"
+#include "ActivityBuffers.h"
 
 namespace KINETO_NAMESPACE {
 

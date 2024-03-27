@@ -10,6 +10,7 @@
 
 #include <array>
 #include <string>
+#include <set>
 
 namespace libkineto {
 
@@ -40,12 +41,18 @@ enum class ActivityType {
     XPU_RUNTIME, // host side xpu runtime events
     COLLECTIVE_COMM, // collective communication
 
+    // PRIVATEUSE1 Activity types are used for custom backends.
+    // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
+    PRIVATEUSE1_RUNTIME, // host side privateUse1 runtime events
+    PRIVATEUSE1_DRIVER, // host side privateUse1 driver events
+
     ENUM_COUNT, // This is to add buffer and not used for any profiling logic. Add your new type before it.
     OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
 };
 
 const char* toString(ActivityType t);
 ActivityType toActivityType(const std::string& str);
+bool hasPrivateUse1Type(const std::set<ActivityType>& activityTypes);
 
 // Return an array of all activity types except COUNT
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;

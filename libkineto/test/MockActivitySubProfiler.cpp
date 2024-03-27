@@ -10,6 +10,9 @@
 #include <set>
 #include <vector>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "libkineto.h"
 #include "output_base.h"
 #include "test/MockActivitySubProfiler.h"
 

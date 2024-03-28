@@ -211,13 +211,16 @@ class RoctracerLogger {
   void endTracing();
 
   roctracer_pool_t *hccPool_{NULL};
+  static void insert_row_to_buffer(roctracerBase* row);
   static void api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg);
   static void activity_callback(const char* begin, const char* end, void* arg);
 
   ApiIdList loggedIds_;
 
   // Api callback data
-  std::deque<roctracerBase*> rows_;
+  uint32_t maxBufferSize_{1000000}; // 1M GPU runtime/kernel events.
+  std::vector<roctracerBase*> rows_;
+  std::mutex rowsMutex_;
   std::map<uint64_t,uint64_t> externalCorrelations_[CorrelationDomain::size];	// tracer -> ext
 
   bool externalCorrelationEnabled_{true};

@@ -74,6 +74,19 @@ void RoctracerLogger::clearLogs() {
   }
 }
 
+void RoctracerLogger::insert_row_to_buffer(roctracerBase* row) {
+  RoctracerLogger *dis = &singleton();
+  std::lock_guard<std::mutex> lock(dis->rowsMutex_);
+  if (dis->rows_.size() >= dis->maxBufferSize_) {
+    LOG_FIRST_N(WARNING, 10) << "Exceeded max GPU buffer count ("
+                 << dis->rows_.size()
+                 << " > " << dis->maxBufferSize_
+                 << ") - terminating tracing";
+    return;
+  }
+  dis->rows_.push_back(row);
+}
+
 void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg)
 {
   RoctracerLogger *dis = &singleton();
@@ -83,14 +96,24 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
 
     // Pack callbacks into row structures
 
-    thread_local timespec timestamp;
+    thread_local std::unordered_map<activity_correlation_id_t, timespec> timestamps;
+    // TODO: T183540282 - Figure out why we need a thread_local mutex to avoid crash during high QPS.
+    thread_local std::mutex m;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
+      std::lock_guard<std::mutex> lock(m);
+      timespec timestamp;
       clock_gettime(CLOCK_MONOTONIC, &timestamp);  // record proper clock
+      timestamps[data->correlation_id] = timestamp;
     }
     else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
+      timespec startTime;
+      {
+        std::lock_guard<std::mutex> lock(m);
+         startTime = timestamps[data->correlation_id];
+         timestamps.erase(data->correlation_id);
+      }
       timespec endTime;
-      timespec startTime { timestamp };
       clock_gettime(CLOCK_MONOTONIC, &endTime);  // record proper clock
 
       switch (cid) {
@@ -119,7 +142,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               args.sharedMemBytes,
               args.stream
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
         case HIP_API_ID_hipHccModuleLaunchKernel:
@@ -147,7 +170,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               args.sharedMemBytes,
               args.stream
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
         case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
@@ -174,7 +197,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               args.sharedMemBytes,
               args.stream
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
 #endif
           break;
@@ -191,7 +214,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               data->args.hipMalloc.ptr__val,
               data->args.hipMalloc.size
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
         case HIP_API_ID_hipFree:
@@ -207,7 +230,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               data->args.hipFree.ptr,
               0
             );
-           dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
         case HIP_API_ID_hipMemcpy:
@@ -227,7 +250,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               args.kind,
               static_cast<hipStream_t>(0)  // use placeholder?
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
         case HIP_API_ID_hipMemcpyAsync:
@@ -248,7 +271,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               args.kind,
               args.stream
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
         default:
@@ -262,7 +285,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
               timespec_to_ns(startTime),
               timespec_to_ns(endTime)
             );
-            dis->rows_.push_back(row);
+            insert_row_to_buffer(row);
           }
           break;
       }  // switch
@@ -303,7 +326,7 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
         ? demangle(record->kernel_name)
         : std::string()
     );
-    dis->rows_.push_back(row);
+    insert_row_to_buffer(row);
     roctracer_next_record(record, &record);
   }
 }

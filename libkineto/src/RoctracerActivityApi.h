@@ -16,13 +16,13 @@
 
 #ifdef HAS_ROCTRACER
 #include <roctracer.h>
+#include "RoctracerLogger.h"
 #endif
 
 #include "ActivityType.h"
 #include "GenericTraceActivity.h"
 
 class RoctracerLogger;
-struct roctracerRow;
 
 namespace KINETO_NAMESPACE {
 
@@ -53,9 +53,7 @@ class RoctracerActivityApi {
   void clearActivities();
   void teardownContext() {}
 
-  int processActivities(ActivityLogger& logger,
-                        std::function<const ITraceActivity*(int32_t)> linkedActivity,
-                        int64_t startTime, int64_t endTime);
+  int processActivities(std::function<void(const roctracerBase*)> handler);
 
   void setMaxBufferSize(int size);
 
@@ -63,14 +61,6 @@ class RoctracerActivityApi {
 
  private:
   bool registered_{false};
-
-  //Name cache
-  uint32_t nextStringId_{2};
-  std::map<uint32_t, std::string> strings_;
-  std::map<std::string, uint32_t> reverseStrings_;
-  std::map<activity_correlation_id_t, uint32_t> kernelNames_;
-
-  std::map<activity_correlation_id_t, GenericTraceActivity> kernelLaunches_;
 
   // Enabled Activity Filters
   uint32_t activityMask_{0};

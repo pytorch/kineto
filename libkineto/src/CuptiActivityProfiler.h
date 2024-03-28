@@ -30,6 +30,10 @@
 #include "CuptiActivity.h"
 #endif // HAS_CUPTI
 
+#ifdef HAS_ROCTRACER
+#include "RoctracerLogger.h"
+#endif // HAS_ROCTRACER
+
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"
@@ -322,14 +326,15 @@ class CuptiActivityProfiler {
       const std::unordered_map<int64_t, int64_t>& correlationMap);
 
   const ITraceActivity* cpuActivity(int32_t correlationId);
+  void updateGpuNetSpan(const ITraceActivity& gpuOp);
+  bool outOfRange(const ITraceActivity& act);
+  void handleGpuActivity(const ITraceActivity& act,
+      ActivityLogger* logger);
 
 #ifdef HAS_CUPTI
   // Process generic CUPTI activity
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
-
   // Process specific GPU activity types
-  void updateGpuNetSpan(const ITraceActivity& gpuOp);
-  bool outOfRange(const ITraceActivity& act);
   void handleCorrelationActivity(
       const CUpti_ActivityExternalCorrelation* correlation);
   void handleRuntimeActivity(
@@ -341,11 +346,24 @@ class CuptiActivityProfiler {
   void handleCudaEventActivity(const CUpti_ActivityCudaEvent* activity);
   void handleCudaSyncActivity(
       const CUpti_ActivitySynchronization* activity, ActivityLogger* logger);
-  void handleGpuActivity(const ITraceActivity& act,
-      ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
 #endif // HAS_CUPTI
+
+#ifdef HAS_ROCTRACER
+  // Process generic RocTracer activity
+  void handleRoctracerActivity(
+    const roctracerBase* record,
+    ActivityLogger* logger);
+  // Process specific GPU activity types
+  template <class T>
+  void handleRuntimeActivity(
+    const T* activity,
+    ActivityLogger* logger);
+  void handleGpuActivity(
+    const roctracerAsyncRow* record,
+    ActivityLogger* logger);
+#endif // HAS_ROCTRACER
 
   void resetTraceData();
 

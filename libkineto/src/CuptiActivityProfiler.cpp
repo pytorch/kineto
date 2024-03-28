@@ -38,7 +38,9 @@
 #include "CuptiActivityApi.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
+#include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
+#include "RoctracerLogger.h"
 #endif
 #include "output_base.h"
 #include "ActivityBuffers.h"
@@ -278,10 +280,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(
-        logger,
-        std::bind(&CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
-        captureWindowStartTime_,
-        captureWindowEndTime_);
+        std::bind(&CuptiActivityProfiler::handleRoctracerActivity, this, std::placeholders::_1, &logger));
     LOG(INFO) << "Processed " << count << " GPU records";
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
@@ -410,7 +409,6 @@ void CuptiActivityProfiler::GpuUserEventMap::logEvents(ActivityLogger* logger) {
   }
 }
 
-#ifdef HAS_CUPTI
 inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
   bool out_of_range = act.timestamp() < captureWindowStartTime_ ||
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
@@ -424,6 +422,7 @@ inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
   return out_of_range;
 }
 
+#ifdef HAS_CUPTI
 inline static bool isBlockListedRuntimeCbid(CUpti_CallbackId cbid) {
   // Some CUDA calls that are very frequent and also not very interesting.
   // Filter these out to reduce trace size.
@@ -589,6 +588,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
   cuda_sync_activity.log(*logger);
 }
+#endif // HAS_CUPTI
 
 inline void CuptiActivityProfiler::updateGpuNetSpan(
     const ITraceActivity& gpuOp) {
@@ -640,6 +640,20 @@ void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
   }
 }
 
+const ITraceActivity* CuptiActivityProfiler::linkedActivity(
+    int32_t correlationId,
+    const std::unordered_map<int64_t, int64_t>& correlationMap) {
+  const auto& it = correlationMap.find(correlationId);
+  if (it != correlationMap.end()) {
+    const auto& it2 = activityMap_.find(it->second);
+    if (it2 != activityMap_.end()) {
+      return it2->second;
+    }
+  }
+  return nullptr;
+}
+
+
 inline void CuptiActivityProfiler::handleGpuActivity(
     const ITraceActivity& act,
     ActivityLogger* logger) {
@@ -666,19 +680,7 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   }
 }
 
-const ITraceActivity* CuptiActivityProfiler::linkedActivity(
-    int32_t correlationId,
-    const std::unordered_map<int64_t, int64_t>& correlationMap) {
-  const auto& it = correlationMap.find(correlationId);
-  if (it != correlationMap.end()) {
-    const auto& it2 = activityMap_.find(it->second);
-    if (it2 != activityMap_.end()) {
-      return it2->second;
-    }
-  }
-  return nullptr;
-}
-
+#ifdef HAS_CUPTI
 template <class T>
 inline void CuptiActivityProfiler::handleGpuActivity(
     const T* act,
@@ -689,7 +691,6 @@ inline void CuptiActivityProfiler::handleGpuActivity(
       traceBuffers_->addActivityWrapper(GpuActivity<T>(act, linked));
   handleGpuActivity(gpu_activity, logger);
 }
-
 
 template <class T>
 inline void updateCtxToDeviceId(const T* act) {
@@ -756,6 +757,70 @@ void CuptiActivityProfiler::handleCuptiActivity(
   }
 }
 #endif // HAS_CUPTI
+
+#ifdef HAS_ROCTRACER
+template <class T>
+void CuptiActivityProfiler::handleRuntimeActivity(
+    const T* activity,
+    ActivityLogger* logger) {
+  int32_t tid = activity->tid;
+  const auto& it = resourceInfo_.find({processId(), tid});
+  if (it != resourceInfo_.end()) {
+    tid = it->second.id;
+  }
+  const ITraceActivity* linked =
+      linkedActivity(activity->id, cpuCorrelationMap_);
+  const auto& runtime_activity =
+      traceBuffers_->addActivityWrapper(RuntimeActivity<T>(activity, linked));
+  checkTimestampOrder(&runtime_activity);
+  if (outOfRange(runtime_activity)) {
+    return;
+  }
+  runtime_activity.log(*logger);
+}
+
+inline void CuptiActivityProfiler::handleGpuActivity(
+    const roctracerAsyncRow* act,
+    ActivityLogger* logger) {
+  const ITraceActivity* linked =
+      linkedActivity(act->id, cpuCorrelationMap_);
+  const auto& gpu_activity =
+      traceBuffers_->addActivityWrapper(GpuActivity(act, linked));
+  handleGpuActivity(gpu_activity, logger);
+}
+
+void CuptiActivityProfiler::handleRoctracerActivity(
+    const roctracerBase* record,
+    ActivityLogger* logger) {
+  switch (record->type) {
+    case ROCTRACER_ACTIVITY_DEFAULT:
+      handleRuntimeActivity(
+          reinterpret_cast<const roctracerRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_KERNEL:
+      handleRuntimeActivity(
+          reinterpret_cast<const roctracerKernelRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_COPY:
+      handleRuntimeActivity(
+          reinterpret_cast<const roctracerCopyRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_MALLOC:
+      handleRuntimeActivity(
+          reinterpret_cast<const roctracerMallocRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_ASYNC:
+      handleGpuActivity(
+          reinterpret_cast<const roctracerAsyncRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_NONE:
+    default:
+      LOG(WARNING) << "Unexpected activity type: " << record->type;
+      ecs_.unexepected_cuda_events++;
+      break;
+  }
+}
+#endif // HAS_ROCTRACER
 
 const ITraceActivity* CuptiActivityProfiler::cpuActivity(int32_t correlationId) {
     const auto& it2 = activityMap_.find(correlationId);

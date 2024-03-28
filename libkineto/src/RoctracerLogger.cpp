@@ -18,12 +18,6 @@
 #include "ThreadUtil.h"
 #include "Demangle.h"
 
-typedef uint64_t timestamp_t;
-
-static timestamp_t timespec_to_ns(const timespec& time) {
-    return ((timestamp_t)time.tv_sec * 1000000000) + time.tv_nsec;
-  }
-
 using namespace std::chrono;
 
 constexpr size_t kBufSize(2 * 1024 * 1024);
@@ -75,10 +69,6 @@ void RoctracerLogger::popCorrelationID(CorrelationDomain type) {
 
 void RoctracerLogger::clearLogs() {
   rows_.clear();
-  kernelRows_.clear();
-  copyRows_.clear();
-  mallocRows_.clear();
-  opRows_.clear();
   for (int i = 0; i < CorrelationDomain::size; ++i) {
     externalCorrelations_[i].clear();
   }
@@ -108,52 +98,56 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
         case HIP_API_ID_hipExtLaunchKernel:
         case HIP_API_ID_hipLaunchCooperativeKernel:     // Should work here
           {
-          s_flush.reportCorrelation(data->correlation_id);
-          auto &args = data->args.hipLaunchKernel;
-          dis->kernelRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              args.function_address,
-                              nullptr,
-                              args.numBlocks.x,
-                              args.numBlocks.y,
-                              args.numBlocks.z,
-                              args.dimBlocks.x,
-                              args.dimBlocks.y,
-                              args.dimBlocks.z,
-                              args.sharedMemBytes,
-                              args.stream
-                            );
+            s_flush.reportCorrelation(data->correlation_id);
+            auto &args = data->args.hipLaunchKernel;
+            roctracerKernelRow* row = new roctracerKernelRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              args.function_address,
+              nullptr,
+              args.numBlocks.x,
+              args.numBlocks.y,
+              args.numBlocks.z,
+              args.dimBlocks.x,
+              args.dimBlocks.y,
+              args.dimBlocks.z,
+              args.sharedMemBytes,
+              args.stream
+            );
+            dis->rows_.push_back(row);
           }
           break;
         case HIP_API_ID_hipHccModuleLaunchKernel:
         case HIP_API_ID_hipModuleLaunchKernel:
         case HIP_API_ID_hipExtModuleLaunchKernel:
           {
-          s_flush.reportCorrelation(data->correlation_id);
-          auto &args = data->args.hipModuleLaunchKernel;
-          dis->kernelRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              nullptr,
-                              args.f,
-                              args.gridDimX,
-                              args.gridDimY,
-                              args.gridDimZ,
-                              args.blockDimX,
-                              args.blockDimY,
-                              args.blockDimZ,
-                              args.sharedMemBytes,
-                              args.stream
-                            );
+            s_flush.reportCorrelation(data->correlation_id);
+            auto &args = data->args.hipModuleLaunchKernel;
+            roctracerKernelRow* row = new roctracerKernelRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              nullptr,
+              args.f,
+              args.gridDimX,
+              args.gridDimY,
+              args.gridDimZ,
+              args.blockDimX,
+              args.blockDimY,
+              args.blockDimZ,
+              args.sharedMemBytes,
+              args.stream
+            );
+            dis->rows_.push_back(row);
           }
           break;
         case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
@@ -161,97 +155,115 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
 #if 0
           {
             auto &args = data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val;
-            dis->kernelRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              args.function_address,
-                              nullptr,
-                              args.numBlocks.x,
-                              args.numBlocks.y,
-                              args.numBlocks.z,
-                              args.dimBlocks.x,
-                              args.dimBlocks.y,
-                              args.dimBlocks.z,
-                              args.sharedMemBytes,
-                              args.stream
-                            );
+            roctracerKernelRow* row = new roctracerKernelRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              args.function_address,
+              nullptr,
+              args.numBlocks.x,
+              args.numBlocks.y,
+              args.numBlocks.z,
+              args.dimBlocks.x,
+              args.dimBlocks.y,
+              args.dimBlocks.z,
+              args.sharedMemBytes,
+              args.stream
+            );
+            dis->rows_.push_back(row);
           }
 #endif
           break;
         case HIP_API_ID_hipMalloc:
-            dis->mallocRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              data->args.hipMalloc.ptr__val,
-                              data->args.hipMalloc.size
-                              );
+          {
+            roctracerMallocRow* row = new roctracerMallocRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              data->args.hipMalloc.ptr__val,
+              data->args.hipMalloc.size
+            );
+            dis->rows_.push_back(row);
+          }
           break;
         case HIP_API_ID_hipFree:
-            dis->mallocRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              data->args.hipFree.ptr,
-                              0
-                              );
+          {
+            roctracerMallocRow* row = new roctracerMallocRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              data->args.hipFree.ptr,
+              0
+            );
+           dis->rows_.push_back(row);
+          }
           break;
         case HIP_API_ID_hipMemcpy:
           {
             auto &args = data->args.hipMemcpy;
-            dis->copyRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              args.src,
-                              args.dst,
-                              args.sizeBytes,
-                              args.kind,
-                              static_cast<hipStream_t>(0)  // use placeholder?
-                              );
+            roctracerCopyRow* row = new roctracerCopyRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              args.src,
+              args.dst,
+              args.sizeBytes,
+              args.kind,
+              static_cast<hipStream_t>(0)  // use placeholder?
+            );
+            dis->rows_.push_back(row);
           }
           break;
         case HIP_API_ID_hipMemcpyAsync:
         case HIP_API_ID_hipMemcpyWithStream:
           {
             auto &args = data->args.hipMemcpyAsync;
-            dis->copyRows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime),
-                              args.src,
-                              args.dst,
-                              args.sizeBytes,
-                              args.kind,
-                              args.stream
-                              );
+            roctracerCopyRow* row = new roctracerCopyRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime),
+              args.src,
+              args.dst,
+              args.sizeBytes,
+              args.kind,
+              args.stream
+            );
+            dis->rows_.push_back(row);
           }
           break;
         default:
-          dis->rows_.emplace_back(data->correlation_id,
-                              domain,
-                              cid,
-                              processId(),
-                              systemThreadId(),
-                              timespec_to_ns(startTime),
-                              timespec_to_ns(endTime)
-                              );
+          {
+            roctracerRow* row = new roctracerRow(
+              data->correlation_id,
+              domain,
+              cid,
+              processId(),
+              systemThreadId(),
+              timespec_to_ns(startTime),
+              timespec_to_ns(endTime)
+            );
+            dis->rows_.push_back(row);
+          }
           break;
       }  // switch
       // External correlation
@@ -263,13 +275,6 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
     }  // phase exit
   }
 }
-
-// Clone this here.  Static value that may not be present in earlier rocm headers
-typedef enum {
-  HIP_OP_DISPATCH_KIND_UNKNOWN_ = 0,
-  HIP_OP_DISPATCH_KIND_KERNEL_ = 0x11F0,
-  HIP_OP_DISPATCH_KIND_TASK_ = 0x11F1
-} hip_op_dispatch_kind_t_;
 
 void RoctracerLogger::activity_callback(const char* begin, const char* end, void* arg)
 {
@@ -284,20 +289,21 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
        s_flush.maxCompletedCorrelationId_ = record->correlation_id;
     }
-
-    dis->opRows_.emplace_back(record->correlation_id,
-               record->domain,
-               record->kind,
-               record->op,
-               record->process_id,
-               record->thread_id,
-               record->begin_ns,
-               record->end_ns,
-               ((record->kind == HIP_OP_DISPATCH_KIND_KERNEL_)
-                 || (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
-                 ? demangle(record->kernel_name)
-                 : std::string()
-             );
+    roctracerAsyncRow* row = new roctracerAsyncRow(
+      record->correlation_id,
+      record->domain,
+      record->kind,
+      record->op,
+      record->device_id,
+      record->queue_id,
+      record->begin_ns,
+      record->end_ns,
+      ((record->kind == HIP_OP_DISPATCH_KIND_KERNEL_)
+        || (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
+        ? demangle(record->kernel_name)
+        : std::string()
+    );
+    dis->rows_.push_back(row);
     roctracer_next_record(record, &record);
   }
 }
@@ -433,4 +439,3 @@ bool ApiIdList::contains(uint32_t apiId)
 {
   return (filter_.find(apiId) != filter_.end()) ? !invert_ : invert_;  // XOR
 }
-

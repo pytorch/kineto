@@ -62,7 +62,7 @@ struct CuptiRangeProfilerOptions {
   int deviceId = 0;
   int maxRanges = 1;
   int numNestingLevels = 1;
-  CUcontext cuContext = 0;
+  CUcontext cuContext = nullptr;
   bool unitTest = false;
 };
 

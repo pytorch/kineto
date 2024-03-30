@@ -152,7 +152,7 @@ class CuptiCallbackApi {
   ReaderWriterLock callbackLock_;
 #ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;
-  CUpti_SubscriberHandle subscriber_ {0};
+  CUpti_SubscriberHandle subscriber_ {nullptr};
 #endif
 };
 

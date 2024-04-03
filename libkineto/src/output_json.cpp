@@ -116,19 +116,19 @@ void ChromeTraceLogger::handleDeviceInfo(
 #ifdef TMP_LIBKINETO_NANOSECOND
   traceOf_ << fmt::format(R"JSON(
   {{
-    "name": "process_name", "ph": "M", "ts": {}.{}, "pid": {}, "tid": 0,
+    "name": "process_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
     "args": {{
       "name": "{}"
     }}
   }},
   {{
-    "name": "process_labels", "ph": "M", "ts": {}.{}, "pid": {}, "tid": 0,
+    "name": "process_labels", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
     "args": {{
       "labels": "{}"
     }}
   }},
   {{
-    "name": "process_sort_index", "ph": "M", "ts": {}.{}, "pid": {}, "tid": 0,
+    "name": "process_sort_index", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
     "args": {{
       "sort_index": {}
     }}
@@ -183,13 +183,13 @@ void ChromeTraceLogger::handleResourceInfo(
 #ifdef TMP_LIBKINETO_NANOSECOND
   traceOf_ << fmt::format(R"JSON(
   {{
-    "name": "thread_name", "ph": "M", "ts": {}.{}, "pid": {}, "tid": {},
+    "name": "thread_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
     "args": {{
       "name": "{}"
     }}
   }},
   {{
-    "name": "thread_sort_index", "ph": "M", "ts": {}.{}, "pid": {}, "tid": {},
+    "name": "thread_sort_index", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
     "args": {{
       "sort_index": {}
     }}
@@ -234,13 +234,13 @@ void ChromeTraceLogger::handleOverheadInfo(
 #ifdef TMP_LIBKINETO_NANOSECOND
   traceOf_ << fmt::format(R"JSON(
   {{
-    "name": "process_name", "ph": "M", "ts": {}.{}, "pid": -1, "tid": 0,
+    "name": "process_name", "ph": "M", "ts": {}.{:03}, "pid": -1, "tid": 0,
     "args": {{
       "name": "{}"
     }}
   }},
   {{
-    "name": "process_sort_index", "ph": "M", "ts": {}.{}, "pid": -1, "tid": 0,
+    "name": "process_sort_index", "ph": "M", "ts": {}.{:03}, "pid": -1, "tid": 0,
     "args": {{
       "sort_index": {}
     }}
@@ -283,7 +283,7 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{
-    "ph": "X", "cat": "Trace", "ts": {}.{}, "dur": {}.{},
+    "ph": "X", "cat": "Trace", "ts": {}.{:03}, "dur": {}.{:03},
     "pid": "Spans", "tid": "{}",
     "name": "{}{} ({})",
     "args": {{
@@ -291,7 +291,7 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
     }}
   }},
   {{
-    "name": "process_sort_index", "ph": "M", "ts": {}.{},
+    "name": "process_sort_index", "ph": "M", "ts": {}.{:03},
     "pid": "Spans", "tid": 0,
     "args": {{
       "sort_index": {}
@@ -345,7 +345,7 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "Iteration Start: {}", "ph": "i", "s": "g",
-    "pid": "Traces", "tid": "Trace {}", "ts": {}.{}
+    "pid": "Traces", "tid": "Trace {}", "ts": {}.{:03}
   }},)JSON",
       span.name,
       span.name, span.startTime/1000, span.startTime%1000);
@@ -372,7 +372,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
   {{
     "ph": "i", "cat": "{}", "s": "t", "name": "{}",
     "pid": {}, "tid": {},
-    "ts": {}.{},
+    "ts": {}.{:03},
     "args": {{
       {}
     }}
@@ -513,7 +513,7 @@ void ChromeTraceLogger::handleActivity(
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}.{}, "dur": {}.{}{}
+    "ts": {}.{:03}, "dur": {}.{:03}{}
   }},)JSON",
           toString(op.type()), op_name, device, resource,
           ts/1000, ts %1000, duration/1000, duration %1000, args);
@@ -579,7 +579,7 @@ void ChromeTraceLogger::handleLink(
 #ifdef TMP_LIBKINETO_NANOSECOND
   traceOf_ << fmt::format(R"JSON(
   {{
-    "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {}.{},
+    "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {}.{:03},
     "cat": "{}", "name": "{}"{}
   }},)JSON",
       type, id, e.deviceId(), e.resourceId(), e.timestamp()/1000, e.timestamp()%1000, name, name, binding);
@@ -617,7 +617,7 @@ void ChromeTraceLogger::finalizeTrace(
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "Record Window End", "ph": "i", "s": "g",
-    "pid": "", "tid": "", "ts": {}.{}
+    "pid": "", "tid": "", "ts": {}.{:03}
   }}
   ],)JSON",
       endTime/1000, endTime %1000);

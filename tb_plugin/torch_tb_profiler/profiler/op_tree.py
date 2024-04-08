@@ -271,8 +271,8 @@ class OpTreeBuilder:
             return
 
         if isinstance(node, ModuleNode):
-            backward_node = BackwardNode(name=node.name + '.backward', start_time=None, end_time=None,
-                                         type='backward', tid=0)
+            backward_node = BackwardNode(name=node.name + '.backward', start_time=node.start_time,
+                                         end_time=node.end_time, type='backward', tid=node.tid)
             if parent is None:
                 result.append(backward_node)
             else:

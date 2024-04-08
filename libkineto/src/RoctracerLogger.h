@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <deque>
 #include <atomic>
+#include <mutex>
 
 #include <roctracer.h>
 #include <roctracer_hip.h>

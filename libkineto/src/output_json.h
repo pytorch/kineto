@@ -16,6 +16,7 @@
 
 #include "GenericTraceActivity.h"
 #include "output_base.h"
+#include "ActivityBuffers.h"
 
 namespace KINETO_NAMESPACE {
   // Previous declaration of TraceSpan is struct. Must match the same here.

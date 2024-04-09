@@ -32,7 +32,7 @@ class OpTreeBuilder:
 
         # if could not find any forward/backward association, skip the processing
         if not fwd_bwd_map:
-            logger.debug('there is no any forwarwd backward association, skip processing backward correlation.')
+            logger.debug('there is no any forward backward association, skip processing backward correlation.')
             return self.tid2tree
 
         self._set_main_tid()

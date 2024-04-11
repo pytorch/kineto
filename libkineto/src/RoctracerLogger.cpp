@@ -97,22 +97,16 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
     // Pack callbacks into row structures
 
     thread_local std::unordered_map<activity_correlation_id_t, timespec> timestamps;
-    // TODO: T183540282 - Figure out why we need a thread_local mutex to avoid crash during high QPS.
-    thread_local std::mutex m;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
-      std::lock_guard<std::mutex> lock(m);
       timespec timestamp;
       clock_gettime(CLOCK_MONOTONIC, &timestamp);  // record proper clock
       timestamps[data->correlation_id] = timestamp;
     }
     else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
       timespec startTime;
-      {
-        std::lock_guard<std::mutex> lock(m);
-         startTime = timestamps[data->correlation_id];
-         timestamps.erase(data->correlation_id);
-      }
+      startTime = timestamps[data->correlation_id];
+      timestamps.erase(data->correlation_id);
       timespec endTime;
       clock_gettime(CLOCK_MONOTONIC, &endTime);  // record proper clock
 
@@ -292,6 +286,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
       // External correlation
       for (int it = CorrelationDomain::begin; it < CorrelationDomain::end; ++it) {
         if (t_externalIds[it].size() > 0) {
+          std::lock_guard<std::mutex> lock(dis->externalCorrelationsMutex_);
           dis->externalCorrelations_[it][data->correlation_id] = t_externalIds[it].back();
         }
       }

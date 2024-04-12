@@ -223,6 +223,7 @@ class RoctracerLogger {
   std::vector<roctracerBase*> rows_;
   std::mutex rowsMutex_;
   std::map<uint64_t,uint64_t> externalCorrelations_[CorrelationDomain::size];	// tracer -> ext
+  std::mutex externalCorrelationsMutex_;
 
   bool externalCorrelationEnabled_{true};
   bool logging_{false};

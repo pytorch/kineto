@@ -68,7 +68,8 @@ inline bool RoctracerActivityApi::isLogged(libkineto::ActivityType atype) {
 }
 
 int RoctracerActivityApi::processActivities(
-    std::function<void(const roctracerBase*)> handler) {
+    std::function<void(const roctracerBase*)> handler,
+    std::function<void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)> correlationHandler) {
   // Find offset to map from monotonic clock to system clock.
   // This will break time-ordering of events but is status quo.
 
@@ -81,7 +82,16 @@ int RoctracerActivityApi::processActivities(
   // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
 
   int count = 0;
-  auto &externalCorrelations = d->externalCorrelations_[RoctracerLogger::CorrelationDomain::Domain0];
+
+  // Process all external correlations pairs
+  for (int it = RoctracerLogger::CorrelationDomain::begin; it < RoctracerLogger::CorrelationDomain::end; ++it) {
+    auto &externalCorrelations = d->externalCorrelations_[it];
+    for (auto &item : externalCorrelations) {
+      correlationHandler(item.first, item.second, static_cast<RoctracerLogger::CorrelationDomain>(it));
+    }
+    std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
+    externalCorrelations.clear();
+  }
 
   // All Runtime API Calls
   for (auto &item : d->rows_) {

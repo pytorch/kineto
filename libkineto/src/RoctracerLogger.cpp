@@ -287,7 +287,7 @@ void RoctracerLogger::api_callback(uint32_t domain, uint32_t cid, const void* ca
       for (int it = CorrelationDomain::begin; it < CorrelationDomain::end; ++it) {
         if (t_externalIds[it].size() > 0) {
           std::lock_guard<std::mutex> lock(dis->externalCorrelationsMutex_);
-          dis->externalCorrelations_[it][data->correlation_id] = t_externalIds[it].back();
+          dis->externalCorrelations_[it].emplace_back(data->correlation_id, t_externalIds[it].back());
         }
       }
     }  // phase exit

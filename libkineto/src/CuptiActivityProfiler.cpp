@@ -280,7 +280,8 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(
-        std::bind(&CuptiActivityProfiler::handleRoctracerActivity, this, std::placeholders::_1, &logger));
+        std::bind(&CuptiActivityProfiler::handleRoctracerActivity, this, std::placeholders::_1, &logger),
+        std::bind(&CuptiActivityProfiler::handleCorrelationActivity, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     LOG(INFO) << "Processed " << count << " GPU records";
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
@@ -356,6 +357,20 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
   }
 }
 #endif // HAS_CUPTI
+#ifdef HAS_ROCTRACER
+inline void CuptiActivityProfiler::handleCorrelationActivity(
+    uint64_t correlationId, uint64_t externalId, RoctracerLogger::CorrelationDomain externalKind) {
+  if (externalKind == RoctracerLogger::CorrelationDomain::Domain0) {
+    cpuCorrelationMap_[correlationId] = externalId;
+  } else if (externalKind == RoctracerLogger::CorrelationDomain::Domain1) {
+    userCorrelationMap_[correlationId] = externalId;
+  } else {
+    LOG(WARNING)
+        << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
+    ecs_.invalid_external_correlation_events++;
+  }
+}
+#endif // HAS_ROCTRACER
 
 static GenericTraceActivity createUserGpuSpan(
     const libkineto::ITraceActivity& cpuTraceActivity,

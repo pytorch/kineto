@@ -355,6 +355,10 @@ class CuptiActivityProfiler {
   void handleRoctracerActivity(
     const roctracerBase* record,
     ActivityLogger* logger);
+  void handleCorrelationActivity(
+    uint64_t correlationId,
+    uint64_t externalId,
+    RoctracerLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(

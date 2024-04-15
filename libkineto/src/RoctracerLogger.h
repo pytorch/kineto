@@ -222,7 +222,11 @@ class RoctracerLogger {
   uint32_t maxBufferSize_{1000000}; // 1M GPU runtime/kernel events.
   std::vector<roctracerBase*> rows_;
   std::mutex rowsMutex_;
-  std::map<uint64_t,uint64_t> externalCorrelations_[CorrelationDomain::size];	// tracer -> ext
+
+  // This vector collects pairs of correlationId and their respective
+  // externalCorrelationId for each CorrelationDomain. This will be used
+  // to populate the Correlation maps during post processing.
+  std::vector<std::pair<uint64_t, uint64_t>> externalCorrelations_[CorrelationDomain::size];
   std::mutex externalCorrelationsMutex_;
 
   bool externalCorrelationEnabled_{true};

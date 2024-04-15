@@ -19,11 +19,7 @@ can be removed.
 template <class ClockT>
 inline int64_t timeSinceEpoch(
       const std::chrono::time_point<ClockT>& t) {
-#ifdef TMP_LIBKINETO_NANOSECOND
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
-#else
-    return std::chrono::duration_cast<std::chrono::microseconds>(
-#endif
                t.time_since_epoch())
         .count();
 }

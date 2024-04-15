@@ -32,13 +32,15 @@ static constexpr char kFlowEnd = 'f';
 // TODO: share the same string across c10d, profiler and libkineto
 static constexpr const char* kParamCommsCallName = "record_param_comms";
 // Collective function metadata populated from CPU op to GPU kernel
+static constexpr const char* kCollectiveName = "Collective name";
 static constexpr const char* kDtype = "dtype";
 static constexpr const char* kInMsgNelems = "In msg nelems";
 static constexpr const char* kOutMsgNelems = "Out msg nelems";
 static constexpr const char* kGroupSize = "Group size";
 static constexpr const char* kInSplit = "In split size";
 static constexpr const char* kOutSplit = "Out split size";
-static constexpr const char* kProcessGroupId = "Process Group ID";
+static constexpr const char* kProcessGroupName = "Process Group Name";
+static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
 
 #ifdef __linux__
@@ -443,17 +445,21 @@ void ChromeTraceLogger::handleActivity(
       op.linkedActivity()->name() == kParamCommsCallName) {
     const auto* collectiveRecord = op.linkedActivity();
     // Get the value out of the collective record
+    const auto& collectiveName =
+        collectiveRecord->getMetadataValue(kCollectiveName);
     const auto& inMsgSize = collectiveRecord->getMetadataValue(kInMsgNelems);
     const auto& outMsgSize = collectiveRecord->getMetadataValue(kOutMsgNelems);
     const auto& groupSize = collectiveRecord->getMetadataValue(kGroupSize);
     const auto& dtype = collectiveRecord->getMetadataValue(kDtype);
-    if (!inMsgSize.empty() && !outMsgSize.empty() && !groupSize.empty() &&
-        !dtype.empty()) {
+    if (!collectiveName.empty() && !inMsgSize.empty() && !outMsgSize.empty() &&
+        !groupSize.empty() && !dtype.empty()) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
       arg_values.append(fmt::format(
-          "\"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}",
+          " \"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}",
+          kCollectiveName,
+          collectiveName,
           kInMsgNelems,
           inMsgSize,
           kOutMsgNelems,
@@ -471,25 +477,36 @@ void ChromeTraceLogger::handleActivity(
         arg_values.append(",");
       }
       arg_values.append(fmt::format(
-          "\"{}\": {}, \"{}\": {}",
+          " \"{}\": {}, \"{}\": {}",
           kInSplit,
           inSplitSize,
           kOutSplit,
           outSplitSize));
     }
-    const auto& processGroupId =
-        collectiveRecord->getMetadataValue(kProcessGroupId);
-    const auto& groupRanks = collectiveRecord->getMetadataValue(kGroupRanks);
-    if (!processGroupId.empty() && !groupRanks.empty()) {
+    const auto& processGroupName =
+        collectiveRecord->getMetadataValue(kProcessGroupName);
+    if (!processGroupName.empty()) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
-      arg_values.append(fmt::format(
-          "\"{}\": {}, \"{}\": {}",
-          kProcessGroupId,
-          processGroupId,
-          kGroupRanks,
-          groupRanks));
+      arg_values.append(
+          fmt::format(" \"{}\": {}", kProcessGroupName, processGroupName));
+    }
+    const auto& processGroupDesc =
+        collectiveRecord->getMetadataValue(kProcessGroupDesc);
+    if (!processGroupName.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(
+          fmt::format(" \"{}\": {}", kProcessGroupDesc, processGroupDesc));
+    }
+    const auto& groupRanks = collectiveRecord->getMetadataValue(kGroupRanks);
+    if (!groupRanks.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(" \"{}\": {}", kGroupRanks, groupRanks));
     }
   }
 

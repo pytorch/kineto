@@ -36,14 +36,15 @@ using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 
 const std::string kParamCommsCallName = "record_param_comms";
-static constexpr auto kCommuName = "Collective name";
+static constexpr auto kCollectiveName = "Collective name";
 static constexpr auto kDtype = "dtype";
 static constexpr auto kInMsgNelems = "In msg nelems";
 static constexpr auto kOutMsgNelems = "Out msg nelems";
 static constexpr auto kInSplit = "In split size";
 static constexpr auto kOutSplit = "Out split size";
 static constexpr auto kGroupSize = "Group size";
-static constexpr const char* kProcessGroupId = "Process Group ID";
+static constexpr const char* kProcessGroupName = "Process Group Name";
+static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
 static constexpr int32_t kTruncatLength = 30;
 
@@ -568,12 +569,13 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Prepare metadata map
   std::unordered_map<std::string, std::string> metadataMap;
-  metadataMap.emplace(kCommuName, fmt::format("\"{}\"", "_allgather_base"));
+  metadataMap.emplace(kCollectiveName, fmt::format("\"{}\"", "_allgather_base"));
   metadataMap.emplace(kDtype, fmt::format("\"{}\"", "Float"));
   metadataMap.emplace(kInMsgNelems, "65664");
   metadataMap.emplace(kOutMsgNelems, "131328");
   metadataMap.emplace(kGroupSize, "2");
-  metadataMap.emplace(kProcessGroupId, "0");
+  metadataMap.emplace(kProcessGroupName, fmt::format("\"{}\"", "12341234"));
+  metadataMap.emplace(kProcessGroupDesc, fmt::format("\"{}\"", "test_purpose"));
 
   std::vector<int64_t> inSplitSizes(50, 0);
   std::string inSplitSizesStr = "";
@@ -707,7 +709,12 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   EXPECT_EQ(2, countSubstrings(jsonString, expectedInSplitStr));
   EXPECT_EQ(2, countSubstrings(jsonString, kOutSplit));
   EXPECT_EQ(2, countSubstrings(jsonString, outSplitSizesStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupId));
+  EXPECT_EQ(2, countSubstrings(jsonString, kCollectiveName));
+  EXPECT_EQ(2, countSubstrings(jsonString, "_allgather_base"));
+  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupName));
+  EXPECT_EQ(2, countSubstrings(jsonString, "12341234"));
+  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupDesc));
+  EXPECT_EQ(2, countSubstrings(jsonString, "test_purpose"));
   EXPECT_EQ(2, countSubstrings(jsonString, kGroupRanks));
   EXPECT_EQ(2, countSubstrings(jsonString, expectedGroupRanksStr));
 #endif

@@ -41,18 +41,10 @@ struct RoctracerActivity : public ITraceActivity {
   // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
   // Convert the timestamps.
   int64_t timestamp() const override {
-#ifdef TMP_LIBKINETO_NANOSECOND
     return activity_.begin;
-#else
-    return nsToUs(activity_.begin);
-#endif
   }
   int64_t duration() const override {
-#ifdef TMP_LIBKINETO_NANOSECOND
     return activity_.end - activity_.begin;
-#else
-    return nsToUs(activity_.end - activity_.begin);
-#endif
   }
   int64_t correlationId() const override {return 0;}
   int32_t getThreadId() const override {return 0;}

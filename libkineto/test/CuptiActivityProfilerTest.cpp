@@ -104,9 +104,9 @@ struct MockCuptiActivityBuffer {
 
   void addRuntimeActivity(
       CUpti_runtime_api_trace_cbid_enum cbid,
-      int64_t start_us, int64_t end_us, int64_t correlation) {
+      int64_t start_ns, int64_t end_ns, int64_t correlation) {
     auto& act = createActivity<CUpti_ActivityAPI>(
-        start_us, end_us, correlation);
+        start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_RUNTIME;
     act.cbid = cbid;
     act.threadId = threadId();
@@ -115,9 +115,9 @@ struct MockCuptiActivityBuffer {
 
   void addDriverActivity(
       CUpti_driver_api_trace_cbid_enum cbid,
-      int64_t start_us, int64_t end_us, int64_t correlation) {
+      int64_t start_ns, int64_t end_ns, int64_t correlation) {
     auto& act = createActivity<CUpti_ActivityAPI>(
-        start_us, end_us, correlation);
+        start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_DRIVER;
     act.cbid = cbid;
     act.threadId = threadId();
@@ -125,9 +125,9 @@ struct MockCuptiActivityBuffer {
   }
 
   void addKernelActivity(
-      int64_t start_us, int64_t end_us, int64_t correlation) {
+      int64_t start_ns, int64_t end_ns, int64_t correlation) {
     auto& act = createActivity<CUpti_ActivityKernel4>(
-        start_us, end_us, correlation);
+        start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
     act.deviceId = 0;
     act.contextId = 0;
@@ -139,9 +139,9 @@ struct MockCuptiActivityBuffer {
   }
 
   void addMemcpyActivity(
-      int64_t start_us, int64_t end_us, int64_t correlation) {
+      int64_t start_ns, int64_t end_ns, int64_t correlation) {
     auto& act = createActivity<CUpti_ActivityMemcpy>(
-        start_us, end_us, correlation);
+        start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_MEMCPY;
     act.deviceId = 0;
     act.streamId = 2;
@@ -152,10 +152,10 @@ struct MockCuptiActivityBuffer {
   }
 
   void addSyncActivity(
-      int64_t start_us, int64_t end_us, int64_t correlation,
+      int64_t start_ns, int64_t end_ns, int64_t correlation,
       CUpti_ActivitySynchronizationType type, int64_t stream = 1) {
     auto& act = createActivity<CUpti_ActivitySynchronization>(
-        start_us, end_us, correlation);
+        start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_SYNCHRONIZATION;
     act.type = type;
     act.contextId = 0;
@@ -164,9 +164,9 @@ struct MockCuptiActivityBuffer {
   }
 
   void addCollectiveActivity(
-      int64_t start_us, int64_t end_us, int64_t correlation) {
+      int64_t start_ns, int64_t end_ns, int64_t correlation) {
     auto& act = createActivity<CUpti_ActivityKernel4>(
-        start_us, end_us, correlation);
+        start_ns, end_ns, correlation);
     act.name = "collective_gpu";
     act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
     act.queued = 0;
@@ -183,11 +183,11 @@ struct MockCuptiActivityBuffer {
 
   template<class T>
   T& createActivity(
-      int64_t start_us, int64_t end_us, int64_t correlation) {
+      int64_t start_ns, int64_t end_ns, int64_t correlation) {
     T& act = *static_cast<T*>(malloc(sizeof(T)));
     bzero(&act, sizeof(act));
-    act.start = start_us * 1000;
-    act.end = end_us * 1000;
+    act.start = start_ns;
+    act.end = end_ns;
     act.correlationId = correlation;
     return act;
   }
@@ -447,48 +447,48 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_us = 100;
-  int64_t duration_us = 300;
-  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  int64_t start_time_ns = 100;
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + microseconds(duration_us));
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
 
   profiler.recordThreadInfo();
 
   // Log some cpu ops
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
-      start_time_us, start_time_us + duration_us);
-  cpuOps->addOp("op1", 120, 150, 1);
-  cpuOps->addOp("op2", 130, 140, 2);
-  cpuOps->addOp("op3", 200, 250, 3);
-  cpuOps->addOp("op4", 260, 280, 4);
+      start_time_ns, start_time_ns + duration_ns);
+  cpuOps->addOp("op1", start_time_ns + 20, start_time_ns + 50, 1);
+  cpuOps->addOp("op2", start_time_ns + 30, start_time_ns + 40, 2);
+  cpuOps->addOp("op3", start_time_ns + 100, start_time_ns + 150, 3);
+  cpuOps->addOp("op4", start_time_ns + 160, start_time_ns + 180, 4);
   profiler.transferCpuTrace(std::move(cpuOps));
 
   // And some GPU ops
   auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
-  gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 133, 138, 1);
-  gpuOps->addRuntimeActivity(CUDA_MEMCPY, 210, 220, 2);
-  gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, 230, 245, 3);
-  gpuOps->addDriverActivity(CU_LAUNCH_KERNEL, 265, 275, 4);
-  gpuOps->addRuntimeActivity(CUDA_STREAM_SYNC, 246, 340, 5);
-  gpuOps->addRuntimeActivity(CUDA_EVENT_SYNC, 341, 350, 6);
-  gpuOps->addKernelActivity(150, 170, 1);
-  gpuOps->addMemcpyActivity(240, 250, 2);
-  gpuOps->addKernelActivity(260, 320, 3);
-  gpuOps->addKernelActivity(330, 350, 4);
-  gpuOps->addSyncActivity(321, 323, 5, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE);
+  gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, start_time_ns + 33, start_time_ns + 38, 1);
+  gpuOps->addRuntimeActivity(CUDA_MEMCPY, start_time_ns + 110, start_time_ns + 120, 2);
+  gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, start_time_ns + 130, start_time_ns + 145, 3);
+  gpuOps->addDriverActivity(CU_LAUNCH_KERNEL, start_time_ns + 165, start_time_ns + 175, 4);
+  gpuOps->addRuntimeActivity(CUDA_STREAM_SYNC, start_time_ns + 146, start_time_ns + 240, 5);
+  gpuOps->addRuntimeActivity(CUDA_EVENT_SYNC, start_time_ns + 241, start_time_ns + 250, 6);
+  gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
+  gpuOps->addMemcpyActivity(start_time_ns + 140, start_time_ns + 150, 2);
+  gpuOps->addKernelActivity(start_time_ns + 160, start_time_ns + 220, 3);
+  gpuOps->addKernelActivity(start_time_ns + 230, start_time_ns + 250, 4);
+  gpuOps->addSyncActivity(start_time_ns + 221, start_time_ns + 223, 5, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE);
   // Add wait event on kernel stream 1
   gpuOps->addSyncActivity(
-      324, 326, 6, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      start_time_ns + 224, start_time_ns + 226, 6, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       1 /*stream*/);
   // This event should be ignored because it is not on a stream that has no GPU kernels
   gpuOps->addSyncActivity(
-      326, 330, 7, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      start_time_ns + 226, start_time_ns + 230, 7, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       4 /*stream*/);
   // Comes from CudaEventSynchronize call on CPU
   gpuOps->addSyncActivity(
-      327, 326, 6, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
+      start_time_ns + 227, start_time_ns + 226, 6, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
       -1 /*stream*/);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
@@ -557,14 +557,14 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_us = 100;
-  int64_t duration_us = 300;
-  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  int64_t start_time_ns = 100;
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + microseconds(duration_us));
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
 
-  int64_t kernelLaunchTime = 120;
+  int64_t kernelLaunchTime = start_time_ns + 20;
   profiler.recordThreadInfo();
 
   // Prepare metadata map
@@ -626,7 +626,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Set up CPU events
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
-      start_time_us, start_time_us + duration_us);
+      start_time_ns, start_time_ns + duration_ns);
   cpuOps->addOp(
       kParamCommsCallName,
       kernelLaunchTime,
@@ -728,19 +728,19 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_us = 100;
-  int64_t duration_us = 300;
-  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  int64_t start_time_ns = 100;
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + microseconds(duration_us));
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
 
-  int64_t kernelLaunchTime = 120;
+  int64_t kernelLaunchTime = start_time_ns + 20;
   profiler.recordThreadInfo();
 
   // set up CPU event
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
-      start_time_us, start_time_us + duration_us);
+      start_time_ns, start_time_ns + duration_ns);
   cpuOps->addOp("annotation", kernelLaunchTime, kernelLaunchTime + 10, 1);
   profiler.transferCpuTrace(std::move(cpuOps));
 
@@ -798,19 +798,19 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   ev.device = 1;
   ev.resource = 0;
 
-  int64_t start_time_us = 100;
-  int64_t duration_us = 1000;
-  auto start_time = time_point<system_clock>(microseconds(start_time_us));
+  int64_t start_time_ns = 100;
+  int64_t duration_ns = 1000;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
 
   std::deque<GenericTraceActivity> test_activities{3, ev};
-  test_activities[0].startTime = start_time_us;
-  test_activities[0].endTime = start_time_us + 5000;
+  test_activities[0].startTime = start_time_ns;
+  test_activities[0].endTime = start_time_ns + 5000;
   test_activities[0].activityName = "SubGraph A execution";
-  test_activities[1].startTime = start_time_us;
-  test_activities[1].endTime = start_time_us + 2000;
+  test_activities[1].startTime = start_time_ns;
+  test_activities[1].endTime = start_time_ns + 2000;
   test_activities[1].activityName = "Operator foo";
-  test_activities[2].startTime = start_time_us + 2500;
-  test_activities[2].endTime = start_time_us + 2900;
+  test_activities[2].startTime = start_time_ns + 2500;
+  test_activities[2].endTime = start_time_ns + 2900;
   test_activities[2].activityName = "Operator bar";
 
   auto mock_activity_profiler =
@@ -825,7 +825,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   profiler.startTrace(start_time);
   EXPECT_TRUE(profiler.isActive());
 
-  profiler.stopTrace(start_time + microseconds(duration_us));
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
   EXPECT_TRUE(profiler.isActive());
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";

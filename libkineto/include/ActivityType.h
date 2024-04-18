@@ -52,7 +52,6 @@ enum class ActivityType {
 
 const char* toString(ActivityType t);
 ActivityType toActivityType(const std::string& str);
-bool hasPrivateUse1Type(const std::set<ActivityType>& activityTypes);
 
 // Return an array of all activity types except COUNT
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;

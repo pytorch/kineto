@@ -127,7 +127,6 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_EQ(cfg2.selectedActivityTypes(),
     std::set<ActivityType>({ActivityType::PRIVATEUSE1_RUNTIME,
                             ActivityType::PRIVATEUSE1_DRIVER}));
-  EXPECT_TRUE(hasPrivateUse1Type(cfg2.selectedActivityTypes()));
 }
 
 TEST(ParseTest, SamplePeriod) {

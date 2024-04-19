@@ -1167,8 +1167,7 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
         {pid, process_name, "CPU"}, captureWindowStartTime_);
-    if (!cpuOnly_ &&
-        !libkineto::hasPrivateUse1Type(config.selectedActivityTypes())) {
+    if (!cpuOnly_) {
       // GPU events use device id as pid (0-7).
       constexpr int kMaxGpuCount = 8;
       for (int gpu = 0; gpu < kMaxGpuCount; gpu++) {

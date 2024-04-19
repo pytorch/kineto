@@ -126,7 +126,6 @@ void ChromeTraceLogger::handleDeviceInfo(
   // process_name needs a pid and a name arg
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -153,33 +152,6 @@ void ChromeTraceLogger::handleDeviceInfo(
       info.label,
       time/1000, time%1000, info.id,
       info.id < 8 ? info.id + 0x1000000ll : info.id);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "name": "process_name", "ph": "M", "ts": {}, "pid": {}, "tid": 0,
-    "args": {{
-      "name": "{}"
-    }}
-  }},
-  {{
-    "name": "process_labels", "ph": "M", "ts": {}, "pid": {}, "tid": 0,
-    "args": {{
-      "labels": "{}"
-    }}
-  }},
-  {{
-    "name": "process_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": 0,
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      time, info.id,
-      info.name,
-      time, info.id,
-      info.label,
-      time, info.id,
-      info.id < 8 ? info.id + 0x1000000ll : info.id);
-#endif
   // clang-format on
 }
 
@@ -194,7 +166,6 @@ void ChromeTraceLogger::handleResourceInfo(
   // thread_name needs a pid and a name arg
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -213,25 +184,6 @@ void ChromeTraceLogger::handleResourceInfo(
       info.name,
       time/1000, time%1000, info.deviceId, info.id,
       info.sortIndex);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "name": "thread_name", "ph": "M", "ts": {}, "pid": {}, "tid": {},
-    "args": {{
-      "name": "{}"
-    }}
-  }},
-  {{
-    "name": "thread_sort_index", "ph": "M", "ts": {}, "pid": {}, "tid": {},
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      time, info.deviceId, info.id,
-      info.name,
-      time, info.deviceId, info.id,
-      info.sortIndex);
-#endif
   // clang-format on
 }
 
@@ -246,7 +198,6 @@ void ChromeTraceLogger::handleOverheadInfo(
   // other metadata
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -265,25 +216,6 @@ void ChromeTraceLogger::handleOverheadInfo(
       info.name,
       time/1000, time%1000,
       0x100000All);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "name": "process_name", "ph": "M", "ts": {}, "pid": -1, "tid": 0,
-    "args": {{
-      "name": "{}"
-    }}
-  }},
-  {{
-    "name": "process_sort_index", "ph": "M", "ts": {}, "pid": -1, "tid": 0,
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      time,
-      info.name,
-      time,
-      0x100000All);
-#endif
   // clang-format on
 }
 
@@ -292,7 +224,6 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
     return;
   }
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   uint64_t start = transToRelativeTime(span.startTime);
   uint64_t dur = span.endTime - span.startTime;
 
@@ -320,31 +251,6 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
       start/1000, start%1000,
       // Large sort index to appear at the bottom
       0x20000000ll);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "Trace", "ts": {}, "dur": {},
-    "pid": "Spans", "tid": "{}",
-    "name": "{}{} ({})",
-    "args": {{
-      "Op count": {}
-    }}
-  }},
-  {{
-    "name": "process_sort_index", "ph": "M", "ts": {},
-    "pid": "Spans", "tid": 0,
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      span.startTime, span.endTime - span.startTime,
-      span.name,
-      span.prefix, span.name, span.iteration,
-      span.opCount,
-      span.startTime,
-      // Large sort index to appear at the bottom
-      0x20000000ll);
-#endif
   // clang-format on
 
   addIterationMarker(span);
@@ -357,8 +263,8 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
 
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   uint64_t start = transToRelativeTime(span.startTime);
+
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "Iteration Start: {}", "ph": "i", "s": "g",
@@ -366,15 +272,7 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
   }},)JSON",
       span.name,
       span.name, start/1000, start%1000);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "name": "Iteration Start: {}", "ph": "i", "s": "g",
-    "pid": "Traces", "tid": "Trace {}", "ts": {}
-  }},)JSON",
-      span.name,
-      span.name, span.startTime);
-#endif
+
   // clang-format on
 }
 
@@ -384,7 +282,6 @@ void ChromeTraceLogger::handleGenericInstantEvent(
     return;
   }
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   uint64_t ts = transToRelativeTime(op.timestamp());
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -397,19 +294,6 @@ void ChromeTraceLogger::handleGenericInstantEvent(
   }},)JSON",
       toString(op.type()), op.name(), op.deviceId(), op.resourceId(),
       ts/1000, ts%1000, op.metadataJson());
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "i", "cat": "{}", "s": "t", "name": "{}",
-    "pid": {}, "tid": {},
-    "ts": {},
-    "args": {{
-      {}
-    }}
-  }},)JSON",
-      toString(op.type()), op.name(), op.deviceId(), op.resourceId(),
-      op.timestamp(), op.metadataJson());
-#endif
 }
 
 void ChromeTraceLogger::handleActivity(
@@ -542,7 +426,6 @@ void ChromeTraceLogger::handleActivity(
 
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   ts = transToRelativeTime(ts);
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -551,15 +434,6 @@ void ChromeTraceLogger::handleActivity(
   }},)JSON",
           toString(op.type()), op_name, device, resource,
           ts/1000, ts %1000, duration/1000, duration %1000, args);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}, "dur": {}{}
-  }},)JSON",
-          toString(op.type()), op_name, device, resource,
-          ts, duration, args);
-#endif
   // clang-format on
   if (op.flowId() > 0) {
     handleGenericLink(op);
@@ -610,7 +484,6 @@ void ChromeTraceLogger::handleLink(
   const auto binding = (type == kFlowEnd) ? ", \"bp\": \"e\"" : "";
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   uint64_t ts = transToRelativeTime(e.timestamp());
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -618,14 +491,6 @@ void ChromeTraceLogger::handleLink(
     "cat": "{}", "name": "{}"{}
   }},)JSON",
       type, id, e.deviceId(), e.resourceId(), ts/1000, ts%1000, name, name, binding);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {},
-    "cat": "{}", "name": "{}"{}
-  }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp(), name, name, binding);
-#endif
   // clang-format on
 }
 
@@ -648,7 +513,6 @@ void ChromeTraceLogger::finalizeTrace(
   LOG(INFO) << "Chrome Trace written to " << fileName_;
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
   endTime = transToRelativeTime(endTime);
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -657,15 +521,6 @@ void ChromeTraceLogger::finalizeTrace(
   }}
   ],)JSON",
       endTime/1000, endTime %1000);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  {{
-    "name": "Record Window End", "ph": "i", "s": "g",
-    "pid": "", "tid": "", "ts": {}
-  }}
-  ],)JSON",
-      endTime);
-#endif
 
 #if !USE_GOOGLE_LOG
   std::unordered_map<std::string, std::string> PreparedMetadata;
@@ -695,16 +550,11 @@ void ChromeTraceLogger::finalizeTrace(
 
   // Putting this here because the last entry MUST not end with a comma.
   // see [Note: Temp Libkineto Nanosecond]
-#ifdef TMP_LIBKINETO_NANOSECOND
+
   traceOf_ << fmt::format(R"JSON(
   "traceName": "{}",
   "displayTimeUnit": "ns"
 }})JSON", fileName_);
-#else
-  traceOf_ << fmt::format(R"JSON(
-  "traceName": "{}"
-}})JSON", fileName_);
-#endif
   // clang-format on
 
   traceOf_.close();

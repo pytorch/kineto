@@ -18,7 +18,6 @@
 #include "CudaDeviceProperties.h"
 #endif // HAS_CUPTI
 #include "TraceSpan.h"
-#include "time_since_epoch.h"
 
 #include "Logger.h"
 
@@ -55,10 +54,8 @@ static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 // while a double can only represent 15-16 digits. By using relative time,
 // other applications can accurately read the 'ts' field as a double.
 // Use the program loading time as the baseline time.
-static int64_t base_time =
-    libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
 inline int64_t transToRelativeTime(int64_t time) {
-  return time - base_time;
+  return time - ChromeTraceBaseTime::get();
 }
 
 void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {

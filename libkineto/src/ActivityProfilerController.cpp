@@ -45,6 +45,8 @@ void ActivityProfilerController::setLoggerCollectorFactory(
 ActivityProfilerController::ActivityProfilerController(
     ConfigLoader& configLoader, bool cpuOnly)
     : configLoader_(configLoader) {
+  // Initialize ChromeTraceBaseTime first of all.
+  ChromeTraceBaseTime::init();
 #ifdef HAS_ROCTRACER
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       RoctracerActivityApi::singleton(), cpuOnly);

@@ -309,9 +309,9 @@ void ChromeTraceLogger::handleActivity(
     // The GPU user annotations start at the same time as the
     // first associated GPU op. Since they appear later
     // in the trace file, this causes a visualization issue in Chrome.
-    // Make it start one us earlier.
-    ts--;
-    duration++; // Still need it to end at the orginal point
+    // Make it start one us (1000 ns) earlier.
+    ts-=1000;
+    duration+=1500; // Still need it to end at the original point rounded up.
   }
 
   std::string arg_values = "";

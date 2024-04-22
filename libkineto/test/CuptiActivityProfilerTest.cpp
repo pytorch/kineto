@@ -23,6 +23,7 @@
 #include "include/libkineto.h"
 #include "include/Config.h"
 #include "include/output_base.h"
+#include "include/time_since_epoch.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/ActivityTrace.h"
 #include "src/CuptiActivityApi.h"
@@ -447,7 +448,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = 100;
+  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -557,7 +558,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = 100;
+  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -728,7 +729,7 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = 100;
+  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -798,7 +799,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   ev.device = 1;
   ev.resource = 0;
 
-  int64_t start_time_ns = 100;
+  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 1000;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
 

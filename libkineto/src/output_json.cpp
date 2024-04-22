@@ -50,6 +50,25 @@ static constexpr char kDefaultLogFileFmt[] =
 static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
 #endif
 
+ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
+  static ChromeTraceBaseTime instance;
+  return instance;
+}
+
+// The 'ts' field written into the json file has 19 significant digits,
+// while a double can only represent 15-16 digits. By using relative time,
+// other applications can accurately read the 'ts' field as a double.
+// Use the program loading time as the baseline time.
+inline int64_t transToRelativeTime(int64_t time) {
+  // Sometimes after converting to relative time, it can be a few nanoseconds negative.
+  // Since Chrome trace and json processing will throw a parser error, guard this.
+  int64_t res = time - ChromeTraceBaseTime::singleton().get();
+  if (res < 0) {
+    return 0;
+  }
+  return res;
+}
+
 void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
   // Replace all backslashes with forward slash because Windows paths causing JSONDecodeError.
   std::replace(value.begin(), value.end(), '\\', '/');
@@ -115,7 +134,7 @@ void ChromeTraceLogger::handleDeviceInfo(
   // process_name needs a pid and a name arg
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-
+  time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "process_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
@@ -155,7 +174,7 @@ void ChromeTraceLogger::handleResourceInfo(
   // thread_name needs a pid and a name arg
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-
+  time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "thread_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
@@ -187,7 +206,7 @@ void ChromeTraceLogger::handleOverheadInfo(
   // other metadata
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-
+  time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "process_name", "ph": "M", "ts": {}.{:03}, "pid": -1, "tid": 0,
@@ -213,8 +232,7 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
     return;
   }
   // see [Note: Temp Libkineto Nanosecond]
-
-  uint64_t start = span.startTime;
+  uint64_t start = transToRelativeTime(span.startTime);
   uint64_t dur = span.endTime - span.startTime;
 
   // clang-format off
@@ -253,6 +271,7 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
 
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
+  uint64_t start = transToRelativeTime(span.startTime);
 
   traceOf_ << fmt::format(R"JSON(
   {{
@@ -260,7 +279,7 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
     "pid": "Traces", "tid": "Trace {}", "ts": {}.{:03}
   }},)JSON",
       span.name,
-      span.name, span.startTime/1000, span.startTime%1000);
+      span.name, start/1000, start%1000);
   // clang-format on
 }
 
@@ -270,7 +289,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
     return;
   }
   // see [Note: Temp Libkineto Nanosecond]
-
+  uint64_t ts = transToRelativeTime(op.timestamp());
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "i", "cat": "{}", "s": "t", "name": "{}",
@@ -281,7 +300,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
     }}
   }},)JSON",
       toString(op.type()), op.name(), op.deviceId(), op.resourceId(),
-      op.timestamp()/1000, op.timestamp()%1000, op.metadataJson());
+      ts/1000, ts%1000, op.metadataJson());
 }
 
 void ChromeTraceLogger::handleActivity(
@@ -414,7 +433,7 @@ void ChromeTraceLogger::handleActivity(
 
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-
+  ts = transToRelativeTime(ts);
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
@@ -472,13 +491,13 @@ void ChromeTraceLogger::handleLink(
   const auto binding = (type == kFlowEnd) ? ", \"bp\": \"e\"" : "";
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-
+  uint64_t ts = transToRelativeTime(e.timestamp());
   traceOf_ << fmt::format(R"JSON(
   {{
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {}.{:03},
     "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), e.timestamp()/1000, e.timestamp()%1000, name, name, binding);
+      type, id, e.deviceId(), e.resourceId(), ts/1000, ts%1000, name, name, binding);
   // clang-format on
 }
 
@@ -501,7 +520,7 @@ void ChromeTraceLogger::finalizeTrace(
   LOG(INFO) << "Chrome Trace written to " << fileName_;
   // clang-format off
   // see [Note: Temp Libkineto Nanosecond]
-
+  endTime = transToRelativeTime(endTime);
   traceOf_ << fmt::format(R"JSON(
   {{
     "name": "Record Window End", "ph": "i", "s": "g",

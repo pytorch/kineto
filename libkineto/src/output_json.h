@@ -14,9 +14,12 @@
 #include <thread>
 #include <unordered_map>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "GenericTraceActivity.h"
 #include "output_base.h"
 #include "ActivityBuffers.h"
+#include "time_since_epoch.h"
 
 namespace KINETO_NAMESPACE {
   // Previous declaration of TraceSpan is struct. Must match the same here.
@@ -89,6 +92,20 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   std::string fileName_;
   std::string tempFileName_;
   std::ofstream traceOf_;
+};
+
+class ChromeTraceBaseTime {
+ public:
+  ChromeTraceBaseTime() = default;
+  static ChromeTraceBaseTime& singleton();
+  void init() {
+    get();
+  }
+  int64_t get() {
+    static int64_t base_time = libkineto::timeSinceEpoch(
+        std::chrono::system_clock::now());
+    return base_time;
+  }
 };
 
 } // namespace KINETO_NAMESPACE

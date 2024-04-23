@@ -111,7 +111,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() cons
   float warpsPerSmVal = warpsPerSm(kernel);
 
   // clang-format off
-  // see [Note: Temp Libkineto Nanosecond]
+
   return fmt::format(R"JSON(
       "queued": {}, "device": {}, "context": {},
       "stream": {}, "correlation": {},

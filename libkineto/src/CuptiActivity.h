@@ -35,12 +35,11 @@ template<class T>
 struct CuptiActivity : public ITraceActivity {
   explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
-  // see [Note: Temp Libkineto Nanosecond]
+
   int64_t timestamp() const override {
     return activity_.start;
   }
 
-  // see [Note: Temp Libkineto Nanosecond]
   int64_t duration() const override {
     return activity_.end - activity_.start;
   }
@@ -106,11 +105,11 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
       int32_t threadId=0)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
 
-  // see [Note: Temp Libkineto Nanosecond]
+
   int64_t timestamp() const override {
     return activity_.start;
   }
-  // see [Note: Temp Libkineto Nanosecond]
+
   int64_t duration() const override {
     return activity_.end - activity_.start;
   }
@@ -151,7 +150,6 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
   const int32_t srcStream_;
   const int32_t srcCorrId_;
 };
-
 
 // Base class for GPU activities.
 // Can also be instantiated directly.

@@ -11,11 +11,6 @@
 #include <chrono>
 
 namespace libkineto {
-/* [Note: Temp Libkineto Nanosecond]
-This is a temporary hack to support nanosecond time units in Libkineto.
-After pytorch changes are made to support nanosecond precision, this
-can be removed.
-*/
 template <class ClockT>
 inline int64_t timeSinceEpoch(
       const std::chrono::time_point<ClockT>& t) {

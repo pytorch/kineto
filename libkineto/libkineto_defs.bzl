@@ -62,6 +62,7 @@ def get_libkineto_public_headers():
         "include/ActivityProfilerInterface.h",
         "include/ActivityTraceInterface.h",
         "include/ActivityType.h",
+        "include/ApproximateClock.h",
         "include/Config.h",
         "include/ClientInterface.h",
         "include/GenericTraceActivity.h",

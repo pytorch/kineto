@@ -21,8 +21,6 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-constexpr size_t kBufSize(2 * 1024 * 1024);
-
 RoctracerActivityApi& RoctracerActivityApi::singleton() {
   static RoctracerActivityApi instance;
   return instance;

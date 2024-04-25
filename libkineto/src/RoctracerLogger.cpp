@@ -20,8 +20,6 @@
 
 using namespace std::chrono;
 
-constexpr size_t kBufSize(2 * 1024 * 1024);
-
 class Flush
 {
 public:

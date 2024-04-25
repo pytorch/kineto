@@ -7,7 +7,7 @@
  */
 
 #include "CuptiActivityProfiler.h"
-
+#include "ApproximateClock.h"
 #include <fmt/format.h>
 #include <time.h>
 #include <atomic>
@@ -94,6 +94,16 @@ std::unordered_map<uint32_t, uint32_t>& ctxToDeviceId() {
 }
 
 namespace KINETO_NAMESPACE {
+
+// Sets the timestamp converter. If nothing is set then the converter just returns the
+// input. For this reason, until we add profiler impl of passing in TSC converter we just
+// need to guard the callback itself
+std::function<time_t(approx_time_t)>& get_time_converter() {
+  static std::function<time_t(approx_time_t)> _time_converter = [](approx_time_t t) {
+    return t;
+  };
+  return _time_converter;
+}
 
 ConfigDerivedState::ConfigDerivedState(const Config& config) {
   profileActivityTypes_ = config.selectedActivityTypes();
@@ -934,7 +944,14 @@ void CuptiActivityProfiler::configure(
               std::chrono::system_clock::now());
           return system.time_since_epoch().count();
         }));
-#endif
+#else
+#if defined(TMP_USE_TSC_AS_TIMESTAMP) && CUDA_VERSION >= 11060
+    CUPTI_CALL(
+        cuptiActivityRegisterTimestampCallback([]() -> uint64_t {
+          return getApproximateTime();
+        }));
+#endif // defined(TMP_USE_TSC_AS_TIMESTAMP) && CUDA_VERSION >= 11060
+#endif // _WIN32
     cupti_.enableCuptiActivities(config_->selectedActivityTypes());
 #else
     cupti_.enableActivities(config_->selectedActivityTypes());

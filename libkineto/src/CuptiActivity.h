@@ -16,6 +16,7 @@
 #include "GenericTraceActivity.h"
 #include "ThreadUtil.h"
 #include "cupti_strings.h"
+#include "ApproximateClock.h"
 
 namespace libkineto {
   class ActivityLogger;
@@ -35,13 +36,23 @@ template<class T>
 struct CuptiActivity : public ITraceActivity {
   explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
-
+  // If we are running on Windows or are on a CUDA version < 11.6,
+  // we use the default system clock so no conversion needed same for all
+  // ifdefs below
   int64_t timestamp() const override {
+  #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.start;
+  #else
+    return get_time_converter()(activity_.start);
+  #endif
   }
 
   int64_t duration() const override {
+  #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.end - activity_.start;
+  #else
+    return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+  #endif
   }
   // TODO(T107507796): Deprecate ITraceActivity
   int64_t correlationId() const override {return 0;}
@@ -107,12 +118,21 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
 
 
   int64_t timestamp() const override {
+  #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.start;
+  #else
+    return get_time_converter()(activity_.start);
+  #endif
   }
 
   int64_t duration() const override {
+  #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.end - activity_.start;
+  #else
+    return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+  #endif
   }
+
   // TODO: Update this with PID ordering
   int64_t deviceId() const override {return -1;}
   int64_t resourceId() const override {return threadId_;}

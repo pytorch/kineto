@@ -372,9 +372,9 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
             << " counter sb image size = "
             << counterDataScratchBuffer.size()  << " B";
 
-  beginPassParams_ = {CUpti_Profiler_BeginPass_Params_STRUCT_SIZE, nullptr};
+  beginPassParams_ = {CUpti_Profiler_BeginPass_Params_STRUCT_SIZE, nullptr, {}};
   beginPassParams_.ctx = cuContext_;
-  endPassParams_ = {CUpti_Profiler_EndPass_Params_STRUCT_SIZE, nullptr};
+  endPassParams_ = {CUpti_Profiler_EndPass_Params_STRUCT_SIZE, nullptr, {}};
   endPassParams_.ctx = cuContext_;
 
   initSuccess_ = true;
@@ -408,7 +408,7 @@ void CuptiRBProfilerSession::startInternal(
   curReplay_ = profilerReplayMode;
 
   CUpti_Profiler_BeginSession_Params beginSessionParams = {
-      CUpti_Profiler_BeginSession_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_BeginSession_Params_STRUCT_SIZE, nullptr, {}};
 
   beginSessionParams.ctx = cuContext_;
   beginSessionParams.counterDataImageSize = counterDataImage.size();
@@ -430,7 +430,7 @@ void CuptiRBProfilerSession::startInternal(
 
   // Set counter configuration
   CUpti_Profiler_SetConfig_Params setConfigParams = {
-      CUpti_Profiler_SetConfig_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_SetConfig_Params_STRUCT_SIZE, nullptr, {}};
 
   setConfigParams.ctx = cuContext_;
   setConfigParams.pConfig = configImage.data();
@@ -462,12 +462,12 @@ void CuptiRBProfilerSession::stop() {
   LOG(INFO) << "Stop profiler session on device = " << deviceId_;
 
   CUpti_Profiler_UnsetConfig_Params unsetConfigParams = {
-      CUpti_Profiler_UnsetConfig_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_UnsetConfig_Params_STRUCT_SIZE, nullptr, {}};
   unsetConfigParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerUnsetConfig(&unsetConfigParams));
 
   CUpti_Profiler_EndSession_Params endSessionParams = {
-      CUpti_Profiler_EndSession_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_EndSession_Params_STRUCT_SIZE, nullptr, {}};
   endSessionParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerEndSession(&endSessionParams));
 
@@ -497,7 +497,7 @@ bool CuptiRBProfilerSession::endPass() {
 void CuptiRBProfilerSession::flushCounterData() {
   LOG(INFO) << "Flushing counter data on device = " << deviceId_;
   CUpti_Profiler_FlushCounterData_Params flushCounterDataParams = {
-      CUpti_Profiler_FlushCounterData_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_FlushCounterData_Params_STRUCT_SIZE, nullptr, {}};
   flushCounterDataParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerFlushCounterData(&flushCounterDataParams));
 }
@@ -509,7 +509,7 @@ void CuptiRBProfilerSession::enable() {
     return;
   }
   CUpti_Profiler_EnableProfiling_Params enableProfilingParams = {
-      CUpti_Profiler_EnableProfiling_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_EnableProfiling_Params_STRUCT_SIZE, nullptr, {}};
   enableProfilingParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerEnableProfiling(&enableProfilingParams));
 }
@@ -520,7 +520,7 @@ void CuptiRBProfilerSession::disable() {
     return;
   }
   CUpti_Profiler_DisableProfiling_Params disableProfilingParams = {
-      CUpti_Profiler_DisableProfiling_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_DisableProfiling_Params_STRUCT_SIZE, nullptr, {}};
   disableProfilingParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerDisableProfiling(&disableProfilingParams));
 }
@@ -529,7 +529,7 @@ void CuptiRBProfilerSession::disable() {
 void CuptiRBProfilerSession::pushRange(const std::string& rangeName) {
   LOG(INFO) << " CUPTI pushrange ( " << rangeName << " )";
   CUpti_Profiler_PushRange_Params pushRangeParams = {
-      CUpti_Profiler_PushRange_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_PushRange_Params_STRUCT_SIZE, nullptr, {}};
   pushRangeParams.ctx = cuContext_;
   pushRangeParams.pRangeName = rangeName.c_str();
   CUPTI_CALL(cuptiProfilerPushRange(&pushRangeParams));
@@ -538,7 +538,7 @@ void CuptiRBProfilerSession::pushRange(const std::string& rangeName) {
 void CuptiRBProfilerSession::popRange() {
   LOG(INFO) << " CUPTI pop range";
   CUpti_Profiler_PopRange_Params popRangeParams = {
-      CUpti_Profiler_PopRange_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_PopRange_Params_STRUCT_SIZE, nullptr, {}};
   popRangeParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerPopRange(&popRangeParams));
 }

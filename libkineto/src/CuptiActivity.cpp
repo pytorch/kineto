@@ -271,8 +271,16 @@ inline const std::string RuntimeActivity::metadataJson() const {
       activity_.cbid, activity_.correlationId);
 }
 
+inline bool isKernelLaunchApi(const CUpti_ActivityAPI& activity_) {
+  return activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
+    || activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx
+#endif
+    ;
+}
+
 inline bool DriverActivity::flowStart() const {
-  return activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel;
+  return isKernelLaunchApi(activity_);
 }
 
 inline const std::string DriverActivity::metadataJson() const {
@@ -282,9 +290,18 @@ inline const std::string DriverActivity::metadataJson() const {
 }
 
 inline const std::string DriverActivity::name() const {
-  // currently only cuLaunchKernel is expected
-  assert(activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel);
-  return "cuLaunchKernel";
+  // currently only cuLaunchKernel/cuLaunchKernelEx is expected
+  assert(isKernelLaunchApi(activity_));
+  // not yet implementing full name matching
+  if (activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel) {
+    return "cuLaunchKernel";
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
+  } else if (activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx) {
+    return "cuLaunchKernelEx";
+#endif
+  } else {
+    return "Unknown"; // should not reach here
+  }
 }
 
 template<class T>

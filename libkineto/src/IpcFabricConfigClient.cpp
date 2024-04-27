@@ -9,7 +9,6 @@
 #ifdef __linux__
 
 #include "IpcFabricConfigClient.h"
-#include "Logger.h"
 
 #include <random>
 #include <sstream>
@@ -55,11 +54,6 @@ std::string generate_uuid_v4() {
 }
 }
 
-// Connect to the Dynolog service through Fabric name `dynolog`
-constexpr const char* kDynoIpcName = "dynolog";
-constexpr int maxIpcRetries = 5;
-constexpr int kSleepUs = 10000;
-
 static std::vector<int32_t> getPids() {
   const auto& pids = pidCommandPairsOfAncestors();
   std::vector<int32_t> res;
@@ -90,9 +84,20 @@ IpcFabricConfigClient::IpcFabricConfigClient() : jobId_(getJobId()), pids_(getPi
   std::string ep_name = "dynoconfigclient" + uuid::generate_uuid_v4();
 
   fabricManager_ = ::dynolog::ipcfabric::FabricManager::factory(ep_name);
+#ifdef ENABLE_IPC_FABRIC
   LOG(INFO) << "Setting up IPC Fabric at endpoint: " << ep_name
             << " status = " << (fabricManager_ ? "initialized" : "failed (null)");
+#endif
 }
+
+// The following only makes sense if IPC Fabric is being used
+#ifdef ENABLE_IPC_FABRIC
+
+// Connect to the Dynolog service through Fabric name `dynolog`
+constexpr const char* kDynoIpcName = "dynolog";
+constexpr int maxIpcRetries = 5;
+constexpr int kSleepUs = 10000;
+
 
 int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {
   if (!ipcFabricEnabled_) {
@@ -188,5 +193,19 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
   return std::string((char*)msg->buf.get(), msg->metadata.size);
 }
 
+#else // ENABLE_IPC_FABRIC
+
+int32_t IpcFabricConfigClient::registerInstance(int32_t /*gpu*/) {
+  return -1;
+}
+
+std::string IpcFabricConfigClient::getLibkinetoBaseConfig() {
+  return "";
+}
+std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t /*type*/) {
+  return "";
+}
+
+#endif // ENABLE_IPC_FABRIC
 } // namespace KINETO_NAMESPACE
 #endif // __linux__

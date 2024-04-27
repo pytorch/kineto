@@ -100,7 +100,7 @@ void CuptiCallbackApi::__callback_switchboard(
           CUPTI_CALL(cuptiUnsubscribe(subscriber_));
           CUPTI_CALL(cuptiFinalize());
           initSuccess_ = false;
-          subscriber_ = 0;
+          subscriber_ = nullptr;
           CuptiActivityApi::singleton().teardownCupti_ = 0;
           CuptiActivityApi::singleton().finalizeCond_.notify_all();
           return;

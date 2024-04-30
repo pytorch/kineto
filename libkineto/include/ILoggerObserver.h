@@ -28,8 +28,8 @@ enum LoggerOutputType {
   VERBOSE = 0,
   INFO = 1,
   WARNING = 2,
-  ERROR = 3,
-  STAGE = 4,
+  STAGE = 3,
+  ERROR = 4,
   ENUM_COUNT = 5
 };
 

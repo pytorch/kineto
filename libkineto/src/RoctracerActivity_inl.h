@@ -11,6 +11,7 @@
 #include "RoctracerActivity.h"
 
 #include <fmt/format.h>
+#include <cstdint>
 
 #include "Demangle.h"
 #include "output_base.h"
@@ -19,10 +20,54 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
-// GPU Activities
+const char* getGpuActivityKindString(uint32_t kind) {
+  switch (kind) {
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+      return "DtoH";
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+      return "HtoD";
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      return "DtoD";
+    case HIP_OP_COPY_KIND_FILL_BUFFER_:
+      return "Device";
+    case HIP_OP_DISPATCH_KIND_KERNEL_:
+      return "Dispatch Kernel";
+    case HIP_OP_DISPATCH_KIND_TASK_:
+      return "Dispatch Task";
+    default:
+      break;
+  }
+  return "<unknown>";
+}
 
-// forward declaration
-uint32_t contextIdtoDeviceId(uint32_t contextId);
+void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
+  switch (kind) {
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+      src = "Device";
+      dst = "Host";
+      break;
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+      src = "Host";
+      dst = "Device";
+      break;
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      src = "Device";
+      dst = "Device";
+      break;
+    default:
+      src = "?";
+      dst = "?";
+      break;
+  }
+}
+
+// GPU Activities
 
 inline const std::string GpuActivity::name() const {
   if (type_ == ActivityType::CONCURRENT_KERNEL) {
@@ -30,18 +75,17 @@ inline const std::string GpuActivity::name() const {
     return demangle(raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));
   }
   else if (type_ == ActivityType::GPU_MEMSET) {
-    // FIXME: kind is not available yet.
     return fmt::format(
       "Memset ({})",
-      linkedActivity() ? linkedActivity()->getMetadataValue("kind") : "?");
+      getGpuActivityKindString(raw().kind));
   }
   else if (type_ == ActivityType::GPU_MEMCPY) {
-    // FIXME: kind, src, and dst are not available yet.
+    std::string src = "";
+    std::string dst = "";
+    getMemcpySrcDstString(raw().kind, src, dst);
     return fmt::format(
       "Memcpy {} ({} -> {})",
-      linkedActivity() ? linkedActivity()->getMetadataValue("kind"): "?",
-      linkedActivity() ? linkedActivity()->getMetadataValue("src") : "?",
-      linkedActivity() ? linkedActivity()->getMetadataValue("dst") : "?");
+      getGpuActivityKindString(raw().kind), src, dst);
   }
   else {
     return "";
@@ -53,41 +97,14 @@ inline void GpuActivity::log(ActivityLogger& logger) const {
 }
 
 inline const std::string GpuActivity::metadataJson() const {
-  // FIXME: Add the linked runtime event's metadata.
-  return "";
-  if (type_ == ActivityType::CONCURRENT_KERNEL) {
-    const auto& kernel = raw();
-    // clang-format off
-    return fmt::format(R"JSON(
-        "device": {},
-        "stream": "{}")JSON",
-        kernel.device,
-        linkedActivity() ? linkedActivity()->getMetadataValue("stream") : 0);
-    // clang-format on
-  }
-  else if (type_ == ActivityType::GPU_MEMSET) {
-    const auto& memset = raw();
-    // clang-format off
-    return fmt::format(R"JSON(
-        "device": {},
-        "stream": "{}")JSON",
-        memset.device,
-        linkedActivity() ? linkedActivity()->getMetadataValue("stream") : 0);
-    // clang-format on
-  }
-  else if (type_ ==  ActivityType::GPU_MEMCPY) {
-    const auto& memcpy = raw();
-    // clang-format off
-    return fmt::format(R"JSON(
-        "device": {},
-        "stream": "{}")JSON",
-        memcpy.device,
-        linkedActivity() ? linkedActivity()->getMetadataValue("stream") : 0);
-    // clang-format on
-  }
-  else {
-    return "";
-  }
+  const auto& gpuActivity = raw();
+  // clang-format off
+  return fmt::format(R"JSON(
+      "device": {}, "stream": {},
+      "correlation": {}, "kind": "{}")JSON",
+      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.id, getGpuActivityKindString(gpuActivity.kind));
+  // clang-format on
 }
 
 // Runtime Activities

@@ -552,7 +552,7 @@ void ChromeTraceLogger::finalizeTrace(
 
   traceOf_ << fmt::format(R"JSON(
   "traceName": "{}",
-  "displayTimeUnit": "ns"
+  "displayTimeUnit": "ms"
 }})JSON", fileName_);
   // clang-format on
 

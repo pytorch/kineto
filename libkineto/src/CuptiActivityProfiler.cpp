@@ -272,6 +272,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
               this,
               std::placeholders::_1,
               &logger));
+      logDeferredEvents();
       LOG(INFO) << "Processed " << count_and_size.first << " GPU records ("
                 << count_and_size.second << " bytes)";
       LOGGER_OBSERVER_ADD_EVENT_COUNT(count_and_size.first);
@@ -575,25 +576,6 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-
-  // Stream Wait Events tend to be noisy, only pass these events if
-  // there was some GPU kernel/memcopy/memset observed on it till now.
-  if (isWaitEventSync(activity->type) &&
-      (seenDeviceStreams_.find({device_id, activity->streamId}) ==
-       seenDeviceStreams_.end())) {
-    VLOG(2) << "Skipping Event Sync (corrId=" << activity->correlationId
-            << ") as no kernels have run yet on stream = " << activity->streamId;
-    return;
-  }
-
-  if (int32_t(activity->streamId) != -1) {
-    recordStream(device_id, activity->streamId, "");
-  } else {
-    recordDevice(device_id);
-  }
-
-  const ITraceActivity* linked =
-      linkedActivity(activity->correlationId, cpuCorrelationMap_);
   int32_t src_stream = -1, src_corrid = -1;
 
   if (isEventSync(activity->type)) {
@@ -605,13 +587,54 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
     }
   }
 
-  const auto& cuda_sync_activity = traceBuffers_->addActivityWrapper(
-      CudaSyncActivity(activity, linked, src_stream, src_corrid));
+  // Marshal the logging to a functor so we can defer it if needed.
+  auto log_event = [=](){
+    const ITraceActivity* linked =
+        linkedActivity(activity->correlationId, cpuCorrelationMap_);
+    const auto& cuda_sync_activity = traceBuffers_->addActivityWrapper(
+        CudaSyncActivity(activity, linked, src_stream, src_corrid));
 
-  if (outOfRange(cuda_sync_activity)) {
-    return;
+    if (outOfRange(cuda_sync_activity)) {
+      return;
+    }
+
+    if (int32_t(activity->streamId) != -1) {
+      recordStream(device_id, activity->streamId, "");
+    } else {
+      recordDevice(device_id);
+    }
+    VLOG(2) << "Logging sync event device = " << device_id
+            << " stream = " <<  activity->streamId
+            << " sync type = " << syncTypeString(activity->type);
+    cuda_sync_activity.log(*logger);
+  };
+
+  if (isWaitEventSync(activity->type)) {
+    // Defer logging wait event syncs till the end so we only
+    // log these events if a stream has some GPU kernels on it.
+    DeferredLogEntry entry{
+      .device = device_id,
+      .stream = activity->streamId,
+      .logMe = log_event,
+    };
+    logQueue_.push_back(entry);
+  } else {
+    log_event();
   }
-  cuda_sync_activity.log(*logger);
+}
+
+void CuptiActivityProfiler::logDeferredEvents() {
+  // Stream Wait Events tend to be noisy, only pass these events if
+  // there was some GPU kernel/memcopy/memset observed on it in the trace window.
+  for (const auto& entry: logQueue_) {
+    if (seenDeviceStreams_.find({entry.device, entry.stream}) ==
+        seenDeviceStreams_.end()) {
+      VLOG(2) << "Skipping Event Sync as no kernels have run yet on stream = "
+              << entry.stream;
+    } else {
+      entry.logMe();
+    }
+  }
 }
 #endif // HAS_CUPTI
 
@@ -1330,6 +1353,7 @@ void CuptiActivityProfiler::resetTraceData() {
   traceSpans_.clear();
   clientActivityTraceMap_.clear();
   seenDeviceStreams_.clear();
+  logQueue_.clear();
   traceBuffers_ = nullptr;
   metadata_.clear();
   sessions_.clear();

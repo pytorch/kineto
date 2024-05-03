@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <condition_variable>
 #include <list>
 #include <map>
@@ -219,6 +220,14 @@ class CuptiActivityProfiler {
   static const CpuGpuSpanPair& defaultTraceSpan();
 
  private:
+  // Deferred logging of CUDA-event synchronization
+  struct DeferredLogEntry {
+    uint32_t device;
+    uint32_t stream;
+    std::function<void()> logMe;
+  };
+
+  std::deque<DeferredLogEntry> logQueue_;
 
   // Map of gpu activities to user defined events
   class GpuUserEventMap {
@@ -348,6 +357,7 @@ class CuptiActivityProfiler {
       const CUpti_ActivitySynchronization* activity, ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
+  void logDeferredEvents();
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER

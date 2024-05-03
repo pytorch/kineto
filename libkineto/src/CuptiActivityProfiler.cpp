@@ -1245,11 +1245,13 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
     }
   }
 
+#ifdef HAS_CUPTI
   // Overhead info
   overheadInfo_.push_back(ActivityLogger::OverheadInfo("CUPTI Overhead"));
   for(const auto& info : overheadInfo_) {
     logger.handleOverheadInfo(info, captureWindowStartTime_);
   }
+#endif // HAS_CUPTI
 
   gpuUserEventMap_.logEvents(&logger);
 

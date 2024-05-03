@@ -93,7 +93,10 @@ struct GpuActivity : public RoctracerActivity<roctracerAsyncRow> {
     }
   }
   int64_t correlationId() const override {return activity_.id;}
-  int64_t deviceId() const override {return activity_.device;}
+  // roctracer reports int device_id always off by 2.
+  // Device 0 becomes device 2, and device 7 becomes device 9.
+  // Opened Github Issue: https://github.com/ROCm/roctracer/issues/98.
+  int64_t deviceId() const override {return activity_.device - 2;}
   int64_t resourceId() const override {return  activity_.queue;}
   ActivityType type() const override {return type_;};
   bool flowStart() const override {return false;}

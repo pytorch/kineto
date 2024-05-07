@@ -47,6 +47,18 @@ ActivityProfilerController::ActivityProfilerController(
     : configLoader_(configLoader) {
   // Initialize ChromeTraceBaseTime first of all.
   ChromeTraceBaseTime::singleton().init();
+
+#if !USE_GOOGLE_LOG
+  // Initialize LoggerCollector before ActivityProfiler to log
+  // CUPTI and CUDA driver versions.
+  if (loggerCollectorFactory()) {
+    // Keep a reference to the logger collector factory to handle safe
+    // static de-initialization.
+    loggerCollectorFactory_ = loggerCollectorFactory();
+    Logger::addLoggerObserver(loggerCollectorFactory_.get());
+  }
+#endif // !USE_GOOGLE_LOG
+
 #ifdef HAS_ROCTRACER
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       RoctracerActivityApi::singleton(), cpuOnly);
@@ -55,15 +67,6 @@ ActivityProfilerController::ActivityProfilerController(
       CuptiActivityApi::singleton(), cpuOnly);
 #endif
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
-
-#if !USE_GOOGLE_LOG
-  if (loggerCollectorFactory()) {
-    // Keep a reference to the logger collector factory to handle safe
-    // static de-initialization.
-    loggerCollectorFactory_ = loggerCollectorFactory();
-    Logger::addLoggerObserver(loggerCollectorFactory_.get());
-  }
-#endif // !USE_GOOGLE_LOG
 }
 
 ActivityProfilerController::~ActivityProfilerController() {

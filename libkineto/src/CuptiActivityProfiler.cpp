@@ -238,6 +238,12 @@ void CuptiActivityProfiler::logCudaVersions() {
   LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion
             << "; Runtime: " << cudaRuntimeVersion
             << "; Driver: " << cudaDriverVersion;
+  LOGGER_OBSERVER_ADD_METADATA(
+      "cupti_version", std::to_string(cuptiVersion));
+  LOGGER_OBSERVER_ADD_METADATA(
+      "cuda_runtime_version", std::to_string(cudaRuntimeVersion));
+  LOGGER_OBSERVER_ADD_METADATA(
+      "cuda_driver_version", std::to_string(cudaDriverVersion));
 }
 #endif
 

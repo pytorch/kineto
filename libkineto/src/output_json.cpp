@@ -552,8 +552,9 @@ void ChromeTraceLogger::finalizeTrace(
 
   traceOf_ << fmt::format(R"JSON(
   "traceName": "{}",
-  "displayTimeUnit": "ms"
-}})JSON", fileName_);
+  "displayTimeUnit": "ms",
+  "baseTimeNanoseconds": {}
+}})JSON", fileName_, ChromeTraceBaseTime::singleton().get());
   // clang-format on
 
   traceOf_.close();

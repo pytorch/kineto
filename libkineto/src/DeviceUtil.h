@@ -71,6 +71,10 @@
 
 namespace KINETO_NAMESPACE {
 
+bool isAMDGpuAvailable();
+
+bool isCUDAGpuAvailable();
+
 bool isGpuAvailable();
 
 } // namespace KINETO_NAMESPACE

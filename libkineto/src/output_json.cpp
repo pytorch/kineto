@@ -14,9 +14,7 @@
 #include <map>
 
 #include "Config.h"
-#ifdef HAS_CUPTI
-#include "CudaDeviceProperties.h"
-#endif // HAS_CUPTI
+#include "DeviceProperties.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
@@ -92,11 +90,9 @@ void ChromeTraceLogger::handleTraceStart(
 {{
   "schemaVersion": {},)JSON", kSchemaVersion);
 
-#ifdef HAS_CUPTI
   traceOf_ << fmt::format(R"JSON(
   "deviceProperties": [{}
   ],)JSON", devicePropertiesJson());
-#endif
 
   metadataToJSON(metadata);
   traceOf_ << R"JSON(

@@ -10,8 +10,8 @@
 
 #include <fmt/format.h>
 
-#include "CudaDeviceProperties.h"
 #include "Demangle.h"
+#include "DeviceProperties.h"
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {

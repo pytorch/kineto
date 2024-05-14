@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "ILoggerObserver.h"
 #ifdef HAS_CUPTI
 #include <cupti.h>
 #include <nvperf_host.h>
@@ -19,9 +20,9 @@
 #include "cupti_call.h"
 #endif
 
-#include "time_since_epoch.h"
-#include "Logger.h"
 #include "Demangle.h"
+#include "Logger.h"
+#include "time_since_epoch.h"
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -39,8 +40,7 @@ TraceSpan CuptiRBProfilerSession::getProfilerTraceSpan() {
   return TraceSpan(
       timeSinceEpoch(profilerStartTs_),
       timeSinceEpoch(profilerStopTs_),
-      "__cupti_profiler__"
-  );
+      "__cupti_profiler__");
 }
 
 #if HAS_CUPTI_RANGE_PROFILER
@@ -57,7 +57,7 @@ std::unordered_map<uint32_t, bool> disable_flag;
 std::mutex contextMutex_;
 std::unordered_map<CUcontext, int> ctx_to_dev;
 std::set<uint32_t> active_devices;
-}
+} // namespace
 
 // forward declarations
 void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid);
@@ -110,7 +110,8 @@ inline uint32_t getDevID(CUcontext ctx) {
 //   1. Track cuda contexts and maintain a list of active GPUs to profile
 //   2. Callbacks on kernel launches to track the name of automatic
 //      ranges that correspond to names of kernels
-//   3. Lastly CUPTI range profiler has to be enabled on the same thread executing
+//   3. Lastly CUPTI range profiler has to be enabled on the same thread
+//   executing
 //      the CUDA kernels. We use Callbacks to enable the profiler
 //      asynchronously from another thread.
 
@@ -120,7 +121,7 @@ void trackCudaCtx(
     CUpti_CallbackDomain /*domain*/,
     CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo) {
-  auto *d = reinterpret_cast<const CUpti_ResourceData*>(cbInfo);
+  auto* d = reinterpret_cast<const CUpti_ResourceData*>(cbInfo);
   auto ctx = d->context;
   uint32_t device_id = getDevID(ctx);
 
@@ -134,14 +135,14 @@ void trackCudaCtx(
 void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
   std::lock_guard<std::mutex> g(contextMutex_);
   if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_CREATED) {
-    VLOG(0) << "CUPTI Profiler observed CUDA Context created = "
-            << ctx << " device id = " << device_id;
+    VLOG(0) << "CUPTI Profiler observed CUDA Context created = " << ctx
+            << " device id = " << device_id;
     active_devices.insert(device_id);
     ctx_to_dev[ctx] = device_id;
 
   } else if (cbid == CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING) {
-    VLOG(0) << "CUPTI Profiler observed CUDA Context destroyed = "
-            << ctx << " device id = " << device_id;
+    VLOG(0) << "CUPTI Profiler observed CUDA Context destroyed = " << ctx
+            << " device id = " << device_id;
     auto it = active_devices.find(device_id);
     if (it != active_devices.end()) {
       active_devices.erase(it);
@@ -155,7 +156,7 @@ void trackCudaKernelLaunch(
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* cbInfo) {
   VLOG(1) << " Trace : Callback name = "
-          << (cbInfo->symbolName ?  cbInfo->symbolName: "")
+          << (cbInfo->symbolName ? cbInfo->symbolName : "")
           << " context ptr = " << cbInfo->context;
   auto ctx = cbInfo->context;
   // should be in CUPTI_API_ENTER call site
@@ -165,9 +166,7 @@ void trackCudaKernelLaunch(
   __trackCudaKernelLaunch(ctx, cbInfo->symbolName);
 }
 
-void __trackCudaKernelLaunch(
-    CUcontext ctx,
-    const char* kernelName) {
+void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
   VLOG(0) << " Tracking kernel name = " << (kernelName ? kernelName : "")
           << " context ptr = " << ctx;
 
@@ -218,27 +217,43 @@ void __trackCudaKernelLaunch(
 
 void enableKernelCallbacks() {
   auto cbapi = CuptiCallbackApi::singleton();
+
   bool status = cbapi->enableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
+// cudaLaunchKernelExC() used from H100 onwards.
+#if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
+  status &= cbapi->enableCallback(
+    CUPTI_CB_DOMAIN_RUNTIME_API,
+    CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
+#endif
+
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to "
-                 << "enable cuda kernel launch callback";
-    return;
+                  << "enable cuda kernel launch callback.";
   }
+
   LOG(INFO) << "CUPTI Profiler kernel callbacks enabled";
 }
 
 void disableKernelCallbacks() {
   auto cbapi = CuptiCallbackApi::singleton();
+
   bool status = cbapi->disableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
+#if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
+  status &= cbapi->disableCallback(
+    CUPTI_CB_DOMAIN_RUNTIME_API,
+    CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
+#endif
+
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to "
-                 << "disable cuda kernel launch callback";
+                  << "disable cuda kernel launch callback.";
     return;
   }
+
   LOG(INFO) << "CUPTI Profiler kernel callbacks disabled";
 }
 
@@ -255,8 +270,8 @@ bool CuptiRBProfilerSession::initCupti() {
   // when you plan to use CUPTI range profiler
   CUpti_Profiler_Initialize_Params profilerInitializeParams = {
       CUpti_Profiler_Initialize_Params_STRUCT_SIZE, nullptr};
-  CUptiResult status = CUPTI_CALL_NOWARN(
-      cuptiProfilerInitialize(&profilerInitializeParams));
+  CUptiResult status =
+      CUPTI_CALL_NOWARN(cuptiProfilerInitialize(&profilerInitializeParams));
   return (status == CUPTI_SUCCESS);
 }
 
@@ -274,12 +289,14 @@ bool CuptiRBProfilerSession::staticInit() {
   CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
   bool status = cbapi->registerCallback(
       domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, trackCudaCtx);
-  status = status && cbapi->registerCallback(
-      domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, trackCudaCtx);
-  status = status && cbapi->enableCallback(
-      domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
-  status = status && cbapi->enableCallback(
-      domain, CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
+  status = status &&
+      cbapi->registerCallback(
+          domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, trackCudaCtx);
+  status = status &&
+      cbapi->enableCallback(domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
+  status = status &&
+      cbapi->enableCallback(
+          domain, CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda context "
@@ -291,6 +308,11 @@ bool CuptiRBProfilerSession::staticInit() {
   domain = CUPTI_CB_DOMAIN_RUNTIME_API;
   status = cbapi->registerCallback(
       domain, CuptiCallbackApi::CUDA_LAUNCH_KERNEL, trackCudaKernelLaunch);
+  status = status &&
+      cbapi->registerCallback(
+          domain,
+          CuptiCallbackApi::CUDA_LAUNCH_KERNEL_EXC,
+          trackCudaKernelLaunch);
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda kernel "
@@ -306,7 +328,6 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
   static std::vector<uint8_t> counterAvailabilityImage_;
   return counterAvailabilityImage_;
 }
-
 
 // Setup the profiler sessions
 CuptiRBProfilerSession::CuptiRBProfilerSession(
@@ -330,8 +351,8 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
     return;
   }
 
-  LOG(INFO) << "Initializing CUPTI range profiler session : device = " << deviceId_
-            << " chip = " << chipName_;
+  LOG(INFO) << "Initializing CUPTI range profiler session : device = "
+            << deviceId_ << " chip = " << chipName_;
   /* Generate configuration for metrics, this can also be done offline*/
   NVPW_InitializeHost_Params initializeHostParams = {
       NVPW_InitializeHost_Params_STRUCT_SIZE, nullptr};
@@ -347,9 +368,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
       return;
     }
     if (!nvperf::getCounterDataPrefixImage(
-            chipName_,
-            metricNames_,
-            counterDataImagePrefix)) {
+            chipName_, metricNames_, counterDataImagePrefix)) {
       LOG(ERROR) << "Failed to create counterDataImagePrefix";
       return;
     }
@@ -364,13 +383,13 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
   }
 
   LOG(INFO) << "Size of structs"
-            << " config image size = " << configImage.size()  << " B"
-            << " counter data image prefix = "
-            << counterDataImagePrefix.size()  << " B"
+            << " config image size = " << configImage.size() << " B"
+            << " counter data image prefix = " << counterDataImagePrefix.size()
+            << " B"
             << " counter data image size = " << counterDataImage.size() / 1024
             << " KB"
-            << " counter sb image size = "
-            << counterDataScratchBuffer.size()  << " B";
+            << " counter sb image size = " << counterDataScratchBuffer.size()
+            << " B";
 
   beginPassParams_ = {CUpti_Profiler_BeginPass_Params_STRUCT_SIZE, nullptr, {}};
   beginPassParams_.ctx = cuContext_;
@@ -415,7 +434,8 @@ void CuptiRBProfilerSession::startInternal(
   beginSessionParams.pCounterDataImage = counterDataImage.data();
   beginSessionParams.counterDataScratchBufferSize =
       counterDataScratchBuffer.size();
-  beginSessionParams.pCounterDataScratchBuffer = counterDataScratchBuffer.data();
+  beginSessionParams.pCounterDataScratchBuffer =
+      counterDataScratchBuffer.data();
   beginSessionParams.range = profilerRange;
   beginSessionParams.replayMode = profilerReplayMode;
   beginSessionParams.maxRangesPerPass = maxRanges_;
@@ -426,6 +446,8 @@ void CuptiRBProfilerSession::startInternal(
     LOG(WARNING) << "Failed to start CUPTI range profiler";
     initSuccess_ = false;
     return;
+  } else {
+    LOG(INFO) << "Successfully started CUPTI range profiler";
   }
 
   // Set counter configuration
@@ -588,9 +610,7 @@ void CuptiRBProfilerSession::asyncDisableAndStop() {
   disable_flag[deviceId_] = true;
 }
 
-
-CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(
-    bool verbose) {
+CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
   if (!initSuccess_) {
     LOG(WARNING) << "Profiling failed, no results to return";
     return {};
@@ -639,54 +659,57 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
 
   // Calculate size of counter data image
   CUpti_Profiler_CounterDataImage_CalculateSize_Params calculateSizeParams = {
-      CUpti_Profiler_CounterDataImage_CalculateSize_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_CounterDataImage_CalculateSize_Params_STRUCT_SIZE,
+      nullptr};
   calculateSizeParams.pOptions = &counterDataImageOptions;
   calculateSizeParams.sizeofCounterDataImageOptions =
       CUpti_Profiler_CounterDataImageOptions_STRUCT_SIZE;
 
-  CUPTI_CALL(
-      cuptiProfilerCounterDataImageCalculateSize(&calculateSizeParams));
+  CUPTI_CALL(cuptiProfilerCounterDataImageCalculateSize(&calculateSizeParams));
   counterDataImage.resize(calculateSizeParams.counterDataImageSize);
 
   // Initialize counter data image
   CUpti_Profiler_CounterDataImage_Initialize_Params initializeParams = {
-    CUpti_Profiler_CounterDataImage_Initialize_Params_STRUCT_SIZE, nullptr};
+      CUpti_Profiler_CounterDataImage_Initialize_Params_STRUCT_SIZE, nullptr};
   initializeParams.sizeofCounterDataImageOptions =
-    CUpti_Profiler_CounterDataImageOptions_STRUCT_SIZE;
+      CUpti_Profiler_CounterDataImageOptions_STRUCT_SIZE;
   initializeParams.pOptions = &counterDataImageOptions;
   initializeParams.counterDataImageSize =
-    calculateSizeParams.counterDataImageSize;
+      calculateSizeParams.counterDataImageSize;
   initializeParams.pCounterDataImage = counterDataImage.data();
   CUPTI_CALL(cuptiProfilerCounterDataImageInitialize(&initializeParams));
 
   // Calculate counter Scratch Buffer size
   CUpti_Profiler_CounterDataImage_CalculateScratchBufferSize_Params
-    scratchBufferSizeParams = {
-          CUpti_Profiler_CounterDataImage_CalculateScratchBufferSize_Params_STRUCT_SIZE, nullptr};
+      scratchBufferSizeParams = {
+          CUpti_Profiler_CounterDataImage_CalculateScratchBufferSize_Params_STRUCT_SIZE,
+          nullptr};
 
   scratchBufferSizeParams.counterDataImageSize =
-    calculateSizeParams.counterDataImageSize;
+      calculateSizeParams.counterDataImageSize;
   scratchBufferSizeParams.pCounterDataImage =
-    initializeParams.pCounterDataImage;
+      initializeParams.pCounterDataImage;
   CUPTI_CALL(cuptiProfilerCounterDataImageCalculateScratchBufferSize(
-    &scratchBufferSizeParams));
+      &scratchBufferSizeParams));
 
   counterDataScratchBuffer.resize(
       scratchBufferSizeParams.counterDataScratchBufferSize);
 
   // Initialize scratch buffer
   CUpti_Profiler_CounterDataImage_InitializeScratchBuffer_Params
-    initScratchBufferParams = {
-      CUpti_Profiler_CounterDataImage_InitializeScratchBuffer_Params_STRUCT_SIZE, nullptr};
+      initScratchBufferParams = {
+          CUpti_Profiler_CounterDataImage_InitializeScratchBuffer_Params_STRUCT_SIZE,
+          nullptr};
 
   initScratchBufferParams.counterDataImageSize =
-    calculateSizeParams.counterDataImageSize;
+      calculateSizeParams.counterDataImageSize;
 
-  initScratchBufferParams.pCounterDataImage = initializeParams.pCounterDataImage;
+  initScratchBufferParams.pCounterDataImage =
+      initializeParams.pCounterDataImage;
   initScratchBufferParams.counterDataScratchBufferSize =
-    scratchBufferSizeParams.counterDataScratchBufferSize;
+      scratchBufferSizeParams.counterDataScratchBufferSize;
   initScratchBufferParams.pCounterDataScratchBuffer =
-    counterDataScratchBuffer.data();
+      counterDataScratchBuffer.data();
 
   CUPTI_CALL(cuptiProfilerCounterDataImageInitializeScratchBuffer(
       &initScratchBufferParams));
@@ -709,13 +732,15 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
       deviceId_(opts.deviceId),
       maxRanges_(opts.maxRanges),
       numNestingLevels_(opts.numNestingLevels),
-      cuContext_(opts.cuContext) {};
+      cuContext_(opts.cuContext){};
 CuptiRBProfilerSession::~CuptiRBProfilerSession() {}
 void CuptiRBProfilerSession::stop() {}
 void CuptiRBProfilerSession::enable() {}
 void CuptiRBProfilerSession::disable() {}
 void CuptiRBProfilerSession::beginPass() {}
-bool CuptiRBProfilerSession::endPass() { return true; }
+bool CuptiRBProfilerSession::endPass() {
+  return true;
+}
 void CuptiRBProfilerSession::flushCounterData() {}
 void CuptiRBProfilerSession::pushRange(const std::string& /*rangeName*/) {}
 void CuptiRBProfilerSession::popRange() {}
@@ -732,11 +757,19 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
 void CuptiRBProfilerSession::saveCounterData(
     const std::string& /*CounterDataFileName*/,
     const std::string& /*CounterDataSBFileName*/) {}
-bool CuptiRBProfilerSession::initCupti() { return false; }
+bool CuptiRBProfilerSession::initCupti() {
+  return false;
+}
 void CuptiRBProfilerSession::deInitCupti() {}
-bool CuptiRBProfilerSession::staticInit() { return false; }
-std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() { return {}; }
-bool CuptiRBProfilerSession::createCounterDataImage() { return true; }
+bool CuptiRBProfilerSession::staticInit() {
+  return false;
+}
+std::set<uint32_t> CuptiRBProfilerSession::getActiveDevices() {
+  return {};
+}
+bool CuptiRBProfilerSession::createCounterDataImage() {
+  return true;
+}
 void CuptiRBProfilerSession::startInternal(
     CUpti_ProfilerRange /*profilerRange*/,
     CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
@@ -746,8 +779,8 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
 }
 #endif // HAS_CUPTI_RANGE_PROFILER
 
-std::unique_ptr<CuptiRBProfilerSession>
-CuptiRBProfilerSessionFactory::make(const CuptiRangeProfilerOptions& opts) {
+std::unique_ptr<CuptiRBProfilerSession> CuptiRBProfilerSessionFactory::make(
+    const CuptiRangeProfilerOptions& opts) {
   return std::make_unique<CuptiRBProfilerSession>(opts);
 }
 

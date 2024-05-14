@@ -888,16 +888,21 @@ void CuptiActivityProfiler::configureChildProfilers() {
           derivedConfig_->profileStartTime().time_since_epoch())
           .count();
   for (auto& profiler : profilers_) {
-    LOG(INFO) << "Evaluating whether to run child profiler = " << profiler->name();
+    LOG(INFO) << "[Profiler = " << profiler->name() << "] "
+              << "Evaluating whether to run child profiler." ;
     auto session = profiler->configure(
         start_time_ms,
         derivedConfig_->profileDuration().count(),
         derivedConfig_->profileActivityTypes(),
         *config_);
     if (session) {
-      LOG(INFO) << "Running child profiler " << profiler->name() << " for "
+      LOG(INFO) << "[Profiler = " << profiler->name() << "] "
+                << "Running child profiler " << profiler->name() << " for "
                 << derivedConfig_->profileDuration().count() << " ms";
       sessions_.push_back(std::move(session));
+    } else {
+      LOG(INFO) << "[Profiler = " << profiler->name() << "] "
+                << "Not running child profiler.";
     }
   }
 }

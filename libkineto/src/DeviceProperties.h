@@ -11,11 +11,19 @@
 #include <stdint.h>
 #include <string>
 
+#ifdef HAS_CUPTI
 #include <cupti.h>
+#endif
 
 namespace KINETO_NAMESPACE {
 
+// Return compute properties for each device as a json string
+const std::string& devicePropertiesJson();
+
 int smCount(uint32_t deviceId);
+
+// TODO: Implement the below for HAS_ROCTRACER
+#ifdef HAS_CUPTI
 float blocksPerSm(const CUpti_ActivityKernel4& kernel);
 float warpsPerSm(const CUpti_ActivityKernel4& kernel);
 
@@ -30,8 +38,6 @@ float kernelOccupancy(
     int32_t blockY,
     int32_t blockZ,
     float blocks_per_sm);
-
-// Return compute properties for each device as a json string
-const std::string& devicePropertiesJson();
+#endif
 
 } // namespace KINETO_NAMESPACE

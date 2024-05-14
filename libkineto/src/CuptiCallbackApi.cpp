@@ -16,9 +16,7 @@
 #include <algorithm>
 #include <mutex>
 
-#ifdef HAS_CUPTI
-#include "cupti_call.h"
-#endif
+#include "DeviceUtil.h"
 #include "Logger.h"
 
 

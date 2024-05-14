@@ -23,14 +23,12 @@
 
 #ifdef HAS_CUPTI
 #include <cupti.h>
-// TODO(T90238193)
-// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "cuda_call.h"
-#include "cupti_call.h"
-#include "CudaUtil.h"
+#elif defined(HAS_ROCTRACER)
+#include <roctracer.h>
 #endif
 
 #include "Config.h"
+#include "DeviceUtil.h"
 #include "time_since_epoch.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivity.h"
@@ -219,33 +217,45 @@ CuptiActivityProfiler::CuptiActivityProfiler(
       cpuOnly_{cpuOnly},
       currentRunloopState_{RunloopState::WaitForRequest} {
 
-#ifdef HAS_CUPTI
   if (isGpuAvailable()) {
-    logCudaVersions();
+    logGpuVersions();
   }
-#endif
 }
 
+void CuptiActivityProfiler::logGpuVersions() {
 #ifdef HAS_CUPTI
-void CuptiActivityProfiler::logCudaVersions() {
   // check Nvidia versions
-  uint32_t cuptiVersion;
-  int cudaRuntimeVersion, cudaDriverVersion;
-
+  uint32_t cuptiVersion = 0;
+  int cudaRuntimeVersion = 0, cudaDriverVersion = 0;
   CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
   CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
   CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
   LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion
             << "; Runtime: " << cudaRuntimeVersion
             << "; Driver: " << cudaDriverVersion;
+
   LOGGER_OBSERVER_ADD_METADATA(
       "cupti_version", std::to_string(cuptiVersion));
   LOGGER_OBSERVER_ADD_METADATA(
       "cuda_runtime_version", std::to_string(cudaRuntimeVersion));
   LOGGER_OBSERVER_ADD_METADATA(
       "cuda_driver_version", std::to_string(cudaDriverVersion));
-}
+
+#elif defined(HAS_ROCTRACER)
+  uint32_t majorVersion = roctracer_version_major();
+  uint32_t minorVersion = roctracer_version_minor();
+  std::string roctracerVersion =
+      std::to_string(majorVersion) + "." + std::to_string(minorVersion);
+  int hipRuntimeVersion = 0, hipDriverVersion = 0;
+  CUDA_CALL(hipRuntimeGetVersion(&hipRuntimeVersion));
+  CUDA_CALL(hipDriverGetVersion(&hipDriverVersion));
+  LOG(INFO) << "HIP versions. Roctracer: " << roctracerVersion
+            << "; Runtime: " << hipRuntimeVersion
+            << "; Driver: " << hipDriverVersion;
+
+  // TODO: Log AMD versions to Scuba and verify with MAST.
 #endif
+}
 
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";

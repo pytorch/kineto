@@ -6,12 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "CudaUtil.h"
-
-#ifdef HAS_CUPTI
-#include <cuda.h>
-#include <cuda_runtime.h>
-#endif
+#include "DeviceUtil.h"
 
 #include <mutex>
 
@@ -29,11 +24,17 @@ bool isGpuAvailable() {
     error = cudaGetDeviceCount(&deviceCount);
     gpuAvailable = (error == cudaSuccess && deviceCount > 0);
   });
-
-  return gpuAvailable;
-#else
-  return false;
+#elif defined(HAS_ROCTRACER)
+  static std::once_flag once;
+  std::call_once(once, [] {
+    // determine GPU availability on the system
+    hipError_t error;
+    int deviceCount;
+    error = hipGetDeviceCount(&deviceCount);
+    gpuAvailable = (error == hipSuccess && deviceCount > 0);
+  });
 #endif
+  return gpuAvailable;
 }
 
 } // namespace KINETO_NAMESPACE

@@ -13,10 +13,9 @@
 #include <mutex>
 #include <thread>
 
-#include "cupti_call.h"
 #include "Logger.h"
 #include "Config.h"
-#include "CudaUtil.h"
+#include "DeviceUtil.h"
 
 using namespace std::chrono;
 

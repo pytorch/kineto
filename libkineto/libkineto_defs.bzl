@@ -11,7 +11,6 @@ def get_libkineto_api_srcs():
 
 def get_libkineto_cupti_srcs(with_api = True):
     return [
-        "src/CudaUtil.cpp",
         "src/CuptiActivityApi.cpp",
         "src/CuptiCallbackApi.cpp",
         "src/CuptiEventApi.cpp",
@@ -22,6 +21,7 @@ def get_libkineto_cupti_srcs(with_api = True):
         "src/CuptiNvPerfMetric.cpp",
         "src/Demangle.cpp",
         "src/DeviceProperties.cpp",
+        "src/DeviceUtil.cpp",
         "src/EventProfiler.cpp",
         "src/EventProfilerController.cpp",
         "src/WeakSymbols.cpp",

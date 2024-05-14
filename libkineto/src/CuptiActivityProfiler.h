@@ -272,7 +272,7 @@ class CuptiActivityProfiler {
     int cntr;
   };
 
-  void logCudaVersions();
+  void logGpuVersions();
 
   void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);

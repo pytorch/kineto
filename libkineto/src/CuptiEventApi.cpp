@@ -10,8 +10,8 @@
 
 #include <chrono>
 
+#include "DeviceUtil.h"
 #include "Logger.h"
-#include "cupti_call.h"
 
 using std::vector;
 

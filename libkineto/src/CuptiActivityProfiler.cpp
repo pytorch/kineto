@@ -253,7 +253,12 @@ void CuptiActivityProfiler::logGpuVersions() {
             << "; Runtime: " << hipRuntimeVersion
             << "; Driver: " << hipDriverVersion;
 
-  // TODO: Log AMD versions to Scuba and verify with MAST.
+  LOGGER_OBSERVER_ADD_METADATA(
+      "roctracer_version", roctracerVersion);
+  LOGGER_OBSERVER_ADD_METADATA(
+      "hip_runtime_version", std::to_string(hipRuntimeVersion));
+  LOGGER_OBSERVER_ADD_METADATA(
+      "hip_driver_version", std::to_string(hipDriverVersion));
 #endif
 }
 

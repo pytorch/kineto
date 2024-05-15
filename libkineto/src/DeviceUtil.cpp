@@ -16,28 +16,28 @@ bool amdGpuAvailable = false;
 bool cudaGpuAvailable = false;
 
 bool isAMDGpuAvailable() {
-#ifdef HAS_CUPTI
+#ifdef HAS_ROCTRACER
   static std::once_flag once;
   std::call_once(once, [] {
-    // determine GPU availability on the system
-    cudaError_t error;
+    // determine AMD GPU availability on the system
+    hipError_t error;
     int deviceCount;
-    error = cudaGetDeviceCount(&deviceCount);
-    amdGpuAvailable = (error == cudaSuccess && deviceCount > 0);
+    error = hipGetDeviceCount(&deviceCount);
+    amdGpuAvailable = (error == hipSuccess && deviceCount > 0);
   });
 #endif
   return amdGpuAvailable;
 }
 
 bool isCUDAGpuAvailable() {
-#ifdef HAS_ROCTRACER
+#ifdef HAS_CUPTI
   static std::once_flag once;
   std::call_once(once, [] {
-    // determine GPU availability on the system
-    hipError_t error;
+    // determine CUDA GPU availability on the system
+    cudaError_t error;
     int deviceCount;
-    error = hipGetDeviceCount(&deviceCount);
-    cudaGpuAvailable = (error == hipSuccess && deviceCount > 0);
+    error = cudaGetDeviceCount(&deviceCount);
+    cudaGpuAvailable = (error == cudaSuccess && deviceCount > 0);
   });
 #endif
   return cudaGpuAvailable;

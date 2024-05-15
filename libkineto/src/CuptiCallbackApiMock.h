@@ -17,10 +17,6 @@ enum CUpti_CallbackDomain {
 };
 enum CUpti_CallbackId {
   CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
-
-#if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
-  CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060,
-#endif
   CUPTI_CBID_RESOURCE_CONTEXT_CREATED,
   CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING,
 };

@@ -28,7 +28,6 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 
 
-
 /* CuptiCallbackApi : Provides an abstraction over CUPTI callback
  *  interface. This enables various callback functions to be registered
  *  with this class. The class registers a global callback handler that
@@ -55,7 +54,6 @@ class CuptiCallbackApi {
     // can possibly support more callback ids per domain
     //
     __RUNTIME_CB_DOMAIN_START = CUDA_LAUNCH_KERNEL,
-    CUDA_LAUNCH_KERNEL_EXC,  // Used in H100
 
     // Callbacks under Resource CB domain
     RESOURCE_CONTEXT_CREATED,

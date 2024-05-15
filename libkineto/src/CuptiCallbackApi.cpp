@@ -75,7 +75,7 @@ void CuptiCallbackApi::__callback_switchboard(
    CUpti_CallbackDomain domain,
    CUpti_CallbackId cbid,
    const CUpti_CallbackData* cbInfo) {
-  VLOG(0) << "Callback: domain = " << domain << ", cbid = " << cbid;
+  LOG(INFO) << "Callback: domain = " << domain << ", cbid = " << cbid;
   CallbackList *cblist = nullptr;
 
   switch (domain) {
@@ -87,6 +87,12 @@ void CuptiCallbackApi::__callback_switchboard(
           cblist = &callbacks_.runtime[
             CUDA_LAUNCH_KERNEL - __RUNTIME_CB_DOMAIN_START];
           break;
+#if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
+        case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060:
+          cblist = &callbacks_.runtime[
+            CUDA_LAUNCH_KERNEL_EXC - __RUNTIME_CB_DOMAIN_START];
+          break;
+#endif
         default:
           break;
       }
@@ -169,7 +175,7 @@ void CuptiCallbackApi::initCallbackApi() {
       (CUpti_CallbackFunc)callback_switchboard,
       nullptr));
   if (lastCuptiStatus_ != CUPTI_SUCCESS) {
-    VLOG(1)  << "Failed cuptiSubscribe, status: " << lastCuptiStatus_;
+    LOG(INFO) << "Failed cuptiSubscribe, status: " << lastCuptiStatus_;
   }
 
   initSuccess_ = (lastCuptiStatus_ == CUPTI_SUCCESS);

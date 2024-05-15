@@ -7,26 +7,26 @@
  */
 
 #include <fmt/format.h>
+#include <folly/json/json.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <strings.h>
 #include <time.h>
 #include <chrono>
-#include <folly/json/json.h>
 
 #ifdef __linux__
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
 #endif
 
-#include "include/libkineto.h"
 #include "include/Config.h"
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
-#include "src/CuptiActivityProfiler.h"
+#include "include/libkineto.h"
 #include "src/ActivityTrace.h"
 #include "src/CuptiActivityApi.h"
+#include "src/CuptiActivityProfiler.h"
 #include "src/output_json.h"
 #include "src/output_membuf.h"
 
@@ -62,12 +62,12 @@ const TraceSpan& defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
   return span;
 }
-}
+} // namespace
 
 // Provides ability to easily create a few test CPU-side ops
 struct MockCpuActivityBuffer : public CpuTraceBuffer {
   MockCpuActivityBuffer(int64_t startTime, int64_t endTime) {
-    span = TraceSpan(startTime, endTime,"Test trace");
+    span = TraceSpan(startTime, endTime, "Test trace");
     gpuOpCount = 0;
   }
 
@@ -95,8 +95,12 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
 
 // Provides ability to easily create a few test CUPTI ops
 struct MockCuptiActivityBuffer {
-  void addCorrelationActivity(int64_t correlation, CUpti_ExternalCorrelationKind externalKind, int64_t externalId) {
-    auto& act = *(CUpti_ActivityExternalCorrelation*) malloc(sizeof(CUpti_ActivityExternalCorrelation));
+  void addCorrelationActivity(
+      int64_t correlation,
+      CUpti_ExternalCorrelationKind externalKind,
+      int64_t externalId) {
+    auto& act = *(CUpti_ActivityExternalCorrelation*)malloc(
+        sizeof(CUpti_ActivityExternalCorrelation));
     act.kind = CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION;
     act.externalId = externalId;
     act.externalKind = externalKind;
@@ -183,9 +187,8 @@ struct MockCuptiActivityBuffer {
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
-  template<class T>
-  T& createActivity(
-      int64_t start_ns, int64_t end_ns, int64_t correlation) {
+  template <class T>
+  T& createActivity(int64_t start_ns, int64_t end_ns, int64_t correlation) {
     T& act = *static_cast<T*>(malloc(sizeof(T)));
     bzero(&act, sizeof(act));
     act.start = start_ns;
@@ -215,8 +218,7 @@ class MockCuptiActivities : public CuptiActivityApi {
     return {activityBuffer->activities.size(), 100};
   }
 
-  virtual std::unique_ptr<CuptiActivityBufferMap>
-  activityBuffers() override {
+  virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers() override {
     auto map = std::make_unique<CuptiActivityBufferMap>();
     auto buf = std::make_unique<CuptiActivityBuffer>(100);
     uint8_t* addr = buf->data();
@@ -224,13 +226,15 @@ class MockCuptiActivities : public CuptiActivityApi {
     return map;
   }
 
-  void bufferRequestedOverride(uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
+  void bufferRequestedOverride(
+      uint8_t** buffer,
+      size_t* size,
+      size_t* maxNumRecords) {
     this->bufferRequested(buffer, size, maxNumRecords);
   }
 
   std::unique_ptr<MockCuptiActivityBuffer> activityBuffer;
 };
-
 
 // Common setup / teardown and helper functions
 class CuptiActivityProfilerTest : public ::testing::Test {
@@ -241,7 +245,7 @@ class CuptiActivityProfilerTest : public ::testing::Test {
     cfg_ = std::make_unique<Config>();
     cfg_->validate(std::chrono::system_clock::now());
     loggerFactory.addProtocol("file", [](const std::string& url) {
-        return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
     });
   }
 
@@ -260,7 +264,7 @@ void checkTracefile(const char* filename) {
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
-  struct stat buf{};
+  struct stat buf {};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
   close(fd);
@@ -285,20 +289,24 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
   auto now = system_clock::now();
   auto startTime = now + seconds(10);
 
-  bool success = cfg.parse(fmt::format(R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
-  )CFG", warmup, filename, duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+  )CFG",
+      warmup,
+      filename,
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());
 
   auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
 
-  // Usually configuration is done when now is startTime - warmup to kick off warmup
-  // but start right away in the test
+  // Usually configuration is done when now is startTime - warmup to kick off
+  // warmup but start right away in the test
   profiler.configure(cfg, now);
   profiler.setLogger(logger.get());
 
@@ -316,8 +324,9 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
 
   auto next = now + milliseconds(1000);
 
-  // performRunLoopStep can also be called by an application thread to update iteration count
-  // since this config does not use iteration this should have no effect on the state
+  // performRunLoopStep can also be called by an application thread to update
+  // iteration count since this config does not use iteration this should have
+  // no effect on the state
   while (++iter < 20) {
     profiler.performRunLoopStep(now, now, iter);
   }
@@ -340,8 +349,8 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
 
   EXPECT_TRUE(profiler.isActive());
 
-  profiler.performRunLoopStep(nextnext,nextnext);
-  profiler.performRunLoopStep(nextnext,nextnext);
+  profiler.performRunLoopStep(nextnext, nextnext);
+  profiler.performRunLoopStep(nextnext, nextnext);
 
   // Assert that tracing has completed
   EXPECT_FALSE(profiler.isActive());
@@ -354,12 +363,10 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
       {"CuptiActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
-  auto runIterTest = [&](
-    int start_iter, int warmup_iters, int trace_iters) {
-
-    LOG(INFO ) << "Async Trace Test: start_iteration = " << start_iter
-               << " warmup iterations = " << warmup_iters
-               << " trace iterations = " << trace_iters;
+  auto runIterTest = [&](int start_iter, int warmup_iters, int trace_iters) {
+    LOG(INFO) << "Async Trace Test: start_iteration = " << start_iter
+              << " warmup iterations = " << warmup_iters
+              << " trace iterations = " << trace_iters;
 
     MockCuptiActivities activities;
     CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
@@ -372,21 +379,26 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
     int iter = 0;
     auto now = system_clock::now();
 
-    bool success = cfg.parse(fmt::format(R"CFG(
+    bool success = cfg.parse(fmt::format(
+        R"CFG(
       PROFILE_START_ITERATION = {}
       ACTIVITIES_WARMUP_ITERATIONS={}
       ACTIVITIES_ITERATIONS={}
       ACTIVITIES_DURATION_SECS = 1
       ACTIVITIES_LOG_FILE = {}
-    )CFG", start_iter, warmup_iters, trace_iters, filename));
+    )CFG",
+        start_iter,
+        warmup_iters,
+        trace_iters,
+        filename));
 
     EXPECT_TRUE(success);
     EXPECT_FALSE(profiler.isActive());
 
     auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
 
-    // Usually configuration is done when now is startIter - warmup iter to kick off warmup
-    // but start right away in the test
+    // Usually configuration is done when now is startIter - warmup iter to kick
+    // off warmup but start right away in the test
     while (iter < (start_iter - warmup_iters)) {
       profiler.performRunLoopStep(now, now, iter++);
     }
@@ -441,10 +453,8 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
 }
 
 TEST_F(CuptiActivityProfilerTest, SyncTrace) {
-
   // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules(
-      {"CuptiActivityProfiler.cpp"});
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
@@ -487,7 +497,8 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addSyncActivity(
       start_time_ns + 224, start_time_ns + 226, 7, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       1 /*stream*/);
-  // This event should be ignored because it is not on a stream that has no GPU kernels
+  // This event should be ignored because it is not on a stream that has no GPU
+  // kernels
   gpuOps->addSyncActivity(
       start_time_ns + 226, start_time_ns + 230, 8, CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       4 /*stream*/);
@@ -512,6 +523,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   for (auto& activity : *trace.activities()) {
     activityCounts[activity->name()]++;
     resourceIds[activity->resourceId()]++;
+    LOG(INFO) << "[test]" << activity->name() << "," << activity->resourceId();
   }
   for (const auto& p : activityCounts) {
     LOG(INFO) << p.first << ": " << p.second;
@@ -548,7 +560,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
-  struct stat buf{};
+  struct stat buf {};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 #endif
@@ -669,11 +681,11 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   auto expectedInSplitStr =
       fmt::format("\"[{}, ...]\"", fmt::join(expectedInSplit, ", "));
   EXPECT_EQ(cpu_annotation->getMetadataValue(kInSplit), expectedInSplitStr);
-  std::vector<int64_t> expectedGroupRanks(kTruncatLength-1, 0);
-  auto expectedGroupRanksStr =
-      fmt::format("\"[{}, ..., {}]\"", fmt::join(expectedGroupRanks, ", "), "0");
-  EXPECT_EQ(cpu_annotation->getMetadataValue(kGroupRanks), expectedGroupRanksStr);
-
+  std::vector<int64_t> expectedGroupRanks(kTruncatLength - 1, 0);
+  auto expectedGroupRanksStr = fmt::format(
+      "\"[{}, ..., {}]\"", fmt::join(expectedGroupRanks, ", "), "0");
+  EXPECT_EQ(
+      cpu_annotation->getMetadataValue(kGroupRanks), expectedGroupRanksStr);
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
@@ -727,8 +739,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 
 TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
   // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules(
-      {"CuptiActivityProfiler.cpp"});
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
@@ -788,14 +799,12 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
   EXPECT_EQ(gpu_annotation->deviceId(), kernel1->deviceId());
   EXPECT_EQ(gpu_annotation->resourceId(), kernel1->resourceId());
   EXPECT_EQ(gpu_annotation->correlationId(), annotation->correlationId());
-  EXPECT_EQ(gpu_annotation->name(),  annotation->name());
+  EXPECT_EQ(gpu_annotation->name(), annotation->name());
 }
 
 TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
-
   // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules(
-      {"CuptiActivityProfiler.cpp"});
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Setup example events to test
@@ -819,12 +828,11 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   test_activities[2].activityName = "Operator bar";
 
   auto mock_activity_profiler =
-    std::make_unique<MockActivityProfiler>(test_activities);
+      std::make_unique<MockActivityProfiler>(test_activities);
 
   MockCuptiActivities activities;
   CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
-  profiler.addChildActivityProfiler(
-      std::move(mock_activity_profiler));
+  profiler.addChildActivityProfiler(std::move(mock_activity_profiler));
 
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
@@ -860,7 +868,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   EXPECT_TRUE(fd);
 
   // Should expect at least 100 bytes
-  struct stat buf{};
+  struct stat buf {};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 }
@@ -873,11 +881,11 @@ TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
 
   int maxBufferSizeMB = 3;
 
-  auto startTimeEpoch = std::to_string(duration_cast<milliseconds>(startTime.time_since_epoch()).count());
+  auto startTimeEpoch = std::to_string(
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count());
   std::string maxBufferSizeMBStr = std::to_string(maxBufferSizeMB);
   cfg_->handleOption("ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB", maxBufferSizeMBStr);
   cfg_->handleOption("PROFILE_START_TIME", startTimeEpoch);
-
 
   EXPECT_FALSE(profiler.isActive());
   profiler.configure(*cfg_, now);
@@ -887,7 +895,8 @@ TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
     uint8_t* buf;
     size_t gpuBufferSize;
     size_t maxNumRecords;
-    cuptiActivities_.bufferRequestedOverride(&buf, &gpuBufferSize, &maxNumRecords);
+    cuptiActivities_.bufferRequestedOverride(
+        &buf, &gpuBufferSize, &maxNumRecords);
   }
 
   // fast forward to startTime and profiler is now running
@@ -921,20 +930,23 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   auto now = system_clock::now();
   auto startTime = now + seconds(2);
 
-  bool success = cfg.parse(fmt::format(R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = 1
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
-  )CFG", filename, duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+  )CFG",
+      filename,
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());
 
   auto logger = std::make_unique<ChromeTraceLogger>(cfg.activitiesLogFile());
 
-  // Usually configuration is done when now is startTime - warmup to kick off warmup
-  // but start right away in the test
+  // Usually configuration is done when now is startTime - warmup to kick off
+  // warmup but start right away in the test
   profiler.configure(cfg, now);
   profiler.setLogger(logger.get());
 

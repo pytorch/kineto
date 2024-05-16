@@ -45,7 +45,7 @@
   }()
 
 #elif defined(HAS_ROCTRACER)
-#include <hip_runtime.h>
+#include <hip/hip_runtime.h>
 #include <roctracer.h>
 
 #define CUDA_CALL(call)                                     \

@@ -30,7 +30,7 @@ int main() {
     libkineto::ActivityType::CUDA_PROFILER_RANGE,
   };
 
-  libkineto_init(false, true);
+  //libkineto_init(false, true);
   libkineto::api().initProfilerIfRegistered();
 
   // Use a special kineto__cuda_core_flop metric that counts individual

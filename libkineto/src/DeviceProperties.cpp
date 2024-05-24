@@ -15,7 +15,7 @@
 #include <cuda_runtime.h>
 #include <cuda_occupancy.h>
 #elif defined(HAS_ROCTRACER)
-#include <hip_runtime.h>
+#include <hip/hip_runtime.h>
 #endif
 
 #include "Logger.h"

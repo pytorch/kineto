@@ -37,7 +37,8 @@ class ActivityTrace : public ActivityTraceInterface {
     if (url.find("://") == url.npos) {
       prefix = "file://";
     }
-    memLogger_->log(*loggerFactory_.makeLogger(prefix + url));
+    memLogger_->setChromeLogger(loggerFactory_.makeLogger(prefix + url));
+    memLogger_->log(*memLogger_->getChromeLogger());
   }
 
  private:

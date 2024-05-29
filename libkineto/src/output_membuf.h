@@ -104,6 +104,13 @@ class MemoryTraceLogger : public ActivityLogger {
     loggerMetadata_ = std::move(lmd);
   }
 
+  void setChromeLogger(std::shared_ptr<ActivityLogger> logger) {
+    chrome_logger_ = logger;
+  }
+
+  std::shared_ptr<ActivityLogger> getChromeLogger() {
+    return chrome_logger_;
+  }
  private:
 
   std::unique_ptr<Config> config_;
@@ -116,6 +123,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::unordered_map<std::string, std::string> metadata_;
   std::unordered_map<std::string, std::vector<std::string>> loggerMetadata_;
   int64_t endTime_{0};
+  std::shared_ptr<ActivityLogger> chrome_logger_;
 };
 
 } // namespace KINETO_NAMESPACE

@@ -29,6 +29,11 @@ namespace libkineto {
 
 using namespace KINETO_NAMESPACE;
 
+// Used by sortIndex to put GPU tracks at the bottom
+// of the trace timelines. The largest valid CPU PID is 4,194,304,
+// so 5000000 is enough to guarantee that GPU tracks are sorted after CPU.
+constexpr int64_t kExceedMaxPid = 5000000;
+
 class ActivityLogger {
  public:
 

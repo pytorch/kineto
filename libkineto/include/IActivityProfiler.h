@@ -40,12 +40,19 @@ enum class TraceStatus {
 };
 
 /* DeviceInfo:
- *   Can be used to specify process name, PID and device label
+ *   Can be used to specify process name, sort order, PID and device label.
+ *   The sort order is determined by the sortIndex field to handle ordering of
+ *   processes and gpu rows in the trace viewer.
  */
 struct DeviceInfo {
-  DeviceInfo(int64_t id, const std::string& name, const std::string& label)
-      : id(id), name(name), label(label) {}
+  DeviceInfo(
+      int64_t id,
+      int64_t sortIndex,
+      const std::string& name,
+      const std::string& label)
+      : id(id), sortIndex(sortIndex), name(name), label(label) {}
   int64_t id;               // process id
+  int64_t sortIndex;        // position in trace view
   const std::string name;   // process name
   const std::string label;  // device label
 };

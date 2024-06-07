@@ -997,3 +997,81 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   EXPECT_EQ(1, countSubstrings(jsonStr, "/test/metadata/path"));
 #endif
 }
+
+TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
+  // Set logging level for debugging purpose
+  std::vector<std::string> log_modules(
+      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  // Start and stop profiling
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 500;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.recordThreadInfo();
+
+  // Set up CPU events and corresponding GPU events
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_ns, start_time_ns + duration_ns);
+  cpuOps->addOp("op1", start_time_ns + 10, start_time_ns + 30, 1);
+  profiler.transferCpuTrace(std::move(cpuOps));
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addRuntimeActivity(CUDA_LAUNCH_KERNEL, start_time_ns + 23, start_time_ns + 28, 1);
+  gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  // Process trace
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.setLogger(logger.get());
+
+  // Profiler can be reset at this point - logger owns the activities
+  profiler.reset();
+
+  // Check the content of GPU event and we should see extra
+  // collective fields get populated from CPU event.
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  EXPECT_EQ(3, trace.activities()->size());
+
+#ifdef __linux__
+  // Test saved output can be loaded as JSON
+  char filename[] = "/tmp/libkineto_testXXXXXX.json";
+  mkstemps(filename, 5);
+  LOG(INFO) << "Logging to tmp file: " << filename;
+  trace.save(filename);
+
+  // Check that the saved JSON file can be loaded and deserialized
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open the trace JSON file.");
+  }
+  std::string jsonStr(
+      (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  folly::dynamic jsonData = folly::parseJson(jsonStr);
+
+  std::unordered_map<int64_t, std::string> sortLabel;
+  std::unordered_map<int64_t, int64_t> sortIdx;
+  for (auto& event : jsonData["traceEvents"]) {
+    if (event["name"] == "process_labels" && event["tid"] == 0 && event["pid"].isInt()) {
+      sortLabel[event["pid"].asInt()] = event["args"]["labels"].asString();
+    }
+    if (event["name"] == "process_sort_index" && event["tid"] == 0 && event["pid"].isInt()) {
+      sortIdx[event["pid"].asInt()] = event["args"]["sort_index"].asInt();
+    }
+  }
+
+  // Expect there is 1 CUPTI Overhead, and 16 CPU + GPU sorts, total 17.
+  EXPECT_EQ(17, sortLabel.size());
+  for (int i = 0; i<16; i++) {
+    // Check there are 16 GPU sorts (0-15) with expected sort_index.
+    EXPECT_EQ("GPU " + std::to_string(i), sortLabel[i]);
+    // sortIndex is gpu + kExceedMaxPid to put GPU tracks at the bottom
+    // of the trace timelines.
+    EXPECT_EQ(i + kExceedMaxPid, sortIdx[i]);
+  }
+#endif
+}

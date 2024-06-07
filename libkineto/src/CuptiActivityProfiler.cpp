@@ -11,6 +11,7 @@
 #include <fmt/format.h>
 #include <time.h>
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <iomanip>
 #include <optional>
@@ -1232,13 +1233,17 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
   string process_name = processName(pid);
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
-        {pid, process_name, "CPU"}, captureWindowStartTime_);
+        {pid, pid, process_name, "CPU"}, captureWindowStartTime_);
     if (!cpuOnly_) {
-      // GPU events use device id as pid (0-7).
-      constexpr int kMaxGpuCount = 8;
-      for (int gpu = 0; gpu < kMaxGpuCount; gpu++) {
+      // Usually, GPU events use device id as pid (0-7).
+      // In some cases, CPU sockets are numbered starting from 0.
+      // In the worst case, 8 CPU sockets + 8 GPUs, so the max GPU ID is 15.
+      constexpr int kMaxGpuID = 15;
+      // sortIndex is gpu + kExceedMaxPid to put GPU tracks at the bottom
+      // of the trace timelines.
+      for (int gpu = 0; gpu <= kMaxGpuID; gpu++) {
         logger.handleDeviceInfo(
-            {gpu, process_name, fmt::format("GPU {}", gpu)},
+            {gpu, gpu + kExceedMaxPid, process_name, fmt::format("GPU {}", gpu)},
             captureWindowStartTime_);
       }
     }

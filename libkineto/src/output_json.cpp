@@ -154,7 +154,7 @@ void ChromeTraceLogger::handleDeviceInfo(
       time/1000, time%1000, info.id,
       info.label,
       time/1000, time%1000, info.id,
-      info.id < 8 ? info.id + 0x1000000ll : info.id);
+      info.sortIndex);
   // clang-format on
 }
 

@@ -10,12 +10,14 @@
 #include <array>
 #include <set>
 
+// TODO(T90238193)
+// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "include/libkineto.h"
 #include "include/Config.h"
 #include "src/CuptiRangeProfilerApi.h"
 
 #include "src/Logger.h"
-#include "test/CuptiRangeProfilerTestUtil.h"
+#include "CuptiRangeProfilerTestUtil.h"
 
 using namespace KINETO_NAMESPACE;
 

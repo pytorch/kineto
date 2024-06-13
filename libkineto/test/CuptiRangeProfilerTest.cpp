@@ -16,8 +16,6 @@
 #include <fcntl.h>
 #endif
 
-// TODO(T90238193)
-// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "include/libkineto.h"
 #include "include/Config.h"
 #include "include/output_base.h"
@@ -28,7 +26,7 @@
 #include "src/output_membuf.h"
 #include "src/Logger.h"
 
-#include "CuptiRangeProfilerTestUtil.h"
+#include "test/CuptiRangeProfilerTestUtil.h"
 
 using namespace KINETO_NAMESPACE;
 

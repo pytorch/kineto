@@ -53,7 +53,7 @@ class RoctracerActivityApi {
   void clearActivities();
   void teardownContext() {}
 
-  int processActivities(
+  virtual int processActivities(
     std::function<void(const roctracerBase*)> handler,
     std::function<void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)> correlationHandler);
 

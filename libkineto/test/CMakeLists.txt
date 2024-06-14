@@ -65,7 +65,9 @@ target_include_directories(CuptiRangeProfilerApiTest PRIVATE
     "${LIBKINETO_DIR}/src"
     "${CUDA_SOURCE_DIR}/include"
     "${CUPTI_INCLUDE_DIR}")
-gtest_discover_tests(CuptiRangeProfilerApiTest)
+# Skipping due to SEGFault in 12.4
+# Tracked here: https://github.com/pytorch/kineto/issues/949
+# gtest_discover_tests(CuptiRangeProfilerApiTest)
 
 # CuptiRangeProfilerConfigTest
 add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
@@ -94,7 +96,9 @@ target_include_directories(CuptiRangeProfilerTest PRIVATE
     "${LIBKINETO_DIR}/src"
     "${CUDA_SOURCE_DIR}/include"
     "${CUPTI_INCLUDE_DIR}")
-gtest_discover_tests(CuptiRangeProfilerTest)
+# Skipping due to SEGFault in 12.4
+# Tracked here: https://github.com/pytorch/kineto/issues/949
+# gtest_discover_tests(CuptiRangeProfilerTest)
 
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)

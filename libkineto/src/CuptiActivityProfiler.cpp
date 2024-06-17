@@ -104,6 +104,13 @@ std::function<time_t(approx_time_t)>& get_time_converter() {
   return _time_converter;
 }
 
+#ifdef HAS_CUPTI
+bool& use_cupti_tsc() {
+  static bool use_cupti_tsc = true;
+  return use_cupti_tsc;
+}
+#endif
+
 ConfigDerivedState::ConfigDerivedState(const Config& config) {
   profileActivityTypes_ = config.selectedActivityTypes();
   profileStartTime_ = config.requestTimestamp();
@@ -981,7 +988,6 @@ void CuptiActivityProfiler::configure(
     // It's therefore useful to perform some warmup before starting recording.
     LOG(INFO) << "Enabling GPU tracing";
     cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
-
     time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
       timestamp = system_clock::now();
@@ -996,10 +1002,13 @@ void CuptiActivityProfiler::configure(
         }));
 #else
 #if defined(TMP_USE_TSC_AS_TIMESTAMP) && CUDA_VERSION >= 11060
+    use_cupti_tsc() = config_->getTSCTimestampFlag();
+    if (use_cupti_tsc()){
     CUPTI_CALL(
         cuptiActivityRegisterTimestampCallback([]() -> uint64_t {
           return getApproximateTime();
         }));
+    }
 #endif // defined(TMP_USE_TSC_AS_TIMESTAMP) && CUDA_VERSION >= 11060
 #endif // _WIN32
     cupti_.enableCuptiActivities(config_->selectedActivityTypes());

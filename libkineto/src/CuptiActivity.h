@@ -27,6 +27,10 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 struct TraceSpan;
 
+// This function allows us to activate/deactivate TSC CUPTI callbacks 
+// via a killswitch
+bool& use_cupti_tsc();
+
 // These classes wrap the various CUPTI activity types
 // into subclasses of ITraceActivity so that they can all be accessed
 // using the ITraceActivity interface and logged via ActivityLogger.
@@ -43,7 +47,11 @@ struct CuptiActivity : public ITraceActivity {
   #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.start;
   #else
-    return get_time_converter()(activity_.start);
+    if (use_cupti_tsc()){
+      return get_time_converter()(activity_.start);
+    } else {
+      return activity_.start;
+    }
   #endif
   }
 
@@ -51,7 +59,11 @@ struct CuptiActivity : public ITraceActivity {
   #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.end - activity_.start;
   #else
-    return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+    if (use_cupti_tsc()){
+      return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+    } else {
+      return activity_.end - activity_.start;
+    }
   #endif
   }
   // TODO(T107507796): Deprecate ITraceActivity
@@ -121,7 +133,11 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
   #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.start;
   #else
-    return get_time_converter()(activity_.start);
+    if (use_cupti_tsc()){
+      return get_time_converter()(activity_.start);
+    } else {
+      return activity_.start;
+    }
   #endif
   }
 
@@ -129,7 +145,11 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
   #if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.end - activity_.start;
   #else
-    return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+    if (use_cupti_tsc()){
+      return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+    } else {
+      return activity_.end - activity_.start;
+    }
   #endif
   }
 

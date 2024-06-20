@@ -511,6 +511,7 @@ void Config::validate(
   if (selectedActivityTypes_.size() == 0) {
     selectDefaultActivityTypes();
   }
+  setActivityDependentConfig();
 }
 
 void Config::setReportPeriod(milliseconds msecs) {
@@ -548,6 +549,10 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     << fmt::format("{}", fmt::join(activities, ",")) << std::endl;
 
   AbstractConfig::printActivityProfilerConfig(s);
+}
+
+void Config::setActivityDependentConfig(){
+  AbstractConfig::setActivityDependentConfig();
 }
 
 } // namespace KINETO_NAMESPACE

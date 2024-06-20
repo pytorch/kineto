@@ -191,4 +191,10 @@ void AbstractConfig::printActivityProfilerConfig(std::ostream& s) const {
   }
 }
 
+void AbstractConfig::setActivityDependentConfig() {
+  for (const auto& feature_cfg : featureConfigs_) {
+    feature_cfg.second->setActivityDependentConfig();
+  }
+}
+
 } // namespace KINETO_NAMESPACE

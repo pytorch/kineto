@@ -85,6 +85,7 @@ class AbstractConfig {
 
   // TODO: Separate out each profiler type into features?
   virtual void printActivityProfilerConfig(std::ostream& s) const;
+  virtual void setActivityDependentConfig();
 
   // Helpers for use in handleOption
   // Split a string by delimiter and remove external white space

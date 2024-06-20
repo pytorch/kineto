@@ -57,7 +57,7 @@ class CuptiRangeProfilerConfig : public AbstractConfig {
   }
 
   void printActivityProfilerConfig(std::ostream& s) const override;
-
+  void setActivityDependentConfig() override;
   static void registerFactory();
  protected:
   AbstractConfig* cloneDerived(AbstractConfig& parent) const override {

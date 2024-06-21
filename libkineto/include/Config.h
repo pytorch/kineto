@@ -352,7 +352,8 @@ class Config : public AbstractConfig {
   void updateActivityProfilerRequestReceivedTime();
 
   void printActivityProfilerConfig(std::ostream& s) const override;
-
+  void setActivityDependentConfig() override;
+  
   void validate(const std::chrono::time_point<std::chrono::system_clock>&
                     fallbackProfileStartTime) override;
 

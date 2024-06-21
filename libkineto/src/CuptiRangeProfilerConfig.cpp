@@ -63,6 +63,8 @@ void CuptiRangeProfilerConfig::printActivityProfilerConfig(std::ostream& s) cons
   }
 }
 
+void CuptiRangeProfilerConfig::setActivityDependentConfig(){}
+
 void CuptiRangeProfilerConfig::registerFactory() {
   Config::addConfigFactory(
       kCuptiProfilerConfigName,

@@ -1001,7 +1001,7 @@ void CuptiActivityProfiler::configure(
           return system.time_since_epoch().count();
         }));
 #else
-#if defined(TMP_USE_TSC_AS_TIMESTAMP) && CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060
     use_cupti_tsc() = config_->getTSCTimestampFlag();
     if (use_cupti_tsc()){
     CUPTI_CALL(
@@ -1009,7 +1009,7 @@ void CuptiActivityProfiler::configure(
           return getApproximateTime();
         }));
     }
-#endif // defined(TMP_USE_TSC_AS_TIMESTAMP) && CUDA_VERSION >= 11060
+#endif // CUDA_VERSION >= 11060
 #endif // _WIN32
     cupti_.enableCuptiActivities(config_->selectedActivityTypes());
 #else

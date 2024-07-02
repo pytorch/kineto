@@ -12,7 +12,6 @@
 #include <fstream>
 #include <time.h>
 #include <map>
-
 #include "Config.h"
 #include "DeviceProperties.h"
 #include "TraceSpan.h"
@@ -40,6 +39,7 @@ static constexpr const char* kOutSplit = "Out split size";
 static constexpr const char* kProcessGroupName = "Process Group Name";
 static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
+static constexpr const char* kRank = "Rank";
 
 #ifdef __linux__
 static constexpr char kDefaultLogFileFmt[] =
@@ -78,6 +78,11 @@ void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (auto [k, v]: metadata) {
     std::string sanitizedValue = v;
+    // There is a seperate mechanism for recording distributedInfo in on-demand 
+    // so add a guard to prevent "double counting" in auto-trace.
+    if (k == "distributedInfo") {
+      distInfo_.distInfo_present_ = true;
+    }
     sanitizeStrForJSON(sanitizedValue);
     traceOf_ << fmt::format(R"JSON(
   "{}": {},)JSON", k, sanitizedValue);
@@ -407,6 +412,23 @@ void ChromeTraceLogger::handleActivity(
       }
       arg_values.append(fmt::format(" \"{}\": {}", kGroupRanks, groupRanks));
     }
+    if (distInfo_.backend=="" && processGroupDesc=="\"default_pg\"") {
+      distInfo_.backend = "nccl";
+      distInfo_.rank = collectiveRecord->getMetadataValue(kRank);
+      distInfo_.world_size = groupSize; 
+      // Not sure if we want to have output.json depend on nccl at compilation so
+      // set nccl_version to "unknown" for now until we can determine if we can pass
+      // it at runtime or use ifdefs. Should not be necessary to enable HTA
+      distInfo_.nccl_version = "unknown";
+    }
+    auto pg_config = pgConfig();
+    pg_config.pg_name = processGroupName;
+    pg_config.pg_desc = processGroupDesc;
+    pg_config.backend_config = "cuda:nccl";
+    pg_config.pg_size = groupSize;
+    pg_config.ranks = groupRanks;
+    pgMap.insert({processGroupName, pg_config});
+    
   }
 
   std::string args = "";
@@ -499,6 +521,23 @@ void ChromeTraceLogger::finalizeTrace(
   finalizeTrace(endTime, metadata);
 }
 
+void ChromeTraceLogger::addOnDemandDistMetadata() {
+  if (distInfo_.backend == "") {
+    return;
+  }
+  traceOf_ << fmt::format(R"JSON(
+  "distributedInfo": {{"backend": "{}", "rank": {}, "world_size": {}, "pg_count": {}, "pg_config": [)JSON",
+          distInfo_.backend, distInfo_.rank, distInfo_.world_size,  std::to_string(pgMap.size()));
+
+    for (const auto& element : pgMap) {
+        traceOf_ << fmt::format(R"JSON({{"pg_name": {}, "pg_desc": {}, "backend_config": "{}", "pg_size": {}, "ranks": {}}},)JSON",
+          element.second.pg_name, element.second.pg_desc, element.second.backend_config, element.second.pg_size, element.second.ranks);
+    }
+    traceOf_.seekp(-1, std::ios_base::end);
+   traceOf_ << fmt::format(R"JSON(], "nccl_version": "{}"}},)JSON", distInfo_.nccl_version);
+   distInfo_.distInfo_present_ = true;
+}
+
 void ChromeTraceLogger::finalizeTrace(
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
@@ -518,6 +557,9 @@ void ChromeTraceLogger::finalizeTrace(
   ],)JSON",
       endTime/1000, endTime %1000);
 
+  if (!distInfo_.distInfo_present_) {
+   addOnDemandDistMetadata();
+  }
 #if !USE_GOOGLE_LOG
   std::unordered_map<std::string, std::string> PreparedMetadata;
   for (const auto& kv : metadata) {

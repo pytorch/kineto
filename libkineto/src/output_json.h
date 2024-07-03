@@ -13,6 +13,7 @@
 #include <map>
 #include <ostream>
 #include <ratio>
+#include <string>
 #include <thread>
 #include <unordered_map>
 
@@ -31,6 +32,28 @@ namespace KINETO_NAMESPACE {
 namespace KINETO_NAMESPACE {
 
 class Config;
+
+
+struct pgConfig {
+  pgConfig() = default;
+  std::string pg_name{""};
+  std::string pg_desc{""};
+  std::string backend_config{""};
+  std::string pg_size{""};
+  std::string ranks{""};
+
+};
+
+struct DistributedInfo {
+  DistributedInfo() = default;
+
+  std::string backend{""};
+  std::string rank{""};
+  std::string world_size{""};
+  std::string pg_count{""};
+  std::string nccl_version{""};
+  bool distInfo_present_{false};
+};
 
 class ChromeTraceLogger : public libkineto::ActivityLogger {
  public:
@@ -91,9 +114,16 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void sanitizeStrForJSON(std::string& value);
 
+  void addOnDemandDistMetadata();
+
   std::string fileName_;
   std::string tempFileName_;
   std::ofstream traceOf_;
+  DistributedInfo distInfo_ = DistributedInfo();
+  // Map of all observed process groups to their configs in trace. Key is pg_name, 
+  // value is pgConfig that will be used to populate pg_config in 
+  // distributedInfo of trace
+  std::unordered_map<std::string, pgConfig> pgMap = {};
 };
 
 //std::chrono header start

@@ -23,7 +23,6 @@
 #include "Logger.h"
 
 // The following is required for LOG() macros to work below
-using namespace KINETO_NAMESPACE;
 // Include the IPC Fabric
 #include "FabricManager.h"
 

@@ -22,6 +22,10 @@
 #include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
+#ifdef HAS_XPUPTI
+#include "plugin/xpupti/XpuptiActivityApi.h"
+#include "plugin/xpupti/XpuptiActivityProfiler.h"
+#endif
 #include "libkineto.h"
 
 #include "Logger.h"
@@ -193,6 +197,20 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
+
+#ifdef HAS_XPUPTI
+  // register xpu pti profiler
+  libkineto::api().registerProfilerFactory([]() -> std::unique_ptr<IActivityProfiler> {
+    auto returnCode = ptiViewGPULocalAvailable();
+    if (returnCode != PTI_SUCCESS) {
+      std::string errCode = std::to_string(returnCode);
+      std::string errMsg(
+          "Fail to enable Kineto Profiler on XPU due to error code: ");
+      throw std::runtime_error(errMsg + errCode);
+    }
+    return std::make_unique<XPUActivityProfiler>();
+  });
+#endif // HAS_XPUPTI
 
 #if __linux__
   // When CUDA/GPU is used the profiler initialization happens on the

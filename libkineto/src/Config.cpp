@@ -12,6 +12,7 @@
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <chrono>
 #include <fstream>
 #include <functional>

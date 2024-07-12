@@ -16,6 +16,9 @@
 #include <fcntl.h>
 #endif
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "include/libkineto.h"

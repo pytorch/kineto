@@ -9,6 +9,7 @@
 #include "DeviceProperties.h"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <vector>
 
 #if defined(HAS_CUPTI)

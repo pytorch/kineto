@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <time.h>
 #include <algorithm>
 #include <cmath>

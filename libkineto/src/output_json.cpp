@@ -40,6 +40,8 @@ static constexpr const char* kProcessGroupName = "Process Group Name";
 static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
 static constexpr const char* kRank = "Rank";
+static constexpr const char* kP2pSrc = "Src Rank";
+static constexpr const char* kP2pDst = "Dst Rank";
 
 #ifdef __linux__
 static constexpr char kDefaultLogFileFmt[] =
@@ -78,7 +80,7 @@ void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (auto [k, v]: metadata) {
     std::string sanitizedValue = v;
-    // There is a seperate mechanism for recording distributedInfo in on-demand 
+    // There is a seperate mechanism for recording distributedInfo in on-demand
     // so add a guard to prevent "double counting" in auto-trace.
     if (k == "distributedInfo") {
       distInfo_.distInfo_present_ = true;
@@ -412,10 +414,20 @@ void ChromeTraceLogger::handleActivity(
       }
       arg_values.append(fmt::format(" \"{}\": {}", kGroupRanks, groupRanks));
     }
+    const auto& dstRank = collectiveRecord->getMetadataValue(kP2pDst);
+    const auto& srcRank = collectiveRecord->getMetadataValue(kP2pSrc);
+    if (!dstRank.empty()) {
+      arg_values.append(fmt::format(", \"{}\": {}", kP2pDst, dstRank));
+    }
+    if (!srcRank.empty()) {
+      arg_values.append(fmt::format(", \"{}\": {}", kP2pSrc, srcRank));
+    }
+
+
     if (distInfo_.backend=="" && processGroupDesc=="\"default_pg\"") {
       distInfo_.backend = "nccl";
       distInfo_.rank = collectiveRecord->getMetadataValue(kRank);
-      distInfo_.world_size = groupSize; 
+      distInfo_.world_size = groupSize;
       // Not sure if we want to have output.json depend on nccl at compilation so
       // set nccl_version to "unknown" for now until we can determine if we can pass
       // it at runtime or use ifdefs. Should not be necessary to enable HTA
@@ -428,7 +440,7 @@ void ChromeTraceLogger::handleActivity(
     pg_config.pg_size = groupSize;
     pg_config.ranks = groupRanks;
     pgMap.insert({processGroupName, pg_config});
-    
+
   }
 
   std::string args = "";

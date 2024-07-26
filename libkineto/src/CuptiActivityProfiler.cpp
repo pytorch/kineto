@@ -191,6 +191,17 @@ std::ostream& operator<<(std::ostream& oss, const CuptiActivityProfiler::ErrorCo
   return oss;
 }
 
+CuptiActivityProfiler::~CuptiActivityProfiler() {
+  if(stopByIterThread) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (stopByIterThread) {
+      stopByIterThread->join();
+      delete stopByIterThread;
+      stopByIterThread = nullptr;
+    }
+  }
+}
+
 void CuptiActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   std::lock_guard<std::mutex> guard(mutex_);
@@ -1219,6 +1230,24 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         LOG(INFO) << "Tracing complete.";
         VLOG_IF(1, currentIter > 0) << "This state change was invoked by application's step() call";
 
+        if (currentIter > 0) {
+          if (!stopByIterThread) {
+            std::lock_guard<std::mutex> guard(mutex_);
+            if (!stopByIterThread) {
+              stopByIterThread = new std::thread([collection_done, this, now](){
+                if (libkineto::api().client()) {
+                  libkineto::api().client()->stop();
+                }
+                std::lock_guard<std::mutex> guard(mutex_);
+                stopTraceInternal(now);
+                VLOG_IF(0, collection_done) << "Reached profile end time";
+                UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+              });
+            }
+          }
+          break;
+        }
+
         if (libkineto::api().client()) {
           libkineto::api().client()->stop();
         }
@@ -1252,6 +1281,16 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       if (currentIter >= 0) {
         return new_wakeup_time;
       }
+
+      if (stopByIterThread) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (stopByIterThread) {
+          stopByIterThread->join();
+          delete stopByIterThread;
+          stopByIterThread = nullptr;
+        }
+      }
+
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::mutex> guard(mutex_);

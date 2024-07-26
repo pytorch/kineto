@@ -116,7 +116,7 @@ class CuptiActivityProfiler {
   CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
-
+  ~CuptiActivityProfiler();
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;
   }
@@ -473,6 +473,8 @@ class CuptiActivityProfiler {
 
   // Mutex to protect non-atomic access to below state
   std::mutex mutex_;
+
+  std::thread * stopByIterThread = nullptr;
 
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};

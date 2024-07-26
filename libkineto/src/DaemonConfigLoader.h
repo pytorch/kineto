@@ -14,6 +14,7 @@
 #if !USE_GOOGLE_LOG
 #include <memory>
 #endif // !USE_GOOGLE_LOG
+#include "IpcFabricConfigClient.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -53,7 +54,11 @@ class DaemonConfigLoader : public IDaemonConfigLoader {
 
   void setCommunicationFabric(bool enabled) override;
 
+  IpcFabricConfigClient* getConfigClient();
+
   static void registerFactory();
+private:
+  std::unique_ptr<IpcFabricConfigClient> configClient;
 };
 #endif // __linux__
 

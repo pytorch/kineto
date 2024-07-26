@@ -13,14 +13,15 @@
 #include "Logger.h"
 #include "ConfigLoader.h"
 #include "DaemonConfigLoader.h"
-#include "IpcFabricConfigClient.h"
 
 namespace KINETO_NAMESPACE {
 
 // TODO : implications of this singleton being thread safe on forks?
-IpcFabricConfigClient* getConfigClient() {
-  static auto client = std::make_unique<IpcFabricConfigClient>();
-  return client.get();
+IpcFabricConfigClient* DaemonConfigLoader::getConfigClient() {
+  if (!configClient){
+    configClient = std::make_unique<IpcFabricConfigClient>();
+  }
+  return configClient.get();
 }
 
 std::string DaemonConfigLoader::readBaseConfig() {

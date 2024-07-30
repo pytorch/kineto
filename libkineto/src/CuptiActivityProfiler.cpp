@@ -1298,6 +1298,10 @@ void CuptiActivityProfiler::finalizeTrace(const Config& config, ActivityLogger& 
   for (auto& session : sessions_){
     auto trace_buffer = session->getTraceBuffer();
     if (trace_buffer) {
+      // Set child start time to profiling start time if not set
+      if (trace_buffer->span.startTime == 0) {
+        trace_buffer->span.startTime = captureWindowStartTime_;
+      }
       traceBuffers_->cpu.push_back(std::move(trace_buffer));
     }
   }

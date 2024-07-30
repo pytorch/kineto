@@ -233,8 +233,10 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   }
 
   uint64_t start = transToRelativeTime(span.startTime);
-  uint64_t dur = span.endTime - span.startTime;
-
+  
+  // If endTime is 0 and start time is non-zero, dur can overflow. Add
+  // a guard to prevent this.
+  uint64_t dur = (span.endTime == 0) ? 0 : span.endTime - span.startTime;
   // clang-format off
   traceOf_ << fmt::format(R"JSON(
   {{

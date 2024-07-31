@@ -1,3 +1,5 @@
 # ignore common items
 .idea
 .vscode
+.data
+__pycache__

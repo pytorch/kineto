@@ -275,6 +275,8 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
   logger.handleTraceStart(metadata_);
+  setCpuActivityPresent(false);
+  setGpuActivityPresent(false);
   for (auto& cpu_trace : traceBuffers_->cpu) {
     string trace_name = cpu_trace->span.name;
     VLOG(0) << "Processing CPU buffer for " << trace_name << " ("
@@ -314,6 +316,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
       LOGGER_OBSERVER_ADD_METADATA(
           "ResourceOverhead", std::to_string(resourceOverheadCount_));
     }
+    if (!gpuActivityPresent()){
+      LOG(WARNING) << "GPU trace is empty!";
+    }
   }
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
@@ -326,6 +331,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
   }
 #endif // HAS_ROCTRACER
+  if (!traceNonEmpty()) {
+    LOG(WARNING) << "No Valid Trace Events (CPU/GPU) found. Outputting empty trace.";
+  }
 
   for (const auto& session : sessions_) {
     LOG(INFO) << "Processing child profiler trace";
@@ -359,6 +367,7 @@ void CuptiActivityProfiler::processCpuTrace(
     LOG(WARNING) << "CPU trace is empty!";
     return;
   }
+  setCpuActivityPresent(true);
 
   CpuGpuSpanPair& span_pair =
       recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
@@ -518,6 +527,7 @@ void CuptiActivityProfiler::handleRuntimeActivity(
     return;
   }
   runtime_activity.log(*logger);
+  setGpuActivityPresent(true);
 }
 
 void CuptiActivityProfiler::handleDriverActivity(
@@ -545,6 +555,7 @@ void CuptiActivityProfiler::handleDriverActivity(
     return;
   }
   runtime_activity.log(*logger);
+  setGpuActivityPresent(true);
 }
 
 void CuptiActivityProfiler::handleOverheadActivity(
@@ -563,6 +574,7 @@ void CuptiActivityProfiler::handleOverheadActivity(
     return;
   }
   overhead_activity.log(*logger);
+  setGpuActivityPresent(true);
 }
 
 
@@ -636,6 +648,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
             << " stream = " <<  activity->streamId
             << " sync type = " << syncTypeString(activity->type);
     cuda_sync_activity.log(*logger);
+    setGpuActivityPresent(true);
   };
 
   if (isWaitEventSync(activity->type)) {
@@ -743,6 +756,7 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   seenDeviceStreams_.insert({act.deviceId(), act.resourceId()});
 
   act.log(*logger);
+  setGpuActivityPresent(true);
   updateGpuNetSpan(act);
   if (derivedConfig_->profileActivityTypes().count(
           ActivityType::GPU_USER_ANNOTATION)) {
@@ -854,6 +868,7 @@ void CuptiActivityProfiler::handleRuntimeActivity(
     return;
   }
   runtime_activity.log(*logger);
+  setGpuActivityPresent(true);
 }
 
 inline void CuptiActivityProfiler::handleGpuActivity(

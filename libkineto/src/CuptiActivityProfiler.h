@@ -136,6 +136,22 @@ class CuptiActivityProfiler {
     logger_ = logger;
   }
 
+ inline void setCpuActivityPresent(bool val){
+    cpuActivityPresent_ = val;
+  }
+
+  inline void setGpuActivityPresent(bool val){
+    gpuActivityPresent_ = val;
+  } 
+
+  inline bool gpuActivityPresent(){
+    return gpuActivityPresent_;
+  }
+
+  inline bool traceNonEmpty(){
+    return cpuActivityPresent_ || gpuActivityPresent_;
+  }
+
   // Synchronous control API
   void startTrace(
       const std::chrono::time_point<std::chrono::system_clock>& now) {
@@ -443,6 +459,8 @@ class CuptiActivityProfiler {
   profilerOverhead setupOverhead_;
 
   bool cpuOnly_{false};
+  bool cpuActivityPresent_{false};
+  bool gpuActivityPresent_{false};
 
   // ***************************************************************************
   // Below state is shared with external threads.

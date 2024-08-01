@@ -70,6 +70,10 @@ void ActivityProfilerProxy::prepareTrace(
   controller_->prepareTrace(config);
 }
 
+void ActivityProfilerProxy::toggleCollectionDynamic(const bool enable){
+  controller_->toggleCollectionDynamic(enable);
+}
+
 void ActivityProfilerProxy::startTrace() {
   controller_->startTrace();
 }

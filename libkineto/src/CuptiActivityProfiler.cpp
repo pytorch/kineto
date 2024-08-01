@@ -1073,6 +1073,23 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
+void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable){
+#ifdef HAS_CUPTI
+  if (enable) {
+    cupti_.enableCuptiActivities(derivedConfig_->profileActivityTypes());
+  } else {
+    cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
+  }
+#endif
+#ifdef HAS_ROCTRACER
+  if (enable) {
+    cupti_.enableActivities(derivedConfig_->profileActivityTypes());
+  } else {
+    cupti_.disableActivities(derivedConfig_->profileActivityTypes());
+  }
+#endif
+}
+
 void CuptiActivityProfiler::startTraceInternal(
     const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);

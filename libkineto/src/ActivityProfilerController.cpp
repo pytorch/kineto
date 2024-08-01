@@ -315,6 +315,10 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
   profiler_->configure(config, now);
 }
 
+void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {
+  profiler_->toggleCollectionDynamic(enable);
+}
+
 void ActivityProfilerController::startTrace() {
   UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
   profiler_->startTrace(std::chrono::system_clock::now());

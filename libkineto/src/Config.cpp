@@ -134,6 +134,11 @@ constexpr char kProfileStartIterationKey[] = "PROFILE_START_ITERATION";
 constexpr char kProfileStartIterationRoundUpKey[] =
     "PROFILE_START_ITERATION_ROUNDUP";
 
+constexpr char kRequestTraceID[] = "REQUEST_TRACE_ID";
+constexpr char kRequestGroupTraceID[] =
+    "REQUEST_GROUP_TRACE_ID";
+
+
 // Enable on-demand trigger via kill -USR2 <pid>
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
 constexpr char kEnableSigUsr2Key[] = "ENABLE_SIGUSR2";
@@ -385,6 +390,10 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesWarmupIterations_ = toInt32(val);
   } else if (!name.compare(kActivitiesDisplayCudaSyncWaitEvents)) {
     activitiesCudaSyncWaitEvents_ = toBool(val);
+  } else if (!name.compare(kRequestTraceID)) {
+    requestTraceID_ = val;
+  } else if (!name.compare(kRequestGroupTraceID)) {
+    requestGroupTraceID_ = val;
   }
 
   // TODO: Deprecate Client Interface

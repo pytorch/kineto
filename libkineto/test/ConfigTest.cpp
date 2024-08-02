@@ -348,3 +348,11 @@ TEST(ParseTest, ProfileStartTime) {
           .count();
   EXPECT_FALSE(cfg.parse(fmt::format("PROFILE_START_TIME = {}", tbad_ms)));
 }
+
+TEST(ParseTest, RequestTraceIds) {
+  Config cfg;
+  EXPECT_TRUE(cfg.parse("REQUEST_TRACE_ID=XYZ"));
+  EXPECT_EQ(cfg.requestTraceID(), "XYZ");
+  EXPECT_TRUE(cfg.parse("REQUEST_GROUP_TRACE_ID=ABC"));
+  EXPECT_EQ(cfg.requestGroupTraceID(), "ABC");
+}

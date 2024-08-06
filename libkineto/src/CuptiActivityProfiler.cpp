@@ -192,13 +192,8 @@ std::ostream& operator<<(std::ostream& oss, const CuptiActivityProfiler::ErrorCo
 }
 
 CuptiActivityProfiler::~CuptiActivityProfiler() {
-  if(stopByIterThread) {
-    std::lock_guard<std::mutex> guard(mutex_);
-    if (stopByIterThread) {
-      stopByIterThread->join();
-      delete stopByIterThread;
-      stopByIterThread = nullptr;
-    }
+  if(collectTraceThread && collectTraceThread->joinable()) {
+    collectTraceThread->join();
   }
 }
 
@@ -1084,6 +1079,23 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
+void CuptiActivityProfiler::collectTrace(bool collection_done,
+                                         const std::chrono::time_point<std::chrono::system_clock> &now) {
+
+    if (libkineto::api().client()) {
+      libkineto::api().client()->stop();
+    }
+
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+    ecs_.cupti_stopped_early = cupti_.stopCollection;
+#endif // HAS_CUPTI || HAS_ROCTRACER
+
+    std::lock_guard<std::mutex> guard(mutex_);
+    stopTraceInternal(now);
+    VLOG_IF(0, collection_done) << "Reached profile end time";
+    UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+}
+
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable){
 #ifdef HAS_CUPTI
   if (enable) {
@@ -1230,39 +1242,14 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         LOG(INFO) << "Tracing complete.";
         VLOG_IF(1, currentIter > 0) << "This state change was invoked by application's step() call";
 
-        if (currentIter > 0) {
-          if (!stopByIterThread) {
-            std::lock_guard<std::mutex> guard(mutex_);
-            if (!stopByIterThread) {
-              stopByIterThread = new std::thread([collection_done, this, now](){
-                if (libkineto::api().client()) {
-                  libkineto::api().client()->stop();
-                }
-                std::lock_guard<std::mutex> guard(mutex_);
-                stopTraceInternal(now);
-                VLOG_IF(0, collection_done) << "Reached profile end time";
-                UST_LOGGER_MARK_COMPLETED(kCollectionStage);
-              });
-            }
-          }
+        // currentIter > 0 means this is an iteration-based collection, triggered by pytorch main thread,
+        // it should be executed in another thread in case pytorch main thread is blocked
+        if (currentIter > 0 && !collectTraceThread) {
+          std::lock_guard<std::mutex> guard(mutex_);
+          collectTraceThread = std::make_unique<std::thread>(&CuptiActivityProfiler::collectTrace, this, collection_done, now);
           break;
         }
-
-        if (libkineto::api().client()) {
-          libkineto::api().client()->stop();
-        }
-
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-        if (cupti_.stopCollection) {
-          ecs_.cupti_stopped_early = cupti_.stopCollection;
-          LOG(ERROR) << "State: CollectTrace stopped by CUPTI. (Buffer size configured is " << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
-        }
-#endif // HAS_CUPTI || HAS_ROCTRACER
-
-        std::lock_guard<std::mutex> guard(mutex_);
-        stopTraceInternal(now);
-        VLOG_IF(0, collection_done) << "Reached profile end time";
-        UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+        collectTrace(collection_done, now);
       } else if (derivedConfig_->isProfilingByIteration()) {
         // nothing to do here
       } else if (now < derivedConfig_->profileEndTime() &&
@@ -1282,13 +1269,11 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         return new_wakeup_time;
       }
 
-      if (stopByIterThread) {
+      // Before processing, we should wait for collectTrace thread to be done.
+      if (collectTraceThread && collectTraceThread->joinable()) {
         std::lock_guard<std::mutex> guard(mutex_);
-        if (stopByIterThread) {
-          stopByIterThread->join();
-          delete stopByIterThread;
-          stopByIterThread = nullptr;
-        }
+        collectTraceThread->join();
+        collectTraceThread.reset(nullptr);
       }
 
       // FIXME: Probably want to allow interruption here

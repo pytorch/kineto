@@ -164,6 +164,9 @@ class CuptiActivityProfiler {
     stopTraceInternal(now);
   }
 
+  // Collect CPU and GPU traces
+  void collectTrace(bool collectionDone,  const std::chrono::time_point<std::chrono::system_clock>& now );
+
   // Process CPU and GPU traces
   void processTrace(ActivityLogger& logger) {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -474,7 +477,9 @@ class CuptiActivityProfiler {
   // Mutex to protect non-atomic access to below state
   std::mutex mutex_;
 
-  std::thread * stopByIterThread = nullptr;
+  // Add a thread to collect both cpu and gpu traces in case torch main thread
+  // is blocked when profiling by iterations is enabled. Issue #953 shows details.
+  std::unique_ptr<std::thread> collectTraceThread;
 
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};

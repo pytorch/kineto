@@ -167,6 +167,8 @@ class CuptiActivityProfiler {
   // Collect CPU and GPU traces
   void collectTrace(bool collectionDone,  const std::chrono::time_point<std::chrono::system_clock>& now );
 
+  // Ensure collectTrace is done
+  void ensureCollectTraceDone();
   // Process CPU and GPU traces
   void processTrace(ActivityLogger& logger) {
     std::lock_guard<std::mutex> guard(mutex_);

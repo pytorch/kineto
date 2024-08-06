@@ -1096,6 +1096,13 @@ void CuptiActivityProfiler::collectTrace(bool collection_done,
     UST_LOGGER_MARK_COMPLETED(kCollectionStage);
 }
 
+void CuptiActivityProfiler::ensureCollectTraceDone() {
+  if (collectTraceThread && collectTraceThread->joinable()) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    collectTraceThread->join();
+    collectTraceThread.reset(nullptr);
+  }
+}
 void CuptiActivityProfiler::startTraceInternal(
     const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
@@ -1251,11 +1258,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       }
 
       // Before processing, we should wait for collectTrace thread to be done.
-      if (collectTraceThread && collectTraceThread->joinable()) {
-        std::lock_guard<std::mutex> guard(mutex_);
-        collectTraceThread->join();
-        collectTraceThread.reset(nullptr);
-      }
+      ensureCollectTraceDone();
 
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API

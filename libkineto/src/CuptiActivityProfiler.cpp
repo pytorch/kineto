@@ -1251,9 +1251,12 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
         // currentIter > 0 means this is an iteration-based collection, triggered by pytorch main thread,
         // it should be executed in another thread in case pytorch main thread is blocked
-        if (currentIter > 0 && !collectTraceThread) {
-          std::lock_guard<std::mutex> guard(mutex_);
-          collectTraceThread = std::make_unique<std::thread>(&CuptiActivityProfiler::collectTrace, this, collection_done, now);
+        if (currentIter > 0) {
+          // if collectTraceThread is already running, there's no need to execute collectTrace twice.
+          if(!collectTraceThread){
+            std::lock_guard<std::mutex> guard(mutex_);
+            collectTraceThread = std::make_unique<std::thread>(&CuptiActivityProfiler::collectTrace, this, collection_done, now);
+          }
           break;
         }
         collectTrace(collection_done, now);

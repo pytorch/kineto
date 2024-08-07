@@ -179,6 +179,9 @@ class CuptiActivityProfiler {
   void configure(
       const Config& config,
       const std::chrono::time_point<std::chrono::system_clock>& now);
+  
+  // Toggle GPU tracing during a profile instance
+  void toggleCollectionDynamic(const bool enable);
 
   // Registered with client API to pass CPU trace events over
   void transferCpuTrace(

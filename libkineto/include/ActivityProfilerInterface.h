@@ -55,6 +55,10 @@ class ActivityProfilerInterface {
       const std::set<ActivityType>& activityTypes,
       const std::string& configStr = "") {}
 
+  // Toggle GPU tracing as a trace is running to omit certain parts of a graph
+  virtual void toggleCollectionDynamic(
+    const bool enable) {}
+
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.
   virtual void startTrace() {}

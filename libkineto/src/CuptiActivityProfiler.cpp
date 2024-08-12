@@ -654,11 +654,11 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   if (isWaitEventSync(activity->type)) {
     // Defer logging wait event syncs till the end so we only
     // log these events if a stream has some GPU kernels on it.
-    DeferredLogEntry entry{
-      .device = device_id,
-      .stream = activity->streamId,
-      .logMe = log_event,
-    };
+    DeferredLogEntry entry;
+    entry.device = device_id;
+    entry.stream = activity->streamId;
+    entry.logMe = log_event;
+
     logQueue_.push_back(entry);
   } else {
     log_event();

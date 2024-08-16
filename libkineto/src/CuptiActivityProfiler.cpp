@@ -1001,7 +1001,7 @@ void CuptiActivityProfiler::configure(
     // presumably because structures are allocated and initialized, callbacks
     // are activated etc. After a while the overhead decreases and stabilizes.
     // It's therefore useful to perform some warmup before starting recording.
-    LOG(INFO) << "Enabling GPU tracing";
+    LOG(INFO) << "Enabling GPU tracing with max CUPTI buffer size " << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
     cupti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
     time_point<system_clock> timestamp;
     if (VLOG_IS_ON(1)) {
@@ -1174,6 +1174,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         std::lock_guard<std::mutex> guard(mutex_);
         stopTraceInternal(now);
         resetInternal();
+        LOG(ERROR) << "State: Warmup stopped by CUPTI. (Buffer size configured is " << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
+        UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
         VLOG(0) << "Warmup -> WaitForRequest";
         break;
       }
@@ -1222,7 +1224,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         }
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-        ecs_.cupti_stopped_early = cupti_.stopCollection;
+        if (cupti_.stopCollection) {
+          ecs_.cupti_stopped_early = cupti_.stopCollection;
+          LOG(ERROR) << "State: CollectTrace stopped by CUPTI. (Buffer size configured is " << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
+        }
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
         std::lock_guard<std::mutex> guard(mutex_);

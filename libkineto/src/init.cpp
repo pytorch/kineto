@@ -225,7 +225,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 }
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment
-// variable is set
+// variable is set. Should be skipped if unset or CUDA_INJECTION64_PATH=none.
 int InitializeInjection(void) {
   LOG(INFO) << "Injection mode: Initializing libkineto";
   libkineto_init(false /*cpuOnly*/, true /*logOnError*/);

@@ -18,6 +18,7 @@
 #include "ThreadUtil.h"
 #include "Demangle.h"
 
+using namespace libkineto;
 using namespace std::chrono;
 
 class Flush

@@ -63,8 +63,6 @@ static timestamp_t timespec_to_ns(const timespec& time) {
   return ((timestamp_t)time.tv_sec * 1000000000) + time.tv_nsec;
 }
 
-using namespace libkineto;
-
 class ApiIdList {
  public:
   ApiIdList();

@@ -303,6 +303,9 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
   const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
 
   while (record < end_record) {
+    if (record->correlation_id == 0) {
+      LOG(WARNING) << "Correlation id is 0 for record: " << demangle(record->kernel_name);
+    }
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
        s_flush.maxCompletedCorrelationId_ = record->correlation_id;
     }

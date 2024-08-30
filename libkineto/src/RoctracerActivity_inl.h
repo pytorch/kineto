@@ -20,6 +20,9 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
+static std::unordered_map<int, std::string> correlationToGrid;
+static std::unordered_map<int, std::string> correlationToBlock;
+
 const char* getGpuActivityKindString(uint32_t kind) {
   switch (kind) {
     case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
@@ -99,11 +102,22 @@ inline void GpuActivity::log(ActivityLogger& logger) const {
 inline const std::string GpuActivity::metadataJson() const {
   const auto& gpuActivity = raw();
   // clang-format off
-  return fmt::format(R"JSON(
+  
+  if (correlationToGrid.count(gpuActivity.id) > 0) {
+    return fmt::format(R"JSON(
+      "device": {}, "stream": {},
+      "correlation": {}, "kind": "{}",
+      "grid": {}, "block": {})JSON",
+      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
+      correlationToGrid[gpuActivity.id], correlationToBlock[gpuActivity.id]);
+  } else {
+    return fmt::format(R"JSON(
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}")JSON",
       gpuActivity.device, gpuActivity.queue,
       gpuActivity.id, getGpuActivityKindString(gpuActivity.kind));
+  }
   // clang-format on
 }
 
@@ -144,6 +158,16 @@ inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson() con
     "kernel": "{}", )JSON",
     demangle(hipKernelNameRef(raw().function)));
   }
+  //cache grid and block so we can pass it into async activity (GPU track)
+  correlationToGrid[raw().id] = fmt::format(R"JSON(
+    [{}, {}, {}])JSON",
+    raw().gridX, raw().gridY, raw().gridZ);
+  
+  correlationToBlock[raw().id] = fmt::format(R"JSON(
+    [{}, {}, {}])JSON",
+    raw().workgroupX, raw().workgroupY, raw().workgroupZ);
+  
+
   return fmt::format(R"JSON(
       {}"cid": {}, "correlation": {},
       "stream": "{}",

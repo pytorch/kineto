@@ -8,6 +8,7 @@
 
 #include "Config.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include <fmt/chrono.h>
@@ -243,7 +244,8 @@ Config::Config()
     factories->addFeatureConfigs(*this);
   }
 #if __linux__
-  enableIpcFabric_ = (getenv(kUseDaemonEnvVar) != nullptr);
+  assert(libkineto::kUseDaemonEnvVarSet >= 0);
+  enableIpcFabric_ = libkineto::kUseDaemonEnvVarSet;
 #endif
 }
 

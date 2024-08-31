@@ -31,6 +31,10 @@
 #include "Logger.h"
 
 namespace KINETO_NAMESPACE {
+#if __linux__
+int kUseDaemonEnvVarSet = -1;
+#endif
+
 
 #if __linux__ || defined(HAS_CUPTI)
 static bool initialized = false;
@@ -131,7 +135,9 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 
   // Factory to connect to open source daemon if present
 #if __linux__
-  if (getenv(kUseDaemonEnvVar) != nullptr) {
+  void *ptr = getenv(kUseDaemonEnvVar);
+  libkineto::kUseDaemonEnvVarSet = ptr != nullptr;
+  if (libkineto::kUseDaemonEnvVarSet) {
     LOG(INFO) << "Registering daemon config loader, cpuOnly =  "
               << cpuOnly;
     DaemonConfigLoader::registerFactory();

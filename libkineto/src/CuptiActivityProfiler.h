@@ -116,7 +116,7 @@ class CuptiActivityProfiler {
   CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
-
+  ~CuptiActivityProfiler();
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;
   }
@@ -164,6 +164,11 @@ class CuptiActivityProfiler {
     stopTraceInternal(now);
   }
 
+  // Collect CPU and GPU traces
+  void collectTrace(bool collectionDone,  const std::chrono::time_point<std::chrono::system_clock>& now );
+
+  // Ensure collectTrace is done
+  void ensureCollectTraceDone();
   // Process CPU and GPU traces
   void processTrace(ActivityLogger& logger) {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -473,6 +478,10 @@ class CuptiActivityProfiler {
 
   // Mutex to protect non-atomic access to below state
   std::mutex mutex_;
+
+  // Add a thread to collect both cpu and gpu traces in case torch main thread
+  // is blocked when profiling by iterations is enabled. Issue #953 shows details.
+  std::unique_ptr<std::thread> collectTraceThread;
 
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};

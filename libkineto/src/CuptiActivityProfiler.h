@@ -155,23 +155,23 @@ class CuptiActivityProfiler {
   // Synchronous control API
   void startTrace(
       const std::chrono::time_point<std::chrono::system_clock>& now) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     startTraceInternal(now);
   }
 
   void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     stopTraceInternal(now);
   }
 
   // Process CPU and GPU traces
   void processTrace(ActivityLogger& logger) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     processTraceInternal(logger);
   }
 
   void reset() {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     resetInternal();
   }
 
@@ -197,7 +197,7 @@ class CuptiActivityProfiler {
     // as key, because that's what CUPTI records.
     int32_t tid = threadId();
     int32_t pid = processId();
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     recordThreadInfo(sysTid, tid, pid);
   }
 
@@ -215,13 +215,18 @@ class CuptiActivityProfiler {
   }
 
   void addMetadata(const std::string& key, const std::string& value) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     metadata_[key] = value;
+  }
+
+  void addVersionMetadata(const std::string& key, const std::string& value) {
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
+    versionMetadata_[key] = value;
   }
 
   void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     profilers_.push_back(std::move(profiler));
   }
 
@@ -472,7 +477,7 @@ class CuptiActivityProfiler {
   // ***************************************************************************
 
   // Mutex to protect non-atomic access to below state
-  std::mutex mutex_;
+  std::recursive_mutex mutex_;
 
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};
@@ -527,6 +532,9 @@ class CuptiActivityProfiler {
 
   // Trace metadata
   std::unordered_map<std::string, std::string> metadata_;
+
+  // Version metadata
+  std::unordered_map<std::string, std::string> versionMetadata_;
 
   // child activity profilers
   std::vector<std::unique_ptr<IActivityProfiler>> profilers_;

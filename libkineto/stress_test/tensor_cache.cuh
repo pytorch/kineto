@@ -42,6 +42,7 @@ struct tensor_pair {
   // Host buffers
   float* h_A;
   float* h_B;
+  float* h_C;
 };
 
 // The memory pool object

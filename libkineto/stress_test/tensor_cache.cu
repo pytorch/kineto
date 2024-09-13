@@ -13,6 +13,7 @@
 
 namespace kineto_stress_test {
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #define RNG_SEED 1025
 
 // A kernel that fills a device buffer with random values
@@ -92,8 +93,11 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
     // Simulate output download
     if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_d2h) {
       p_memory_pool[i].b_copy_d2h = true;
+      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_C, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+      simple_lcg_host(p_memory_pool[i].h_C, num_elements);
     } else {
       p_memory_pool[i].b_copy_d2h = false;
+      p_memory_pool[i].h_C = NULL;
     }
 
     // Now we have a new tensor pair
@@ -151,42 +155,6 @@ void re_initialize_buffer_values() {
 }
 
 void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream) {
-// Older CUDA versions don't know about async malloc and free
-#if defined(CUDA_VERSION) && CUDA_VERSION > 11000 && defined(ASYNC_MALLOC)
-
-  checkCudaStatus(
-    cudaFreeAsync(tensor_pair->d_A, stream),
-        __LINE__);
-  checkCudaStatus(
-    cudaFreeAsync(tensor_pair->d_B, stream),
-        __LINE__);
-  checkCudaStatus(
-    cudaFreeAsync(tensor_pair->d_C, stream),
-        __LINE__);
-
-  // Allocate device buffers
-  uint32_t num_elements = tensor_pair->n_elements;
-  checkCudaStatus(
-    cudaMallocAsync(
-        &tensor_pair->d_A,
-        num_elements * sizeof(float),
-        stream),
-      __LINE__);
-  checkCudaStatus(
-    cudaMallocAsync(
-        &tensor_pair->d_B,
-        num_elements * sizeof(float),
-        stream),
-        __LINE__);
-  checkCudaStatus(
-    cudaMallocAsync(
-        &tensor_pair->d_C,
-        num_elements * sizeof(float),
-        stream),
-        __LINE__);
-
-#else
-
   checkCudaStatus(cudaFree(tensor_pair->d_A), __LINE__);
   checkCudaStatus(cudaFree(tensor_pair->d_B), __LINE__);
   checkCudaStatus(cudaFree(tensor_pair->d_C), __LINE__);
@@ -203,8 +171,6 @@ void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream
     num_elements * sizeof(float)),
     __LINE__);
 
-#endif // CUDA_VERSION >= 11000
-
   if (tensor_pair->b_copy_h2d) {
     checkCudaStatus(cudaFreeHost(tensor_pair->h_A), __LINE__);
     checkCudaStatus(cudaFreeHost(tensor_pair->h_B), __LINE__);
@@ -214,6 +180,12 @@ void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream
 
     simple_lcg_host(tensor_pair->h_A, num_elements);
     simple_lcg_host(tensor_pair->h_B, num_elements);
+  }
+
+  if (tensor_pair->b_copy_d2h) {
+    checkCudaStatus(cudaFreeHost(tensor_pair->h_C), __LINE__);
+    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_C, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+    simple_lcg_host(tensor_pair->h_C, num_elements);
   }
 }
 
@@ -230,6 +202,10 @@ void free_tensor_cache() {
 
       if (p_memory_pool[i].h_B) {
         checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
+      }
+
+      if (p_memory_pool[i].h_C) {
+        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_C), __LINE__);
       }
     }
   }

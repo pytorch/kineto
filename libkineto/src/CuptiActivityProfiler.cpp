@@ -397,6 +397,9 @@ void CuptiActivityProfiler::processCpuTrace(
               const std::unique_ptr<GenericTraceActivity>>::value,
           "handleActivity is unsafe and relies on the caller to maintain not "
           "only lifetime but also address stability.");
+      if (act->type() ==  ActivityType::USER_ANNOTATION && act->duration()<=0){
+        act->endTime = captureWindowEndTime_;
+      }
       logger.handleActivity(*act);
     }
     clientActivityTraceMap_[act->correlationId()] = &span_pair;

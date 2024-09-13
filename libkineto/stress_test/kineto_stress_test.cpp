@@ -182,6 +182,7 @@ void create_cuda_streams(stress_test_args& test_args) {
   if (test_args.use_memcpy_stream) {
     test_args.memcpy_streams = (cudaStream_t*)malloc(test_args.num_workers * sizeof(cudaStream_t));
     for (uint32_t i = 0; i < test_args.num_workers; ++i) {
+      // We want to test the effect of CUDA stream priorities on the order of memory transfers.
       if (i % 2 != 0) {
         checkCudaStatus(cudaStreamCreateWithFlags(test_args.memcpy_streams + i, cudaStreamNonBlocking), __LINE__);
       } else {

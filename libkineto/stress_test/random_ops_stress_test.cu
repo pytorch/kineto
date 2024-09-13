@@ -278,6 +278,11 @@ void run_stress_test(
       }
     }
 
+    // Tehchnically we should wait for the kernels to complete before downloading
+    // using a stream synchronization on the compute stream. But if we want to generate
+    // multiple overlapping transfers, we need to remove the synchronization. That means
+    // the downloaded tensors may not have correct data.
+
     if (enable_d2h_copy) {
       // checkCudaStatus(cudaStreamSynchronize(current_stream), __LINE__);
       uint32_t rand_index = rand_r(&rng_state) % p_memory_pool[pair_idx].n_elements;

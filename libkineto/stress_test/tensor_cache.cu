@@ -80,7 +80,8 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
     if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_h2d) {
       p_memory_pool[i].b_copy_h2d = true;
       checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+      // checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+      p_memory_pool[i].h_B = (float*)malloc(sizeof(float) * num_elements);
 
       simple_lcg_host(p_memory_pool[i].h_A, num_elements);
       simple_lcg_host(p_memory_pool[i].h_B, num_elements);
@@ -93,7 +94,14 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
     // Simulate output download
     if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_d2h) {
       p_memory_pool[i].b_copy_d2h = true;
-      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_C, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+      // Make 50% of the D2H on pageable and 50% on pinned memory
+      if (rand() % 2 == 1) {
+        checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_C, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+        p_memory_pool[i].h_C_pinned = true;
+      } else {
+        p_memory_pool[i].h_C = (float*)malloc(sizeof(float) * num_elements);
+        p_memory_pool[i].h_C_pinned = false;
+      }
       simple_lcg_host(p_memory_pool[i].h_C, num_elements);
     } else {
       p_memory_pool[i].b_copy_d2h = false;
@@ -198,20 +206,29 @@ void free_tensor_cache() {
     if (p_memory_pool[i].b_copy_h2d) {
       if (p_memory_pool[i].h_A) {
         checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_A), __LINE__);
+        p_memory_pool[i].h_A = NULL;
       }
 
       if (p_memory_pool[i].h_B) {
-        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
+        //checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
+        free(p_memory_pool[i].h_B);
+        p_memory_pool[i].h_B = NULL;
       }
 
       if (p_memory_pool[i].h_C) {
-        checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_C), __LINE__);
+        if (p_memory_pool[i].h_C_pinned) {
+          checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_C), __LINE__);
+        } else {
+          free(p_memory_pool[i].h_C);
+        }
+        p_memory_pool[i].h_C = NULL;
       }
     }
   }
 
   if (p_memory_pool) {
     free(p_memory_pool);
+    p_memory_pool = NULL;
   }
 
   size_t mem_free = 0;

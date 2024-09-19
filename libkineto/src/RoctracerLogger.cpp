@@ -301,7 +301,8 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
   std::unique_lock<std::mutex> lock(s_flush.mutex_);
   const roctracer_record_t* record = (const roctracer_record_t*)(begin);
   const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
-
+  static uint64_t last_end = 0;
+  static std::string last_kernel_name = ""; 
   while (record < end_record) {
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
        s_flush.maxCompletedCorrelationId_ = record->correlation_id;
@@ -320,6 +321,11 @@ void RoctracerLogger::activity_callback(const char* begin, const char* end, void
         ? demangle(record->kernel_name)
         : std::string()
     );
+    if (record->begin_ns < last_end && !row->kernelName.empty() && !last_kernel_name.empty()) {
+      LOG(WARNING) << "Out of order activity: " << record->begin_ns << " < " << last_end << ". Difference: " << (last_end - record->begin_ns) << " ns. Kernel: " << row->kernelName <<  " last Kernel: " << last_kernel_name;
+    }
+    last_end = record->end_ns;
+    last_kernel_name = row->kernelName;
     insert_row_to_buffer(row);
     roctracer_next_record(record, &record);
   }

@@ -203,10 +203,15 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   libkineto::api().registerProfilerFactory([]() -> std::unique_ptr<IActivityProfiler> {
     auto returnCode = ptiViewGPULocalAvailable();
     if (returnCode != PTI_SUCCESS) {
-      std::string errCode = std::to_string(returnCode);
-      std::string errMsg(
+      std::string errPrefixMsg(
           "Fail to enable Kineto Profiler on XPU due to error code: ");
-      throw std::runtime_error(errMsg + errCode);
+      errPrefixMsg = errPrefixMsg + std::to_string(returnCode);
+#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 9
+      std::string errMsg(ptiResultTypeToString(returnCode));
+      throw std::runtime_error(errPrefixMsg + std::string(". The detailed error message is: ") + errMsg);
+#else
+      throw std::runtime_error(errPrefixMsg);
+#endif
     }
     return std::make_unique<XPUActivityProfiler>();
   });

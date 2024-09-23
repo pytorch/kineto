@@ -103,6 +103,22 @@ std::function<time_t(approx_time_t)>& get_time_converter() {
   };
   return _time_converter;
 }
+#ifdef HAS_ROCTRACER
+timestamp_t getTimeOffset() {
+  int64_t t0, t00;
+  timespec t1;
+  t0 = libkineto::getApproximateTime();
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  t00 = libkineto::getApproximateTime();
+  
+  // Confvert to ns (if necessary)
+  t0 = libkineto::get_time_converter()(t0);
+  t00 = libkineto::get_time_converter()(t00);
+  
+  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
+  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
+}
+#endif
 
 #ifdef HAS_CUPTI
 bool& use_cupti_tsc() {
@@ -340,6 +356,8 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
+    timestamp_t offset = getTimeOffset();
+    cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
         std::bind(&CuptiActivityProfiler::handleRoctracerActivity, this, std::placeholders::_1, &logger),
         std::bind(&CuptiActivityProfiler::handleCorrelationActivity, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));

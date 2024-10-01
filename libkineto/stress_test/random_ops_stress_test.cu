@@ -14,6 +14,7 @@
 
 namespace kineto_stress_test {
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #define RNG_SEED 2049
 
 // NCCL variables buffers
@@ -123,15 +124,15 @@ void run_stress_test(
   } else {
     v_streams = (cudaStream_t*)malloc(test_args.num_cuda_streams * sizeof(cudaStream_t));
     for (uint32_t i = 0; i < test_args.num_cuda_streams; ++i) {
-      checkCudaStatus(cudaStreamCreate(v_streams + i), __LINE__);
+      checkCudaStatus(cudaStreamCreateWithFlags(v_streams + i, cudaStreamNonBlocking), __LINE__);
     }
 
     if (test_args.use_memcpy_stream) {
-      checkCudaStatus(cudaStreamCreate(&memcpy_stream), __LINE__);
+      checkCudaStatus(cudaStreamCreateWithFlags(&memcpy_stream, cudaStreamNonBlocking), __LINE__);
     }
 
     if (test_args.use_uvm_stream) {
-      checkCudaStatus(cudaStreamCreate(&uvm_stream), __LINE__);
+      checkCudaStatus(cudaStreamCreateWithFlags(&uvm_stream, cudaStreamNonBlocking), __LINE__);
     }
   }
 
@@ -268,17 +269,34 @@ void run_stress_test(
           szTransfer, cudaMemcpyDeviceToDevice), __LINE__);
     }
 
-    // Simulate output download
-    if (p_memory_pool[pair_idx].b_copy_d2h) {
+    // Simulate checkpoint download. The odd workers will have higher stream priorities
+    // but lower number of transactions
+    bool enable_d2h_copy = p_memory_pool[pair_idx].b_copy_d2h;
+    if (thread_id % 2 != 0) {
+      if (rand_r(&rng_state) % 100 < 97) {
+        enable_d2h_copy = false;
+      }
+    }
+
+    // Tehchnically we should wait for the kernels to complete before downloading
+    // using a stream synchronization on the compute stream. But if we want to generate
+    // multiple overlapping transfers, we need to remove the synchronization. That means
+    // the downloaded tensors may not have correct data.
+
+    if (enable_d2h_copy) {
+      // checkCudaStatus(cudaStreamSynchronize(current_stream), __LINE__);
       uint32_t rand_index = rand_r(&rng_state) % p_memory_pool[pair_idx].n_elements;
       checkCudaStatus(
           cudaMemcpyAsync(
-              h_output + i,
-              p_memory_pool[pair_idx].d_C + rand_index,
-              sizeof(float),
+              p_memory_pool[pair_idx].h_C,
+              p_memory_pool[pair_idx].d_C,
+              p_memory_pool[pair_idx].n_elements * sizeof(float),
               cudaMemcpyDeviceToHost,
               current_memcpy_stream),
           __LINE__);
+      uint32_t rand_idx_out = rand_r(&rng_state) % test_args.num_operations;
+      // checkCudaStatus(cudaStreamSynchronize(current_memcpy_stream), __LINE__);
+      h_output[rand_idx_out] = p_memory_pool[pair_idx].h_C[rand_index];
     }
 
     // Get memory during execution

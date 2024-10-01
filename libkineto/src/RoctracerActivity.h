@@ -101,6 +101,15 @@ struct GpuActivity : public RoctracerActivity<roctracerAsyncRow> {
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
 
+  // Add small buffer to fix visual error created by https://github.com/ROCm/roctracer/issues/105
+  // Once this is resolved we can use ifdef to handle having this buffer or not based on version
+  int64_t timestamp() const override {
+    return activity_.begin + 1;
+  }
+  int64_t duration() const override {
+    return activity_.end - (activity_.begin + 1);
+  }
+
  private:
    ActivityType type_;
 };

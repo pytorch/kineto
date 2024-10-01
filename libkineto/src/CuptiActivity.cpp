@@ -13,6 +13,8 @@
 #include "Demangle.h"
 #include "DeviceProperties.h"
 #include "output_base.h"
+#include "Logger.h"
+
 
 namespace KINETO_NAMESPACE {
 
@@ -167,7 +169,7 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpy>::metadataJson() const
       "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId,
-      memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
+      memcpy.bytes, bandwidth(memcpy.bytes, duration()));
   // clang-format on
 }
 
@@ -194,7 +196,7 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpy2>::metadataJson() cons
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
       memcpy.streamId, memcpy.correlationId,
-      memcpy.bytes, bandwidth(memcpy.bytes, memcpy.end - memcpy.start));
+      memcpy.bytes, bandwidth(memcpy.bytes, duration()));
   // clang-format on
 }
 
@@ -220,7 +222,7 @@ inline const std::string GpuActivity<CUpti_ActivityMemset>::metadataJson() const
       "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId,
-      memset.bytes, bandwidth(memset.bytes, memset.end - memset.start));
+      memset.bytes, bandwidth(memset.bytes, duration()));
   // clang-format on
 }
 

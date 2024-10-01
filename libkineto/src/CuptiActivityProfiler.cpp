@@ -103,6 +103,22 @@ std::function<time_t(approx_time_t)>& get_time_converter() {
   };
   return _time_converter;
 }
+#ifdef HAS_ROCTRACER
+timestamp_t getTimeOffset() {
+  int64_t t0, t00;
+  timespec t1;
+  t0 = libkineto::getApproximateTime();
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  t00 = libkineto::getApproximateTime();
+  
+  // Confvert to ns (if necessary)
+  t0 = libkineto::get_time_converter()(t0);
+  t00 = libkineto::get_time_converter()(t00);
+  
+  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
+  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
+}
+#endif
 
 #ifdef HAS_CUPTI
 bool& use_cupti_tsc() {
@@ -193,7 +209,7 @@ std::ostream& operator<<(std::ostream& oss, const CuptiActivityProfiler::ErrorCo
 
 void CuptiActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::lock_guard<std::recursive_mutex> guard(mutex_);
   const string& trace_name = cpuTrace->span.name;
   if (currentRunloopState_ != RunloopState::CollectTrace &&
       currentRunloopState_ != RunloopState::ProcessTrace) {
@@ -248,6 +264,12 @@ void CuptiActivityProfiler::logGpuVersions() {
       "cuda_runtime_version", std::to_string(cudaRuntimeVersion));
   LOGGER_OBSERVER_ADD_METADATA(
       "cuda_driver_version", std::to_string(cudaDriverVersion));
+  addVersionMetadata(
+      "cupti_version", std::to_string(cuptiVersion));
+  addVersionMetadata(
+      "cuda_runtime_version", std::to_string(cudaRuntimeVersion));
+  addVersionMetadata(
+      "cuda_driver_version", std::to_string(cudaDriverVersion));
 
 #elif defined(HAS_ROCTRACER)
   uint32_t majorVersion = roctracer_version_major();
@@ -267,6 +289,13 @@ void CuptiActivityProfiler::logGpuVersions() {
       "hip_runtime_version", std::to_string(hipRuntimeVersion));
   LOGGER_OBSERVER_ADD_METADATA(
       "hip_driver_version", std::to_string(hipDriverVersion));
+  addVersionMetadata(
+      "roctracer_version", roctracerVersion);
+  addVersionMetadata(
+      "hip_runtime_version", std::to_string(hipRuntimeVersion));
+  addVersionMetadata(
+      "hip_driver_version", std::to_string(hipDriverVersion));
+
 #endif
 }
 
@@ -274,6 +303,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
+  for (auto& pair : versionMetadata_) {
+    addMetadata(pair.first, pair.second);
+  }
   logger.handleTraceStart(metadata_);
   setCpuActivityPresent(false);
   setGpuActivityPresent(false);
@@ -324,6 +356,8 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
+    timestamp_t offset = getTimeOffset();
+    cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
         std::bind(&CuptiActivityProfiler::handleRoctracerActivity, this, std::placeholders::_1, &logger),
         std::bind(&CuptiActivityProfiler::handleCorrelationActivity, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -381,6 +415,9 @@ void CuptiActivityProfiler::processCpuTrace(
               const std::unique_ptr<GenericTraceActivity>>::value,
           "handleActivity is unsafe and relies on the caller to maintain not "
           "only lifetime but also address stability.");
+      if (act->type() ==  ActivityType::USER_ANNOTATION && act->duration()<=0){
+        act->endTime = captureWindowEndTime_;
+      }
       logger.handleActivity(*act);
     }
     clientActivityTraceMap_[act->correlationId()] = &span_pair;
@@ -948,7 +985,7 @@ void CuptiActivityProfiler::configureChildProfilers() {
 void CuptiActivityProfiler::configure(
     const Config& config,
     const time_point<system_clock>& now) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::lock_guard<std::recursive_mutex> guard(mutex_);
   if (isActive()) {
     LOG(WARNING) << "CuptiActivityProfiler already busy, terminating";
     return;
@@ -1171,7 +1208,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 
       if (cupti_.stopCollection) {
         // Go to process trace to clear any outstanding buffers etc
-        std::lock_guard<std::mutex> guard(mutex_);
+        std::lock_guard<std::recursive_mutex> guard(mutex_);
         stopTraceInternal(now);
         resetInternal();
         LOG(ERROR) << "State: Warmup stopped by CUPTI. (Buffer size configured is " << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
@@ -1230,7 +1267,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         }
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
-        std::lock_guard<std::mutex> guard(mutex_);
+        std::lock_guard<std::recursive_mutex> guard(mutex_);
         stopTraceInternal(now);
         VLOG_IF(0, collection_done) << "Reached profile end time";
         UST_LOGGER_MARK_COMPLETED(kCollectionStage);
@@ -1254,7 +1291,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       }
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
-      std::lock_guard<std::mutex> guard(mutex_);
+      std::lock_guard<std::recursive_mutex> guard(mutex_);
       processTraceInternal(*logger_);
       UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
       resetInternal();

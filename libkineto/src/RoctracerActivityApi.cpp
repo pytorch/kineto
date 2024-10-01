@@ -8,11 +8,12 @@
 
 #include "RoctracerActivityApi.h"
 
+#include "ApproximateClock.h"
 #include <cstring>
 #include <chrono>
 #include <functional>
 #include <time.h>
-
+#include "Logger.h"
 #include "Demangle.h"
 #include "output_base.h"
 #include "ThreadUtil.h"
@@ -65,19 +66,15 @@ inline bool RoctracerActivityApi::isLogged(libkineto::ActivityType atype) {
   return activityMaskSnapshot_ & (1 << static_cast<uint32_t>(atype));
 }
 
+void RoctracerActivityApi::setTimeOffset(timestamp_t toffset) {
+  toffset_ = toffset;
+}
+
 int RoctracerActivityApi::processActivities(
     std::function<void(const roctracerBase*)> handler,
     std::function<void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)> correlationHandler) {
   // Find offset to map from monotonic clock to system clock.
   // This will break time-ordering of events but is status quo.
-
-  timespec t0, t1, t00;
-  clock_gettime(CLOCK_REALTIME, &t0);
-  clock_gettime(CLOCK_MONOTONIC, &t1);
-  clock_gettime(CLOCK_REALTIME, &t00);
-
-  const timestamp_t toffset = (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) - timespec_to_ns(t1);
-  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC domain (in ns).
 
   int count = 0;
 
@@ -125,8 +122,8 @@ int RoctracerActivityApi::processActivities(
     }
     if (!filtered) {
       // Convert the begin and end timestamps from monotonic clock to system clock.
-      item->begin = item->begin + toffset;
-      item->end = item->end + toffset;
+      item->begin = item->begin + toffset_;
+      item->end = item->end + toffset_;
       handler(item);
       ++count;
     }

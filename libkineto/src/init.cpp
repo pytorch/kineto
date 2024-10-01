@@ -32,7 +32,13 @@
 
 namespace KINETO_NAMESPACE {
 #if __linux__
-int kUseDaemonEnvVarSet = -1;
+bool isDaemonEnvVarSet() {
+  static bool rc = [] {
+      void *ptr = getenv(kUseDaemonEnvVar);
+      return ptr != nullptr;
+  }();
+  return rc;
+}
 #endif
 
 
@@ -135,9 +141,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 
   // Factory to connect to open source daemon if present
 #if __linux__
-  void *ptr = getenv(kUseDaemonEnvVar);
-  libkineto::kUseDaemonEnvVarSet = ptr != nullptr;
-  if (libkineto::kUseDaemonEnvVarSet) {
+  if (libkineto::isDaemonEnvVarSet()) {
     LOG(INFO) << "Registering daemon config loader, cpuOnly =  "
               << cpuOnly;
     DaemonConfigLoader::registerFactory();

@@ -244,8 +244,7 @@ Config::Config()
     factories->addFeatureConfigs(*this);
   }
 #if __linux__
-  assert(libkineto::kUseDaemonEnvVarSet >= 0);
-  enableIpcFabric_ = libkineto::kUseDaemonEnvVarSet;
+  enableIpcFabric_ = libkineto::isDaemonEnvVarSet();
 #endif
 }
 

@@ -8,7 +8,6 @@
 
 #include "Config.h"
 
-#include <assert.h>
 #include <stdlib.h>
 
 #include <fmt/chrono.h>

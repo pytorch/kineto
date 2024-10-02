@@ -39,7 +39,7 @@ Logger::Logger(int severity, int line, const char* filePath, int errnum)
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const char* file = strrchr(filePath, '/');
   buf_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(tt)) << " "
-       << processId() << ":" << systemThreadId() << " "
+       << processId(false) << ":" << systemThreadId(false) << " "
        << (file ? file + 1 : filePath) << ":" << line << "] ";
 }
 

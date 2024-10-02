@@ -39,28 +39,38 @@ thread_local int32_t _tid = 0;
 thread_local int32_t _sysTid = 0;
 }
 
-int32_t processId() {
+int32_t processId(bool cache) {
+  int32_t pid = 0;
   if (!_pid) {
 #ifndef _WIN32
-    _pid = (int32_t)getpid();
+    pid = (int32_t)getpid();
 #else
-    _pid = (int32_t)GetCurrentProcessId();
+    pid = (int32_t)GetCurrentProcessId();
 #endif
+    if (cache) {
+      _pid = pid;
+    }
+    return pid;
   }
   return _pid;
 }
 
-int32_t systemThreadId() {
+int32_t systemThreadId(bool cache) {
+  int32_t sysTid = 0;
   if (!_sysTid) {
 #ifdef __APPLE__
-    _sysTid = (int32_t)syscall(SYS_thread_selfid);
+    sysTid = (int32_t)syscall(SYS_thread_selfid);
 #elif defined _WIN32
-    _sysTid = (int32_t)GetCurrentThreadId();
+    sysTid = (int32_t)GetCurrentThreadId();
 #elif defined __FreeBSD__
-    syscall(SYS_thr_self, &_sysTid);
+    syscall(SYS_thr_self, &sysTid);
 #else
-    _sysTid = (int32_t)syscall(SYS_gettid);
+    sysTid = (int32_t)syscall(SYS_gettid);
 #endif
+    if (cache) {
+      _sysTid = sysTid;
+    }
+    return sysTid;
   }
   return _sysTid;
 }

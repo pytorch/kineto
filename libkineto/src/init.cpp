@@ -131,7 +131,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 
   // Factory to connect to open source daemon if present
 #if __linux__
-  if (getenv(kUseDaemonEnvVar) != nullptr) {
+  if (libkineto::isDaemonEnvVarSet()) {
     LOG(INFO) << "Registering daemon config loader, cpuOnly =  "
               << cpuOnly;
     DaemonConfigLoader::registerFactory();

@@ -243,9 +243,20 @@ Config::Config()
     factories->addFeatureConfigs(*this);
   }
 #if __linux__
-  enableIpcFabric_ = (getenv(kUseDaemonEnvVar) != nullptr);
+  enableIpcFabric_ = libkineto::isDaemonEnvVarSet();
 #endif
 }
+
+#if __linux__
+bool isDaemonEnvVarSet() {
+  static bool rc = [] {
+      void *ptr = getenv(kUseDaemonEnvVar);
+      return ptr != nullptr;
+  }();
+  return rc;
+}
+#endif
+
 
 std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {
   return configFactories();

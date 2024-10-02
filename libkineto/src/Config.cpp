@@ -247,6 +247,17 @@ Config::Config()
 #endif
 }
 
+#if __linux__
+bool isDaemonEnvVarSet() {
+  static bool rc = [] {
+      void *ptr = getenv(kUseDaemonEnvVar);
+      return ptr != nullptr;
+  }();
+  return rc;
+}
+#endif
+
+
 std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {
   return configFactories();
 }

@@ -31,16 +31,6 @@
 #include "Logger.h"
 
 namespace KINETO_NAMESPACE {
-#if __linux__
-bool isDaemonEnvVarSet() {
-  static bool rc = [] {
-      void *ptr = getenv(kUseDaemonEnvVar);
-      return ptr != nullptr;
-  }();
-  return rc;
-}
-#endif
-
 
 #if __linux__ || defined(HAS_CUPTI)
 static bool initialized = false;

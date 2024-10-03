@@ -170,12 +170,10 @@ inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson() con
 
   return fmt::format(R"JSON(
       {}"cid": {}, "correlation": {},
-      "stream": "{}",
       "grid": [{}, {}, {}],
       "block": [{}, {}, {}],
       "shared memory": {})JSON",
       kernel, raw().cid, raw().id,
-      reinterpret_cast<void*>(raw().stream),
       raw().gridX, raw().gridY, raw().gridZ,
       raw().workgroupX, raw().workgroupY, raw().workgroupZ,
       raw().groupSegmentSize);
@@ -183,15 +181,9 @@ inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson() con
 
 template<>
 inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson() const {
-  std::string stream = "";
-  if ((raw().cid == HIP_API_ID_hipMemcpyAsync) || (raw().cid == HIP_API_ID_hipMemcpyWithStream)) {
-    stream = fmt::format(R"JSON(
-    "stream": "{}", )JSON",
-    reinterpret_cast<void*>(raw().stream));
-  }
   return fmt::format(R"JSON(
-      {}"cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "size": "{}", "kind": "{}")JSON",
-      stream, raw().cid, raw().id, raw().src, raw().dst, raw().size, fmt::underlying(raw().kind));
+      "cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "size": "{}", "kind": "{}")JSON",
+      raw().cid, raw().id, raw().src, raw().dst, raw().size, fmt::underlying(raw().kind));
 }
 
 template<>

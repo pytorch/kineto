@@ -8,9 +8,9 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <string>
 #include <vector>
-#include <fmt/format.h>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -32,17 +32,15 @@ struct CuptiProfilerResult {
 /* Utilities for CUPTI and NVIDIA PerfWorks Metric API
  */
 
-#define NVPW_CALL(call)                            \
-  [&]() -> bool {                                  \
-    NVPA_Status _status_ = call;                   \
-    if (_status_ != NVPA_STATUS_SUCCESS) {         \
-      LOG(WARNING) << fmt::format(                 \
-          "function {} failed with error ({})",    \
-          #call,                                   \
-          (int)_status_);                          \
-      return false;                                \
-    }                                              \
-    return true;                                   \
+#define NVPW_CALL(call)                                                \
+  [&]() -> bool {                                                      \
+    NVPA_Status _status_ = call;                                       \
+    if (_status_ != NVPA_STATUS_SUCCESS) {                             \
+      LOG(WARNING) << fmt::format(                                     \
+          "function {} failed with error ({})", #call, (int)_status_); \
+      return false;                                                    \
+    }                                                                  \
+    return true;                                                       \
   }()
 
 // fixme - add a results string
@@ -71,7 +69,6 @@ CuptiProfilerResult evalMetricValues(
     const std::vector<uint8_t>& counterDataImage,
     const std::vector<std::string>& metricNames,
     bool verbose = false);
-
 
 } // namespace nvperf
 } // namespace KINETO_NAMESPACE

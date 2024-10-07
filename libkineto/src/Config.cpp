@@ -13,6 +13,7 @@
 #include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <time.h>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -21,7 +22,6 @@
 #include <mutex>
 #include <ostream>
 #include <sstream>
-#include <time.h>
 
 #include "Logger.h"
 #include "ThreadUtil.h"
@@ -73,14 +73,18 @@ constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
 constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
 constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
 constexpr char kActivitiesDurationMsecsKey[] = "ACTIVITIES_DURATION_MSECS";
-constexpr char kActivitiesWarmupDurationSecsKey[] = "ACTIVITIES_WARMUP_PERIOD_SECS";
+constexpr char kActivitiesWarmupDurationSecsKey[] =
+    "ACTIVITIES_WARMUP_PERIOD_SECS";
 constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
-constexpr char kActivitiesDisplayCudaSyncWaitEvents[] = "ACTIVITIES_DISPLAY_CUDA_SYNC_WAIT_EVENTS";
+constexpr char kActivitiesDisplayCudaSyncWaitEvents[] =
+    "ACTIVITIES_DISPLAY_CUDA_SYNC_WAIT_EVENTS";
 
 // Client Interface
-// TODO: keep supporting these older config options, deprecate in the future using replacements.
-constexpr char kClientInterfaceEnableOpInputsCollection[] = "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
+// TODO: keep supporting these older config options, deprecate in the future
+// using replacements.
+constexpr char kClientInterfaceEnableOpInputsCollection[] =
+    "CLIENT_INTERFACE_ENABLE_OP_INPUTS_COLLECTION";
 constexpr char kPythonStackTrace[] = "PYTHON_STACK_TRACE";
 // Profiler Config Options
 constexpr char kProfileReportInputShapes[] = "PROFILE_REPORT_INPUT_SHAPES";
@@ -135,9 +139,7 @@ constexpr char kProfileStartIterationRoundUpKey[] =
     "PROFILE_START_ITERATION_ROUNDUP";
 
 constexpr char kRequestTraceID[] = "REQUEST_TRACE_ID";
-constexpr char kRequestGroupTraceID[] =
-    "REQUEST_GROUP_TRACE_ID";
-
+constexpr char kRequestGroupTraceID[] = "REQUEST_GROUP_TRACE_ID";
 
 // Enable on-demand trigger via kill -USR2 <pid>
 // When triggered in this way, /tmp/libkineto.conf will be used as config.
@@ -147,7 +149,8 @@ constexpr char kEnableSigUsr2Key[] = "ENABLE_SIGUSR2";
 // and disable thrift communication with dynolog daemon
 constexpr char kEnableIpcFabricKey[] = "ENABLE_IPC_FABRIC";
 // Period to pull on-demand config from dynolog daemon
-constexpr char kOnDemandConfigUpdateIntervalSecsKey[] = "ON_DEMAND_CONFIG_UPDATE_INTERVAL_SECS";
+constexpr char kOnDemandConfigUpdateIntervalSecsKey[] =
+    "ON_DEMAND_CONFIG_UPDATE_INTERVAL_SECS";
 
 // Verbose log level
 // The actual glog is not used and --v and --vmodule has no effect.
@@ -235,7 +238,8 @@ Config::Config()
       requestTimestamp_(milliseconds(0)),
       enableSigUsr2_(false),
       enableIpcFabric_(false),
-      onDemandConfigUpdateIntervalSecs_(kDefaultOnDemandConfigUpdateIntervalSecs),
+      onDemandConfigUpdateIntervalSecs_(
+          kDefaultOnDemandConfigUpdateIntervalSecs),
       cuptiDeviceBufferSize_(kDefaultCuptiDeviceBufferSize),
       cuptiDeviceBufferPoolLimit_(kDefaultCuptiDeviceBufferPoolLimit) {
   auto factories = configFactories();
@@ -250,13 +254,12 @@ Config::Config()
 #if __linux__
 bool isDaemonEnvVarSet() {
   static bool rc = [] {
-      void *ptr = getenv(kUseDaemonEnvVar);
-      return ptr != nullptr;
+    void* ptr = getenv(kUseDaemonEnvVar);
+    return ptr != nullptr;
   }();
   return rc;
 }
 #endif
-
 
 std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {
   return configFactories();
@@ -385,11 +388,13 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesLogUrl_ = fmt::format("file://{}", val);
     size_t jidx = activitiesLogUrl_.find(".pt.trace.json");
     if (jidx != std::string::npos) {
-      activitiesLogUrl_.replace(jidx, 14, fmt::format("_{}.pt.trace.json", processId()));
+      activitiesLogUrl_.replace(
+          jidx, 14, fmt::format("_{}.pt.trace.json", processId()));
     } else {
       jidx = activitiesLogUrl_.find(".json");
       if (jidx != std::string::npos) {
-        activitiesLogUrl_.replace(jidx, 5, fmt::format("_{}.json", processId()));
+        activitiesLogUrl_.replace(
+            jidx, 5, fmt::format("_{}.json", processId()));
       }
     }
     activitiesOnDemandTimestamp_ = timestamp();
@@ -429,8 +434,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
 
   // Common
   else if (!name.compare(kRequestTimestampKey)) {
-    LOG(INFO) << kRequestTimestampKey
-              << " has been deprecated - please use "
+    LOG(INFO) << kRequestTimestampKey << " has been deprecated - please use "
               << kProfileStartTimeKey;
     requestTimestamp_ = handleRequestTimestamp(toInt64(val));
   } else if (!name.compare(kProfileStartTimeKey)) {
@@ -513,12 +517,13 @@ void Config::validate(
     VLOG(0)
         << "No explicit timestamp has been set. "
         << "Defaulting it to now + activitiesWarmupDuration with a buffer of double the period of the monitoring thread.";
-    profileStartTime_ = fallbackProfileStartTime +
-        activitiesWarmupDuration() + 2 * Config::kControllerIntervalMsecs;
+    profileStartTime_ = fallbackProfileStartTime + activitiesWarmupDuration() +
+        2 * Config::kControllerIntervalMsecs;
   }
 
   if (profileStartIterationRoundUp_ == 0) {
-    // setting to 0 will mess up modulo arithmetic, set it to -1 so it has no effect
+    // setting to 0 will mess up modulo arithmetic, set it to -1 so it has no
+    // effect
     LOG(WARNING) << "Profiler start iteration round up should be >= 1.";
     profileStartIterationRoundUp_ = -1;
   }
@@ -543,16 +548,18 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   s << "  Log file: " << activitiesLogFile() << std::endl;
   if (hasProfileStartIteration()) {
     s << "  Trace start Iteration: " << profileStartIteration() << std::endl;
-    s << "  Trace warmup Iterations: " << activitiesWarmupIterations() << std::endl;
-    s << "  Trace profile Iterations: " << activitiesRunIterations() << std::endl;
+    s << "  Trace warmup Iterations: " << activitiesWarmupIterations()
+      << std::endl;
+    s << "  Trace profile Iterations: " << activitiesRunIterations()
+      << std::endl;
     if (profileStartIterationRoundUp() > 0) {
-      s << "  Trace start iteration roundup : " << profileStartIterationRoundUp()
-        << std::endl;
+      s << "  Trace start iteration roundup : "
+        << profileStartIterationRoundUp() << std::endl;
     }
   } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
     s << "  Trace start time: "
-              << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c));
+      << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c));
     s << "  Trace duration: " << activitiesDuration().count() << "ms"
       << std::endl;
     s << "  Warmup duration: " << activitiesWarmupDuration().count() << "s"
@@ -566,13 +573,13 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   for (const auto& activity : selectedActivityTypes_) {
     activities.push_back(toString(activity));
   }
-  s << "  Enabled activities: "
-    << fmt::format("{}", fmt::join(activities, ",")) << std::endl;
+  s << "  Enabled activities: " << fmt::format("{}", fmt::join(activities, ","))
+    << std::endl;
 
   AbstractConfig::printActivityProfilerConfig(s);
 }
 
-void Config::setActivityDependentConfig(){
+void Config::setActivityDependentConfig() {
   AbstractConfig::setActivityDependentConfig();
 }
 

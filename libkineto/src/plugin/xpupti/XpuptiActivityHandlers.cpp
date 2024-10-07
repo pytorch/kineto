@@ -15,7 +15,8 @@ void XpuptiActivityProfilerSession::removeCorrelatedPtiActivities(
   return;
 }
 
-void XpuptiActivityProfilerSession::checkTimestampOrder(const ITraceActivity* act1) {
+void XpuptiActivityProfilerSession::checkTimestampOrder(
+    const ITraceActivity* act1) {
   const auto& it = correlatedPtiActivities_.find(act1->correlationId());
   if (it == correlatedPtiActivities_.end()) {
     correlatedPtiActivities_.insert({act1->correlationId(), act1});
@@ -38,7 +39,8 @@ void XpuptiActivityProfilerSession::checkTimestampOrder(const ITraceActivity* ac
   }
 }
 
-inline bool XpuptiActivityProfilerSession::outOfRange(const ITraceActivity& act) {
+inline bool XpuptiActivityProfilerSession::outOfRange(
+    const ITraceActivity& act) {
   bool out_of_range = act.timestamp() < captureWindowStartTime_ ||
       (act.timestamp() + act.duration()) > captureWindowEndTime_;
   if (out_of_range) {
@@ -103,7 +105,9 @@ void XpuptiActivityProfilerSession::handleRuntimeActivity(
   const ITraceActivity* linked =
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
   traceBuffer_.emplace_activity(
-      traceBuffer_.span, ActivityType::XPU_RUNTIME, std::string(activity->_name));
+      traceBuffer_.span,
+      ActivityType::XPU_RUNTIME,
+      std::string(activity->_name));
   auto& runtime_activity = traceBuffer_.activities.back();
   runtime_activity->startTime = activity->_start_timestamp;
   runtime_activity->endTime = activity->_end_timestamp;
@@ -113,9 +117,11 @@ void XpuptiActivityProfilerSession::handleRuntimeActivity(
   runtime_activity->threadId = activity->_thread_id;
   runtime_activity->flow.id = activity->_correlation_id;
   runtime_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
-  runtime_activity->flow.start = bool(std::find(correlateRuntimeOps_.begin(),
-                                                correlateRuntimeOps_.end(),
-                                                runtime_activity->name()) != correlateRuntimeOps_.end());
+  runtime_activity->flow.start = bool(
+      std::find(
+          correlateRuntimeOps_.begin(),
+          correlateRuntimeOps_.end(),
+          runtime_activity->name()) != correlateRuntimeOps_.end());
   runtime_activity->linked = linked;
   runtime_activity->addMetadata("correlation", activity->_correlation_id);
 

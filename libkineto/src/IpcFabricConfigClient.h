@@ -54,7 +54,6 @@ enum LibkinetoConfigType {
   ACTIVITIES = 0x2,
 };
 
-
 // IpcFabricConfigClient : connects to a daemon using the IPC Fabric
 //   this can be used as a base class for other Daemon Config clients as well.
 class IpcFabricConfigClient {
@@ -77,8 +76,8 @@ class IpcFabricConfigClient {
   }
 
  protected:
-  // Temporarily keep both int and string job id until IPC related code is updated to handle
-  // string job id.
+  // Temporarily keep both int and string job id until IPC related code is
+  // updated to handle string job id.
   int64_t jobId_;
   std::string jobIdStr_;
   std::vector<int32_t> pids_;

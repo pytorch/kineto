@@ -220,13 +220,13 @@ void enableKernelCallbacks() {
 // cudaLaunchKernelExC() used from H100 onwards.
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
   status &= cbapi->enableCallback(
-    CUPTI_CB_DOMAIN_RUNTIME_API,
-    CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
+      CUPTI_CB_DOMAIN_RUNTIME_API,
+      CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
 #endif
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to "
-                  << "enable cuda kernel launch callback.";
+                 << "enable cuda kernel launch callback.";
   }
 
   LOG(INFO) << "CUPTI Profiler kernel callbacks enabled";
@@ -240,13 +240,13 @@ void disableKernelCallbacks() {
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
   status &= cbapi->disableCallback(
-    CUPTI_CB_DOMAIN_RUNTIME_API,
-    CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
+      CUPTI_CB_DOMAIN_RUNTIME_API,
+      CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
 #endif
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to "
-                  << "disable cuda kernel launch callback.";
+                 << "disable cuda kernel launch callback.";
     return;
   }
 

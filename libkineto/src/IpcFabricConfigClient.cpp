@@ -10,9 +10,9 @@
 
 #include "IpcFabricConfigClient.h"
 
+#include <stdlib.h>
 #include <random>
 #include <sstream>
-#include <stdlib.h>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -31,28 +31,28 @@ std::string generate_uuid_v4() {
   int i;
   ss << std::hex;
   for (i = 0; i < 8; i++) {
-      ss << dis(gen);
+    ss << dis(gen);
   }
   ss << "-";
   for (i = 0; i < 4; i++) {
-      ss << dis(gen);
+    ss << dis(gen);
   }
   ss << "-4";
   for (i = 0; i < 3; i++) {
-      ss << dis(gen);
+    ss << dis(gen);
   }
   ss << "-";
   ss << dis2(gen);
   for (i = 0; i < 3; i++) {
-      ss << dis(gen);
+    ss << dis(gen);
   }
   ss << "-";
   for (i = 0; i < 12; i++) {
-      ss << dis(gen);
+    ss << dis(gen);
   }
   return ss.str();
 }
-}
+} // namespace uuid
 
 static std::vector<int32_t> getPids() {
   const auto& pids = pidCommandPairsOfAncestors();
@@ -78,15 +78,15 @@ static int64_t getJobId() {
   return strtoll(id, nullptr, 10);
 }
 
-IpcFabricConfigClient::IpcFabricConfigClient() : jobId_(getJobId()), pids_(getPids()), ipcFabricEnabled_(true) {
-
+IpcFabricConfigClient::IpcFabricConfigClient()
+    : jobId_(getJobId()), pids_(getPids()), ipcFabricEnabled_(true) {
   // setup IPC Fabric
   std::string ep_name = "dynoconfigclient" + uuid::generate_uuid_v4();
 
   fabricManager_ = ::dynolog::ipcfabric::FabricManager::factory(ep_name);
 #ifdef ENABLE_IPC_FABRIC
-  LOG(INFO) << "Setting up IPC Fabric at endpoint: " << ep_name
-            << " status = " << (fabricManager_ ? "initialized" : "failed (null)");
+  LOG(INFO) << "Setting up IPC Fabric at endpoint: " << ep_name << " status = "
+            << (fabricManager_ ? "initialized" : "failed (null)");
 #endif
 }
 
@@ -97,7 +97,6 @@ IpcFabricConfigClient::IpcFabricConfigClient() : jobId_(getJobId()), pids_(getPi
 constexpr const char* kDynoIpcName = "dynolog";
 constexpr int maxIpcRetries = 5;
 constexpr int kSleepUs = 10000;
-
 
 int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {
   if (!ipcFabricEnabled_) {
@@ -111,27 +110,27 @@ int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {
 
   // Setup message
   ::dynolog::ipcfabric::LibkinetoContext ctxt{
-    .gpu=gpu,
-    .pid=getpid(),
-    .jobid=jobId_
-  };
+      .gpu = gpu, .pid = getpid(), .jobid = jobId_};
 
   std::unique_ptr<::dynolog::ipcfabric::Message> msg =
-    ::dynolog::ipcfabric::Message::constructMessage<decltype(ctxt)>(
-      ctxt, "ctxt");
+      ::dynolog::ipcfabric::Message::constructMessage<decltype(ctxt)>(
+          ctxt, "ctxt");
 
   try {
     if (!fabricManager_->sync_send(*msg, std::string(kDynoIpcName))) {
-      LOG(ERROR) << "Failed to register pid " << ctxt.pid << " with dyno: IPC sync_send fail";
+      LOG(ERROR) << "Failed to register pid " << ctxt.pid
+                 << " with dyno: IPC sync_send fail";
       return -1;
     }
     msg = fabricManager_->poll_recv(maxIpcRetries, kSleepUs);
     if (!msg) {
-      LOG(ERROR) << "Failed to register pid " << ctxt.pid << " with dyno: IPC recv fail";
+      LOG(ERROR) << "Failed to register pid " << ctxt.pid
+                 << " with dyno: IPC recv fail";
       return -1;
     }
   } catch (const std::runtime_error& ex) {
-    LOG(ERROR) << "Failed to send/recv registering pic over fabric: " << ex.what();
+    LOG(ERROR) << "Failed to send/recv registering pic over fabric: "
+               << ex.what();
     return -1;
   }
 
@@ -144,7 +143,8 @@ std::string IpcFabricConfigClient::getLibkinetoBaseConfig() {
     return "";
   }
 
-  LOG(WARNING) << "Missing IPC Fabric implementation for getLibkinetoBaseConfig";
+  LOG(WARNING)
+      << "Missing IPC Fabric implementation for getLibkinetoBaseConfig";
   return "";
 }
 
@@ -159,7 +159,10 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
   }
 
   int size = pids_.size();
-  ::dynolog::ipcfabric::LibkinetoRequest* req = (::dynolog::ipcfabric::LibkinetoRequest*)malloc(sizeof(::dynolog::ipcfabric::LibkinetoRequest) + sizeof(int32_t) * size);
+  ::dynolog::ipcfabric::LibkinetoRequest* req =
+      (::dynolog::ipcfabric::LibkinetoRequest*)malloc(
+          sizeof(::dynolog::ipcfabric::LibkinetoRequest) +
+          sizeof(int32_t) * size);
   req->type = type;
   req->n = size;
   req->jobid = jobId_;
@@ -167,12 +170,14 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
     req->pids[i] = pids_[i];
   }
   std::unique_ptr<::dynolog::ipcfabric::Message> msg =
-    ::dynolog::ipcfabric::Message::constructMessage<::dynolog::ipcfabric::LibkinetoRequest, int32_t>(
-      *req, "req", size);
+      ::dynolog::ipcfabric::Message::
+          constructMessage<::dynolog::ipcfabric::LibkinetoRequest, int32_t>(
+              *req, "req", size);
 
   try {
     if (!fabricManager_->sync_send(*msg, std::string(kDynoIpcName))) {
-      LOG(ERROR) << "Failed to send config type=" << type << " to dyno: IPC sync_send fail";
+      LOG(ERROR) << "Failed to send config type=" << type
+                 << " to dyno: IPC sync_send fail";
       free(req);
       req = nullptr;
       return "";
@@ -180,15 +185,16 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
     free(req);
     msg = fabricManager_->poll_recv(maxIpcRetries, kSleepUs);
     if (!msg) {
-      LOG(ERROR) << "Failed to receive ondemand config type=" << type << " from dyno: IPC recv fail";
+      LOG(ERROR) << "Failed to receive ondemand config type=" << type
+                 << " from dyno: IPC recv fail";
       return "";
     }
   } catch (const std::runtime_error& ex) {
-    LOG(ERROR) << "Failed to recv ondemand config over ipc fabric: " << ex.what();
+    LOG(ERROR) << "Failed to recv ondemand config over ipc fabric: "
+               << ex.what();
     free(req);
     return "";
   }
-
 
   return std::string((char*)msg->buf.get(), msg->metadata.size);
 }
@@ -202,7 +208,8 @@ int32_t IpcFabricConfigClient::registerInstance(int32_t /*gpu*/) {
 std::string IpcFabricConfigClient::getLibkinetoBaseConfig() {
   return "";
 }
-std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t /*type*/) {
+std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(
+    int32_t /*type*/) {
   return "";
 }
 

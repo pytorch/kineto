@@ -79,8 +79,8 @@ TEST(CuptiCallbackApiTest, SimpleTest) {
       &simple_cudaLaunchKernel_cb))
       << "Failed to add callback";
   EXPECT_TRUE(addSimpleCallback(
-    CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
-    &simple_cudaLaunchKernelExC_cb))
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
+      &simple_cudaLaunchKernelExC_cb))
       << "Failed to add callback";
 
   // duplicate add should be okay
@@ -89,8 +89,8 @@ TEST(CuptiCallbackApiTest, SimpleTest) {
       &simple_cudaLaunchKernel_cb))
       << "Failed to re-add callback";
   EXPECT_TRUE(addSimpleCallback(
-    CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
-    &simple_cudaLaunchKernelExC_cb))
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
+      &simple_cudaLaunchKernelExC_cb))
       << "Failed to re-add callback";
 
   simple_cb_calls = 0;

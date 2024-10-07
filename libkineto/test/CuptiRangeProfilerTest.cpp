@@ -11,9 +11,9 @@
 #include <set>
 
 #ifdef __linux__
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
 #endif
 
 #include <fmt/format.h>
@@ -21,15 +21,15 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "include/libkineto.h"
 #include "include/Config.h"
+#include "include/libkineto.h"
 #include "include/output_base.h"
 #include "src/ActivityTrace.h"
-#include "src/CuptiRangeProfilerConfig.h"
 #include "src/CuptiRangeProfiler.h"
+#include "src/CuptiRangeProfilerConfig.h"
+#include "src/Logger.h"
 #include "src/output_json.h"
 #include "src/output_membuf.h"
-#include "src/Logger.h"
 
 #include "CuptiRangeProfilerTestUtil.h"
 
@@ -43,10 +43,8 @@ MockCuptiRBProfilerSession::getResults() {
   return results;
 }
 
-static std::vector<std::string> kCtx0Kernels = {
-  "foo", "bar", "baz"};
-static std::vector<std::string> kCtx1Kernels = {
-  "mercury", "venus", "earth"};
+static std::vector<std::string> kCtx0Kernels = {"foo", "bar", "baz"};
+static std::vector<std::string> kCtx1Kernels = {"mercury", "venus", "earth"};
 
 static auto getActivityTypes() {
   static std::set activity_types_{libkineto::ActivityType::CUDA_PROFILER_RANGE};
@@ -82,7 +80,7 @@ class CuptiRangeProfilerTest : public ::testing::Test {
 
     // used for logging to a file
     loggerFactory.addProtocol("file", [](const std::string& url) {
-        return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
     });
   }
 
@@ -92,11 +90,12 @@ class CuptiRangeProfilerTest : public ::testing::Test {
   }
 
   void setupConfig(const std::vector<std::string>& metrics, bool per_kernel) {
-    std::string config_str = fmt::format("ACTIVITIES_WARMUP_PERIOD_SECS=0\n "
-      "CUPTI_PROFILER_METRICS={}\n "
-      "CUPTI_PROFILER_ENABLE_PER_KERNEL={}",
-      fmt::join(metrics, ","),
-      (per_kernel ? "true" : "false"));
+    std::string config_str = fmt::format(
+        "ACTIVITIES_WARMUP_PERIOD_SECS=0\n "
+        "CUPTI_PROFILER_METRICS={}\n "
+        "CUPTI_PROFILER_ENABLE_PER_KERNEL={}",
+        fmt::join(metrics, ","),
+        (per_kernel ? "true" : "false"));
 
     cfg_ = std::make_unique<Config>();
     cfg_->parse(config_str);
@@ -133,11 +132,11 @@ class CuptiRangeProfilerTest : public ::testing::Test {
     // sets up mock results returned by Mock CUPTI interface
     for (const auto& k : kCtx0Kernels) {
       results_[0].rangeVals.emplace_back(
-        CuptiRangeMeasurement{k, measurements_});
+          CuptiRangeMeasurement{k, measurements_});
     }
     for (const auto& k : kCtx1Kernels) {
       results_[1].rangeVals.emplace_back(
-        CuptiRangeMeasurement{k, measurements_});
+          CuptiRangeMeasurement{k, measurements_});
     }
   }
 
@@ -146,8 +145,8 @@ class CuptiRangeProfilerTest : public ::testing::Test {
   ActivityLoggerFactory loggerFactory;
 
   std::vector<double> measurements_;
-  std::unordered_map<int, CuptiProfilerResult>& results_
-    = MockCuptiRBProfilerSession::getResults();
+  std::unordered_map<int, CuptiProfilerResult>& results_ =
+      MockCuptiRBProfilerSession::getResults();
 
   CUcontext ctx0_, ctx1_;
 };
@@ -157,8 +156,8 @@ void checkMetrics(
     const std::string& metadataJson) {
   for (const auto& m : metrics) {
     EXPECT_NE(metadataJson.find(m), std::string::npos)
-      << "Could not find metdata on metric " << m
-      << "\n metadata json = '" << metadataJson << "'";
+        << "Could not find metdata on metric " << m << "\n metadata json = '"
+        << metadataJson << "'";
   }
 }
 
@@ -183,19 +182,17 @@ void saveTrace(ActivityTrace& /*trace*/) {
 }
 
 TEST_F(CuptiRangeProfilerTest, BasicTest) {
-
   EXPECT_NE(profiler_->name().size(), 0);
   EXPECT_EQ(profiler_->availableActivities(), getActivityTypes());
 
   std::set<ActivityType> incorrect_act_types{
-    ActivityType::CUDA_RUNTIME, ActivityType::CONCURRENT_KERNEL};
+      ActivityType::CUDA_RUNTIME, ActivityType::CONCURRENT_KERNEL};
 
   cfg_ = std::make_unique<Config>();
   cfg_->setClientDefaults();
   cfg_->setSelectedActivityTypes({});
-  EXPECT_EQ(
-      profiler_->configure(incorrect_act_types, *cfg_).get(), nullptr)
-    << "Profiler config should fail for wrong activity type";
+  EXPECT_EQ(profiler_->configure(incorrect_act_types, *cfg_).get(), nullptr)
+      << "Profiler config should fail for wrong activity type";
 
   incorrect_act_types.insert(ActivityType::CUDA_PROFILER_RANGE);
 
@@ -203,17 +200,15 @@ TEST_F(CuptiRangeProfilerTest, BasicTest) {
   cfg_->setClientDefaults();
   cfg_->setSelectedActivityTypes(incorrect_act_types);
 
-  EXPECT_EQ(
-      profiler_->configure(incorrect_act_types, *cfg_).get(), nullptr)
-    << "Profiler config should fail if the activity types is not exclusively"
-    << " CUDA_PROFILER_RANGE";
+  EXPECT_EQ(profiler_->configure(incorrect_act_types, *cfg_).get(), nullptr)
+      << "Profiler config should fail if the activity types is not exclusively"
+      << " CUDA_PROFILER_RANGE";
 }
 
 TEST_F(CuptiRangeProfilerTest, UserRangeTest) {
-
   std::vector<std::string> metrics{
-    "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum",
-    "sm__inst_executed_pipe_tensor.sum",
+      "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum",
+      "sm__inst_executed_pipe_tensor.sum",
   };
 
   setupConfig(metrics, false /*per_kernel*/);
@@ -248,10 +243,9 @@ TEST_F(CuptiRangeProfilerTest, UserRangeTest) {
 }
 
 TEST_F(CuptiRangeProfilerTest, AutoRangeTest) {
-
   std::vector<std::string> metrics{
-    "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum",
-    "sm__inst_executed_pipe_tensor.sum",
+      "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum",
+      "sm__inst_executed_pipe_tensor.sum",
   };
   int kernel_count = 0;
 
@@ -305,7 +299,7 @@ TEST_F(CuptiRangeProfilerTest, AutoRangeTest) {
   saveTrace(trace);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   CuptiRangeProfilerConfig::registerFactory();
   return RUN_ALL_TESTS();

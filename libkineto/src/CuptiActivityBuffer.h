@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include <stdlib.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <sys/types.h>
 #include <cstdint>
 #include <map>
 #include <memory>
-#include <sys/types.h>
 #include <vector>
 
 #include "ITraceActivity.h"
@@ -44,7 +44,6 @@ class CuptiActivityBuffer {
   }
 
  private:
-
   std::vector<uint8_t> buf_;
   size_t size_;
 

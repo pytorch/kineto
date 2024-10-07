@@ -74,8 +74,10 @@ TEST(ParseTest, DefaultActivityTypes) {
   Config cfg;
   cfg.validate(std::chrono::system_clock::now());
   auto default_activities = defaultActivityTypes();
-  EXPECT_EQ(cfg.selectedActivityTypes(),
-    std::set<ActivityType>(default_activities.begin(), default_activities.end()));
+  EXPECT_EQ(
+      cfg.selectedActivityTypes(),
+      std::set<ActivityType>(
+          default_activities.begin(), default_activities.end()));
 }
 
 TEST(ParseTest, ActivityTypes) {
@@ -84,49 +86,59 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_TRUE(cfg.parse("ACTIVITY_TYPES="));
   EXPECT_FALSE(cfg.parse("=ACTIVITY_TYPES="));
 
-  EXPECT_EQ(cfg.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::CPU_OP,
-                            ActivityType::CPU_INSTANT_EVENT,
-                            ActivityType::PYTHON_FUNCTION,
-                            ActivityType::USER_ANNOTATION,
-                            ActivityType::GPU_USER_ANNOTATION,
-                            ActivityType::GPU_MEMCPY,
-                            ActivityType::GPU_MEMSET,
-                            ActivityType::CONCURRENT_KERNEL,
-                            ActivityType::EXTERNAL_CORRELATION,
-                            ActivityType::OVERHEAD,
-                            ActivityType::CUDA_RUNTIME,
-                            ActivityType::CUDA_DRIVER,
-                            ActivityType::CUDA_SYNC,
-                            ActivityType::MTIA_RUNTIME,
-                            ActivityType::MTIA_CCP_EVENTS}));
+  EXPECT_EQ(
+      cfg.selectedActivityTypes(),
+      std::set<ActivityType>(
+          {ActivityType::CPU_OP,
+           ActivityType::CPU_INSTANT_EVENT,
+           ActivityType::PYTHON_FUNCTION,
+           ActivityType::USER_ANNOTATION,
+           ActivityType::GPU_USER_ANNOTATION,
+           ActivityType::GPU_MEMCPY,
+           ActivityType::GPU_MEMSET,
+           ActivityType::CONCURRENT_KERNEL,
+           ActivityType::EXTERNAL_CORRELATION,
+           ActivityType::OVERHEAD,
+           ActivityType::CUDA_RUNTIME,
+           ActivityType::CUDA_DRIVER,
+           ActivityType::CUDA_SYNC,
+           ActivityType::MTIA_RUNTIME,
+           ActivityType::MTIA_CCP_EVENTS}));
 
   Config cfg2;
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=gpu_memcpy,gpu_MeMsEt,kernel"));
-  EXPECT_EQ(cfg2.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::GPU_MEMCPY,
-                            ActivityType::GPU_MEMSET,
-                            ActivityType::CONCURRENT_KERNEL}));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>(
+          {ActivityType::GPU_MEMCPY,
+           ActivityType::GPU_MEMSET,
+           ActivityType::CONCURRENT_KERNEL}));
 
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = cuda_Runtime,"));
-  EXPECT_EQ(cfg2.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::CUDA_RUNTIME}));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>({ActivityType::CUDA_RUNTIME}));
 
   // Should throw an exception because incorrect activity name
   EXPECT_FALSE(cfg2.parse("ACTIVITY_TYPES = memcopy,cuda_runtime"));
 
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = cpu_op"));
-  EXPECT_EQ(cfg2.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::CPU_OP}));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>({ActivityType::CPU_OP}));
 
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = xpu_Runtime"));
-  EXPECT_EQ(cfg2.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::XPU_RUNTIME}));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>({ActivityType::XPU_RUNTIME}));
 
-  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES=privateuse1_Runtime,privateuse1_driver"));
-  EXPECT_EQ(cfg2.selectedActivityTypes(),
-    std::set<ActivityType>({ActivityType::PRIVATEUSE1_RUNTIME,
-                            ActivityType::PRIVATEUSE1_DRIVER}));
+  EXPECT_TRUE(
+      cfg2.parse("ACTIVITY_TYPES=privateuse1_Runtime,privateuse1_driver"));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>(
+          {ActivityType::PRIVATEUSE1_RUNTIME,
+           ActivityType::PRIVATEUSE1_DRIVER}));
 }
 
 TEST(ParseTest, SamplePeriod) {

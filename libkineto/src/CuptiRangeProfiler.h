@@ -10,8 +10,8 @@
 
 #include <functional>
 
-#include <libkineto.h>
 #include <IActivityProfiler.h>
+#include <libkineto.h>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -68,10 +68,8 @@ class CuptiRangeProfilerSession : public IActivityProfilerSession {
   CUpti_ProfilerReplayMode replayType_ = CUPTI_UserReplay;
 
   CpuTraceBuffer traceBuffer_;
-  std::vector<
-    std::unique_ptr<CuptiRBProfilerSession>> profilers_;
+  std::vector<std::unique_ptr<CuptiRBProfilerSession>> profilers_;
 };
-
 
 /* This is a wrapper class that refers to the underlying
  * CuptiRangeProfiler. Using a wrapper libkineto can manage the ownership
@@ -108,6 +106,7 @@ class CuptiRangeProfiler : public libkineto::IActivityProfiler {
   // profiling sesssion.
   static void setPreRunCallback(CuptiProfilerPrePostCallback fn);
   static void setPostRunCallback(CuptiProfilerPrePostCallback fn);
+
  private:
   ICuptiRBProfilerSessionFactory& factory_;
 };

@@ -16,13 +16,13 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "IActivityProfiler.h"
 #include "GenericTraceActivity.h"
+#include "IActivityProfiler.h"
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
-  struct ActivityBuffers;
+struct ActivityBuffers;
 }
 
 namespace libkineto {
@@ -36,7 +36,6 @@ constexpr int64_t kExceedMaxPid = 5000000;
 
 class ActivityLogger {
  public:
-
   virtual ~ActivityLogger() = default;
 
   struct OverheadInfo {
@@ -44,9 +43,7 @@ class ActivityLogger {
     const std::string name;
   };
 
-  virtual void handleDeviceInfo(
-      const DeviceInfo &info,
-      uint64_t time) = 0;
+  virtual void handleDeviceInfo(const DeviceInfo& info, uint64_t time) = 0;
 
   virtual void handleResourceInfo(const ResourceInfo& info, int64_t time) = 0;
 
@@ -54,8 +51,7 @@ class ActivityLogger {
 
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
-  virtual void handleActivity(
-      const libkineto::ITraceActivity& activity) = 0;
+  virtual void handleActivity(const libkineto::ITraceActivity& activity) = 0;
   virtual void handleGenericActivity(
       const libkineto::GenericTraceActivity& activity) = 0;
 

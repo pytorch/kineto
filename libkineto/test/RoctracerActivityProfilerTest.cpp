@@ -22,9 +22,9 @@
 #endif
 
 #include "include/Config.h"
+#include "include/libkineto.h"
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
-#include "include/libkineto.h"
 #include "src/ActivityTrace.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/RoctracerActivityApi.h"
@@ -102,102 +102,112 @@ struct MockRoctracerLogger {
   }
 
   void addRuntimeKernelActivity(
-      uint32_t cid, int64_t start_ns, int64_t end_ns, int64_t correlation) {
+      uint32_t cid,
+      int64_t start_ns,
+      int64_t end_ns,
+      int64_t correlation) {
     roctracerKernelRow* row = new roctracerKernelRow(
-      correlation,
-      ACTIVITY_DOMAIN_HIP_API,
-      cid,
-      processId(),
-      systemThreadId(),
-      start_ns,
-      end_ns,
-      nullptr,
-      nullptr,
-      0,0,0,0,0,0,0,0
-    );
+        correlation,
+        ACTIVITY_DOMAIN_HIP_API,
+        cid,
+        processId(),
+        systemThreadId(),
+        start_ns,
+        end_ns,
+        nullptr,
+        nullptr,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0);
     activities_.push_back(row);
   }
 
   void addRuntimeMallocActivity(
-      uint32_t cid, int64_t start_ns, int64_t end_ns, int64_t correlation) {
+      uint32_t cid,
+      int64_t start_ns,
+      int64_t end_ns,
+      int64_t correlation) {
     roctracerMallocRow* row = new roctracerMallocRow(
-      correlation,
-      ACTIVITY_DOMAIN_HIP_API,
-      cid,
-      processId(),
-      systemThreadId(),
-      start_ns,
-      end_ns,
-      nullptr,
-      1
-    );
+        correlation,
+        ACTIVITY_DOMAIN_HIP_API,
+        cid,
+        processId(),
+        systemThreadId(),
+        start_ns,
+        end_ns,
+        nullptr,
+        1);
     activities_.push_back(row);
   }
 
   void addRuntimeCopyActivity(
-      uint32_t cid, int64_t start_ns, int64_t end_ns, int64_t correlation) {
+      uint32_t cid,
+      int64_t start_ns,
+      int64_t end_ns,
+      int64_t correlation) {
     roctracerCopyRow* row = new roctracerCopyRow(
-      correlation,
-      ACTIVITY_DOMAIN_HIP_API,
-      cid,
-      processId(),
-      systemThreadId(),
-      start_ns,
-      end_ns,
-      nullptr,
-      nullptr,
-      1,
-      hipMemcpyHostToHost,
-      static_cast<hipStream_t>(0)
-    );
+        correlation,
+        ACTIVITY_DOMAIN_HIP_API,
+        cid,
+        processId(),
+        systemThreadId(),
+        start_ns,
+        end_ns,
+        nullptr,
+        nullptr,
+        1,
+        hipMemcpyHostToHost,
+        static_cast<hipStream_t>(0));
     activities_.push_back(row);
   }
 
-  void addKernelActivity(
-      int64_t start_ns, int64_t end_ns, int64_t correlation) {
+  void
+  addKernelActivity(int64_t start_ns, int64_t end_ns, int64_t correlation) {
     roctracerAsyncRow* row = new roctracerAsyncRow(
-      correlation,
-      ACTIVITY_DOMAIN_HIP_API,
-      HIP_OP_DISPATCH_KIND_KERNEL_,
-      0,
-      0,
-      1,
-      start_ns,
-      end_ns,
-      std::string("kernel")
-    );
+        correlation,
+        ACTIVITY_DOMAIN_HIP_API,
+        HIP_OP_DISPATCH_KIND_KERNEL_,
+        0,
+        0,
+        1,
+        start_ns,
+        end_ns,
+        std::string("kernel"));
     activities_.push_back(row);
   }
 
-  void addMemcpyH2DActivity(
-      int64_t start_ns, int64_t end_ns, int64_t correlation) {
+  void
+  addMemcpyH2DActivity(int64_t start_ns, int64_t end_ns, int64_t correlation) {
     roctracerAsyncRow* row = new roctracerAsyncRow(
-      correlation,
-      ACTIVITY_DOMAIN_HIP_API,
-      HIP_OP_COPY_KIND_HOST_TO_DEVICE_,
-      0,
-      0,
-      2,
-      start_ns,
-      end_ns,
-      std::string()
-    );
+        correlation,
+        ACTIVITY_DOMAIN_HIP_API,
+        HIP_OP_COPY_KIND_HOST_TO_DEVICE_,
+        0,
+        0,
+        2,
+        start_ns,
+        end_ns,
+        std::string());
     activities_.push_back(row);
   }
 
-  void addMemcpyD2HActivity(
-      int64_t start_ns, int64_t end_ns, int64_t correlation) {
+  void
+  addMemcpyD2HActivity(int64_t start_ns, int64_t end_ns, int64_t correlation) {
     roctracerAsyncRow* row = new roctracerAsyncRow(
-      correlation,
-      ACTIVITY_DOMAIN_HIP_API,
-      HIP_OP_COPY_KIND_DEVICE_TO_HOST_,
-      0,
-      0,
-      2,
-      start_ns,
-      end_ns,
-      std::string()
-    );
+        correlation,
+        ACTIVITY_DOMAIN_HIP_API,
+        HIP_OP_COPY_KIND_DEVICE_TO_HOST_,
+        0,
+        0,
+        2,
+        start_ns,
+        end_ns,
+        std::string());
     activities_.push_back(row);
   }
 
@@ -210,7 +220,8 @@ struct MockRoctracerLogger {
   }
 
   std::vector<roctracerBase*> activities_;
-  std::vector<std::pair<uint64_t, uint64_t>> externalCorrelations_[RoctracerLogger::CorrelationDomain::size];
+  std::vector<std::pair<uint64_t, uint64_t>>
+      externalCorrelations_[RoctracerLogger::CorrelationDomain::size];
 };
 
 // Mock parts of the RoctracerActivityApi
@@ -218,16 +229,23 @@ class MockRoctracerActivities : public RoctracerActivityApi {
  public:
   virtual int processActivities(
       std::function<void(const roctracerBase*)> handler,
-      std::function<void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)> correlationHandler) override {
+      std::function<
+          void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)>
+          correlationHandler) override {
     int count = 0;
-    for (int it = RoctracerLogger::CorrelationDomain::begin; it < RoctracerLogger::CorrelationDomain::end; ++it) {
-      auto &externalCorrelations = activityLogger->externalCorrelations_[it];
-      for (auto &item : externalCorrelations) {
-        correlationHandler(item.first, item.second, static_cast<RoctracerLogger::CorrelationDomain>(it));
+    for (int it = RoctracerLogger::CorrelationDomain::begin;
+         it < RoctracerLogger::CorrelationDomain::end;
+         ++it) {
+      auto& externalCorrelations = activityLogger->externalCorrelations_[it];
+      for (auto& item : externalCorrelations) {
+        correlationHandler(
+            item.first,
+            item.second,
+            static_cast<RoctracerLogger::CorrelationDomain>(it));
       }
       externalCorrelations.clear();
     }
-    for (auto &item : activityLogger->activities_) {
+    for (auto& item : activityLogger->activities_) {
       handler(item);
       ++count;
     }
@@ -279,7 +297,8 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -300,11 +319,16 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
 
   // And some CPU runtime ops, and GPU ops
   auto gpuOps = std::make_unique<MockRoctracerLogger>();
-  gpuOps->addRuntimeKernelActivity(HIP_LAUNCH_KERNEL, start_time_ns + 33, start_time_ns + 38, 1);
-  gpuOps->addRuntimeCopyActivity(HIP_MEMCPY, start_time_ns + 110, start_time_ns + 120, 2);
-  gpuOps->addRuntimeKernelActivity(HIP_LAUNCH_KERNEL, start_time_ns + 130, start_time_ns + 145, 3);
-  gpuOps->addRuntimeCopyActivity(HIP_MEMCPY, start_time_ns + 165, start_time_ns + 175, 4);
-  gpuOps->addRuntimeKernelActivity(HIP_LAUNCH_KERNEL, start_time_ns + 195, start_time_ns + 205, 5);
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 33, start_time_ns + 38, 1);
+  gpuOps->addRuntimeCopyActivity(
+      HIP_MEMCPY, start_time_ns + 110, start_time_ns + 120, 2);
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 130, start_time_ns + 145, 3);
+  gpuOps->addRuntimeCopyActivity(
+      HIP_MEMCPY, start_time_ns + 165, start_time_ns + 175, 4);
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 195, start_time_ns + 205, 5);
   gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
   gpuOps->addMemcpyH2DActivity(start_time_ns + 140, start_time_ns + 150, 2);
   gpuOps->addKernelActivity(start_time_ns + 160, start_time_ns + 220, 3);
@@ -375,7 +399,8 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -387,7 +412,8 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Prepare metadata map
   std::unordered_map<std::string, std::string> metadataMap;
-  metadataMap.emplace(kCollectiveName, fmt::format("\"{}\"", "_allgather_base"));
+  metadataMap.emplace(
+      kCollectiveName, fmt::format("\"{}\"", "_allgather_base"));
   metadataMap.emplace(kDtype, fmt::format("\"{}\"", "Float"));
   metadataMap.emplace(kInMsgNelems, "65664");
   metadataMap.emplace(kOutMsgNelems, "131328");
@@ -456,7 +482,8 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Set up corresponding GPU events and connect with CPU events
   // via correlationId
   auto gpuOps = std::make_unique<MockRoctracerLogger>();
-  gpuOps->addCorrelationActivity(1, RoctracerLogger::CorrelationDomain::Domain0, 1);
+  gpuOps->addCorrelationActivity(
+      1, RoctracerLogger::CorrelationDomain::Domain0, 1);
   gpuOps->addKernelActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
   roctracerActivities_.activityLogger = std::move(gpuOps);
 
@@ -485,8 +512,7 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
   std::vector<int64_t> expectedGroupRanks(kTruncatLength - 1, 0);
   auto expectedGroupRanksStr = fmt::format(
       "\"[{}, ..., {}]\"", fmt::join(expectedGroupRanks, ", "), "0");
-  EXPECT_EQ(
-      cpu_op->getMetadataValue(kGroupRanks), expectedGroupRanksStr);
+  EXPECT_EQ(cpu_op->getMetadataValue(kGroupRanks), expectedGroupRanksStr);
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
@@ -546,7 +572,8 @@ TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -565,9 +592,11 @@ TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
   // set up a couple of GPU events and correlate with above CPU event.
   // RoctracerLogger::CorrelationDomain::Domain1 is used for user annotations.
   auto gpuOps = std::make_unique<MockRoctracerLogger>();
-  gpuOps->addCorrelationActivity(1, RoctracerLogger::CorrelationDomain::Domain1, 1);
+  gpuOps->addCorrelationActivity(
+      1, RoctracerLogger::CorrelationDomain::Domain1, 1);
   gpuOps->addKernelActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
-  gpuOps->addCorrelationActivity(1, RoctracerLogger::CorrelationDomain::Domain1, 1);
+  gpuOps->addCorrelationActivity(
+      1, RoctracerLogger::CorrelationDomain::Domain1, 1);
   gpuOps->addKernelActivity(kernelLaunchTime + 15, kernelLaunchTime + 25, 1);
   roctracerActivities_.activityLogger = std::move(gpuOps);
 
@@ -615,7 +644,8 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
   ev.device = 1;
   ev.resource = 0;
 
-  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 1000;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
 
@@ -685,7 +715,8 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
 
   // Start and stop profiling
   CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
-  int64_t start_time_ns = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;
   auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
   profiler.configure(*cfg_, start_time);
@@ -701,7 +732,8 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
 
   // Set up GPU events
   auto gpuOps = std::make_unique<MockRoctracerLogger>();
-  gpuOps->addRuntimeKernelActivity(HIP_LAUNCH_KERNEL, start_time_ns + 23, start_time_ns + 28, 1);
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 23, start_time_ns + 28, 1);
   gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
   roctracerActivities_.activityLogger = std::move(gpuOps);
 
@@ -736,11 +768,13 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
   std::unordered_map<int64_t, std::string> sortLabel;
   std::unordered_map<int64_t, int64_t> sortIdx;
   for (auto& event : jsonData["traceEvents"]) {
-    if (event["name"] == "process_labels" && event["tid"] == 0 && event["pid"].isInt()) {
+    if (event["name"] == "process_labels" && event["tid"] == 0 &&
+        event["pid"].isInt()) {
       sortLabel[event["pid"].asInt()] = event["args"]["labels"].asString();
       LOG(INFO) << sortLabel[event["pid"].asInt()];
     }
-    if (event["name"] == "process_sort_index" && event["tid"] == 0 && event["pid"].isInt()) {
+    if (event["name"] == "process_sort_index" && event["tid"] == 0 &&
+        event["pid"].isInt()) {
       sortIdx[event["pid"].asInt()] = event["args"]["sort_index"].asInt();
       LOG(INFO) << sortIdx[event["pid"].asInt()];
     }
@@ -748,7 +782,7 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
 
   // Expect atleast 16 GPU nodes, and 1 or more CPU nodes.
   EXPECT_LE(16, sortLabel.size());
-  for (int i = 0; i<16; i++) {
+  for (int i = 0; i < 16; i++) {
     // Check there are 16 GPU sorts (0-15) with expected sort_index.
     EXPECT_EQ("GPU " + std::to_string(i), sortLabel[i]);
     // sortIndex is gpu + kExceedMaxPid to put GPU tracks at the bottom

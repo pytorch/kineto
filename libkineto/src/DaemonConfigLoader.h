@@ -59,10 +59,10 @@ class DaemonConfigLoader : public IDaemonConfigLoader {
   IpcFabricConfigClient* getConfigClient();
 
   static void registerFactory();
-private:
+
+ private:
   std::unique_ptr<IpcFabricConfigClient> configClient;
 };
 #endif // __linux__
-
 
 } // namespace KINETO_NAMESPACE

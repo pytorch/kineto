@@ -27,4 +27,4 @@ void playground(void);
 // Run a simple elementwise kernel
 void compute(void);
 
-}
+} // namespace kineto

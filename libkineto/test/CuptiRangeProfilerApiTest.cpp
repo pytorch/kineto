@@ -12,12 +12,12 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "include/libkineto.h"
 #include "include/Config.h"
+#include "include/libkineto.h"
 #include "src/CuptiRangeProfilerApi.h"
 
-#include "src/Logger.h"
 #include "CuptiRangeProfilerTestUtil.h"
+#include "src/Logger.h"
 
 using namespace KINETO_NAMESPACE;
 
@@ -32,8 +32,7 @@ MockCuptiRBProfilerSession::getResults() {
 MockCuptiRBProfilerSessionFactory mfactory{};
 
 TEST(CuptiRangeProfilerApiTest, contextTracking) {
-  std::vector<std::string> log_modules(
-      {"CuptiRangeProfilerApi.cpp"});
+  std::vector<std::string> log_modules({"CuptiRangeProfilerApi.cpp"});
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
   std::array<int64_t, 3> data;
@@ -56,19 +55,16 @@ TEST(CuptiRangeProfilerApiTest, contextTracking) {
   simulateCudaContextDestroy(contexts[1], 1);
 
   EXPECT_EQ(
-      CuptiRBProfilerSession::getActiveDevices(),
-      std::set<uint32_t>({0, 2}));
+      CuptiRBProfilerSession::getActiveDevices(), std::set<uint32_t>({0, 2}));
 
   simulateCudaContextDestroy(contexts[0], 0);
   simulateCudaContextDestroy(contexts[2], 2);
 
-  EXPECT_TRUE(
-      CuptiRBProfilerSession::getActiveDevices().empty());
+  EXPECT_TRUE(CuptiRBProfilerSession::getActiveDevices().empty());
 }
 
 TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
-  std::vector<std::string> log_modules(
-      {"CuptiRangeProfilerApi.cpp"});
+  std::vector<std::string> log_modules({"CuptiRangeProfilerApi.cpp"});
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
   // this is bad but the pointer is never accessed
@@ -76,11 +72,11 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
   CuptiRangeProfilerOptions opts{
-    .metricNames = {"metricNames"},
-    .deviceId = 0,
-    .maxRanges = 1,
-    .numNestingLevels = 1,
-    .cuContext = ctx0 };
+      .metricNames = {"metricNames"},
+      .deviceId = 0,
+      .maxRanges = 1,
+      .numNestingLevels = 1,
+      .cuContext = ctx0};
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());
@@ -102,8 +98,7 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
 }
 
 TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
-  std::vector<std::string> log_modules(
-      {"CuptiRangeProfilerApi.cpp"});
+  std::vector<std::string> log_modules({"CuptiRangeProfilerApi.cpp"});
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
   // this is bad but the pointer is never accessed
@@ -113,11 +108,11 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
   CuptiRangeProfilerOptions opts{
-    .metricNames = {"metricNames"},
-    .deviceId = 0,
-    .maxRanges = 1,
-    .numNestingLevels = 1,
-    .cuContext = ctx0 };
+      .metricNames = {"metricNames"},
+      .deviceId = 0,
+      .maxRanges = 1,
+      .numNestingLevels = 1,
+      .cuContext = ctx0};
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());
@@ -141,7 +136,7 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
   EXPECT_EQ(
       session->getKernelNames(),
       std::vector<std::string>({"hello", "foo", "bar"}))
-    << "Kernel names were not tracked";
+      << "Kernel names were not tracked";
 }
 
 #endif // HAS_CUPTI_RANGE_PROFILER

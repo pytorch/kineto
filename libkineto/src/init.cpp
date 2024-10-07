@@ -17,8 +17,8 @@
 #include "DaemonConfigLoader.h"
 #include "DeviceUtil.h"
 #ifdef HAS_CUPTI
-#include "CuptiCallbackApi.h"
 #include "CuptiActivityApi.h"
+#include "CuptiCallbackApi.h"
 #include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
@@ -125,15 +125,14 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
   const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
   if (logLevelEnv) {
     // atoi returns 0 on error, so that's what we want - default to VERBOSE
-    static_assert (static_cast<int>(VERBOSE) == 0, "");
+    static_assert(static_cast<int>(VERBOSE) == 0, "");
     SET_LOG_SEVERITY_LEVEL(atoi(logLevelEnv));
   }
 
   // Factory to connect to open source daemon if present
 #if __linux__
   if (libkineto::isDaemonEnvVarSet()) {
-    LOG(INFO) << "Registering daemon config loader, cpuOnly =  "
-              << cpuOnly;
+    LOG(INFO) << "Registering daemon config loader, cpuOnly =  " << cpuOnly;
     DaemonConfigLoader::registerFactory();
   }
 #endif
@@ -148,7 +147,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
     bool status = false;
     bool initRangeProfiler = true;
 
-    if (cbapi->initSuccess()){
+    if (cbapi->initSuccess()) {
       const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
       status = cbapi->registerCallback(
           domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, initProfilers);
@@ -162,7 +161,9 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
       if (enableEventProfiler()) {
         if (status) {
           status = cbapi->registerCallback(
-              domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, stopProfiler);
+              domain,
+              CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED,
+              stopProfiler);
         }
         if (status) {
           status = cbapi->enableCallback(
@@ -178,8 +179,9 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
         CUPTI_CALL(cbapi->getCuptiStatus());
         LOG(WARNING) << "CUPTI initialization failed - "
                      << "CUDA profiler activities will be missing";
-        LOG(INFO) << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
-                  << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
+        LOG(INFO)
+            << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
+            << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
       }
     }
 
@@ -200,28 +202,31 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 
 #ifdef HAS_XPUPTI
   // register xpu pti profiler
-  libkineto::api().registerProfilerFactory([]() -> std::unique_ptr<IActivityProfiler> {
-    auto returnCode = ptiViewGPULocalAvailable();
-    if (returnCode != PTI_SUCCESS) {
-      std::string errPrefixMsg(
-          "Fail to enable Kineto Profiler on XPU due to error code: ");
-      errPrefixMsg = errPrefixMsg + std::to_string(returnCode);
+  libkineto::api().registerProfilerFactory(
+      []() -> std::unique_ptr<IActivityProfiler> {
+        auto returnCode = ptiViewGPULocalAvailable();
+        if (returnCode != PTI_SUCCESS) {
+          std::string errPrefixMsg(
+              "Fail to enable Kineto Profiler on XPU due to error code: ");
+          errPrefixMsg = errPrefixMsg + std::to_string(returnCode);
 #if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 9
-      std::string errMsg(ptiResultTypeToString(returnCode));
-      throw std::runtime_error(errPrefixMsg + std::string(". The detailed error message is: ") + errMsg);
+          std::string errMsg(ptiResultTypeToString(returnCode));
+          throw std::runtime_error(
+              errPrefixMsg + std::string(". The detailed error message is: ") +
+              errMsg);
 #else
-      throw std::runtime_error(errPrefixMsg);
+          throw std::runtime_error(errPrefixMsg);
 #endif
-    }
-    return std::make_unique<XPUActivityProfiler>();
-  });
+        }
+        return std::make_unique<XPUActivityProfiler>();
+      });
 #endif // HAS_XPUPTI
 
 #if __linux__
   // When CUDA/GPU is used the profiler initialization happens on the
   // creation of the first CUDA stream (see initProfilers()).
-  // This section bootstraps the profiler and its connection to a profiling daemon
-  // in the CPU only case.
+  // This section bootstraps the profiler and its connection to a profiling
+  // daemon in the CPU only case.
   if (cpuOnly && getenv(kUseDaemonEnvVar) != nullptr) {
     initProfilersCPU();
     libkineto::api().configLoader().initBaseConfig();
@@ -238,8 +243,8 @@ int InitializeInjection(void) {
 }
 
 bool hasTestEnvVar() {
-  return getenv("GTEST_OUTPUT") != nullptr || getenv("FB_TEST") != nullptr
-     || getenv("PYTORCH_TEST") != nullptr || getenv("TEST_PILOT") != nullptr;
+  return getenv("GTEST_OUTPUT") != nullptr || getenv("FB_TEST") != nullptr ||
+      getenv("PYTORCH_TEST") != nullptr || getenv("TEST_PILOT") != nullptr;
 }
 
 void suppressLibkinetoLogMessages() {

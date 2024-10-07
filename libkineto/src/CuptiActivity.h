@@ -12,14 +12,14 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ITraceActivity.h"
+#include "ApproximateClock.h"
 #include "GenericTraceActivity.h"
+#include "ITraceActivity.h"
 #include "ThreadUtil.h"
 #include "cupti_strings.h"
-#include "ApproximateClock.h"
 
 namespace libkineto {
-  class ActivityLogger;
+class ActivityLogger;
 }
 
 namespace KINETO_NAMESPACE {
@@ -27,7 +27,7 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 struct TraceSpan;
 
-// This function allows us to activate/deactivate TSC CUPTI callbacks 
+// This function allows us to activate/deactivate TSC CUPTI callbacks
 // via a killswitch
 bool& use_cupti_tsc();
 
@@ -36,7 +36,7 @@ bool& use_cupti_tsc();
 // using the ITraceActivity interface and logged via ActivityLogger.
 
 // Abstract base class, templated on Cupti activity type
-template<class T>
+template <class T>
 struct CuptiActivity : public ITraceActivity {
   explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
@@ -44,36 +44,51 @@ struct CuptiActivity : public ITraceActivity {
   // we use the default system clock so no conversion needed same for all
   // ifdefs below
   int64_t timestamp() const override {
-  #if defined(_WIN32) || CUDA_VERSION < 11060
+#if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.start;
-  #else
-    if (use_cupti_tsc()){
+#else
+    if (use_cupti_tsc()) {
       return get_time_converter()(activity_.start);
     } else {
       return activity_.start;
     }
-  #endif
+#endif
   }
 
   int64_t duration() const override {
-  #if defined(_WIN32) || CUDA_VERSION < 11060
+#if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.end - activity_.start;
-  #else
-    if (use_cupti_tsc()){
-      return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+#else
+    if (use_cupti_tsc()) {
+      return get_time_converter()(activity_.end) -
+          get_time_converter()(activity_.start);
     } else {
       return activity_.end - activity_.start;
     }
-  #endif
+#endif
   }
   // TODO(T107507796): Deprecate ITraceActivity
-  int64_t correlationId() const override {return 0;}
-  int32_t getThreadId() const override {return 0;}
-  const ITraceActivity* linkedActivity() const override {return linked_;}
-  int flowType() const override {return kLinkAsyncCpuGpu;}
-  int flowId() const override {return correlationId();}
-  const T& raw() const {return activity_;}
-  const TraceSpan* traceSpan() const override {return nullptr;}
+  int64_t correlationId() const override {
+    return 0;
+  }
+  int32_t getThreadId() const override {
+    return 0;
+  }
+  const ITraceActivity* linkedActivity() const override {
+    return linked_;
+  }
+  int flowType() const override {
+    return kLinkAsyncCpuGpu;
+  }
+  int flowId() const override {
+    return correlationId();
+  }
+  const T& raw() const {
+    return activity_;
+  }
+  const TraceSpan* traceSpan() const override {
+    return nullptr;
+  }
 
  protected:
   const T& activity_;
@@ -87,12 +102,22 @@ struct RuntimeActivity : public CuptiActivity<CUpti_ActivityAPI> {
       const ITraceActivity* linked,
       int32_t threadId)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
-  int64_t correlationId() const override {return activity_.correlationId;}
-  int64_t deviceId() const override {return processId();}
-  int64_t resourceId() const override {return threadId_;}
-  ActivityType type() const override {return ActivityType::CUDA_RUNTIME;}
+  int64_t correlationId() const override {
+    return activity_.correlationId;
+  }
+  int64_t deviceId() const override {
+    return processId();
+  }
+  int64_t resourceId() const override {
+    return threadId_;
+  }
+  ActivityType type() const override {
+    return ActivityType::CUDA_RUNTIME;
+  }
   bool flowStart() const override;
-  const std::string name() const override {return runtimeCbidName(activity_.cbid);}
+  const std::string name() const override {
+    return runtimeCbidName(activity_.cbid);
+  }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
 
@@ -107,10 +132,18 @@ struct DriverActivity : public CuptiActivity<CUpti_ActivityAPI> {
       const ITraceActivity* linked,
       int32_t threadId)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
-  int64_t correlationId() const override {return activity_.correlationId;}
-  int64_t deviceId() const override {return processId();}
-  int64_t resourceId() const override {return threadId_;}
-  ActivityType type() const override {return ActivityType::CUDA_DRIVER;}
+  int64_t correlationId() const override {
+    return activity_.correlationId;
+  }
+  int64_t deviceId() const override {
+    return processId();
+  }
+  int64_t resourceId() const override {
+    return threadId_;
+  }
+  ActivityType type() const override {
+    return ActivityType::CUDA_DRIVER;
+  }
   bool flowStart() const override;
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
@@ -125,40 +158,48 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
   explicit OverheadActivity(
       const CUpti_ActivityOverhead* activity,
       const ITraceActivity* linked,
-      int32_t threadId=0)
+      int32_t threadId = 0)
       : CuptiActivity(activity, linked), threadId_(threadId) {}
 
-
   int64_t timestamp() const override {
-  #if defined(_WIN32) || CUDA_VERSION < 11060
+#if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.start;
-  #else
-    if (use_cupti_tsc()){
+#else
+    if (use_cupti_tsc()) {
       return get_time_converter()(activity_.start);
     } else {
       return activity_.start;
     }
-  #endif
+#endif
   }
 
   int64_t duration() const override {
-  #if defined(_WIN32) || CUDA_VERSION < 11060
+#if defined(_WIN32) || CUDA_VERSION < 11060
     return activity_.end - activity_.start;
-  #else
-    if (use_cupti_tsc()){
-      return get_time_converter()(activity_.end) - get_time_converter()(activity_.start);
+#else
+    if (use_cupti_tsc()) {
+      return get_time_converter()(activity_.end) -
+          get_time_converter()(activity_.start);
     } else {
       return activity_.end - activity_.start;
     }
-  #endif
+#endif
   }
 
   // TODO: Update this with PID ordering
-  int64_t deviceId() const override {return -1;}
-  int64_t resourceId() const override {return threadId_;}
-  ActivityType type() const override {return ActivityType::OVERHEAD;}
+  int64_t deviceId() const override {
+    return -1;
+  }
+  int64_t resourceId() const override {
+    return threadId_;
+  }
+  ActivityType type() const override {
+    return ActivityType::OVERHEAD;
+  }
   bool flowStart() const override;
-  const std::string name() const override {return overheadKindString(activity_.overheadKind);}
+  const std::string name() const override {
+    return overheadKindString(activity_.overheadKind);
+  }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
 
@@ -176,15 +217,23 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
       : CuptiActivity(activity, linked),
         srcStream_(srcStream),
         srcCorrId_(srcCorrId) {}
-  int64_t correlationId() const override {return raw().correlationId;}
+  int64_t correlationId() const override {
+    return raw().correlationId;
+  }
   int64_t deviceId() const override;
   int64_t resourceId() const override;
-  ActivityType type() const override {return ActivityType::CUDA_SYNC;}
-  bool flowStart() const override {return false;}
+  ActivityType type() const override {
+    return ActivityType::CUDA_SYNC;
+  }
+  bool flowStart() const override {
+    return false;
+  }
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  const CUpti_ActivitySynchronization& raw() const {return CuptiActivity<CUpti_ActivitySynchronization>::raw();}
+  const CUpti_ActivitySynchronization& raw() const {
+    return CuptiActivity<CUpti_ActivitySynchronization>::raw();
+  }
 
  private:
   const int32_t srcStream_;
@@ -193,19 +242,29 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
 
 // Base class for GPU activities.
 // Can also be instantiated directly.
-template<class T>
+template <class T>
 struct GpuActivity : public CuptiActivity<T> {
   explicit GpuActivity(const T* activity, const ITraceActivity* linked)
       : CuptiActivity<T>(activity, linked) {}
-  int64_t correlationId() const override {return raw().correlationId;}
-  int64_t deviceId() const override {return raw().deviceId;}
-  int64_t resourceId() const override {return raw().streamId;}
+  int64_t correlationId() const override {
+    return raw().correlationId;
+  }
+  int64_t deviceId() const override {
+    return raw().deviceId;
+  }
+  int64_t resourceId() const override {
+    return raw().streamId;
+  }
   ActivityType type() const override;
-  bool flowStart() const override {return false;}
+  bool flowStart() const override {
+    return false;
+  }
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  const T& raw() const {return CuptiActivity<T>::raw();}
+  const T& raw() const {
+    return CuptiActivity<T>::raw();
+  }
 };
 
 } // namespace KINETO_NAMESPACE

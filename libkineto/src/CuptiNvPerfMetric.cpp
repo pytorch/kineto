@@ -8,7 +8,8 @@
 
 #ifdef HAS_CUPTI
 #include <cuda_runtime_api.h>
-#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && \
+    CUDART_VERSION > 10000
 #include <nvperf_cuda_host.h>
 #include <nvperf_host.h>
 #include <nvperf_target.h>
@@ -17,9 +18,9 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ScopeExit.h"
 #include "CuptiNvPerfMetric.h"
 #include "Logger.h"
+#include "ScopeExit.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -28,14 +29,12 @@ namespace KINETO_NAMESPACE {
 // to NVIDIA PerfWorks APIs.
 namespace nvperf {
 
-
 // Largely based on NVIDIA sample code provided with CUDA release
 //  files Metric.cpp and Eval.cpp
 
 // -------------------------------------------------
 // Metric and Counter Data Configuration
 // -------------------------------------------------
-
 
 // Note: Be carful before modifying the code below. There is a specific
 // sequence one needs to follow to program the metrics else things may
@@ -46,7 +45,8 @@ namespace nvperf {
 // Only supported on CUDA RT Version between 10.0 and 11.04.
 // After CUDA RT 11.04, the structure has changed.
 // TODO update the structure NVPA_RawMetricsConfig to support 11.04
-#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION > 10000
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && \
+    CUDART_VERSION > 10000
 
 bool getRawMetricRequests(
     NVPA_MetricsContext* metricsContext,
@@ -59,15 +59,21 @@ bool getRawMetricRequests(
   bool keepInstances = true;
 
   for (const auto& metricName : metricNames) {
-
     NVPW_MetricsContext_GetMetricProperties_Begin_Params
         getMetricPropertiesBeginParams = {
-            NVPW_MetricsContext_GetMetricProperties_Begin_Params_STRUCT_SIZE, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0};
+            NVPW_MetricsContext_GetMetricProperties_Begin_Params_STRUCT_SIZE,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            0,
+            0};
     getMetricPropertiesBeginParams.pMetricsContext = metricsContext;
     getMetricPropertiesBeginParams.pMetricName = metricName.c_str();
 
-    if (!NVPW_CALL(
-        NVPW_MetricsContext_GetMetricProperties_Begin(
+    if (!NVPW_CALL(NVPW_MetricsContext_GetMetricProperties_Begin(
             &getMetricPropertiesBeginParams))) {
       return false;
     }
@@ -81,7 +87,9 @@ bool getRawMetricRequests(
 
     NVPW_MetricsContext_GetMetricProperties_End_Params
         getMetricPropertiesEndParams = {
-            NVPW_MetricsContext_GetMetricProperties_End_Params_STRUCT_SIZE, nullptr, nullptr};
+            NVPW_MetricsContext_GetMetricProperties_End_Params_STRUCT_SIZE,
+            nullptr,
+            nullptr};
     getMetricPropertiesEndParams.pMetricsContext = metricsContext;
 
     if (!NVPW_CALL(NVPW_MetricsContext_GetMetricProperties_End(
@@ -91,13 +99,14 @@ bool getRawMetricRequests(
   }
 
   for (const auto& rawMetricName : rawMetricsDeps) {
-    NVPA_RawMetricRequest metricRequest = {NVPA_RAW_METRIC_REQUEST_STRUCT_SIZE, nullptr, nullptr, false, false};
+    NVPA_RawMetricRequest metricRequest = {
+        NVPA_RAW_METRIC_REQUEST_STRUCT_SIZE, nullptr, nullptr, false, false};
     metricRequest.pMetricName = rawMetricName.c_str();
     metricRequest.isolated = isolated;
     metricRequest.keepInstances = keepInstances;
     rawMetricRequests.push_back(metricRequest);
     VLOG(1) << "Adding raw metric struct  : raw metric = " << rawMetricName
-        << " isolated = " << isolated << " keepinst = " << keepInstances;
+            << " isolated = " << isolated << " keepinst = " << keepInstances;
   }
 
   if (rawMetricRequests.size() == 0) {
@@ -113,13 +122,15 @@ bool getProfilerConfigImage(
     const std::vector<std::string>& metricNames,
     std::vector<uint8_t>& configImage,
     const uint8_t* counterAvailabilityImage) {
-
   NVPW_CUDA_MetricsContext_Create_Params metricsContextCreateParams = {
-      NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE, nullptr, nullptr, nullptr};
+      NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr,
+      nullptr};
   metricsContextCreateParams.pChipName = chipName.c_str();
 
   if (!NVPW_CALL(
-        NVPW_CUDA_MetricsContext_Create(&metricsContextCreateParams))) {
+          NVPW_CUDA_MetricsContext_Create(&metricsContextCreateParams))) {
     return false;
   }
 
@@ -141,36 +152,39 @@ bool getProfilerConfigImage(
   std::vector<std::string> rawMetricDeps;
 
   if (!getRawMetricRequests(
-      metricsContextCreateParams.pMetricsContext,
-      metricNames,
-      rawMetricDeps,
-      rawMetricRequests)) {
+          metricsContextCreateParams.pMetricsContext,
+          metricNames,
+          rawMetricDeps,
+          rawMetricRequests)) {
     return false;
   }
 
   // Starting CUDA 11.4 the metric config create call and struct has changed
 #if CUDART_VERSION < 11040
-   NVPA_RawMetricsConfigOptions metricsConfigOptions = {
-       NVPA_RAW_METRICS_CONFIG_OPTIONS_STRUCT_SIZE, nullptr};
+  NVPA_RawMetricsConfigOptions metricsConfigOptions = {
+      NVPA_RAW_METRICS_CONFIG_OPTIONS_STRUCT_SIZE, nullptr};
 #else
-   NVPW_CUDA_RawMetricsConfig_Create_Params metricsConfigOptions = {
-       NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE, nullptr, NVPA_ACTIVITY_KIND_INVALID, nullptr, nullptr};
+  NVPW_CUDA_RawMetricsConfig_Create_Params metricsConfigOptions = {
+      NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE,
+      nullptr,
+      NVPA_ACTIVITY_KIND_INVALID,
+      nullptr,
+      nullptr};
 #endif // CUDART_VERSION < 11040
 
-   metricsConfigOptions.activityKind = NVPA_ACTIVITY_KIND_PROFILER;
-   metricsConfigOptions.pChipName = chipName.c_str();
+  metricsConfigOptions.activityKind = NVPA_ACTIVITY_KIND_PROFILER;
+  metricsConfigOptions.pChipName = chipName.c_str();
 
-   NVPA_RawMetricsConfig* rawMetricsConfig;
+  NVPA_RawMetricsConfig* rawMetricsConfig;
 #if CUDART_VERSION < 11040
-   if (!NVPW_CALL(
-         NVPA_RawMetricsConfig_Create(
-           &metricsConfigOptions, &rawMetricsConfig))) {
-     return false;
-   }
+  if (!NVPW_CALL(NVPA_RawMetricsConfig_Create(
+          &metricsConfigOptions, &rawMetricsConfig))) {
+    return false;
+  }
 #else
-   if (!NVPW_CALL(NVPW_CUDA_RawMetricsConfig_Create(&metricsConfigOptions))) {
-     return false;
-   }
+  if (!NVPW_CALL(NVPW_CUDA_RawMetricsConfig_Create(&metricsConfigOptions))) {
+    return false;
+  }
   rawMetricsConfig = metricsConfigOptions.pRawMetricsConfig;
 #endif // CUDART_VERSION < 11040
 
@@ -178,12 +192,14 @@ bool getProfilerConfigImage(
   if (counterAvailabilityImage) {
     NVPW_RawMetricsConfig_SetCounterAvailability_Params
         setCounterAvailabilityParams = {
-            NVPW_RawMetricsConfig_SetCounterAvailability_Params_STRUCT_SIZE, nullptr, nullptr, nullptr};
+            NVPW_RawMetricsConfig_SetCounterAvailability_Params_STRUCT_SIZE,
+            nullptr,
+            nullptr,
+            nullptr};
     setCounterAvailabilityParams.pRawMetricsConfig = rawMetricsConfig;
     setCounterAvailabilityParams.pCounterAvailabilityImage =
         counterAvailabilityImage;
-    if (!NVPW_CALL(
-          NVPW_RawMetricsConfig_SetCounterAvailability(
+    if (!NVPW_CALL(NVPW_RawMetricsConfig_SetCounterAvailability(
             &setCounterAvailabilityParams))) {
       return false;
     }
@@ -199,21 +215,26 @@ bool getProfilerConfigImage(
 
   // Start a Raw Metric Pass group
   NVPW_RawMetricsConfig_BeginPassGroup_Params beginPassGroupParams = {
-      NVPW_RawMetricsConfig_BeginPassGroup_Params_STRUCT_SIZE, nullptr, nullptr, 0};
+      NVPW_RawMetricsConfig_BeginPassGroup_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr,
+      0};
   beginPassGroupParams.pRawMetricsConfig = rawMetricsConfig;
-  if (!NVPW_CALL(
-        NVPW_RawMetricsConfig_BeginPassGroup(&beginPassGroupParams))) {
+  if (!NVPW_CALL(NVPW_RawMetricsConfig_BeginPassGroup(&beginPassGroupParams))) {
     return false;
   }
 
   // Add all raw metrics
   NVPW_RawMetricsConfig_AddMetrics_Params addMetricsParams = {
-      NVPW_RawMetricsConfig_AddMetrics_Params_STRUCT_SIZE, nullptr, nullptr, nullptr, 0};
+      NVPW_RawMetricsConfig_AddMetrics_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr,
+      nullptr,
+      0};
   addMetricsParams.pRawMetricsConfig = rawMetricsConfig;
   addMetricsParams.pRawMetricRequests = rawMetricRequests.data();
   addMetricsParams.numMetricRequests = rawMetricRequests.size();
-  if (!NVPW_CALL(
-        NVPW_RawMetricsConfig_AddMetrics(&addMetricsParams))) {
+  if (!NVPW_CALL(NVPW_RawMetricsConfig_AddMetrics(&addMetricsParams))) {
     return false;
   }
 
@@ -221,28 +242,31 @@ bool getProfilerConfigImage(
   NVPW_RawMetricsConfig_EndPassGroup_Params endPassGroupParams = {
       NVPW_RawMetricsConfig_EndPassGroup_Params_STRUCT_SIZE, nullptr, nullptr};
   endPassGroupParams.pRawMetricsConfig = rawMetricsConfig;
-  if (!NVPW_CALL(
-        NVPW_RawMetricsConfig_EndPassGroup(&endPassGroupParams))) {
+  if (!NVPW_CALL(NVPW_RawMetricsConfig_EndPassGroup(&endPassGroupParams))) {
     return false;
   }
 
   // Setup Config Image generation
   NVPW_RawMetricsConfig_GenerateConfigImage_Params generateConfigImageParams = {
-      NVPW_RawMetricsConfig_GenerateConfigImage_Params_STRUCT_SIZE, nullptr, nullptr, false};
+      NVPW_RawMetricsConfig_GenerateConfigImage_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr,
+      false};
   generateConfigImageParams.pRawMetricsConfig = rawMetricsConfig;
-  if (!NVPW_CALL(
-        NVPW_RawMetricsConfig_GenerateConfigImage(&generateConfigImageParams))) {
+  if (!NVPW_CALL(NVPW_RawMetricsConfig_GenerateConfigImage(
+          &generateConfigImageParams))) {
     return false;
   }
 
   // Get the Config Image size... nearly there
   NVPW_RawMetricsConfig_GetConfigImage_Params getConfigImageParams = {
-      NVPW_RawMetricsConfig_GetConfigImage_Params_STRUCT_SIZE, nullptr, nullptr};
+      NVPW_RawMetricsConfig_GetConfigImage_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr};
   getConfigImageParams.pRawMetricsConfig = rawMetricsConfig;
   getConfigImageParams.bytesAllocated = 0;
   getConfigImageParams.pBuffer = nullptr;
-  if (!NVPW_CALL(
-        NVPW_RawMetricsConfig_GetConfigImage(&getConfigImageParams))) {
+  if (!NVPW_CALL(NVPW_RawMetricsConfig_GetConfigImage(&getConfigImageParams))) {
     return false;
   }
 
@@ -251,8 +275,7 @@ bool getProfilerConfigImage(
   // Write the Config image binary
   getConfigImageParams.bytesAllocated = configImage.size();
   getConfigImageParams.pBuffer = configImage.data();
-  if (!NVPW_CALL(
-        NVPW_RawMetricsConfig_GetConfigImage(&getConfigImageParams))) {
+  if (!NVPW_CALL(NVPW_RawMetricsConfig_GetConfigImage(&getConfigImageParams))) {
     return false;
   }
 
@@ -263,13 +286,12 @@ bool getCounterDataPrefixImage(
     const std::string& chipName,
     const std::vector<std::string>& metricNames,
     std::vector<uint8_t>& counterDataImagePrefix) {
-
   NVPW_CUDA_MetricsContext_Create_Params metricsContextCreateParams = {
       NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE, nullptr, nullptr};
   metricsContextCreateParams.pChipName = chipName.c_str();
 
   if (!NVPW_CALL(
-        NVPW_CUDA_MetricsContext_Create(&metricsContextCreateParams))) {
+          NVPW_CUDA_MetricsContext_Create(&metricsContextCreateParams))) {
     return false;
   }
 
@@ -277,7 +299,6 @@ bool getCounterDataPrefixImage(
       NVPW_MetricsContext_Destroy_Params_STRUCT_SIZE, nullptr, nullptr};
   metricsContextDestroyParams.pMetricsContext =
       metricsContextCreateParams.pMetricsContext;
-
 
   SCOPE_EXIT([&]() {
     NVPW_MetricsContext_Destroy(
@@ -292,19 +313,22 @@ bool getCounterDataPrefixImage(
   std::vector<std::string> rawMetricDeps;
 
   if (!getRawMetricRequests(
-      metricsContextCreateParams.pMetricsContext,
-      metricNames,
-      rawMetricDeps,
-      rawMetricRequests)) {
+          metricsContextCreateParams.pMetricsContext,
+          metricNames,
+          rawMetricDeps,
+          rawMetricRequests)) {
     return false;
   }
 
   // Setup Counter Data builder
   NVPW_CounterDataBuilder_Create_Params counterDataBuilderCreateParams = {
-      NVPW_CounterDataBuilder_Create_Params_STRUCT_SIZE, nullptr, nullptr, nullptr};
+      NVPW_CounterDataBuilder_Create_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr,
+      nullptr};
   counterDataBuilderCreateParams.pChipName = chipName.c_str();
   if (!NVPW_CALL(
-        NVPW_CounterDataBuilder_Create(&counterDataBuilderCreateParams))) {
+          NVPW_CounterDataBuilder_Create(&counterDataBuilderCreateParams))) {
     return false;
   }
 
@@ -319,26 +343,33 @@ bool getCounterDataPrefixImage(
 
   // Add metrics to counter data image prefix
   NVPW_CounterDataBuilder_AddMetrics_Params addMetricsParams = {
-      NVPW_CounterDataBuilder_AddMetrics_Params_STRUCT_SIZE, nullptr, nullptr, nullptr, 0};
+      NVPW_CounterDataBuilder_AddMetrics_Params_STRUCT_SIZE,
+      nullptr,
+      nullptr,
+      nullptr,
+      0};
   addMetricsParams.pCounterDataBuilder =
       counterDataBuilderCreateParams.pCounterDataBuilder;
   addMetricsParams.pRawMetricRequests = rawMetricRequests.data();
   addMetricsParams.numMetricRequests = rawMetricRequests.size();
-  if (!NVPW_CALL(
-        NVPW_CounterDataBuilder_AddMetrics(&addMetricsParams))) {
+  if (!NVPW_CALL(NVPW_CounterDataBuilder_AddMetrics(&addMetricsParams))) {
     return false;
   }
 
   // Get image prefix size
   NVPW_CounterDataBuilder_GetCounterDataPrefix_Params
       getCounterDataPrefixParams = {
-          NVPW_CounterDataBuilder_GetCounterDataPrefix_Params_STRUCT_SIZE, nullptr, nullptr, 0, nullptr, 0};
+          NVPW_CounterDataBuilder_GetCounterDataPrefix_Params_STRUCT_SIZE,
+          nullptr,
+          nullptr,
+          0,
+          nullptr,
+          0};
   getCounterDataPrefixParams.pCounterDataBuilder =
       counterDataBuilderCreateParams.pCounterDataBuilder;
   getCounterDataPrefixParams.bytesAllocated = 0;
   getCounterDataPrefixParams.pBuffer = nullptr;
-  if (!NVPW_CALL(
-        NVPW_CounterDataBuilder_GetCounterDataPrefix(
+  if (!NVPW_CALL(NVPW_CounterDataBuilder_GetCounterDataPrefix(
           &getCounterDataPrefixParams))) {
     return false;
   }
@@ -348,8 +379,7 @@ bool getCounterDataPrefixImage(
   // Now write counter data image prefix
   getCounterDataPrefixParams.bytesAllocated = counterDataImagePrefix.size();
   getCounterDataPrefixParams.pBuffer = counterDataImagePrefix.data();
-  if (!NVPW_CALL(
-        NVPW_CounterDataBuilder_GetCounterDataPrefix(
+  if (!NVPW_CALL(NVPW_CounterDataBuilder_GetCounterDataPrefix(
           &getCounterDataPrefixParams))) {
     return false;
   }
@@ -367,20 +397,21 @@ std::string getRangeDescription(
   std::vector<const char*> descriptionPtrs;
 
   NVPW_Profiler_CounterData_GetRangeDescriptions_Params getRangeDescParams = {
-      NVPW_Profiler_CounterData_GetRangeDescriptions_Params_STRUCT_SIZE, nullptr};
+      NVPW_Profiler_CounterData_GetRangeDescriptions_Params_STRUCT_SIZE,
+      nullptr};
   getRangeDescParams.pCounterDataImage = counterDataImage.data();
   getRangeDescParams.rangeIndex = rangeIndex;
 
-  if (!NVPW_CALL(
-      NVPW_Profiler_CounterData_GetRangeDescriptions(&getRangeDescParams))) {
+  if (!NVPW_CALL(NVPW_Profiler_CounterData_GetRangeDescriptions(
+          &getRangeDescParams))) {
     return "";
   }
 
   descriptionPtrs.resize(getRangeDescParams.numDescriptions);
   getRangeDescParams.ppDescriptions = descriptionPtrs.data();
 
-  if (!NVPW_CALL(
-      NVPW_Profiler_CounterData_GetRangeDescriptions(&getRangeDescParams))) {
+  if (!NVPW_CALL(NVPW_Profiler_CounterData_GetRangeDescriptions(
+          &getRangeDescParams))) {
     return "";
   }
 
@@ -400,7 +431,6 @@ CuptiProfilerResult evalMetricValues(
     const std::vector<uint8_t>& counterDataImage,
     const std::vector<std::string>& metricNames,
     bool verbose) {
-
   if (!counterDataImage.size()) {
     LOG(ERROR) << "Counter Data Image is empty!";
     return {};
@@ -410,7 +440,7 @@ CuptiProfilerResult evalMetricValues(
       NVPW_CUDA_MetricsContext_Create_Params_STRUCT_SIZE, nullptr};
   metricsContextCreateParams.pChipName = chipName.c_str();
   if (!NVPW_CALL(
-        NVPW_CUDA_MetricsContext_Create(&metricsContextCreateParams))) {
+          NVPW_CUDA_MetricsContext_Create(&metricsContextCreateParams))) {
     return {};
   }
 
@@ -426,8 +456,7 @@ CuptiProfilerResult evalMetricValues(
   NVPW_CounterData_GetNumRanges_Params getNumRangesParams = {
       NVPW_CounterData_GetNumRanges_Params_STRUCT_SIZE, nullptr};
   getNumRangesParams.pCounterDataImage = counterDataImage.data();
-  if (!NVPW_CALL(
-      NVPW_CounterData_GetNumRanges(&getNumRangesParams))) {
+  if (!NVPW_CALL(NVPW_CounterData_GetNumRanges(&getNumRangesParams))) {
     return {};
   }
 
@@ -442,14 +471,12 @@ CuptiProfilerResult evalMetricValues(
     metricNamePtrs.push_back(metric.c_str());
   }
 
-  CuptiProfilerResult result{
-    .metricNames = metricNames};
+  CuptiProfilerResult result{.metricNames = metricNames};
 
   for (size_t rangeIndex = 0; rangeIndex < getNumRangesParams.numRanges;
        ++rangeIndex) {
-
-    CuptiRangeMeasurement rangeData {
-    .rangeName = getRangeDescription(counterDataImage, rangeIndex)};
+    CuptiRangeMeasurement rangeData{
+        .rangeName = getRangeDescription(counterDataImage, rangeIndex)};
     rangeData.values.resize(metricNames.size());
 
     // First set Counter data image with current range
@@ -463,7 +490,6 @@ CuptiProfilerResult evalMetricValues(
     setCounterDataParams.rangeIndex = rangeIndex;
 
     NVPW_CALL(NVPW_MetricsContext_SetCounterData(&setCounterDataParams));
-
 
     // Now we can evaluate GPU metrics
     NVPW_MetricsContext_EvaluateToGpuValues_Params evalToGpuParams = {

@@ -8,12 +8,11 @@
 
 #pragma once
 
-
 #include <list>
 #include <memory>
 
-#include "libkineto.h"
 #include "CuptiActivityBuffer.h"
+#include "libkineto.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -22,7 +21,7 @@ struct ActivityBuffers {
   std::unique_ptr<CuptiActivityBufferMap> gpu;
 
   // Add a wrapper object to the underlying struct stored in the buffer
-  template<class T>
+  template <class T>
   const ITraceActivity& addActivityWrapper(const T& act) {
     wrappers_.push_back(std::make_unique<T>(act));
     return *wrappers_.back().get();

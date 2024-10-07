@@ -35,8 +35,8 @@
 #include <mutex>
 #include <ostream>
 #include <set>
-#include <string>
 #include <sstream>
+#include <string>
 #include <vector>
 
 // TODO(T90238193)
@@ -93,9 +93,9 @@ class Logger {
     return (!s[off] ? 57ull : (hash_rec(s, off + 1) * 293) ^ s[off]);
   }
   static constexpr const char* basename(const char* s, int off = 0) {
-    return !s[off]
-        ? s
-        : s[off] == '/' ? basename(&s[off + 1]) : basename(s, off + 1);
+    return !s[off]      ? s
+        : s[off] == '/' ? basename(&s[off + 1])
+                        : basename(s, off + 1);
   }
 
   static void setVerboseLogModules(const std::vector<std::string>& modules);
@@ -127,7 +127,9 @@ class Logger {
 
   static void setLoggerObserverOnDemand();
 
-  static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
+  static void addLoggerObserverAddMetadata(
+      const std::string& key,
+      const std::string& value);
 
  private:
   std::stringstream buf_;
@@ -177,12 +179,12 @@ class VoidLogger {
 #undef LOG_OCCURRENCES
 #endif
 
-#define LOG_IS_ON(severity) \
-  (severity >= libkineto::Logger::severityLevel())
+#define LOG_IS_ON(severity) (severity >= libkineto::Logger::severityLevel())
 
-#define LOG_IF(severity, condition) \
-  !(LOG_IS_ON(severity) && (condition)) ? (void)0 : libkineto::VoidLogger() & \
-    libkineto::Logger(severity, __LINE__, __FILE__).stream()
+#define LOG_IF(severity, condition)                                 \
+  !(LOG_IS_ON(severity) && (condition)) ? (void)0                   \
+                                        : libkineto::VoidLogger() & \
+          libkineto::Logger(severity, __LINE__, __FILE__).stream()
 
 #define LOG(severity) LOG_IF(severity, true)
 
@@ -206,7 +208,7 @@ template <uint64_t n>
 struct __to_constant__ {
   static const uint64_t val = n;
 };
-#define FILENAME_HASH                             \
+#define FILENAME_HASH                      \
   __to_constant__<libkineto::Logger::hash( \
       libkineto::Logger::basename(__FILE__))>::val
 #define VLOG_IS_ON(verbosity)                           \
@@ -226,10 +228,9 @@ struct __to_constant__ {
 #define PLOG(severity) \
   libkineto::Logger(severity, __LINE__, __FILE__, errno).stream()
 
-#define SET_LOG_SEVERITY_LEVEL(level) \
-  libkineto::Logger::setSeverityLevel(level)
+#define SET_LOG_SEVERITY_LEVEL(level) libkineto::Logger::setSeverityLevel(level)
 
-#define SET_LOG_VERBOSITY_LEVEL(level, modules)   \
+#define SET_LOG_VERBOSITY_LEVEL(level, modules) \
   libkineto::Logger::setVerboseLogLevel(level); \
   libkineto::Logger::setVerboseLogModules(modules)
 
@@ -264,7 +265,6 @@ struct __to_constant__ {
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_ADD_METADATA(key, value) \
   libkineto::Logger::addLoggerObserverAddMetadata(key, value)
-
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) \

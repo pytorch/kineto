@@ -15,10 +15,10 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "ActivityBuffers.h"
 #include "Config.h"
 #include "GenericTraceActivity.h"
 #include "output_base.h"
-#include "ActivityBuffers.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -32,9 +32,7 @@ class MemoryTraceLogger : public ActivityLogger {
 
   // Note: the caller of these functions should handle concurrency
   // i.e., these functions are not thread-safe
-  void handleDeviceInfo(
-      const DeviceInfo& info,
-      uint64_t time) override {
+  void handleDeviceInfo(const DeviceInfo& info, uint64_t time) override {
     deviceInfoList_.emplace_back(info, time);
   }
 
@@ -48,7 +46,7 @@ class MemoryTraceLogger : public ActivityLogger {
     // Handled separately
   }
 
-  template<class T>
+  template <class T>
   void addActivityWrapper(const T& act) {
     wrappers_.push_back(std::make_unique<T>(act));
     activities_.push_back(wrappers_.back().get());
@@ -72,7 +70,8 @@ class MemoryTraceLogger : public ActivityLogger {
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
       int64_t endTime,
-      std::unordered_map<std::string, std::vector<std::string>>& metadata) override {
+      std::unordered_map<std::string, std::vector<std::string>>& metadata)
+      override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
   }
@@ -111,8 +110,8 @@ class MemoryTraceLogger : public ActivityLogger {
   std::shared_ptr<ActivityLogger> getChromeLogger() {
     return chrome_logger_;
   }
- private:
 
+ private:
   std::unique_ptr<Config> config_;
   // Optimization: Remove unique_ptr by keeping separate vector per type
   std::vector<const ITraceActivity*> activities_;

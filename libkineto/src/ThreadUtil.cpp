@@ -10,16 +10,16 @@
 
 #ifndef _WIN32
 #include <pthread.h>
-#include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <unistd.h>
 #else // _WIN32
-#include <locale>
 #include <codecvt>
+#include <locale>
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
-#include <windows.h>
 #include <processthreadsapi.h>
+#include <windows.h>
 #undef ERROR
 #endif // _WIN32
 
@@ -37,7 +37,7 @@ namespace {
 thread_local int32_t _pid = 0;
 thread_local int32_t _tid = 0;
 thread_local int32_t _sysTid = 0;
-}
+} // namespace
 
 int32_t processId(bool cache) {
   int32_t pid = 0;
@@ -82,11 +82,11 @@ int32_t threadId() {
     pthread_threadid_np(nullptr, &tid);
     _tid = tid;
 #elif defined _WIN32
-  _tid = (int32_t)GetCurrentThreadId();
+    _tid = (int32_t)GetCurrentThreadId();
 #else
-  pthread_t pth = pthread_self();
-  int32_t* ptr = reinterpret_cast<int32_t*>(&pth);
-  _tid = *ptr;
+    pthread_t pth = pthread_self();
+    int32_t* ptr = reinterpret_cast<int32_t*>(&pth);
+    _tid = *ptr;
 #endif
   }
   return _tid;
@@ -96,24 +96,28 @@ namespace {
 static constexpr size_t kMaxThreadNameLength = 16;
 
 static constexpr const char* basename(const char* s, int off = 0) {
-  return !s[off]
-      ? s
-      : s[off] == '/' ? basename(&s[off + 1]) : basename(s, off + 1);
+  return !s[off]      ? s
+      : s[off] == '/' ? basename(&s[off + 1])
+                      : basename(s, off + 1);
 }
 #if defined(_WIN32)
-void *getKernel32Func(const char* procName) {
-  return reinterpret_cast<void*>(GetProcAddress(GetModuleHandleA("KERNEL32.DLL"), procName));
+void* getKernel32Func(const char* procName) {
+  return reinterpret_cast<void*>(
+      GetProcAddress(GetModuleHandleA("KERNEL32.DLL"), procName));
 }
 #endif
-}
+} // namespace
 
 bool setThreadName(const std::string& name) {
 #ifdef __APPLE__
   return 0 == pthread_setname_np(name.c_str());
 #elif defined _WIN32
-  // Per https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
+  // Per
+  // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
   // Use runtime linking to set thread description
-  static auto _SetThreadDescription = reinterpret_cast<decltype(&SetThreadDescription)>(getKernel32Func("SetThreadDescription"));
+  static auto _SetThreadDescription =
+      reinterpret_cast<decltype(&SetThreadDescription)>(
+          getKernel32Func("SetThreadDescription"));
   if (!_SetThreadDescription) {
     return false;
   }
@@ -131,16 +135,18 @@ std::string getThreadName() {
   char buf[kMaxThreadNameLength] = "";
   if (
 #ifndef __ANDROID__
-    pthread_getname_np(pthread_self(), buf, kMaxThreadNameLength) != 0
+      pthread_getname_np(pthread_self(), buf, kMaxThreadNameLength) != 0
 #else
-    prctl(PR_GET_NAME, buf, kMaxThreadNameLength) != 0
+      prctl(PR_GET_NAME, buf, kMaxThreadNameLength) != 0
 #endif
   ) {
     return "Unknown";
   }
   return buf;
 #else // _WIN32
-  static auto _GetThreadDescription = reinterpret_cast<decltype(&GetThreadDescription)>(getKernel32Func("GetThreadDescription"));
+  static auto _GetThreadDescription =
+      reinterpret_cast<decltype(&GetThreadDescription)>(
+          getKernel32Func("GetThreadDescription"));
   if (!_GetThreadDescription) {
     return "Unknown";
   }
@@ -215,7 +221,8 @@ std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors() {
   // Usually we want to skip the root process (PID 1), but when running
   // inside a container the process itself has PID 1, so we need to include it
   for (int i = 0; i <= kMaxParentPids && (i == 0 || curr_pid > 1); i++) {
-    std::pair<int32_t, std::string> ppid_and_comm = parentPidAndCommand(curr_pid);
+    std::pair<int32_t, std::string> ppid_and_comm =
+        parentPidAndCommand(curr_pid);
     pairs.push_back(std::make_pair(curr_pid, ppid_and_comm.second));
     curr_pid = ppid_and_comm.first;
   }

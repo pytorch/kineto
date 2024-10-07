@@ -16,10 +16,11 @@ using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 
 TEST(PercentileTest, Create) {
-  PercentileList pct = {{10, SampleValue(0)},
-                        {49, SampleValue(0)},
-                        {50, SampleValue(0)},
-                        {90, SampleValue(0)}};
+  PercentileList pct = {
+      {10, SampleValue(0)},
+      {49, SampleValue(0)},
+      {50, SampleValue(0)},
+      {90, SampleValue(0)}};
 
   percentiles<int>({0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}, pct);
   EXPECT_EQ(pct[0].second.getInt(), 10);
@@ -294,7 +295,9 @@ TEST(EventGroupSetTest, CollectSample) {
 
 class MockLogger : public SampleListener {
  public:
-  MOCK_METHOD3(handleSample, void(int device, const Sample& sample, bool from_new_version));
+  MOCK_METHOD3(
+      handleSample,
+      void(int device, const Sample& sample, bool from_new_version));
   MOCK_METHOD1(update, void(const Config& config));
 };
 
@@ -554,7 +557,9 @@ TEST_F(EventProfilerTest, ReportSample) {
   auto& logger = dynamic_cast<MockLogger&>(*loggers_[0]);
   EXPECT_CALL(logger, handleSample(0, _, _))
       .Times(1)
-      .WillOnce(Invoke([](int device, const Sample& sample, bool from_new_version) {
+      .WillOnce(Invoke([](int device,
+                          const Sample& sample,
+                          bool from_new_version) {
         // Sample will include all stats - logger must pick the
         // ones it wants.
         EXPECT_EQ(sample.stats.size(), 4);

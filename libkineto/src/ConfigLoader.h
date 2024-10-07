@@ -24,7 +24,7 @@
 #include "ILoggerObserver.h"
 
 namespace libkineto {
-  class LibkinetoApi;
+class LibkinetoApi;
 }
 
 namespace KINETO_NAMESPACE {
@@ -34,14 +34,9 @@ class IDaemonConfigLoader;
 
 class ConfigLoader {
  public:
-
   static ConfigLoader& instance();
 
-  enum ConfigKind {
-    ActivityProfiler = 0,
-    EventProfiler,
-    NumConfigKinds
-  };
+  enum ConfigKind { ActivityProfiler = 0, EventProfiler, NumConfigKinds };
 
   struct ConfigHandler {
     virtual ~ConfigHandler() {}
@@ -57,8 +52,8 @@ class ConfigLoader {
 
   void removeHandler(ConfigKind kind, ConfigHandler* handler) {
     std::lock_guard<std::mutex> lock(updateThreadMutex_);
-    auto it = std::find(
-        handlers_[kind].begin(), handlers_[kind].end(), handler);
+    auto it =
+        std::find(handlers_[kind].begin(), handlers_[kind].end(), handler);
     if (it != handlers_[kind].end()) {
       handlers_[kind].erase(it);
     }

@@ -18,9 +18,9 @@
 #include "ITraceActivity.h"
 
 namespace libkineto {
-  // previous declaration is struct so this one must be too.
-  struct CpuTraceBuffer;
-}
+// previous declaration is struct so this one must be too.
+struct CpuTraceBuffer;
+} // namespace libkineto
 
 namespace KINETO_NAMESPACE {
 
@@ -31,7 +31,6 @@ class Config;
 class ConfigLoader;
 
 class ActivityProfilerProxy : public ActivityProfilerInterface {
-
  public:
   ActivityProfilerProxy(bool cpuOnly, ConfigLoader& configLoader);
   ~ActivityProfilerProxy() override;
@@ -52,9 +51,8 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
       const std::set<ActivityType>& activityTypes,
       const std::string& configStr = "") override;
 
-  void toggleCollectionDynamic(
-    const bool enable) override;
-    
+  void toggleCollectionDynamic(const bool enable) override;
+
   void startTrace() override;
   void step() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
@@ -65,8 +63,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   void pushUserCorrelationId(uint64_t id) override;
   void popUserCorrelationId() override;
 
-  void transferCpuTrace(
-     std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
+  void transferCpuTrace(std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
 
   void addMetadata(const std::string& key, const std::string& value) override;
 
@@ -85,4 +82,4 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   ActivityProfilerController* controller_{nullptr};
 };
 
-} // namespace libkineto
+} // namespace KINETO_NAMESPACE

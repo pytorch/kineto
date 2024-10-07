@@ -44,25 +44,29 @@ uint32_t sz_memory_pool_KB;
 // Number of tensor pairs in the memory pool
 uint32_t num_tensor_pairs;
 
-void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
-    num_added_pairs) {
+void add_pairs_to_tensor_cache(
+    tensor_cache_args cache_args,
+    uint32_t num_added_pairs) {
   uint32_t num_current_pairs = num_tensor_pairs;
 
-  for (uint32_t i = num_current_pairs;
-      i < num_current_pairs + num_added_pairs; ++i) {
+  for (uint32_t i = num_current_pairs; i < num_current_pairs + num_added_pairs;
+       ++i) {
     uint32_t num_KB =
         rand() % (cache_args.sz_max_tensor_KB - cache_args.sz_min_tensor_KB) +
-            cache_args.sz_min_tensor_KB;
+        cache_args.sz_min_tensor_KB;
     uint32_t num_elements = num_KB * 1024 / sizeof(float);
 
     // Allocate device buffers
     p_memory_pool[i].n_elements = num_elements;
     checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_A, num_elements * sizeof(float)), __LINE__);
+        cudaMalloc(&p_memory_pool[i].d_A, num_elements * sizeof(float)),
+        __LINE__);
     checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_B, num_elements * sizeof(float)), __LINE__);
+        cudaMalloc(&p_memory_pool[i].d_B, num_elements * sizeof(float)),
+        __LINE__);
     checkCudaStatus(
-        cudaMalloc(&p_memory_pool[i].d_C, num_elements * sizeof(float)), __LINE__);
+        cudaMalloc(&p_memory_pool[i].d_C, num_elements * sizeof(float)),
+        __LINE__);
 
     // Initialize device buffers with random values
     uint32_t thread_blocks = num_elements / 256;
@@ -76,11 +80,18 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
         p_memory_pool[i].d_C, p_memory_pool[i].n_elements);
     CUDA_KERNEL_LAUNCH_CHECK();
 
-    // Throw a dice to see if we will do memcopy host to device for this one and use pinned memory
+    // Throw a dice to see if we will do memcopy host to device for this one and
+    // use pinned memory
     if (((float)(rand() % 32767) / 32767.0) < cache_args.prob_h2d) {
       p_memory_pool[i].b_copy_h2d = true;
-      checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-      // checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+      checkCudaStatus(
+          cudaHostAlloc(
+              &p_memory_pool[i].h_A,
+              num_elements * sizeof(float),
+              cudaHostAllocDefault),
+          __LINE__);
+      // checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_B, num_elements *
+      // sizeof(float), cudaHostAllocDefault), __LINE__);
       p_memory_pool[i].h_B = (float*)malloc(sizeof(float) * num_elements);
 
       simple_lcg_host(p_memory_pool[i].h_A, num_elements);
@@ -96,7 +107,12 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
       p_memory_pool[i].b_copy_d2h = true;
       // Make 50% of the D2H on pageable and 50% on pinned memory
       if (rand() % 2 == 1) {
-        checkCudaStatus(cudaHostAlloc(&p_memory_pool[i].h_C, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+        checkCudaStatus(
+            cudaHostAlloc(
+                &p_memory_pool[i].h_C,
+                num_elements * sizeof(float),
+                cudaHostAllocDefault),
+            __LINE__);
         p_memory_pool[i].h_C_pinned = true;
       } else {
         p_memory_pool[i].h_C = (float*)malloc(sizeof(float) * num_elements);
@@ -116,9 +132,8 @@ void add_pairs_to_tensor_cache(tensor_cache_args cache_args, uint32_t
 
 void generate_tensor_cache(tensor_cache_args cache_args) {
   // Estimate the number of tensor pairs
-  uint32_t num_pairs_max =
-      cache_args.sz_GPU_memory_KB / (3 * (cache_args.sz_max_tensor_KB -
-          cache_args.sz_min_tensor_KB) / 2);
+  uint32_t num_pairs_max = cache_args.sz_GPU_memory_KB /
+      (3 * (cache_args.sz_max_tensor_KB - cache_args.sz_min_tensor_KB) / 2);
 
   // Number of actual pairs
   num_tensor_pairs = 0;
@@ -128,8 +143,7 @@ void generate_tensor_cache(tensor_cache_args cache_args) {
 
   // Pre-allocate num_pairs_max and if num_tensor_pairs comes lower, well,
   // that's life
-  p_memory_pool =
-      (tensor_pair*)malloc(num_pairs_max * sizeof(tensor_pair));
+  p_memory_pool = (tensor_pair*)malloc(num_pairs_max * sizeof(tensor_pair));
 
   // Start creating the pool
   srand(RNG_SEED);
@@ -162,29 +176,38 @@ void re_initialize_buffer_values() {
   }
 }
 
-void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream) {
+void free_and_realloc_tensor_pairs(
+    tensor_pair* tensor_pair,
+    cudaStream_t stream) {
   checkCudaStatus(cudaFree(tensor_pair->d_A), __LINE__);
   checkCudaStatus(cudaFree(tensor_pair->d_B), __LINE__);
   checkCudaStatus(cudaFree(tensor_pair->d_C), __LINE__);
 
   // Allocate device buffers
   uint32_t num_elements = tensor_pair->n_elements;
-  checkCudaStatus(cudaMalloc(&tensor_pair->d_A,
-    num_elements * sizeof(float)),
-    __LINE__);
-  checkCudaStatus(cudaMalloc(&tensor_pair->d_B,
-    num_elements * sizeof(float)),
-    __LINE__);
-  checkCudaStatus(cudaMalloc(&tensor_pair->d_C,
-    num_elements * sizeof(float)),
-    __LINE__);
+  checkCudaStatus(
+      cudaMalloc(&tensor_pair->d_A, num_elements * sizeof(float)), __LINE__);
+  checkCudaStatus(
+      cudaMalloc(&tensor_pair->d_B, num_elements * sizeof(float)), __LINE__);
+  checkCudaStatus(
+      cudaMalloc(&tensor_pair->d_C, num_elements * sizeof(float)), __LINE__);
 
   if (tensor_pair->b_copy_h2d) {
     checkCudaStatus(cudaFreeHost(tensor_pair->h_A), __LINE__);
     checkCudaStatus(cudaFreeHost(tensor_pair->h_B), __LINE__);
 
-    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_A, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
-    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_B, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+    checkCudaStatus(
+        cudaHostAlloc(
+            &tensor_pair->h_A,
+            num_elements * sizeof(float),
+            cudaHostAllocDefault),
+        __LINE__);
+    checkCudaStatus(
+        cudaHostAlloc(
+            &tensor_pair->h_B,
+            num_elements * sizeof(float),
+            cudaHostAllocDefault),
+        __LINE__);
 
     simple_lcg_host(tensor_pair->h_A, num_elements);
     simple_lcg_host(tensor_pair->h_B, num_elements);
@@ -192,7 +215,12 @@ void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream
 
   if (tensor_pair->b_copy_d2h) {
     checkCudaStatus(cudaFreeHost(tensor_pair->h_C), __LINE__);
-    checkCudaStatus(cudaHostAlloc(&tensor_pair->h_C, num_elements * sizeof(float), cudaHostAllocDefault), __LINE__);
+    checkCudaStatus(
+        cudaHostAlloc(
+            &tensor_pair->h_C,
+            num_elements * sizeof(float),
+            cudaHostAllocDefault),
+        __LINE__);
     simple_lcg_host(tensor_pair->h_C, num_elements);
   }
 }
@@ -210,7 +238,7 @@ void free_tensor_cache() {
       }
 
       if (p_memory_pool[i].h_B) {
-        //checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
+        // checkCudaStatus(cudaFreeHost(p_memory_pool[i].h_B), __LINE__);
         free(p_memory_pool[i].h_B);
         p_memory_pool[i].h_B = NULL;
       }

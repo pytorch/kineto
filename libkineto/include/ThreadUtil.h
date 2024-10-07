@@ -15,12 +15,12 @@
 
 namespace libkineto {
 
-int32_t systemThreadId(bool cache=true);
+int32_t systemThreadId(bool cache = true);
 int32_t threadId();
 bool setThreadName(const std::string& name);
 std::string getThreadName();
 
-int32_t processId(bool cache=true);
+int32_t processId(bool cache = true);
 std::string processName(int32_t pid);
 
 // Return a list of pids and process names for the current process

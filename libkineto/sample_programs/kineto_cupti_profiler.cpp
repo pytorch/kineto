@@ -8,10 +8,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <chrono>
-#include <thread>
 #include <iostream>
+#include <string>
+#include <thread>
 
 #include <libkineto.h>
 
@@ -27,21 +27,22 @@ int main() {
 
   // Kineto config
   std::set<libkineto::ActivityType> types_cupti_prof = {
-    libkineto::ActivityType::CUDA_PROFILER_RANGE,
+      libkineto::ActivityType::CUDA_PROFILER_RANGE,
   };
 
-  //libkineto_init(false, true);
+  // libkineto_init(false, true);
   libkineto::api().initProfilerIfRegistered();
 
   // Use a special kineto__cuda_core_flop metric that counts individual
-  // CUDA core floating point instructions by operation type (fma,fadd,fmul,dadd ...)
-  // You can also use kineto__tensor_core_insts or any metric
-  // or any metric defined by CUPTI Profiler below
+  // CUDA core floating point instructions by operation type (fma,fadd,fmul,dadd
+  // ...) You can also use kineto__tensor_core_insts or any metric or any metric
+  // defined by CUPTI Profiler below
   //   https://docs.nvidia.com/cupti/Cupti/r_main.html#r_profiler
 
-  std::string profiler_config = "ACTIVITIES_WARMUP_PERIOD_SECS=0\n "
-    "CUPTI_PROFILER_METRICS=kineto__cuda_core_flops\n "
-    "CUPTI_PROFILER_ENABLE_PER_KERNEL=true";
+  std::string profiler_config =
+      "ACTIVITIES_WARMUP_PERIOD_SECS=0\n "
+      "CUPTI_PROFILER_METRICS=kineto__cuda_core_flops\n "
+      "CUPTI_PROFILER_ENABLE_PER_KERNEL=true";
 
   auto& profiler = libkineto::api().activityProfiler();
   profiler.prepareTrace(types_cupti_prof, profiler_config);
@@ -55,7 +56,8 @@ int main() {
   basicMemcpyFromDevice();
 
   auto trace = profiler.stopTrace();
-  std::cout << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
+  std::cout << "Stopped and processed trace. Got "
+            << trace->activities()->size() << " activities.";
   trace->save(kFileName);
   return 0;
 }

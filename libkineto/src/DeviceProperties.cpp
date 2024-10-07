@@ -13,8 +13,8 @@
 #include <vector>
 
 #if defined(HAS_CUPTI)
-#include <cuda_runtime.h>
 #include <cuda_occupancy.h>
+#include <cuda_runtime.h>
 #elif defined(HAS_ROCTRACER)
 #include <hip/hip_runtime.h>
 #endif
@@ -68,19 +68,25 @@ static const std::vector<gpuDeviceProp>& deviceProps() {
 }
 
 static const std::string createDevicePropertiesJson(
-    size_t id, const gpuDeviceProp& props) {
+    size_t id,
+    const gpuDeviceProp& props) {
   std::string gpuSpecific = "";
 #if defined(HAS_CUPTI)
-  gpuSpecific = fmt::format(R"JSON(
+  gpuSpecific = fmt::format(
+      R"JSON(
     , "regsPerMultiprocessor": {}, "sharedMemPerBlockOptin": {}, "sharedMemPerMultiprocessor": {})JSON",
-    props.regsPerMultiprocessor, props.sharedMemPerBlockOptin, props.sharedMemPerMultiprocessor);
+      props.regsPerMultiprocessor,
+      props.sharedMemPerBlockOptin,
+      props.sharedMemPerMultiprocessor);
 #elif defined(HAS_ROCTRACER)
-  gpuSpecific = fmt::format(R"JSON(
+  gpuSpecific = fmt::format(
+      R"JSON(
     , "maxSharedMemoryPerMultiProcessor": {})JSON",
-    props.maxSharedMemoryPerMultiProcessor);
+      props.maxSharedMemoryPerMultiProcessor);
 #endif
 
-  return fmt::format(R"JSON(
+  return fmt::format(
+      R"JSON(
     {{
       "id": {}, "name": "{}", "totalGlobalMem": {},
       "computeMajor": {}, "computeMinor": {},
@@ -88,11 +94,17 @@ static const std::string createDevicePropertiesJson(
       "regsPerBlock": {}, "warpSize": {},
       "sharedMemPerBlock": {}, "numSms": {}{}
     }})JSON",
-      id, props.name, props.totalGlobalMem,
-      props.major, props.minor,
-      props.maxThreadsPerBlock, props.maxThreadsPerMultiProcessor,
-      props.regsPerBlock,  props.warpSize,
-      props.sharedMemPerBlock, props.multiProcessorCount,
+      id,
+      props.name,
+      props.totalGlobalMem,
+      props.major,
+      props.minor,
+      props.maxThreadsPerBlock,
+      props.maxThreadsPerMultiProcessor,
+      props.regsPerBlock,
+      props.warpSize,
+      props.sharedMemPerBlock,
+      props.multiProcessorCount,
       gpuSpecific);
 }
 
@@ -111,9 +123,8 @@ const std::string& devicePropertiesJson() {
 }
 
 int smCount(uint32_t deviceId) {
-  const std::vector<gpuDeviceProp> &props = deviceProps();
-  return deviceId >= props.size() ? 0 :
-     props[deviceId].multiProcessorCount;
+  const std::vector<gpuDeviceProp>& props = deviceProps();
+  return deviceId >= props.size() ? 0 : props[deviceId].multiProcessorCount;
 }
 #else
 const std::string& devicePropertiesJson() {
@@ -129,13 +140,12 @@ int smCount(uint32_t deviceId) {
 #ifdef HAS_CUPTI
 float blocksPerSm(const CUpti_ActivityKernel4& kernel) {
   return (kernel.gridX * kernel.gridY * kernel.gridZ) /
-      (float) smCount(kernel.deviceId);
+      (float)smCount(kernel.deviceId);
 }
 
 float warpsPerSm(const CUpti_ActivityKernel4& kernel) {
   constexpr int threads_per_warp = 32;
-  return blocksPerSm(kernel) *
-      (kernel.blockX * kernel.blockY * kernel.blockZ) /
+  return blocksPerSm(kernel) * (kernel.blockX * kernel.blockY * kernel.blockZ) /
       threads_per_warp;
 }
 
@@ -144,7 +154,7 @@ float kernelOccupancy(const CUpti_ActivityKernel4& kernel) {
   int sm_count = smCount(kernel.deviceId);
   if (sm_count) {
     blocks_per_sm =
-        (kernel.gridX * kernel.gridY * kernel.gridZ) / (float) sm_count;
+        (kernel.gridX * kernel.gridY * kernel.gridZ) / (float)sm_count;
   }
   return kernelOccupancy(
       kernel.deviceId,
@@ -168,7 +178,7 @@ float kernelOccupancy(
     float blocksPerSm) {
   // Calculate occupancy
   float occupancy = -1.0;
-  const std::vector<cudaDeviceProp> &props = deviceProps();
+  const std::vector<cudaDeviceProp>& props = deviceProps();
   if (deviceId < props.size()) {
     cudaOccFuncAttributes occFuncAttr;
     occFuncAttr.maxThreadsPerBlock = INT_MAX;
@@ -183,17 +193,21 @@ float kernelOccupancy(
     cudaOccResult occ_result;
     cudaOccDeviceProp prop(props[deviceId]);
     cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
-          &occ_result, &prop, &occFuncAttr, &occDeviceState,
-          blockSize, dynamicSmemSize);
+        &occ_result,
+        &prop,
+        &occFuncAttr,
+        &occDeviceState,
+        blockSize,
+        dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
       if (occ_result.activeBlocksPerMultiprocessor < blocksPerSm) {
         blocksPerSm = occ_result.activeBlocksPerMultiprocessor;
       }
       occupancy = blocksPerSm * blockSize /
-          (float) props[deviceId].maxThreadsPerMultiProcessor;
+          (float)props[deviceId].maxThreadsPerMultiProcessor;
     } else {
-      LOG_EVERY_N(ERROR, 1000) << "Failed to calculate occupancy, status = "
-                               << status;
+      LOG_EVERY_N(ERROR, 1000)
+          << "Failed to calculate occupancy, status = " << status;
     }
   }
   return occupancy;

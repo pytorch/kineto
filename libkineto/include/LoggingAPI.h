@@ -9,6 +9,6 @@
 #pragma once
 
 namespace libkineto {
-  int getLogSeverityLevel();
-  void setLogSeverityLevel(int level);
+int getLogSeverityLevel();
+void setLogSeverityLevel(int level);
 } // namespace libkineto

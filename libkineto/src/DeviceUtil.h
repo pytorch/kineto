@@ -15,18 +15,18 @@
 #include <cuda_runtime.h>
 #include <cupti.h>
 
-#define CUDA_CALL(call)                                      \
-  [&]() -> cudaError_t {                                     \
-    cudaError_t _status_ = call;                             \
-    if (_status_ != cudaSuccess) {                           \
-      const char* _errstr_ = cudaGetErrorString(_status_);   \
-      LOG(WARNING) << fmt::format(                           \
-          "function {} failed with error {} ({})",           \
-          #call,                                             \
-          _errstr_,                                          \
-          (int)_status_);                                    \
-    }                                                        \
-    return _status_;                                         \
+#define CUDA_CALL(call)                                    \
+  [&]() -> cudaError_t {                                   \
+    cudaError_t _status_ = call;                           \
+    if (_status_ != cudaSuccess) {                         \
+      const char* _errstr_ = cudaGetErrorString(_status_); \
+      LOG(WARNING) << fmt::format(                         \
+          "function {} failed with error {} ({})",         \
+          #call,                                           \
+          _errstr_,                                        \
+          (int)_status_);                                  \
+    }                                                      \
+    return _status_;                                       \
   }()
 
 #define CUPTI_CALL(call)                           \
@@ -48,17 +48,17 @@
 #include <hip/hip_runtime.h>
 #include <roctracer.h>
 
-#define CUDA_CALL(call)                                     \
-  {                                                         \
-    hipError_t _status_ = call;                             \
-    if (_status_ != hipSuccess) {                           \
-      const char* _errstr_ = hipGetErrorString(_status_);   \
-      LOG(WARNING) << fmt::format(                          \
-          "function {} failed with error {} ({})",          \
-          #call,                                            \
-          _errstr_,                                         \
-          (int)_status_);                                   \
-    }                                                       \
+#define CUDA_CALL(call)                                   \
+  {                                                       \
+    hipError_t _status_ = call;                           \
+    if (_status_ != hipSuccess) {                         \
+      const char* _errstr_ = hipGetErrorString(_status_); \
+      LOG(WARNING) << fmt::format(                        \
+          "function {} failed with error {} ({})",        \
+          #call,                                          \
+          _errstr_,                                       \
+          (int)_status_);                                 \
+    }                                                     \
   }
 
 #define CUPTI_CALL(call) call

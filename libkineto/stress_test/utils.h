@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <cuda_runtime_api.h>
 #include <cuda.h>
+#include <cuda_runtime_api.h>
 
 #include <stdexcept>
 #include <string>
@@ -47,22 +47,32 @@ inline void checkCudaStatus(cudaError_t status, int lineNumber = -1) {
 
 #define CUDA_KERNEL_LAUNCH_CHECK() CUDA_CHECK(cudaGetLastError())
 
-#define MPICHECK(cmd) do {                              \
-  int e = cmd;                                          \
-  if( e != MPI_SUCCESS ) {                              \
-    printf("PID %d --> Failed: MPI error %s:%d '%d'\n", \
-        getpid(), __FILE__,__LINE__, e);                \
-    exit(EXIT_FAILURE);                                 \
-  }                                                     \
-} while(0)
+#define MPICHECK(cmd)                                  \
+  do {                                                 \
+    int e = cmd;                                       \
+    if (e != MPI_SUCCESS) {                            \
+      printf(                                          \
+          "PID %d --> Failed: MPI error %s:%d '%d'\n", \
+          getpid(),                                    \
+          __FILE__,                                    \
+          __LINE__,                                    \
+          e);                                          \
+      exit(EXIT_FAILURE);                              \
+    }                                                  \
+  } while (0)
 
-#define NCCLCHECK(cmd) do {                                 \
-  ncclResult_t r = cmd;                                     \
-  if (r!= ncclSuccess) {                                    \
-    printf("PID %d --> Failed, NCCL error %s:%d '%s'\n",    \
-        getpid(), __FILE__,__LINE__,ncclGetErrorString(r)); \
-    exit(EXIT_FAILURE);                                     \
-  }                                                         \
-} while(0)
+#define NCCLCHECK(cmd)                                  \
+  do {                                                  \
+    ncclResult_t r = cmd;                               \
+    if (r != ncclSuccess) {                             \
+      printf(                                           \
+          "PID %d --> Failed, NCCL error %s:%d '%s'\n", \
+          getpid(),                                     \
+          __FILE__,                                     \
+          __LINE__,                                     \
+          ncclGetErrorString(r));                       \
+      exit(EXIT_FAILURE);                               \
+    }                                                   \
+  } while (0)
 
-} //namespace kineto_stress_test
+} // namespace kineto_stress_test

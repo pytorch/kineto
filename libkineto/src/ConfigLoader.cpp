@@ -26,7 +26,6 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-
 constexpr char kConfigFileEnvVar[] = "KINETO_CONFIG";
 #ifdef __linux__
 constexpr char kConfigFile[] = "/etc/libkineto.conf";
@@ -90,7 +89,9 @@ static void setupSignalHandler(bool enableSigUsr2) {
 }
 
 // return an empty string if reading gets any errors. Otherwise a config string.
-static std::string readConfigFromConfigFile(const char* filename, bool verbose=true) {
+static std::string readConfigFromConfigFile(
+    const char* filename,
+    bool verbose = true) {
   // Read whole file into a string.
   std::ifstream file(filename);
   std::string conf;
@@ -109,7 +110,8 @@ static std::string readConfigFromConfigFile(const char* filename, bool verbose=t
 
 static std::function<std::unique_ptr<IDaemonConfigLoader>()>&
 daemonConfigLoaderFactory() {
-  static std::function<std::unique_ptr<IDaemonConfigLoader>()> factory = nullptr;
+  static std::function<std::unique_ptr<IDaemonConfigLoader>()> factory =
+      nullptr;
   return factory;
 }
 
@@ -144,12 +146,11 @@ int ConfigLoader::contextCountForGpu(uint32_t device) {
 
 ConfigLoader::ConfigLoader()
     : configUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
-      // on-demand config will be overwritten by the value read from the regular config
-      // so the initial value is not important
+      // on-demand config will be overwritten by the value read from the regular
+      // config so the initial value is not important
       onDemandConfigUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
       stopFlag_(false),
-      onDemandSignal_(false) {
-}
+      onDemandSignal_(false) {}
 
 void ConfigLoader::startThread() {
   if (!updateThread_) {
@@ -218,7 +219,7 @@ const char* ConfigLoader::customConfigFileName() {
   return getenv(kConfigFileEnvVar);
 }
 
-const std::string ConfigLoader::getConfString(){
+const std::string ConfigLoader::getConfString() {
   return readConfigFromConfigFile(configFileName(), false);
 }
 
@@ -241,8 +242,7 @@ void ConfigLoader::updateBaseConfig() {
     }
     setupSignalHandler(config_->sigUsr2Enabled());
     SET_LOG_VERBOSITY_LEVEL(
-        config_->verboseLogLevel(),
-        config_->verboseLogModules());
+        config_->verboseLogLevel(), config_->verboseLogModules());
     VLOG(0) << "Detected base config change";
   }
 }
@@ -250,11 +250,11 @@ void ConfigLoader::updateBaseConfig() {
 void ConfigLoader::configureFromSignal(
     time_point<system_clock> now,
     Config& config) {
-  LOG(INFO) << "Received on-demand profiling signal, "
-            << "reading config from " << kOnDemandConfigFile;
+  LOG(INFO) << "Received on-demand profiling signal, " << "reading config from "
+            << kOnDemandConfigFile;
   // Reset start time to 0 in order to compute new default start time
-  const std::string config_str = "PROFILE_START_TIME=0\n"
-      + readConfigFromConfigFile(kOnDemandConfigFile);
+  const std::string config_str =
+      "PROFILE_START_TIME=0\n" + readConfigFromConfigFile(kOnDemandConfigFile);
   config.parse(config_str);
   config.setSignalDefaults();
   notifyHandlers(config);
@@ -287,16 +287,19 @@ void ConfigLoader::updateConfigThread() {
   // Besides, on-demand update frequency can be configured via base config.
 
   // initialze with some time buffer in the past
-  auto prev_config_load_time = system_clock::now() - configUpdateIntervalSecs_ * 2;
+  auto prev_config_load_time =
+      system_clock::now() - configUpdateIntervalSecs_ * 2;
   auto prev_on_demand_load_time = prev_config_load_time;
   auto onDemandConfig = std::make_unique<Config>();
 
   // This can potentially sleep for long periods of time, so allow
   // the destructor to wake it to avoid a 5-minute long destruct period.
   for (;;) {
-    auto interval = std::min(
-        configUpdateIntervalSecs_ + prev_config_load_time,
-        onDemandConfigUpdateIntervalSecs_ + prev_on_demand_load_time) - system_clock::now();
+    auto interval =
+        std::min(
+            configUpdateIntervalSecs_ + prev_config_load_time,
+            onDemandConfigUpdateIntervalSecs_ + prev_on_demand_load_time) -
+        system_clock::now();
     if (interval.count() > 0) {
       std::unique_lock<std::mutex> lock(updateThreadMutex_);
       updateThreadCondVar_.wait_for(lock, interval);
@@ -307,13 +310,15 @@ void ConfigLoader::updateConfigThread() {
     auto now = system_clock::now();
     if (now > prev_config_load_time + configUpdateIntervalSecs_) {
       updateBaseConfig();
-      onDemandConfigUpdateIntervalSecs_ = config_->onDemandConfigUpdateIntervalSecs();
+      onDemandConfigUpdateIntervalSecs_ =
+          config_->onDemandConfigUpdateIntervalSecs();
       prev_config_load_time = now;
     }
     if (onDemandSignal_.exchange(false)) {
       onDemandConfig = config_->clone();
       configureFromSignal(now, *onDemandConfig);
-    } else if (now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
+    } else if (
+        now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
       onDemandConfig = std::make_unique<Config>();
       configureFromDaemon(now, *onDemandConfig);
       prev_on_demand_load_time = now;

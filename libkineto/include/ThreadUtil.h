@@ -27,4 +27,8 @@ std::string processName(int32_t pid);
 // and its parents.
 std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors();
 
+// Resets all cached Thread local state, this must be done on
+// forks to prevent stale values from being retained.
+void resetTLS();
+
 } // namespace libkineto

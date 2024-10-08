@@ -121,9 +121,6 @@ extern "C" {
 
 // Return true if no CUPTI errors occurred during init
 void libkineto_init(bool cpuOnly, bool logOnError) {
-  // register fork handler
-  pthread_atfork(nullptr, nullptr, &resetTLS);
-
   // Start with initializing the log level
   const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
   if (logLevelEnv) {

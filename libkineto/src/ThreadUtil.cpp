@@ -39,6 +39,14 @@ thread_local int32_t _tid = 0;
 thread_local int32_t _sysTid = 0;
 } // namespace
 
+// Resets all cached Thread local state, this must be done on
+// forks to prevent stale values from being retained.
+void resetTLS() {
+  _pid = 0;
+  _tid = 0;
+  _sysTid = 0;
+}
+
 int32_t processId(bool cache) {
   int32_t pid = 0;
   if (!_pid) {

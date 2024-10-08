@@ -172,7 +172,9 @@ void ConfigLoader::stopThread() {
       std::lock_guard<std::mutex> lock(updateThreadMutex_);
       updateThreadCondVar_.notify_one();
     }
-    updateThread_->join();
+    if (updateThread_->joinable()) {
+      updateThread_->join();
+    }
     updateThread_ = nullptr;
   }
 }

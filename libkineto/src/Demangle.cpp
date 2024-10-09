@@ -9,8 +9,17 @@
 #include "Demangle.h"
 
 #ifndef _MSC_VER
-#include <cxxabi.h>
+
+#if defined(__clang__)
+_Pragma("GCC diagnostic push");
+_Pragma("GCC diagnostic ignored \"-Wdeprecated-dynamic-exception-spec\"");
 #endif
+#include <cxxabi.h>
+#if defined(__clang__)
+_Pragma("GCC diagnostic pop");
+#endif
+#endif // _MSC_VER
+
 #include <string.h>
 #include <string>
 

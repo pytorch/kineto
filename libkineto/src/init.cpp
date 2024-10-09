@@ -16,6 +16,7 @@
 #include "ConfigLoader.h"
 #include "DaemonConfigLoader.h"
 #include "DeviceUtil.h"
+#include "ThreadUtil.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
 #include "CuptiCallbackApi.h"

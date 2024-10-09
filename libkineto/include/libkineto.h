@@ -117,6 +117,10 @@ class LibkinetoApi {
     suppressLibkinetoLogMessages();
   }
 
+  void resetKinetoTLS() {
+    resetTLS();
+  }
+
   // Provides access to profier configuration manaegement
   ConfigLoader& configLoader() {
     return configLoader_;

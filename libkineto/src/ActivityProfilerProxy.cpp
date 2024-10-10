@@ -12,6 +12,7 @@
 #include "ActivityProfilerController.h"
 #include "Config.h"
 #include "Logger.h"
+#include "ThreadUtil.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -31,6 +32,7 @@ void ActivityProfilerProxy::init() {
 }
 
 void ActivityProfilerProxy::scheduleTrace(const std::string& configStr) {
+  resetTLS();
   Config config;
   config.parse(configStr);
   controller_->scheduleTrace(config);

@@ -92,6 +92,14 @@ int32_t threadId() {
   return _tid;
 }
 
+// Resets all cached Thread local state, this must be done on
+// forks to prevent stale values from being retained.
+void resetTLS() {
+  _pid = 0;
+  _tid = 0;
+  _sysTid = 0;
+}
+
 namespace {
 static constexpr size_t kMaxThreadNameLength = 16;
 

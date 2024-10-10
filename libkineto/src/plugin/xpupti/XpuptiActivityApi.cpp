@@ -50,10 +50,8 @@ void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
-static bool nextActivityRecord(
-    uint8_t* buffer,
-    size_t valid_size,
-    Pti_Activity*& record) {
+static bool
+nextActivityRecord(uint8_t* buffer, size_t valid_size, Pti_Activity*& record) {
 #ifdef HAS_XPUPTI
   pti_result status = ptiViewGetNextRecord(buffer, valid_size, &record);
   if (status != pti_result::PTI_SUCCESS) {
@@ -67,7 +65,9 @@ void XpuptiActivityApi::setMaxBufferSize(int size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
-void XpuptiActivityApi::bufferRequestedTrampoline(uint8_t** buffer, size_t* size) {
+void XpuptiActivityApi::bufferRequestedTrampoline(
+    uint8_t** buffer,
+    size_t* size) {
   singleton().bufferRequested(buffer, size);
 }
 

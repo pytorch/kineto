@@ -45,7 +45,7 @@ class Config : public AbstractConfig {
 
   bool activityProfilerEnabled() const {
     return activityProfilerEnabled_ ||
-      activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
+        activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
   }
 
   // Log activitiy trace to this file
@@ -353,7 +353,7 @@ class Config : public AbstractConfig {
 
   void printActivityProfilerConfig(std::ostream& s) const override;
   void setActivityDependentConfig() override;
-  
+
   void validate(const std::chrono::time_point<std::chrono::system_clock>&
                     fallbackProfileStartTime) override;
 
@@ -369,7 +369,7 @@ class Config : public AbstractConfig {
   // correct destruction order can be ensured.
   static std::shared_ptr<void> getStaticObjectsLifetimeHandle();
 
-  bool getTSCTimestampFlag() const{
+  bool getTSCTimestampFlag() const {
     return useTSCTimestamp_;
   }
 
@@ -447,7 +447,8 @@ class Config : public AbstractConfig {
   bool activitiesCudaSyncWaitEvents_;
 
   // Enable Profiler Config Options
-  // Temporarily disable shape collection until we re-roll out the feature for on-demand cases
+  // Temporarily disable shape collection until we re-roll out the feature for
+  // on-demand cases
   bool enableReportInputShapes_{false};
   bool enableProfileMemory_{false};
   bool enableWithStack_{false};
@@ -501,5 +502,9 @@ class Config : public AbstractConfig {
 };
 
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
+
+#if __linux__
+bool isDaemonEnvVarSet();
+#endif
 
 } // namespace libkineto

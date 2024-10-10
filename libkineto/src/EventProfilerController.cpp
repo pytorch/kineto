@@ -54,8 +54,7 @@ vector<unique_ptr<SampleListener>> makeLoggers(const Config& config) {
   return loggers;
 }
 
-vector<unique_ptr<SampleListener>> makeOnDemandLoggers(
-    const Config& config) {
+vector<unique_ptr<SampleListener>> makeOnDemandLoggers(const Config& config) {
   vector<unique_ptr<SampleListener>> loggers;
   for (const auto& factory : onDemandLoggerFactories()) {
     loggers.push_back(factory(config));
@@ -69,20 +68,18 @@ vector<unique_ptr<SampleListener>>& loggers(const Config& config) {
   return res;
 }
 
-vector<unique_ptr<SampleListener>>& onDemandLoggers(
-    const Config& config) {
+vector<unique_ptr<SampleListener>>& onDemandLoggers(const Config& config) {
   static auto res = makeOnDemandLoggers(config);
   return res;
 }
 
-} // anon namespace
+} // namespace
 
 // Keep an eye on profiling threads.
 // We've observed deadlocks in Cuda11 in libcuda / libcupti..
 namespace detail {
 
 class HeartbeatMonitor {
-
  public:
   ~HeartbeatMonitor() {
     stopMonitoring();
@@ -119,7 +116,7 @@ class HeartbeatMonitor {
 
   void monitorLoop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while(!stopMonitor_) {
+    while (!stopMonitor_) {
       auto cv_status = condVar_.wait_for(lock, seconds(period_));
       // Don't perform check on spurious wakeup or on notify
       if (cv_status == std::cv_status::timeout) {
@@ -139,8 +136,8 @@ class HeartbeatMonitor {
     if (!monitorThread_) {
       VLOG(0) << "Starting monitoring thread";
       stopMonitor_ = false;
-      monitorThread_ = std::make_unique<std::thread>(
-          &HeartbeatMonitor::monitorLoop, this);
+      monitorThread_ =
+          std::make_unique<std::thread>(&HeartbeatMonitor::monitorLoop, this);
     }
   }
 
@@ -183,16 +180,17 @@ void reportLateSample(
 }
 
 void configureHeartbeatMonitor(
-    detail::HeartbeatMonitor& monitor, const Config& base, const Config* onDemand) {
-  seconds base_period =
-      base.eventProfilerHeartbeatMonitorPeriod();
-  seconds on_demand_period = !onDemand ? seconds(0) :
-      onDemand->eventProfilerHeartbeatMonitorPeriod();
+    detail::HeartbeatMonitor& monitor,
+    const Config& base,
+    const Config* onDemand) {
+  seconds base_period = base.eventProfilerHeartbeatMonitorPeriod();
+  seconds on_demand_period =
+      !onDemand ? seconds(0) : onDemand->eventProfilerHeartbeatMonitorPeriod();
   monitor.setPeriod(
       on_demand_period > seconds(0) ? on_demand_period : base_period);
 }
 
-} // anon namespace
+} // namespace
 
 void EventProfilerController::addLoggerFactory(
     std::function<unique_ptr<SampleListener>(const Config&)> factory) {
@@ -210,10 +208,8 @@ EventProfilerController::EventProfilerController(
     detail::HeartbeatMonitor& heartbeatMonitor)
     : configLoader_(configLoader), heartbeatMonitor_(heartbeatMonitor) {
   auto cupti_events = std::make_unique<CuptiEventApi>(context);
-  auto cupti_metrics =
-      std::make_unique<CuptiMetricApi>(cupti_events->device());
-  configLoader_.addHandler(
-      ConfigLoader::ConfigKind::EventProfiler, this);
+  auto cupti_metrics = std::make_unique<CuptiMetricApi>(cupti_events->device());
+  configLoader_.addHandler(ConfigLoader::ConfigKind::EventProfiler, this);
   auto config = configLoader.getConfigCopy();
   profiler_ = std::make_unique<EventProfiler>(
       std::move(cupti_events),
@@ -230,8 +226,7 @@ EventProfilerController::~EventProfilerController() {
     stopRunloop_ = true;
     profilerThread_->join();
   }
-  configLoader_.removeHandler(
-      ConfigLoader::ConfigKind::EventProfiler, this);
+  configLoader_.removeHandler(ConfigLoader::ConfigKind::EventProfiler, this);
   VLOG(0) << "Stopped event profiler";
 }
 
@@ -247,8 +242,8 @@ void EventProfilerController::start(CUcontext ctx, ConfigLoader& configLoader) {
   // before everything the controller accesses gets destroyed.
   // Hence access the profilerMap after initialization of the controller.
   started() = true;
-  auto controller = unique_ptr<EventProfilerController>(
-      new EventProfilerController(
+  auto controller =
+      unique_ptr<EventProfilerController>(new EventProfilerController(
           ctx, configLoader, detail::HeartbeatMonitor::instance()));
   profilerMap()[ctx] = std::move(controller);
 }
@@ -303,8 +298,8 @@ void EventProfilerController::profilerLoop() {
   }
 
   if (!profiler_->setContinuousMode()) {
-    VLOG(0) << "Continuous mode not supported for GPU "
-            << profiler_->device() << ". Not starting Event Profiler.";
+    VLOG(0) << "Continuous mode not supported for GPU " << profiler_->device()
+            << ". Not starting Event Profiler.";
     return;
   }
 
@@ -353,7 +348,7 @@ void EventProfilerController::profilerLoop() {
         profiler_->configure(*config, on_demand_config.get());
       } catch (const std::exception& ex) {
         LOG(ERROR) << "Encountered error while configuring event profiler: "
-            << ex.what();
+                   << ex.what();
         // Exit profiling entirely when encountering an error here
         // as it indicates a serious problem or bug.
         break;
@@ -387,7 +382,7 @@ void EventProfilerController::profilerLoop() {
     }
     int sleep_time = duration_cast<milliseconds>(now - start_sleep).count();
 
-    if(stopRunloop_)
+    if (stopRunloop_)
       break;
 
     auto start_sample = now;

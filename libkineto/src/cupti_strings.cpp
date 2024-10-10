@@ -10,8 +10,7 @@
 
 namespace libkineto {
 
-const char* memcpyKindString(
-    CUpti_ActivityMemcpyKind kind) {
+const char* memcpyKindString(CUpti_ActivityMemcpyKind kind) {
   switch (kind) {
     case CUPTI_ACTIVITY_MEMCPY_KIND_HTOD:
       return "HtoD";
@@ -39,8 +38,7 @@ const char* memcpyKindString(
   return "<unknown>";
 }
 
-const char* memoryKindString(
-    CUpti_ActivityMemoryKind kind) {
+const char* memoryKindString(CUpti_ActivityMemoryKind kind) {
   switch (kind) {
     case CUPTI_ACTIVITY_MEMORY_KIND_UNKNOWN:
       return "Unknown";
@@ -65,8 +63,7 @@ const char* memoryKindString(
   }
 }
 
-const char* overheadKindString(
-    CUpti_ActivityOverheadKind kind) {
+const char* overheadKindString(CUpti_ActivityOverheadKind kind) {
   switch (kind) {
     case CUPTI_ACTIVITY_OVERHEAD_UNKNOWN:
       return "Unknown";
@@ -84,8 +81,6 @@ const char* overheadKindString(
       return "Unrecognized";
   }
 }
-
-
 
 static const char* runtimeCbidNames[] = {
     "INVALID",
@@ -533,8 +528,7 @@ static const char* runtimeCbidNames[] = {
     "cudaStreamGetId_ptsz",
     "cudaGraphInstantiate",
     "cuda444",
-    "SIZE"
-};
+    "SIZE"};
 
 const char* runtimeCbidName(CUpti_CallbackId cbid) {
   constexpr int names_size =
@@ -545,10 +539,10 @@ const char* runtimeCbidName(CUpti_CallbackId cbid) {
   return runtimeCbidNames[cbid];
 }
 
-// From https://docs.nvidia.com/cupti/modules.html#group__CUPTI__ACTIVITY__API_1g80e1eb47615e31021f574df8ebbe5d9a
+// From
+// https://docs.nvidia.com/cupti/modules.html#group__CUPTI__ACTIVITY__API_1g80e1eb47615e31021f574df8ebbe5d9a
 //   enum CUpti_ActivitySynchronizationType
-const char* syncTypeString(
-    CUpti_ActivitySynchronizationType kind) {
+const char* syncTypeString(CUpti_ActivitySynchronizationType kind) {
   switch (kind) {
     case CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE:
       return "Event Sync";

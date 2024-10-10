@@ -51,10 +51,10 @@ struct DeviceInfo {
       const std::string& name,
       const std::string& label)
       : id(id), sortIndex(sortIndex), name(name), label(label) {}
-  int64_t id;               // process id
-  int64_t sortIndex;        // position in trace view
-  const std::string name;   // process name
-  const std::string label;  // device label
+  int64_t id; // process id
+  int64_t sortIndex; // position in trace view
+  const std::string name; // process name
+  const std::string label; // device label
 };
 
 /* ResourceInfo:
@@ -67,21 +67,20 @@ struct ResourceInfo {
       int64_t sortIndex,
       const std::string& name)
       : id(id), sortIndex(sortIndex), deviceId(deviceId), name(name) {}
-  int64_t id;             // resource id
-  int64_t sortIndex;      // position in trace view
-  int64_t deviceId;       // id of device which owns this resource (specified in DeviceInfo.id)
+  int64_t id; // resource id
+  int64_t sortIndex; // position in trace view
+  int64_t deviceId; // id of device which owns this resource (specified in
+                    // DeviceInfo.id)
   const std::string name; // resource name
 };
 
-using getLinkedActivityCallback =
-  std::function<const ITraceActivity*(int32_t)>;
+using getLinkedActivityCallback = std::function<const ITraceActivity*(int32_t)>;
 
 /* IActivityProfilerSession:
  *   an opaque object that can be used by a high level profiler to
  *   start/stop and return trace events.
  */
 class IActivityProfilerSession {
-
  public:
   virtual ~IActivityProfilerSession() {}
 
@@ -101,9 +100,11 @@ class IActivityProfilerSession {
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
 
-  virtual void processTrace(ActivityLogger& logger,
-    getLinkedActivityCallback /*getLinkedActivity*/,
-    int64_t /*startTime*/, int64_t /*endTime*/) {
+  virtual void processTrace(
+      ActivityLogger& logger,
+      getLinkedActivityCallback /*getLinkedActivity*/,
+      int64_t /*startTime*/,
+      int64_t /*endTime*/) {
     processTrace(logger);
   }
 
@@ -129,7 +130,6 @@ class IActivityProfilerSession {
   TraceStatus status_ = TraceStatus::READY;
 };
 
-
 /* Activity Profiler Plugins:
  *   These allow other frameworks to integrate into Kineto's primariy
  *   activity profiler. While the primary activity profiler handles
@@ -137,9 +137,7 @@ class IActivityProfilerSession {
  *   can become source of new trace activity types.
  */
 class IActivityProfiler {
-
  public:
-
   virtual ~IActivityProfiler() {}
 
   // name of profiler

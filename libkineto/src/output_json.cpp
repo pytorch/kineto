@@ -9,15 +9,14 @@
 #include "output_json.h"
 
 #include <fmt/format.h>
-#include <fstream>
 #include <time.h>
+#include <fstream>
 #include <map>
 #include "Config.h"
 #include "DeviceProperties.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
-
 
 namespace KINETO_NAMESPACE {
 
@@ -60,8 +59,9 @@ ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
 // other applications can accurately read the 'ts' field as a double.
 // Use the program loading time as the baseline time.
 inline int64_t transToRelativeTime(int64_t time) {
-  // Sometimes after converting to relative time, it can be a few nanoseconds negative.
-  // Since Chrome trace and json processing will throw a parser error, guard this.
+  // Sometimes after converting to relative time, it can be a few nanoseconds
+  // negative. Since Chrome trace and json processing will throw a parser error,
+  // guard this.
   int64_t res = time - ChromeTraceBaseTime::singleton().get();
   if (res < 0) {
     return 0;
@@ -70,7 +70,8 @@ inline int64_t transToRelativeTime(int64_t time) {
 }
 
 void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
-  // Replace all backslashes with forward slash because Windows paths causing JSONDecodeError.
+  // Replace all backslashes with forward slash because Windows paths causing
+  // JSONDecodeError.
   std::replace(value.begin(), value.end(), '\\', '/');
   // Remove all new line characters
   value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
@@ -78,7 +79,7 @@ void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
 
 void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
-  for (auto [k, v]: metadata) {
+  for (auto [k, v] : metadata) {
     std::string sanitizedValue = v;
     // There is a seperate mechanism for recording distributedInfo in on-demand
     // so add a guard to prevent "double counting" in auto-trace.
@@ -86,20 +87,27 @@ void ChromeTraceLogger::metadataToJSON(
       distInfo_.distInfo_present_ = true;
     }
     sanitizeStrForJSON(sanitizedValue);
-    traceOf_ << fmt::format(R"JSON(
-  "{}": {},)JSON", k, sanitizedValue);
+    traceOf_ << fmt::format(
+        R"JSON(
+  "{}": {},)JSON",
+        k,
+        sanitizedValue);
   }
 }
 
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata) {
-  traceOf_ << fmt::format(R"JSON(
+  traceOf_ << fmt::format(
+      R"JSON(
 {{
-  "schemaVersion": {},)JSON", kSchemaVersion);
+  "schemaVersion": {},)JSON",
+      kSchemaVersion);
 
-  traceOf_ << fmt::format(R"JSON(
+  traceOf_ << fmt::format(
+      R"JSON(
   "deviceProperties": [{}
-  ],)JSON", devicePropertiesJson());
+  ],)JSON",
+      devicePropertiesJson());
 
   metadataToJSON(metadata);
   traceOf_ << R"JSON(
@@ -203,8 +211,8 @@ void ChromeTraceLogger::handleOverheadInfo(
     return;
   }
 
-  // TOOD: reserve pid = -1 for overhead but we need to rethink how to scale this for
-  // other metadata
+  // TOOD: reserve pid = -1 for overhead but we need to rethink how to scale
+  // this for other metadata
   // clang-format off
   time = transToRelativeTime(time);
   traceOf_ << fmt::format(R"JSON(
@@ -233,7 +241,7 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   }
 
   uint64_t start = transToRelativeTime(span.startTime);
-  
+
   // If endTime is 0 and start time is non-zero, dur can overflow. Add
   // a guard to prevent this.
   uint64_t dur = (span.endTime == 0) ? 0 : span.endTime - span.startTime;
@@ -291,7 +299,8 @@ void ChromeTraceLogger::handleGenericInstantEvent(
   }
 
   uint64_t ts = transToRelativeTime(op.timestamp());
-  traceOf_ << fmt::format(R"JSON(
+  traceOf_ << fmt::format(
+      R"JSON(
   {{
     "ph": "i", "cat": "{}", "s": "t", "name": "{}",
     "pid": {}, "tid": {},
@@ -300,12 +309,16 @@ void ChromeTraceLogger::handleGenericInstantEvent(
       {}
     }}
   }},)JSON",
-      toString(op.type()), op.name(), op.deviceId(), op.resourceId(),
-      ts/1000, ts%1000, op.metadataJson());
+      toString(op.type()),
+      op.name(),
+      op.deviceId(),
+      op.resourceId(),
+      ts / 1000,
+      ts % 1000,
+      op.metadataJson());
 }
 
-void ChromeTraceLogger::handleActivity(
-    const libkineto::ITraceActivity& op) {
+void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
   }
@@ -319,24 +332,26 @@ void ChromeTraceLogger::handleActivity(
   int64_t duration = op.duration();
 
   if (duration < 0) {
-    // This should never happen but can occasionally suffer from regression in handling incomplete events.
-    // Having negative duration in Chrome trace can yield in very poor experience so add an extra guard
-    // before we generate trace events.
+    // This should never happen but can occasionally suffer from regression in
+    // handling incomplete events. Having negative duration in Chrome trace can
+    // yield in very poor experience so add an extra guard before we generate
+    // trace events.
     duration = 0;
   }
 
-  if (op.type() ==  ActivityType::GPU_USER_ANNOTATION) {
+  if (op.type() == ActivityType::GPU_USER_ANNOTATION) {
     // The GPU user annotations start at the same time as the
     // first associated GPU op. Since they appear later
     // in the trace file, this causes a visualization issue in Chrome.
     // Make it start one ns earlier and end 2 ns later.
-    ts-=1;
-    duration+=2; // Still need it to end at the original point rounded up.
+    ts -= 1;
+    duration += 2; // Still need it to end at the original point rounded up.
   }
 
   std::string arg_values = "";
   if (op.linkedActivity() && op.linkedActivity()->correlationId() != 0) {
-    arg_values.append(fmt::format("\"External id\": {}", op.linkedActivity()->correlationId()));
+    arg_values.append(fmt::format(
+        "\"External id\": {}", op.linkedActivity()->correlationId()));
   } else if (op.correlationId() != 0) {
     arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
   }
@@ -426,14 +441,14 @@ void ChromeTraceLogger::handleActivity(
       arg_values.append(fmt::format(", \"{}\": {}", kP2pSrc, srcRank));
     }
 
-
-    if (distInfo_.backend=="" && processGroupDesc=="\"default_pg\"") {
+    if (distInfo_.backend == "" && processGroupDesc == "\"default_pg\"") {
       distInfo_.backend = "nccl";
       distInfo_.rank = collectiveRecord->getMetadataValue(kRank);
       distInfo_.world_size = groupSize;
-      // Not sure if we want to have output.json depend on nccl at compilation so
-      // set nccl_version to "unknown" for now until we can determine if we can pass
-      // it at runtime or use ifdefs. Should not be necessary to enable HTA
+      // Not sure if we want to have output.json depend on nccl at compilation
+      // so set nccl_version to "unknown" for now until we can determine if we
+      // can pass it at runtime or use ifdefs. Should not be necessary to enable
+      // HTA
       distInfo_.nccl_version = "unknown";
     }
     auto pg_config = pgConfig();
@@ -443,15 +458,16 @@ void ChromeTraceLogger::handleActivity(
     pg_config.pg_size = groupSize;
     pg_config.ranks = groupRanks;
     pgMap.insert({processGroupName, pg_config});
-
   }
 
   std::string args = "";
   if (!arg_values.empty()) {
-    args = fmt::format(R"JSON(,
+    args = fmt::format(
+        R"JSON(,
     "args": {{
       {}
-    }})JSON", arg_values);
+    }})JSON",
+        arg_values);
   }
 
   int device = op.deviceId();
@@ -477,17 +493,14 @@ void ChromeTraceLogger::handleActivity(
 
 void ChromeTraceLogger::handleGenericActivity(
     const libkineto::GenericTraceActivity& op) {
-        handleActivity(op);
+  handleActivity(op);
 }
 
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
   static struct {
     int type;
     char name[16];
-  } flow_names[] = {
-    {kLinkFwdBwd, "fwdbwd"},
-    {kLinkAsyncCpuGpu, "ac2g"}
-  };
+  } flow_names[] = {{kLinkFwdBwd, "fwdbwd"}, {kLinkAsyncCpuGpu, "ac2g"}};
   for (auto& flow : flow_names) {
     if (act.flowType() == flow.type) {
       // Link the activities via flow ID in source and destination.
@@ -540,17 +553,27 @@ void ChromeTraceLogger::addOnDemandDistMetadata() {
   if (distInfo_.backend == "") {
     return;
   }
-  traceOf_ << fmt::format(R"JSON(
+  traceOf_ << fmt::format(
+      R"JSON(
   "distributedInfo": {{"backend": "{}", "rank": {}, "world_size": {}, "pg_count": {}, "pg_config": [)JSON",
-          distInfo_.backend, distInfo_.rank, distInfo_.world_size,  std::to_string(pgMap.size()));
+      distInfo_.backend,
+      distInfo_.rank,
+      distInfo_.world_size,
+      std::to_string(pgMap.size()));
 
-    for (const auto& element : pgMap) {
-        traceOf_ << fmt::format(R"JSON({{"pg_name": {}, "pg_desc": {}, "backend_config": "{}", "pg_size": {}, "ranks": {}}},)JSON",
-          element.second.pg_name, element.second.pg_desc, element.second.backend_config, element.second.pg_size, element.second.ranks);
-    }
-    traceOf_.seekp(-1, std::ios_base::end);
-   traceOf_ << fmt::format(R"JSON(], "nccl_version": "{}"}},)JSON", distInfo_.nccl_version);
-   distInfo_.distInfo_present_ = true;
+  for (const auto& element : pgMap) {
+    traceOf_ << fmt::format(
+        R"JSON({{"pg_name": {}, "pg_desc": {}, "backend_config": "{}", "pg_size": {}, "ranks": {}}},)JSON",
+        element.second.pg_name,
+        element.second.pg_desc,
+        element.second.backend_config,
+        element.second.pg_size,
+        element.second.ranks);
+  }
+  traceOf_.seekp(-1, std::ios_base::end);
+  traceOf_ << fmt::format(
+      R"JSON(], "nccl_version": "{}"}},)JSON", distInfo_.nccl_version);
+  distInfo_.distInfo_present_ = true;
 }
 
 void ChromeTraceLogger::finalizeTrace(

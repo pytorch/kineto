@@ -13,8 +13,8 @@
 #include <thread>
 #include <vector>
 
-#include "ActivityType.h"
 #include "ActivityTraceInterface.h"
+#include "ActivityType.h"
 #include "IActivityProfiler.h"
 
 namespace libkineto {
@@ -24,7 +24,6 @@ struct CpuTraceBuffer;
 class Config;
 
 class ActivityProfilerInterface {
-
  public:
   virtual ~ActivityProfilerInterface() {}
 
@@ -32,7 +31,7 @@ class ActivityProfilerInterface {
   virtual bool isInitialized() {
     return false;
   }
-  virtual bool isActive(){
+  virtual bool isActive() {
     return false;
   }
 
@@ -56,8 +55,7 @@ class ActivityProfilerInterface {
       const std::string& configStr = "") {}
 
   // Toggle GPU tracing as a trace is running to omit certain parts of a graph
-  virtual void toggleCollectionDynamic(
-    const bool enable) {}
+  virtual void toggleCollectionDynamic(const bool enable) {}
 
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.
@@ -75,14 +73,13 @@ class ActivityProfilerInterface {
 
   // *** TraceActivity API ***
   // FIXME: Pass activityProfiler interface into clientInterface?
-  virtual void pushCorrelationId(uint64_t id){}
-  virtual void popCorrelationId(){}
-  virtual void transferCpuTrace(
-      std::unique_ptr<CpuTraceBuffer> traceBuffer){}
+  virtual void pushCorrelationId(uint64_t id) {}
+  virtual void popCorrelationId() {}
+  virtual void transferCpuTrace(std::unique_ptr<CpuTraceBuffer> traceBuffer) {}
 
   // Correlation ids for user defined spans
-  virtual void pushUserCorrelationId(uint64_t){}
-  virtual void popUserCorrelationId(){}
+  virtual void pushUserCorrelationId(uint64_t) {}
+  virtual void popUserCorrelationId() {}
 
   // Saves information for the current thread to be used in profiler output
   // Client must record any new kernel thread where the activity has occured.
@@ -90,7 +87,9 @@ class ActivityProfilerInterface {
 
   // Record trace metadata, currently supporting only string key and values,
   // values with the same key are overwritten
-  virtual void addMetadata(const std::string& key, const std::string& value) = 0;
+  virtual void addMetadata(
+      const std::string& key,
+      const std::string& value) = 0;
 
   // Add a child activity profiler, this enables frameworks in the application
   // to enable custom framework events.

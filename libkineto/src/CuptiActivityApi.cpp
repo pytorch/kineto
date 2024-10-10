@@ -13,9 +13,9 @@
 #include <mutex>
 #include <thread>
 
-#include "Logger.h"
 #include "Config.h"
 #include "DeviceUtil.h"
+#include "Logger.h"
 
 using namespace std::chrono;
 
@@ -41,18 +41,22 @@ inline bool cuptiLazyInit_() {
 inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
   // Re-enable callbacks from the past if they exist.
   LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
-  VLOG(1) << "  CUPTI subscriber before reinit:" << cbapi_->getCuptiSubscriber();
+  VLOG(1) << "  CUPTI subscriber before reinit:"
+          << cbapi_->getCuptiSubscriber();
   cbapi_->initCallbackApi();
   if (cbapi_->initSuccess()) {
-    VLOG(1) << "  CUPTI subscriber after reinit:" << cbapi_->getCuptiSubscriber();
+    VLOG(1) << "  CUPTI subscriber after reinit:"
+            << cbapi_->getCuptiSubscriber();
     bool status = cbapi_->reenableCallbacks();
     if (!status) {
-      LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
+      LOG(WARNING)
+          << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
     } else {
       LOG(INFO) << "Re-enable previous CUPTI callbacks - Successful";
     }
   } else {
-    LOG(WARNING) << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
+    LOG(WARNING)
+        << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
   }
 }
 #endif
@@ -68,14 +72,14 @@ void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
     return;
   }
   VLOG(2) << "pushCorrelationID(" << id << ")";
-  switch(type) {
+  switch (type) {
     case Default:
       CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
-        break;
+          CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, id));
+      break;
     case User:
       CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
+          CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
   }
 #endif
 }
@@ -85,14 +89,14 @@ void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
-  switch(type) {
+  switch (type) {
     case Default:
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
-        break;
+          CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, nullptr));
+      break;
     case User:
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
-        CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
+          CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
   }
 #endif
 }
@@ -121,14 +125,16 @@ void CuptiActivityApi::setMaxBufferSize(int size) {
 void CuptiActivityApi::setDeviceBufferSize(size_t size) {
 #ifdef HAS_CUPTI
   size_t valueSize = sizeof(size_t);
-  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &valueSize, &size));
+  CUPTI_CALL(cuptiActivitySetAttribute(
+      CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &valueSize, &size));
 #endif
 }
 
 void CuptiActivityApi::setDeviceBufferPoolLimit(size_t limit) {
 #ifdef HAS_CUPTI
   size_t valueSize = sizeof(size_t);
-  CUPTI_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT, &valueSize, &limit));
+  CUPTI_CALL(cuptiActivitySetAttribute(
+      CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT, &valueSize, &limit));
 #endif
 }
 
@@ -155,14 +161,15 @@ void CUPTIAPI CuptiActivityApi::bufferRequestedTrampoline(
 }
 
 void CuptiActivityApi::bufferRequested(
-    uint8_t** buffer, size_t* size, size_t* maxNumRecords) {
+    uint8_t** buffer,
+    size_t* size,
+    size_t* maxNumRecords) {
   std::lock_guard<std::mutex> guard(mutex_);
   if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
     stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
-                 << allocatedGpuTraceBuffers_.size()
-                 << " > " << maxGpuBufferCount_
-                 << ") - terminating tracing";
+                 << allocatedGpuTraceBuffers_.size() << " > "
+                 << maxGpuBufferCount_ << ") - terminating tracing";
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);
@@ -175,8 +182,7 @@ void CuptiActivityApi::bufferRequested(
 }
 #endif
 
-std::unique_ptr<CuptiActivityBufferMap>
-CuptiActivityApi::activityBuffers() {
+std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
@@ -272,12 +278,11 @@ void CuptiActivityApi::bufferCompleted(
     uint8_t* buffer,
     size_t /* unused */,
     size_t validSize) {
-
   std::lock_guard<std::mutex> guard(mutex_);
   auto it = allocatedGpuTraceBuffers_.find(buffer);
   if (it == allocatedGpuTraceBuffers_.end()) {
     LOG(ERROR) << "bufferCompleted called with unknown buffer: "
-               << (void*) buffer;
+               << (void*)buffer;
     return;
   }
 
@@ -312,8 +317,8 @@ void CuptiActivityApi::enableCuptiActivities(
   }
   cbapi_.reset();
 
-  CUPTI_CALL(
-      cuptiActivityRegisterCallbacks(bufferRequestedTrampoline, bufferCompletedTrampoline));
+  CUPTI_CALL(cuptiActivityRegisterCallbacks(
+      bufferRequestedTrampoline, bufferCompletedTrampoline));
 
   externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {
@@ -365,7 +370,8 @@ void CuptiActivityApi::disableCuptiActivities(
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
     }
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
-      CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
+      CUPTI_CALL(
+          cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
     }
     if (activity == ActivityType::CUDA_SYNC) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
@@ -392,7 +398,8 @@ void CuptiActivityApi::teardownContext() {
   if (cuptiTearDown_()) {
     LOG(INFO) << "teardownCupti starting";
 
-    // PyTorch Profiler is synchronous, so teardown needs to be run async in this thread.
+    // PyTorch Profiler is synchronous, so teardown needs to be run async in
+    // this thread.
     std::thread teardownThread([&] {
       auto cbapi_ = CuptiCallbackApi::singleton();
       if (!cbapi_->initSuccess()) {
@@ -402,21 +409,25 @@ void CuptiActivityApi::teardownContext() {
           return;
         }
       }
-      // Subscribe callbacks to call cuptiFinalize in the exit callback of these APIs
+      // Subscribe callbacks to call cuptiFinalize in the exit callback of these
+      // APIs
       bool status = cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
-      status = status && cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      status =
+          status && cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
       if (!status) {
-        LOG(WARNING) << "CUPTI Callback failed to enable for domain, skipping teardown";
+        LOG(WARNING)
+            << "CUPTI Callback failed to enable for domain, skipping teardown";
         return;
       }
 
       // Force Flush before finalize
       CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 
-      LOG(INFO) << "  CUPTI subscriber before finalize:" << cbapi_->getCuptiSubscriber();
+      LOG(INFO) << "  CUPTI subscriber before finalize:"
+                << cbapi_->getCuptiSubscriber();
       teardownCupti_ = 1;
       std::unique_lock<std::mutex> lck(finalizeMutex_);
-      finalizeCond_.wait(lck, [&]{return teardownCupti_ == 0;});
+      finalizeCond_.wait(lck, [&] { return teardownCupti_ == 0; });
       lck.unlock();
       LOG(INFO) << "teardownCupti complete";
 

@@ -8,9 +8,9 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <algorithm>
 #include <cctype>
-#include <fmt/format.h>
 #include <functional>
 #include <map>
 #include <string>
@@ -20,10 +20,9 @@ namespace KINETO_NAMESPACE {
 class ActivityLogger;
 
 class ActivityLoggerFactory {
-
  public:
   using FactoryFunc =
-    std::function<std::unique_ptr<ActivityLogger>(const std::string& url)>;
+      std::function<std::unique_ptr<ActivityLogger>(const std::string& url)>;
 
   // Add logger factory for a protocol prefix
   void addProtocol(const std::string& protocol, FactoryFunc f) {
@@ -38,16 +37,15 @@ class ActivityLoggerFactory {
       return it->second(stripProtocol(url));
     }
     throw std::invalid_argument(fmt::format(
-        "No logger registered for the {} protocol prefix",
-        protocol));
+        "No logger registered for the {} protocol prefix", protocol));
     return nullptr;
   }
 
  private:
   static std::string tolower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(),
-        [](unsigned char c) { return std::tolower(c); }
-    );
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+      return std::tolower(c);
+    });
     return s;
   }
 

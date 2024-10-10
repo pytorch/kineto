@@ -11,9 +11,9 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "LoggerCollector.h"
 #include "include/libkineto.h"
 #include "src/Logger.h"
-#include "LoggerCollector.h"
 
 using namespace KINETO_NAMESPACE;
 
@@ -25,7 +25,8 @@ constexpr char ErrorTestStr[] = "Checking LOG(ERROR)";
 
 TEST(LoggerObserverTest, SingleCollectorObserver) {
   // Add a LoggerObserverCollector to collect all logs during the trace.
-  std::unique_ptr<LoggerCollector> lCollector = std::make_unique<LoggerCollector>();
+  std::unique_ptr<LoggerCollector> lCollector =
+      std::make_unique<LoggerCollector>();
   Logger::addLoggerObserver(lCollector.get());
 
   LOG(INFO) << InfoTestStr;
@@ -33,9 +34,15 @@ TEST(LoggerObserverTest, SingleCollectorObserver) {
   LOG(ERROR) << ErrorTestStr;
 
   auto LoggerMD = lCollector->extractCollectorMetadata();
-  EXPECT_TRUE(LoggerMD[LoggerOutputType::INFO][0].find(InfoTestStr) != std::string::npos);
-  EXPECT_TRUE(LoggerMD[LoggerOutputType::WARNING][0].find(WarningTestStr) != std::string::npos);
-  EXPECT_TRUE(LoggerMD[LoggerOutputType::ERROR][0].find(ErrorTestStr) != std::string::npos);
+  EXPECT_TRUE(
+      LoggerMD[LoggerOutputType::INFO][0].find(InfoTestStr) !=
+      std::string::npos);
+  EXPECT_TRUE(
+      LoggerMD[LoggerOutputType::WARNING][0].find(WarningTestStr) !=
+      std::string::npos);
+  EXPECT_TRUE(
+      LoggerMD[LoggerOutputType::ERROR][0].find(ErrorTestStr) !=
+      std::string::npos);
 
   Logger::removeLoggerObserver(lCollector.get());
 }
@@ -43,10 +50,10 @@ TEST(LoggerObserverTest, SingleCollectorObserver) {
 #define NUM_OF_MESSAGES_FOR_EACH_TYPE 10
 #define NUM_OF_WRITE_THREADS 200
 
-// Writes NUM_OF_MESSAGES_FOR_EACH_TYPE messages for each INFO, WARNING, and ERROR.
-// NOLINTNEXTLINE(clang-diagnostic-unused-parameter)
+// Writes NUM_OF_MESSAGES_FOR_EACH_TYPE messages for each INFO, WARNING, and
+// ERROR. NOLINTNEXTLINE(clang-diagnostic-unused-parameter)
 void* writeSeveralMessages(void* ptr) {
-  for(int i=0; i<NUM_OF_MESSAGES_FOR_EACH_TYPE; i++) {
+  for (int i = 0; i < NUM_OF_MESSAGES_FOR_EACH_TYPE; i++) {
     LOG(INFO) << InfoTestStr;
     LOG(WARNING) << WarningTestStr;
     LOG(ERROR) << ErrorTestStr;
@@ -67,12 +74,12 @@ TEST(LoggerObserverTest, FourCollectorObserver) {
 
   // Launch NUM_OF_WRITE_THREADS threads writing several messages.
   pthread_t ListOfThreads[NUM_OF_WRITE_THREADS];
-  for (int i=0; i<NUM_OF_WRITE_THREADS; i++) {
+  for (int i = 0; i < NUM_OF_WRITE_THREADS; i++) {
     ::pthread_create(&ListOfThreads[i], nullptr, writeSeveralMessages, nullptr);
   }
 
   // Wait for all threads to finish.
-  for (int i=0; i<NUM_OF_WRITE_THREADS; i++) {
+  for (int i = 0; i < NUM_OF_WRITE_THREADS; i++) {
     ::pthread_join(ListOfThreads[i], nullptr);
   }
 
@@ -96,7 +103,7 @@ TEST(LoggerObserverTest, FourCollectorObserver) {
 
 #endif // !USE_GOOGLE_LOG
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

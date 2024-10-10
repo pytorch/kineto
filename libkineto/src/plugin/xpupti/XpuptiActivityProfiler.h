@@ -7,7 +7,8 @@
 
 namespace KINETO_NAMESPACE {
 
-class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession {
+class XpuptiActivityProfilerSession
+    : public libkineto::IActivityProfilerSession {
  public:
   XpuptiActivityProfilerSession() = delete;
   XpuptiActivityProfilerSession(
@@ -15,8 +16,8 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
   XpuptiActivityProfilerSession(const XpuptiActivityProfilerSession&) = delete;
-  XpuptiActivityProfilerSession& operator=(const XpuptiActivityProfilerSession&) =
-      delete;
+  XpuptiActivityProfilerSession& operator=(
+      const XpuptiActivityProfilerSession&) = delete;
 
   ~XpuptiActivityProfilerSession();
 
@@ -65,7 +66,9 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   void handleOverheadActivity(
       const pti_view_record_overhead* activity,
       ActivityLogger* logger);
-  void handlePtiActivity(const pti_view_record_base* record, ActivityLogger* logger);
+  void handlePtiActivity(
+      const pti_view_record_base* record,
+      ActivityLogger* logger);
 
   // enumerate XPU Device UUIDs from runtime for once
   void enumDeviceUUIDs();

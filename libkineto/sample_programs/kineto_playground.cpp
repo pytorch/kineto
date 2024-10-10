@@ -8,8 +8,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <iostream>
+#include <string>
 
 #include <libkineto.h>
 
@@ -43,7 +43,8 @@ int main() {
 
   std::cout << "Stop Trace" << std::endl;
   auto trace = profiler.stopTrace();
-  std::cout << "Stopped and processed trace. Got " << trace->activities()->size() << " activities.";
+  std::cout << "Stopped and processed trace. Got "
+            << trace->activities()->size() << " activities.";
   trace->save(kFileName);
   return 0;
 }

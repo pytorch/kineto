@@ -8,59 +8,57 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
 #include <set>
-#include <deque>
 
 #include "include/IActivityProfiler.h"
 #include "output_base.h"
 
 namespace libkineto {
 
-class MockProfilerSession: public IActivityProfilerSession {
+class MockProfilerSession : public IActivityProfilerSession {
+ public:
+  explicit MockProfilerSession() {}
 
-  public:
-    explicit MockProfilerSession() {}
+  void start() override {
+    start_count++;
+    status_ = TraceStatus::RECORDING;
+  }
 
-    void start() override {
-      start_count++;
-      status_ = TraceStatus::RECORDING;
-    }
+  void stop() override {
+    stop_count++;
+    status_ = TraceStatus::PROCESSING;
+  }
 
-    void stop() override {
-      stop_count++;
-      status_ = TraceStatus::PROCESSING;
-    }
+  std::vector<std::string> errors() override {
+    return {};
+  }
 
-    std::vector<std::string> errors() override {
-      return {};
-    }
+  void processTrace(ActivityLogger& logger) override;
 
-    void processTrace(ActivityLogger& logger) override;
+  void set_test_activities(std::deque<GenericTraceActivity>&& acs) {
+    test_activities_ = std::move(acs);
+  }
 
-    void set_test_activities(std::deque<GenericTraceActivity>&& acs) {
-      test_activities_ = std::move(acs);
-    }
+  std::unique_ptr<CpuTraceBuffer> getTraceBuffer() override;
 
-    std::unique_ptr<CpuTraceBuffer> getTraceBuffer() override;
+  std::unique_ptr<DeviceInfo> getDeviceInfo() override {
+    return {};
+  }
 
-    std::unique_ptr<DeviceInfo> getDeviceInfo() override {
-      return {};
-    }
+  std::vector<ResourceInfo> getResourceInfos() override {
+    return {};
+  }
 
-    std::vector<ResourceInfo> getResourceInfos() override {
-      return {};
-    }
+  int start_count = 0;
+  int stop_count = 0;
 
-    int start_count = 0;
-    int stop_count = 0;
-  private:
-    std::deque<GenericTraceActivity> test_activities_;
+ private:
+  std::deque<GenericTraceActivity> test_activities_;
 };
 
-
-class MockActivityProfiler: public IActivityProfiler {
-
+class MockActivityProfiler : public IActivityProfiler {
  public:
   explicit MockActivityProfiler(std::deque<GenericTraceActivity>& activities);
 

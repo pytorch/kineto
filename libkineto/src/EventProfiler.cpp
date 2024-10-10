@@ -242,9 +242,9 @@ void EventGroupSet::printDescription(ostream& s) const {
 // Find nearest factor of a number by linear search,
 // starting at hi and lo - hi searches up and lo searches down
 static int nearestFactor(int hi, int lo, int number) {
-  return number % hi == 0
-      ? hi
-      : number % lo == 0 ? lo : nearestFactor(hi + 1, lo - 1, number);
+  return number % hi == 0 ? hi
+      : number % lo == 0  ? lo
+                          : nearestFactor(hi + 1, lo - 1, number);
 }
 
 static int nearestFactor(int count, int max) {
@@ -324,9 +324,8 @@ static unique_ptr<Config> alignAndValidateConfigs(
     Config* onDemand) {
   auto now = system_clock::now();
   if (!onDemand ||
-      now >
-          (onDemand->eventProfilerOnDemandStartTime() +
-           onDemand->eventProfilerOnDemandDuration())) {
+      now > (onDemand->eventProfilerOnDemandStartTime() +
+             onDemand->eventProfilerOnDemandDuration())) {
     base.validate(now);
     return base.clone();
   }

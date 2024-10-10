@@ -8,23 +8,24 @@
 
 #pragma once
 
+#include <atomic>
+#include <deque>
 #include <functional>
 #include <list>
-#include <memory>
-#include <set>
-#include <vector>
 #include <map>
-#include <unordered_map>
-#include <deque>
-#include <atomic>
+#include <memory>
 #include <mutex>
+#include <set>
+#include <unordered_map>
+#include <vector>
 
 #include <roctracer.h>
-#include <roctracer_hip.h>
 #include <roctracer_ext.h>
+#include <roctracer_hip.h>
 #include <roctracer_roctx.h>
 
-// Local copy of hip op types.  These are public (and stable) in later rocm releases
+// Local copy of hip op types.  These are public (and stable) in later rocm
+// releases
 typedef enum {
   HIP_OP_COPY_KIND_UNKNOWN_ = 0,
   HIP_OP_COPY_KIND_DEVICE_TO_HOST_ = 0x11F3,
@@ -42,16 +43,14 @@ typedef enum {
   HIP_OP_DISPATCH_KIND_TASK_ = 0x11F1
 } hip_op_dispatch_kind_t_;
 
-typedef enum {
-  HIP_OP_BARRIER_KIND_UNKNOWN_ = 0
-} hip_op_barrier_kind_t_;
+typedef enum { HIP_OP_BARRIER_KIND_UNKNOWN_ = 0 } hip_op_barrier_kind_t_;
 // end hip op defines
 
-namespace onnxruntime{
+namespace onnxruntime {
 namespace profiling {
 class RocmProfiler;
 }
-}
+} // namespace onnxruntime
 
 namespace libkineto {
 class RoctracerActivityApi;
@@ -66,13 +65,19 @@ static timestamp_t timespec_to_ns(const timespec& time) {
 class ApiIdList {
  public:
   ApiIdList();
-  bool invertMode() { return invert_; }
-  void setInvertMode(bool invert) { invert_ = invert; }
-  void add(const std::string &apiName);
-  void remove(const std::string &apiName);
+  bool invertMode() {
+    return invert_;
+  }
+  void setInvertMode(bool invert) {
+    invert_ = invert;
+  }
+  void add(const std::string& apiName);
+  void remove(const std::string& apiName);
   bool loadUserPrefs();
   bool contains(uint32_t apiId);
-  const std::unordered_map<uint32_t, uint32_t> &filterList() { return filter_; }
+  const std::unordered_map<uint32_t, uint32_t>& filterList() {
+    return filter_;
+  }
 
  private:
   std::unordered_map<uint32_t, uint32_t> filter_;
@@ -90,10 +95,13 @@ typedef enum {
 
 struct roctracerBase {
   roctracerBase(
-    uint64_t id, uint32_t domain, uint64_t begin, uint64_t end,
-    roctracer_activity_types type = ROCTRACER_ACTIVITY_NONE)
-    : id(id), begin(begin), end(end), domain(domain), type(type) {}
-  uint64_t id;  // correlation_id
+      uint64_t id,
+      uint32_t domain,
+      uint64_t begin,
+      uint64_t end,
+      roctracer_activity_types type = ROCTRACER_ACTIVITY_NONE)
+      : id(id), begin(begin), end(end), domain(domain), type(type) {}
+  uint64_t id; // correlation_id
   uint64_t begin;
   uint64_t end;
   uint32_t domain;
@@ -102,10 +110,18 @@ struct roctracerBase {
 
 struct roctracerRow : public roctracerBase {
   roctracerRow(
-    uint64_t id, uint32_t domain, uint32_t cid, uint32_t pid,
-    uint32_t tid, uint64_t begin, uint64_t end,
-    roctracer_activity_types type = ROCTRACER_ACTIVITY_DEFAULT)
-    : roctracerBase(id, domain, begin, end, type), cid(cid), pid(pid), tid(tid) {}
+      uint64_t id,
+      uint32_t domain,
+      uint32_t cid,
+      uint32_t pid,
+      uint32_t tid,
+      uint64_t begin,
+      uint64_t end,
+      roctracer_activity_types type = ROCTRACER_ACTIVITY_DEFAULT)
+      : roctracerBase(id, domain, begin, end, type),
+        cid(cid),
+        pid(pid),
+        tid(tid) {}
   uint32_t cid;
   uint32_t pid;
   uint32_t tid;
@@ -113,17 +129,35 @@ struct roctracerRow : public roctracerBase {
 
 struct roctracerKernelRow : public roctracerRow {
   roctracerKernelRow(
-    uint64_t id, uint32_t domain, uint32_t cid, uint32_t pid,
-    uint32_t tid, uint64_t begin, uint64_t end,
-    const void *faddr, hipFunction_t function,
-    unsigned int gx, unsigned int gy, unsigned int gz,
-    unsigned int wx, unsigned int wy, unsigned int wz,
-    size_t gss, hipStream_t stream,
-    roctracer_activity_types type = ROCTRACER_ACTIVITY_KERNEL)
-    : roctracerRow(id, domain, cid, pid, tid, begin, end, type), functionAddr(faddr),
-    function(function), gridX(gx), gridY(gy), gridZ(gz),
-    workgroupX(wx), workgroupY(wy), workgroupZ(wz), groupSegmentSize(gss),
-    stream(stream) {}
+      uint64_t id,
+      uint32_t domain,
+      uint32_t cid,
+      uint32_t pid,
+      uint32_t tid,
+      uint64_t begin,
+      uint64_t end,
+      const void* faddr,
+      hipFunction_t function,
+      unsigned int gx,
+      unsigned int gy,
+      unsigned int gz,
+      unsigned int wx,
+      unsigned int wy,
+      unsigned int wz,
+      size_t gss,
+      hipStream_t stream,
+      roctracer_activity_types type = ROCTRACER_ACTIVITY_KERNEL)
+      : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
+        functionAddr(faddr),
+        function(function),
+        gridX(gx),
+        gridY(gy),
+        gridZ(gz),
+        workgroupX(wx),
+        workgroupY(wy),
+        workgroupZ(wz),
+        groupSegmentSize(gss),
+        stream(stream) {}
   const void* functionAddr;
   hipFunction_t function;
   unsigned int gridX;
@@ -138,15 +172,27 @@ struct roctracerKernelRow : public roctracerRow {
 
 struct roctracerCopyRow : public roctracerRow {
   roctracerCopyRow(
-    uint64_t id, uint32_t domain, uint32_t cid, uint32_t pid,
-    uint32_t tid, uint64_t begin, uint64_t end,
-    const void* src, const void *dst, size_t size, hipMemcpyKind kind,
-    hipStream_t stream,
-    roctracer_activity_types type = ROCTRACER_ACTIVITY_COPY)
-    : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
-    src(src), dst(dst), size(size), kind(kind), stream(stream) {}
-  const void *src;
-  const void *dst;
+      uint64_t id,
+      uint32_t domain,
+      uint32_t cid,
+      uint32_t pid,
+      uint32_t tid,
+      uint64_t begin,
+      uint64_t end,
+      const void* src,
+      const void* dst,
+      size_t size,
+      hipMemcpyKind kind,
+      hipStream_t stream,
+      roctracer_activity_types type = ROCTRACER_ACTIVITY_COPY)
+      : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
+        src(src),
+        dst(dst),
+        size(size),
+        kind(kind),
+        stream(stream) {}
+  const void* src;
+  const void* dst;
   size_t size;
   hipMemcpyKind kind;
   hipStream_t stream;
@@ -154,24 +200,41 @@ struct roctracerCopyRow : public roctracerRow {
 
 struct roctracerMallocRow : public roctracerRow {
   roctracerMallocRow(
-    uint64_t id, uint32_t domain, uint32_t cid, uint32_t pid,
-    uint32_t tid, uint64_t begin, uint64_t end,
-    const void* ptr, size_t size,
-    roctracer_activity_types type = ROCTRACER_ACTIVITY_MALLOC)
-    : roctracerRow(id, domain, cid, pid, tid, begin, end, type)
-    , ptr(ptr), size(size) {}
-  const void *ptr;
+      uint64_t id,
+      uint32_t domain,
+      uint32_t cid,
+      uint32_t pid,
+      uint32_t tid,
+      uint64_t begin,
+      uint64_t end,
+      const void* ptr,
+      size_t size,
+      roctracer_activity_types type = ROCTRACER_ACTIVITY_MALLOC)
+      : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
+        ptr(ptr),
+        size(size) {}
+  const void* ptr;
   size_t size;
 };
 
 struct roctracerAsyncRow : public roctracerBase {
   roctracerAsyncRow(
-    uint64_t id, uint32_t domain, uint32_t kind, uint32_t op,
-    int device, uint64_t queue, uint64_t begin,
-    uint64_t end, const std::string &kernelName,
-    roctracer_activity_types type = ROCTRACER_ACTIVITY_ASYNC)
-    : roctracerBase(id, domain, begin, end, type), kind(kind), op(op), device(device),
-    queue(queue), kernelName(kernelName) {}
+      uint64_t id,
+      uint32_t domain,
+      uint32_t kind,
+      uint32_t op,
+      int device,
+      uint64_t queue,
+      uint64_t begin,
+      uint64_t end,
+      const std::string& kernelName,
+      roctracer_activity_types type = ROCTRACER_ACTIVITY_ASYNC)
+      : roctracerBase(id, domain, begin, end, type),
+        kind(kind),
+        op(op),
+        device(device),
+        queue(queue),
+        kernelName(kernelName) {}
   uint32_t kind;
   uint32_t op;
   int device;
@@ -209,9 +272,13 @@ class RoctracerLogger {
   bool registered_{false};
   void endTracing();
 
-  roctracer_pool_t *hccPool_{NULL};
+  roctracer_pool_t* hccPool_{NULL};
   static void insert_row_to_buffer(roctracerBase* row);
-  static void api_callback(uint32_t domain, uint32_t cid, const void* callback_data, void* arg);
+  static void api_callback(
+      uint32_t domain,
+      uint32_t cid,
+      const void* callback_data,
+      void* arg);
   static void activity_callback(const char* begin, const char* end, void* arg);
 
   ApiIdList loggedIds_;
@@ -224,7 +291,8 @@ class RoctracerLogger {
   // This vector collects pairs of correlationId and their respective
   // externalCorrelationId for each CorrelationDomain. This will be used
   // to populate the Correlation maps during post processing.
-  std::vector<std::pair<uint64_t, uint64_t>> externalCorrelations_[CorrelationDomain::size];
+  std::vector<std::pair<uint64_t, uint64_t>>
+      externalCorrelations_[CorrelationDomain::size];
   std::mutex externalCorrelationsMutex_;
 
   bool externalCorrelationEnabled_{true};

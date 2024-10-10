@@ -42,38 +42,40 @@ struct tensor_pair {
   // Host buffers
   float* h_A;
   float* h_B;
+  float* h_C;
+  bool h_C_pinned;
 };
 
 // The memory pool object
 extern tensor_pair* p_memory_pool;
 
 struct tensor_cache_args {
-    // Sets GPU memory utilization
-    uint32_t sz_cache_KB {1024 * 128};
+  // Sets GPU memory utilization
+  uint32_t sz_cache_KB{1024 * 128};
 
-    // If small, density is higher due to shorter kernel times
-    uint32_t sz_min_tensor_KB {16};
+  // If small, density is higher due to shorter kernel times
+  uint32_t sz_min_tensor_KB{16};
 
-    // If large, we will have kernels with high duration thus smaller
-    // event density. That's because kernels will have to run on larger
-    // buffer sizes.
-    uint32_t sz_max_tensor_KB {2048};
+  // If large, we will have kernels with high duration thus smaller
+  // event density. That's because kernels will have to run on larger
+  // buffer sizes.
+  uint32_t sz_max_tensor_KB{2048};
 
-    // Sets the maximum GPU memory
-    uint32_t sz_GPU_memory_KB {1024 * 1024 * 16};
+  // Sets the maximum GPU memory
+  uint32_t sz_GPU_memory_KB{1024 * 1024 * 16};
 
-    // Simulates the chance of uploading a batch to the GPU.
-    // It reduces event density if it's set too high
-    double prob_h2d {0.005};
+  // Simulates the chance of uploading a batch to the GPU.
+  // It reduces event density if it's set too high
+  double prob_h2d{0.005};
 
-    // Simulates the chance of downloading results from the GPU.
-    // It reduces event density if it's set too high
-    double prob_d2h {0.0001};
+  // Simulates the chance of downloading results from the GPU.
+  // It reduces event density if it's set too high
+  double prob_d2h{0.0001};
 
-    // Number of increments in the GPU memory usage to see what happens at the
-    // peak memory usage.
-    uint32_t num_increments {1};
-    uint32_t num_pairs_per_increment {1};
+  // Number of increments in the GPU memory usage to see what happens at the
+  // peak memory usage.
+  uint32_t num_increments{1};
+  uint32_t num_pairs_per_increment{1};
 };
 
 // Generates all the buffer pairs, using a minimum and a maximum size.
@@ -82,11 +84,14 @@ struct tensor_cache_args {
 void generate_tensor_cache(tensor_cache_args cache_args);
 
 // Empties the tensor cache and reallocates it
-void free_and_realloc_tensor_pairs(tensor_pair *tensor_pair, cudaStream_t stream);
+void free_and_realloc_tensor_pairs(
+    tensor_pair* tensor_pair,
+    cudaStream_t stream);
 
 // For some experiments we may need to add additional pairs to stress the
 // GPU memory limits
-void add_pairs_to_tensor_cache(tensor_cache_args cache_args,
+void add_pairs_to_tensor_cache(
+    tensor_cache_args cache_args,
     uint32_t num_added_pairs);
 
 // Re-initializes the random values in the device buffers

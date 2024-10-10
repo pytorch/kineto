@@ -12,32 +12,32 @@
 
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <string>
 #include <set>
+#include <string>
 #include <thread>
 #include <vector>
-#include <deque>
 
 #include "ActivityProfilerInterface.h"
+#include "ActivityTraceInterface.h"
 #include "ActivityType.h"
 #include "ClientInterface.h"
 #include "GenericTraceActivity.h"
-#include "TraceSpan.h"
 #include "IActivityProfiler.h"
-#include "ActivityTraceInterface.h"
 #include "ILoggerObserver.h"
 #include "LoggingAPI.h"
+#include "TraceSpan.h"
 
 #include "ThreadUtil.h"
 
 extern "C" {
-  void suppressLibkinetoLogMessages();
-  int InitializeInjection(void);
-  void libkineto_init(bool cpuOnly, bool logOnError);
-  bool hasTestEnvVar();
+void suppressLibkinetoLogMessages();
+int InitializeInjection(void);
+void libkineto_init(bool cpuOnly, bool logOnError);
+bool hasTestEnvVar();
 }
 
 namespace libkineto {
@@ -68,14 +68,12 @@ struct CpuTraceBuffer {
 };
 
 using ChildActivityProfilerFactory =
-  std::function<std::unique_ptr<IActivityProfiler>()>;
+    std::function<std::unique_ptr<IActivityProfiler>()>;
 
 class LibkinetoApi {
  public:
-
   explicit LibkinetoApi(ConfigLoader& configLoader)
-      : configLoader_(configLoader) {
-  }
+      : configLoader_(configLoader) {}
 
   // Called by client that supports tracing API.
   // libkineto can still function without this.
@@ -119,13 +117,16 @@ class LibkinetoApi {
     suppressLibkinetoLogMessages();
   }
 
+  void resetKinetoTLS() {
+    resetTLS();
+  }
+
   // Provides access to profier configuration manaegement
   ConfigLoader& configLoader() {
     return configLoader_;
   }
 
-  void registerProfilerFactory(
-      ChildActivityProfilerFactory factory) {
+  void registerProfilerFactory(ChildActivityProfilerFactory factory) {
     if (isProfilerInitialized()) {
       activityProfiler_->addChildActivityProfiler(factory());
     } else {
@@ -134,7 +135,6 @@ class LibkinetoApi {
   }
 
  private:
-
   void initChildActivityProfilers() {
     if (!isProfilerInitialized()) {
       return;

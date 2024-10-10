@@ -28,7 +28,6 @@
 #include "CuptiCallbackApi.h"
 #endif
 
-
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
@@ -39,10 +38,7 @@ using CUpti_Activity = void;
 
 class CuptiActivityApi {
  public:
-  enum CorrelationFlowType {
-    Default,
-    User
-  };
+  enum CorrelationFlowType { Default, User };
   // Control Variables shared with CuptiCallbackApi for teardown
   std::atomic<uint32_t> teardownCupti_{0};
   std::mutex finalizeMutex_;
@@ -59,10 +55,9 @@ class CuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableCuptiActivities(
-    const std::set<ActivityType>& selected_activities);
+  void enableCuptiActivities(const std::set<ActivityType>& selected_activities);
   void disableCuptiActivities(
-    const std::set<ActivityType>& selected_activities);
+      const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void teardownContext();
 
@@ -97,8 +92,10 @@ class CuptiActivityApi {
       uint8_t* buf,
       size_t validSize,
       std::function<void(const CUpti_Activity*)> handler);
-  static void CUPTIAPI
-  bufferRequestedTrampoline(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
+  static void CUPTIAPI bufferRequestedTrampoline(
+      uint8_t** buffer,
+      size_t* size,
+      size_t* maxNumRecords);
   static void CUPTIAPI bufferCompletedTrampoline(
       CUcontext ctx,
       uint32_t streamId,

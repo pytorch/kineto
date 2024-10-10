@@ -10,18 +10,19 @@
 
 #include "kineto_playground.cuh"
 
-
 namespace kineto {
 
 void warmup(void) {
-  // Inititalizing CUDA can take a while which we normally do not want to see in Kineto traces.
-  // This is done in various ways that take Kineto as dependency. This is our way of doing warmup
-  // for kineto_playground
-	size_t bytes = 1000;
-	float* mem = NULL;
-	auto error = cudaMalloc(&mem, bytes);
+  // Inititalizing CUDA can take a while which we normally do not want to see in
+  // Kineto traces. This is done in various ways that take Kineto as dependency.
+  // This is our way of doing warmup for kineto_playground
+  size_t bytes = 1000;
+  float* mem = NULL;
+  auto error = cudaMalloc(&mem, bytes);
   if (error != cudaSuccess) {
-    printf("cudaMalloc failed during kineto_playground warmup. error code: %d", error);
+    printf(
+        "cudaMalloc failed during kineto_playground warmup. error code: %d",
+        error);
     return;
   }
 
@@ -52,7 +53,6 @@ void basicMemcpyToDevice(void) {
 }
 
 void basicMemcpyFromDevice(void) {
-
   size_t size = num * sizeof(float);
   cudaError_t err;
 
@@ -85,7 +85,7 @@ void compute(void) {
   int threadsPerBlock = 256;
   int blocksPerGrid = (num + threadsPerBlock - 1) / threadsPerBlock;
   for (int i = 0; i < 10; i++) {
-    square<<<blocksPerGrid, threadsPerBlock>>> (dA, num);
+    square<<<blocksPerGrid, threadsPerBlock>>>(dA, num);
   }
 }
 

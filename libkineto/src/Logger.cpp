@@ -13,11 +13,11 @@
 
 #ifndef USE_GOOGLE_LOG
 
+#include <time.h>
 #include <chrono>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
-#include <time.h>
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
@@ -30,16 +30,18 @@ std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
 
-
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
-    : buf_(), out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
-  buf_ << toString((LoggerOutputType) severity) << ":";
+    : buf_(),
+      out_(LIBKINETO_DBG_STREAM),
+      errnum_(errnum),
+      messageSeverity_(severity) {
+  buf_ << toString((LoggerOutputType)severity) << ":";
 
   const auto tt =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const char* file = strrchr(filePath, '/');
   buf_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(tt)) << " "
-       << processId() << ":" << systemThreadId() << " "
+       << processId(false) << ":" << systemThreadId(false) << " "
        << (file ? file + 1 : filePath) << ":" << line << "] ";
 }
 
@@ -54,9 +56,10 @@ Logger::~Logger() {
   {
     std::lock_guard<std::mutex> guard(loggerObserversMutex());
     for (auto* observer : loggerObservers()) {
-      // Output to observers. Current Severity helps keep track of which bucket the output goes.
+      // Output to observers. Current Severity helps keep track of which bucket
+      // the output goes.
       if (observer) {
-        observer->write(buf_.str(), (LoggerOutputType) messageSeverity_);
+        observer->write(buf_.str(), (LoggerOutputType)messageSeverity_);
       }
     }
   }
@@ -139,7 +142,9 @@ void Logger::setLoggerObserverOnDemand() {
   }
 }
 
-void Logger::addLoggerObserverAddMetadata(const std::string& key, const std::string& value) {
+void Logger::addLoggerObserverAddMetadata(
+    const std::string& key,
+    const std::string& value) {
   std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->addMetadata(key, value);

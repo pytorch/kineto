@@ -10,7 +10,7 @@
 #include "output_base.h"
 
 namespace libkineto {
-  void GenericTraceActivity::log(ActivityLogger& logger) const {
-    logger.handleGenericActivity(*this);
-  }
+void GenericTraceActivity::log(ActivityLogger& logger) const {
+  logger.handleGenericActivity(*this);
+}
 } // namespace libkineto

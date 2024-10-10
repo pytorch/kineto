@@ -27,7 +27,8 @@ class XpuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableXpuptiActivities(const std::set<ActivityType>& selected_activities);
+  void enableXpuptiActivities(
+      const std::set<ActivityType>& selected_activities);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
 
@@ -57,10 +58,8 @@ class XpuptiActivityApi {
       size_t validSize,
       std::function<void(const Pti_Activity*)> handler);
   static void bufferRequestedTrampoline(uint8_t** buffer, size_t* size);
-  static void bufferCompletedTrampoline(
-      uint8_t* buffer,
-      size_t size,
-      size_t validSize);
+  static void
+  bufferCompletedTrampoline(uint8_t* buffer, size_t size, size_t validSize);
 
  protected:
   void bufferRequested(uint8_t** buffer, size_t* size);

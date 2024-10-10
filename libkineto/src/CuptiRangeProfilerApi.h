@@ -11,8 +11,10 @@
 #ifdef HAS_CUPTI
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-// Using CUDA 11 and above due to usage of API: cuptiProfilerGetCounterAvailability.
-#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && CUDART_VERSION >= 10000 && CUDA_VERSION >= 11000
+// Using CUDA 11 and above due to usage of API:
+// cuptiProfilerGetCounterAvailability.
+#if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && \
+    CUDART_VERSION >= 10000 && CUDA_VERSION >= 11000
 #define HAS_CUPTI_RANGE_PROFILER 1
 #endif // CUDART_VERSION > 10.00 and CUDA_VERSION >= 11.00
 #endif // HAS_CUPTI
@@ -22,14 +24,12 @@
 #include <cupti_profiler_target.h>
 #include <cupti_target.h>
 #else
-enum CUpti_ProfilerRange
-{
+enum CUpti_ProfilerRange {
   CUPTI_AutoRange,
   CUPTI_UserRange,
 };
 
-enum CUpti_ProfilerReplayMode
-{
+enum CUpti_ProfilerReplayMode {
   CUPTI_KernelReplay,
   CUPTI_UserReplay,
 };
@@ -37,15 +37,15 @@ enum CUpti_ProfilerReplayMode
 
 #include <chrono>
 #include <mutex>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "TraceSpan.h"
 #include "CuptiCallbackApi.h"
 #include "CuptiNvPerfMetric.h"
+#include "TraceSpan.h"
 
 /* Cupti Range based profiler session
  * See : https://docs.nvidia.com/cupti/Cupti/r_main.html#r_profiler
@@ -68,7 +68,6 @@ struct CuptiRangeProfilerOptions {
 
 class CuptiRBProfilerSession {
  public:
-
   explicit CuptiRBProfilerSession(const CuptiRangeProfilerOptions& opts);
 
   virtual ~CuptiRBProfilerSession();
@@ -127,7 +126,7 @@ class CuptiRBProfilerSession {
     evaluateMetrics(true);
   }
 
- TraceSpan getProfilerTraceSpan();
+  TraceSpan getProfilerTraceSpan();
 
   virtual CuptiProfilerResult evaluateMetrics(bool verbose = false);
 
@@ -169,11 +168,10 @@ class CuptiRBProfilerSession {
   CUpti_ProfilerRange curRange_ = CUPTI_AutoRange;
   CUpti_ProfilerReplayMode curReplay_ = CUPTI_KernelReplay;
 
-  std::chrono::time_point<std::chrono::high_resolution_clock>
-    profilerStartTs_, profilerStopTs_, profilerInitDoneTs_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> profilerStartTs_,
+      profilerStopTs_, profilerInitDoneTs_;
 
  private:
-
   bool createCounterDataImage();
 
   // log kernel name that used with callbacks
@@ -189,7 +187,6 @@ class CuptiRBProfilerSession {
   int maxRanges_;
   int numNestingLevels_;
   CUcontext cuContext_;
-
 
   // data buffers for configuration and counter data collection
   std::vector<uint8_t> counterDataImagePrefix;
@@ -227,7 +224,6 @@ struct CuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {
   std::unique_ptr<CuptiRBProfilerSession> make(
       const CuptiRangeProfilerOptions& opts) override;
 };
-
 
 // called directly only in unit tests
 namespace testing {

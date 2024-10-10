@@ -6,30 +6,29 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <string>
 #include <fmt/format.h>
 #include <gtest/gtest.h>
+#include <string>
 
 #include <cuda.h>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "src/Logger.h"
 #include "src/CuptiRangeProfilerApi.h"
+#include "src/Logger.h"
 
-#define DRIVER_API_CALL(apiFuncCall)                           \
-  do {                                                         \
-    CUresult _status = apiFuncCall;                            \
-    if (_status != CUDA_SUCCESS) {                             \
-      LOG(ERROR) << "Failed invoking CUDA driver function "    \
-                 << #apiFuncCall << " status = "               \
-                 << _status;                                   \
-      exit(-1);                                                \
-    }                                                          \
+#define DRIVER_API_CALL(apiFuncCall)                                        \
+  do {                                                                      \
+    CUresult _status = apiFuncCall;                                         \
+    if (_status != CUDA_SUCCESS) {                                          \
+      LOG(ERROR) << "Failed invoking CUDA driver function " << #apiFuncCall \
+                 << " status = " << _status;                                \
+      exit(-1);                                                             \
+    }                                                                       \
   } while (0)
 
-#define EXPECT(expr)\
-  if (!(expr)) {\
+#define EXPECT(expr) \
+  if (!(expr)) {     \
   };
 
 using namespace KINETO_NAMESPACE;
@@ -161,16 +160,14 @@ bool runTestWithAutoRange(
     const std::vector<std::string>& metricNames,
     CUcontext cuContext,
     bool async) {
-
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
   CuptiRangeProfilerOptions opts{
-    .metricNames = metricNames,
-    .deviceId = deviceNum,
-    .maxRanges = 2,
-    .numNestingLevels = 1,
-    .cuContext = async ? nullptr : cuContext
-  };
+      .metricNames = metricNames,
+      .deviceId = deviceNum,
+      .maxRanges = 2,
+      .numNestingLevels = 1,
+      .cuContext = async ? nullptr : cuContext};
   CuptiRBProfilerSession profiler(opts);
 
   CUpti_ProfilerRange profilerRange = CUPTI_AutoRange;
@@ -209,7 +206,7 @@ bool runTestWithAutoRange(
       // each kernel has 50000 dadd ops
       EXPECT_EQ(measurement.values[1], 50000);
       // sm__inst_executed_pipe_tensor.sum
-      //EXPECT_EQ(measurement.values[2], 0);
+      // EXPECT_EQ(measurement.values[2], 0);
     }
   }
   return true;
@@ -220,16 +217,14 @@ bool runTestWithUserRange(
     const std::vector<std::string>& metricNames,
     CUcontext cuContext,
     bool async = false) {
-
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
   CuptiRangeProfilerOptions opts{
-    .metricNames = metricNames,
-    .deviceId = deviceNum,
-    .maxRanges = numRanges,
-    .numNestingLevels = 1,
-    .cuContext = async ? nullptr : cuContext
-  };
+      .metricNames = metricNames,
+      .deviceId = deviceNum,
+      .maxRanges = numRanges,
+      .numNestingLevels = 1,
+      .cuContext = async ? nullptr : cuContext};
   CuptiRBProfilerSession profiler(opts);
 
   CUpti_ProfilerRange profilerRange = CUPTI_UserRange;
@@ -285,7 +280,7 @@ bool runTestWithUserRange(
         EXPECT_EQ(measurement.values[1], 100000);
       }
       // sm__inst_executed_pipe_tensor.sum
-      //EXPECT_EQ(measurement.values[2], 0);
+      // EXPECT_EQ(measurement.values[2], 0);
     }
   }
   return true;
@@ -293,7 +288,6 @@ bool runTestWithUserRange(
 #endif // HAS_CUPTI_RANGE_PROFILER
 
 int main(int argc, char* argv[]) {
-
   CUdevice cuDevice;
 
   int deviceCount, deviceNum;
@@ -326,10 +320,12 @@ int main(int argc, char* argv[]) {
       cuDevice));
 
   LOG(INFO) << "Compute Cabapbility = "
-            << fmt::format("{},{}",computeCapabilityMajor, computeCapabilityMinor);
+            << fmt::format(
+                   "{},{}", computeCapabilityMajor, computeCapabilityMinor);
 
   if (computeCapabilityMajor < 7) {
-    LOG(ERROR) << "CUPTI Profiler is not supported  with compute capability < 7.0";
+    LOG(ERROR)
+        << "CUPTI Profiler is not supported  with compute capability < 7.0";
     return -2;
   }
 
@@ -337,9 +333,9 @@ int main(int argc, char* argv[]) {
 
   // metrics to profile
   std::vector<std::string> metricNames = {
-    "smsp__warps_launched.avg",
-    "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum",
-    "sm__inst_executed_pipe_tensor.sum",
+      "smsp__warps_launched.avg",
+      "smsp__sass_thread_inst_executed_op_dadd_pred_on.sum",
+      "sm__inst_executed_pipe_tensor.sum",
   };
 
   CUcontext cuContext;
@@ -365,7 +361,6 @@ int main(int argc, char* argv[]) {
   LOG(WARNING) << "CuptiRBProfilerSession is not supported.";
 #endif // HAS_CUPTI_RANGE_PROFILER
   DRIVER_API_CALL(cuCtxDestroy(cuContext));
-
 
   return 0;
 }

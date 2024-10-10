@@ -20,7 +20,6 @@
 
 namespace libkineto {
 
-
 #if defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
 #define KINETO_RDTSC
 #if defined(_MSC_VER)
@@ -36,7 +35,6 @@ namespace libkineto {
 #undef KINETO_RDTSC
 #endif
 #endif
-
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #define KINETO_UNUSED __pragma(warning(suppress : 4100 4101))
@@ -86,7 +84,7 @@ inline auto getApproximateTime() {
 
 using approx_time_t = decltype(getApproximateTime());
 static_assert(
-  std::is_same_v<approx_time_t, int64_t> ||
+    std::is_same_v<approx_time_t, int64_t> ||
         std::is_same_v<approx_time_t, uint64_t>,
     "Expected either int64_t (`getTime`) or uint64_t (some TSC reads).");
 

@@ -16,8 +16,8 @@
 #include <list>
 #include <memory>
 #include <mutex>
-#include <shared_mutex>
 #include <set>
+#include <shared_mutex>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -26,8 +26,6 @@
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
-
-
 
 /* CuptiCallbackApi : Provides an abstraction over CUPTI callback
  *  interface. This enables various callback functions to be registered
@@ -38,24 +36,21 @@ using namespace libkineto;
  *  in order to speed up the implementation for fast path.
  */
 
-using CuptiCallbackFn = void(*)(
+using CuptiCallbackFn = void (*)(
     CUpti_CallbackDomain domain,
     CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo);
 
-
 class CuptiCallbackApi {
-
  public:
-
   /* Global list of supported callback ids
    *  use the class namespace to avoid confusing with CUPTI enums*/
   enum CuptiCallBackID {
-    CUDA_LAUNCH_KERNEL =  0,
+    CUDA_LAUNCH_KERNEL = 0,
     // can possibly support more callback ids per domain
     //
     __RUNTIME_CB_DOMAIN_START = CUDA_LAUNCH_KERNEL,
-    CUDA_LAUNCH_KERNEL_EXC,  // Used in H100
+    CUDA_LAUNCH_KERNEL_EXC, // Used in H100
 
     // Callbacks under Resource CB domain
     RESOURCE_CONTEXT_CREATED,
@@ -90,15 +85,15 @@ class CuptiCallbackApi {
 #endif
 
   bool registerCallback(
-    CUpti_CallbackDomain domain,
-    CuptiCallBackID cbid,
-    CuptiCallbackFn cbfn);
+      CUpti_CallbackDomain domain,
+      CuptiCallBackID cbid,
+      CuptiCallbackFn cbfn);
 
   // returns false if callback was not found
   bool deleteCallback(
-    CUpti_CallbackDomain domain,
-    CuptiCallBackID cbid,
-    CuptiCallbackFn cbfn);
+      CUpti_CallbackDomain domain,
+      CuptiCallBackID cbid,
+      CuptiCallbackFn cbfn);
 
   // Cupti Callback may be enable for domain and cbid pairs, or domains alone.
   bool enableCallback(CUpti_CallbackDomain domain, CUpti_CallbackId cbid);
@@ -109,7 +104,6 @@ class CuptiCallbackApi {
   // to re-enabled all previously running callback subscriptions.
   bool reenableCallbacks();
 
-
   // Please do not use this method. This has to be exposed as public
   // so it is accessible from the callback handler
   void __callback_switchboard(
@@ -118,18 +112,17 @@ class CuptiCallbackApi {
       const CUpti_CallbackData* cbInfo);
 
  private:
-
   friend class std::shared_ptr<CuptiCallbackApi>;
 
   // For callback table design overview see the .cpp file
   using CallbackList = std::list<CuptiCallbackFn>;
 
   // level 2 tables sizes are known at compile time
-  constexpr static size_t RUNTIME_CB_DOMAIN_SIZE
-    = (__RUNTIME_CB_DOMAIN_END - __RUNTIME_CB_DOMAIN_START);
+  constexpr static size_t RUNTIME_CB_DOMAIN_SIZE =
+      (__RUNTIME_CB_DOMAIN_END - __RUNTIME_CB_DOMAIN_START);
 
-  constexpr static size_t RESOURCE_CB_DOMAIN_SIZE
-    = (__RESOURCE_CB_DOMAIN_END - __RESOURCE_CB_DOMAIN_START);
+  constexpr static size_t RESOURCE_CB_DOMAIN_SIZE =
+      (__RESOURCE_CB_DOMAIN_END - __RESOURCE_CB_DOMAIN_START);
 
   // level 1 table is a struct
   struct CallbackTable {
@@ -141,11 +134,10 @@ class CuptiCallbackApi {
 
   CallbackTable callbacks_;
   bool initSuccess_ = false;
-  // Record a list of enabled callbacks, so that after teardown, we can re-enable
-  // the callbacks that were turned off to clean cupti context.
-  // As an implementation detail, cbid == 0xffffffff means enable the domain.
+  // Record a list of enabled callbacks, so that after teardown, we can
+  // re-enable the callbacks that were turned off to clean cupti context. As an
+  // implementation detail, cbid == 0xffffffff means enable the domain.
   std::set<std::pair<CUpti_CallbackDomain, CUpti_CallbackId>> enabledCallbacks_;
-
 
   // Reader Writer lock types
   using ReaderWriterLock = std::shared_timed_mutex;
@@ -154,7 +146,7 @@ class CuptiCallbackApi {
   ReaderWriterLock callbackLock_;
 #ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;
-  CUpti_SubscriberHandle subscriber_ {nullptr};
+  CUpti_SubscriberHandle subscriber_{nullptr};
 #endif
 };
 

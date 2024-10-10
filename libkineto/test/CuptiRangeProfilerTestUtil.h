@@ -6,9 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <gtest/gtest.h>
 #include <stdlib.h>
 #include <unordered_map>
-#include <gtest/gtest.h>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -21,7 +21,7 @@ namespace KINETO_NAMESPACE {
 class MockCuptiRBProfilerSession : public CuptiRBProfilerSession {
  public:
   explicit MockCuptiRBProfilerSession(const CuptiRangeProfilerOptions& opts)
-    : CuptiRBProfilerSession(opts) {}
+      : CuptiRBProfilerSession(opts) {}
 
   void beginPass() override {
     LOG(INFO) << " Mock CUPTI begin pass";
@@ -59,7 +59,7 @@ class MockCuptiRBProfilerSession : public CuptiRBProfilerSession {
     return getResults()[deviceId()];
   }
 
-protected:
+ protected:
   void startInternal(
       CUpti_ProfilerRange profilerRange,
       CUpti_ProfilerReplayMode profilerReplayMode) override {
@@ -68,7 +68,7 @@ protected:
     curReplay_ = profilerReplayMode;
   }
 
-private:
+ private:
   void runChecks() {
     EXPECT_EQ(passes_started, passes_ended);
     EXPECT_EQ(ranges_started, ranges_ended);
@@ -98,8 +98,7 @@ struct MockCuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {
 };
 
 inline void simulateCudaContextCreate(CUcontext context, uint32_t dev) {
-  testing::trackCudaCtx(
-      context, dev, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
+  testing::trackCudaCtx(context, dev, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
 }
 
 inline void simulateCudaContextDestroy(CUcontext context, uint32_t dev) {
@@ -108,7 +107,8 @@ inline void simulateCudaContextDestroy(CUcontext context, uint32_t dev) {
 }
 
 inline void simulateKernelLaunch(
-    CUcontext context, const std::string& kernelName) {
+    CUcontext context,
+    const std::string& kernelName) {
   testing::trackCudaKernelLaunch(context, kernelName.c_str());
 }
 

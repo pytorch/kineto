@@ -16,17 +16,13 @@ namespace libkineto {
 
 struct TraceSpan {
   TraceSpan() = delete;
-  TraceSpan(
-      int64_t startTime, int64_t endTime, std::string name)
-      : startTime(startTime), endTime(endTime), name(std::move(name)) {
-  }
-  TraceSpan(
-      int opCount, int it, std::string name, std::string prefix)
+  TraceSpan(int64_t startTime, int64_t endTime, std::string name)
+      : startTime(startTime), endTime(endTime), name(std::move(name)) {}
+  TraceSpan(int opCount, int it, std::string name, std::string prefix)
       : opCount(opCount),
         iteration(it),
         name(std::move(name)),
-        prefix(std::move(prefix)) {
-  }
+        prefix(std::move(prefix)) {}
 
   // FIXME: change to duration?
   int64_t startTime{0};

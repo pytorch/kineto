@@ -74,23 +74,18 @@ void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
 
 inline const std::string GpuActivity::name() const {
   if (type_ == ActivityType::CONCURRENT_KERNEL) {
-    const char *name = roctracer_op_string(raw().domain, raw().op, raw().kind);
-    return demangle(raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));
-  }
-  else if (type_ == ActivityType::GPU_MEMSET) {
-    return fmt::format(
-      "Memset ({})",
-      getGpuActivityKindString(raw().kind));
-  }
-  else if (type_ == ActivityType::GPU_MEMCPY) {
+    const char* name = roctracer_op_string(raw().domain, raw().op, raw().kind);
+    return demangle(
+        raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));
+  } else if (type_ == ActivityType::GPU_MEMSET) {
+    return fmt::format("Memset ({})", getGpuActivityKindString(raw().kind));
+  } else if (type_ == ActivityType::GPU_MEMCPY) {
     std::string src = "";
     std::string dst = "";
     getMemcpySrcDstString(raw().kind, src, dst);
     return fmt::format(
-      "Memcpy {} ({} -> {})",
-      getGpuActivityKindString(raw().kind), src, dst);
-  }
-  else {
+        "Memcpy {} ({} -> {})", getGpuActivityKindString(raw().kind), src, dst);
+  } else {
     return "";
   }
 }
@@ -125,93 +120,112 @@ inline const std::string GpuActivity::metadataJson() const {
 
 template <class T>
 inline bool RuntimeActivity<T>::flowStart() const {
-  bool should_correlate =
-      raw().cid == HIP_API_ID_hipLaunchKernel ||
+  bool should_correlate = raw().cid == HIP_API_ID_hipLaunchKernel ||
       raw().cid == HIP_API_ID_hipExtLaunchKernel ||
       raw().cid == HIP_API_ID_hipLaunchCooperativeKernel ||
       raw().cid == HIP_API_ID_hipHccModuleLaunchKernel ||
       raw().cid == HIP_API_ID_hipModuleLaunchKernel ||
       raw().cid == HIP_API_ID_hipExtModuleLaunchKernel ||
-      raw().cid == HIP_API_ID_hipMalloc ||
-      raw().cid == HIP_API_ID_hipFree ||
+      raw().cid == HIP_API_ID_hipMalloc || raw().cid == HIP_API_ID_hipFree ||
       raw().cid == HIP_API_ID_hipMemcpy ||
       raw().cid == HIP_API_ID_hipMemcpyAsync ||
       raw().cid == HIP_API_ID_hipMemcpyWithStream;
   return should_correlate;
 }
 
-template<class T>
+template <class T>
 inline void RuntimeActivity<T>::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);
 }
 
-template<>
-inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson() const {
+template <>
+inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson()
+    const {
   std::string kernel = "";
   if ((raw().functionAddr != nullptr)) {
-    kernel = fmt::format(R"JSON(
+    kernel = fmt::format(
+        R"JSON(
     "kernel": "{}", )JSON",
-    demangle(hipKernelNameRefByPtr(raw().functionAddr, raw().stream)));
-  }
-  else if ((raw().function != nullptr)) {
-    kernel = fmt::format(R"JSON(
+        demangle(hipKernelNameRefByPtr(raw().functionAddr, raw().stream)));
+  } else if ((raw().function != nullptr)) {
+    kernel = fmt::format(
+        R"JSON(
     "kernel": "{}", )JSON",
-    demangle(hipKernelNameRef(raw().function)));
+        demangle(hipKernelNameRef(raw().function)));
   }
-  //cache grid and block so we can pass it into async activity (GPU track)
-  correlationToGrid[raw().id] = fmt::format(R"JSON(
+  // cache grid and block so we can pass it into async activity (GPU track)
+  correlationToGrid[raw().id] = fmt::format(
+      R"JSON(
     [{}, {}, {}])JSON",
-    raw().gridX, raw().gridY, raw().gridZ);
-  
-  correlationToBlock[raw().id] = fmt::format(R"JSON(
-    [{}, {}, {}])JSON",
-    raw().workgroupX, raw().workgroupY, raw().workgroupZ);
-  
+      raw().gridX,
+      raw().gridY,
+      raw().gridZ);
 
-  return fmt::format(R"JSON(
+  correlationToBlock[raw().id] = fmt::format(
+      R"JSON(
+    [{}, {}, {}])JSON",
+      raw().workgroupX,
+      raw().workgroupY,
+      raw().workgroupZ);
+
+  return fmt::format(
+      R"JSON(
       {}"cid": {}, "correlation": {},
-      "stream": "{}",
       "grid": [{}, {}, {}],
       "block": [{}, {}, {}],
       "shared memory": {})JSON",
-      kernel, raw().cid, raw().id,
-      reinterpret_cast<void*>(raw().stream),
-      raw().gridX, raw().gridY, raw().gridZ,
-      raw().workgroupX, raw().workgroupY, raw().workgroupZ,
+      kernel,
+      raw().cid,
+      raw().id,
+      raw().gridX,
+      raw().gridY,
+      raw().gridZ,
+      raw().workgroupX,
+      raw().workgroupY,
+      raw().workgroupZ,
       raw().groupSegmentSize);
 }
 
-template<>
-inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson() const {
-  std::string stream = "";
-  if ((raw().cid == HIP_API_ID_hipMemcpyAsync) || (raw().cid == HIP_API_ID_hipMemcpyWithStream)) {
-    stream = fmt::format(R"JSON(
-    "stream": "{}", )JSON",
-    reinterpret_cast<void*>(raw().stream));
-  }
-  return fmt::format(R"JSON(
-      {}"cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "size": "{}", "kind": "{}")JSON",
-      stream, raw().cid, raw().id, raw().src, raw().dst, raw().size, fmt::underlying(raw().kind));
+template <>
+inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson()
+    const {
+  return fmt::format(
+      R"JSON(
+      "cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "size": "{}", "kind": "{}")JSON",
+      raw().cid,
+      raw().id,
+      raw().src,
+      raw().dst,
+      raw().size,
+      fmt::underlying(raw().kind));
 }
 
-template<>
-inline const std::string RuntimeActivity<roctracerMallocRow>::metadataJson() const {
+template <>
+inline const std::string RuntimeActivity<roctracerMallocRow>::metadataJson()
+    const {
   std::string size = "";
   if (raw().cid == HIP_API_ID_hipMalloc) {
-    size = fmt::format(R"JSON(
+    size = fmt::format(
+        R"JSON(
       "size": {}, )JSON",
-      raw().size);
+        raw().size);
   }
-  return fmt::format(R"JSON(
+  return fmt::format(
+      R"JSON(
       {}"cid": {}, "correlation": {}, "ptr": "{}")JSON",
-      size, raw().cid, raw().id, raw().ptr);
+      size,
+      raw().cid,
+      raw().id,
+      raw().ptr);
 }
 
-template<class T>
+template <class T>
 inline const std::string RuntimeActivity<T>::metadataJson() const {
-  return fmt::format(R"JSON(
+  return fmt::format(
+      R"JSON(
       "cid": {}, "correlation": {})JSON",
-      raw().cid, raw().id);
+      raw().cid,
+      raw().id);
 }
 
 } // namespace KINETO_NAMESPACE

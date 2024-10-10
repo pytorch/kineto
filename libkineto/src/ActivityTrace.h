@@ -23,9 +23,7 @@ class ActivityTrace : public ActivityTraceInterface {
   ActivityTrace(
       std::unique_ptr<MemoryTraceLogger> tmpLogger,
       const ActivityLoggerFactory& factory)
-    : memLogger_(std::move(tmpLogger)),
-      loggerFactory_(factory) {
-  }
+      : memLogger_(std::move(tmpLogger)), loggerFactory_(factory) {}
 
   const std::vector<const ITraceActivity*>* activities() override {
     return memLogger_->traceActivities();

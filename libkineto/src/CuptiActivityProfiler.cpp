@@ -1137,7 +1137,7 @@ void CuptiActivityProfiler::collectTrace(bool collection_done,
     ecs_.cupti_stopped_early = cupti_.stopCollection;
 #endif // HAS_CUPTI || HAS_ROCTRACER
 
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     stopTraceInternal(now);
     VLOG_IF(0, collection_done) << "Reached profile end time";
     UST_LOGGER_MARK_COMPLETED(kCollectionStage);
@@ -1145,7 +1145,7 @@ void CuptiActivityProfiler::collectTrace(bool collection_done,
 
 void CuptiActivityProfiler::ensureCollectTraceDone() {
   if (collectTraceThread && collectTraceThread->joinable()) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
     collectTraceThread->join();
     collectTraceThread.reset(nullptr);
   }
@@ -1304,7 +1304,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         if (currentIter > 0) {
           // if collectTraceThread is already running, there's no need to execute collectTrace twice.
           if(!collectTraceThread){
-            std::lock_guard<std::mutex> guard(mutex_);
+            std::lock_guard<std::recursive_mutex> guard(mutex_);
             collectTraceThread = std::make_unique<std::thread>(&CuptiActivityProfiler::collectTrace, this, collection_done, now);
           }
           break;

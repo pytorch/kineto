@@ -209,8 +209,8 @@ std::ostream& operator<<(
 }
 
 CuptiActivityProfiler::~CuptiActivityProfiler() {
-  if(collectTraceThread && collectTraceThread->joinable()) {
-    collectTraceThread->join();
+  if (collectTraceThread_ && collectTraceThread_->joinable()) {
+    collectTraceThread_->join();
   }
 }
 
@@ -1126,28 +1126,26 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
-void CuptiActivityProfiler::collectTrace(bool collection_done,
-                                         const std::chrono::time_point<std::chrono::system_clock> &now) {
-
-    if (libkineto::api().client()) {
-      libkineto::api().client()->stop();
-    }
+void CuptiActivityProfiler::collectTrace(
+    bool collection_done,
+    const std::chrono::time_point<std::chrono::system_clock>& now) {
+  if (libkineto::api().client()) {
+    libkineto::api().client()->stop();
+  }
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-    ecs_.cupti_stopped_early = cupti_.stopCollection;
+  ecs_.cupti_stopped_early = cupti_.stopCollection;
 #endif // HAS_CUPTI || HAS_ROCTRACER
-
-    std::lock_guard<std::recursive_mutex> guard(mutex_);
-    stopTraceInternal(now);
-    VLOG_IF(0, collection_done) << "Reached profile end time";
-    UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+  std::lock_guard<std::recursive_mutex> guard(mutex_);
+  stopTraceInternal(now);
+  VLOG_IF(0, collection_done) << "Reached profile end time";
+  UST_LOGGER_MARK_COMPLETED(kCollectionStage);
 }
 
 void CuptiActivityProfiler::ensureCollectTraceDone() {
-  if (collectTraceThread && collectTraceThread->joinable()) {
-    std::lock_guard<std::recursive_mutex> guard(mutex_);
-    collectTraceThread->join();
-    collectTraceThread.reset(nullptr);
+  if (collectTraceThread_ && collectTraceThread_->joinable()) {
+    collectTraceThread_->join();
+    collectTraceThread_.reset(nullptr);
   }
 }
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
@@ -1299,13 +1297,20 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         VLOG_IF(1, currentIter > 0)
             << "This state change was invoked by application's step() call";
 
-        // currentIter > 0 means this is an iteration-based collection, triggered by pytorch main thread,
-        // it should be executed in another thread in case pytorch main thread is blocked
+        // currentIter > 0 means this is an iteration-based collection,
+        // triggered by pytorch main thread, it should be executed in another
+        // thread in case pytorch main thread is blocked
         if (currentIter > 0) {
-          // if collectTraceThread is already running, there's no need to execute collectTrace twice.
-          if(!collectTraceThread){
+          // if collectTraceThread_ is already running, there's no need to
+          // execute collectTrace twice.
+          LOG(WARNING) << "LAUNCHING THREAD FOR collectTrace()";
+          if (!collectTraceThread_) {
             std::lock_guard<std::recursive_mutex> guard(mutex_);
-            collectTraceThread = std::make_unique<std::thread>(&CuptiActivityProfiler::collectTrace, this, collection_done, now);
+            collectTraceThread_ = std::make_unique<std::thread>(
+                &CuptiActivityProfiler::collectTrace,
+                this,
+                collection_done,
+                now);
           }
           break;
         }

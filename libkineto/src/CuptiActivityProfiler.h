@@ -171,7 +171,9 @@ class CuptiActivityProfiler {
   }
 
   // Collect CPU and GPU traces
-  void collectTrace(bool collectionDone,  const std::chrono::time_point<std::chrono::system_clock>& now );
+  void collectTrace(
+      bool collectionDone,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Ensure collectTrace is done
   void ensureCollectTraceDone();
@@ -489,8 +491,9 @@ class CuptiActivityProfiler {
   std::recursive_mutex mutex_;
 
   // Add a thread to collect both cpu and gpu traces in case torch main thread
-  // is blocked when profiling by iterations is enabled. Issue #953 shows details.
-  std::unique_ptr<std::thread> collectTraceThread;
+  // is blocked when profiling by iterations is enabled. Issue #953 shows
+  // details.
+  std::unique_ptr<std::thread> collectTraceThread_{nullptr};
 
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};

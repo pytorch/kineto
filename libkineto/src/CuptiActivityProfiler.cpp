@@ -1169,7 +1169,7 @@ void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 
 void CuptiActivityProfiler::startTraceInternal(
     const time_point<system_clock>& now) {
-  captu/WindowStartTime_ = libkineto::timeSinceEpoch(now);
+  captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
   VLOG(0) << "Warmup -> CollectTrace";
   for (auto& session : sessions_) {
     LOG(INFO) << "Starting child profiler session";

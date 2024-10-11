@@ -18,8 +18,10 @@
 #include <locale>
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
-#include <processthreadsapi.h>
-#include <windows.h>
+#include <windows.h> // @manual
+// windows.h has to come first. Don't alphabetize, clang-format.
+
+#include <processthreadsapi.h> // @manual
 #undef ERROR
 #endif // _WIN32
 

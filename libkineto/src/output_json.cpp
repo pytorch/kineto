@@ -348,12 +348,18 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     duration += 2; // Still need it to end at the original point rounded up.
   }
 
+  int external_id = 0;
+  if (op.linkedActivity()) {
+    external_id = op.linkedActivity()->correlationId();
+  } else if (op.type() == libkineto::ActivityType::CPU_OP ||
+      op.type() == libkineto::ActivityType::CPU_INSTANT_EVENT ||
+      op.type() == libkineto::ActivityType::USER_ANNOTATION ||
+      op.type() == libkineto::ActivityType::PYTHON_FUNCTION) {
+    external_id = op.correlationId();
+  }
   std::string arg_values = "";
-  if (op.linkedActivity() && op.linkedActivity()->correlationId() != 0) {
-    arg_values.append(fmt::format(
-        "\"External id\": {}", op.linkedActivity()->correlationId()));
-  } else if (op.correlationId() != 0) {
-    arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
+  if (external_id != 0) {
+    arg_values.append(fmt::format("\"External id\": {}", external_id));
   }
   std::string op_metadata = op.metadataJson();
   sanitizeStrForJSON(op_metadata);

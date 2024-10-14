@@ -1134,7 +1134,12 @@ void CuptiActivityProfiler::collectTrace(
   }
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-  ecs_.cupti_stopped_early = cupti_.stopCollection;
+  if (cupti_.stopCollection) {
+    ecs_.cupti_stopped_early = cupti_.stopCollection;
+    LOG(ERROR)
+        << "State: CollectTrace stopped by CUPTI. (Buffer size configured is "
+        << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
+  }
 #endif // HAS_CUPTI || HAS_ROCTRACER
   std::lock_guard<std::recursive_mutex> guard(mutex_);
   stopTraceInternal(now);

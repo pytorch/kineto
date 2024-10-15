@@ -1299,16 +1299,15 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       ) {
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete.";
-        VLOG_IF(1, currentIter > 0)
+        VLOG_IF(1, currentIter >= 0)
             << "This state change was invoked by application's step() call";
 
-        // currentIter > 0 means this is an iteration-based collection,
+        // currentIter >= 0 means this is an iteration-based collection,
         // triggered by pytorch main thread, it should be executed in another
         // thread in case pytorch main thread is blocked
-        if (currentIter > 0) {
+        if (currentIter >= 0) {
           // if collectTraceThread_ is already running, there's no need to
           // execute collectTrace twice.
-          LOG(WARNING) << "LAUNCHING THREAD FOR collectTrace()";
           if (!collectTraceThread_) {
             std::lock_guard<std::recursive_mutex> guard(mutex_);
             collectTraceThread_ = std::make_unique<std::thread>(

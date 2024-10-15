@@ -443,8 +443,8 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
     EXPECT_TRUE(profiler.isActive());
 
     auto nextnext = next + milliseconds(1000);
-
     profiler.performRunLoopStep(nextnext, nextnext);
+    profiler.ensureCollectTraceDone();
     profiler.performRunLoopStep(nextnext, nextnext);
 
     // Assert that tracing has completed

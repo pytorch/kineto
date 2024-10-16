@@ -26,12 +26,12 @@ IpcFabricConfigClient* DaemonConfigLoader::getConfigClient() {
 
 std::string DaemonConfigLoader::readBaseConfig() {
   LOG(INFO) << "Reading base config";
-  auto configClient = getConfigClient();
-  if (!configClient) {
+  auto configClient_2 = getConfigClient();
+  if (!configClient_2) {
     LOG_EVERY_N(WARNING, 10) << "Failed to read config: No dyno config client";
     return "";
   }
-  return configClient->getLibkinetoBaseConfig();
+  return configClient_2->getLibkinetoBaseConfig();
 }
 
 std::string DaemonConfigLoader::readOnDemandConfig(

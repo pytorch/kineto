@@ -15,6 +15,10 @@ constexpr char kWarmUpStage[] = "Warm Up";
 constexpr char kCollectionStage[] = "Collection";
 constexpr char kPostProcessingStage[] = "Post Processing";
 
+// Special string in UST for determining if traces are empty
+constexpr char kEmptyTrace[] =
+    "No Valid Trace Events (CPU/GPU) found. Outputting empty trace.";
+
 #if !USE_GOOGLE_LOG
 
 #include <map>

@@ -375,8 +375,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
 #endif // HAS_ROCTRACER
   if (!traceNonEmpty()) {
-    LOG(WARNING)
-        << "No Valid Trace Events (CPU/GPU) found. Outputting empty trace.";
+    LOG(WARNING) << kEmptyTrace;
   }
 
   for (const auto& session : sessions_) {

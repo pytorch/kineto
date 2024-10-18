@@ -159,8 +159,7 @@ void CuptiCallbackApi::__callback_switchboard(
 
 std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
   static const std::shared_ptr<CuptiCallbackApi> instance = [] {
-    std::shared_ptr<CuptiCallbackApi> inst =
-        std::shared_ptr<CuptiCallbackApi>(new CuptiCallbackApi());
+    std::shared_ptr<CuptiCallbackApi> inst = std::make_shared<CuptiCallbackApi>();
     return inst;
   }();
   return instance;

@@ -365,14 +365,13 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     // should not set an "External id" for them. Otherwise, these events
     // may be incorrectly linked to the other external events.
     static const std::set<libkineto::ActivityType> excludedTypes = {
-      libkineto::ActivityType::GPU_MEMCPY,
-      libkineto::ActivityType::GPU_MEMSET,
-      libkineto::ActivityType::CONCURRENT_KERNEL,
-      libkineto::ActivityType::CUDA_RUNTIME,
-      libkineto::ActivityType::CUDA_DRIVER,
-      libkineto::ActivityType::PRIVATEUSE1_RUNTIME,
-      libkineto::ActivityType::PRIVATEUSE1_DRIVER
-    };
+        libkineto::ActivityType::GPU_MEMCPY,
+        libkineto::ActivityType::GPU_MEMSET,
+        libkineto::ActivityType::CONCURRENT_KERNEL,
+        libkineto::ActivityType::CUDA_RUNTIME,
+        libkineto::ActivityType::CUDA_DRIVER,
+        libkineto::ActivityType::PRIVATEUSE1_RUNTIME,
+        libkineto::ActivityType::PRIVATEUSE1_DRIVER};
     if (excludedTypes.find(op.type()) == excludedTypes.end()) {
       external_id = op.correlationId();
     }

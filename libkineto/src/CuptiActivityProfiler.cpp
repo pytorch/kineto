@@ -208,6 +208,12 @@ std::ostream& operator<<(
   return oss;
 }
 
+CuptiActivityProfiler::~CuptiActivityProfiler() {
+  if (collectTraceThread_ && collectTraceThread_->joinable()) {
+    collectTraceThread_->join();
+  }
+}
+
 void CuptiActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
@@ -369,8 +375,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
 #endif // HAS_ROCTRACER
   if (!traceNonEmpty()) {
-    LOG(WARNING)
-        << "No Valid Trace Events (CPU/GPU) found. Outputting empty trace.";
+    LOG(WARNING) << kEmptyTrace;
   }
 
   for (const auto& session : sessions_) {
@@ -1120,6 +1125,33 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
+void CuptiActivityProfiler::collectTrace(
+    bool collection_done,
+    const std::chrono::time_point<std::chrono::system_clock>& now) {
+  if (libkineto::api().client()) {
+    libkineto::api().client()->stop();
+  }
+
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
+  if (cupti_.stopCollection) {
+    ecs_.cupti_stopped_early = cupti_.stopCollection;
+    LOG(ERROR)
+        << "State: CollectTrace stopped by CUPTI. (Buffer size configured is "
+        << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
+  }
+#endif // HAS_CUPTI || HAS_ROCTRACER
+  std::lock_guard<std::recursive_mutex> guard(mutex_);
+  stopTraceInternal(now);
+  VLOG_IF(0, collection_done) << "Reached profile end time";
+  UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+}
+
+void CuptiActivityProfiler::ensureCollectTraceDone() {
+  if (collectTraceThread_ && collectTraceThread_->joinable()) {
+    collectTraceThread_->join();
+    collectTraceThread_.reset(nullptr);
+  }
+}
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 #ifdef HAS_CUPTI
   if (enable) {
@@ -1266,26 +1298,26 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       ) {
         // Update runloop state first to prevent further updates to shared state
         LOG(INFO) << "Tracing complete.";
-        VLOG_IF(1, currentIter > 0)
+        VLOG_IF(1, currentIter >= 0)
             << "This state change was invoked by application's step() call";
 
-        if (libkineto::api().client()) {
-          libkineto::api().client()->stop();
+        // currentIter >= 0 means this is an iteration-based collection,
+        // triggered by pytorch main thread, it should be executed in another
+        // thread in case pytorch main thread is blocked
+        if (currentIter >= 0) {
+          // if collectTraceThread_ is already running, there's no need to
+          // execute collectTrace twice.
+          if (!collectTraceThread_) {
+            std::lock_guard<std::recursive_mutex> guard(mutex_);
+            collectTraceThread_ = std::make_unique<std::thread>(
+                &CuptiActivityProfiler::collectTrace,
+                this,
+                collection_done,
+                now);
+          }
+          break;
         }
-
-#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-        if (cupti_.stopCollection) {
-          ecs_.cupti_stopped_early = cupti_.stopCollection;
-          LOG(ERROR)
-              << "State: CollectTrace stopped by CUPTI. (Buffer size configured is "
-              << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
-        }
-#endif // HAS_CUPTI || HAS_ROCTRACER
-
-        std::lock_guard<std::recursive_mutex> guard(mutex_);
-        stopTraceInternal(now);
-        VLOG_IF(0, collection_done) << "Reached profile end time";
-        UST_LOGGER_MARK_COMPLETED(kCollectionStage);
+        collectTrace(collection_done, now);
       } else if (derivedConfig_->isProfilingByIteration()) {
         // nothing to do here
       } else if (
@@ -1305,6 +1337,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       if (currentIter >= 0) {
         return new_wakeup_time;
       }
+
+      // Before processing, we should wait for collectTrace thread to be done.
+      ensureCollectTraceDone();
+
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::recursive_mutex> guard(mutex_);

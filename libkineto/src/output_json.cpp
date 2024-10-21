@@ -77,6 +77,15 @@ void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
   value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
 }
 
+static inline int32_t sanitizeTid(int32_t tid) {
+  // Convert all negative tids to its positive value. Create a specific case
+  // for INT_MIN so it is obvious how it is being handled.
+  if (tid == INT_MIN) {
+    return 0;
+  }
+  return std::abs(tid);
+}
+
 void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (auto [k, v] : metadata) {
@@ -197,9 +206,9 @@ void ChromeTraceLogger::handleResourceInfo(
       "sort_index": {}
     }}
   }},)JSON",
-      time/1000, time%1000, info.deviceId, info.id,
+      time/1000, time%1000, info.deviceId, sanitizeTid(info.id),
       info.name,
-      time/1000, time%1000, info.deviceId, info.id,
+      time/1000, time%1000, info.deviceId, sanitizeTid(info.id),
       info.sortIndex);
   // clang-format on
 }
@@ -312,7 +321,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
       toString(op.type()),
       op.name(),
       op.deviceId(),
-      op.resourceId(),
+      sanitizeTid(op.resourceId()),
       ts / 1000,
       ts % 1000,
       op.metadataJson());
@@ -500,7 +509,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
     "ts": {}.{:03}, "dur": {}.{:03}{}
   }},)JSON",
-          toString(op.type()), op_name, device, resource,
+          toString(op.type()), op_name, device, sanitizeTid(resource),
           ts/1000, ts %1000, duration/1000, duration %1000, args);
   // clang-format on
   if (op.flowId() > 0) {
@@ -554,7 +563,7 @@ void ChromeTraceLogger::handleLink(
     "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {}.{:03},
     "cat": "{}", "name": "{}"{}
   }},)JSON",
-      type, id, e.deviceId(), e.resourceId(), ts/1000, ts%1000, name, name, binding);
+      type, id, e.deviceId(), sanitizeTid(e.resourceId()), ts/1000, ts%1000, name, name, binding);
   // clang-format on
 }
 

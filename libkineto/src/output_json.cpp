@@ -357,12 +357,28 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     duration += 2; // Still need it to end at the original point rounded up.
   }
 
+  int external_id = 0;
+  if (op.linkedActivity()) {
+    external_id = op.linkedActivity()->correlationId();
+  } else {
+    // Some runtime events and kernels may not have a linked activity,
+    // should not set an "External id" for them. Otherwise, these events
+    // may be incorrectly linked to the other external events.
+    static const std::set<libkineto::ActivityType> excludedTypes = {
+        libkineto::ActivityType::GPU_MEMCPY,
+        libkineto::ActivityType::GPU_MEMSET,
+        libkineto::ActivityType::CONCURRENT_KERNEL,
+        libkineto::ActivityType::CUDA_RUNTIME,
+        libkineto::ActivityType::CUDA_DRIVER,
+        libkineto::ActivityType::PRIVATEUSE1_RUNTIME,
+        libkineto::ActivityType::PRIVATEUSE1_DRIVER};
+    if (excludedTypes.find(op.type()) == excludedTypes.end()) {
+      external_id = op.correlationId();
+    }
+  }
   std::string arg_values = "";
-  if (op.linkedActivity() && op.linkedActivity()->correlationId() != 0) {
-    arg_values.append(fmt::format(
-        "\"External id\": {}", op.linkedActivity()->correlationId()));
-  } else if (op.correlationId() != 0) {
-    arg_values.append(fmt::format("\"External id\": {}", op.correlationId()));
+  if (external_id != 0) {
+    arg_values.append(fmt::format("\"External id\": {}", external_id));
   }
   std::string op_metadata = op.metadataJson();
   sanitizeStrForJSON(op_metadata);

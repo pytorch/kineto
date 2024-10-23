@@ -3,8 +3,7 @@
 # -------------------------------------------------------------------------
 import sys
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
-from collections.abc import Iterable
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .. import utils
 from .node import (BackwardNode, DeviceNode, ModuleNode, OperatorNode,
@@ -20,13 +19,13 @@ class OpTreeBuilder:
 
     def __init__(self):
         self.main_tid: int = None
-        self.tid2tree: dict[int, OperatorNode] = None
+        self.tid2tree: Dict[int, OperatorNode] = None
 
     def build_tree(self,
-                   tid2list: dict[int, list[OperatorNode]],
-                   tid2zero_rt_list: dict[int, list[RuntimeNode]],
-                   staled_device_nodes: list[DeviceNode],
-                   fwd_bwd_map: dict[int, int]):
+                   tid2list: Dict[int, List[OperatorNode]],
+                   tid2zero_rt_list: Dict[int, List[RuntimeNode]],
+                   staled_device_nodes: List[DeviceNode],
+                   fwd_bwd_map: Dict[int, int]):
         """Construct the BackwardNode and replace the original backward nodes
         """
         self.tid2tree = self._build_tree(tid2list, tid2zero_rt_list, staled_device_nodes)
@@ -48,7 +47,7 @@ class OpTreeBuilder:
         if len(agg_nodes) > 0:
             logger.warning('some nodes cannot find forward nodes')
 
-        backward_modules: list[BackwardNode] = []
+        backward_modules: List[BackwardNode] = []
         for module in modules:
             OpTreeBuilder._build_backward_module(module, None, fwd_bwd_root, backward_modules)
         OpTreeBuilder._insert_backward_modules(self.tid2tree[self.main_tid], backward_modules)
@@ -56,7 +55,7 @@ class OpTreeBuilder:
 
         return self.tid2tree
 
-    def _build_tree(self, tid2list: dict[int, list[OperatorNode]], tid2zero_rt_list, staled_device_nodes):
+    def _build_tree(self, tid2list: Dict[int, List[OperatorNode]], tid2zero_rt_list, staled_device_nodes):
         tid2tree = {}
 
         for tid, op_list in tid2list.items():
@@ -101,7 +100,7 @@ class OpTreeBuilder:
         zero_rt_list: list of RuntimeNode with external_id=0."""
 
         def build_tree_relationship(host_node_list: Iterable[OperatorNode], zero_rt_list, staled_device_nodes):
-            dummpy_rt: list[RuntimeNode] = []
+            dummpy_rt: List[RuntimeNode] = []
             if staled_device_nodes:
                 # Note: Although kernels of this dummy runtime is put under main thread's tree,
                 # we don't know which thread launches them.
@@ -114,7 +113,7 @@ class OpTreeBuilder:
                     tid=0,
                     device_nodes=staled_device_nodes))
                 dummpy_rt[0].fill_stats()
-            node_stack: list[OperatorNode] = []
+            node_stack: List[OperatorNode] = []
             root_node = OperatorNode(
                 name='CallTreeRoot',
                 start_time=-sys.maxsize - 1,
@@ -170,13 +169,13 @@ class OpTreeBuilder:
                                    if child.end_time is not None), None)
         return root_node
 
-    def _get_modules(self) -> tuple[list[ModuleNode], list[OperatorNode]]:
+    def _get_modules(self) -> Tuple[List[ModuleNode], List[OperatorNode]]:
         """Get the ModuleNodes and backward root nodes
         If there are any ModuleNodes, the backward roots will be removed from the tree
         so that later a new BackwardNode will be replaced.
         """
-        modules: list[ModuleNode] = []
-        backward_nodes: dict[OperatorNode, list[OperatorNode]] = defaultdict(list)
+        modules: List[ModuleNode] = []
+        backward_nodes: Dict[OperatorNode, List[OperatorNode]] = defaultdict(list)
 
         def traverse_node(parent, node: OperatorNode):
             if isinstance(node, ModuleNode):
@@ -195,7 +194,7 @@ class OpTreeBuilder:
                 traverse_node(root, child)
 
         if modules:
-            backward_nodes_flatten: list[OperatorNode] = []
+            backward_nodes_flatten: List[OperatorNode] = []
             # only remove the backward nodes when the module information exist
             for p, nodes in backward_nodes.items():
                 p.children = [child for child in p.children if child not in nodes]
@@ -208,8 +207,8 @@ class OpTreeBuilder:
     @staticmethod
     def _get_node_parents(nodes: Iterable[OperatorNode]):
         """Get the child->parent relationship for these nodes"""
-        ts_to_node: dict[int, OperatorNode] = {}
-        ts_to_parent: dict[int, OperatorNode] = {}
+        ts_to_node: Dict[int, OperatorNode] = {}
+        ts_to_parent: Dict[int, OperatorNode] = {}
 
         def traverse_node(node: OperatorNode):
             if node.start_time not in ts_to_node:
@@ -224,12 +223,12 @@ class OpTreeBuilder:
         return ts_to_node, ts_to_parent
 
     @staticmethod
-    def _group_backward_nodes(nodes: Iterable[OperatorNode]) -> dict[OperatorNode, list[OperatorNode]]:
+    def _group_backward_nodes(nodes: Iterable[OperatorNode]) -> Dict[OperatorNode, List[OperatorNode]]:
         """All nodes are backward nodes startswith autograd::engine::evaluate_function.
         If one node's name is autograd::engine::evaluate_function: torch::autograd::AccumulateGrad,
         it should be grouped with previous normal backward node. Otherwise, a new backward node should be started
         """
-        grouped_bwd_nodes: list[list[OperatorNode]] = []
+        grouped_bwd_nodes: List[List[OperatorNode]] = []
         for node in nodes:
             if node.name == OpTreeBuilder.BACKWARD_ACCUMULATE_GRAD:
                 grouped_bwd_nodes[-1].append(node)
@@ -241,13 +240,13 @@ class OpTreeBuilder:
         return {nodes[0]: nodes for nodes in grouped_bwd_nodes}
 
     @staticmethod
-    def _get_backward_roots(fwd_bwd_map: dict[int, int],
-                            ts2parent: dict[int, OperatorNode],
-                            backward_nodes: dict[OperatorNode, list[OperatorNode]]) -> dict[int, list[OperatorNode]]:
+    def _get_backward_roots(fwd_bwd_map: Dict[int, int],
+                            ts2parent: Dict[int, OperatorNode],
+                            backward_nodes: Dict[OperatorNode, List[OperatorNode]]) -> Dict[int, List[OperatorNode]]:
         if not fwd_bwd_map:
             return None
 
-        fwd_to_bwdroot: dict[int, list[OperatorNode]] = {}
+        fwd_to_bwdroot: Dict[int, List[OperatorNode]] = {}
         for fwd, bwd in fwd_bwd_map.items():
             parent = ts2parent.get(bwd)
             while parent is not None and not parent.name.startswith(OpTreeBuilder.BACKWARD_ROOT_PREFIX):
@@ -261,9 +260,9 @@ class OpTreeBuilder:
         return fwd_to_bwdroot
 
     def _build_backward_module(node: ModuleNode,
-                               parent: BackwardNode | None,
-                               fwd_bwd_map: dict[int, list[OperatorNode]],
-                               result: list[BackwardNode]):
+                               parent: Optional[BackwardNode],
+                               fwd_bwd_map: Dict[int, List[OperatorNode]],
+                               result: List[BackwardNode]):
         """Construct the backward module from root (node argument) and
         insert it into result array if there is no any parent associated with it.
         """
@@ -294,7 +293,7 @@ class OpTreeBuilder:
             parent.tid = parent.children[0].tid
 
     @staticmethod
-    def _insert_backward_modules(root: OperatorNode, backward_modules: list[BackwardNode]):
+    def _insert_backward_modules(root: OperatorNode, backward_modules: List[BackwardNode]):
         backward_modules.sort(key=lambda x: (x.start_time, -x.end_time))
 
         # each item is (parent_node, child_index) that it is visiting.

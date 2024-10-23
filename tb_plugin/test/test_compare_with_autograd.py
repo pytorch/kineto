@@ -15,7 +15,7 @@ from torchvision import models
 
 
 def create_log_dir():
-    log_dir_name = f'./log{str(int(time.time()*1000))}'
+    log_dir_name = './log{}'.format(str(int(time.time()*1000)))
     try:
         os.makedirs(log_dir_name)
     except Exception:
@@ -198,7 +198,7 @@ def get_train_func(use_gpu=True):
 
     def train(train_step, prof=None):
         for step, data in enumerate(trainloader, 0):
-            print(f'step:{step}')
+            print('step:{}'.format(step))
             inputs, labels = data[0].to(device=device), data[1].to(device=device)
 
             outputs = model(inputs)
@@ -218,7 +218,7 @@ def get_output_fn(dir_name, profilers_dict):
     def output_fn(p):
         # In current torch.profiler.profile, at beginning of each span, a new p.profiler will be created.
         # So the same p.profiler will not be shared among different spans
-        worker_name = f'worker{p.step_num}'
+        worker_name = 'worker{}'.format(p.step_num)
         profilers_dict[worker_name] = p.profiler
         tb_trace_handler = torch.profiler.tensorboard_trace_handler(dir_name, worker_name)
         tb_trace_handler(p)
@@ -248,7 +248,7 @@ class TestCompareWithAutogradResult(unittest.TestCase):
         with torch.autograd.profiler.profile(use_cuda=True, use_kineto=True, record_shapes=True) as p:
             get_train_func()(5)
         log_dir = create_log_dir()
-        p.export_chrome_trace(os.path.join(log_dir, f'worker0.{int(time.time() * 1000)}.pt.trace.json'))
+        p.export_chrome_trace(os.path.join(log_dir, 'worker0.{}.pt.trace.json'.format(int(time.time() * 1000))))
         self.compare_results(log_dir, {'worker0': p})
 
     def base_profiler_api(self, use_gpu, record_shapes, profile_memory, with_stack):

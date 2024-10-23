@@ -38,7 +38,7 @@ class Cache:
         """
         from absl import logging
         logging.use_absl_handler()
-        logger.debug('Cache.__setstate__ {} '.format(state))
+        logger.debug('Cache.__setstate__ %s ' % (state,))
         data, file._REGISTERED_FILESYSTEMS = state
         self.__dict__.update(data)
 
@@ -71,7 +71,7 @@ class Cache:
 
     def add_file(self, source_file, local_file):
         with self._lock:
-            logger.debug('add local cache {} for file {}'.format(local_file, source_file))
+            logger.debug('add local cache %s for file %s' % (local_file, source_file))
             self._cache_dict[source_file] = local_file
 
     def __enter__(self):

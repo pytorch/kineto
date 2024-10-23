@@ -3,8 +3,7 @@
 # --------------------------------------------------------------------------
 from collections import defaultdict
 from enum import IntEnum
-from typing import Dict, List, Optional, Tuple
-from collections.abc import Iterable
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .. import utils
 from .node import OperatorNode, is_operator_node
@@ -37,15 +36,15 @@ class MemoryRecord:
         self.bytes = bytes
         self.total_allocated = total_allocated
         self.total_reserved = total_reserved
-        self.op_name: str | None = None
-        self.parent_op_name: str | None = None
+        self.op_name: Optional[str] = None
+        self.parent_op_name: Optional[str] = None
 
     @property
     def device_name(self):
         if self.device_type == DeviceType.CPU:
             return 'CPU'
         elif self.device_type == DeviceType.CUDA:
-            return f'GPU{self.device_id}'
+            return 'GPU{}'.format(self.device_id)
         else:
             return None
 
@@ -68,8 +67,8 @@ class MemoryRecord:
 
 class MemorySnapshot:
     def __init__(self, memory_records: Iterable[MemoryRecord],
-                 op_memory_table: dict[OperatorNode, list[MemoryRecord]],
-                 processed_nodes: dict[OperatorNode, int]) -> None:
+                 op_memory_table: Dict[OperatorNode, List[MemoryRecord]],
+                 processed_nodes: Dict[OperatorNode, int]) -> None:
         self.memory_records = memory_records
         self.op_memory_table = op_memory_table
         # the visited node times from parent to child
@@ -77,7 +76,7 @@ class MemorySnapshot:
         self.processed_node = processed_nodes
         self.unreached_node = defaultdict(list)
 
-    def get_peak_memory(self) -> dict[tuple[DeviceType, int], int]:
+    def get_peak_memory(self) -> Dict[Tuple[DeviceType, int], int]:
         peaks = defaultdict(int)
         for r in self.memory_records:
             if r.total_allocated == r.total_allocated:  # !isnan
@@ -85,8 +84,8 @@ class MemorySnapshot:
         return peaks
 
     def get_memory_statistics(self,
-                              tid2tree: dict[int, OperatorNode],
-                              start_ts=None, end_ts=None) -> dict[str, dict[str, list[int]]]:
+                              tid2tree: Dict[int, OperatorNode],
+                              start_ts=None, end_ts=None) -> Dict[str, Dict[str, List[int]]]:
         metric_length = len(MemoryMetrics)
         self_metric_length = metric_length // 2
 
@@ -94,10 +93,10 @@ class MemorySnapshot:
             return defaultdict(lambda: [0] * metric_length)
 
         # traverse outputs
-        op_list: list[OperatorNode] = []
+        op_list: List[OperatorNode] = []
         # two level keys dictionary
         # first keyed by node, then keyed by device (CPU/GPU0/GPU1/etc.)
-        memory_metrics_keyed_by_node: dict[OperatorNode, dict[str, list[int]]] = defaultdict(dict_factory)
+        memory_metrics_keyed_by_node: Dict[OperatorNode, Dict[str, List[int]]] = defaultdict(dict_factory)
 
         def traverse_node_memory(node: OperatorNode):
             if start_ts is not None and node.end_time < start_ts:
@@ -139,7 +138,7 @@ class MemorySnapshot:
 
         # keyed first by device name like CPU/GPU0 etc, then keyed by operator name.
         # the value is array [items indexed by MemoryMetrics]
-        memory_metrics_keyed_by_nodename: dict[str, dict[str, list[int]]] = defaultdict(dict_factory)
+        memory_metrics_keyed_by_nodename: Dict[str, Dict[str, List[int]]] = defaultdict(dict_factory)
         # node: the instance, device_keyed_metrics: dictionary keyed by device name like CPU/GPU0
         for node, device_keyed_metrics in memory_metrics_keyed_by_node.items():
             if not is_operator_node(node):
@@ -151,12 +150,12 @@ class MemorySnapshot:
                     memory_metrics_keyed_by_nodename[device][node.name][i] += metric
 
         # get the op_calls dictionary from module parser result.
-        op_calls: dict[str, int] = defaultdict(int)
+        op_calls: Dict[str, int] = defaultdict(int)
         agg_result = aggregate_ops(op_list, [lambda op: op.name])
         for op_name, op_agg in agg_result[0].items():
             op_calls[op_name] += op_agg.calls
 
-        result: dict[str, dict[str, list[int]]] = defaultdict(defaultdict)
+        result: Dict[str, Dict[str, List[int]]] = defaultdict(defaultdict)
         for device, node_metrics in memory_metrics_keyed_by_nodename.items():
             for node, values in node_metrics.items():
                 if any(values):
@@ -166,7 +165,7 @@ class MemorySnapshot:
 
     def get_memory_metrics(self, op: OperatorNode, start_ts, end_ts):
         metrics_count = len([e.name for e in MemoryMetrics if e.name.startswith('Self')])
-        memory_metrics: dict[str, list[int]] = defaultdict(lambda: [0] * metrics_count)
+        memory_metrics: Dict[str, List[int]] = defaultdict(lambda: [0] * metrics_count)
         for record in self.op_memory_table[op]:
             if start_ts is not None and record.ts < start_ts:
                 continue
@@ -187,16 +186,16 @@ class MemorySnapshot:
 class MemoryParser:
     def __init__(self, memory_events: Iterable[MemoryEvent]):
         # statistics purpose
-        self.staled_records: list[MemoryRecord] = []
-        self.processed_records: list[MemoryRecord] = []
-        self.memory_records: list[MemoryRecord] = [MemoryRecord.from_event(e) for e in memory_events]
+        self.staled_records: List[MemoryRecord] = []
+        self.processed_records: List[MemoryRecord] = []
+        self.memory_records: List[MemoryRecord] = [MemoryRecord.from_event(e) for e in memory_events]
 
-    def find_memory_nodes(self, tid2tree: dict[int, OperatorNode]) -> MemorySnapshot:
-        records_by_tid: dict[int, list[MemoryRecord]] = defaultdict(list)
+    def find_memory_nodes(self, tid2tree: Dict[int, OperatorNode]) -> MemorySnapshot:
+        records_by_tid: Dict[int, List[MemoryRecord]] = defaultdict(list)
         for r in self.memory_records:
             records_by_tid[r.tid].append(r)
 
-        op_memory_table: dict[OperatorNode, list[MemoryRecord]] = defaultdict(list)
+        op_memory_table: Dict[OperatorNode, List[MemoryRecord]] = defaultdict(list)
         processed_node = defaultdict(int)
 
         tree_height = 0
@@ -205,7 +204,7 @@ class MemoryParser:
                 continue
 
             # each item is (parent_node, child_index) that it is visiting.
-            node_stack: list[tuple[OperatorNode, int]] = []
+            node_stack: List[Tuple[OperatorNode, int]] = []
 
             record_index = 0
             current_node: OperatorNode = tid2tree.get(tid)
@@ -297,7 +296,7 @@ class MemoryParser:
             logger.debug('{} memory records are skipped in total {} memory records and only {} get processed'.format(
                 len(self.staled_records), len(self.memory_records), len(self.processed_records)))
         if tree_height > 0:
-            logger.debug(f'max tree height is {tree_height}')
+            logger.debug('max tree height is {}'.format(tree_height))
 
         all_records = self.get_preprocessed_records()
         return MemorySnapshot(all_records, op_memory_table, processed_node)

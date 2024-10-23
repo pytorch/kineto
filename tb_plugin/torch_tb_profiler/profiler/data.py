@@ -27,7 +27,7 @@ logger = utils.get_logger()
 
 
 class RunProfileData:
-    def __init__(self, worker: str, span: str, trace_json: dict):
+    def __init__(self, worker: str, span: str, trace_json: Dict):
         self.worker = worker
         self.span = span
 
@@ -38,7 +38,7 @@ class RunProfileData:
         self.device_props = trace_json.get('deviceProperties', None)
 
         self.profiler_start_ts = float('inf')
-        self.events: list[BaseEvent] = []
+        self.events: List[BaseEvent] = []
 
         trace_body = trace_json['traceEvents']
         fwd_bwd_events = []
@@ -57,8 +57,8 @@ class RunProfileData:
         self.trace_file_path: str = None
 
         # Event Parser results
-        self.tid2tree: dict[int, OperatorNode] = None
-        self.pl_tid2tree: dict[int, OperatorNode] = None
+        self.tid2tree: Dict[int, OperatorNode] = None
+        self.pl_tid2tree: Dict[int, OperatorNode] = None
         self.used_devices = []
         self.use_dp: bool = False
         self.use_ddp: bool = False
@@ -91,7 +91,7 @@ class RunProfileData:
         # Communicator
         self.comm_node_list = None
         self.comm_overlap_costs = None
-        self.memory_snapshot: MemorySnapshot | None = None
+        self.memory_snapshot: Optional[MemorySnapshot] = None
 
         # recommendation based on analysis result.
         self.recommendations = []
@@ -105,7 +105,7 @@ class RunProfileData:
         return profile
 
     @staticmethod
-    def from_json(worker, span, trace_json: dict):
+    def from_json(worker, span, trace_json: Dict):
         profile = RunProfileData(worker, span, trace_json)
         with utils.timing('Data processing'):
             profile.process()
@@ -286,7 +286,7 @@ class RunProfileData:
                 minor = device_prop.get('computeMinor')
                 if major is None or minor is None:
                     continue
-                compute_capability = f'{major}.{minor}'
+                compute_capability = '{}.{}'.format(major, minor)
                 if float(compute_capability) >= 3.5:
                     text = (
                         'Nccl backend is currently the fastest and highly recommended backend'
@@ -308,7 +308,7 @@ class RunProfileData:
                 f"convergence and accuracy. For such case, you may want to evaluate {href('LAMB optimizer', lamb_url)}."
             )
 
-    def _memory_events(self) -> list[MemoryEvent]:
+    def _memory_events(self) -> List[MemoryEvent]:
         memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]
         memory_events.sort(key=lambda e: e.ts)
         return memory_events
@@ -318,9 +318,9 @@ class RunProfileData:
             gpu_list_str = str(gpus[0])
             for i in range(1, len(gpus)):
                 if i == len(gpus) - 1:
-                    gpu_list_str += f'and {gpus[i]}'
+                    gpu_list_str += 'and {}'.format(gpus[i])
                 else:
-                    gpu_list_str += f', {gpus[i]}'
+                    gpu_list_str += ', {}'.format(gpus[i])
             has_str = 'has' if len(gpu_list_str) == 1 else 'have'
             return gpu_list_str, has_str
 

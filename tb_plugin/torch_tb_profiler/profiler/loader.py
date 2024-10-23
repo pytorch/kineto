@@ -1,3 +1,4 @@
+
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
@@ -59,7 +60,7 @@ class RunLoader:
         run = Run(self.run_name, self.run_dir)
         num_items = len(workers)
         while num_items > 0:
-            item: tuple[RunProfile, DistributedRunProfileData] = self.queue.get()
+            item: Tuple[RunProfile, DistributedRunProfileData] = self.queue.get()
             num_items -= 1
             r, d = item
             if r or d:
@@ -116,9 +117,9 @@ class RunLoader:
                     span_profiles.append(p)
             return span_profiles
 
-    def _process_distributed_profiles(self, profiles: list[DistributedRunProfileData], span):
+    def _process_distributed_profiles(self, profiles: List[DistributedRunProfileData], span):
         has_communication = True
-        comm_node_lists: list[list[CommunicationNode]] = []
+        comm_node_lists: List[List[CommunicationNode]] = []
         for data in profiles:
             logger.debug('Processing profile data')
             # Set has_communication to False and disable distributed view if any one worker has no communication

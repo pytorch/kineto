@@ -12,7 +12,7 @@ from .trace import EventTypes
 
 class KernelParser:
     def __init__(self):
-        self.kernel_stat: pd.DataFrame | None = None
+        self.kernel_stat: Optional[pd.DataFrame] = None
         self.tc_used_ratio = 0.0
 
     def parse_events(self, events):

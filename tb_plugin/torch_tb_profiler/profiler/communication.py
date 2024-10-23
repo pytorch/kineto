@@ -11,10 +11,10 @@ logger = utils.get_logger()
 
 
 def generate_communication_nodes(
-        communication_data: dict[int, CommunicationNode],
-        steps: list[tuple[int, int]],
-        steps_names: list[str]):
-    comm_node_list: list[CommunicationNode] = []
+        communication_data: Dict[int, CommunicationNode],
+        steps: List[Tuple[int, int]],
+        steps_names: List[str]):
+    comm_node_list: List[CommunicationNode] = []
 
     # Sort the communication node according the start time, this is for correlating communication node between workers
     for comm_node in communication_data.values():
@@ -42,12 +42,12 @@ def generate_communication_nodes(
     return comm_node_list
 
 
-def analyze_communication_nodes(comm_node_list: list[CommunicationNode])\
-        -> tuple[dict[str, tuple[int, int]], dict[str, list[int]]]:
-    step_comm_stats: dict[str, tuple[int, int]] = {}
-    total_comm_stats: dict[str, tuple[int, int, list, list]] = {}
+def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
+        -> Tuple[Dict[str, Tuple[int, int]], Dict[str, List[int]]]:
+    step_comm_stats: Dict[str, Tuple[int, int]] = {}
+    total_comm_stats: Dict[str, Tuple[int, int, List, List]] = {}
 
-    step_to_comm_ranges: dict[str, tuple[list, list]] = {}
+    step_to_comm_ranges: Dict[str, Tuple[List, List]] = {}
     for comm_node in comm_node_list:
         if comm_node.step_name not in step_to_comm_ranges:
             step_to_comm_ranges[comm_node.step_name] = [[], []]
@@ -73,7 +73,7 @@ def analyze_communication_nodes(comm_node_list: list[CommunicationNode])\
                 elif comm_node.input_type[i] == 'unsigned char':
                     bytes_one_value = 1
                 else:
-                    logger.warning(f'Found an unknown tensor type: {comm_node.input_type[i]}')
+                    logger.warning('Found an unknown tensor type: {}'.format(comm_node.input_type[i]))
                     bytes_one_value = 0
                 total_size = 1
                 for size in comm_node.input_shape[i]:

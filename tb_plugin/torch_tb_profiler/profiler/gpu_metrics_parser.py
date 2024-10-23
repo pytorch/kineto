@@ -1,8 +1,7 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
-from typing import List
-from collections.abc import Iterable
+from typing import Iterable, List
 
 from .. import consts, utils
 from .range_utils import (get_ranges_sum, intersection_ranges_lists,
@@ -190,14 +189,14 @@ class GPUMetricsParser:
                     self.blocks_per_sm_count[gpu_id] += 1
                 else:
                     # Workaround for negative value input.
-                    logger.warning(f'blocks per SM {event.blocks_per_sm} with ts {ts} is not positive!')
+                    logger.warning('blocks per SM {} with ts {} is not positive!'.format(event.blocks_per_sm, ts))
             if event.occupancy is not None:
                 if event.occupancy >= 0.0:
                     self.occupancy_per_device[gpu_id].append((ts, ts + dur, event.occupancy))
                     self.occupancy_count[gpu_id] += 1
                 else:
                     # Workaround for negative value input.
-                    logger.warning(f'est. achieved occupancy % {event.occupancy} with ts {ts} is negative!')
+                    logger.warning('est. achieved occupancy % {} with ts {} is negative!'.format(event.occupancy, ts))
 
     def get_gpu_metrics_columns(self):
         columns = []
@@ -228,11 +227,11 @@ class GPUMetricsParser:
                          "\"args\":{{\"Est. SM Efficiency\":{}}}}}").format(gpu_id, gpu_id, start_time, counter_value)
             return util_json
 
-        def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list: list):
+        def add_trace_counter_gpu_util(gpu_id, start_time, counter_value, counter_json_list: List):
             json_str = build_trace_counter_gpu_util(gpu_id, start_time, counter_value)
             counter_json_list.append(json_str)
 
-        def add_trace_counter_sm_efficiency(gpu_id, start_time, end_time, value, counter_json_list: list):
+        def add_trace_counter_sm_efficiency(gpu_id, start_time, end_time, value, counter_json_list: List):
             efficiency_json_start = build_trace_counter_sm_efficiency(gpu_id, start_time, value)
             efficiency_json_finish = build_trace_counter_sm_efficiency(gpu_id, end_time, 0)
             counter_json_list.append(efficiency_json_start)
@@ -272,7 +271,7 @@ class GPUMetricsParser:
 
         def process_gpu(gpu_id: int):
             nonlocal has_sm_efficiency, has_occupancy, has_tc
-            gpu_metrics_data.append({'title': f'GPU {gpu_id}:', 'value': ''})
+            gpu_metrics_data.append({'title': 'GPU {}:'.format(gpu_id), 'value': ''})
             gpu_info = gpu_infos.get(gpu_id, None)
             if gpu_info is not None:
                 for key in gpu_info_columns:
@@ -304,7 +303,7 @@ class GPUMetricsParser:
             process_gpu(gpu_ids[idx])
 
         tooltip_summary = 'The GPU usage metrics:\n'
-        tooltip = f'{tooltip_summary}\n{consts.TOOLTIP_GPU_UTIL}'
+        tooltip = '{}\n{}'.format(tooltip_summary,  consts.TOOLTIP_GPU_UTIL)
         if has_sm_efficiency:
             tooltip += '\n' + consts.TOOLTIP_SM_EFFICIENCY
         if has_occupancy:

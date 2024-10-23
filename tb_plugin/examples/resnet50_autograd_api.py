@@ -27,7 +27,7 @@ model.train()
 
 with profile(use_cuda=True, use_kineto=True, record_shapes=True) as p:
     for step, data in enumerate(trainloader, 0):
-        print(f"step:{step}")
+        print("step:{}".format(step))
         inputs, labels = data[0].to(device=device), data[1].to(device=device)
 
         outputs = model(inputs)

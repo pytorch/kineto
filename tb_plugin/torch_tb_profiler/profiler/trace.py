@@ -60,7 +60,7 @@ class BaseEvent:
         self.ts: int = data.get('ts')
         self.pid: int = data.get('pid')
         self.tid: int = data.get('tid')
-        self.args: dict = data.get('args', {})
+        self.args: Dict = data.get('args', {})
 
 
 class DurationEvent(BaseEvent):
@@ -69,11 +69,11 @@ class DurationEvent(BaseEvent):
         self.category: str = data.get('cat', '')
         self.duration: int = data.get('dur')
 
-        extern_id: int | None = self.args.get('external id')
+        extern_id: Optional[int] = self.args.get('external id')
         if extern_id is None:
             extern_id = self.args.get('External id')
         self.external_id = extern_id
-        self.correlation_id: int | None = self.args.get('correlation')
+        self.correlation_id: Optional[int] = self.args.get('correlation')
 
 
 class KernelEvent(DurationEvent):
@@ -169,7 +169,7 @@ class PLModuleEvent(DurationEvent):
         self.name = self.name[self.name.find(': ')+2:]
 
 
-def create_event(event, is_pytorch_lightning) -> BaseEvent | None:
+def create_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     try:
         type = event.get('ph')
         if type == 'X':
@@ -183,7 +183,7 @@ def create_event(event, is_pytorch_lightning) -> BaseEvent | None:
         raise
 
 
-def create_trace_event(event, is_pytorch_lightning) -> BaseEvent | None:
+def create_trace_event(event, is_pytorch_lightning) -> Optional[BaseEvent]:
     category = event.get('cat')
     event_type = EventTypeMap.get(category.lower())
     if event_type == EventTypes.USER_ANNOTATION:
@@ -218,7 +218,7 @@ def create_trace_event(event, is_pytorch_lightning) -> BaseEvent | None:
     return None
 
 
-def create_association_events(events) -> dict[int, int]:
+def create_association_events(events) -> Dict[int, int]:
     forward_map = {}
     backward_map = {}
 

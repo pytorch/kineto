@@ -58,7 +58,7 @@ def example(rank, use_gpu=True):
         record_shapes=True
     ) as p:
         for step, data in enumerate(trainloader, 0):
-            print(f"step:{step}")
+            print("step:{}".format(step))
             if use_gpu:
                 inputs, labels = data[0].to(rank), data[1].to(rank)
             else:

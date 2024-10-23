@@ -8,10 +8,9 @@ import argparse
 import os
 
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field, fields
 
-from typing import Dict
+from typing import Callable, Dict
 
 import numpy
 
@@ -26,11 +25,11 @@ def _get_input_path(input_name):
 @dataclass
 class TraceAnalysisMetrics:
     # Latency to perform trace analysis tasks
-    latency: dict[str, float] = field(default_factory=dict)
+    latency: Dict[str, float] = field(default_factory=dict)
     # Peak CPU memory to perform trace analysis tasks
-    peak_mem: dict[str, float] = field(default_factory=dict)
+    peak_mem: Dict[str, float] = field(default_factory=dict)
     # extra metrics
-    extra_metrics: dict[str, float] = field(default_factory=dict)
+    extra_metrics: Dict[str, float] = field(default_factory=dict)
 
 
 DEFAULT_METRICS = ["latency"]

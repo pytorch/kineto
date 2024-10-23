@@ -17,7 +17,7 @@ ExcludeOpName = ['DataParallel.forward', 'DistributedDataParallel.forward']
 
 class BaseNode(ABC):
     def __init__(self, name: str, start_time: int, end_time: int, type: str, tid: int,
-                 external_id: Optional[int] = None):
+                 external_id: int | None = None):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
@@ -49,12 +49,12 @@ class BaseNode(ABC):
 
 
 class CommunicationNode(BaseNode):
-    def __init__(self, input_shape: List[List[int]], input_type: List[str], **kwargs):
+    def __init__(self, input_shape: list[list[int]], input_type: list[str], **kwargs):
         super().__init__(**kwargs)
         self.input_shape = input_shape
         self.input_type = input_type
-        self.kernel_ranges: List[Tuple[int, int]] = []
-        self.real_time_ranges: List[Tuple[int, int]] = []
+        self.kernel_ranges: list[tuple[int, int]] = []
+        self.real_time_ranges: list[tuple[int, int]] = []
         self.total_time: int = 0
         self.real_time: int = 0
         self.step_name: str = None
@@ -75,12 +75,12 @@ class OperatorNode(HostNode):
     # Don't use [] as default parameters
     # https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument?page=1&tab=votes#tab-top
     # https://web.archive.org/web/20200221224620/http://effbot.org/zone/default-values.htm
-    def __init__(self, children=None, runtimes=None, input_shape: Optional[List[List[int]]] = None,
-                 input_type: Optional[List[str]] = None, callstack: Optional[str] = None,
+    def __init__(self, children=None, runtimes=None, input_shape: list[list[int]] | None = None,
+                 input_type: list[str] | None = None, callstack: str | None = None,
                  self_host_duration: int = 0, self_device_duration: int = 0, **kwargs):
         super().__init__(**kwargs)
-        self.children: List[OperatorNode] = [] if children is None else children  # OperatorNode and ProfilerStepNode.
-        self.runtimes: List[RuntimeNode] = [] if runtimes is None else runtimes  # RuntimeNode
+        self.children: list[OperatorNode] = [] if children is None else children  # OperatorNode and ProfilerStepNode.
+        self.runtimes: list[RuntimeNode] = [] if runtimes is None else runtimes  # RuntimeNode
         self.input_shape = input_shape
         self.input_type = input_type
         self.callstack = callstack
@@ -120,12 +120,12 @@ class OperatorNode(HostNode):
             self.tc_self_duration += rt.tc_duration
             self.tc_total_duration += rt.tc_duration
             if self.type == EventTypes.OPERATOR and not self.tc_eligible and rt.tc_duration > 0:
-                logger.warning("New Tensor Cores eligible operator found: '{}'!".format(self.name))
+                logger.warning(f"New Tensor Cores eligible operator found: '{self.name}'!")
                 self.tc_eligible = True
 
     def get_operator_and_kernels(self):
-        ops: List[OperatorNode] = []
-        kernels: List[DeviceNode] = []
+        ops: list[OperatorNode] = []
+        kernels: list[DeviceNode] = []
         for child in self.children:
             child_ops, child_kernels = child.get_operator_and_kernels()
             ops.extend(child_ops)
@@ -230,7 +230,7 @@ class OptimizerNode(OperatorNode):
 
 
 class RuntimeNode(HostNode):
-    def __init__(self, device_nodes: Optional[List['DeviceNode']] = None, **kwargs):
+    def __init__(self, device_nodes: list['DeviceNode'] | None = None, **kwargs):
         super().__init__(**kwargs)
         # One runtime could trigger more than one kernel, such as cudaLaunchCooperativeKernelMultiDevice.
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
@@ -253,17 +253,17 @@ class RuntimeNode(HostNode):
                     yield d
 
     @classmethod
-    def create(cls, event, device_nodes: Optional[List['DeviceNode']]):
+    def create(cls, event, device_nodes: list['DeviceNode'] | None):
         kwargs = BaseNode.get_node_argument(event)
         return cls(device_nodes=device_nodes, **kwargs)
 
 
 class DeviceNode(BaseNode):
     def __init__(self,
-                 blocks_per_sm: Optional[float] = None,
+                 blocks_per_sm: float | None = None,
                  occupancy: int = None,
-                 grid: Optional[List[int]] = None,
-                 block: Optional[List[int]] = None,
+                 grid: list[int] | None = None,
+                 block: list[int] | None = None,
                  regs_per_thread: int = None,
                  shared_memory: int = None,
                  device_id: int = None, **kwargs):

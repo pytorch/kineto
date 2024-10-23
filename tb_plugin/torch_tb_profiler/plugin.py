@@ -47,7 +47,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         Args:
           context: A base_plugin.TBContext instance.
         """
-        super(TorchProfilerPlugin, self).__init__(context)
+        super().__init__(context)
         if not context.logdir and context.flags.logdir_spec:
             dirs = context.flags.logdir_spec.split(',')
             if len(dirs) > 1:
@@ -332,7 +332,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             name = request.args.get('run')
             worker = request.args.get('worker')
             span = request.args.get('span')
-            raise exceptions.NotFound('could not find the run for %s/%s/%s' % (name, worker, span))
+            raise exceptions.NotFound('could not find the run for {}/{}/{}'.format(name, worker, span))
 
     @wrappers.Request.application
     def op_tree_route(self, request: werkzeug.Request):
@@ -374,7 +374,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         try:
             with open(filepath, 'rb') as infile:
                 contents = infile.read()
-        except IOError:
+        except OSError:
             raise exceptions.NotFound('404 Not Found')
         return werkzeug.Response(
             contents, content_type=mimetype, headers=TorchProfilerPlugin.headers
@@ -512,7 +512,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             try:
                 self._load_threads.remove(t)
             except ValueError:
-                logger.warning('could not find the thread {}'.format(run_dir))
+                logger.warning(f'could not find the thread {run_dir}')
 
     def _get_run(self, name) -> Run:
         with self._runs_lock:
@@ -538,7 +538,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._validate(run=name, worker=worker)
         profile = self._get_profile(name, worker, span)
         if not isinstance(profile, RunProfile):
-            raise exceptions.BadRequest('Get an unexpected profile type %s for %s/%s' % (type(profile), name, worker))
+            raise exceptions.BadRequest('Get an unexpected profile type {} for {}/{}'.format(type(profile), name, worker))
 
         return profile
 
@@ -548,7 +548,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         self._validate(run=name)
         profile = self._get_profile(name, 'All', span)
         if not isinstance(profile, DistributedRunProfile):
-            raise exceptions.BadRequest('Get an unexpected distributed profile type %s for %s' % (type(profile), name))
+            raise exceptions.BadRequest('Get an unexpected distributed profile type {} for {}'.format(type(profile), name))
 
         return profile
 
@@ -556,7 +556,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         profile = run.get_profile(worker, span)
         if profile is None:
-            raise exceptions.NotFound('could not find the profile for %s/%s/%s ' % (name, worker, span))
+            raise exceptions.NotFound('could not find the profile for {}/{}/{} '.format(name, worker, span))
         return profile
 
     def _validate(self, **kwargs):

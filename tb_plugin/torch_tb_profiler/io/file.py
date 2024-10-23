@@ -220,7 +220,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
             endpoint = offset + size
 
         if offset != 0 or endpoint != "":
-            args["Range"] = "bytes={}-{}".format(offset, endpoint)
+            args["Range"] = f"bytes={offset}-{endpoint}"
 
         logger.info("s3: starting reading file %s" % filename)
         try:
@@ -238,7 +238,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
                     # Asked for no bytes, so just return empty
                     stream = b""
                 else:
-                    args["Range"] = "bytes={}-{}".format(offset, endpoint)
+                    args["Range"] = f"bytes={offset}-{endpoint}"
                     stream = s3.Object(bucket, path).get(**args)["Body"].read()
             else:
                 raise
@@ -273,7 +273,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
         bucket, path = self.bucket_and_path(file_to_download)
         s3.Bucket(bucket).download_file(path, file_to_save)
-        logger.info("s3: file %s is downloaded as %s" % (file_to_download, file_to_save))
+        logger.info("s3: file {} is downloaded as {}".format(file_to_download, file_to_save))
         return
 
     def glob(self, filename):
@@ -282,7 +282,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
         star_i = filename.find("*")
         quest_i = filename.find("?")
         if quest_i >= 0:
-            raise NotImplementedError("{} not supported".format(filename))
+            raise NotImplementedError(f"{filename} not supported")
         if star_i != len(filename) - 1:
             return []
 
@@ -366,7 +366,7 @@ if HDFS_ENABLED:
 class File:
     def __init__(self, filename, mode):
         if mode not in ("r", "rb", "br", "w", "wb", "bw"):
-            raise ValueError("mode {} not supported by File".format(mode))
+            raise ValueError(f"mode {mode} not supported by File")
         self.filename = filename
         self.fs = get_filesystem(self.filename)
         self.fs_supports_append = self.fs.support_append()
@@ -615,8 +615,7 @@ def walk(top, topdown=True, onerror=None):
 
         for subdir in subdirs:
             joined_subdir = fs.join(top, subdir)
-            for subitem in walk(joined_subdir, topdown, onerror=onerror):
-                yield subitem
+            yield from walk(joined_subdir, topdown, onerror=onerror)
 
         if not topdown:
             yield here

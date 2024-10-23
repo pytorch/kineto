@@ -16,11 +16,11 @@ from .backends.common import TraceAnalysisMetrics
 
 @dataclass
 class TraceAnalysisBenchmarkResult:
-    inputs: List[str]
-    tasks: List[str]
-    metrics: List[str]
+    inputs: list[str]
+    tasks: list[str]
+    metrics: list[str]
     # key: (input, backend), value: benchmark results by tasks
-    data: Dict[Tuple[str, str], TraceAnalysisMetrics] = field(default_factory=dict)
+    data: dict[tuple[str, str], TraceAnalysisMetrics] = field(default_factory=dict)
 
     def _table(self):
         """

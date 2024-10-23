@@ -18,7 +18,7 @@ def merge_ranges_with_value(src_ranges):
     merged_ranges = []
     if len(src_ranges) > 0:
         # Build tuple of (time, type, value)
-        endpoints: List[EndPoint] = []
+        endpoints: list[EndPoint] = []
         for r in src_ranges:
             endpoints.append(EndPoint(r[0], EndpointTypes.START, r[2]))
             endpoints.append(EndPoint(r[1], EndpointTypes.END, r[2]))
@@ -42,7 +42,7 @@ def merge_ranges_with_value(src_ranges):
 
 # range_list1 item is length 3. range_list2 item is length 2.
 # Reture value's item is length 3.
-def intersection_ranges_lists_with_value(range_list1, range_list2) -> List[Tuple[int, int, int]]:
+def intersection_ranges_lists_with_value(range_list1, range_list2) -> list[tuple[int, int, int]]:
     range_list_dst = []
     if len(range_list1) == 0 or len(range_list2) == 0:
         return range_list_dst
@@ -80,8 +80,8 @@ def intersection_ranges_lists_with_value(range_list1, range_list2) -> List[Tuple
     return range_list_dst
 
 
-def subtract_ranges_lists(range_list1: List[Tuple[int, int]],
-                          range_list2: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+def subtract_ranges_lists(range_list1: list[tuple[int, int]],
+                          range_list2: list[tuple[int, int]]) -> list[tuple[int, int]]:
     range_list_dst = []
     if len(range_list1) == 0:
         return range_list_dst
@@ -115,8 +115,8 @@ def subtract_ranges_lists(range_list1: List[Tuple[int, int]],
     return range_list_dst
 
 
-def intersection_ranges_lists(range_list1: List[Tuple[int, int]],
-                              range_list2: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+def intersection_ranges_lists(range_list1: list[tuple[int, int]],
+                              range_list2: list[tuple[int, int]]) -> list[tuple[int, int]]:
     range_list_dst = []
     if len(range_list1) == 0 or len(range_list2) == 0:
         return range_list_dst
@@ -154,7 +154,7 @@ def intersection_ranges_lists(range_list1: List[Tuple[int, int]],
     return range_list_dst
 
 
-def get_ranges_sum(ranges: List[Tuple[int, int]]) -> int:
+def get_ranges_sum(ranges: list[tuple[int, int]]) -> int:
     sum: int = 0
     for range in ranges:
         sum += (range[1] - range[0])
@@ -169,7 +169,7 @@ def pop_list(range_list, index):
     return next_item, next_index
 
 
-def merge_ranges(src_ranges, is_sorted=False) -> List[Tuple[int, int]]:
+def merge_ranges(src_ranges, is_sorted=False) -> list[tuple[int, int]]:
     if not src_ranges:
         # return empty list if src_ranges is None or its length is zero.
         return []

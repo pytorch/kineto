@@ -66,7 +66,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         client.upload_blob(path, file_content)
 
     def download_file(self, file_to_download, file_to_save):
-        logger.info('azure blob: starting downloading file %s as %s' % (file_to_download, file_to_save))
+        logger.info('azure blob: starting downloading file {} as {}'.format(file_to_download, file_to_save))
         account, container, path = self.container_and_path(file_to_download)
         client = self.create_container_client(account, container)
         blob_client = client.get_blob_client(path)
@@ -87,7 +87,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         quest_i = filename.find('?')
         if quest_i >= 0:
             raise NotImplementedError(
-                '{} not supported by compat glob'.format(filename)
+                f'{filename} not supported by compat glob'
             )
         if star_i != len(filename) - 1:
             return []
@@ -141,7 +141,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         results = {}
         for blob in blobs:
             dirname, basename = self.split(blob.name)
-            dirname = 'https://{}/{}/{}'.format(account, container, dirname)
+            dirname = f'https://{account}/{container}/{dirname}'
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value
@@ -183,5 +183,5 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         if self.connection_string:
             client = ContainerClient.from_connection_string(self.connection_string, container)
         else:
-            client = ContainerClient.from_container_url('https://{}/{}'.format(account, container))
+            client = ContainerClient.from_container_url(f'https://{account}/{container}')
         return client

@@ -13,7 +13,7 @@ logger = utils.get_logger()
 
 class OverallParser:
     class Costs:
-        def __init__(self, costs: List[float] = None):
+        def __init__(self, costs: list[float] = None):
             # the cost length is len(ProfileRole)
             if costs is None:
                 self.costs = [0.] * len(ProfileRole)
@@ -29,18 +29,18 @@ class OverallParser:
             return cls(costs)
 
     class Statistics:
-        def __init__(self, cost_ranges: List[List[Tuple[int, int]]]):
+        def __init__(self, cost_ranges: list[list[tuple[int, int]]]):
             if not cost_ranges:
                 raise ValueError('the cost ranges is None')
 
             self.cost_ranges = cost_ranges
 
         @classmethod
-        def create_from_range(cls, steps: List[Tuple[int, int]], role_ranges: List[List[Tuple[int, int]]]):
+        def create_from_range(cls, steps: list[tuple[int, int]], role_ranges: list[list[tuple[int, int]]]):
             assert len(role_ranges) == ProfileRole.Total - 1
 
-            cost_ranges: List[List[Tuple[int, int]]] = []
-            slots: List[Tuple[int, int]] = []
+            cost_ranges: list[list[tuple[int, int]]] = []
+            slots: list[tuple[int, int]] = []
             for role in role_ranges:
                 if slots:
                     range = intersection_ranges_lists(slots, role)
@@ -54,8 +54,8 @@ class OverallParser:
 
             return cls(cost_ranges)
 
-        def intersection_with_step(self, step: Tuple[int, int]):
-            cost_ranges: List[List[Tuple[int, int]]] = []
+        def intersection_with_step(self, step: tuple[int, int]):
+            cost_ranges: list[list[tuple[int, int]]] = []
             step = [step]
             for range in self.cost_ranges:
                 cost_ranges.append(intersection_ranges_lists(step, range))
@@ -70,11 +70,11 @@ class OverallParser:
             self.other: int = 0
 
     def __init__(self):
-        self.steps_costs: List[OverallParser.Costs] = []
+        self.steps_costs: list[OverallParser.Costs] = []
         self.avg_costs = OverallParser.Costs()
-        self.communication_overlap: List[OverallParser.StepCommunicationCosts] = []
+        self.communication_overlap: list[OverallParser.StepCommunicationCosts] = []
 
-    def aggregate(self, steps: List[Tuple[int, int]], role_ranges: List[List[Tuple[int, int]]]):
+    def aggregate(self, steps: list[tuple[int, int]], role_ranges: list[list[tuple[int, int]]]):
         logger.debug('Overall, statistics')
         global_stats = OverallParser.Statistics.create_from_range(steps, role_ranges)
         if role_ranges[ProfileRole.Kernel]:

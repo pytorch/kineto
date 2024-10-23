@@ -38,7 +38,7 @@ with torch.profiler.profile(
     with_stack=True
 ) as p:
     for step, data in enumerate(trainloader, 0):
-        print("step:{}".format(step))
+        print(f"step:{step}")
         inputs, labels = data[0].to(device=device), data[1].to(device=device)
 
         outputs = model(inputs)

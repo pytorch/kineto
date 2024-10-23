@@ -1,27 +1,28 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
-from typing import Dict, Iterable, List
+from typing import Dict, List
+from collections.abc import Iterable
 
 from .. import consts
 from .node import OperatorNode
 
 
 class TensorCoresParser:
-    def __init__(self, tc_ratio: List[float], tc_eligible_ops_kernel_ratio: float):
+    def __init__(self, tc_ratio: list[float], tc_eligible_ops_kernel_ratio: float):
         # For calculating Tensor Cores time ratio per GPU.
         self.tc_ratio = tc_ratio
         self.tc_eligible_ops_kernel_ratio = tc_eligible_ops_kernel_ratio
 
     @classmethod
-    def parse_events(cls, tid2tree: Dict[str, OperatorNode], ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
+    def parse_events(cls, tid2tree: dict[str, OperatorNode], ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
         tc_ratio = cls._calculate_tc_ratio(ops, gpu_ids)
         tc_eligible_ops_kernel_ratio = cls._get_tc_eligible_ops_kernel_ratio(tid2tree, ops)
         return cls(tc_ratio, tc_eligible_ops_kernel_ratio)
 
     @staticmethod
     def _calculate_tc_ratio(ops: Iterable[OperatorNode], gpu_ids: Iterable[int]):
-        tc_ratio: List[float] = [None] * consts.MAX_GPU_PER_NODE
+        tc_ratio: list[float] = [None] * consts.MAX_GPU_PER_NODE
         tc_time = [0] * consts.MAX_GPU_PER_NODE
         total_time = [0] * consts.MAX_GPU_PER_NODE
         has_kernel = False
@@ -46,7 +47,7 @@ class TensorCoresParser:
 
     @staticmethod
     def _get_bottom_tc_eligible_operators(op_tree_node: OperatorNode):
-        ops: List[OperatorNode] = []
+        ops: list[OperatorNode] = []
         for child in op_tree_node.children:
             child_ops = TensorCoresParser._get_bottom_tc_eligible_operators(child)
             ops.extend(child_ops)
@@ -56,7 +57,7 @@ class TensorCoresParser:
         return ops
 
     @staticmethod
-    def _get_tc_eligible_ops_kernel_ratio(tid2tree: Dict[int, OperatorNode], ops: Iterable[OperatorNode]):
+    def _get_tc_eligible_ops_kernel_ratio(tid2tree: dict[int, OperatorNode], ops: Iterable[OperatorNode]):
         def sum_self_kernel_time(ops: Iterable[OperatorNode]):
             sum_time = 0
             for op in ops:

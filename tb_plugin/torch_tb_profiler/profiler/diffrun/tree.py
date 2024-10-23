@@ -2,7 +2,8 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 import sys
-from typing import Generator, List, Union
+from typing import List, Union
+from collections.abc import Generator
 
 from ..node import (BackwardNode, DataLoaderNode, ModuleNode, OperatorNode,
                     OptimizerNode, ProfilerStepNode)
@@ -17,7 +18,7 @@ class DiffNode:
     def __init__(self, left: Operator, right: Operator):
         self.left: Operator = left
         self.right: Operator = right
-        self.children: List[DiffNode] = []
+        self.children: list[DiffNode] = []
 
     def build_tree(self):
         '''build the children from the left_node and right_node'''
@@ -43,8 +44,8 @@ class DiffNode:
 
     @staticmethod
     def create_node(
-            left: Union[OperatorNode, List[OperatorNode]],
-            right: Union[OperatorNode, List[OperatorNode]]) -> 'DiffNode':
+            left: OperatorNode | list[OperatorNode],
+            right: OperatorNode | list[OperatorNode]) -> 'DiffNode':
         if isinstance(left, list) and len(left) == 1:
             left = left[0]
         if isinstance(right, list) and len(right) == 1:
@@ -56,8 +57,8 @@ class DiffNode:
 
     @staticmethod
     def compare_operator_nodes(
-            left_nodes: List[OperatorNode],
-            right_nodes: List[OperatorNode]) -> Generator['DiffNode', None, None]:
+            left_nodes: list[OperatorNode],
+            right_nodes: list[OperatorNode]) -> Generator['DiffNode', None, None]:
         '''Given two OperatorNode lists, find the DataLoader/Module/Backward/Optimizer node and create the child list DiffNode
         '''
         right_keys = [(type(r), r.name) for r in right_nodes]
@@ -149,7 +150,7 @@ def diff_summary(node: DiffNode) -> DiffStats:
     return stats
 
 
-def print_node(node: Union[DiffNode, DiffStats], level: int, index: int, file=sys.stdout):
+def print_node(node: DiffNode | DiffStats, level: int, index: int, file=sys.stdout):
     file.write(f'{INDENT * level}level {level}, index {index}:\n')
     file.write(f'{INDENT * (level + 1)}left : {node.left}\n')
     file.write(f'{INDENT * (level + 1)}right: {node.right}\n')

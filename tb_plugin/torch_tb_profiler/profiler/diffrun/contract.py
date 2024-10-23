@@ -19,7 +19,7 @@ class OpStats:
                  duration,
                  device_duration,
                  total_duration,
-                 aggs: List[OpAgg]):
+                 aggs: list[OpAgg]):
         self.name = name
         self.duration = duration
         self.device_duration = device_duration
@@ -34,10 +34,10 @@ class DiffStats:
     def __init__(self, left: OpStats, right: OpStats):
         self.left = left
         self.right = right
-        self.children: List[DiffStats] = []
+        self.children: list[DiffStats] = []
 
-    def flatten_diff_tree(self) -> Dict[str, 'DiffStats']:
-        result: Dict[str, DiffStats] = {}
+    def flatten_diff_tree(self) -> dict[str, 'DiffStats']:
+        result: dict[str, DiffStats] = {}
 
         def traverse(node: DiffStats, path: str):
             result[path] = node

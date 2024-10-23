@@ -2,7 +2,8 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import OrderedDict
-from typing import Dict, Iterable, List
+from typing import Dict, List
+from collections.abc import Iterable
 
 from .. import consts, utils
 from ..run import DistributedRunProfile, RunProfile
@@ -181,8 +182,8 @@ class RunGenerator:
         else:
             html = ''
             for recommendation in self.profile_data.recommendations:
-                html += '<li>{}</li>'.format(recommendation)
-        data['recommendations'] = '<ul>{}</ul>'.format(html)
+                html += f'<li>{recommendation}</li>'
+        data['recommendations'] = f'<ul>{html}</ul>'
 
         return data
 
@@ -341,7 +342,7 @@ class RunGenerator:
         table['columns'].extend(gpu_metrics_columns)
 
         table['rows'] = []
-        kernel_list: List[KernelAggByNameOp] = sorted(
+        kernel_list: list[KernelAggByNameOp] = sorted(
             self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration, reverse=True)
         for agg_by_name_op in kernel_list:
             kernel_op_row = [agg_by_name_op.name, agg_by_name_op.op_name,
@@ -412,7 +413,7 @@ class RunGenerator:
         if (device_props is None) or (gpu_id >= len(device_props)) or (gpu_id < 0):
             return None
 
-        device_prop: Dict = device_props[gpu_id]
+        device_prop: dict = device_props[gpu_id]
         gpu_info = {}
         name = device_prop.get('name')
         if name is not None:
@@ -420,13 +421,13 @@ class RunGenerator:
 
         mem = device_prop.get('totalGlobalMem')
         if mem is not None:
-            gpu_info['Memory'] = '{} GB'.format(round(float(mem) / 1024 / 1024 / 1024, 2))
+            gpu_info['Memory'] = f'{round(float(mem) / 1024 / 1024 / 1024, 2)} GB'
             gpu_info['Memory Raw'] = mem
 
         major = device_prop.get('computeMajor')
         minor = device_prop.get('computeMinor')
         if major is not None and minor is not None:
-            gpu_info['Compute Capability'] = '{}.{}'.format(major, minor)
+            gpu_info['Compute Capability'] = f'{major}.{minor}'
 
         return gpu_info
 
@@ -448,7 +449,7 @@ class DistributedRunGenerator:
     def _generate_gpu_info(self):
         # first key is node name, the second key is process id, the third key is GPU0/,
         # the value is the gpu info json
-        result: Dict[str, Dict[str, Dict[str, Dict]]] = OrderedDict()
+        result: dict[str, dict[str, dict[str, dict]]] = OrderedDict()
         index = 0
         for data in sorted(self.all_profile_data, key=lambda x: x.worker):
             if not data.device_props:
@@ -459,7 +460,7 @@ class DistributedRunGenerator:
                 node = match.group(1)
                 process_id = match.group(2)
             else:
-                logger.warning('cannot parse node name from worker name {}'.format(data.worker))
+                logger.warning(f'cannot parse node name from worker name {data.worker}')
                 node = data.worker
                 process_id = index
                 index += 1
@@ -490,7 +491,7 @@ class DistributedRunGenerator:
             'legends': ['Computation', 'Overlapping', 'Communication', 'Other'],
             'units': 'us'
         }
-        steps_to_overlap: Dict[str, Dict[str, List[int]]] = OrderedDict()
+        steps_to_overlap: dict[str, dict[str, list[int]]] = OrderedDict()
         steps_to_overlap['all'] = OrderedDict()
         for data in self.all_profile_data:
             steps_to_overlap['all'][data.worker] = [0, 0, 0, 0]
@@ -520,7 +521,7 @@ class DistributedRunGenerator:
             'legends': ['Data Transfer Time', 'Synchronizing Time'],
             'units': 'us'
         }
-        steps_to_wait: Dict[str, Dict[str, List[int]]] = OrderedDict()
+        steps_to_wait: dict[str, dict[str, list[int]]] = OrderedDict()
 
         steps_to_wait['all'] = OrderedDict()
         for data in self.all_profile_data:

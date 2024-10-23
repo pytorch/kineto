@@ -3,7 +3,8 @@
 # --------------------------------------------------------------------------
 import sys
 from collections import defaultdict
-from typing import Callable, Dict, List
+from typing import Dict, List
+from collections.abc import Callable
 
 from .. import utils
 from .node import DeviceNode, OperatorNode
@@ -36,9 +37,9 @@ class OperatorAgg:
         return self.tc_total_duration / self.device_duration if self.device_duration > 0 else 0
 
 
-def aggregate_ops(op_list: List[OperatorNode],
-                  keys_func: List[Callable[[OperatorNode], str]]) -> List[Dict[str, OperatorAgg]]:
-    def aggregate(key_to_agg: Dict[str, OperatorAgg], key: str, op: OperatorNode):
+def aggregate_ops(op_list: list[OperatorNode],
+                  keys_func: list[Callable[[OperatorNode], str]]) -> list[dict[str, OperatorAgg]]:
+    def aggregate(key_to_agg: dict[str, OperatorAgg], key: str, op: OperatorNode):
         if key not in key_to_agg:
             key_to_agg[key] = OperatorAgg(op)
         agg = key_to_agg[key]
@@ -52,7 +53,7 @@ def aggregate_ops(op_list: List[OperatorNode],
         agg.tc_total_duration += op.tc_total_duration
         return agg
 
-    agg_dicts: List[Dict[str, OperatorAgg]] = [{} for _ in range(len(keys_func))]
+    agg_dicts: list[dict[str, OperatorAgg]] = [{} for _ in range(len(keys_func))]
     for op in op_list:
         for i, key_func in enumerate(keys_func):
             key = key_func(op)
@@ -92,8 +93,8 @@ class KernelAggByNameOp:
         return self.occupancy / self.total_duration if self.total_duration > 0 else 0
 
 
-def aggregate_kernels(kernel_list: List[DeviceNode]) -> List[KernelAggByNameOp]:
-    name_op_to_agg: Dict[str, KernelAggByNameOp] = {}
+def aggregate_kernels(kernel_list: list[DeviceNode]) -> list[KernelAggByNameOp]:
+    name_op_to_agg: dict[str, KernelAggByNameOp] = {}
     for kernel in kernel_list:
         dur = kernel.end_time - kernel.start_time
         op_name = 'N/A' if kernel.op_name is None else kernel.op_name
@@ -117,17 +118,17 @@ def aggregate_kernels(kernel_list: List[DeviceNode]) -> List[KernelAggByNameOp]:
 class ModuleAggregator:
 
     def __init__(self):
-        self.op_list_groupby_name: List[OperatorAgg] = None  # For Operator-view.
-        self.op_list_groupby_name_input: List[OperatorAgg] = None  # For Operator-view.
-        self.kernel_list_groupby_name_op: List[KernelAggByNameOp] = None  # For Kernel-view.
-        self.stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = None
-        self.stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = None
-        self.ops: List[OperatorNode] = None
+        self.op_list_groupby_name: list[OperatorAgg] = None  # For Operator-view.
+        self.op_list_groupby_name_input: list[OperatorAgg] = None  # For Operator-view.
+        self.kernel_list_groupby_name_op: list[KernelAggByNameOp] = None  # For Kernel-view.
+        self.stack_lists_group_by_name: dict[str, list[OperatorAgg]] = None
+        self.stack_lists_group_by_name_input: dict[str, list[OperatorAgg]] = None
+        self.ops: list[OperatorNode] = None
 
-    def aggregate(self, tid2tree: Dict[int, OperatorNode]):
+    def aggregate(self, tid2tree: dict[int, OperatorNode]):
         # get the operators and kernels recursively by traverse the node tree root.
-        ops: List[OperatorNode] = []
-        kernels: List[DeviceNode] = []
+        ops: list[OperatorNode] = []
+        kernels: list[DeviceNode] = []
         for root in tid2tree.values():
             root_ops, root_kernels = root.get_operator_and_kernels()
             ops.extend(root_ops)
@@ -136,15 +137,15 @@ class ModuleAggregator:
         # aggregate both kernels and operators
         self.kernel_list_groupby_name_op = aggregate_kernels(kernels)
 
-        keys: List[Callable[[OperatorNode], str]] = [
+        keys: list[Callable[[OperatorNode], str]] = [
             lambda x: x.name,
             lambda x: '###'.join((x.name, str(x.input_shape))),
             lambda x: '###'.join((x.name, str(x.callstack))),
             lambda x: '###'.join((x.name, str(x.input_shape), str(x.callstack)))
         ]
         agg_result = aggregate_ops(ops, keys)
-        stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = defaultdict(list)
-        stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = defaultdict(list)
+        stack_lists_group_by_name: dict[str, list[OperatorAgg]] = defaultdict(list)
+        stack_lists_group_by_name_input: dict[str, list[OperatorAgg]] = defaultdict(list)
         for agg in agg_result[2].values():
             assert (len(agg.callstacks) == 1)
             if list(agg.callstacks)[0]:

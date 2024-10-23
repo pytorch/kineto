@@ -40,7 +40,7 @@ class Operator(metaclass=ABCMeta):
                 agg.self_host_duration,
                 agg.self_device_duration)
 
-    def get_operators_and_kernels(self) -> Tuple[List[OperatorNode], List[DeviceNode]]:
+    def get_operators_and_kernels(self) -> tuple[list[OperatorNode], list[DeviceNode]]:
         return [], []
 
 
@@ -65,7 +65,7 @@ class UnknownOp(Operator):
 
 
 class Operators(Operator):
-    def __init__(self, nodes: Union[OperatorNode, List[OperatorNode]]):
+    def __init__(self, nodes: OperatorNode | list[OperatorNode]):
         if not nodes:
             raise ValueError('the operator node is None or empty')
         if isinstance(nodes, OperatorNode):
@@ -73,7 +73,7 @@ class Operators(Operator):
         elif isinstance(nodes, list):
             super().__init__('CompositeNodes')
 
-        self.op_nodes: Union[OperatorNode, List[OperatorNode]] = nodes
+        self.op_nodes: OperatorNode | list[OperatorNode] = nodes
 
     @property
     def duration(self):
@@ -102,14 +102,14 @@ class Operators(Operator):
         else:
             return f'{self.name}: {self.op_nodes.__class__.__name__}: {self.total_duration}'
 
-    def get_operators_and_kernels(self) -> Tuple[List[OperatorNode], List[DeviceNode]]:
+    def get_operators_and_kernels(self) -> tuple[list[OperatorNode], list[DeviceNode]]:
         if isinstance(self.op_nodes, list):
             nodes = self.op_nodes
         else:
             nodes = [self.op_nodes]
 
-        ops: List[OperatorNode] = []
-        kernels: List[DeviceNode] = []
+        ops: list[OperatorNode] = []
+        kernels: list[DeviceNode] = []
         for n in nodes:
             o, k = n.get_operator_and_kernels()
             ops.extend(o)
@@ -117,7 +117,7 @@ class Operators(Operator):
         return ops, kernels
 
 
-def create_operator(op_nodes: Union[OperatorNode, List[OperatorNode]]) -> Operator:
+def create_operator(op_nodes: OperatorNode | list[OperatorNode]) -> Operator:
     if op_nodes:
         return Operators(op_nodes)
     else:

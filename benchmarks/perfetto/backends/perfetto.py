@@ -23,7 +23,7 @@ class PerfettoTraceAnalysis(TraceAnalysis):
     def load(self, input_file_path: str):
         self.tp = TraceProcessor(input_file_path)
 
-    def search_gemm_kernels(self) -> List[str]:
+    def search_gemm_kernels(self) -> list[str]:
         query = "SELECT DISTINCT(name) FROM slice WHERE name like '%sm90_xmma_gemm_%' ORDER BY ts"
         query_result = [str(x) for x in self.tp.query(query)]
         return query_result

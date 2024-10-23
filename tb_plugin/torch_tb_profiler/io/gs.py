@@ -82,7 +82,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         results = {}
         for blob in blobs:
             dirname, basename = self.split(blob.name)
-            dirname = 'gs://{}/{}'.format(bucket_name, dirname)
+            dirname = f'gs://{bucket_name}/{dirname}'
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value

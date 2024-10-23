@@ -2,7 +2,8 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+from collections.abc import Iterable
 
 from . import consts, utils
 from .profiler.diffrun import compare_op_tree, diff_summary
@@ -22,7 +23,7 @@ class Run:
     def __init__(self, name, run_dir):
         self.name = name
         self.run_dir = run_dir
-        self.profiles: Dict[Tuple[str, str], RunProfile] = {}
+        self.profiles: dict[tuple[str, str], RunProfile] = {}
 
     @property
     def workers(self):
@@ -32,7 +33,7 @@ class Run:
         return worker_list
 
     @property
-    def views(self) -> List[consts.View]:
+    def views(self) -> list[consts.View]:
         view_set = set()
         for profile in self.profiles.values():
             view_set.update(profile.views)
@@ -77,7 +78,7 @@ class Run:
         return self.profiles.get((worker, span), None)
 
     def get_profiles(self, *, worker=None, span=None) \
-            -> Optional[Union[List['RunProfile'], List['DistributedRunProfile']]]:
+            -> list['RunProfile'] | list['DistributedRunProfile'] | None:
         # Note: we could not use if span to check it is None or not
         # since the span 0 will be skipped at this case.
         if worker is not None and span is not None:
@@ -97,7 +98,7 @@ class RunProfile:
     def __init__(self, worker, span):
         self.worker = worker
         self.span = span
-        self.views: List[consts.View] = []
+        self.views: list[consts.View] = []
         self.is_pytorch_lightning = False
         self.has_runtime = False
         self.has_kernel = False
@@ -107,10 +108,10 @@ class RunProfile:
         self.overview = None
         self.operation_pie_by_name = None
         self.operation_table_by_name = None
-        self.operation_stack_by_name: Dict = None
+        self.operation_stack_by_name: dict = None
         self.operation_pie_by_name_input = None
         self.operation_table_by_name_input = None
-        self.operation_stack_by_name_input: Dict = None
+        self.operation_stack_by_name_input: dict = None
         self.kernel_op_table = None
         self.kernel_pie = None
         self.kernel_table = None
@@ -123,12 +124,12 @@ class RunProfile:
         self.gpu_tooltip = None
 
         # for memory stats and curve
-        self.memory_snapshot: Optional[MemorySnapshot] = None
-        self.tid2tree: Dict[int, OperatorNode] = None
-        self.pl_tid2tree: Dict[int, OperatorNode] = None
+        self.memory_snapshot: MemorySnapshot | None = None
+        self.tid2tree: dict[int, OperatorNode] = None
+        self.pl_tid2tree: dict[int, OperatorNode] = None
 
-        self.module_stats: Optional[List(Stats)] = None
-        self.pl_module_stats: Optional[List(Stats)] = None
+        self.module_stats: list(Stats) | None = None
+        self.pl_module_stats: list(Stats) | None = None
 
     def append_gpu_metrics(self, raw_data: bytes):
         counter_json_str = ', {}'.format(', '.join(self.gpu_metrics))
@@ -215,7 +216,7 @@ class RunProfile:
             time_metric: str = 'ms',
             memory_metric: str = 'K',
             patch_for_step_plot=True):
-        def get_curves_and_peaks(records: List[MemoryRecord], cano: Canonicalizer):
+        def get_curves_and_peaks(records: list[MemoryRecord], cano: Canonicalizer):
             """Inputs:
                 records: Sorted list of MemoryRecord
 
@@ -258,7 +259,7 @@ class RunProfile:
             return curves, peaks
 
         # NOTE: this should have been occured in frontend
-        def patch_curves_for_step_plot(curves: Dict[str, List]):
+        def patch_curves_for_step_plot(curves: dict[str, list]):
             # For example, if a curve is [(0, 0), (1, 1), (2,2)], the line plot
             # is a stright line. Interpolating it as [(0, 0), (1, 0), (1, 1),
             # (2,1) (2,2)], then the line plot will work as step plot.
@@ -280,14 +281,14 @@ class RunProfile:
         peaks_formatted = {}
         totals = {}
         for dev, value in peaks.items():
-            peaks_formatted[dev] = 'Peak Memory Usage: {:.1f}{}'.format(cano.convert_memory(value), cano.memory_metric)
+            peaks_formatted[dev] = f'Peak Memory Usage: {cano.convert_memory(value):.1f}{cano.memory_metric}'
             if dev != 'CPU':
                 try:
                     totals[dev] = cano.convert_memory(self.gpu_infos[int(dev[3:])]['Memory Raw'])
                 except BaseException:
                     pass
 
-        devices: List[str] = sorted(list(curves.keys()))
+        devices: list[str] = sorted(list(curves.keys()))
         default_device = 'CPU'
         for dev in devices:
             if dev.startswith('GPU'):
@@ -432,7 +433,7 @@ class RunProfile:
             'data': []
         }
 
-        def process_modules_stats(parent: List[Any], modules_stats: List[Stats]):
+        def process_modules_stats(parent: list[Any], modules_stats: list[Stats]):
             for stats in modules_stats:
                 d = stats._asdict()
                 d['children'] = []
@@ -450,7 +451,7 @@ class RunProfile:
 
         result = []
 
-        def traverse_node(parent: List, node: OperatorNode):
+        def traverse_node(parent: list, node: OperatorNode):
             d = {
                 'name': node.name,
                 'start_time': node.start_time,

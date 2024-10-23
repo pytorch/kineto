@@ -77,15 +77,15 @@ class TestEnd2End(unittest.TestCase):
             self._test_tensorboard(host, port, expected_runs, path_prefix)
         finally:
             pid = tb.pid
-            print('tensorboard process {} is terminating.'.format(pid))
+            print(f'tensorboard process {pid} is terminating.')
             tb.terminate()
 
     def _test_tensorboard(self, host, port, expected_runs, path_prefix):
         if not path_prefix:
-            link_prefix = 'http://{}:{}/data/plugin/pytorch_profiler/'.format(host, port)
+            link_prefix = f'http://{host}:{port}/data/plugin/pytorch_profiler/'
         else:
             path_prefix = path_prefix.strip('/')
-            link_prefix = 'http://{}:{}/{}/data/plugin/pytorch_profiler/'.format(host, port, path_prefix)
+            link_prefix = f'http://{host}:{port}/{path_prefix}/data/plugin/pytorch_profiler/'
         run_link = link_prefix + 'runs'
 
         expected_links_format = [
@@ -102,7 +102,7 @@ class TestEnd2End(unittest.TestCase):
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
                 print('tensorboard start successfully')
                 break
-            except socket.error:
+            except OSError:
                 time.sleep(2)
                 retry_times -= 1
                 if retry_times < 0:
@@ -120,7 +120,7 @@ class TestEnd2End(unittest.TestCase):
                     data = json.loads(data)
                     runs = data.get('runs')
                     if runs:
-                        runs = '[{}]'.format(', '.join(['"{}"'.format(i) for i in runs]))
+                        runs = '[{}]'.format(', '.join([f'"{i}"' for i in runs]))
                         runs = runs.encode('utf-8')
                 if runs == expected_runs:
                     break
@@ -151,7 +151,7 @@ class TestEnd2End(unittest.TestCase):
                     f.write(response.read().decode('utf-8'))
                     f.write('\n')
         else:
-            with open('result_check_file.txt', 'r') as f:
+            with open('result_check_file.txt') as f:
                 lines = f.readlines()
                 i = 0
                 print('starting testing...')

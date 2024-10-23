@@ -2,7 +2,8 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
 from collections import namedtuple
-from typing import Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
+from collections.abc import Generator, Iterable
 
 from .node import (DataLoaderNode, ModuleNode, OperatorNode, OptimizerNode,
                    PLModuleNode, ProfilerStepNode, is_operator_node)
@@ -13,7 +14,7 @@ class Module:
     def __init__(self, name: str, module_id: int, shape: str = ''):
         self.name = name
         self.module_id = module_id
-        self.children: List[Module] = []
+        self.children: list[Module] = []
 
     def __hash__(self):
         return hash((self.name, self.module_id, tuple(self.children)))
@@ -60,7 +61,7 @@ Stats = namedtuple('Stats', [
     'children'])
 
 
-def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
+def aggegate_module_view(tid2tree: dict[int, OperatorNode], events: list[BaseEvent]) -> list[Stats] | None:
     roots = _build_module_hierarchy(events)
     modules = _get_node_list(tid2tree, ModuleNode)
     if modules and roots:
@@ -69,7 +70,7 @@ def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEve
         return None
 
 
-def aggegate_pl_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
+def aggegate_pl_module_view(tid2tree: dict[int, OperatorNode], events: list[BaseEvent]) -> list[Stats] | None:
     roots = _build_module_hierarchy_from_name(events)
     modules = _get_node_list(tid2tree, PLModuleNode)
     if modules and roots:
@@ -78,10 +79,10 @@ def aggegate_pl_module_view(tid2tree: Dict[int, OperatorNode], events: List[Base
         return None
 
 
-def _build_module_hierarchy_from_name(events: List[PLModuleEvent]) -> List[Module]:
+def _build_module_hierarchy_from_name(events: list[PLModuleEvent]) -> list[Module]:
     pl_module_events = [e for e in events if e.type == EventTypes.PL_MODULE]
-    name2module: Dict[str, Module] = {}
-    no_root: Set[str] = set()
+    name2module: dict[str, Module] = {}
+    no_root: set[str] = set()
 
     for event in pl_module_events:
         if event.name not in name2module:
@@ -98,14 +99,14 @@ def _build_module_hierarchy_from_name(events: List[PLModuleEvent]) -> List[Modul
     return [module for name, module in name2module.items() if name not in no_root]
 
 
-def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
+def _build_module_hierarchy(events: list[PythonFunctionEvent]) -> list[Module]:
     """Get the module hierarchy from the chome trace events
     """
     python_events = [e for e in events if e.type in (EventTypes.PYTHON_FUNCTION, EventTypes.MODULE)]
     id_to_event = {e.python_id: e for e in python_events}
 
     # Extract Python function topology.
-    children: Dict[int, List[int]] = {}
+    children: dict[int, list[int]] = {}
     for e in python_events:
         e_id = e.python_id
         children.setdefault(e_id, [])
@@ -138,7 +139,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
             e = id_to_event.get(e.python_parent_id, None)
 
     module_roots = [k for k, v in module_parent_map.items() if v is None]
-    module_child_map: Dict[int, List[int]] = {}
+    module_child_map: dict[int, list[int]] = {}
     for child_id, parent_id in module_parent_map.items():
         module_child_map.setdefault(child_id, [])
         module_child_map.setdefault(parent_id, [])
@@ -154,7 +155,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
             module.children.append(child)
         return module
 
-    unique_modules: Set[Module] = set()
+    unique_modules: set[Module] = set()
     for e_id in module_roots:
         root = append_hierarchy(e_id)
         unique_modules.add(root)
@@ -162,9 +163,9 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
     return list(unique_modules)
 
 
-def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Dict[Tuple[str, int], ModuleStats]:
+def _aggregate_modules(modules: Iterable[ModuleNode | PLModuleNode]) -> dict[tuple[str, int], ModuleStats]:
     """Aggregate the modules based on the name and module_id"""
-    module_aggs: Dict[Tuple(str, int), ModuleStats] = {}
+    module_aggs: dict[tuple(str, int), ModuleStats] = {}
     for m in modules:
         key = (m.name, m.module_id)
         if key not in module_aggs:
@@ -183,7 +184,7 @@ def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Di
     return module_aggs
 
 
-def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[OperatorNode, None, None]:
+def _get_node_list(tid2tree: dict[int, OperatorNode], node_class) -> Generator[OperatorNode, None, None]:
     """Get all node with node_class from the operator tree"""
     def traverse_node(node):
         # Check OptimizerNode here because in PytorchLightning PLModuleNode is under OptimizerNoder.
@@ -202,8 +203,8 @@ def _get_node_list(tid2tree: Dict[int, OperatorNode], node_class) -> Generator[O
 
 
 def _process_module_statistics(
-        modules_nodes: Iterable[Union[ModuleNode, PLModuleNode]],
-        hierarchy: Iterable[Module]) -> List[Stats]:
+        modules_nodes: Iterable[ModuleNode | PLModuleNode],
+        hierarchy: Iterable[Module]) -> list[Stats]:
     """Get the module statistics from the ModuleNode(s) and the hierarchy
     """
     module_aggs = _aggregate_modules(modules_nodes)
@@ -230,13 +231,13 @@ def _process_module_statistics(
     return data
 
 
-def get_module_tree(tid2tree: Dict[int, OperatorNode]):
+def get_module_tree(tid2tree: dict[int, OperatorNode]):
     """Get the module tree in timeline"""
     from copy import copy
 
     modules = []
 
-    def traverse_node(node, parent: Optional[ModuleNode]):
+    def traverse_node(node, parent: ModuleNode | None):
         if type(node) not in (ProfilerStepNode, ModuleNode):
             return
 
@@ -262,7 +263,7 @@ def get_module_tree(tid2tree: Dict[int, OperatorNode]):
     return modules
 
 
-def dump_modules(level: int, modules: Iterable[Union[Module, ModuleNode]]):
+def dump_modules(level: int, modules: Iterable[Module | ModuleNode]):
     """testing purpose"""
     for module in modules:
         print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}")

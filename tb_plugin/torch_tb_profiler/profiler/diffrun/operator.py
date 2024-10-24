@@ -52,7 +52,10 @@ class BlankOp(Operator):
 class UnknownOp(Operator):
     def __init__(self, device_duration: int, duration: int) -> None:
         super().__init__('Unknown')
+        # pyre-fixme[41]: `device_duration` cannot be reassigned. It is a read-only
+        #  property.
         self.device_duration = device_duration
+        # pyre-fixme[41]: `duration` cannot be reassigned. It is a read-only property.
         self.duration = duration
 
     @property
@@ -98,6 +101,8 @@ class Operators(Operator):
 
     def __str__(self) -> str:
         if isinstance(self.op_nodes, list):
+            # pyre-fixme[16]: Item `OperatorNode` of `Union[List[OperatorNode],
+            #  OperatorNode]` has no attribute `__getitem__`.
             return f'{self.name}: {len(self.op_nodes)}: {self.op_nodes[0].name}: {self.total_duration}'
         else:
             return f'{self.name}: {self.op_nodes.__class__.__name__}: {self.total_duration}'
@@ -111,6 +116,8 @@ class Operators(Operator):
         ops: List[OperatorNode] = []
         kernels: List[DeviceNode] = []
         for n in nodes:
+            # pyre-fixme[16]: Item `List` of `Union[List[OperatorNode],
+            #  OperatorNode]` has no attribute `get_operator_and_kernels`.
             o, k = n.get_operator_and_kernels()
             ops.extend(o)
             kernels.extend(k)

@@ -36,6 +36,7 @@ class Cache:
         streams.
         So, we need call use_absl_handler in the new process.
         """
+        # pyre-fixme[21]: Could not find module `absl`.
         from absl import logging
         logging.use_absl_handler()
         logger.debug('Cache.__setstate__ %s ' % (state,))

@@ -57,6 +57,7 @@ class CommunicationNode(BaseNode):
         self.real_time_ranges: List[Tuple[int, int]] = []
         self.total_time: int = 0
         self.real_time: int = 0
+        # pyre-fixme[8]: Attribute has type `str`; used as `None`.
         self.step_name: str = None
 
     @classmethod
@@ -161,6 +162,8 @@ class ModuleNode(OperatorNode):
         self.self_device_duration += get_chilren_self_device_time(self)
 
     @classmethod
+    # pyre-fixme[14]: `create` overrides method defined in `OperatorNode`
+    #  inconsistently.
     def create(cls, event: ModuleEvent):
         kwargs = BaseNode.get_node_argument(event)
         kwargs['module_id'] = event.module_id
@@ -198,6 +201,8 @@ class PLProfileNode(OperatorNode):
         super().__init__(**kwargs)
 
     @classmethod
+    # pyre-fixme[14]: `create` overrides method defined in `OperatorNode`
+    #  inconsistently.
     def create(cls, event: PLProfileEvent):
         kwargs = BaseNode.get_node_argument(event)
         return cls(**kwargs)
@@ -213,8 +218,11 @@ class PLModuleNode(OperatorNode):
         self.self_device_duration += get_chilren_self_device_time(self)
 
     @classmethod
+    # pyre-fixme[14]: `create` overrides method defined in `OperatorNode`
+    #  inconsistently.
     def create(cls, event: PLProfileEvent):
         kwargs = BaseNode.get_node_argument(event)
+        # pyre-fixme[16]: `PLProfileEvent` has no attribute `module_id`.
         kwargs['module_id'] = event.module_id
         return cls(**kwargs)
 
@@ -236,6 +244,7 @@ class RuntimeNode(HostNode):
         self.device_nodes = sorted(device_nodes, key=lambda x: (x.start_time, -x.end_time)) if device_nodes else None
         self.tc_duration: int = 0  # Time summarization of all its launched kernels.
 
+    # pyre-fixme[9]: op_node has type `OperatorNode`; used as `None`.
     def fill_stats(self, op_node: OperatorNode = None):
         if self.device_nodes:
             for device_node in self.device_nodes:
@@ -261,11 +270,15 @@ class RuntimeNode(HostNode):
 class DeviceNode(BaseNode):
     def __init__(self,
                  blocks_per_sm: Optional[float] = None,
+                 # pyre-fixme[9]: occupancy has type `int`; used as `None`.
                  occupancy: int = None,
                  grid: Optional[List[int]] = None,
                  block: Optional[List[int]] = None,
+                 # pyre-fixme[9]: regs_per_thread has type `int`; used as `None`.
                  regs_per_thread: int = None,
+                 # pyre-fixme[9]: shared_memory has type `int`; used as `None`.
                  shared_memory: int = None,
+                 # pyre-fixme[9]: device_id has type `int`; used as `None`.
                  device_id: int = None, **kwargs):
         super().__init__(**kwargs)
         self.op_tc_eligible = False

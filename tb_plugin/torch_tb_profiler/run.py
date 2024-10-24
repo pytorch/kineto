@@ -65,6 +65,8 @@ class Run:
             span = 'default'
         else:
             span = str(span)
+        # pyre-fixme[6]: For 2nd argument expected `RunProfile` but got
+        #  `Union[DistributedRunProfile, RunProfile]`.
         self.profiles[(profile.worker, span)] = profile
 
     def get_profile(self, worker, span) -> Union['DistributedRunProfile', 'RunProfile']:
@@ -72,8 +74,12 @@ class Run:
             raise ValueError('the worker parameter is mandatory')
 
         if len(self.profiles) == 0:
+            # pyre-fixme[7]: Expected `Union[DistributedRunProfile, RunProfile]` but
+            #  got `None`.
             return None
 
+        # pyre-fixme[7]: Expected `Union[DistributedRunProfile, RunProfile]` but got
+        #  `Optional[RunProfile]`.
         return self.profiles.get((worker, span), None)
 
     def get_profiles(self, *, worker=None, span=None) \
@@ -81,12 +87,16 @@ class Run:
         # Note: we could not use if span to check it is None or not
         # since the span 0 will be skipped at this case.
         if worker is not None and span is not None:
+            # pyre-fixme[7]: Expected `Union[None, List[DistributedRunProfile],
+            #  List[RunProfile]]` but got `Optional[RunProfile]`.
             return self.profiles.get((worker, span), None)
         elif worker is not None:
             return [p for (w, s), p in self.profiles.items() if worker == w]
         elif span is not None:
             return [p for (w, s), p in self.profiles.items() if span == s]
         else:
+            # pyre-fixme[7]: Expected `Union[None, List[DistributedRunProfile],
+            #  List[RunProfile]]` but got `dict_values[Tuple[str, str], RunProfile]`.
             return self.profiles.values()
 
 
@@ -274,6 +284,7 @@ class RunProfile:
 
         cano = Canonicalizer(time_metric, memory_metric)
 
+        # pyre-fixme[16]: `Optional` has no attribute `memory_records`.
         curves, peaks = get_curves_and_peaks(self.memory_snapshot.memory_records, cano)
         if patch_for_step_plot:
             curves = patch_curves_for_step_plot(curves)
@@ -283,6 +294,7 @@ class RunProfile:
             peaks_formatted[dev] = 'Peak Memory Usage: {:.1f}{}'.format(cano.convert_memory(value), cano.memory_metric)
             if dev != 'CPU':
                 try:
+                    # pyre-fixme[16]: `RunProfile` has no attribute `gpu_infos`.
                     totals[dev] = cano.convert_memory(self.gpu_infos[int(dev[3:])]['Memory Raw'])
                 except BaseException:
                     pass
@@ -334,6 +346,7 @@ class RunProfile:
         round = DisplayRounder(ndigits=2)
 
         profiler_start_ts = self.profiler_start_ts
+        # pyre-fixme[16]: `Optional` has no attribute `memory_records`.
         memory_records = RunProfile._filtered_by_ts(self.memory_snapshot.memory_records, start_ts, end_ts)
 
         events = defaultdict(list)
@@ -461,6 +474,8 @@ class RunProfile:
             }
             parent.append(d)
             for child in node.children:
+                # pyre-fixme[6]: For 1st argument expected `List[typing.Any]` but
+                #  got `Union[List[typing.Any], int, str]`.
                 traverse_node(d['children'], child)
         traverse_node(result, root)
         return result[0]

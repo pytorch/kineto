@@ -13,6 +13,7 @@ logger = utils.get_logger()
 
 class OverallParser:
     class Costs:
+        # pyre-fixme[9]: costs has type `List[float]`; used as `None`.
         def __init__(self, costs: List[float] = None):
             # the cost length is len(ProfileRole)
             if costs is None:
@@ -56,8 +57,11 @@ class OverallParser:
 
         def intersection_with_step(self, step: Tuple[int, int]):
             cost_ranges: List[List[Tuple[int, int]]] = []
+            # pyre-fixme[9]: Unable to unpack `List[Tuple[int, int]]`, expected a tuple.
             step = [step]
             for range in self.cost_ranges:
+                # pyre-fixme[6]: For 1st argument expected `List[Tuple[int, int]]`
+                #  but got `Tuple[int, int]`.
                 cost_ranges.append(intersection_ranges_lists(step, range))
 
             return OverallParser.Statistics(cost_ranges)

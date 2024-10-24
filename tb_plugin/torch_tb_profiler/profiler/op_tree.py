@@ -202,6 +202,8 @@ class OpTreeBuilder:
 
             return modules, backward_nodes_flatten
         else:
+            # pyre-fixme[7]: Expected `Tuple[List[ModuleNode], List[OperatorNode]]`
+            #  but got `Tuple[None, None]`.
             return None, None
 
     @staticmethod
@@ -244,6 +246,7 @@ class OpTreeBuilder:
                             ts2parent: Dict[int, OperatorNode],
                             backward_nodes: Dict[OperatorNode, List[OperatorNode]]) -> Dict[int, List[OperatorNode]]:
         if not fwd_bwd_map:
+            # pyre-fixme[7]: Expected `Dict[int, List[OperatorNode]]` but got `None`.
             return None
 
         fwd_to_bwdroot: Dict[int, List[OperatorNode]] = {}
@@ -259,6 +262,7 @@ class OpTreeBuilder:
 
         return fwd_to_bwdroot
 
+    # pyre-fixme[47]: Non-static method must specify `self` parameter.
     def _build_backward_module(node: ModuleNode,
                                parent: Optional[BackwardNode],
                                fwd_bwd_map: Dict[int, List[OperatorNode]],
@@ -286,6 +290,8 @@ class OpTreeBuilder:
                     if bwd_ops:
                         parent.children.extend(bwd_ops)
 
+            # pyre-fixme[6]: For 1st argument expected `ModuleNode` but got
+            #  `OperatorNode`.
             OpTreeBuilder._build_backward_module(child, parent, fwd_bwd_map, result)
 
         if isinstance(node, ModuleNode) and parent and parent.children:

@@ -14,6 +14,7 @@ from collections import OrderedDict
 from queue import Queue
 
 import werkzeug
+# pyre-fixme[21]: Could not find module `tensorboard.plugins`.
 from tensorboard.plugins import base_plugin
 from werkzeug import exceptions, wrappers
 
@@ -35,6 +36,7 @@ def decorate_headers(func):
 exceptions.HTTPException.get_headers = decorate_headers(exceptions.HTTPException.get_headers)
 
 
+# pyre-fixme[11]: Annotation `TBPlugin` is not defined as a type.
 class TorchProfilerPlugin(base_plugin.TBPlugin):
     """TensorBoard plugin for Torch Profiler."""
 
@@ -42,11 +44,13 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     headers = [('X-Content-Type-Options', 'nosniff')]
     CONTENT_TYPE = 'application/json'
 
+    # pyre-fixme[11]: Annotation `TBContext` is not defined as a type.
     def __init__(self, context: base_plugin.TBContext):
         """Instantiates TorchProfilerPlugin.
         Args:
           context: A base_plugin.TBContext instance.
         """
+        # pyre-fixme[19]: Expected 0 positional arguments.
         super(TorchProfilerPlugin, self).__init__(context)
         if not context.logdir and context.flags.logdir_spec:
             dirs = context.flags.logdir_spec.split(',')

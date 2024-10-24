@@ -54,10 +54,13 @@ class RunProfileData:
         self.events.sort(key=lambda e: e.ts)
         self.forward_backward_events = trace.create_association_events(fwd_bwd_events)
 
+        # pyre-fixme[8]: Attribute has type `str`; used as `None`.
         self.trace_file_path: str = None
 
         # Event Parser results
+        # pyre-fixme[8]: Attribute has type `Dict[int, OperatorNode]`; used as `None`.
         self.tid2tree: Dict[int, OperatorNode] = None
+        # pyre-fixme[8]: Attribute has type `Dict[int, OperatorNode]`; used as `None`.
         self.pl_tid2tree: Dict[int, OperatorNode] = None
         self.used_devices = []
         self.use_dp: bool = False
@@ -73,6 +76,7 @@ class RunProfileData:
         self.avg_costs = None
 
         # GPU parser
+        # pyre-fixme[8]: Attribute has type `GPUMetricsParser`; used as `None`.
         self.gpu_metrics_parser: GPUMetricsParser = None
 
         # Operator aggregator
@@ -107,6 +111,7 @@ class RunProfileData:
     @staticmethod
     def from_json(worker, span, trace_json: Dict):
         profile = RunProfileData(worker, span, trace_json)
+        # pyre-fixme[16]: `None` has no attribute `__enter__`.
         with utils.timing('Data processing'):
             profile.process()
         profile.analyze()
@@ -311,6 +316,7 @@ class RunProfileData:
     def _memory_events(self) -> List[MemoryEvent]:
         memory_events = [e for e in self.events if e.type == EventTypes.MEMORY]
         memory_events.sort(key=lambda e: e.ts)
+        # pyre-fixme[7]: Expected `List[MemoryEvent]` but got `List[BaseEvent]`.
         return memory_events
 
     def _analyze_gpu_metrics(self):

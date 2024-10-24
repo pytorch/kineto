@@ -127,6 +127,7 @@ def get_tree_operators(root: OperatorNode) -> Generator[OperatorNode, None, None
 
 def diff_summary(node: DiffNode) -> DiffStats:
     if not node:
+        # pyre-fixme[7]: Expected `DiffStats` but got `None`.
         return None
 
     left = OpStats(
@@ -159,7 +160,11 @@ def print_node(node: Union[DiffNode, DiffStats], level: int, index: int, file=sy
 
 def print_ops(op: Operators, prefix: str = INDENT, file=sys.stdout):
     if isinstance(op.op_nodes, list):
+        # pyre-fixme[16]: Item `OperatorNode` of `Union[List[OperatorNode],
+        #  OperatorNode]` has no attribute `__iter__`.
         for n in op.op_nodes:
             file.write(f'{prefix}{n.name}\n')
     else:
+        # pyre-fixme[16]: Item `List` of `Union[List[OperatorNode], OperatorNode]`
+        #  has no attribute `name`.
         file.write(f'{prefix}{op.op_nodes.name}\n')

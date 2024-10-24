@@ -24,7 +24,9 @@ from .utils import as_bytes, as_text, parse_blob_url
 logger = utils.get_logger()
 
 try:
+    # pyre-fixme[21]: Could not find module `boto3`.
     import boto3
+    # pyre-fixme[21]: Could not find module `botocore.exceptions`.
     import botocore.exceptions
 
     S3_ENABLED = True
@@ -32,6 +34,7 @@ except ImportError:
     S3_ENABLED = False
 
 try:
+    # pyre-fixme[21]: Could not find module `azure.storage.blob`.
     from azure.storage.blob import ContainerClient
     BLOB_ENABLED = True
 except ImportError:
@@ -39,6 +42,7 @@ except ImportError:
 
 try:
     # Imports the Google Cloud client library
+    # pyre-fixme[21]: Could not find module `google.cloud`.
     from google.cloud import storage
     GS_ENABLED = True
 except ImportError:
@@ -46,6 +50,7 @@ except ImportError:
 
 try:
     # Imports the HDFS library
+    # pyre-fixme[21]: Could not find module `fsspec.implementations.arrow`.
     from fsspec.implementations.arrow import HadoopFileSystem
     HDFS_ENABLED = True
 except ImportError:

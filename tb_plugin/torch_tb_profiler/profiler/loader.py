@@ -9,6 +9,10 @@ from collections import defaultdict
 from typing import List, Tuple
 
 from .. import consts, io, utils
+# pyre-fixme[21]: Could not find name `Process` in
+#  `kineto.tb_plugin.torch_tb_profiler.multiprocessing`.
+# pyre-fixme[21]: Could not find name `Queue` in
+#  `kineto.tb_plugin.torch_tb_profiler.multiprocessing`.
 from ..multiprocessing import Process, Queue
 from ..run import Run, RunProfile
 from .data import DistributedRunProfileData, RunProfileData
@@ -23,6 +27,7 @@ class RunLoader:
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches
+        # pyre-fixme[16]: Module `multiprocessing` has no attribute `Queue`.
         self.queue = Queue()
 
     def load(self):
@@ -79,6 +84,7 @@ class RunLoader:
         return run
 
     def _process_data(self, worker, span, path):
+        # pyre-fixme[21]: Could not find module `absl.logging`.
         import absl.logging
         absl.logging.use_absl_handler()
 
@@ -107,11 +113,17 @@ class RunLoader:
     def _process_spans(self, distributed_run: Run):
         spans = distributed_run.get_spans()
         if spans is None:
+            # pyre-fixme[6]: For 1st argument expected
+            #  `List[DistributedRunProfileData]` but got `Union[None, List[RunProfile],
+            #  List[DistributedRunProfile]]`.
             return [self._process_distributed_profiles(distributed_run.get_profiles(), None)]
         else:
             span_profiles = []
             for span in spans:
                 profiles = distributed_run.get_profiles(span=span)
+                # pyre-fixme[6]: For 1st argument expected
+                #  `List[DistributedRunProfileData]` but got `Union[None,
+                #  List[RunProfile], List[DistributedRunProfile]]`.
                 p = self._process_distributed_profiles(profiles, span)
                 if p is not None:
                     span_profiles.append(p)

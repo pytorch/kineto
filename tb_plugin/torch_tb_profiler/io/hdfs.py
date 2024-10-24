@@ -1,6 +1,8 @@
 import os
 
+# pyre-fixme[21]: Could not find module `fsspec`.
 import fsspec
+# pyre-fixme[21]: Could not find module `fsspec.implementations`.
 from fsspec.implementations import arrow
 
 from .. import utils
@@ -13,6 +15,7 @@ class HadoopFileSystem(RemotePath, BaseFileSystem):
     def __init__(self) -> None:
         super().__init__()
     
+    # pyre-fixme[11]: Annotation `HadoopFileSystem` is not defined as a type.
     def get_fs(self) -> arrow.HadoopFileSystem:
         return fsspec.filesystem("hdfs")
 

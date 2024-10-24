@@ -61,18 +61,26 @@ Stats = namedtuple('Stats', [
 
 
 def aggegate_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
+    # pyre-fixme[6]: For 1st argument expected `List[PythonFunctionEvent]` but got
+    #  `List[BaseEvent]`.
     roots = _build_module_hierarchy(events)
     modules = _get_node_list(tid2tree, ModuleNode)
     if modules and roots:
+        # pyre-fixme[6]: For 1st argument expected `Iterable[Union[ModuleNode,
+        #  PLModuleNode]]` but got `Generator[OperatorNode, None, None]`.
         return _process_module_statistics(modules, roots)
     else:
         return None
 
 
 def aggegate_pl_module_view(tid2tree: Dict[int, OperatorNode], events: List[BaseEvent]) -> Optional[List[Stats]]:
+    # pyre-fixme[6]: For 1st argument expected `List[PLModuleEvent]` but got
+    #  `List[BaseEvent]`.
     roots = _build_module_hierarchy_from_name(events)
     modules = _get_node_list(tid2tree, PLModuleNode)
     if modules and roots:
+        # pyre-fixme[6]: For 1st argument expected `Iterable[Union[ModuleNode,
+        #  PLModuleNode]]` but got `Generator[OperatorNode, None, None]`.
         return _process_module_statistics(modules, roots)
     else:
         return None
@@ -164,6 +172,9 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
 
 def _aggregate_modules(modules: Iterable[Union[ModuleNode, PLModuleNode]]) -> Dict[Tuple[str, int], ModuleStats]:
     """Aggregate the modules based on the name and module_id"""
+    # pyre-fixme[31]: Expression `typing.Dict[(typing.Tuple(str, int),
+    #  kineto.tb_plugin.torch_tb_profiler.profiler.module_op.ModuleStats)]` is not a
+    #  valid type.
     module_aggs: Dict[Tuple(str, int), ModuleStats] = {}
     for m in modules:
         key = (m.name, m.module_id)
@@ -266,4 +277,6 @@ def dump_modules(level: int, modules: Iterable[Union[Module, ModuleNode]]):
     """testing purpose"""
     for module in modules:
         print(f"{'    ' * level}{module.name.replace('nn.Module: ', '')}_{module.module_id}")
+        # pyre-fixme[6]: For 2nd argument expected `Iterable[Union[Module,
+        #  ModuleNode]]` but got `Union[List[Module], List[OperatorNode]]`.
         dump_modules(level + 1, module.children)

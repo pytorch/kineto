@@ -3,6 +3,7 @@
 # -------------------------------------------------------------------------
 import os
 
+# pyre-fixme[21]: Could not find module `azure.storage.blob`.
 from azure.storage.blob import ContainerClient
 
 from .. import utils

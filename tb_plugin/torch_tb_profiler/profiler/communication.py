@@ -50,12 +50,19 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
     step_to_comm_ranges: Dict[str, Tuple[List, List]] = {}
     for comm_node in comm_node_list:
         if comm_node.step_name not in step_to_comm_ranges:
+            # pyre-fixme[6]: For 2nd argument expected `Tuple[List[typing.Any],
+            #  List[typing.Any]]` but got `List[Union[List[Variable[_T]],
+            #  List[Variable[_T]]]]`.
             step_to_comm_ranges[comm_node.step_name] = [[], []]
         step_to_comm_ranges[comm_node.step_name][0].extend(comm_node.kernel_ranges)
         step_to_comm_ranges[comm_node.step_name][1].extend(comm_node.real_time_ranges)
 
         if comm_node.name not in total_comm_stats:
+            # pyre-fixme[6]: For 2nd argument expected `Tuple[int, int,
+            #  List[typing.Any], List[typing.Any]]` but got
+            #  `List[Union[List[Variable[_T]], List[Variable[_T]], int]]`.
             total_comm_stats[comm_node.name] = [0, 0, [], []]
+        # pyre-fixme[16]: `Tuple` has no attribute `__setitem__`.
         total_comm_stats[comm_node.name][0] += 1
         bytes_one_value = 0
         if comm_node.input_shape:
@@ -83,6 +90,8 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
         total_comm_stats[comm_node.name][3].extend(comm_node.real_time_ranges)
 
     for step, comm_ranges in step_to_comm_ranges.items():
+        # pyre-fixme[6]: For 2nd argument expected `Tuple[int, int]` but got
+        #  `List[int]`.
         step_comm_stats[step] = [
             get_ranges_sum(merge_ranges(comm_ranges[0])),
             get_ranges_sum(merge_ranges(comm_ranges[1]))
@@ -92,4 +101,7 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
         stats[2] = get_ranges_sum(merge_ranges(stats[2]))
         stats[3] = get_ranges_sum(merge_ranges(stats[3]))
 
+    # pyre-fixme[7]: Expected `Tuple[Dict[str, Tuple[int, int]], Dict[str,
+    #  List[int]]]` but got `Tuple[Dict[str, Tuple[int, int]], Dict[str, Tuple[int,
+    #  int, List[typing.Any], List[typing.Any]]]]`.
     return step_comm_stats, total_comm_stats

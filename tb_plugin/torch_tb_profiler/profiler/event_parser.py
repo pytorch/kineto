@@ -16,6 +16,7 @@ from .trace import BaseEvent, DurationEvent, EventTypes, KernelEvent, NcclOpName
 
 logger = utils.get_logger()
 
+# pyre-fixme[19]: Expected 1 positional argument.
 CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
 
 
@@ -69,6 +70,8 @@ class NodeParserMixin:
             if event.type == EventTypes.MEMORY:
                 continue
             self._parse_node(
+                # pyre-fixme[6]: For 1st argument expected `DurationEvent` but got
+                #  `BaseEvent`.
                 event,
                 corrid_to_device,
                 corrid_to_runtime,
@@ -80,11 +83,15 @@ class NodeParserMixin:
         if CommLibTypes.Nccl in self.comm_lib:
             for event in events:
                 if event.type == EventTypes.KERNEL:
+                    # pyre-fixme[6]: For 1st argument expected `KernelEvent` but got
+                    #  `BaseEvent`.
                     self._update_communication_node(event)
 
         # associate CUDA Runtimes with CPU events
         for op_list in tid2list.values():
             for op in op_list:
+                # pyre-fixme[6]: For 1st argument expected `int` but got
+                #  `Optional[int]`.
                 runtime_nodes = externalid_to_runtime.pop(op.external_id, [])
                 if runtime_nodes:
                     op.runtimes.extend(runtime_nodes)
@@ -132,6 +139,8 @@ class NodeParserMixin:
         tid = event.tid
         if event.type in [EventTypes.KERNEL, EventTypes.MEMCPY, EventTypes.MEMSET]:
             self.used_devices.add(event.pid)
+            # pyre-fixme[6]: For 1st argument expected `KernelEvent` but got
+            #  `DurationEvent`.
             device_node = DeviceNode.create(event)
             if corrid in corrid_to_runtime:
                 rt_node = corrid_to_runtime[corrid]  # Don't pop it because it may be used by next kernel.
@@ -149,8 +158,10 @@ class NodeParserMixin:
                 corrid_to_device[corrid].append(device_node)
             self.device_node_list.append(device_node)
         elif event.type == EventTypes.RUNTIME:
+            # pyre-fixme[6]: For 1st argument expected `int` but got `Optional[int]`.
             device_nodes = corrid_to_device.pop(corrid, None)
             rt_node = RuntimeNode.create(event, device_nodes)
+            # pyre-fixme[6]: For 1st argument expected `int` but got `Optional[int]`.
             corrid_to_runtime[corrid] = rt_node
             externalid_to_runtime[rt_node.external_id].append(rt_node)
             # Some runtimes has external_id 0, which will not be correlated to any operator.
@@ -174,18 +185,30 @@ class NodeParserMixin:
                             EventTypes.MODULE,
                             EventTypes.USER_ANNOTATION]:
             if event.type == EventTypes.PROFILER_STEP:
+                # pyre-fixme[6]: For 1st argument expected `OperatorEvent` but got
+                #  `DurationEvent`.
                 op_node = ProfilerStepNode.create(event)
             elif event.type == EventTypes.MODULE:
+                # pyre-fixme[6]: For 1st argument expected `ModuleEvent` but got
+                #  `DurationEvent`.
                 op_node = ModuleNode.create(event)
             elif event.type == EventTypes.PL_MODULE:
+                # pyre-fixme[6]: For 1st argument expected `PLProfileEvent` but got
+                #  `DurationEvent`.
                 op_node = PLModuleNode.create(event)
             else:
+                # pyre-fixme[6]: For 1st argument expected `OperatorEvent` but got
+                #  `DurationEvent`.
                 op_node = create_operator_node(event)
             if event.name in NcclOpNameSet or event.name in GlooOpNameSet:
+                # pyre-fixme[6]: For 1st argument expected `OperatorEvent` but got
+                #  `DurationEvent`.
                 comm_node = CommunicationNode.create(event)
                 if event.name in NcclOpNameSet:
+                    # pyre-fixme[16]: `IntEnum` has no attribute `Nccl`.
                     self.comm_lib.add(CommLibTypes.Nccl)
                 if event.name in GlooOpNameSet:
+                    # pyre-fixme[16]: `IntEnum` has no attribute `Gloo`.
                     self.comm_lib.add(CommLibTypes.Gloo)
                 ts = event.ts
                 dur = event.duration
@@ -199,6 +222,8 @@ class NodeParserMixin:
             if op_node:
                 tid2list[int(tid)].append(op_node)
         elif event.type == EventTypes.PL_PROFILE:
+            # pyre-fixme[6]: For 1st argument expected `PLProfileEvent` but got
+            #  `DurationEvent`.
             op_node = PLProfileNode.create(event)
             pl_tid2list[int(tid)].append(op_node)
 
@@ -282,6 +307,7 @@ class StepParser:
             self.role_ranges[ProfileRole.DataLoader].append((ts, ts + dur))
         elif event.type == EventTypes.PROFILER_STEP:
             self.steps.append((ts, ts + dur))
+            # pyre-fixme[16]: `DurationEvent` has no attribute `step`.
             self.steps_names.append(str(event.step))
         elif evt_type in [EventTypes.PYTHON, EventTypes.OPERATOR, EventTypes.USER_ANNOTATION]:
             if event.name in GlooOpNameSet or event.name in NcclOpNameSet:
@@ -300,6 +326,9 @@ class StepParser:
     def _find_device_steps(self, runtime_node_list: List[RuntimeNode]):
         """return steps associated with device nodes.
         """
+        # pyre-fixme[9]: runtime_node_list has type `List[RuntimeNode]`; used as
+        #  `List[Variable[SupportsRichComparisonT (bound to
+        #  Union[SupportsDunderGT[typing.Any], SupportsDunderLT[typing.Any]])]]`.
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
 
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,
@@ -355,6 +384,7 @@ class StepParser:
         if len(matched_device_nodes) > 0:
             prev_step_end_time = self.steps[0][0]
             if steps_device[0][0] != sys.maxsize:  # When step 0 has device event.
+                # pyre-fixme[16]: `StepParser` has no attribute `device_node_list`.
                 for device_node in self.device_node_list:
                     if device_node not in matched_device_nodes:
                         # Now this device_node is not launched inside any step span.
@@ -374,6 +404,8 @@ class StepParser:
         is_use_gpu = prev_step_end_time is not None
         if is_use_gpu:
             for i_step in range(len(self.steps)):
+                # pyre-fixme[6]: For 1st argument expected `SupportsRichComparisonT`
+                #  but got `Optional[int]`.
                 step_start_time = max(prev_step_end_time, self.steps[i_step][0])
                 step_end_time = self.steps[i_step][1]
                 if steps_device[i_step][0] == sys.maxsize:  # When step i_step has no device event.
@@ -416,6 +448,7 @@ class EventParser(NodeParserMixin, StepParser):
         self.comm_node_list: Dict[CommunicationNode] = None
 
     def parse(self, events: Iterable[BaseEvent], fwd_bwd_map: Dict[int, int]) -> Dict[int, List[OperatorNode]]:
+        # pyre-fixme[16]: `None` has no attribute `__enter__`.
         with utils.timing('EventParser: parse nodes'):
             tid2list, tid2zero_rt_list, staled_device_nodes, pl_tid2list = self.parse_nodes(events)
 
@@ -426,6 +459,8 @@ class EventParser(NodeParserMixin, StepParser):
 
         with utils.timing('EventParser: parse steps times'):
             # Process steps
+            # pyre-fixme[6]: For 1st argument expected `Iterable[DurationEvent]` but
+            #  got `Iterable[BaseEvent]`.
             self.parse_steps(events, self.communication_data)
             if len(self.comm_lib) > 1:
                 logger.warning(
@@ -436,6 +471,8 @@ class EventParser(NodeParserMixin, StepParser):
         self.update_device_steps(self.runtime_node_list)
 
         self.comm_node_list = generate_communication_nodes(self.communication_data, self.steps, self.steps_names)
+        # pyre-fixme[7]: Expected `Dict[int, List[OperatorNode]]` but got
+        #  `Tuple[typing.Any, typing.Any]`.
         return tid2tree, pl_tid2tree
 
     @staticmethod

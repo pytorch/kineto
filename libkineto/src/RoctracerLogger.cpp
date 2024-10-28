@@ -62,7 +62,12 @@ void RoctracerLogger::popCorrelationID(CorrelationDomain type) {
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
-  t_externalIds[type].pop_back();
+  if (!t_externalIds[type].empty()) {
+    t_externalIds[type].pop_back();
+  } else {
+    LOG(ERROR)
+        << "Attempt to popCorrelationID from an empty external Ids stack";
+  }
 }
 
 void RoctracerLogger::clearLogs() {

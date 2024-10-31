@@ -155,6 +155,8 @@ class NodeParserMixin:
                         ' (runtime external_id, device external_id): (%s, %s)' %
                         (corrid, rt_node.external_id, device_node.external_id))
             else:
+                # pyre-fixme[6]: For 1st argument expected `int` but got
+                #  `Optional[int]`.
                 corrid_to_device[corrid].append(device_node)
             self.device_node_list.append(device_node)
         elif event.type == EventTypes.RUNTIME:

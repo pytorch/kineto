@@ -73,6 +73,10 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleTraceStart(
       const std::unordered_map<std::string, std::string>& metadata) override;
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) override;
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,

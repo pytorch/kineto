@@ -123,6 +123,22 @@ void ChromeTraceLogger::handleTraceStart(
   "traceEvents": [)JSON";
 }
 
+void ChromeTraceLogger::handleTraceStart(
+    const std::unordered_map<std::string, std::string>& metadata,
+    const std::string& device_properties) {
+  traceOf_ << fmt::format(R"JSON(
+{{
+  "schemaVersion": {},)JSON", kSchemaVersion);
+
+  traceOf_ << fmt::format(R"JSON(
+  "deviceProperties": [{}
+  ],)JSON", device_properties);
+
+  metadataToJSON(metadata);
+  traceOf_ << R"JSON(
+  "traceEvents": [)JSON";
+}
+
 static std::string defaultFileName() {
   return fmt::format(kDefaultLogFileFmt, processId());
 }

@@ -66,6 +66,13 @@ class MemoryTraceLogger : public ActivityLogger {
     metadata_ = metadata;
   }
 
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) override {
+    metadata_ = metadata;
+    device_properties_ = device_properties;
+  }
+
   void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -81,7 +88,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void log(ActivityLogger& logger) {
-    logger.handleTraceStart(metadata_);
+    logger.handleTraceStart(metadata_, device_properties_);
     for (auto& activity : activities_) {
       activity->log(logger);
     }
@@ -121,6 +128,7 @@ class MemoryTraceLogger : public ActivityLogger {
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;
   std::unordered_map<std::string, std::vector<std::string>> loggerMetadata_;
+  std::string device_properties_;
   int64_t endTime_{0};
   std::shared_ptr<ActivityLogger> chrome_logger_;
 };

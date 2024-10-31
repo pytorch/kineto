@@ -58,6 +58,10 @@ class ActivityLogger {
   virtual void handleTraceStart(
       const std::unordered_map<std::string, std::string>& metadata) = 0;
 
+  virtual void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) {}
+
   void handleTraceStart() {
     handleTraceStart(std::unordered_map<std::string, std::string>());
   }

@@ -11,6 +11,7 @@
 #include "RoctracerActivity.h"
 
 #include <fmt/format.h>
+#include <stddef.h>
 #include <cstdint>
 
 #include "Demangle.h"
@@ -20,8 +21,11 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
-static std::unordered_map<int, std::string> correlationToGrid;
-static std::unordered_map<int, std::string> correlationToBlock;
+namespace {
+thread_local std::unordered_map<int, std::string> correlationToGrid;
+thread_local std::unordered_map<int, std::string> correlationToBlock;
+thread_local std::unordered_map<int, size_t> correlationToSize;
+} // namespace
 
 const char* getGpuActivityKindString(uint32_t kind) {
   switch (kind) {
@@ -94,11 +98,29 @@ inline void GpuActivity::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);
 }
 
+static inline std::string bandwidth(size_t bytes, uint64_t duration) {
+  return duration == 0 ? "\"N/A\"" : fmt::format("{}", bytes * 1.0 / duration);
+}
+
 inline const std::string GpuActivity::metadataJson() const {
   const auto& gpuActivity = raw();
   // clang-format off
+
+  // if memcpy or memset, add size
+  if (correlationToSize.count(gpuActivity.id) > 0) {
+    size_t size = correlationToSize[gpuActivity.id];
+    std::string bandwidth_gib = (bandwidth(size, gpuActivity.end - gpuActivity.begin));
+    return fmt::format(R"JSON(
+      "device": {}, "stream": {},
+      "correlation": {}, "kind": "{}",
+      "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
+      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
+      size, bandwidth_gib);
+  } 
   
-  if (correlationToGrid.count(gpuActivity.id) > 0) {
+  // if compute kernel, add grid and block
+  else if (correlationToGrid.count(gpuActivity.id) > 0) {
     return fmt::format(R"JSON(
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}",
@@ -189,9 +211,10 @@ inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson()
 template <>
 inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson()
     const {
+  correlationToSize[raw().id] = raw().size;
   return fmt::format(
       R"JSON(
-      "cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "size": "{}", "kind": "{}")JSON",
+      "cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "bytes": "{}", "kind": "{}")JSON",
       raw().cid,
       raw().id,
       raw().src,
@@ -203,11 +226,12 @@ inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson()
 template <>
 inline const std::string RuntimeActivity<roctracerMallocRow>::metadataJson()
     const {
+  correlationToSize[raw().id] = raw().size;
   std::string size = "";
   if (raw().cid == HIP_API_ID_hipMalloc) {
     size = fmt::format(
         R"JSON(
-      "size": {}, )JSON",
+      "bytes": {}, )JSON",
         raw().size);
   }
   return fmt::format(

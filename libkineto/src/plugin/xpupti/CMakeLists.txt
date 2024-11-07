@@ -25,9 +25,9 @@ if(TARGET Pti::pti_view)
     message(INFO " Found XPUPTI")
 
     set(pti_view_names)
-    # Original file name.
+    # For Linux, due to it has soft link original file name is fine.
     list(APPEND pti_view_names pti_view)
-    # For Windows, file name with version number.
+    # For Windows, file name to be appended with version number.
     foreach(ver_major RANGE 0 1)
         foreach(ver_minor RANGE 0 9)
         list(APPEND pti_view_names pti_view-${ver_major}-${ver_minor})

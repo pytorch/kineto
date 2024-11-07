@@ -1044,6 +1044,7 @@ void CuptiActivityProfiler::configure(
   LOGGER_OBSERVER_SET_TRACE_DURATION_MS(config_->activitiesDuration().count());
   if (!config_->requestTraceID().empty()) {
     LOGGER_OBSERVER_SET_TRACE_ID(config_->requestTraceID());
+    addMetadata("trace_id", "\"" + config_->requestTraceID() + "\"");
   }
   if (!config_->requestGroupTraceID().empty()) {
     LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());

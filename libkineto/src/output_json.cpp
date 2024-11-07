@@ -105,7 +105,8 @@ void ChromeTraceLogger::metadataToJSON(
 }
 
 void ChromeTraceLogger::handleTraceStart(
-    const std::unordered_map<std::string, std::string>& metadata) {
+    const std::unordered_map<std::string, std::string>& metadata,
+    const std::string& device_properties) {
   traceOf_ << fmt::format(
       R"JSON(
 {{
@@ -116,7 +117,7 @@ void ChromeTraceLogger::handleTraceStart(
       R"JSON(
   "deviceProperties": [{}
   ],)JSON",
-      devicePropertiesJson());
+      device_properties);
 
   metadataToJSON(metadata);
   traceOf_ << R"JSON(

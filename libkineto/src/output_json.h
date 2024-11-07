@@ -71,7 +71,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleGenericActivity(const GenericTraceActivity& activity) override;
 
   void handleTraceStart(
-      const std::unordered_map<std::string, std::string>& metadata) override;
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) override;
 
   void finalizeTrace(
       const Config& config,

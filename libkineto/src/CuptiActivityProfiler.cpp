@@ -8,6 +8,7 @@
 
 #include "CuptiActivityProfiler.h"
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <time.h>
 #include <atomic>
 #include <cstdint>
@@ -29,6 +30,7 @@
 #endif
 
 #include "Config.h"
+#include "DeviceProperties.h"
 #include "DeviceUtil.h"
 #include "time_since_epoch.h"
 #ifdef HAS_CUPTI
@@ -306,7 +308,17 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   for (auto& pair : versionMetadata_) {
     addMetadata(pair.first, pair.second);
   }
-  logger.handleTraceStart(metadata_);
+  std::vector<std::string> device_properties;
+  if (auto props = devicePropertiesJson(); !props.empty()) {
+    device_properties.push_back(props);
+  }
+  for (const auto& session : sessions_) {
+    if (auto props = session->getDeviceProperties(); !props.empty()) {
+      device_properties.push_back(props);
+    }
+  }
+  logger.handleTraceStart(
+      metadata_, fmt::format("{}", fmt::join(device_properties, ",")));
   setCpuActivityPresent(false);
   setGpuActivityPresent(false);
   for (auto& cpu_trace : traceBuffers_->cpu) {

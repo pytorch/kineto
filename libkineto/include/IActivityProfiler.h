@@ -126,6 +126,10 @@ class IActivityProfilerSession {
   virtual void pushUserCorrelationId(uint64_t /*id*/) {}
   virtual void popUserCorrelationId() {}
 
+  virtual std::string getDeviceProperties() {
+    return "";
+  }
+
  protected:
   TraceStatus status_ = TraceStatus::READY;
 };

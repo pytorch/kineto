@@ -56,10 +56,11 @@ class ActivityLogger {
       const libkineto::GenericTraceActivity& activity) = 0;
 
   virtual void handleTraceStart(
-      const std::unordered_map<std::string, std::string>& metadata) = 0;
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) = 0;
 
   void handleTraceStart() {
-    handleTraceStart(std::unordered_map<std::string, std::string>());
+    handleTraceStart(std::unordered_map<std::string, std::string>(), "");
   }
 
   virtual void finalizeTrace(

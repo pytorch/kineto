@@ -29,7 +29,7 @@ if(TARGET Pti::pti_view)
     list(APPEND pti_view_names pti_view)
     # For Windows, file name to be appended with version number.
     foreach(ver_major RANGE 0 1)
-        foreach(ver_minor RANGE 0 9)
+        foreach(ver_minor RANGE 0 19)
         list(APPEND pti_view_names pti_view-${ver_major}-${ver_minor})
         endforeach()        
     endforeach()    

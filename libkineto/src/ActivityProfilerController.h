@@ -40,6 +40,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   ~ActivityProfilerController();
 
 #if !USE_GOOGLE_LOG
+  static std::shared_ptr<LoggerCollector> getLoggerCollector();
   static void setLoggerCollectorFactory(
       std::function<std::shared_ptr<LoggerCollector>()> factory);
 #endif // !USE_GOOGLE_LOG

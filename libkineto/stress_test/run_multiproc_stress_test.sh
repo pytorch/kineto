@@ -5,10 +5,14 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-buck build -c fbcode.platform=platform010 -c fbcode.static_nccl=1 @mode/opt //kineto/libkineto:kineto_stress_test
+build_cmd="buck build --show-output @mode/opt -c fbcode.nvcc_arch=h100a,h100 -c fbcode.platform010_cuda_version=12.4 :kineto_stress_test"
+build_out=$($build_cmd)
 
-MPIPATH=/usr/local/fbcode/platform010/bin/mpirun
-BINPATH=~/fbsource/fbcode/buck-out/gen/kineto/libkineto/kineto_stress_test
-NUMRANKS=2
+mpi_path=/usr/local/fbcode/platform010/bin/mpirun
+binary_path="$HOME/fbsource/${build_out#* }"
+num_ranks=8
 
-$MPIPATH -np $NUMRANKS $BINPATH $HOME/fbsource/fbcode/kineto/libkineto/stress_test/stress_test_uvm_nccl.json
+echo "Binary Path:"
+echo "$binary_path"
+
+$mpi_path -np $num_ranks "$binary_path" ./stress_test_dense_mp.json

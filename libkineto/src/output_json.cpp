@@ -38,8 +38,6 @@ static constexpr const char* kOutSplit = "Out split size";
 static constexpr const char* kProcessGroupName = "Process Group Name";
 static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
-static constexpr const char* kInTensorsStart = "Input Tensors start";
-static constexpr const char* kOutTensorsStart = "Output Tensors start";
 static constexpr const char* kRank = "Rank";
 static constexpr const char* kP2pSrc = "Src Rank";
 static constexpr const char* kP2pDst = "Dst Rank";
@@ -420,24 +418,6 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
           groupSize,
           kDtype,
           dtype));
-    }
-    const auto& input_tensor_starts =
-        collectiveRecord->getMetadataValue(kInTensorsStart);
-    const auto output_tensor_starts =
-        collectiveRecord->getMetadataValue(kOutTensorsStart);
-    if (!input_tensor_starts.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(" \"{}\": {}", kInTensorsStart, input_tensor_starts));
-    }
-    if (!output_tensor_starts.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(" \"{}\": {}", kOutTensorsStart, output_tensor_starts));
     }
     // In/out split size are valid for all_to_all
     const auto& inSplitSize = collectiveRecord->getMetadataValue(kInSplit);

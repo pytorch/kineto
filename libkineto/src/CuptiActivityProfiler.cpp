@@ -1054,12 +1054,10 @@ void CuptiActivityProfiler::configure(
 
   // Set useful metadata into the logger.
   LOGGER_OBSERVER_SET_TRACE_DURATION_MS(config_->activitiesDuration().count());
+  LOGGER_OBSERVER_SET_TRACE_ID(config_->requestTraceID());
+  LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
   if (!config_->requestTraceID().empty()) {
-    LOGGER_OBSERVER_SET_TRACE_ID(config_->requestTraceID());
     addMetadata("trace_id", "\"" + config_->requestTraceID() + "\"");
-  }
-  if (!config_->requestGroupTraceID().empty()) {
-    LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
   }
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)

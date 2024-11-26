@@ -40,6 +40,11 @@ void ActivityProfilerController::setLoggerCollectorFactory(
     std::function<std::shared_ptr<LoggerCollector>()> factory) {
   loggerCollectorFactory() = factory();
 }
+
+std::shared_ptr<LoggerCollector>
+ActivityProfilerController::getLoggerCollector() {
+  return loggerCollectorFactory();
+}
 #endif // !USE_GOOGLE_LOG
 
 ActivityProfilerController::ActivityProfilerController(

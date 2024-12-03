@@ -1368,10 +1368,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 void CuptiActivityProfiler::finalizeTrace(
     const Config& config,
     ActivityLogger& logger) {
-  LOG(INFO) << "Traces Recorded:";
+  LOG(INFO) << "CPU Traces Recorded:";
   {
     for (const auto& it : iterationCountMap_) {
-      LOG(INFO) << it.first << ": " << it.second << " iterations";
+      LOG(INFO) << it.first << ": " << it.second << " span(s) recorded";
     }
     iterationCountMap_.clear();
   }

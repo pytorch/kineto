@@ -10,6 +10,5 @@ from .common import TraceAnalysis
 
 
 class CLPTraceAnalysis(TraceAnalysis):
-
     def __init__(self, args: argparse.Namespace):
         super().__init__(args)

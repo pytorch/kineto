@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+
+# pyre-unsafe
 from typing import List, Tuple
 
 from .. import utils

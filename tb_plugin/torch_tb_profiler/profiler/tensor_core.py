@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+
+# pyre-unsafe
 class TC_Allowlist_Meta(type):
     # Enable grammar sugar as 'v in TC_Allowlist'.
     def __contains__(cls, item):

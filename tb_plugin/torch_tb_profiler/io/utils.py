@@ -1,3 +1,4 @@
+# pyre-unsafe
 def as_str_any(value):
     """Converts to `str` as `str(value)`, but use `as_str` for `bytes`.
 

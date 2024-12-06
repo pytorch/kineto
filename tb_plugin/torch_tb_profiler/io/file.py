@@ -1,3 +1,4 @@
+# pyre-unsafe
 """
 This file is forked from
 https://github.com/tensorflow/tensorboard/blob/master/tensorboard/compat/tensorflow_stub/io/gfile.py.

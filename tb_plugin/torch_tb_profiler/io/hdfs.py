@@ -1,3 +1,4 @@
+# pyre-unsafe
 import os
 
 # pyre-fixme[21]: Could not find module `fsspec`.

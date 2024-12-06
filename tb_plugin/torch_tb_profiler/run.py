@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # --------------------------------------------------------------------------
+
+# pyre-unsafe
 from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 

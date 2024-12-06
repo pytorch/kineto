@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+
+# pyre-unsafe
 # pyre-fixme[21]: Could not find module `google.cloud`.
 from google.cloud import storage
 # pyre-fixme[21]: Could not find module `google.auth`.

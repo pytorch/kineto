@@ -8,6 +8,7 @@
 
 #include "CuptiActivityProfiler.h"
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <time.h>
 #include <atomic>
 #include <cstdint>
@@ -29,6 +30,7 @@
 #endif
 
 #include "Config.h"
+#include "DeviceProperties.h"
 #include "DeviceUtil.h"
 #include "time_since_epoch.h"
 #ifdef HAS_CUPTI
@@ -306,7 +308,17 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   for (auto& pair : versionMetadata_) {
     addMetadata(pair.first, pair.second);
   }
-  logger.handleTraceStart(metadata_);
+  std::vector<std::string> device_properties;
+  if (auto props = devicePropertiesJson(); !props.empty()) {
+    device_properties.push_back(props);
+  }
+  for (const auto& session : sessions_) {
+    if (auto props = session->getDeviceProperties(); !props.empty()) {
+      device_properties.push_back(props);
+    }
+  }
+  logger.handleTraceStart(
+      metadata_, fmt::format("{}", fmt::join(device_properties, ",")));
   setCpuActivityPresent(false);
   setGpuActivityPresent(false);
   for (auto& cpu_trace : traceBuffers_->cpu) {
@@ -1042,11 +1054,10 @@ void CuptiActivityProfiler::configure(
 
   // Set useful metadata into the logger.
   LOGGER_OBSERVER_SET_TRACE_DURATION_MS(config_->activitiesDuration().count());
+  LOGGER_OBSERVER_SET_TRACE_ID(config_->requestTraceID());
+  LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
   if (!config_->requestTraceID().empty()) {
-    LOGGER_OBSERVER_SET_TRACE_ID(config_->requestTraceID());
-  }
-  if (!config_->requestGroupTraceID().empty()) {
-    LOGGER_OBSERVER_SET_GROUP_TRACE_ID(config_->requestGroupTraceID());
+    addMetadata("trace_id", "\"" + config_->requestTraceID() + "\"");
   }
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
@@ -1357,10 +1368,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
 void CuptiActivityProfiler::finalizeTrace(
     const Config& config,
     ActivityLogger& logger) {
-  LOG(INFO) << "Traces Recorded:";
+  LOG(INFO) << "CPU Traces Recorded:";
   {
     for (const auto& it : iterationCountMap_) {
-      LOG(INFO) << it.first << ": " << it.second << " iterations";
+      LOG(INFO) << it.first << ": " << it.second << " span(s) recorded";
     }
     iterationCountMap_.clear();
   }

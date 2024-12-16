@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+
+# pyre-unsafe
 from collections import namedtuple
 from typing import Dict, List
 

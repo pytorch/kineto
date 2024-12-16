@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+
+# pyre-unsafe
 from abc import ABCMeta
 from typing import List, Tuple, Union
 

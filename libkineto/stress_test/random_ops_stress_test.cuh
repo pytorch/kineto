@@ -43,6 +43,12 @@ struct stress_test_args {
   // this reduces event density.
   uint32_t max_iters_kernel{5};
 
+  // Controls the number of threads per block for the LCG kernel
+  uint32_t kernel_block_size{256};
+
+  // Controls the number of CUDA thread blocks for the LCG kernel
+  uint32_t thread_blocks_per_kernel{256};
+
   // The probability that instead of a kernel call we do a memset on the
   // input buffers, using a magic value
   double memset_prob{0.05};
@@ -52,6 +58,9 @@ struct stress_test_args {
 
   // The max idle time between kernel launches in microseconds
   uint32_t max_idle_us{2};
+
+  // If true, a warmup cycle is ran before a profiled run
+  bool do_warmup{false};
 
   // If true, we randomly sleep a number of microseconds between kernel
   // launches.
@@ -102,6 +111,9 @@ struct stress_test_args {
   // If true, we use cudaGetMemInfo throughout the stress test to
   // measure peak memory usage
   bool monitor_mem_usage{false};
+
+  // Number of microseconds to wait before the trace collection starts
+  uint32_t trace_delay_us{3000000};
 
   // Number of microseconds for trace collection. If 0 the trace is
   // not collected

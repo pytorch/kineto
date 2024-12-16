@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+
+# pyre-unsafe
 import sys
 from collections import defaultdict
 from enum import IntEnum
@@ -328,9 +330,6 @@ class StepParser:
     def _find_device_steps(self, runtime_node_list: List[RuntimeNode]):
         """return steps associated with device nodes.
         """
-        # pyre-fixme[9]: runtime_node_list has type `List[RuntimeNode]`; used as
-        #  `List[Variable[SupportsRichComparisonT (bound to
-        #  Union[SupportsDunderGT[typing.Any], SupportsDunderLT[typing.Any]])]]`.
         runtime_node_list = sorted(runtime_node_list, key=lambda x: x.start_time)
 
         # Use similar code with two-way merge to get all runtimes inside each host-side step span,

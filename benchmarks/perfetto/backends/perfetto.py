@@ -14,7 +14,6 @@ from .common import TraceAnalysis
 
 
 class PerfettoTraceAnalysis(TraceAnalysis):
-
     name = "perfetto"
 
     def __init__(self, args: argparse.Namespace):

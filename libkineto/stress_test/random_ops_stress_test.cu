@@ -34,7 +34,8 @@ float* pBuffNCCLRecv;
 template <uint32_t offset_seed_a, uint32_t offset_seed_b>
 __global__ void iterative_lcg_3_buffers(lcg_kernel_input input) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < input.len) {
+  int stride = gridDim.x * blockDim.x;
+  while (idx < input.len) {
     uint32_t seed_a = (uint32_t)input.d_a[idx] + offset_seed_a;
     uint32_t seed_b = (uint32_t)input.d_b[idx] + offset_seed_b;
     uint32_t xna = 0;
@@ -48,12 +49,14 @@ __global__ void iterative_lcg_3_buffers(lcg_kernel_input input) {
     }
 
     input.d_c[idx] = 0.25 + (float)((xna + xnb) % 1000) / 1000.0;
+    idx += stride;
   }
 }
 
 template <uint32_t offset_seed_a, uint32_t offset_seed_b>
 __global__ void iterative_lcg_3_with_uvm(lcg_kernel_input input) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int stride = gridDim.x * blockDim.x;
   uint64_t uvm_idx = idx;
 
   float val_uvm_a = 0.0f;
@@ -67,9 +70,9 @@ __global__ void iterative_lcg_3_with_uvm(lcg_kernel_input input) {
   }
 
   // Load device buffers, do some compute, save to device buffer
-  if (idx < input.len) {
+  while (idx < input.len) {
     uint32_t seed_a = (uint32_t)(input.d_a[idx] + val_uvm_a) + offset_seed_a;
-    uint32_t seed_b = (uint32_t)(input.d_b[idx] + val_uvm_a) + offset_seed_b;
+    uint32_t seed_b = (uint32_t)(input.d_b[idx] + val_uvm_b) + offset_seed_b;
     uint32_t xna = 0;
     uint32_t xnb = 0;
 
@@ -81,6 +84,7 @@ __global__ void iterative_lcg_3_with_uvm(lcg_kernel_input input) {
     }
 
     input.d_c[idx] = 0.25 + (float)((xna + xnb) % 1000) / 1000.0;
+    idx += stride;
   }
 }
 
@@ -186,14 +190,25 @@ void run_stress_test(
       free_and_realloc_tensor_pairs(p_memory_pool + pair_idx, current_stream);
 
       // Initialize device buffers with random values
-      uint32_t thread_blocks = p_memory_pool[pair_idx].n_elements / 256;
-      simple_rng_lcg<<<thread_blocks, 256, 0, current_stream>>>(
+      simple_rng_lcg<<<
+          test_args.thread_blocks_per_kernel,
+          test_args.kernel_block_size,
+          0,
+          current_stream>>>(
           p_memory_pool[pair_idx].d_A, p_memory_pool[pair_idx].n_elements);
       CUDA_KERNEL_LAUNCH_CHECK();
-      simple_rng_lcg<<<thread_blocks, 256, 0, current_stream>>>(
+      simple_rng_lcg<<<
+          test_args.thread_blocks_per_kernel,
+          test_args.kernel_block_size,
+          0,
+          current_stream>>>(
           p_memory_pool[pair_idx].d_B, p_memory_pool[pair_idx].n_elements);
       CUDA_KERNEL_LAUNCH_CHECK();
-      simple_rng_lcg<<<thread_blocks, 256, 0, current_stream>>>(
+      simple_rng_lcg<<<
+          test_args.thread_blocks_per_kernel,
+          test_args.kernel_block_size,
+          0,
+          current_stream>>>(
           p_memory_pool[pair_idx].d_C, p_memory_pool[pair_idx].n_elements);
       CUDA_KERNEL_LAUNCH_CHECK();
     }
@@ -222,7 +237,6 @@ void run_stress_test(
     uint32_t num_iters_stream = rand_r(&rng_state) %
             (test_args.max_iters_kernel - test_args.min_iters_kernel) +
         test_args.min_iters_kernel;
-    uint32_t thread_blocks = p_memory_pool[pair_idx].n_elements / 256;
     lcg_kernel_input kernel_args;
     kernel_args.d_a = p_memory_pool[pair_idx].d_A;
     kernel_args.d_b = p_memory_pool[pair_idx].d_B;
@@ -256,7 +270,10 @@ void run_stress_test(
         // kernel_args.len * sizeof(float)));
       } else {
         iterative_lcg_3_with_uvm<113, 119>
-            <<<thread_blocks, 256, 0, current_uvm_stream>>>(kernel_args);
+            <<<test_args.thread_blocks_per_kernel,
+               test_args.kernel_block_size,
+               0,
+               current_uvm_stream>>>(kernel_args);
         CUDA_KERNEL_LAUNCH_CHECK();
       }
     } else {
@@ -270,7 +287,12 @@ void run_stress_test(
             (void*)kernel_args.d_c, 42, kernel_args.len * sizeof(float)));
       } else {
         call_compute_kernel(
-            thread_blocks, 256, 0, current_stream, kernel_args, i);
+            test_args.thread_blocks_per_kernel,
+            test_args.kernel_block_size,
+            0,
+            current_stream,
+            kernel_args,
+            i);
       }
     }
 
@@ -280,11 +302,12 @@ void run_stress_test(
       uint32_t n_elements = p_memory_pool[pair_idx].n_elements;
       size_t szTransfer = n_elements * sizeof(float);
       checkCudaStatus(
-          cudaMemcpy(
+          cudaMemcpyAsync(
               pBuffNCCLSend,
               p_memory_pool[pair_idx].d_C,
               szTransfer,
-              cudaMemcpyDeviceToDevice),
+              cudaMemcpyDeviceToDevice,
+              current_stream),
           __LINE__);
       NCCLCHECK(ncclAllReduce(
           (const void*)pBuffNCCLSend,
@@ -294,13 +317,14 @@ void run_stress_test(
           ncclAvg,
           nccl_communicator,
           current_stream));
-      checkCudaStatus(cudaStreamSynchronize(current_stream), __LINE__);
+      // checkCudaStatus(cudaStreamSynchronize(current_stream), __LINE__);
       checkCudaStatus(
-          cudaMemcpy(
+          cudaMemcpyAsync(
               p_memory_pool[pair_idx].d_C,
               pBuffNCCLRecv,
               szTransfer,
-              cudaMemcpyDeviceToDevice),
+              cudaMemcpyDeviceToDevice,
+              current_stream),
           __LINE__);
     }
 

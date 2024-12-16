@@ -286,8 +286,6 @@ void RoctracerLogger::activity_callback(
     const char* begin,
     const char* end,
     void* arg) {
-  RoctracerLogger* dis = &singleton();
-
   // Log latest completed correlation id.  Used to ensure we have flushed all
   // data on stop
   std::unique_lock<std::mutex> lock(s_flush.mutex_);

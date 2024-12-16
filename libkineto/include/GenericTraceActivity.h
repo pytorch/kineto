@@ -75,7 +75,7 @@ class GenericTraceActivity : public ITraceActivity {
     return flow.type;
   }
 
-  int flowId() const override {
+  int64_t flowId() const override {
     return flow.id;
   }
 

@@ -1,6 +1,8 @@
 # -------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # -------------------------------------------------------------------------
+
+# pyre-unsafe
 import sys
 from typing import Generator, List, Union
 

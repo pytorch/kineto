@@ -9,14 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <folly/json/dynamic.h>
-#include <folly/json/json.h>
 
 #include <cuda.h>
 #include <cupti_activity.h>
@@ -26,91 +22,14 @@
 
 #include <ApproximateClock.h>
 #include <c10/util/ApproximateClock.h>
-#include "kineto/libkineto/fb/nccl_profiler/NcclProfiler.h"
-#include "kineto/libkineto/stress_test/random_ops_stress_test.cuh"
-#include "kineto/libkineto/stress_test/tensor_cache.cuh"
+#include "kineto/libkineto/stress_test/stress_test_input.h"
 #include "kineto/libkineto/stress_test/utils.h"
 #include "mpi.h"
 
 using namespace kineto_stress_test;
 
-void read_inputs_from_json(
-    std::string sJsonFile,
-    stress_test_args* test_args,
-    tensor_cache_args* cache_args) {
-  std::ifstream fJson(sJsonFile.c_str());
-  std::string sJson;
-
-  if (!fJson.fail()) {
-    fJson.seekg(0, std::ios::end);
-    sJson.reserve(fJson.tellg());
-    fJson.seekg(0, std::ios::beg);
-    sJson.assign(
-        (std::istreambuf_iterator<char>(fJson)),
-        std::istreambuf_iterator<char>());
-    fJson.close();
-
-    folly::dynamic sJsonParsed = folly::parseJson(sJson);
-
-    folly::dynamic jsonTestArgs = sJsonParsed["test_args"];
-    test_args->num_operations =
-        (uint32_t)jsonTestArgs["num_operations"].asInt();
-    test_args->num_cuda_streams =
-        (uint32_t)jsonTestArgs["num_cuda_streams"].asInt();
-    test_args->prob_cuda_malloc =
-        (double)jsonTestArgs["prob_cuda_malloc"].asDouble();
-    test_args->min_iters_kernel =
-        (uint32_t)jsonTestArgs["min_iters_kernel"].asInt();
-    test_args->max_iters_kernel =
-        (uint32_t)jsonTestArgs["max_iters_kernel"].asInt();
-    test_args->memset_prob = (double)jsonTestArgs["memset_prob"].asDouble();
-    test_args->min_idle_us = (uint32_t)jsonTestArgs["min_idle_us"].asInt();
-    test_args->max_idle_us = (uint32_t)jsonTestArgs["max_idle_us"].asInt();
-    test_args->simulate_host_time =
-        (bool)jsonTestArgs["simulate_host_time"].asBool();
-    test_args->num_workers = (uint32_t)jsonTestArgs["num_workers"].asInt();
-    test_args->use_uvm_buffers = (bool)jsonTestArgs["use_uvm_buffers"].asBool();
-    test_args->uvm_kernel_prob =
-        (double)jsonTestArgs["uvm_kernel_prob"].asDouble();
-    test_args->parallel_uvm_alloc =
-        (bool)jsonTestArgs["parallel_uvm_alloc"].asBool();
-    test_args->uvm_len = (uint64_t)jsonTestArgs["uvm_len"].asDouble();
-    test_args->is_multi_rank = (bool)jsonTestArgs["is_multi_rank"].asBool();
-    test_args->sz_nccl_buff_KB =
-        (uint32_t)jsonTestArgs["sz_nccl_buff_KB"].asInt();
-    test_args->num_iters_nccl_sync =
-        (uint32_t)jsonTestArgs["num_iters_nccl_sync"].asInt();
-    test_args->pre_alloc_streams =
-        (bool)jsonTestArgs["pre_alloc_streams"].asBool();
-    test_args->use_memcpy_stream =
-        (bool)jsonTestArgs["use_memcpy_stream"].asBool();
-    test_args->use_uvm_stream = (bool)jsonTestArgs["use_uvm_stream"].asBool();
-    test_args->monitor_mem_usage =
-        (bool)jsonTestArgs["monitor_mem_usage"].asBool();
-    test_args->trace_length_us =
-        (uint32_t)jsonTestArgs["trace_length_us"].asInt();
-    test_args->cupti_buffer_mb =
-        (uint32_t)jsonTestArgs["cupti_buffer_mb"].asInt();
-
-    folly::dynamic cacheArgs = sJsonParsed["cache_args"];
-    cache_args->sz_cache_KB = (uint32_t)cacheArgs["sz_cache_KB"].asInt();
-    cache_args->sz_GPU_memory_KB =
-        (uint32_t)cacheArgs["sz_GPU_memory_KB"].asInt();
-    cache_args->sz_min_tensor_KB =
-        (uint32_t)cacheArgs["sz_min_tensor_KB"].asInt();
-    cache_args->sz_max_tensor_KB =
-        (uint32_t)cacheArgs["sz_max_tensor_KB"].asInt();
-    cache_args->prob_h2d = (double)cacheArgs["prob_h2d"].asDouble();
-    cache_args->prob_d2h = (double)cacheArgs["prob_d2h"].asDouble();
-    cache_args->num_increments = (uint32_t)cacheArgs["num_increments"].asInt();
-    cache_args->num_pairs_per_increment =
-        (uint32_t)cacheArgs["num_pairs_per_increment"].asInt();
-  } else {
-    printf("Reading input %s failed!.\n", sJsonFile.c_str());
-  }
-}
-
 void trace_collection_thread(
+    uint32_t trace_delay_us,
     uint32_t trace_length_us,
     uint32_t cupti_buffer_mb) {
   c10::ApproximateClockToUnixTimeConverter clockConverter;
@@ -137,6 +56,9 @@ void trace_collection_thread(
   profiler.prepareTrace(types);
   auto converter = clockConverter.makeConverter();
   libkineto::get_time_converter() = converter;
+
+  // Wait a bit before collecting the trace
+  usleep(trace_delay_us);
 
   // Collect the trace
   profiler.startTrace();
@@ -432,19 +354,24 @@ int main(int argc, char* argv[]) {
     MPICHECK(MPI_Barrier(MPI_COMM_WORLD));
   }
 
-  // Run without kineto tracing
-  clock_t t_start = clock();
-  run_parallel_stress_test(test_args);
-  clock_t t_stop = clock();
-  double t_no_trace = (double)(t_stop - t_start) / 1e+3;
-  std::cout << "Rank " << test_args.rank
-            << " before kineto tracing. Duration (ms) = " << t_no_trace
-            << std::endl;
+  double t_no_trace = 0.0;
+  clock_t t_start, t_stop;
 
-  // Re-generate tensor cache values
-  re_initialize_buffer_values();
-  if (test_args.is_multi_rank) {
-    MPICHECK(MPI_Barrier(MPI_COMM_WORLD));
+  if (test_args.do_warmup) {
+    // Run without kineto tracing
+    t_start = clock();
+    run_parallel_stress_test(test_args);
+    t_stop = clock();
+    t_no_trace = (double)(t_stop - t_start) / 1e+3;
+    std::cout << "Rank " << test_args.rank
+              << " before kineto tracing. Duration (ms) = " << t_no_trace
+              << std::endl;
+
+    // Re-generate tensor cache values
+    re_initialize_buffer_values();
+    if (test_args.is_multi_rank) {
+      MPICHECK(MPI_Barrier(MPI_COMM_WORLD));
+    }
   }
 
   // If configured we are collecting a few traces
@@ -462,6 +389,7 @@ int main(int argc, char* argv[]) {
       t_start = clock();
       kineto_thread = std::thread(
           trace_collection_thread,
+          test_args.trace_delay_us,
           test_args.trace_length_us,
           test_args.cupti_buffer_mb);
       run_parallel_stress_test(test_args);

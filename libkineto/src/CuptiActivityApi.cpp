@@ -165,6 +165,7 @@ void CuptiActivityApi::bufferRequested(
     size_t* size,
     size_t* maxNumRecords) {
   std::lock_guard<std::mutex> guard(mutex_);
+  LOG(VERBOSE) << "CUPTI buffer requested";
   if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
     stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
@@ -340,9 +341,21 @@ void CuptiActivityApi::enableCuptiActivities(
     }
     if (activity == ActivityType::CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+#if (CUDART_VERSION >= 12050)
+      CUPTI_CALL(cuptiActivityEnableRuntimeApi(
+          CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020, 0));
+#endif
     }
     if (activity == ActivityType::CUDA_DRIVER) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
+#if (CUDART_VERSION >= 12050)
+      CUPTI_CALL(cuptiActivityEnableDriverApi(
+          CUPTI_DRIVER_TRACE_CBID_cuKernelGetAttribute, 0));
+      CUPTI_CALL(cuptiActivityEnableDriverApi(
+          CUPTI_DRIVER_TRACE_CBID_cuDevicePrimaryCtxGetState, 0));
+      CUPTI_CALL(cuptiActivityEnableDriverApi(
+          CUPTI_DRIVER_TRACE_CBID_cuCtxGetCurrent, 0));
+#endif
     }
     if (activity == ActivityType::OVERHEAD) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));

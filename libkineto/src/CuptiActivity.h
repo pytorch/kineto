@@ -80,7 +80,7 @@ struct CuptiActivity : public ITraceActivity {
   int flowType() const override {
     return kLinkAsyncCpuGpu;
   }
-  int flowId() const override {
+  int64_t flowId() const override {
     return correlationId();
   }
   const T& raw() const {

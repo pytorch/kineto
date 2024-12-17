@@ -24,8 +24,18 @@ find_package(Pti REQUIRED)
 if(TARGET Pti::pti_view)
     message(INFO " Found XPUPTI")
 
+    set(pti_view_names)
+    # For Linux, due to it has soft link original file name is fine.
+    list(APPEND pti_view_names pti_view)
+    # For Windows, file name to be appended with version number.
+    foreach(ver_major RANGE 0 1)
+        foreach(ver_minor RANGE 0 19)
+        list(APPEND pti_view_names pti_view-${ver_major}-${ver_minor})
+        endforeach()        
+    endforeach()    
+
     get_target_property(PTI_INCLUDE_DIR Pti::pti_view INTERFACE_INCLUDE_DIRECTORIES)
-    find_library(PTI_VIEW_LIBRARY NAMES pti_view PATHS "${PTI_INCLUDE_DIR}/../lib")
+    find_library(PTI_VIEW_LIBRARY NAMES ${pti_view_names} PATHS "${PTI_INCLUDE_DIR}/../lib")
     set(PTI_LIBRARY ${PTI_VIEW_LIBRARY} CACHE STRING "Imported PTI library.")
     set(PTI_INCLUDE_DIR ${PTI_INCLUDE_DIR} CACHE STRING "PTI include directory.")
 

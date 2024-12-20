@@ -75,6 +75,18 @@ const char* overheadKindString(CUpti_ActivityOverheadKind kind) {
       return "Instrumentation";
     case CUPTI_ACTIVITY_OVERHEAD_CUPTI_RESOURCE:
       return "Resource";
+#if CUDART_VERSION >= 12040
+    case CUPTI_ACTIVITY_OVERHEAD_RUNTIME_TRIGGERED_MODULE_LOADING:
+      return "Runtime Triggered Module Loading";
+    case CUPTI_ACTIVITY_OVERHEAD_LAZY_FUNCTION_LOADING:
+      return "Lazy Function Loading";
+    case CUPTI_ACTIVITY_OVERHEAD_COMMAND_BUFFER_FULL:
+      return "Command Buffer Full";
+#endif
+#if CUDART_VERSION >= 12070
+    case CUPTI_ACTIVITY_OVERHEAD_ACTIVITY_BUFFER_REQUEST:
+      return "Activity Buffer Request";
+#endif
     case CUPTI_ACTIVITY_OVERHEAD_FORCE_INT:
       return "Force Int";
     default:

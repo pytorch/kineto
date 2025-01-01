@@ -11,9 +11,7 @@
 #include <fmt/format.h>
 #include <time.h>
 #include <fstream>
-#include <map>
 #include "Config.h"
-#include "DeviceProperties.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"

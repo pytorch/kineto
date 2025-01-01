@@ -270,7 +270,7 @@ class RoctracerLogger {
 
  private:
   bool registered_{false};
-  void endTracing();
+  void endTracing() const;
 
   roctracer_pool_t* hccPool_{NULL};
   static void insert_row_to_buffer(roctracerBase* row);

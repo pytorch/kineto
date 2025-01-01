@@ -7,17 +7,14 @@
  */
 
 #pragma once
+#ifdef HAS_ROCTRACER
 
 #include <atomic>
 #include <functional>
-#include <map>
 #include <set>
-#include <vector>
 
-#ifdef HAS_ROCTRACER
 #include <roctracer.h>
 #include "RoctracerLogger.h"
-#endif
 
 #include "ActivityType.h"
 #include "GenericTraceActivity.h"
@@ -66,9 +63,10 @@ class RoctracerActivityApi {
   // Enabled Activity Filters
   uint32_t activityMask_{0};
   uint32_t activityMaskSnapshot_{0};
-  bool isLogged(libkineto::ActivityType atype);
+  bool isLogged(libkineto::ActivityType atype) const;
 
   RoctracerLogger* d;
 };
 
 } // namespace KINETO_NAMESPACE
+#endif

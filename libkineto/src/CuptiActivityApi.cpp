@@ -8,12 +8,10 @@
 
 #include "CuptiActivityApi.h"
 
-#include <assert.h>
 #include <chrono>
 #include <mutex>
 #include <thread>
 
-#include "Config.h"
 #include "DeviceUtil.h"
 #include "Logger.h"
 
@@ -214,7 +212,7 @@ std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
 int CuptiActivityApi::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
-    std::function<void(const CUpti_Activity*)> handler) {
+    const std::function<void(const CUpti_Activity*)>& handler) {
   int count = 0;
   if (buf && validSize) {
     CUpti_Activity* record{nullptr};
@@ -229,7 +227,7 @@ int CuptiActivityApi::processActivitiesForBuffer(
 
 const std::pair<int, size_t> CuptiActivityApi::processActivities(
     CuptiActivityBufferMap& buffers,
-    std::function<void(const CUpti_Activity*)> handler) {
+    const std::function<void(const CUpti_Activity*)>& handler) {
   std::pair<int, size_t> res{0, 0};
 #ifdef HAS_CUPTI
   for (auto& pair : buffers) {

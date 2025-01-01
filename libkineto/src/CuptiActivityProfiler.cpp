@@ -9,11 +9,9 @@
 #include "CuptiActivityProfiler.h"
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <time.h>
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <iomanip>
 #include <limits>
 #include <optional>
 #include <string>
@@ -501,22 +499,22 @@ static GenericTraceActivity createUserGpuSpan(
 }
 
 void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
-    const ITraceActivity& userActivity,
-    const ITraceActivity& gpuActivity) {
-  StreamKey key(gpuActivity.deviceId(), gpuActivity.resourceId());
+    const ITraceActivity& cpuTraceActivity,
+    const ITraceActivity& gpuTraceActivity) {
+  StreamKey key(gpuTraceActivity.deviceId(), gpuTraceActivity.resourceId());
   CorrelationSpanMap& correlationSpanMap = streamSpanMap_[key];
-  auto it = correlationSpanMap.find(userActivity.correlationId());
+  auto it = correlationSpanMap.find(cpuTraceActivity.correlationId());
   if (it == correlationSpanMap.end()) {
     auto it_success = correlationSpanMap.insert(
-        {userActivity.correlationId(),
-         createUserGpuSpan(userActivity, gpuActivity)});
+        {cpuTraceActivity.correlationId(),
+         createUserGpuSpan(cpuTraceActivity, gpuTraceActivity)});
     it = it_success.first;
   }
   GenericTraceActivity& span = it->second;
-  if (gpuActivity.timestamp() < span.startTime || span.startTime == 0) {
-    span.startTime = gpuActivity.timestamp();
+  if (gpuTraceActivity.timestamp() < span.startTime || span.startTime == 0) {
+    span.startTime = gpuTraceActivity.timestamp();
   }
-  int64_t gpu_activity_end = gpuActivity.timestamp() + gpuActivity.duration();
+  int64_t gpu_activity_end = gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
   if (gpu_activity_end > span.endTime) {
     span.endTime = gpu_activity_end;
   }

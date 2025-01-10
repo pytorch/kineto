@@ -39,7 +39,6 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
      {"xpu_runtime", ActivityType::XPU_RUNTIME},
      {"collective_comm", ActivityType::COLLECTIVE_COMM},
      {"mtia_workloadd", ActivityType::MTIA_WORKLOADD},
-     {"mtia_collective_comm", ActivityType::MTIA_COLLECTIVE_COMM},
      {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
      {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
      {"ENUM_COUNT", ActivityType::ENUM_COUNT}}};

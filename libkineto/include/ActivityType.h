@@ -41,6 +41,7 @@ enum class ActivityType {
   XPU_RUNTIME, // host side xpu runtime events
   COLLECTIVE_COMM, // collective communication
   MTIA_WORKLOADD, // MTIA workloadd events
+  MTIA_COLLECTIVE_COMM, // MTIA collective communication events
 
   // PRIVATEUSE1 Activity types are used for custom backends.
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.

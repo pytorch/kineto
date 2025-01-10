@@ -79,6 +79,17 @@ void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
   value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
 }
 
+static void sanitizeForNonReadableChars(std::string& value) {
+  for (auto& c : value) {
+    if (!std::isprint(c)) {
+      LOG(WARNING) << "Non JSON compliant character found in string: " << value
+                   << " Replacing with 'unknown'";
+      value = "unknown";
+      break;
+    }
+  }
+}
+
 static inline int32_t sanitizeTid(int32_t tid) {
   // Convert all negative tids to its positive value. Create a specific case
   // for INT_MIN so it is obvious how it is being handled.
@@ -521,6 +532,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   // TODO: Remove this once legacy tools are updated.
   std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
   sanitizeStrForJSON(op_name);
+  sanitizeForNonReadableChars(op_name);
 
   // clang-format off
   ts = transToRelativeTime(ts);

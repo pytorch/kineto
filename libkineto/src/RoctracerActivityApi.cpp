@@ -63,7 +63,8 @@ inline bool inRange(int64_t start, int64_t end, int64_t stamp) {
   return ((stamp > start) && (stamp < end));
 }
 
-inline bool RoctracerActivityApi::isLogged(libkineto::ActivityType atype) const {
+inline bool RoctracerActivityApi::isLogged(
+    libkineto::ActivityType atype) const {
   return activityMaskSnapshot_ & (1 << static_cast<uint32_t>(atype));
 }
 

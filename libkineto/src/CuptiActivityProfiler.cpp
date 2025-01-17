@@ -514,7 +514,8 @@ void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
   if (gpuTraceActivity.timestamp() < span.startTime || span.startTime == 0) {
     span.startTime = gpuTraceActivity.timestamp();
   }
-  int64_t gpu_activity_end = gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
+  int64_t gpu_activity_end =
+      gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
   if (gpu_activity_end > span.endTime) {
     span.endTime = gpu_activity_end;
   }

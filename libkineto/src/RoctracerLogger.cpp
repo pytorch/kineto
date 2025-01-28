@@ -410,7 +410,7 @@ void RoctracerLogger::stopLogging() {
   roctracer_stop();
 }
 
-void RoctracerLogger::endTracing() const {
+void RoctracerLogger::endTracing() {
   if (registered_ == true) {
     roctracer_disable_domain_callback(ACTIVITY_DOMAIN_HIP_API);
     // roctracer_disable_domain_callback(ACTIVITY_DOMAIN_ROCTX);

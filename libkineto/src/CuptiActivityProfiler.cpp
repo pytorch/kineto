@@ -442,6 +442,9 @@ void CuptiActivityProfiler::processCpuTrace(
       if (act->type() == ActivityType::USER_ANNOTATION &&
           act->duration() <= 0) {
         act->endTime = captureWindowEndTime_;
+        act->addMetadata("finished", "false");
+      } else {
+        act->addMetadata("finished", "true");
       }
       logger.handleActivity(*act);
     }

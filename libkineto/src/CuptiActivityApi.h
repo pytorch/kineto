@@ -11,7 +11,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <functional>
-#include <list>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -48,7 +47,7 @@ class CuptiActivityApi {
   CuptiActivityApi(const CuptiActivityApi&) = delete;
   CuptiActivityApi& operator=(const CuptiActivityApi&) = delete;
 
-  virtual ~CuptiActivityApi() {}
+  virtual ~CuptiActivityApi() = default;
 
   static CuptiActivityApi& singleton();
 
@@ -65,7 +64,7 @@ class CuptiActivityApi {
 
   virtual const std::pair<int, size_t> processActivities(
       CuptiActivityBufferMap&,
-      std::function<void(const CUpti_Activity*)> handler);
+      const std::function<void(const CUpti_Activity*)>& handler);
 
   void setMaxBufferSize(int size);
   void setDeviceBufferSize(size_t size);
@@ -91,7 +90,7 @@ class CuptiActivityApi {
   int processActivitiesForBuffer(
       uint8_t* buf,
       size_t validSize,
-      std::function<void(const CUpti_Activity*)> handler);
+      const std::function<void(const CUpti_Activity*)>& handler);
   static void CUPTIAPI bufferRequestedTrampoline(
       uint8_t** buffer,
       size_t* size,

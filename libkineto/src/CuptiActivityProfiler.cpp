@@ -9,11 +9,9 @@
 #include "CuptiActivityProfiler.h"
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <time.h>
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <iomanip>
 #include <limits>
 #include <optional>
 #include <string>
@@ -442,6 +440,9 @@ void CuptiActivityProfiler::processCpuTrace(
       if (act->type() == ActivityType::USER_ANNOTATION &&
           act->duration() <= 0) {
         act->endTime = captureWindowEndTime_;
+        act->addMetadata("finished", "false");
+      } else {
+        act->addMetadata("finished", "true");
       }
       logger.handleActivity(*act);
     }
@@ -501,22 +502,23 @@ static GenericTraceActivity createUserGpuSpan(
 }
 
 void CuptiActivityProfiler::GpuUserEventMap::insertOrExtendEvent(
-    const ITraceActivity& userActivity,
-    const ITraceActivity& gpuActivity) {
-  StreamKey key(gpuActivity.deviceId(), gpuActivity.resourceId());
+    const ITraceActivity& cpuTraceActivity,
+    const ITraceActivity& gpuTraceActivity) {
+  StreamKey key(gpuTraceActivity.deviceId(), gpuTraceActivity.resourceId());
   CorrelationSpanMap& correlationSpanMap = streamSpanMap_[key];
-  auto it = correlationSpanMap.find(userActivity.correlationId());
+  auto it = correlationSpanMap.find(cpuTraceActivity.correlationId());
   if (it == correlationSpanMap.end()) {
     auto it_success = correlationSpanMap.insert(
-        {userActivity.correlationId(),
-         createUserGpuSpan(userActivity, gpuActivity)});
+        {cpuTraceActivity.correlationId(),
+         createUserGpuSpan(cpuTraceActivity, gpuTraceActivity)});
     it = it_success.first;
   }
   GenericTraceActivity& span = it->second;
-  if (gpuActivity.timestamp() < span.startTime || span.startTime == 0) {
-    span.startTime = gpuActivity.timestamp();
+  if (gpuTraceActivity.timestamp() < span.startTime || span.startTime == 0) {
+    span.startTime = gpuTraceActivity.timestamp();
   }
-  int64_t gpu_activity_end = gpuActivity.timestamp() + gpuActivity.duration();
+  int64_t gpu_activity_end =
+      gpuTraceActivity.timestamp() + gpuTraceActivity.duration();
   if (gpu_activity_end > span.endTime) {
     span.endTime = gpu_activity_end;
   }
@@ -1136,7 +1138,7 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
-bool CuptiActivityProfiler::getCollectTraceState(){
+bool CuptiActivityProfiler::getCollectTraceState() {
   std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
   return isCollectingTrace;
 }
@@ -1325,7 +1327,8 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
           // execute collectTrace twice.
           // Do not call collectTrace when profilerThread_ is collecting Trace.
           // Otherwise, libkineto::api().client()->stop will be called twice,
-          // which leads to an unrecoverable ::c10:Error at https://github.com/pytorch/pytorch/blob/507bf65c6a9d4b46a232f65e91f3a0f9fbea88f9/torch/csrc/autograd/profiler_kineto.cpp#L820
+          // which leads to an unrecoverable ::c10:Error at
+          // disableProfiler
           if (!collectTraceThread_ && !getCollectTraceState()) {
             std::lock_guard<std::recursive_mutex> guard(mutex_);
             collectTraceThread_ = std::make_unique<std::thread>(
@@ -1343,7 +1346,7 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         }
         collectTrace(collection_done, now);
         {
-          std::lock_guard<std::recursive_mutex> gurad(collectTraceStateMutex_);
+          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
           isCollectingTrace = false;
         }
       } else if (derivedConfig_->isProfilingByIteration()) {

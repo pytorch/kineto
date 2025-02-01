@@ -10,7 +10,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <deque>
 #include <list>
 #include <map>
@@ -149,11 +148,11 @@ class CuptiActivityProfiler {
     gpuActivityPresent_ = val;
   }
 
-  inline bool gpuActivityPresent() {
+  inline bool gpuActivityPresent() const {
     return gpuActivityPresent_;
   }
 
-  inline bool traceNonEmpty() {
+  inline bool traceNonEmpty() const {
     return cpuActivityPresent_ || gpuActivityPresent_;
   }
 
@@ -172,7 +171,7 @@ class CuptiActivityProfiler {
 
   // Collect CPU and GPU traces
   void collectTrace(
-      bool collectionDone,
+      bool collection_done,
       const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Ensure collectTrace is done

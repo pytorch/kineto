@@ -219,7 +219,7 @@ class MockCuptiActivities : public CuptiActivityApi {
  public:
   virtual const std::pair<int, size_t> processActivities(
       CuptiActivityBufferMap&, /*unused*/
-      std::function<void(const CUpti_Activity*)> handler) override {
+      const std::function<void(const CUpti_Activity*)>& handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
       handler(act);
     }

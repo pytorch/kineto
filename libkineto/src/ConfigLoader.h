@@ -19,10 +19,6 @@
 
 #include "Config.h"
 
-// TODO(T90238193)
-// @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ILoggerObserver.h"
-
 namespace libkineto {
 class LibkinetoApi;
 }
@@ -95,7 +91,7 @@ class ConfigLoader {
   }
 
   bool hasNewConfig(const Config& oldConfig);
-  int contextCountForGpu(uint32_t gpu);
+  int contextCountForGpu(uint32_t device);
 
   void handleOnDemandSignal();
 

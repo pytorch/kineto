@@ -10,14 +10,21 @@ std::vector<std::array<unsigned char, 16>>
     XpuptiActivityProfilerSession::deviceUUIDs_ = {};
 std::vector<std::string> XpuptiActivityProfilerSession::correlateRuntimeOps_ = {
     "piextUSMEnqueueFill",
+    "urEnqueueUSMFill",
     "piextUSMEnqueueFill2D",
+    "urEnqueueUSMFill2D",
     "piextUSMEnqueueMemcpy",
+    "urEnqueueUSMMemcpy",
     "piextUSMEnqueueMemset",
     "piextUSMEnqueueMemcpy2D",
+    "urEnqueueUSMMemcpy2D",
     "piextUSMEnqueueMemset2D",
     "piEnqueueKernelLaunch",
+    "urEnqueueKernelLaunch",
     "piextEnqueueKernelLaunchCustom",
-    "piextEnqueueCooperativeKernelLaunch"};
+    "urEnqueueKernelLaunchCustomExp",
+    "piextEnqueueCooperativeKernelLaunch",
+    "urEnqueueCooperativeKernelLaunchExp"};
 
 // =========== Session Constructor ============= //
 XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(

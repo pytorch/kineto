@@ -429,6 +429,8 @@ class CuptiActivityProfiler {
 
   void checkTimestampOrder(const ITraceActivity* act1);
 
+  bool getCollectTraceState();
+
   // On-demand Request Config (should not be modified)
   // TODO: remove this config_, dependency needs to be removed from
   // finalizeTrace.
@@ -493,6 +495,10 @@ class CuptiActivityProfiler {
   // is blocked when profiling by iterations is enabled. Issue #953 shows
   // details.
   std::unique_ptr<std::thread> collectTraceThread_{nullptr};
+
+  // Add a mutex to protect state for CollectTrace
+  std::recursive_mutex collectTraceStateMutex_;
+  bool isCollectingTrace{false};
 
   // Runloop phase
   std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};

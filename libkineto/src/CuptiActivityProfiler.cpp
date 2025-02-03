@@ -1138,6 +1138,11 @@ void CuptiActivityProfiler::configure(
   currentRunloopState_ = RunloopState::Warmup;
 }
 
+bool CuptiActivityProfiler::getCollectTraceState() {
+  std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+  return isCollectingTrace;
+}
+
 void CuptiActivityProfiler::collectTrace(
     bool collection_done,
     const std::chrono::time_point<std::chrono::system_clock>& now) {
@@ -1314,13 +1319,17 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
         VLOG_IF(1, currentIter >= 0)
             << "This state change was invoked by application's step() call";
 
-        // currentIter >= 0 means this is an iteration-based collection,
-        // triggered by pytorch main thread, it should be executed in another
+        // currentIter >= 0 means this is called from the step() api of
+        // the profile in pytorch main thread, it should be executed in another
         // thread in case pytorch main thread is blocked
         if (currentIter >= 0) {
           // if collectTraceThread_ is already running, there's no need to
           // execute collectTrace twice.
-          if (!collectTraceThread_) {
+          // Do not call collectTrace when profilerThread_ is collecting Trace.
+          // Otherwise, libkineto::api().client()->stop will be called twice,
+          // which leads to an unrecoverable ::c10:Error at
+          // disableProfiler
+          if (!collectTraceThread_ && !getCollectTraceState()) {
             std::lock_guard<std::recursive_mutex> guard(mutex_);
             collectTraceThread_ = std::make_unique<std::thread>(
                 &CuptiActivityProfiler::collectTrace,
@@ -1330,7 +1339,16 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
           }
           break;
         }
+        // this is executed in profilerThread_
+        {
+          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+          isCollectingTrace = true;
+        }
         collectTrace(collection_done, now);
+        {
+          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+          isCollectingTrace = false;
+        }
       } else if (derivedConfig_->isProfilingByIteration()) {
         // nothing to do here
       } else if (

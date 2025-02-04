@@ -312,7 +312,11 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
   for (const auto& session : sessions_) {
     if (auto props = session->getDeviceProperties(); !props.empty()) {
-      device_properties.push_back(props);
+      if (std::find(
+              device_properties.begin(), device_properties.end(), props) ==
+          device_properties.end()) {
+        device_properties.push_back(props);
+      }
     }
   }
   logger.handleTraceStart(

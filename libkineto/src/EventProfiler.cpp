@@ -8,7 +8,6 @@
 
 #include "EventProfiler.h"
 
-#include <assert.h>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <time.h>
@@ -21,8 +20,6 @@
 #include <numeric>
 #include <thread>
 #include <vector>
-
-#include <cupti.h>
 
 #include "CuptiEventApi.h"
 #include "Logger.h"

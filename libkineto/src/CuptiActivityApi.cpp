@@ -164,11 +164,12 @@ void CuptiActivityApi::bufferRequested(
     size_t* maxNumRecords) {
   std::lock_guard<std::mutex> guard(mutex_);
   LOG(VERBOSE) << "CUPTI buffer requested";
-  if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
-    stopCollection = true;
+  if (allocatedGpuTraceBuffers_.size() >= 1) {
     LOG(WARNING) << "Exceeded max GPU buffer count ("
-                 << allocatedGpuTraceBuffers_.size()
-                 << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
+                 << allocatedGpuTraceBuffers_.size() << " >= " << 1
+                 << ") - denying request ";
+    *buffer = NULL;
+    return;
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);

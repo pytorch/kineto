@@ -131,6 +131,7 @@ ConfigDerivedState::ConfigDerivedState(const Config& config) {
   profileDuration_ = config.activitiesDuration();
   profileWarmupDuration_ = config.activitiesWarmupDuration();
   profilingByIter_ = config.hasProfileStartIteration();
+  perThreadBufferEnabled_ = config.perThreadBufferEnabled();
   if (profilingByIter_) {
     profileStartIter_ = config.profileStartIteration();
     profileEndIter_ = profileStartIter_ + config.activitiesRunIterations();
@@ -1095,7 +1096,8 @@ void CuptiActivityProfiler::configure(
     }
 #endif // CUDA_VERSION >= 11060
 #endif // _WIN32
-    cupti_.enableCuptiActivities(config_->selectedActivityTypes());
+    cupti_.enableCuptiActivities(
+        config_->selectedActivityTypes(), config_->perThreadBufferEnabled());
 #else
     cupti_.enableActivities(config_->selectedActivityTypes());
 #endif
@@ -1177,7 +1179,9 @@ void CuptiActivityProfiler::ensureCollectTraceDone() {
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 #ifdef HAS_CUPTI
   if (enable) {
-    cupti_.enableCuptiActivities(derivedConfig_->profileActivityTypes());
+    cupti_.enableCuptiActivities(
+        derivedConfig_->profileActivityTypes(),
+        derivedConfig_->isPerThreadBufferEnabled());
   } else {
     cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
   }

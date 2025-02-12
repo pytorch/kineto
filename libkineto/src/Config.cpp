@@ -65,6 +65,8 @@ constexpr char kHeartbeatMonitorPeriodKey[] =
 
 // Activity Profiler
 constexpr char kActivitiesEnabledKey[] = "ACTIVITIES_ENABLED";
+constexpr char kCuptiPerThreadBufferEnabledKey[] =
+    "CUPTI_PER_THREAD_BUFFER_ENABLED";
 constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
 constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
 constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
@@ -219,6 +221,7 @@ Config::Config()
           kDefaultEventProfilerHearbeatMonitorPeriod),
       multiplexPeriod_(kDefaultMultiplexPeriodMsecs),
       activityProfilerEnabled_(true),
+      perThreadBufferEnabled_(false),
       activitiesLogFile_(defaultTraceFileName()),
       activitiesLogUrl_(fmt::format("file://{}", activitiesLogFile_)),
       activitiesMaxGpuBufferSize_(kDefaultActivitiesMaxGpuBufferSize),
@@ -379,6 +382,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     verboseLogModules_ = splitAndTrim(val, ',');
   } else if (!name.compare(kActivitiesEnabledKey)) {
     activityProfilerEnabled_ = toBool(val);
+  } else if (!name.compare(kCuptiPerThreadBufferEnabledKey)) {
+    perThreadBufferEnabled_ = toBool(val);
   } else if (!name.compare(kActivitiesLogFileKey)) {
     activitiesLogFile_ = val;
     activitiesLogUrl_ = fmt::format("file://{}", val);

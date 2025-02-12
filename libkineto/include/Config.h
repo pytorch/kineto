@@ -174,6 +174,11 @@ class Config : public AbstractConfig {
     return selectedActivityTypes_;
   }
 
+  // Set the types of activities to be traced
+  bool perThreadBufferEnabled() const {
+    return perThreadBufferEnabled_;
+  }
+
   void setSelectedActivityTypes(const std::set<ActivityType>& types) {
     selectedActivityTypes_ = types;
   }
@@ -431,6 +436,9 @@ class Config : public AbstractConfig {
 
   // Activity profiler
   bool activityProfilerEnabled_;
+
+  // Enable per-thread buffer
+  bool perThreadBufferEnabled_;
   std::set<ActivityType> selectedActivityTypes_;
 
   // The activity profiler settings are all on-demand

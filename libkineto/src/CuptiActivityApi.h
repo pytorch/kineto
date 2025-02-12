@@ -54,7 +54,9 @@ class CuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableCuptiActivities(const std::set<ActivityType>& selected_activities);
+  void enableCuptiActivities(
+      const std::set<ActivityType>& selected_activities,
+      bool enablePerThreadBuffers = false);
   void disableCuptiActivities(
       const std::set<ActivityType>& selected_activities);
   void clearActivities();

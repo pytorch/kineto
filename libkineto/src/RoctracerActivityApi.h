@@ -15,6 +15,7 @@
 
 #include <roctracer.h>
 #include "RoctracerLogger.h"
+#include "RocprofLogger.h"
 
 #include "ActivityType.h"
 #include "GenericTraceActivity.h"
@@ -49,7 +50,7 @@ class RoctracerActivityApi {
   virtual int processActivities(
       std::function<void(const roctracerBase*)> handler,
       std::function<
-          void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)>
+          void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
           correlationHandler);
 
   void setMaxBufferSize(int size);
@@ -65,7 +66,7 @@ class RoctracerActivityApi {
   uint32_t activityMaskSnapshot_{0};
   bool isLogged(libkineto::ActivityType atype) const;
 
-  RoctracerLogger* d;
+  RocprofLogger* d;
 };
 
 } // namespace KINETO_NAMESPACE

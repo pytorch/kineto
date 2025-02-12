@@ -281,6 +281,9 @@ if(NOT LIBKINETO_NOROCTRACER)
   find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
+  find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
+    ${ROCM_SOURCE_DIR}/lib)
+  target_link_libraries(kineto "${ROCPROF_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")

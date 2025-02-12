@@ -28,7 +28,7 @@ RoctracerActivityApi& RoctracerActivityApi::singleton() {
 }
 
 RoctracerActivityApi::RoctracerActivityApi()
-    : d(&RoctracerLogger::singleton()) {}
+    : d(&RocprofLogger::singleton()) {}
 
 RoctracerActivityApi::~RoctracerActivityApi() {
   disableActivities(std::set<ActivityType>());
@@ -40,7 +40,7 @@ void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
     return;
   }
   singleton().d->pushCorrelationID(
-      id, static_cast<RoctracerLogger::CorrelationDomain>(type));
+      id, static_cast<RocLogger::CorrelationDomain>(type));
 #endif
 }
 
@@ -50,7 +50,7 @@ void RoctracerActivityApi::popCorrelationID(CorrelationFlowType type) {
     return;
   }
   singleton().d->popCorrelationID(
-      static_cast<RoctracerLogger::CorrelationDomain>(type));
+      static_cast<RocLogger::CorrelationDomain>(type));
 #endif
 }
 
@@ -74,7 +74,7 @@ void RoctracerActivityApi::setTimeOffset(timestamp_t toffset) {
 
 int RoctracerActivityApi::processActivities(
     std::function<void(const roctracerBase*)> handler,
-    std::function<void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)>
+    std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
         correlationHandler) {
   // Find offset to map from monotonic clock to system clock.
   // This will break time-ordering of events but is status quo.
@@ -82,15 +82,15 @@ int RoctracerActivityApi::processActivities(
   int count = 0;
 
   // Process all external correlations pairs
-  for (int it = RoctracerLogger::CorrelationDomain::begin;
-       it < RoctracerLogger::CorrelationDomain::end;
+  for (int it = RocLogger::CorrelationDomain::begin;
+       it < RocLogger::CorrelationDomain::end;
        ++it) {
     auto& externalCorrelations = d->externalCorrelations_[it];
     for (auto& item : externalCorrelations) {
       correlationHandler(
           item.first,
           item.second,
-          static_cast<RoctracerLogger::CorrelationDomain>(it));
+          static_cast<RocLogger::CorrelationDomain>(it));
     }
     std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
     externalCorrelations.clear();

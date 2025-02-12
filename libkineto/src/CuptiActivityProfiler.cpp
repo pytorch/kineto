@@ -39,7 +39,7 @@
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
-#include "RoctracerLogger.h"
+#include "RocLogger.h"
 #endif
 #include "ActivityBuffers.h"
 #include "output_base.h"
@@ -473,10 +473,10 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
 inline void CuptiActivityProfiler::handleCorrelationActivity(
     uint64_t correlationId,
     uint64_t externalId,
-    RoctracerLogger::CorrelationDomain externalKind) {
-  if (externalKind == RoctracerLogger::CorrelationDomain::Domain0) {
+    RocLogger::CorrelationDomain externalKind) {
+  if (externalKind == RocLogger::CorrelationDomain::Domain0) {
     cpuCorrelationMap_[correlationId] = externalId;
-  } else if (externalKind == RoctracerLogger::CorrelationDomain::Domain1) {
+  } else if (externalKind == RocLogger::CorrelationDomain::Domain1) {
     userCorrelationMap_[correlationId] = externalId;
   } else {
     LOG(WARNING)

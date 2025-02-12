@@ -20,6 +20,7 @@
 
 using namespace libkineto;
 using namespace std::chrono;
+using namespace RocLogger;
 
 class Flush {
  public:
@@ -48,7 +49,7 @@ RoctracerLogger::~RoctracerLogger() {
 
 namespace {
 thread_local std::deque<uint64_t>
-    t_externalIds[RoctracerLogger::CorrelationDomain::size];
+    t_externalIds[RocLogger::CorrelationDomain::size];
 }
 
 void RoctracerLogger::pushCorrelationID(uint64_t id, CorrelationDomain type) {
@@ -421,29 +422,12 @@ void RoctracerLogger::endTracing() {
   }
 }
 
-ApiIdList::ApiIdList() : invert_(true) {}
 
-void ApiIdList::add(const std::string& apiName) {
-  uint32_t cid = 0;
-  if (roctracer_op_code(
-          ACTIVITY_DOMAIN_HIP_API, apiName.c_str(), &cid, nullptr) ==
-      ROCTRACER_STATUS_SUCCESS) {
-    filter_[cid] = 1;
-  }
-}
-void ApiIdList::remove(const std::string& apiName) {
-  uint32_t cid = 0;
-  if (roctracer_op_code(
-          ACTIVITY_DOMAIN_HIP_API, apiName.c_str(), &cid, nullptr) ==
-      ROCTRACER_STATUS_SUCCESS) {
-    filter_.erase(cid);
-  }
-}
-
-bool ApiIdList::loadUserPrefs() {
-  // placeholder
-  return false;
-}
-bool ApiIdList::contains(uint32_t apiId) {
-  return (filter_.find(apiId) != filter_.end()) ? !invert_ : invert_; // XOR
+uint32_t RoctracerApiIdList::mapName(const std::string &apiName)
+{
+    uint32_t cid = 0;
+    if (roctracer_op_code(ACTIVITY_DOMAIN_HIP_API, apiName.c_str(), &cid, NULL) == ROCTRACER_STATUS_SUCCESS)
+        return cid;
+    else
+        return 0;
 }

@@ -258,6 +258,10 @@ bool isDaemonEnvVarSet() {
   }();
   return rc;
 }
+#else
+bool isDaemonEnvVarSet() {
+  return false;
+}
 #endif
 
 std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {

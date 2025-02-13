@@ -112,6 +112,7 @@ void ChromeTraceLogger::metadataToJSON(
   "{}": {},)JSON",
         k,
         sanitizedValue);
+    traceOf_.flush();
   }
 }
 
@@ -123,16 +124,19 @@ void ChromeTraceLogger::handleTraceStart(
 {{
   "schemaVersion": {},)JSON",
       kSchemaVersion);
+  traceOf_.flush();
 
   traceOf_ << fmt::format(
       R"JSON(
   "deviceProperties": [{}
   ],)JSON",
       device_properties);
+  traceOf_.flush();
 
   metadataToJSON(metadata);
   traceOf_ << R"JSON(
   "traceEvents": [)JSON";
+  traceOf_.flush();
 }
 
 static std::string defaultFileName() {
@@ -191,6 +195,7 @@ void ChromeTraceLogger::handleDeviceInfo(
       info.label,
       time/1000, time%1000, info.id,
       info.sortIndex);
+  traceOf_.flush();
   // clang-format on
 }
 
@@ -222,6 +227,7 @@ void ChromeTraceLogger::handleResourceInfo(
       info.name,
       time/1000, time%1000, info.deviceId, sanitizeTid(info.id),
       info.sortIndex);
+    traceOf_.flush();
   // clang-format on
 }
 
@@ -253,6 +259,7 @@ void ChromeTraceLogger::handleOverheadInfo(
       info.name,
       time/1000, time%1000,
       0x100000All);
+  traceOf_.flush();
   // clang-format on
 }
 
@@ -290,6 +297,7 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
       start/1000, start%1000,
       // Large sort index to appear at the bottom
       0x20000000ll);
+  traceOf_.flush();
   // clang-format on
 
   addIterationMarker(span);
@@ -310,6 +318,7 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
   }},)JSON",
       span.name,
       span.name, start/1000, start%1000);
+  traceOf_.flush();
   // clang-format on
 }
 
@@ -337,6 +346,7 @@ void ChromeTraceLogger::handleGenericInstantEvent(
       ts / 1000,
       ts % 1000,
       op.metadataJson());
+  traceOf_.flush();
 }
 
 void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
@@ -541,6 +551,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   }},)JSON",
           toString(op.type()), op_name, device, sanitizeTid(resource),
           ts/1000, ts %1000, duration/1000, duration %1000, args);
+  traceOf_.flush();
   // clang-format on
   if (op.flowId() > 0) {
     handleGenericLink(op);
@@ -594,6 +605,7 @@ void ChromeTraceLogger::handleLink(
     "cat": "{}", "name": "{}"{}
   }},)JSON",
       type, id, e.deviceId(), sanitizeTid(e.resourceId()), ts/1000, ts%1000, name, name, binding);
+  traceOf_.flush();
   // clang-format on
 }
 
@@ -616,6 +628,7 @@ void ChromeTraceLogger::addOnDemandDistMetadata() {
       distInfo_.rank,
       distInfo_.world_size,
       std::to_string(pgMap.size()));
+  traceOf_.flush();
 
   for (const auto& element : pgMap) {
     traceOf_ << fmt::format(
@@ -625,10 +638,12 @@ void ChromeTraceLogger::addOnDemandDistMetadata() {
         element.second.backend_config,
         element.second.pg_size,
         element.second.ranks);
+    traceOf_.flush();
   }
   traceOf_.seekp(-1, std::ios_base::end);
   traceOf_ << fmt::format(
       R"JSON(], "nccl_version": "{}"}},)JSON", distInfo_.nccl_version);
+  traceOf_.flush();
   distInfo_.distInfo_present_ = true;
 }
 
@@ -650,6 +665,7 @@ void ChromeTraceLogger::finalizeTrace(
   }}
   ],)JSON",
       endTime/1000, endTime %1000);
+  traceOf_.flush();
 
   if (!distInfo_.distInfo_present_) {
    addOnDemandDistMetadata();
@@ -687,6 +703,7 @@ void ChromeTraceLogger::finalizeTrace(
   "displayTimeUnit": "ms",
   "baseTimeNanoseconds": {}
 }})JSON", fileName_, ChromeTraceBaseTime::singleton().get());
+  traceOf_.flush();
   // clang-format on
 
   traceOf_.close();

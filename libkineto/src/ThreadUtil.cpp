@@ -10,7 +10,11 @@
 
 #ifndef _WIN32
 #include <pthread.h>
+#ifdef __QNX__
+#include <process.h>
+#else
 #include <sys/syscall.h>
+#endif
 #include <sys/types.h>
 #include <unistd.h>
 #else // _WIN32
@@ -66,6 +70,8 @@ int32_t systemThreadId(bool cache) {
     sysTid = (int32_t)GetCurrentThreadId();
 #elif defined __FreeBSD__
     syscall(SYS_thr_self, &sysTid);
+#elif defined __QNX__
+    _sysTid = (int32_t)gettid();
 #else
     sysTid = (int32_t)syscall(SYS_gettid);
 #endif

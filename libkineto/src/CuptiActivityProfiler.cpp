@@ -1404,13 +1404,33 @@ void CuptiActivityProfiler::finalizeTrace(
     iterationCountMap_.clear();
   }
 
+  // Thread & stream info
+  for (auto pair : resourceInfo_) {
+    const auto& resource = pair.second;
+    logger.handleResourceInfo(resource, captureWindowStartTime_);
+  }
+
+  bool use_default_device_info = true;
+  for (auto& session : sessions_) {
+    auto device_info = session->getDeviceInfo();
+    if (device_info != nullptr) {
+      use_default_device_info = false;
+      logger.handleDeviceInfo(*device_info, captureWindowStartTime_);
+    }
+
+    auto resource_infos = session->getResourceInfos();
+    for (auto resource_info : resource_infos) {
+      logger.handleResourceInfo(resource_info, captureWindowStartTime_);
+    }
+  }
+
   // Process names
   int32_t pid = processId();
   string process_name = processName(pid);
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
         {pid, pid, process_name, "CPU"}, captureWindowStartTime_);
-    if (!cpuOnly_) {
+    if (!cpuOnly_ && use_default_device_info) {
       // Usually, GPU events use device id as pid (0-7).
       // In some cases, CPU sockets are numbered starting from 0.
       // In the worst case, 8 CPU sockets + 8 GPUs, so the max GPU ID is 15.
@@ -1420,29 +1440,11 @@ void CuptiActivityProfiler::finalizeTrace(
       for (int gpu = 0; gpu <= kMaxGpuID; gpu++) {
         logger.handleDeviceInfo(
             {gpu,
-             gpu + kExceedMaxPid,
-             process_name,
-             fmt::format("GPU {}", gpu)},
+            gpu + kExceedMaxPid,
+            process_name,
+            fmt::format("GPU {}", gpu)},
             captureWindowStartTime_);
       }
-    }
-  }
-
-  // Thread & stream info
-  for (auto pair : resourceInfo_) {
-    const auto& resource = pair.second;
-    logger.handleResourceInfo(resource, captureWindowStartTime_);
-  }
-
-  for (auto& session : sessions_) {
-    auto device_info = session->getDeviceInfo();
-    if (device_info != nullptr) {
-      logger.handleDeviceInfo(*device_info, captureWindowStartTime_);
-    }
-
-    auto resource_infos = session->getResourceInfos();
-    for (auto resource_info : resource_infos) {
-      logger.handleResourceInfo(resource_info, captureWindowStartTime_);
     }
   }
 

@@ -17,7 +17,7 @@
 
 #include "CuptiActivityApi.h"
 #ifdef HAS_ROCTRACER
-#include "RoctracerActivityApi.h"
+#include "RocprofActivityApi.h"
 #endif
 
 #include "ThreadUtil.h"
@@ -67,7 +67,7 @@ ActivityProfilerController::ActivityProfilerController(
 
 #ifdef HAS_ROCTRACER
   profiler_ = std::make_unique<CuptiActivityProfiler>(
-      RoctracerActivityApi::singleton(), cpuOnly);
+      RocprofActivityApi::singleton(), cpuOnly);
 #else
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityApi::singleton(), cpuOnly);

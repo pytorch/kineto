@@ -44,11 +44,13 @@ class RocprofLogger {
   static int toolInit(rocprofiler_client_finalize_t finalize_func, void* tool_data);
   static void toolFinialize(void* tool_data);
 
+  static std::string opString(rocprofiler_callback_tracing_kind_t kind, rocprofiler_tracing_operation_t op);
+
  private:
   bool registered_{false};
   void endTracing();
 
-  static void insert_row_to_buffer(roctracerBase* row);
+  static void insert_row_to_buffer(rocprofBase* row);
 
   // 
   static void api_callback(rocprofiler_callback_tracing_record_t record, rocprofiler_user_data_t* user_data, void* callback_data);
@@ -56,7 +58,7 @@ class RocprofLogger {
 
   // Api callback data
   uint32_t maxBufferSize_{1000000}; // 1M GPU runtime/kernel events.
-  std::vector<roctracerBase*> rows_;
+  std::vector<rocprofBase*> rows_;
   std::mutex rowsMutex_;
 
   // This vector collects pairs of correlationId and their respective
@@ -69,5 +71,5 @@ class RocprofLogger {
   bool externalCorrelationEnabled_{true};
   bool logging_{false};
 
-  friend class libkineto::RoctracerActivityApi;
+  friend class libkineto::RocprofActivityApi;
 };

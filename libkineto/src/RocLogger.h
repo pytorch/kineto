@@ -23,7 +23,7 @@
 
 
 namespace libkineto {
-class RoctracerActivityApi;
+class RocprofActivityApi;
 }
 
 typedef uint64_t timestamp_t;
@@ -76,25 +76,25 @@ typedef enum {
   ROCTRACER_ACTIVITY_MALLOC,
   ROCTRACER_ACTIVITY_ASYNC,
   ROCTRACER_ACTIVITY_NONE
-} roctracer_activity_types;
+} rocprof_activity_types;
 
-struct roctracerBase {
-  roctracerBase(
+struct rocprofBase {
+  rocprofBase(
       uint64_t id,
       uint32_t domain,
       uint64_t begin,
       uint64_t end,
-      roctracer_activity_types type = ROCTRACER_ACTIVITY_NONE)
+      rocprof_activity_types type = ROCTRACER_ACTIVITY_NONE)
       : id(id), begin(begin), end(end), domain(domain), type(type) {}
   uint64_t id; // correlation_id
   uint64_t begin;
   uint64_t end;
   uint32_t domain;
-  roctracer_activity_types type;
+  rocprof_activity_types type;
 };
 
-struct roctracerRow : public roctracerBase {
-  roctracerRow(
+struct rocprofRow : public rocprofBase {
+  rocprofRow(
       uint64_t id,
       uint32_t domain,
       uint32_t cid,
@@ -102,8 +102,8 @@ struct roctracerRow : public roctracerBase {
       uint32_t tid,
       uint64_t begin,
       uint64_t end,
-      roctracer_activity_types type = ROCTRACER_ACTIVITY_DEFAULT)
-      : roctracerBase(id, domain, begin, end, type),
+      rocprof_activity_types type = ROCTRACER_ACTIVITY_DEFAULT)
+      : rocprofBase(id, domain, begin, end, type),
         cid(cid),
         pid(pid),
         tid(tid) {}
@@ -112,8 +112,8 @@ struct roctracerRow : public roctracerBase {
   uint32_t tid;
 };
 
-struct roctracerKernelRow : public roctracerRow {
-  roctracerKernelRow(
+struct rocprofKernelRow : public rocprofRow {
+  rocprofKernelRow(
       uint64_t id,
       uint32_t domain,
       uint32_t cid,
@@ -131,8 +131,8 @@ struct roctracerKernelRow : public roctracerRow {
       unsigned int wz,
       size_t gss,
       hipStream_t stream,
-      roctracer_activity_types type = ROCTRACER_ACTIVITY_KERNEL)
-      : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
+      rocprof_activity_types type = ROCTRACER_ACTIVITY_KERNEL)
+      : rocprofRow(id, domain, cid, pid, tid, begin, end, type),
         functionAddr(faddr),
         function(function),
         gridX(gx),
@@ -155,8 +155,8 @@ struct roctracerKernelRow : public roctracerRow {
   hipStream_t stream;
 };
 
-struct roctracerCopyRow : public roctracerRow {
-  roctracerCopyRow(
+struct rocprofCopyRow : public rocprofRow {
+  rocprofCopyRow(
       uint64_t id,
       uint32_t domain,
       uint32_t cid,
@@ -169,8 +169,8 @@ struct roctracerCopyRow : public roctracerRow {
       size_t size,
       hipMemcpyKind kind,
       hipStream_t stream,
-      roctracer_activity_types type = ROCTRACER_ACTIVITY_COPY)
-      : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
+      rocprof_activity_types type = ROCTRACER_ACTIVITY_COPY)
+      : rocprofRow(id, domain, cid, pid, tid, begin, end, type),
         src(src),
         dst(dst),
         size(size),
@@ -183,8 +183,8 @@ struct roctracerCopyRow : public roctracerRow {
   hipStream_t stream;
 };
 
-struct roctracerMallocRow : public roctracerRow {
-  roctracerMallocRow(
+struct rocprofMallocRow : public rocprofRow {
+  rocprofMallocRow(
       uint64_t id,
       uint32_t domain,
       uint32_t cid,
@@ -194,16 +194,16 @@ struct roctracerMallocRow : public roctracerRow {
       uint64_t end,
       const void* ptr,
       size_t size,
-      roctracer_activity_types type = ROCTRACER_ACTIVITY_MALLOC)
-      : roctracerRow(id, domain, cid, pid, tid, begin, end, type),
+      rocprof_activity_types type = ROCTRACER_ACTIVITY_MALLOC)
+      : rocprofRow(id, domain, cid, pid, tid, begin, end, type),
         ptr(ptr),
         size(size) {}
   const void* ptr;
   size_t size;
 };
 
-struct roctracerAsyncRow : public roctracerBase {
-  roctracerAsyncRow(
+struct rocprofAsyncRow : public rocprofBase {
+  rocprofAsyncRow(
       uint64_t id,
       uint32_t domain,
       uint32_t kind,
@@ -213,8 +213,8 @@ struct roctracerAsyncRow : public roctracerBase {
       uint64_t begin,
       uint64_t end,
       const std::string& kernelName,
-      roctracer_activity_types type = ROCTRACER_ACTIVITY_ASYNC)
-      : roctracerBase(id, domain, begin, end, type),
+      rocprof_activity_types type = ROCTRACER_ACTIVITY_ASYNC)
+      : rocprofBase(id, domain, begin, end, type),
         kind(kind),
         op(op),
         device(device),

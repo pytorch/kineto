@@ -300,10 +300,27 @@ void CuptiActivityProfiler::logGpuVersions() {
 #endif
 }
 
+namespace {
+
+const std::unordered_set<std::string>& getLoggerMedataAllowList() {
+  static const std::unordered_set<std::string> kLoggerMedataAllowList{
+      "with_stack", "with_modules", "record_shapes", "profile_memory"};
+  return kLoggerMedataAllowList;
+}
+
+} // namespace
+
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
+
+  // Pass metadata within the trace to the logger observer.
+  for (const auto& pair : metadata_) {
+    if (getLoggerMedataAllowList().count(pair.first) > 0) {
+      LOGGER_OBSERVER_ADD_METADATA(pair.first, pair.second);
+    }
+  }
   for (auto& pair : versionMetadata_) {
     addMetadata(pair.first, pair.second);
   }

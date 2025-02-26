@@ -153,7 +153,7 @@ bool setThreadName(const std::string& name) {
 std::string getThreadName() {
 #ifdef _AIX
 return "Unknown";
-#elif
+#else
 #ifndef _WIN32
   char buf[kMaxThreadNameLength] = "";
   if (

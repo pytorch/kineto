@@ -10,7 +10,9 @@
 
 #ifndef _WIN32
 #include <pthread.h>
+#ifndef _AIX
 #include <sys/syscall.h>
+#endif // _AIX
 #include <sys/types.h>
 #include <unistd.h>
 #else // _WIN32
@@ -28,6 +30,10 @@
 #ifdef __ANDROID__
 #include <sys/prctl.h>
 #endif
+
+#ifdef _AIX
+#include <pthread.h>
+#endif // _AIX
 
 #include <fmt/format.h>
 #include <iostream>
@@ -66,6 +72,8 @@ int32_t systemThreadId(bool cache) {
     sysTid = (int32_t)GetCurrentThreadId();
 #elif defined __FreeBSD__
     syscall(SYS_thr_self, &sysTid);
+#elif defined _AIX
+    sysTid = pthread_self();
 #else
     sysTid = (int32_t)syscall(SYS_gettid);
 #endif
@@ -135,12 +143,17 @@ bool setThreadName(const std::string& name) {
   std::wstring wname = conv.from_bytes(name);
   HRESULT hr = _SetThreadDescription(GetCurrentThread(), wname.c_str());
   return SUCCEEDED(hr);
+#elif defined _AIX
+  return 0;
 #else
   return 0 == pthread_setname_np(pthread_self(), name.c_str());
 #endif
 }
 
 std::string getThreadName() {
+#ifdef _AIX
+  return "Unknown";
+#else
 #ifndef _WIN32
   char buf[kMaxThreadNameLength] = "";
   if (
@@ -169,6 +182,7 @@ std::string getThreadName() {
   std::string name = conv.to_bytes(data);
   LocalFree(data);
   return name;
+#endif
 #endif
 }
 

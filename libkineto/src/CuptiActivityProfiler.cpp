@@ -131,6 +131,7 @@ ConfigDerivedState::ConfigDerivedState(const Config& config) {
   profileDuration_ = config.activitiesDuration();
   profileWarmupDuration_ = config.activitiesWarmupDuration();
   profilingByIter_ = config.hasProfileStartIteration();
+  perThreadBufferEnabled_ = config.perThreadBufferEnabled();
   if (profilingByIter_) {
     profileStartIter_ = config.profileStartIteration();
     profileEndIter_ = profileStartIter_ + config.activitiesRunIterations();
@@ -299,10 +300,27 @@ void CuptiActivityProfiler::logGpuVersions() {
 #endif
 }
 
+namespace {
+
+const std::unordered_set<std::string>& getLoggerMedataAllowList() {
+  static const std::unordered_set<std::string> kLoggerMedataAllowList{
+      "with_stack", "with_modules", "record_shapes", "profile_memory"};
+  return kLoggerMedataAllowList;
+}
+
+} // namespace
+
 void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
+
+  // Pass metadata within the trace to the logger observer.
+  for (const auto& pair : metadata_) {
+    if (getLoggerMedataAllowList().count(pair.first) > 0) {
+      LOGGER_OBSERVER_ADD_METADATA(pair.first, pair.second);
+    }
+  }
   for (auto& pair : versionMetadata_) {
     addMetadata(pair.first, pair.second);
   }
@@ -312,7 +330,11 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
   for (const auto& session : sessions_) {
     if (auto props = session->getDeviceProperties(); !props.empty()) {
-      device_properties.push_back(props);
+      if (std::find(
+              device_properties.begin(), device_properties.end(), props) ==
+          device_properties.end()) {
+        device_properties.push_back(props);
+      }
     }
   }
   logger.handleTraceStart(
@@ -1091,7 +1113,8 @@ void CuptiActivityProfiler::configure(
     }
 #endif // CUDA_VERSION >= 11060
 #endif // _WIN32
-    cupti_.enableCuptiActivities(config_->selectedActivityTypes());
+    cupti_.enableCuptiActivities(
+        config_->selectedActivityTypes(), config_->perThreadBufferEnabled());
 #else
     cupti_.enableActivities(config_->selectedActivityTypes());
 #endif
@@ -1173,7 +1196,9 @@ void CuptiActivityProfiler::ensureCollectTraceDone() {
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 #ifdef HAS_CUPTI
   if (enable) {
-    cupti_.enableCuptiActivities(derivedConfig_->profileActivityTypes());
+    cupti_.enableCuptiActivities(
+        derivedConfig_->profileActivityTypes(),
+        derivedConfig_->isPerThreadBufferEnabled());
   } else {
     cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
   }

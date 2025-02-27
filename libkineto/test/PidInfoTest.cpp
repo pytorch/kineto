@@ -8,7 +8,6 @@
 
 #include "include/ThreadUtil.h"
 
-#include <atomic>
 #include <thread>
 
 #include <gtest/gtest.h>

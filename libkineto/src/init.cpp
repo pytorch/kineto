@@ -36,9 +36,10 @@ namespace KINETO_NAMESPACE {
 #if __linux__ || defined(HAS_CUPTI)
 static bool initialized = false;
 
-static void initProfilersCPU() {
+static void initProfilers() {
   if (!initialized) {
     libkineto::api().initProfilerIfRegistered();
+    libkineto::api().configLoader().initBaseConfig();
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }
@@ -47,11 +48,6 @@ static void initProfilersCPU() {
 #endif // __linux__ || defined(HAS_CUPTI)
 
 #ifdef HAS_CUPTI
-static std::mutex& initEventMutex() {
-  static std::mutex initMutex_;
-  return initMutex_;
-}
-
 bool enableEventProfiler() {
   if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
     return true;
@@ -60,28 +56,15 @@ bool enableEventProfiler() {
   }
 }
 
-static void initProfilers(
+static void initProfilersCallback(
     CUpti_CallbackDomain /*domain*/,
     CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* cbInfo) {
+    const CUpti_CallbackData* /*cbInfo*/) {
   VLOG(0) << "CUDA Context created";
-  initProfilersCPU();
+  initProfilers();
 
-  if (!enableEventProfiler()) {
-    VLOG(0) << "Kineto EventProfiler disabled, skipping start";
-    return;
-  } else {
-    std::lock_guard<std::mutex> lock(initEventMutex());
-    CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
-    CUcontext ctx = d->context;
-    ConfigLoader& config_loader = libkineto::api().configLoader();
-    config_loader.initBaseConfig();
-    auto config = config_loader.getConfigCopy();
-    if (config->eventProfilerEnabled()) {
-      // This function needs to be called under lock.
-      EventProfilerController::start(ctx, config_loader);
-      LOG(INFO) << "Kineto EventProfiler started";
-    }
+  if (enableEventProfiler()) {
+    LOG(WARNING) << "Event Profiler is no longer supported in kineto";
   }
 }
 
@@ -98,17 +81,39 @@ static bool shouldPreloadCuptiInstrumentation() {
 #endif
 }
 
-static void stopProfiler(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* cbInfo) {
-  VLOG(0) << "CUDA Context destroyed";
-  std::lock_guard<std::mutex> lock(initEventMutex());
-  CUpti_ResourceData* d = (CUpti_ResourceData*)cbInfo;
-  CUcontext ctx = d->context;
-  // This function needs to be called under lock.
-  EventProfilerController::stopIfEnabled(ctx);
-  LOG(INFO) << "Kineto EventProfiler stopped";
+bool setupCuptiInitCallback(bool logOnError) {
+  // libcupti will be lazily loaded on this call.
+  // If it is not available (e.g. CUDA is not installed),
+  // then this call will return an error and we just abort init.
+  auto cbapi = CuptiCallbackApi::singleton();
+  cbapi->initCallbackApi();
+
+  bool status = false;
+
+  if (cbapi->initSuccess()) {
+    const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
+    status = cbapi->registerCallback(
+        domain,
+        CuptiCallbackApi::RESOURCE_CONTEXT_CREATED,
+        initProfilersCallback);
+    if (status) {
+      status = cbapi->enableCallback(
+          domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
+    }
+  }
+
+  if (!cbapi->initSuccess() || !status) {
+    if (logOnError) {
+      CUPTI_CALL(cbapi->getCuptiStatus());
+      LOG(WARNING) << "CUPTI initialization failed - "
+                   << "CUDA profiler activities will be missing";
+      LOG(INFO)
+          << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
+          << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
+    }
+  }
+
+  return status;
 }
 
 static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
@@ -120,7 +125,6 @@ static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
 using namespace KINETO_NAMESPACE;
 extern "C" {
 
-// Return true if no CUPTI errors occurred during init
 void libkineto_init(bool cpuOnly, bool logOnError) {
   // Start with initializing the log level
   const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
@@ -139,60 +143,22 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 #endif
 
 #ifdef HAS_CUPTI
-  if (!cpuOnly) {
-    // libcupti will be lazily loaded on this call.
-    // If it is not available (e.g. CUDA is not installed),
-    // then this call will return an error and we just abort init.
-    auto cbapi = CuptiCallbackApi::singleton();
-    cbapi->initCallbackApi();
-    bool status = false;
-    bool initRangeProfiler = true;
+  bool initRangeProfiler = true;
 
-    if (cbapi->initSuccess()) {
-      const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
-      status = cbapi->registerCallback(
-          domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, initProfilers);
-      if (status) {
-        status = cbapi->enableCallback(
-            domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
-      }
-
-      // Register stopProfiler callback only for event profiler.
-      // This callback is not required for activities tracing.
-      if (enableEventProfiler()) {
-        if (status) {
-          status = cbapi->registerCallback(
-              domain,
-              CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED,
-              stopProfiler);
-        }
-        if (status) {
-          status = cbapi->enableCallback(
-              domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED);
-        }
-      }
-    }
-
-    if (!cbapi->initSuccess() || !status) {
-      initRangeProfiler = false;
-      cpuOnly = true;
-      if (logOnError) {
-        CUPTI_CALL(cbapi->getCuptiStatus());
-        LOG(WARNING) << "CUPTI initialization failed - "
-                     << "CUDA profiler activities will be missing";
-        LOG(INFO)
-            << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
-            << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
-      }
-    }
-
-    // initialize CUPTI Range Profiler API
-    if (initRangeProfiler) {
-      rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
-    }
+  if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
+    bool success = setupCuptiInitCallback(logOnError);
+    cpuOnly = !success;
+    initRangeProfiler = success;
   }
 
-  if (shouldPreloadCuptiInstrumentation()) {
+  // Initialize CUPTI Range Profiler API
+  // Note: the following is a no-op if Range Profiler is not supported
+  // currently it is only enabled in fbcode.
+  if (!cpuOnly && initRangeProfiler) {
+    rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
+  }
+
+  if (!cpuOnly && shouldPreloadCuptiInstrumentation()) {
     CuptiActivityApi::forceLoadCupti();
   }
 #endif // HAS_CUPTI
@@ -224,13 +190,10 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 #endif // HAS_XPUPTI
 
 #if __linux__
-  // When CUDA/GPU is used the profiler initialization happens on the
-  // creation of the first CUDA stream (see initProfilers()).
-  // This section bootstraps the profiler and its connection to a profiling
-  // daemon in the CPU only case.
-  if (cpuOnly && getenv(kUseDaemonEnvVar) != nullptr) {
-    initProfilersCPU();
-    libkineto::api().configLoader().initBaseConfig();
+  // For open source users that would like to connect to a profiling daemon
+  // we should always initialize the profiler at this point.
+  if (libkineto::isDaemonEnvVarSet()) {
+    initProfilers();
   }
 #endif
 }

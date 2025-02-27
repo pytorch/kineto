@@ -167,8 +167,8 @@ void CuptiActivityApi::bufferRequested(
   if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
     stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
-                 << allocatedGpuTraceBuffers_.size() << " > "
-                 << maxGpuBufferCount_ << ") - terminating tracing";
+                 << allocatedGpuTraceBuffers_.size()
+                 << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);
@@ -307,7 +307,8 @@ void CuptiActivityApi::bufferCompleted(
 #endif
 
 void CuptiActivityApi::enableCuptiActivities(
-    const std::set<ActivityType>& selected_activities) {
+    const std::set<ActivityType>& selected_activities,
+    bool enablePerThreadBuffers) {
 #ifdef HAS_CUPTI
   // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
   auto cbapi_ = CuptiCallbackApi::singleton();
@@ -315,6 +316,20 @@ void CuptiActivityApi::enableCuptiActivities(
     reenableCuptiCallbacks_(cbapi_);
   }
   cbapi_.reset();
+
+  if (enablePerThreadBuffers) {
+#if (CUDART_VERSION >= 12030)
+    uint8_t value = 1;
+    size_t sizeof_value = sizeof(value);
+    LOG(INFO) << ("Enabling per-thread activity buffer");
+    CUPTI_CALL(cuptiActivitySetAttribute(
+        CUPTI_ACTIVITY_ATTR_PER_THREAD_ACTIVITY_BUFFER, &sizeof_value, &value));
+#else
+    LOG(WARNING) << "Per-thread activity buffer is not supported on CUDA";
+#endif // (CUDART_VERSION >= 12030)
+  } else {
+    LOG(VERBOSE) << ("Not enabling per-thread activity buffer");
+  }
 
   CUPTI_CALL(cuptiActivityRegisterCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
@@ -398,7 +413,15 @@ void CuptiActivityApi::disableCuptiActivities(
     }
   }
   externalCorrelationEnabled_ = false;
-#endif
+  // Clear out per-thread buffer flag in case it was set
+#if (CUDART_VERSION >= 12030)
+  uint8_t value = 0;
+  size_t sizeof_value = sizeof(value);
+
+  CUPTI_CALL(cuptiActivitySetAttribute(
+      CUPTI_ACTIVITY_ATTR_PER_THREAD_ACTIVITY_BUFFER, &sizeof_value, &value));
+#endif // (CUDART_VERSION >= 12030)
+#endif // HAS_CUPTI
 }
 
 void CuptiActivityApi::teardownContext() {

@@ -14,10 +14,8 @@
 #include <thread>
 #include <vector>
 
-#include <cuda.h>
 #include <cupti_activity.h>
 #include <libkineto.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include <ApproximateClock.h>

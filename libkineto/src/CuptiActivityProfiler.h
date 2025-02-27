@@ -96,6 +96,10 @@ struct ConfigDerivedState final {
     return profilingByIter_;
   }
 
+  bool isPerThreadBufferEnabled() const {
+    return perThreadBufferEnabled_;
+  }
+
  private:
   std::set<ActivityType> profileActivityTypes_;
   // Start and end time used for triggering and stopping profiling
@@ -106,6 +110,7 @@ struct ConfigDerivedState final {
   int64_t profileStartIter_{-1};
   int64_t profileEndIter_{-1};
   bool profilingByIter_{false};
+  bool perThreadBufferEnabled_{false};
 };
 
 namespace detail {

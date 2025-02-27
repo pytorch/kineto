@@ -1422,7 +1422,7 @@ void CuptiActivityProfiler::finalizeTrace(
   }
 
   // Thread & stream info
-  for (auto pair : resourceInfo_) {
+  for (const auto& pair : resourceInfo_) {
     const auto& resource = pair.second;
     logger.handleResourceInfo(resource, captureWindowStartTime_);
   }
@@ -1436,7 +1436,7 @@ void CuptiActivityProfiler::finalizeTrace(
     }
 
     auto resource_infos = session->getResourceInfos();
-    for (auto resource_info : resource_infos) {
+    for (const auto& resource_info : resource_infos) {
       logger.handleResourceInfo(resource_info, captureWindowStartTime_);
     }
   }
@@ -1457,9 +1457,9 @@ void CuptiActivityProfiler::finalizeTrace(
       for (int gpu = 0; gpu <= kMaxGpuID; gpu++) {
         logger.handleDeviceInfo(
             {gpu,
-            gpu + kExceedMaxPid,
-            process_name,
-            fmt::format("GPU {}", gpu)},
+             gpu + kExceedMaxPid,
+             process_name,
+             fmt::format("GPU {}", gpu)},
             captureWindowStartTime_);
       }
     }

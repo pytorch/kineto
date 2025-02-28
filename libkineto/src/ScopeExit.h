@@ -31,4 +31,4 @@ ScopeExit<T> makeScopeExit(T t) {
 #define ANON_VAR(name, line) __kINETO_CONCAT(name, line)
 
 #define SCOPE_EXIT(func) \
-  const auto ANON_VAR(SCOPE_BLOCK, __LINE__) = makeScopeExit([=]() { func; })
+  const auto ANON_VAR(SCOPE_BLOCK, __LINE__) = makeScopeExit([=]() { func(); })

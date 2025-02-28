@@ -98,16 +98,18 @@ inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
 }
 
 void XpuptiActivityProfilerSession::handleRuntimeActivity(
-    const pti_view_record_sycl_runtime* activity,
+    const pti_view_record_api* activity,
     ActivityLogger* logger) {
   traceBuffer_.span.opCount += 1;
   traceBuffer_.gpuOpCount += 1;
   const ITraceActivity* linked =
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
+  const char* api_name = nullptr;
+  ptiViewGetApiIdName(activity->_api_group, activity->_api_id, &api_name);
   traceBuffer_.emplace_activity(
       traceBuffer_.span,
       ActivityType::XPU_RUNTIME,
-      std::string(activity->_name));
+      std::string(api_name));
   auto& runtime_activity = traceBuffer_.activities.back();
   runtime_activity->startTime = activity->_start_timestamp;
   runtime_activity->endTime = activity->_end_timestamp;
@@ -331,9 +333,9 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
           reinterpret_cast<const pti_view_record_external_correlation*>(
               record));
       break;
-    case PTI_VIEW_SYCL_RUNTIME_CALLS:
+    case PTI_VIEW_RUNTIME_API:
       handleRuntimeActivity(
-          reinterpret_cast<const pti_view_record_sycl_runtime*>(record),
+          reinterpret_cast<const pti_view_record_api*>(record),
           logger);
       break;
     case PTI_VIEW_DEVICE_GPU_KERNEL:

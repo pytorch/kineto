@@ -23,7 +23,6 @@
 
 #include "RocLogger.h"
 
-
 class RocprofLogger {
  public:
   RocprofLogger();

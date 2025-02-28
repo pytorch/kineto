@@ -21,7 +21,6 @@
 
 #include <hip/hip_runtime_api.h>
 
-
 namespace libkineto {
 class RocprofActivityApi;
 }

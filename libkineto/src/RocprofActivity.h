@@ -15,7 +15,6 @@
 #include "RocprofLogger.h"
 #include "ThreadUtil.h"
 
-
 #include <rocprofiler-sdk/cxx/name_info.hpp>
 #include <rocprofiler-sdk/fwd.h>
 

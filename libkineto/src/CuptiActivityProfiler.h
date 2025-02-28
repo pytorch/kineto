@@ -404,9 +404,7 @@ class CuptiActivityProfiler {
 
 #ifdef HAS_ROCTRACER
   // Process generic RocTracer activity
-  void handleRocprofActivity(
-      const rocprofBase* record,
-      ActivityLogger* logger);
+  void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
   void handleCorrelationActivity(
       uint64_t correlationId,
       uint64_t externalId,
@@ -414,9 +412,7 @@ class CuptiActivityProfiler {
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
-  void handleGpuActivity(
-      const rocprofAsyncRow* record,
-      ActivityLogger* logger);
+  void handleGpuActivity(const rocprofAsyncRow* record, ActivityLogger* logger);
 #endif // HAS_ROCTRACER
 
   void resetTraceData();

@@ -37,9 +37,10 @@
 #include "CuptiActivityApi.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
+#include "RocLogger.h"
 #include "RocprofActivity.h"
 #include "RocprofActivityApi.h"
-#include "RocLogger.h"
+
 #endif
 #include "ActivityBuffers.h"
 #include "output_base.h"

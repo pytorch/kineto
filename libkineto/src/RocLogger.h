@@ -57,7 +57,7 @@ class ApiIdList {
   bool loadUserPrefs();
 
   // Map api string to cnid enum
-  virtual uint32_t mapName(const std::string &apiName) = 0;
+  virtual uint32_t mapName(const std::string& apiName) = 0;
 
   bool contains(uint32_t apiId);
   const std::unordered_map<uint32_t, uint32_t>& filterList() {

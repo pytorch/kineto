@@ -31,7 +31,7 @@
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
-#include "RoctracerLogger.h"
+#include "RocprofLogger.h"
 #endif // HAS_ROCTRACER
 
 #include "GenericTraceActivity.h"
@@ -46,7 +46,7 @@ namespace KINETO_NAMESPACE {
 
 class Config;
 class CuptiActivityApi;
-class RoctracerActivityApi;
+class RocprofActivityApi;
 
 // This struct is a derived snapshot of the Config. And should not
 // be mutable after construction.
@@ -122,7 +122,7 @@ inline size_t hash_combine(size_t seed, size_t value) {
 class CuptiActivityProfiler {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
-  CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
+  CuptiActivityProfiler(RocprofActivityApi& rai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
   ~CuptiActivityProfiler();
@@ -404,18 +404,18 @@ class CuptiActivityProfiler {
 
 #ifdef HAS_ROCTRACER
   // Process generic RocTracer activity
-  void handleRoctracerActivity(
-      const roctracerBase* record,
+  void handleRocprofActivity(
+      const rocprofBase* record,
       ActivityLogger* logger);
   void handleCorrelationActivity(
       uint64_t correlationId,
       uint64_t externalId,
-      RoctracerLogger::CorrelationDomain externalKind);
+      RocLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
   void handleGpuActivity(
-      const roctracerAsyncRow* record,
+      const rocprofAsyncRow* record,
       ActivityLogger* logger);
 #endif // HAS_ROCTRACER
 
@@ -449,7 +449,7 @@ class CuptiActivityProfiler {
 
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
-  RoctracerActivityApi& cupti_; // Design failure here
+  RocprofActivityApi& cupti_; // Design failure here
 #else
   CuptiActivityApi& cupti_;
 #endif

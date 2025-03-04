@@ -15,14 +15,18 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "kineto_playground.cuh"
 
-#define CHECK_CUDA(call)                                                      \
-  do {                                                                        \
-    cudaError_t status = call;                                                \
-    if (status != cudaSuccess) {                                              \
-      fprintf(stderr, "CUDA Error at %s:%d: %s\n", __FILE__, __LINE__,         \
-              cudaGetErrorString(status));                                     \
-      exit(1);                                                                \
-    }                                                                         \
+#define CHECK_CUDA(call)               \
+  do {                                 \
+    cudaError_t status = call;         \
+    if (status != cudaSuccess) {       \
+      fprintf(                         \
+          stderr,                      \
+          "CUDA Error at %s:%d: %s\n", \
+          __FILE__,                    \
+          __LINE__,                    \
+          cudaGetErrorString(status)); \
+      exit(1);                         \
+    }                                  \
   } while (0)
 
 using namespace kineto;

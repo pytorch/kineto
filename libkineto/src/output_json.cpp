@@ -131,6 +131,15 @@ void ChromeTraceLogger::handleTraceStart(
       device_properties);
 
   metadataToJSON(metadata);
+
+  // clang-format off
+  traceOf_ << fmt::format(R"JSON(
+  "traceName": "{}",
+  "displayTimeUnit": "ms",
+  "baseTimeNanoseconds": {}
+}})JSON", fileName_, ChromeTraceBaseTime::singleton().get());
+  // clang-format on
+
   traceOf_ << R"JSON(
   "traceEvents": [)JSON";
 }
@@ -681,13 +690,6 @@ void ChromeTraceLogger::finalizeTrace(
 #endif // !USE_GOOGLE_LOG
 
   // Putting this here because the last entry MUST not end with a comma.
-
-  traceOf_ << fmt::format(R"JSON(
-  "traceName": "{}",
-  "displayTimeUnit": "ms",
-  "baseTimeNanoseconds": {}
-}})JSON", fileName_, ChromeTraceBaseTime::singleton().get());
-  // clang-format on
 
   traceOf_.close();
   // On some systems, rename() fails if the destination file exists.

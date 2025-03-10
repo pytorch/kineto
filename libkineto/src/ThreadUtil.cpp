@@ -35,6 +35,7 @@
 #include <pthread.h>
 #endif // _AIX
 
+#include <fcntl.h>
 #include <fmt/format.h>
 #include <iostream>
 #include <string>
@@ -46,6 +47,21 @@ thread_local int32_t _pid = 0;
 thread_local int32_t _tid = 0;
 thread_local int32_t _sysTid = 0;
 } // namespace
+
+int32_t pidNamespace(ino_t& ns) {
+  int fd = open("/proc/self/ns/pid", O_RDONLY);
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  struct stat self_stat;
+  if (fstat(fd, &self_stat) == -1) {
+    return -1;
+  }
+  ns = self_stat.st_ino;
+  return 0;
+}
 
 int32_t processId(bool cache) {
   int32_t pid = 0;

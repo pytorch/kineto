@@ -45,6 +45,7 @@ enum CorrelationDomain {
 class ApiIdList {
  public:
   ApiIdList();
+  virtual ~ApiIdList() {}
   bool invertMode() {
     return invert_;
   }

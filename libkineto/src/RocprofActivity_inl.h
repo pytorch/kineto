@@ -76,11 +76,11 @@ inline const std::string GpuActivity::name() const {
   if (type_ == ActivityType::CONCURRENT_KERNEL) {
     // const char* name = roctracer_op_string(raw().domain, raw().op,
     // raw().kind);
-    const char* name =
-        RocprofLogger::opString(
-            static_cast<rocprofiler_callback_tracing_kind_t>(raw().domain),
-            raw().op)
-            .c_str();
+    auto op = raw().op;
+    auto domain = raw().domain;
+    std::string opString = RocprofLogger::opString(
+        static_cast<rocprofiler_callback_tracing_kind_t>(domain), op);
+    const char* name = opString.c_str();
     return demangle(
         raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));
   } else if (type_ == ActivityType::GPU_MEMSET) {

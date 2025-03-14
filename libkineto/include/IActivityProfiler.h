@@ -130,6 +130,10 @@ class IActivityProfilerSession {
     return "";
   }
 
+  virtual std::unordered_map<std::string, std::string> getMetadata() {
+    return {};
+  }
+
  protected:
   TraceStatus status_ = TraceStatus::READY;
 };

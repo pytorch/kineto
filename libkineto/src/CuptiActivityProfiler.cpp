@@ -336,6 +336,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
         device_properties.push_back(props);
       }
     }
+    for (const auto& [key, value] : session->getMetadata()) {
+      addMetadata(key, value);
+    }
   }
   logger.handleTraceStart(
       metadata_, fmt::format("{}", fmt::join(device_properties, ",")));

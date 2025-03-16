@@ -38,7 +38,7 @@ class FabricManager {
 
   static std::unique_ptr<FabricManager> factory(
       std::string endpoint_name = "") {
-    return NULL;
+    return nullptr;
   }
 };
 

@@ -459,7 +459,14 @@ void CuptiActivityProfiler::processCpuTrace(
               const std::unique_ptr<GenericTraceActivity>>::value,
           "handleActivity is unsafe and relies on the caller to maintain not "
           "only lifetime but also address stability.");
-      if (act->duration() <= 0) {
+      // This logic appears flawed, as it converts spans that have a 0ns duration
+      // into unfinished spans. This messes up the traces in Perfetto and the Chrome UI.
+      // In practice, very short spans are sometimes reported with a 0ns duration,
+      // depending on the effective resolution of the perf counters.
+      // We mitigate the issue by leaving spans with a 0ns duration untouched,
+      // but recognize there may be unintended consequences and may not be the correct fix.
+      // if (act->duration() <= 0) {
+      if (act->duration() < 0) {
         act->endTime = captureWindowEndTime_;
         act->addMetadata("finished", "false");
       }

@@ -449,7 +449,7 @@ void CuptiActivityProfiler::processCpuTrace(
     return;
   }
   setCpuActivityPresent(true);
-
+  bool warn_once = false;
   CpuGpuSpanPair& span_pair =
       recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
@@ -462,7 +462,7 @@ void CuptiActivityProfiler::processCpuTrace(
               const std::unique_ptr<GenericTraceActivity>>::value,
           "handleActivity is unsafe and relies on the caller to maintain not "
           "only lifetime but also address stability.");
-      if (act->duration() <= 0) {
+      if (act->duration() < 0) {
         act->endTime = captureWindowEndTime_;
         act->addMetadata("finished", "false");
       }
@@ -470,7 +470,15 @@ void CuptiActivityProfiler::processCpuTrace(
     }
     clientActivityTraceMap_[act->correlationId()] = &span_pair;
     activityMap_[act->correlationId()] = act.get();
-
+    if (act->deviceId() == 0) {
+      if (!warn_once) {
+        LOG(WARNING)
+            << "CPU activity with pid 0 detected. This is likely due to the python stack"
+               " tracer not being able to determine the pid for an event. Overriding pid to main thread pid";
+      }
+      act->setDevice(processId());
+      warn_once = true;
+    }
     recordThreadInfo(act->resourceId(), act->getThreadId(), act->deviceId());
   }
   logger.handleTraceSpan(cpu_span);

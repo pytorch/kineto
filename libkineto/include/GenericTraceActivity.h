@@ -47,6 +47,10 @@ class GenericTraceActivity : public ITraceActivity {
     return resource;
   }
 
+  void setDevice(int32_t newDevice) {
+    device = newDevice;
+  }
+
   int32_t getThreadId() const override {
     return threadId;
   }

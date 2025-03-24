@@ -118,6 +118,10 @@ void ChromeTraceLogger::metadataToJSON(
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata,
     const std::string& device_properties) {
+  if (!traceOf_) {
+    return;
+  }
+
   traceOf_ << fmt::format(
       R"JSON(
 {{
@@ -556,10 +560,16 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
 void ChromeTraceLogger::handleGenericActivity(
     const libkineto::GenericTraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
   handleActivity(op);
 }
 
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
+  if (!traceOf_) {
+    return;
+  }
   static struct {
     int type;
     char name[16];

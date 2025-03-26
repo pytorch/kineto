@@ -76,7 +76,7 @@ __global__ void square(float* A, int N) {
 
 void playground(void) {
   // Add your experimental CUDA implementation here.
-  basicMemcpyFromDevice();
+  basicMemcpyToDevice();
   compute();
   basicMemcpyFromDevice();
 }

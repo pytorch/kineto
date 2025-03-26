@@ -18,5 +18,7 @@ g++ \
   -lpthread \
   -lcuda \
   -lcudart \
+  -lcupti \
+  -lnvperf_host \
   /usr/local/lib/libkineto.a \
   kplay_cu.o

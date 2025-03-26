@@ -10,7 +10,9 @@
 
 #ifndef _WIN32
 #include <pthread.h>
+#ifndef _AIX
 #include <sys/syscall.h>
+#endif // _AIX
 #include <sys/types.h>
 #include <unistd.h>
 #else // _WIN32
@@ -29,6 +31,11 @@
 #include <sys/prctl.h>
 #endif
 
+#ifdef _AIX
+#include <pthread.h>
+#endif // _AIX
+
+#include <fcntl.h>
 #include <fmt/format.h>
 #include <iostream>
 #include <string>
@@ -40,6 +47,21 @@ thread_local int32_t _pid = 0;
 thread_local int32_t _tid = 0;
 thread_local int32_t _sysTid = 0;
 } // namespace
+
+int32_t pidNamespace(ino_t& ns) {
+  int fd = open("/proc/self/ns/pid", O_RDONLY);
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  struct stat self_stat;
+  if (fstat(fd, &self_stat) == -1) {
+    return -1;
+  }
+  ns = self_stat.st_ino;
+  return 0;
+}
 
 int32_t processId(bool cache) {
   int32_t pid = 0;
@@ -66,6 +88,8 @@ int32_t systemThreadId(bool cache) {
     sysTid = (int32_t)GetCurrentThreadId();
 #elif defined __FreeBSD__
     syscall(SYS_thr_self, &sysTid);
+#elif defined _AIX
+    sysTid = pthread_self();
 #else
     sysTid = (int32_t)syscall(SYS_gettid);
 #endif
@@ -135,12 +159,17 @@ bool setThreadName(const std::string& name) {
   std::wstring wname = conv.from_bytes(name);
   HRESULT hr = _SetThreadDescription(GetCurrentThread(), wname.c_str());
   return SUCCEEDED(hr);
+#elif defined _AIX
+  return 0;
 #else
   return 0 == pthread_setname_np(pthread_self(), name.c_str());
 #endif
 }
 
 std::string getThreadName() {
+#ifdef _AIX
+  return "Unknown";
+#else
 #ifndef _WIN32
   char buf[kMaxThreadNameLength] = "";
   if (
@@ -169,6 +198,7 @@ std::string getThreadName() {
   std::string name = conv.to_bytes(data);
   LocalFree(data);
   return name;
+#endif
 #endif
 }
 

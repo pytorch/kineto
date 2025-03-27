@@ -92,12 +92,18 @@ std::unordered_map<uint32_t, uint32_t>& ctxToDeviceId() {
 
 namespace KINETO_NAMESPACE {
 
+static double cuptiTimeScalingIndex = 1;
+static uint64_t systemTimeAncor=0;
+static uint64_t cuptiTimeAncor=0;
+
 // Sets the timestamp converter. If nothing is set then the converter just
 // returns the input. For this reason, until we add profiler impl of passing in
 // TSC converter we just need to guard the callback itself
 std::function<time_t(approx_time_t)>& get_time_converter() {
   static std::function<time_t(approx_time_t)> _time_converter =
-      [](approx_time_t t) { return t; };
+  [](approx_time_t t) {
+    return systemTimeAncor + uint64_t(double(t - cuptiTimeAncor) / cuptiTimeScalingIndex);
+  };
   return _time_converter;
 }
 #ifdef HAS_ROCTRACER
@@ -1223,6 +1229,10 @@ void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 void CuptiActivityProfiler::startTraceInternal(
     const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
+  
+  cuptiGetTimestamp(&cuptiTimeAncor);
+  systemTimeAncor = libkineto::timeSinceEpoch(now);
+
   VLOG(0) << "Warmup -> CollectTrace";
   for (auto& session : sessions_) {
     LOG(INFO) << "Starting child profiler session";
@@ -1234,6 +1244,12 @@ void CuptiActivityProfiler::startTraceInternal(
 void CuptiActivityProfiler::stopTraceInternal(
     const time_point<system_clock>& now) {
   captureWindowEndTime_ = libkineto::timeSinceEpoch(now);
+  
+  uint64_t cuptiTimestamp;
+  cuptiGetTimestamp(&cuptiTimestamp);
+  
+  cuptiTimeScalingIndex = double(cuptiTimestamp - cuptiTimeAncor) / double(captureWindowEndTime_ - systemTimeAncor);
+  
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   if (!cpuOnly_) {
     time_point<system_clock> timestamp;

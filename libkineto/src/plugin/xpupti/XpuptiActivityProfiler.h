@@ -52,7 +52,7 @@ class XpuptiActivityProfilerSession
   void handleCorrelationActivity(
       const pti_view_record_external_correlation* correlation);
   void handleRuntimeActivity(
-      const pti_view_record_sycl_runtime* activity,
+      const pti_view_record_api* activity,
       ActivityLogger* logger);
   void handleKernelActivity(
       const pti_view_record_kernel* activity,

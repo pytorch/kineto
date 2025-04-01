@@ -116,8 +116,8 @@ int64_t AbstractConfig::toInt64(const string& val) const {
 }
 
 bool AbstractConfig::toBool(string& val) const {
-  const std::array<string, 8> bool_vals{
-      "n", "y", "no", "yes", "f", "t", "false", "true"};
+  const std::array<string, 10> bool_vals{
+      "n", "y", "no", "yes", "f", "t", "false", "true", "0", "1"};
   const string lower_val = toLower(val);
   for (int i = 0; i < bool_vals.size(); i++) {
     if (lower_val == bool_vals[i]) {

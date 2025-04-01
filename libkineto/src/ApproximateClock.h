@@ -18,8 +18,6 @@
 #include <functional>
 #include <type_traits>
 
-namespace libkineto {
-
 #if defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
 #define KINETO_RDTSC
 #if defined(_MSC_VER)
@@ -41,6 +39,8 @@ namespace libkineto {
 #else
 #define KINETO_UNUSED __attribute__((__unused__))
 #endif //_MSC_VER
+
+namespace libkineto {
 
 using time_t = int64_t;
 using steady_clock_t = std::conditional_t<

@@ -15,8 +15,8 @@
 #include "RocprofLogger.h"
 #include "ThreadUtil.h"
 
-#include <rocprofiler-sdk/fwd.h>
 #include <rocprofiler-sdk/cxx/name_info.hpp>
+#include <rocprofiler-sdk/fwd.h>
 
 namespace libkineto {
 class ActivityLogger;
@@ -148,7 +148,8 @@ struct RuntimeActivity : public RocprofActivity<T> {
   }
   bool flowStart() const override;
   const std::string name() const override {
-    return RocprofLogger::opString(ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API, raw().cid);
+    return RocprofLogger::opString(
+        ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API, raw().cid);
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;

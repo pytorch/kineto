@@ -74,21 +74,29 @@ void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
 
 inline const std::string GpuActivity::name() const {
   if (type_ == ActivityType::CONCURRENT_KERNEL) {
-    const char* name = RocprofLogger::opString(
-        static_cast<rocprofiler_callback_tracing_kind_t>(raw().domain), raw().op).c_str();
+    auto op = raw().op;
+    auto domain = raw().domain;
+    std::string opString = RocprofLogger::opString(
+        static_cast<rocprofiler_callback_tracing_kind_t>(domain), op);
+    const char* name = opString.c_str();
     return demangle(
         raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));
   } else if (type_ == ActivityType::GPU_MEMSET) {
-    return fmt::format("Memset ({})", getGpuActivityKindString(raw().domain, raw().op));
+    return fmt::format(
+        "Memset ({})", getGpuActivityKindString(raw().domain, raw().op));
   } else if (type_ == ActivityType::GPU_MEMCPY) {
     std::string src = "";
     std::string dst = "";
     getMemcpySrcDstString(raw().op, src, dst);
     return fmt::format(
-        "Memcpy {} ({} -> {})", getGpuActivityKindString(raw().domain, raw().op), src, dst);
+        "Memcpy {} ({} -> {})",
+        getGpuActivityKindString(raw().domain, raw().op),
+        src,
+        dst);
   } else {
     return "";
   }
+  return "";
 }
 
 inline void GpuActivity::log(ActivityLogger& logger) const {
@@ -139,7 +147,8 @@ inline const std::string GpuActivity::metadataJson() const {
 
 template <class T>
 inline bool RuntimeActivity<T>::flowStart() const {
-  bool should_correlate = raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchKernel ||
+  bool should_correlate =
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchKernel ||
       raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipExtLaunchKernel ||
       raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchCooperativeKernel ||
       raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipHccModuleLaunchKernel ||
@@ -207,8 +216,7 @@ inline const std::string RuntimeActivity<rocprofKernelRow>::metadataJson()
 }
 
 template <>
-inline const std::string RuntimeActivity<rocprofCopyRow>::metadataJson()
-    const {
+inline const std::string RuntimeActivity<rocprofCopyRow>::metadataJson() const {
   correlationToSize[raw().id] = raw().size;
   return fmt::format(
       R"JSON(

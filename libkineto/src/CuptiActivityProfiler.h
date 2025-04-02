@@ -96,6 +96,10 @@ struct ConfigDerivedState final {
     return profilingByIter_;
   }
 
+  bool isPerThreadBufferEnabled() const {
+    return perThreadBufferEnabled_;
+  }
+
  private:
   std::set<ActivityType> profileActivityTypes_;
   // Start and end time used for triggering and stopping profiling
@@ -106,6 +110,7 @@ struct ConfigDerivedState final {
   int64_t profileStartIter_{-1};
   int64_t profileEndIter_{-1};
   bool profilingByIter_{false};
+  bool perThreadBufferEnabled_{false};
 };
 
 namespace detail {
@@ -399,9 +404,7 @@ class CuptiActivityProfiler {
 
 #ifdef HAS_ROCTRACER
   // Process generic RocTracer activity
-  void handleRocprofActivity(
-      const rocprofBase* record,
-      ActivityLogger* logger);
+  void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
   void handleCorrelationActivity(
       uint64_t correlationId,
       uint64_t externalId,
@@ -409,9 +412,7 @@ class CuptiActivityProfiler {
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
-  void handleGpuActivity(
-      const rocprofAsyncRow* record,
-      ActivityLogger* logger);
+  void handleGpuActivity(const rocprofAsyncRow* record, ActivityLogger* logger);
 #endif // HAS_ROCTRACER
 
   void resetTraceData();

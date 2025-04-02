@@ -108,7 +108,7 @@ int RocprofActivityApi::processActivities(
           if (!isLogged(ActivityType::GPU_MEMCPY))
             filtered = true;
           break;
-        case ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH:
+        case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
         default:
           if (!isLogged(ActivityType::CONCURRENT_KERNEL))
             filtered = true;

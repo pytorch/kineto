@@ -74,7 +74,6 @@ void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
 
 inline const std::string GpuActivity::name() const {
   if (type_ == ActivityType::CONCURRENT_KERNEL) {
-    //const char* name = roctracer_op_string(raw().domain, raw().op, raw().kind);
     const char* name = RocprofLogger::opString(
         static_cast<rocprofiler_callback_tracing_kind_t>(raw().domain), raw().op).c_str();
     return demangle(
@@ -90,7 +89,6 @@ inline const std::string GpuActivity::name() const {
   } else {
     return "";
   }
-return "";
 }
 
 inline void GpuActivity::log(ActivityLogger& logger) const {

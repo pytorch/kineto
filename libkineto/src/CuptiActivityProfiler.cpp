@@ -1419,6 +1419,20 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
   return new_wakeup_time;
 }
 
+const void CuptiActivityProfiler::performMemoryLoop(
+    const string& path,
+    uint32_t profile_time) {
+#ifdef TMP_IMPL_MEMORY_PROFILING_ON_DEMAND
+  if (libkineto::api().client()) {
+    libkineto::api().client()->start_memory_profile();
+    LOG(INFO) << "Running memory profiling for " << profile_time << " ms";
+    std::this_thread::sleep_for(std::chrono::milliseconds(profile_time));
+    libkineto::api().client()->export_memory_profile(path);
+    libkineto::api().client()->stop_memory_profile();
+  }
+#endif
+}
+
 void CuptiActivityProfiler::finalizeTrace(
     const Config& config,
     ActivityLogger& logger) {

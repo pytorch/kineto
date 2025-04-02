@@ -108,6 +108,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   bool shouldActivateTimestampConfig(
       const std::chrono::time_point<std::chrono::system_clock>& now);
   void profilerLoop();
+  void memoryProfilerLoop();
   void activateConfig(std::chrono::time_point<std::chrono::system_clock> now);
 
   std::unique_ptr<Config> asyncRequestConfig_;

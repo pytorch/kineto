@@ -94,6 +94,11 @@ constexpr char kProfileWithModules[] = "PROFILE_WITH_MODULES";
 constexpr char kActivitiesWarmupIterationsKey[] =
     "ACTIVITIES_WARMUP_ITERATIONS";
 constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
+
+// Memory Profiler
+constexpr char kProfileMemory[] = "PROFILE_MEMORY";
+constexpr char kProfileMemoryDuration[] = "PROFILE_MEMORY_DURATION_MSECS";
+
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -208,6 +213,10 @@ void Config::addConfigFactory(
 
 static string defaultTraceFileName() {
   return fmt::format("/tmp/libkineto_activities_{}.json", processId());
+}
+
+static string defaultMemoryTraceFileName() {
+  return fmt::format("/tmp/memory_snapshot_{}.pickle", processId());
 }
 
 Config::Config()
@@ -388,6 +397,12 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activityProfilerEnabled_ = toBool(val);
   } else if (!name.compare(kCuptiPerThreadBufferEnabledKey)) {
     perThreadBufferEnabled_ = toBool(val);
+  } else if (!name.compare(kProfileMemory)) {
+    memoryProfilerEnabled_ = toBool(val);
+    activitiesLogFile_ = defaultMemoryTraceFileName();
+    activitiesLogUrl_ = fmt::format("file://{}", activitiesLogFile_);
+  } else if (!name.compare(kProfileMemoryDuration)) {
+    profileMemoryDuration_ = toInt32(val);
   } else if (!name.compare(kActivitiesLogFileKey)) {
     activitiesLogFile_ = val;
     activitiesLogUrl_ = fmt::format("file://{}", val);

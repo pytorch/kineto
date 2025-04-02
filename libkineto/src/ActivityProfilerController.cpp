@@ -244,6 +244,12 @@ void ActivityProfilerController::profilerLoop() {
   VLOG(0) << "Exited activity profiling loop";
 }
 
+void ActivityProfilerController::memoryProfilerLoop() {
+  const std::string& path = asyncRequestConfig_->activitiesLogFile();
+  auto profile_time = asyncRequestConfig_->profileMemoryDuration();
+  profiler_->performMemoryLoop(path, profile_time);
+}
+
 void ActivityProfilerController::step() {
   // Do not remove this copy to currentIter. Otherwise count is not guaranteed.
   int64_t currentIter = ++iterationCount_;
@@ -304,8 +310,13 @@ void ActivityProfilerController::scheduleTrace(const Config& config) {
 
   // start a profilerLoop() thread to handle request
   if (!profilerThread_) {
-    profilerThread_ =
-        new std::thread(&ActivityProfilerController::profilerLoop, this);
+    if (config.memoryProfilerEnabled()) {
+      profilerThread_ = new std::thread(
+          &ActivityProfilerController::memoryProfilerLoop, this);
+    } else {
+      profilerThread_ =
+          new std::thread(&ActivityProfilerController::profilerLoop, this);
+    }
   }
 }
 

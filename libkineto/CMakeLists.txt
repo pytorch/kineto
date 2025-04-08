@@ -191,7 +191,6 @@ if (CUDA_nvperf_host_LIBRARY)
 endif()
 if (NOT LIBKINETO_NOROCTRACER)
     target_compile_options(kineto_base PRIVATE "-DHAS_ROCTRACER")
-    target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_HCC__")
     target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_AMD__")
 endif()
 
@@ -286,6 +285,9 @@ if(NOT LIBKINETO_NOROCTRACER)
   find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
+  find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
+    ${ROCM_SOURCE_DIR}/lib)
+  target_link_libraries(kineto "${ROCPROF_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")

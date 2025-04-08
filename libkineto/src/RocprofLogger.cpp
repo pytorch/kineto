@@ -728,7 +728,10 @@ void RocprofLogger::startLogging() {
 
   externalCorrelationEnabled_ = true;
   logging_ = true;
-  rocprofiler_start_context(s->context);
+  if (s != nullptr)
+    rocprofiler_start_context(s->context);
+  else
+    LOG(WARNING) << "Rocprofiler not configured";
 }
 
 void RocprofLogger::stopLogging() {
@@ -738,7 +741,8 @@ void RocprofLogger::stopLogging() {
 
   // Flushing likely not required - using callbacks only
 
-  rocprofiler_stop_context(s->context);
+  if (s != nullptr)
+    rocprofiler_stop_context(s->context);
 }
 
 void RocprofLogger::endTracing() {

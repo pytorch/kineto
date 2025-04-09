@@ -140,7 +140,11 @@ class CuptiActivityProfiler {
       const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
       int64_t currentIter = -1);
 
-  const void performMemoryLoop(const std::string& path, uint32_t profile_time);
+  const void performMemoryLoop(
+      const std::string& path,
+      uint32_t profile_time,
+      ActivityLogger* logger,
+      Config& config);
 
   // Used for async requests
   void setLogger(ActivityLogger* logger) {

@@ -63,6 +63,8 @@ class ActivityLogger {
     handleTraceStart(std::unordered_map<std::string, std::string>(), "");
   }
 
+  virtual void finalizeMemoryTrace(const std::string&, const Config&) = 0;
+
   virtual void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,

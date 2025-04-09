@@ -81,6 +81,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       std::unordered_map<std::string, std::vector<std::string>>& metadata)
       override;
 
+  void finalizeMemoryTrace(const std::string&, const Config&) override;
+
   std::string traceFileName() const {
     return fileName_;
   }

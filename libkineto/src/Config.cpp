@@ -400,7 +400,6 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kProfileMemory)) {
     memoryProfilerEnabled_ = toBool(val);
     activitiesLogFile_ = defaultMemoryTraceFileName();
-    activitiesLogUrl_ = fmt::format("file://{}", activitiesLogFile_);
   } else if (!name.compare(kProfileMemoryDuration)) {
     profileMemoryDuration_ = toInt32(val);
   } else if (!name.compare(kActivitiesLogFileKey)) {

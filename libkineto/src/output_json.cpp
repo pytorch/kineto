@@ -160,6 +160,10 @@ void ChromeTraceLogger::openTraceFile() {
   }
 }
 
+void ChromeTraceLogger::finalizeMemoryTrace(const std::string&, const Config&) {
+  LOG(INFO) << "finalizeMemoryTrace not implemented for ChromeTraceLogger";
+}
+
 ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
   fileName_ = traceFileName.empty() ? defaultFileName() : traceFileName;
   traceOf_.clear(std::ios_base::badbit);

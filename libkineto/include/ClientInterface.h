@@ -18,11 +18,9 @@ class ClientInterface {
   virtual void prepare(bool, bool, bool, bool, bool) = 0;
   virtual void start() = 0;
   virtual void stop() = 0;
-#ifdef TMP_IMPL_MEMORY_PROFILING_ON_DEMAND
   virtual void start_memory_profile() = 0;
   virtual void stop_memory_profile() = 0;
   virtual void export_memory_profile(const std::string&) = 0;
-#endif
 };
 
 } // namespace libkineto

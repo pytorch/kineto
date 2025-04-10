@@ -1424,7 +1424,6 @@ const void CuptiActivityProfiler::performMemoryLoop(
     uint32_t profile_time,
     ActivityLogger* logger,
     Config& config) {
-#ifdef TMP_IMPL_MEMORY_PROFILING_ON_DEMAND
   currentRunloopState_ = RunloopState::CollectTrace;
   if (libkineto::api().client()) {
     libkineto::api().client()->start_memory_profile();
@@ -1437,7 +1436,6 @@ const void CuptiActivityProfiler::performMemoryLoop(
     logger->finalizeMemoryTrace(path, config);
   }
   currentRunloopState_ = RunloopState::WaitForRequest;
-#endif
 }
 
 void CuptiActivityProfiler::finalizeTrace(

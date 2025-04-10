@@ -399,7 +399,9 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     perThreadBufferEnabled_ = toBool(val);
   } else if (!name.compare(kProfileMemory)) {
     memoryProfilerEnabled_ = toBool(val);
-    activitiesLogFile_ = defaultMemoryTraceFileName();
+    if (memoryProfilerEnabled_) {
+      activitiesLogFile_ = defaultMemoryTraceFileName();
+    }
   } else if (!name.compare(kProfileMemoryDuration)) {
     profileMemoryDuration_ = toInt32(val);
   } else if (!name.compare(kActivitiesLogFileKey)) {

@@ -403,7 +403,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       external_id = op.correlationId();
     }
   }
-  std::string arg_values = "";
+  std::string arg_values;
   if (external_id != 0) {
     arg_values.append(fmt::format("\"External id\": {}", external_id));
   }
@@ -530,7 +530,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     pgMap.insert({processGroupName, pg_config});
   }
 
-  std::string args = "";
+  std::string args;
   if (!arg_values.empty()) {
     args = fmt::format(
         R"JSON(,

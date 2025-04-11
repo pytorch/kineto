@@ -35,21 +35,21 @@ class Config;
 
 struct pgConfig {
   pgConfig() = default;
-  std::string pg_name{""};
-  std::string pg_desc{""};
-  std::string backend_config{""};
-  std::string pg_size{""};
-  std::string ranks{""};
+  std::string pg_name;
+  std::string pg_desc;
+  std::string backend_config;
+  std::string pg_size;
+  std::string ranks;
 };
 
 struct DistributedInfo {
   DistributedInfo() = default;
 
-  std::string backend{""};
-  std::string rank{""};
-  std::string world_size{""};
-  std::string pg_count{""};
-  std::string nccl_version{""};
+  std::string backend;
+  std::string rank;
+  std::string world_size;
+  std::string pg_count;
+  std::string nccl_version;
   bool distInfo_present_{false};
 };
 

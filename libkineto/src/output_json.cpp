@@ -138,7 +138,7 @@ void ChromeTraceLogger::handleTraceStart(
 
   traceOf_ << fmt::format(
       R"JSON(
-  "displayTimeUnit": "ms",
+  "displayTimeUnit": "ns",
   "baseTimeNanoseconds": {},)JSON",
       ChromeTraceBaseTime::singleton().get());
 

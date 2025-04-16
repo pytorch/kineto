@@ -146,6 +146,9 @@ bool ActivityProfilerController::shouldActivateTimestampConfig(
   if (asyncRequestConfig_->hasProfileStartIteration()) {
     return false;
   }
+  if (asyncRequestConfig_->memoryProfilerEnabled()) {
+    return false;
+  }
   // Note on now + Config::kControllerIntervalMsecs:
   // Profiler interval does not align perfectly up to startTime - warmup.
   // Waiting until the next tick won't allow sufficient time for the profiler to
@@ -166,6 +169,9 @@ bool ActivityProfilerController::shouldActivateTimestampConfig(
 bool ActivityProfilerController::shouldActivateIterationConfig(
     int64_t currentIter) {
   if (!asyncRequestConfig_->hasProfileStartIteration()) {
+    return false;
+  }
+  if (asyncRequestConfig_->memoryProfilerEnabled()) {
     return false;
   }
   auto rootIter = asyncRequestConfig_->startIterationIncludingWarmup();
@@ -252,7 +258,8 @@ void ActivityProfilerController::memoryProfilerLoop() {
     // Perform Double-checked locking to reduce overhead of taking lock.
     if (asyncRequestConfig_ && !profiler_->isActive()) {
       std::lock_guard<std::mutex> lock(asyncConfigLock_);
-      if (asyncRequestConfig_ && !profiler_->isActive()) {
+      if (asyncRequestConfig_ && !profiler_->isActive() &&
+          asyncRequestConfig_->memoryProfilerEnabled()) {
         logger_ = makeLogger(*asyncRequestConfig_);
         path = asyncRequestConfig_->activitiesLogFile();
         profile_time = asyncRequestConfig_->profileMemoryDuration();

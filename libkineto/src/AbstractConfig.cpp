@@ -65,7 +65,7 @@ static vector<string> split(const string& s, char delim) {
 
 // Remove a trailing comment.
 static inline string stripComment(const string& s) {
-  std::size_t pos = s.find("#");
+  std::size_t pos = s.find('#');
   return s.substr(0, pos);
 }
 

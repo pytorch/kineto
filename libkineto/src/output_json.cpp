@@ -121,7 +121,10 @@ void ChromeTraceLogger::handleTraceStart(
   if (!traceOf_) {
     return;
   }
-
+  std::string display_unit = "ms";
+#ifdef DISPLAY_TRACE_IN_NS
+  display_unit = "ns";
+#endif
   traceOf_ << fmt::format(
       R"JSON(
 {{
@@ -138,8 +141,9 @@ void ChromeTraceLogger::handleTraceStart(
 
   traceOf_ << fmt::format(
       R"JSON(
-  "displayTimeUnit": "ms",
+  "displayTimeUnit": "{}",
   "baseTimeNanoseconds": {},)JSON",
+      display_unit,
       ChromeTraceBaseTime::singleton().get());
 
   traceOf_ << R"JSON(

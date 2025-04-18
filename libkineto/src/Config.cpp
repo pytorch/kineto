@@ -165,6 +165,8 @@ constexpr char kLogVerboseLevelKey[] = "VERBOSE_LOG_LEVEL";
 // Example argument: ActivityProfiler.cpp,output_json.cpp
 constexpr char kLogVerboseModulesKey[] = "VERBOSE_LOG_MODULES";
 
+constexpr char kCustomConfigKey[] = "CUSTOM_CONFIG";
+
 // Max devices supported on any system
 constexpr uint8_t kMaxDevices = 8;
 
@@ -470,6 +472,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     enableIpcFabric_ = toBool(val);
   } else if (!name.compare(kOnDemandConfigUpdateIntervalSecsKey)) {
     onDemandConfigUpdateIntervalSecs_ = seconds(toInt32(val));
+  } else if (!name.compare(kCustomConfigKey)) {
+    customConfig_ = val;
   } else {
     return false;
   }

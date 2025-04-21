@@ -110,7 +110,8 @@ void XpuptiActivityProfilerSession::handleRuntimeActivity(
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
 #if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
   const char* api_name = nullptr;
-  XPUPTI_CALL(ptiViewGetApiIdName(activity->_api_group, activity->_api_id, &api_name));
+  XPUPTI_CALL(
+      ptiViewGetApiIdName(activity->_api_group, activity->_api_id, &api_name));
 #endif
   traceBuffer_.emplace_activity(
       traceBuffer_.span,

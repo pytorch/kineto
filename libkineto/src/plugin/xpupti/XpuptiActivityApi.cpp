@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #include "XpuptiActivityApi.h"
 
 #include <assert.h>
@@ -172,20 +180,38 @@ void XpuptiActivityApi::bufferCompleted(
 
 #if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
 static void enableSpecifcRuntimeAPIsTracing() {
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill2D_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy2D_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueKernelLaunch_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueKernelLaunchCustomExp_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueCooperativeKernelLaunchExp_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferFill_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferRead_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferWrite_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferCopy_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMHostAlloc_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMSharedAlloc_id));
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMDeviceAlloc_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill2D_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy2D_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueKernelLaunch_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1,
+      pti_api_group_id::PTI_API_GROUP_SYCL,
+      urEnqueueKernelLaunchCustomExp_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1,
+      pti_api_group_id::PTI_API_GROUP_SYCL,
+      urEnqueueCooperativeKernelLaunchExp_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferFill_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferRead_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferWrite_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferCopy_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMHostAlloc_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMSharedAlloc_id));
+  XPUPTI_CALL(ptiViewEnableRuntimeApi(
+      1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMDeviceAlloc_id));
 }
 #endif
 
@@ -213,8 +239,9 @@ void XpuptiActivityApi::enableXpuptiActivities(
     if (activity == ActivityType::XPU_RUNTIME) {
 #if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 11
       XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
-      XPUPTI_CALL(ptiViewEnableRuntimeApiClass(1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
-#elif  PTI_VERSION_MAJOR == 0  && PTI_VERSION_MINOR == 11
+      XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
+          1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
+#elif PTI_VERSION_MAJOR == 0 && PTI_VERSION_MINOR == 11
       XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
       enableSpecifcRuntimeAPIsTracing();
 #else

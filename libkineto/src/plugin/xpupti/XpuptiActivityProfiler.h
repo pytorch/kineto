@@ -52,7 +52,11 @@ class XpuptiActivityProfilerSession
   void handleCorrelationActivity(
       const pti_view_record_external_correlation* correlation);
   void handleRuntimeActivity(
+#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
+      const pti_view_record_api* activity,
+#else
       const pti_view_record_sycl_runtime* activity,
+#endif
       ActivityLogger* logger);
   void handleKernelActivity(
       const pti_view_record_kernel* activity,

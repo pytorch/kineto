@@ -170,6 +170,25 @@ void XpuptiActivityApi::bufferCompleted(
 }
 #endif
 
+#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
+static void enableSpecifcRuntimeAPIsTracing() {
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill2D_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy2D_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueKernelLaunch_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueKernelLaunchCustomExp_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueCooperativeKernelLaunchExp_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferFill_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferRead_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferWrite_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferCopy_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMHostAlloc_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMSharedAlloc_id));
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMDeviceAlloc_id));
+}
+#endif
+
 void XpuptiActivityApi::enableXpuptiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_XPUPTI
@@ -192,7 +211,15 @@ void XpuptiActivityApi::enableXpuptiActivities(
       externalCorrelationEnabled_ = true;
     }
     if (activity == ActivityType::XPU_RUNTIME) {
+#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 11
+      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
+      XPUPTI_CALL(ptiViewEnableRuntimeApiClass(1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
+#elif  PTI_VERSION_MAJOR == 0  && PTI_VERSION_MINOR == 11
+      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
+      enableSpecifcRuntimeAPIsTracing();
+#else
       XPUPTI_CALL(ptiViewEnable(PTI_VIEW_SYCL_RUNTIME_CALLS));
+#endif
     }
     if (activity == ActivityType::OVERHEAD) {
       XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
@@ -222,7 +249,12 @@ void XpuptiActivityApi::disablePtiActivities(
       XPUPTI_CALL(ptiViewDisable(PTI_VIEW_EXTERNAL_CORRELATION));
     }
     if (activity == ActivityType::XPU_RUNTIME) {
+#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
+      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_RUNTIME_API));
+#else
+
       XPUPTI_CALL(ptiViewDisable(PTI_VIEW_SYCL_RUNTIME_CALLS));
+#endif
     }
     if (activity == ActivityType::OVERHEAD) {
       XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));

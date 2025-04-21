@@ -18,6 +18,7 @@
 #include "ActivityBuffers.h"
 #include "Config.h"
 #include "GenericTraceActivity.h"
+#include "Logger.h"
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {
@@ -76,6 +77,10 @@ class MemoryTraceLogger : public ActivityLogger {
       override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
+  }
+
+  void finalizeMemoryTrace(const std::string&, const Config&) override {
+    LOG(INFO) << "finalizeMemoryTrace not implemented for MemLogger";
   }
 
   const std::vector<const ITraceActivity*>* traceActivities() {

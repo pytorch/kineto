@@ -146,6 +146,9 @@ bool ActivityProfilerController::shouldActivateTimestampConfig(
   if (asyncRequestConfig_->hasProfileStartIteration()) {
     return false;
   }
+  if (asyncRequestConfig_->memoryProfilerEnabled()) {
+    return false;
+  }
   // Note on now + Config::kControllerIntervalMsecs:
   // Profiler interval does not align perfectly up to startTime - warmup.
   // Waiting until the next tick won't allow sufficient time for the profiler to
@@ -166,6 +169,9 @@ bool ActivityProfilerController::shouldActivateTimestampConfig(
 bool ActivityProfilerController::shouldActivateIterationConfig(
     int64_t currentIter) {
   if (!asyncRequestConfig_->hasProfileStartIteration()) {
+    return false;
+  }
+  if (asyncRequestConfig_->memoryProfilerEnabled()) {
     return false;
   }
   auto rootIter = asyncRequestConfig_->startIterationIncludingWarmup();
@@ -244,8 +250,35 @@ void ActivityProfilerController::profilerLoop() {
   VLOG(0) << "Exited activity profiling loop";
 }
 
+void ActivityProfilerController::memoryProfilerLoop() {
+  std::string path = asyncRequestConfig_->activitiesLogFile();
+  auto profile_time = asyncRequestConfig_->profileMemoryDuration();
+  std::unique_ptr<Config> config = asyncRequestConfig_->clone();
+  while (!stopRunloop_) {
+    // Perform Double-checked locking to reduce overhead of taking lock.
+    if (asyncRequestConfig_ && !profiler_->isActive()) {
+      std::lock_guard<std::mutex> lock(asyncConfigLock_);
+      if (asyncRequestConfig_ && !profiler_->isActive() &&
+          asyncRequestConfig_->memoryProfilerEnabled()) {
+        logger_ = makeLogger(*asyncRequestConfig_);
+        path = asyncRequestConfig_->activitiesLogFile();
+        profile_time = asyncRequestConfig_->profileMemoryDuration();
+        config = asyncRequestConfig_->clone();
+        asyncRequestConfig_ = nullptr;
+      } else {
+        continue;
+      }
+    } else {
+      continue;
+    }
+
+    profiler_->performMemoryLoop(path, profile_time, logger_.get(), *config);
+  }
+}
+
 void ActivityProfilerController::step() {
-  // Do not remove this copy to currentIter. Otherwise count is not guaranteed.
+  // Do not remove this copy to currentIter. Otherwise count is not
+  // guaranteed.
   int64_t currentIter = ++iterationCount_;
   VLOG(0) << "Step called , iteration  = " << currentIter;
 
@@ -258,7 +291,6 @@ void ActivityProfilerController::step() {
       activateConfig(now);
     }
   }
-
   if (profiler_->isActive()) {
     auto now = system_clock::now();
     auto next_wakeup_time = now + Config::kControllerIntervalMsecs;
@@ -304,8 +336,13 @@ void ActivityProfilerController::scheduleTrace(const Config& config) {
 
   // start a profilerLoop() thread to handle request
   if (!profilerThread_) {
-    profilerThread_ =
-        new std::thread(&ActivityProfilerController::profilerLoop, this);
+    if (config.memoryProfilerEnabled()) {
+      profilerThread_ = new std::thread(
+          &ActivityProfilerController::memoryProfilerLoop, this);
+    } else {
+      profilerThread_ =
+          new std::thread(&ActivityProfilerController::profilerLoop, this);
+    }
   }
 }
 

@@ -47,6 +47,10 @@ class GenericTraceActivity : public ITraceActivity {
     return resource;
   }
 
+  void setDevice(int32_t newDevice) {
+    device = newDevice;
+  }
+
   int32_t getThreadId() const override {
     return threadId;
   }
@@ -137,7 +141,7 @@ class GenericTraceActivity : public ITraceActivity {
   struct Flow {
     Flow() : id(0), type(0), start(0) {}
     // Ids must be unique within each type
-    uint32_t id : 27;
+    uint32_t id;
     // Type will be used to connect flows between profilers, as
     // well as look up flow information (name etc)
     uint32_t type : 4;

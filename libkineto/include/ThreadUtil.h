@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <sys/stat.h>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -20,6 +21,7 @@ int32_t threadId();
 bool setThreadName(const std::string& name);
 std::string getThreadName();
 
+int32_t pidNamespace(ino_t& ns);
 int32_t processId(bool cache = true);
 std::string processName(int32_t pid);
 

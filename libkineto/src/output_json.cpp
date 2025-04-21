@@ -118,6 +118,13 @@ void ChromeTraceLogger::metadataToJSON(
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata,
     const std::string& device_properties) {
+  if (!traceOf_) {
+    return;
+  }
+  std::string display_unit = "ms";
+#ifdef DISPLAY_TRACE_IN_NS
+  display_unit = "ns";
+#endif
   traceOf_ << fmt::format(
       R"JSON(
 {{
@@ -131,6 +138,14 @@ void ChromeTraceLogger::handleTraceStart(
       device_properties);
 
   metadataToJSON(metadata);
+
+  traceOf_ << fmt::format(
+      R"JSON(
+  "displayTimeUnit": "{}",
+  "baseTimeNanoseconds": {},)JSON",
+      display_unit,
+      ChromeTraceBaseTime::singleton().get());
+
   traceOf_ << R"JSON(
   "traceEvents": [)JSON";
 }
@@ -147,6 +162,10 @@ void ChromeTraceLogger::openTraceFile() {
   } else {
     LOG(INFO) << "Tracing to temporary file " << fileName_;
   }
+}
+
+void ChromeTraceLogger::finalizeMemoryTrace(const std::string&, const Config&) {
+  LOG(INFO) << "finalizeMemoryTrace not implemented for ChromeTraceLogger";
 }
 
 ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
@@ -388,7 +407,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       external_id = op.correlationId();
     }
   }
-  std::string arg_values = "";
+  std::string arg_values;
   if (external_id != 0) {
     arg_values.append(fmt::format("\"External id\": {}", external_id));
   }
@@ -515,7 +534,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     pgMap.insert({processGroupName, pg_config});
   }
 
-  std::string args = "";
+  std::string args;
   if (!arg_values.empty()) {
     args = fmt::format(
         R"JSON(,
@@ -549,10 +568,16 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
 void ChromeTraceLogger::handleGenericActivity(
     const libkineto::GenericTraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
   handleActivity(op);
 }
 
 void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
+  if (!traceOf_) {
+    return;
+  }
   static struct {
     int type;
     char name[16];
@@ -681,13 +706,9 @@ void ChromeTraceLogger::finalizeTrace(
 #endif // !USE_GOOGLE_LOG
 
   // Putting this here because the last entry MUST not end with a comma.
-
-  traceOf_ << fmt::format(R"JSON(
-  "traceName": "{}",
-  "displayTimeUnit": "ms",
-  "baseTimeNanoseconds": {}
-}})JSON", fileName_, ChromeTraceBaseTime::singleton().get());
-  // clang-format on
+    traceOf_ << fmt::format(R"JSON(
+  "traceName": "{}"
+}})JSON", fileName_);
 
   traceOf_.close();
   // On some systems, rename() fails if the destination file exists.

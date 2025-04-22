@@ -1283,6 +1283,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       << "Run loop on application step(), iteration = " << currentIter;
 
   switch (currentRunloopState_) {
+    case RunloopState::CollectMemorySnapshot:
+      LOG(WARNING)
+          << "Entered CollectMemorySnapshot in Kineto Loop Step, skipping loop";
+      break;
     case RunloopState::WaitForRequest:
       VLOG(1) << "State: WaitForRequest";
       // Nothing to do
@@ -1424,7 +1428,7 @@ const void CuptiActivityProfiler::performMemoryLoop(
     uint32_t profile_time,
     ActivityLogger* logger,
     Config& config) {
-  currentRunloopState_ = RunloopState::CollectTrace;
+  currentRunloopState_ = RunloopState::CollectMemorySnapshot;
   if (libkineto::api().client()) {
     libkineto::api().client()->start_memory_profile();
     LOG(INFO) << "Running memory profiling for " << profile_time << " ms";

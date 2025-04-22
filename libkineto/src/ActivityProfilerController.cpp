@@ -77,12 +77,16 @@ ActivityProfilerController::ActivityProfilerController(
 
 ActivityProfilerController::~ActivityProfilerController() {
   configLoader_.removeHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
-  if (profilerThread_) {
-    // signaling termination of the profiler loop
-    stopRunloop_ = true;
-    profilerThread_->join();
-    delete profilerThread_;
-    profilerThread_ = nullptr;
+  for (int thread_type = 0; thread_type < ThreadType::THREAD_MAX_COUNT;
+       thread_type++) {
+    std::thread* profilerThread = profilerThreads_[thread_type];
+    if (profilerThread) {
+      // signaling termination of the profiler loop
+      stopRunloop_ = true;
+      profilerThread->join();
+      delete profilerThread;
+      profilerThread = nullptr;
+    }
   }
 
 #if !USE_GOOGLE_LOG
@@ -151,9 +155,9 @@ bool ActivityProfilerController::shouldActivateTimestampConfig(
   }
   // Note on now + Config::kControllerIntervalMsecs:
   // Profiler interval does not align perfectly up to startTime - warmup.
-  // Waiting until the next tick won't allow sufficient time for the profiler to
-  // warm up. So check if we are very close to the warmup time and trigger
-  // warmup.
+  // Waiting until the next tick won't allow sufficient time for the
+  // profiler to warm up. So check if we are very close to the warmup time
+  // and trigger warmup.
   if (now + Config::kControllerIntervalMsecs >=
       (asyncRequestConfig_->requestTimestamp() -
        asyncRequestConfig_->activitiesWarmupDuration())) {
@@ -198,8 +202,8 @@ bool ActivityProfilerController::shouldActivateIterationConfig(
                 << newProfileStart;
       asyncRequestConfig_->setProfileStartIteration(newProfileStart);
       if (currentIter != asyncRequestConfig_->startIterationIncludingWarmup()) {
-        // Ex. Current 9, start 8, warmup 5, roundup 100. Resolves new start to
-        // 100, with warmup starting at 95. So don't start now.
+        // Ex. Current 9, start 8, warmup 5, roundup 100. Resolves new start
+        // to 100, with warmup starting at 95. So don't start now.
         return false;
       }
     } else {
@@ -239,7 +243,7 @@ void ActivityProfilerController::profilerLoop() {
       next_wakeup_time += Config::kControllerIntervalMsecs;
     }
 
-    if (profiler_->isActive()) {
+    if (profiler_->isActive() && !profiler_->isCollectingMemorySnapshot()) {
       next_wakeup_time = profiler_->performRunLoopStep(now, next_wakeup_time);
       VLOG(1) << "Profiler loop: "
               << duration_cast<milliseconds>(system_clock::now() - now).count()
@@ -291,7 +295,7 @@ void ActivityProfilerController::step() {
       activateConfig(now);
     }
   }
-  if (profiler_->isActive()) {
+  if (profiler_->isActive() && !profiler_->isCollectingMemorySnapshot()) {
     auto now = system_clock::now();
     auto next_wakeup_time = now + Config::kControllerIntervalMsecs;
     profiler_->performRunLoopStep(now, next_wakeup_time, currentIter);
@@ -335,12 +339,17 @@ void ActivityProfilerController::scheduleTrace(const Config& config) {
   }
 
   // start a profilerLoop() thread to handle request
-  if (!profilerThread_) {
-    if (config.memoryProfilerEnabled()) {
-      profilerThread_ = new std::thread(
+
+  if (config.memoryProfilerEnabled()) {
+    auto thread_type = ThreadType::MEMORY_SNAPSHOT;
+    if (!profilerThreads_[thread_type]) {
+      profilerThreads_[thread_type] = new std::thread(
           &ActivityProfilerController::memoryProfilerLoop, this);
-    } else {
-      profilerThread_ =
+    }
+  } else {
+    auto thread_type = ThreadType::KINETO;
+    if (!profilerThreads_[thread_type]) {
+      profilerThreads_[thread_type] =
           new std::thread(&ActivityProfilerController::profilerLoop, this);
     }
   }
@@ -379,8 +388,8 @@ ActivityProfilerController::stopTrace() {
   UST_LOGGER_MARK_COMPLETED(kCollectionStage);
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);
-  // Will follow up with another patch for logging URLs when ActivityTrace is
-  // moved.
+  // Will follow up with another patch for logging URLs when ActivityTrace
+  // is moved.
   UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
 
   // Logger Metadata contains a map of LOGs collected in Kineto

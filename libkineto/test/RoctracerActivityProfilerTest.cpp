@@ -27,8 +27,8 @@
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
 #include "src/CuptiActivityProfiler.h"
-#include "src/RoctracerActivityApi.h"
-#include "src/RoctracerLogger.h"
+#include "src/RocprofActivityApi.h"
+#include "src/RocprofLogger.h"
 #include "src/output_json.h"
 #include "src/output_membuf.h"
 
@@ -224,8 +224,8 @@ struct MockRoctracerLogger {
       externalCorrelations_[RoctracerLogger::CorrelationDomain::size];
 };
 
-// Mock parts of the RoctracerActivityApi
-class MockRoctracerActivities : public RoctracerActivityApi {
+// Mock parts of the RocprofActivityApi
+class MockRoctracerActivities : public RocprofActivityApi {
  public:
   virtual int processActivities(
       std::function<void(const roctracerBase*)> handler,
@@ -256,7 +256,7 @@ class MockRoctracerActivities : public RoctracerActivityApi {
 };
 
 // Common setup / teardown and helper functions
-class RoctracerActivityProfilerTest : public ::testing::Test {
+class RocprofActivityProfilerTest : public ::testing::Test {
  protected:
   void SetUp() override {
     profiler_ = std::make_unique<CuptiActivityProfiler>(
@@ -290,7 +290,7 @@ void checkTracefile(const char* filename) {
 #endif
 }
 
-TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
+TEST_F(RocprofActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
@@ -391,7 +391,7 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
 #endif
 }
 
-TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
+TEST_F(RocprofActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Set logging level for debugging purpose
   std::vector<std::string> log_modules(
       {"CuptiActivityProfiler.cpp", "output_json.cpp"});
@@ -565,7 +565,7 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
 #endif
 }
 
-TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
+TEST_F(RocprofActivityProfilerTest, GpuUserAnnotationTest) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
@@ -634,7 +634,7 @@ TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
   EXPECT_EQ(gpu_annotation->name(), annotation->name());
 }
 
-TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
+TEST_F(RocprofActivityProfilerTest, SubActivityProfilers) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
@@ -707,7 +707,7 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
   EXPECT_GT(buf.st_size, 100);
 }
 
-TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
+TEST_F(RocprofActivityProfilerTest, JsonGPUIDSortTest) {
   // Set logging level for debugging purpose
   std::vector<std::string> log_modules(
       {"CuptiActivityProfiler.cpp", "output_json.cpp"});

@@ -44,7 +44,6 @@ class RoctracerActivityApi {
   void disableActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void teardownContext() {}
-  void setTimeOffset(timestamp_t toffset);
 
   virtual int processActivities(
       std::function<void(const roctracerBase*)> handler,
@@ -58,7 +57,6 @@ class RoctracerActivityApi {
 
  private:
   bool registered_{false};
-  timestamp_t toffset_{0};
 
   // Enabled Activity Filters
   uint32_t activityMask_{0};

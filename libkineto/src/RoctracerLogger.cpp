@@ -17,6 +17,7 @@
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
+#include "ApproximateClock.h"
 
 using namespace libkineto;
 using namespace std::chrono;
@@ -101,19 +102,15 @@ void RoctracerLogger::api_callback(
 
     // Pack callbacks into row structures
 
-    thread_local std::unordered_map<activity_correlation_id_t, timespec>
+    thread_local std::unordered_map<activity_correlation_id_t, uint64_t>
         timestamps;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
-      timespec timestamp;
-      clock_gettime(CLOCK_MONOTONIC, &timestamp); // record proper clock
-      timestamps[data->correlation_id] = timestamp;
+      timestamps[data->correlation_id] = getApproximateTime();
     } else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
-      timespec startTime;
-      startTime = timestamps[data->correlation_id];
+      uint64_t startTime = timestamps[data->correlation_id];
       timestamps.erase(data->correlation_id);
-      timespec endTime;
-      clock_gettime(CLOCK_MONOTONIC, &endTime); // record proper clock
+      uint64_t endTime = getApproximateTime();
 
       switch (cid) {
         case HIP_API_ID_hipLaunchKernel:
@@ -128,8 +125,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.function_address,
               nullptr,
               args.numBlocks.x,
@@ -153,8 +150,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               nullptr,
               args.f,
               args.gridDimX,
@@ -178,8 +175,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.function_address,
               nullptr,
               args.numBlocks.x,
@@ -202,8 +199,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               data->args.hipMalloc.ptr__val,
               data->args.hipMalloc.size);
           insert_row_to_buffer(row);
@@ -215,8 +212,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               data->args.hipFree.ptr,
               0);
           insert_row_to_buffer(row);
@@ -229,8 +226,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.src,
               args.dst,
               args.sizeBytes,
@@ -248,8 +245,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.src,
               args.dst,
               args.sizeBytes,
@@ -264,8 +261,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime));
+              startTime,
+              endTime);
           insert_row_to_buffer(row);
         } break;
       } // switch
@@ -282,6 +279,22 @@ void RoctracerLogger::api_callback(
   }
 }
 
+timestamp_t getTimeOffset() {
+  int64_t t0, t00;
+  timespec t1;
+  t0 = libkineto::getApproximateTime();
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  t00 = libkineto::getApproximateTime();
+
+  // Confvert to ns (if necessary)
+  t0 = libkineto::get_time_converter()(t0);
+  t00 = libkineto::get_time_converter()(t00);
+
+  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
+  // domain (in ns).
+  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
+}
+
 void RoctracerLogger::activity_callback(
     const char* begin,
     const char* end,
@@ -291,6 +304,11 @@ void RoctracerLogger::activity_callback(
   std::unique_lock<std::mutex> lock(s_flush.mutex_);
   const roctracer_record_t* record = (const roctracer_record_t*)(begin);
   const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
+
+  // Timestamps are in CLOCK_MONOTONIC
+  // Convert to approximate_time instead.  It's faster apparently.
+  // Do this as often as possible (once per callback), to reduce inversions
+  timestamp_t offset = getTimeOffset();
 
   while (record < end_record) {
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
@@ -303,8 +321,8 @@ void RoctracerLogger::activity_callback(
         record->op,
         record->device_id,
         record->queue_id,
-        record->begin_ns,
-        record->end_ns,
+        record->begin_ns + offset,
+        record->end_ns + offset,
         ((record->kind == HIP_OP_DISPATCH_KIND_KERNEL_) ||
          (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
             ? demangle(record->kernel_name)

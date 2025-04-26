@@ -68,10 +68,6 @@ inline bool RoctracerActivityApi::isLogged(
   return activityMaskSnapshot_ & (1 << static_cast<uint32_t>(atype));
 }
 
-void RoctracerActivityApi::setTimeOffset(timestamp_t toffset) {
-  toffset_ = toffset;
-}
-
 int RoctracerActivityApi::processActivities(
     std::function<void(const roctracerBase*)> handler,
     std::function<void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)>
@@ -132,8 +128,8 @@ int RoctracerActivityApi::processActivities(
     if (!filtered) {
       // Convert the begin and end timestamps from monotonic clock to system
       // clock.
-      item->begin = item->begin + toffset_;
-      item->end = item->end + toffset_;
+      item->begin = libkineto::get_time_converter()(item->begin);
+      item->end = libkineto::get_time_converter()(item->end);
       handler(item);
       ++count;
     }

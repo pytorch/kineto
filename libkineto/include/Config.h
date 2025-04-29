@@ -389,6 +389,10 @@ class Config : public AbstractConfig {
     useTSCTimestamp_ = flag;
   }
 
+  uint32_t maxEvents() const {
+    return maxEvents_;
+  }
+
  private:
   explicit Config(const Config& other) = default;
 
@@ -518,6 +522,9 @@ class Config : public AbstractConfig {
   // Memory Profiler
   bool memoryProfilerEnabled_{false};
   int profileMemoryDuration_{1000};
+
+  // Roctracer settings
+  uint32_t maxEvents_{1000000};
 };
 
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";

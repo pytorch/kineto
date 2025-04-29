@@ -45,6 +45,7 @@ class RoctracerActivityApi {
   void clearActivities();
   void teardownContext() {}
   void setTimeOffset(timestamp_t toffset);
+  void setMaxEvents(uint32_t maxEvents);
 
   virtual int processActivities(
       std::function<void(const roctracerBase*)> handler,

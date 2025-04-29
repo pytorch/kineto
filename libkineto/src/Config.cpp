@@ -99,6 +99,9 @@ constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
 constexpr char kProfileMemory[] = "PROFILE_MEMORY";
 constexpr char kProfileMemoryDuration[] = "PROFILE_MEMORY_DURATION_MSECS";
 
+// Roctracer
+constexpr char kRoctracerSetMaxEvents[] = "ROCTRACER_MAX_EVENTS";
+
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -431,6 +434,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     requestTraceID_ = val;
   } else if (!name.compare(kRequestGroupTraceID)) {
     requestGroupTraceID_ = val;
+  } else if (!name.compare(kRoctracerSetMaxEvents)) {
+    maxEvents_ = toInt32(val);
   }
 
   // TODO: Deprecate Client Interface

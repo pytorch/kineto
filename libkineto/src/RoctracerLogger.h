@@ -267,6 +267,7 @@ class RoctracerLogger {
   void startLogging();
   void stopLogging();
   void clearLogs();
+  void setMaxEvents(uint32_t maxBufferSize);
 
  private:
   bool registered_{false};

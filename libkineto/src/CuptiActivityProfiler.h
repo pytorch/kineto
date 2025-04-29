@@ -494,6 +494,7 @@ class CuptiActivityProfiler {
   profilerOverhead setupOverhead_;
 
   bool cpuOnly_{false};
+  bool gpuOnly_{false};
   bool cpuActivityPresent_{false};
   bool gpuActivityPresent_{false};
 

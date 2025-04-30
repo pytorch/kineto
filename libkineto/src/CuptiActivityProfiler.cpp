@@ -1134,7 +1134,8 @@ void CuptiActivityProfiler::configure(
 #endif // _WIN32
     cupti_.enableCuptiActivities(
         config_->selectedActivityTypes(), config_->perThreadBufferEnabled());
-#else
+#else // HAS_ROCTRACER
+    cupti_.setMaxEvents(config_->maxEvents());
     cupti_.enableActivities(config_->selectedActivityTypes());
 #endif
     if (VLOG_IS_ON(1)) {

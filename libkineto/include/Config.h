@@ -523,8 +523,8 @@ class Config : public AbstractConfig {
   bool memoryProfilerEnabled_{false};
   int profileMemoryDuration_{1000};
 
-  // Used to flexibly configure some custom options, especially for custom backends.
-  // How to parse this string is handled by the custom backend.
+  // Used to flexibly configure some custom options, especially for custom
+  // backends. How to parse this string is handled by the custom backend.
   std::string customConfig_;
 };
 

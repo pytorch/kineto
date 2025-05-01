@@ -101,20 +101,30 @@ std::function<time_t(approx_time_t)>& get_time_converter() {
   return _time_converter;
 }
 #ifdef HAS_ROCTRACER
-timestamp_t getTimeOffset() {
-  int64_t t0, t00;
+timestamp_t getTimeOffset(bool gpuOnly) {
   timespec t1;
-  t0 = libkineto::getApproximateTime();
-  clock_gettime(CLOCK_MONOTONIC, &t1);
-  t00 = libkineto::getApproximateTime();
+  if (gpuOnly) {
+    timespec t0, t00;
+    clock_gettime(CLOCK_REALTIME, &t0);
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    clock_gettime(CLOCK_REALTIME, &t00);
 
-  // Confvert to ns (if necessary)
-  t0 = libkineto::get_time_converter()(t0);
-  t00 = libkineto::get_time_converter()(t00);
+    return (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) -
+        timespec_to_ns(t1);
+  } else {
+    int64_t t0, t00;
+    t0 = libkineto::getApproximateTime();
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    t00 = libkineto::getApproximateTime();
 
-  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
-  // domain (in ns).
-  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
+    // Confvert to ns (if necessary)
+    t0 = libkineto::get_time_converter()(t0);
+    t00 = libkineto::get_time_converter()(t00);
+
+    // Our stored timestamps (from roctracer and generated) are in
+    // CLOCK_MONOTONIC domain (in ns).
+    return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
+  }
 }
 #endif
 
@@ -391,7 +401,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
-    timestamp_t offset = getTimeOffset();
+    timestamp_t offset = getTimeOffset(gpuOnly_);
     cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
         std::bind(
@@ -1075,6 +1085,7 @@ void CuptiActivityProfiler::configure(
     config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
   }
   if (!cpuOnly_ && !libkineto::api().client()) {
+    gpuOnly_ = true;
     if (derivedConfig_->isProfilingByIteration()) {
       LOG(INFO) << "GPU-only tracing for " << config_->activitiesRunIterations()
                 << " iterations";
@@ -1123,7 +1134,8 @@ void CuptiActivityProfiler::configure(
 #endif // _WIN32
     cupti_.enableCuptiActivities(
         config_->selectedActivityTypes(), config_->perThreadBufferEnabled());
-#else
+#else // HAS_ROCTRACER
+    cupti_.setMaxEvents(config_->maxEvents());
     cupti_.enableActivities(config_->selectedActivityTypes());
 #endif
     if (VLOG_IS_ON(1)) {
@@ -1283,6 +1295,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       << "Run loop on application step(), iteration = " << currentIter;
 
   switch (currentRunloopState_) {
+    case RunloopState::CollectMemorySnapshot:
+      LOG(WARNING)
+          << "Entered CollectMemorySnapshot in Kineto Loop Step, skipping loop";
+      break;
     case RunloopState::WaitForRequest:
       VLOG(1) << "State: WaitForRequest";
       // Nothing to do
@@ -1424,7 +1440,7 @@ const void CuptiActivityProfiler::performMemoryLoop(
     uint32_t profile_time,
     ActivityLogger* logger,
     Config& config) {
-  currentRunloopState_ = RunloopState::CollectTrace;
+  currentRunloopState_ = RunloopState::CollectMemorySnapshot;
   if (libkineto::api().client()) {
     libkineto::api().client()->start_memory_profile();
     LOG(INFO) << "Running memory profiling for " << profile_time << " ms";

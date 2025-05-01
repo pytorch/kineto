@@ -530,6 +530,7 @@ class Config : public AbstractConfig {
   // Used to flexibly configure some custom options, especially for custom
   // backends. How to parse this string is handled by the custom backend.
   std::string customConfig_;
+
   // Roctracer settings
   uint32_t maxEvents_{1000000};
 };

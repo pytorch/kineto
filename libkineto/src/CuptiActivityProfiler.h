@@ -129,6 +129,9 @@ class CuptiActivityProfiler {
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;
   }
+  bool isCollectingMemorySnapshot() const {
+    return currentRunloopState_ == RunloopState::CollectMemorySnapshot;
+  }
 
   // Invoke at a regular interval to perform profiling activities.
   // When not active, an interval of 1-5 seconds is probably fine,
@@ -464,7 +467,8 @@ class CuptiActivityProfiler {
     WaitForRequest,
     Warmup,
     CollectTrace,
-    ProcessTrace
+    ProcessTrace,
+    CollectMemorySnapshot,
   };
 
   // All recorded trace spans, both CPU and GPU
@@ -490,6 +494,7 @@ class CuptiActivityProfiler {
   profilerOverhead setupOverhead_;
 
   bool cpuOnly_{false};
+  bool gpuOnly_{false};
   bool cpuActivityPresent_{false};
   bool gpuActivityPresent_{false};
 

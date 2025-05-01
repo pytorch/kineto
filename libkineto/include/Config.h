@@ -389,6 +389,10 @@ class Config : public AbstractConfig {
     useTSCTimestamp_ = flag;
   }
 
+  const std::string& getCustomConfig() const {
+    return customConfig_;
+  }
+
   uint32_t maxEvents() const {
     return maxEvents_;
   }
@@ -522,6 +526,10 @@ class Config : public AbstractConfig {
   // Memory Profiler
   bool memoryProfilerEnabled_{false};
   int profileMemoryDuration_{1000};
+
+  // Used to flexibly configure some custom options, especially for custom
+  // backends. How to parse this string is handled by the custom backend.
+  std::string customConfig_;
 
   // Roctracer settings
   uint32_t maxEvents_{1000000};

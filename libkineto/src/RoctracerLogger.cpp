@@ -279,22 +279,6 @@ void RoctracerLogger::api_callback(
   }
 }
 
-timestamp_t getTimeOffset() {
-  int64_t t0, t00;
-  timespec t1;
-  t0 = libkineto::getApproximateTime();
-  clock_gettime(CLOCK_MONOTONIC, &t1);
-  t00 = libkineto::getApproximateTime();
-
-  // Confvert to ns (if necessary)
-  t0 = libkineto::get_time_converter()(t0);
-  t00 = libkineto::get_time_converter()(t00);
-
-  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
-  // domain (in ns).
-  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
-}
-
 void RoctracerLogger::activity_callback(
     const char* begin,
     const char* end,
@@ -304,11 +288,6 @@ void RoctracerLogger::activity_callback(
   std::unique_lock<std::mutex> lock(s_flush.mutex_);
   const roctracer_record_t* record = (const roctracer_record_t*)(begin);
   const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
-
-  // Timestamps are in CLOCK_MONOTONIC
-  // Convert to approximate_time instead.  It's faster apparently.
-  // Do this as often as possible (once per callback), to reduce inversions
-  timestamp_t offset = getTimeOffset();
 
   while (record < end_record) {
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
@@ -321,8 +300,8 @@ void RoctracerLogger::activity_callback(
         record->op,
         record->device_id,
         record->queue_id,
-        record->begin_ns + offset,
-        record->end_ns + offset,
+        record->begin_ns,
+        record->end_ns,
         ((record->kind == HIP_OP_DISPATCH_KIND_KERNEL_) ||
          (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
             ? demangle(record->kernel_name)

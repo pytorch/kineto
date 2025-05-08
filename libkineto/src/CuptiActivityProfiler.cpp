@@ -378,8 +378,6 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
       ApproximateClockToUnixTimeConverter clockConverter;
       get_time_converter() = clockConverter.makeConverter();
     }
-    timestamp_t offset = getTimeOffset();
-    cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
         std::bind(
             &CuptiActivityProfiler::handleRoctracerActivity,

@@ -70,7 +70,7 @@ static const std::vector<gpuDeviceProp>& deviceProps() {
 static const std::string createDevicePropertiesJson(
     size_t id,
     const gpuDeviceProp& props) {
-  std::string gpuSpecific = "";
+  std::string gpuSpecific;
 #if defined(HAS_CUPTI)
   gpuSpecific = fmt::format(
       R"JSON(

@@ -311,6 +311,14 @@ void RoctracerLogger::activity_callback(
   }
 }
 
+void RoctracerLogger::setMaxEvents(uint32_t maxBufferSize) {
+#ifdef HAS_ROCTRACER
+  RoctracerLogger* dis = &singleton();
+  std::lock_guard<std::mutex> lock(dis->rowsMutex_);
+  maxBufferSize_ = maxBufferSize;
+#endif
+}
+
 void RoctracerLogger::startLogging() {
   if (!registered_) {
     roctracer_set_properties(

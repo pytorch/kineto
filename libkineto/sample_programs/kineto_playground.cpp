@@ -6,8 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cuda_runtime.h>
 #include <iostream>
 #include <string>
 
@@ -15,6 +14,20 @@
 
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "kineto_playground.cuh"
+
+#define CHECK_CUDA(call)               \
+  do {                                 \
+    cudaError_t status = call;         \
+    if (status != cudaSuccess) {       \
+      fprintf(                         \
+          stderr,                      \
+          "CUDA Error at %s:%d: %s\n", \
+          __FILE__,                    \
+          __LINE__,                    \
+          cudaGetErrorString(status)); \
+      exit(1);                         \
+    }                                  \
+  } while (0)
 
 using namespace kineto;
 
@@ -25,6 +38,7 @@ int main() {
   warmup();
 
   // Kineto config
+  libkineto_init(false, true);
 
   // Empty types set defaults to all types
   std::set<libkineto::ActivityType> types;
@@ -40,6 +54,7 @@ int main() {
   profiler.startTrace();
   std::cout << "Start playground" << std::endl;
   playground();
+  CHECK_CUDA(cudaDeviceSynchronize());
 
   std::cout << "Stop Trace" << std::endl;
   auto trace = profiler.stopTrace();

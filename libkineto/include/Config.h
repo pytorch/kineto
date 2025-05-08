@@ -174,6 +174,11 @@ class Config : public AbstractConfig {
     return selectedActivityTypes_;
   }
 
+  // Set the types of activities to be traced
+  bool perThreadBufferEnabled() const {
+    return perThreadBufferEnabled_;
+  }
+
   void setSelectedActivityTypes(const std::set<ActivityType>& types) {
     selectedActivityTypes_ = types;
   }
@@ -349,6 +354,13 @@ class Config : public AbstractConfig {
     return cuptiDeviceBufferPoolLimit_;
   }
 
+  bool memoryProfilerEnabled() const {
+    return memoryProfilerEnabled_;
+  }
+
+  int profileMemoryDuration() const {
+    return profileMemoryDuration_;
+  }
   void updateActivityProfilerRequestReceivedTime();
 
   void printActivityProfilerConfig(std::ostream& s) const override;
@@ -375,6 +387,14 @@ class Config : public AbstractConfig {
 
   void setTSCTimestampFlag(bool flag) {
     useTSCTimestamp_ = flag;
+  }
+
+  const std::string& getCustomConfig() const {
+    return customConfig_;
+  }
+
+  uint32_t maxEvents() const {
+    return maxEvents_;
   }
 
  private:
@@ -431,6 +451,9 @@ class Config : public AbstractConfig {
 
   // Activity profiler
   bool activityProfilerEnabled_;
+
+  // Enable per-thread buffer
+  bool perThreadBufferEnabled_;
   std::set<ActivityType> selectedActivityTypes_;
 
   // The activity profiler settings are all on-demand
@@ -499,12 +522,21 @@ class Config : public AbstractConfig {
 
   // CUPTI Timestamp Format
   bool useTSCTimestamp_{true};
+
+  // Memory Profiler
+  bool memoryProfilerEnabled_{false};
+  int profileMemoryDuration_{1000};
+
+  // Used to flexibly configure some custom options, especially for custom
+  // backends. How to parse this string is handled by the custom backend.
+  std::string customConfig_;
+
+  // Roctracer settings
+  uint32_t maxEvents_{1000000};
 };
 
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
-#if __linux__
 bool isDaemonEnvVarSet();
-#endif
 
 } // namespace libkineto

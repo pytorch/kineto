@@ -101,30 +101,20 @@ std::function<time_t(approx_time_t)>& get_time_converter() {
   return _time_converter;
 }
 #ifdef HAS_ROCTRACER
-timestamp_t getTimeOffset(bool gpuOnly) {
+timestamp_t getTimeOffset() {
   timespec t1;
-  if (gpuOnly) {
-    timespec t0, t00;
-    clock_gettime(CLOCK_REALTIME, &t0);
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-    clock_gettime(CLOCK_REALTIME, &t00);
+  int64_t t0, t00;
+  t0 = libkineto::getApproximateTime();
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  t00 = libkineto::getApproximateTime();
 
-    return (timespec_to_ns(t0) >> 1) + (timespec_to_ns(t00) >> 1) -
-        timespec_to_ns(t1);
-  } else {
-    int64_t t0, t00;
-    t0 = libkineto::getApproximateTime();
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-    t00 = libkineto::getApproximateTime();
+  // Confvert to ns (if necessary)
+  t0 = libkineto::get_time_converter()(t0);
+  t00 = libkineto::get_time_converter()(t00);
 
-    // Confvert to ns (if necessary)
-    t0 = libkineto::get_time_converter()(t0);
-    t00 = libkineto::get_time_converter()(t00);
-
-    // Our stored timestamps (from roctracer and generated) are in
-    // CLOCK_MONOTONIC domain (in ns).
-    return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
-  }
+  // Our stored timestamps (from roctracer and generated) are in
+  // CLOCK_MONOTONIC domain (in ns).
+  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
 }
 #endif
 
@@ -401,7 +391,11 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
-    timestamp_t offset = getTimeOffset(gpuOnly_);
+    if (gpuOnly_) {
+      ApproximateClockToUnixTimeConverter clockConverter;
+      get_time_converter() = clockConverter.makeConverter();
+    }
+    timestamp_t offset = getTimeOffset();
     cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
         std::bind(

@@ -89,4 +89,24 @@ static_assert(
     "Expected either int64_t (`getTime`) or uint64_t (some TSC reads).");
 
 std::function<time_t(approx_time_t)>& get_time_converter();
+
+// Convert `getCount` results to Nanoseconds since unix epoch.
+class ApproximateClockToUnixTimeConverter final {
+ public:
+  ApproximateClockToUnixTimeConverter();
+  std::function<time_t(approx_time_t)> makeConverter();
+
+  struct UnixAndApproximateTimePair {
+    time_t t_;
+    approx_time_t approx_t_;
+  };
+  static UnixAndApproximateTimePair measurePair();
+
+ private:
+  static constexpr size_t replicates = 1001;
+  using time_pairs = std::array<UnixAndApproximateTimePair, replicates>;
+  time_pairs measurePairs();
+
+  time_pairs start_times_;
+};
 } // namespace libkineto

@@ -58,7 +58,7 @@ class AbstractConfig {
     return source_;
   }
 
-  AbstractConfig& feature(std::string name) const {
+  AbstractConfig& feature(const std::string& name) const {
     const auto& pos = featureConfigs_.find(name);
     return *pos->second;
   }

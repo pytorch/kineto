@@ -126,7 +126,7 @@ class LibkinetoApi {
     return configLoader_;
   }
 
-  void registerProfilerFactory(ChildActivityProfilerFactory factory) {
+  void registerProfilerFactory(const ChildActivityProfilerFactory& factory) {
     if (isProfilerInitialized()) {
       activityProfiler_->addChildActivityProfiler(factory());
     } else {

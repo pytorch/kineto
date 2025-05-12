@@ -111,7 +111,8 @@ int RoctracerActivityApi::processActivities(
   // Async ops are in CLOCK_MONOTONIC rather than junk clock.
   // Convert these timestamps, poorly.
   // These accurate timestamps will skew when converted to approximate time
-  // The time_converter is not available at collection time.  Or we could do a much better job.
+  // The time_converter is not available at collection time.  Or we could do a
+  // much better job.
   auto toffset = getTimeOffset();
 
   // All Runtime API Calls
@@ -151,14 +152,14 @@ int RoctracerActivityApi::processActivities(
       // Convert the begin and end timestamps from monotonic clock to system
       // clock.
       if (item->type == ROCTRACER_ACTIVITY_ASYNC) {
-          // Async ops are in CLOCK_MONOTONIC, apply offset to converted approximate
-          item->begin += toffset;
-          item->end += toffset;
-      }
-      else {
-          // Runtime ranges are in approximate clock, just apply conversion
-          item->begin = libkineto::get_time_converter()(item->begin);
-          item->end = libkineto::get_time_converter()(item->end);
+        // Async ops are in CLOCK_MONOTONIC, apply offset to converted
+        // approximate
+        item->begin += toffset;
+        item->end += toffset;
+      } else {
+        // Runtime ranges are in approximate clock, just apply conversion
+        item->begin = libkineto::get_time_converter()(item->begin);
+        item->end = libkineto::get_time_converter()(item->end);
       }
       handler(item);
       ++count;

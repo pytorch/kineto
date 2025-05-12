@@ -14,10 +14,10 @@
 #include <cstring>
 #include <mutex>
 
+#include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
-#include "ApproximateClock.h"
 
 using namespace libkineto;
 using namespace std::chrono;

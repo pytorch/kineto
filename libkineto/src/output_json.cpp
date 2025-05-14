@@ -11,6 +11,7 @@
 #include <fmt/format.h>
 #include <time.h>
 #include <fstream>
+#include <iomanip>
 #include "Config.h"
 #include "TraceSpan.h"
 
@@ -77,11 +78,20 @@ void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
   value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
 }
 
+static std::string string2hex(const std::string& str) {
+  std::stringstream ofs;
+  for (uint8_t c : str) {
+    ofs << std::nouppercase << std::setw(2) << std::setfill('0') << std::hex
+        << static_cast<int>(c);
+  }
+  return ofs.str();
+}
+
 static void sanitizeForNonReadableChars(std::string& value) {
   for (auto& c : value) {
     if (!std::isprint(c)) {
-      LOG(WARNING) << "Non JSON compliant character found in string: " << value
-                   << " Replacing with 'unknown'";
+      LOG(WARNING) << "Non JSON compliant character found in string: 0x"
+                   << string2hex(value) << " Replacing with 'unknown'";
       value = "unknown";
       break;
     }

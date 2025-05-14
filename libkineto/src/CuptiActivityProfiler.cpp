@@ -391,10 +391,6 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
-    if (gpuOnly_) {
-      ApproximateClockToUnixTimeConverter clockConverter;
-      get_time_converter() = clockConverter.makeConverter();
-    }
     timestamp_t offset = getTimeOffset();
     cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
@@ -1055,6 +1051,8 @@ void CuptiActivityProfiler::configure(
     LOG(WARNING) << "CuptiActivityProfiler already busy, terminating";
     return;
   }
+  ApproximateClockToUnixTimeConverter clockConverter;
+  get_time_converter() = clockConverter.makeConverter();
 
   config_ = config.clone();
 

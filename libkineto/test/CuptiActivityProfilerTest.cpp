@@ -26,6 +26,7 @@
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
+#include "src/ApproximateClock.h"
 #include "src/CuptiActivityApi.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/output_json.h"
@@ -474,6 +475,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   profiler.recordThreadInfo();
 
@@ -611,6 +613,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   int64_t kernelLaunchTime = start_time_ns + 20;
   profiler.recordThreadInfo();
@@ -783,6 +786,7 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   int64_t kernelLaunchTime = start_time_ns + 20;
   profiler.recordThreadInfo();
@@ -1047,6 +1051,7 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
   profiler.recordThreadInfo();
 
   // Set up CPU events and corresponding GPU events

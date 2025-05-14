@@ -92,15 +92,6 @@ std::unordered_map<uint32_t, uint32_t>& ctxToDeviceId() {
 
 namespace KINETO_NAMESPACE {
 
-// Sets the timestamp converter. If nothing is set then the converter just
-// returns the input. For this reason, until we add profiler impl of passing in
-// TSC converter we just need to guard the callback itself
-std::function<time_t(approx_time_t)>& get_time_converter() {
-  static std::function<time_t(approx_time_t)> _time_converter =
-      [](approx_time_t t) { return t; };
-  return _time_converter;
-}
-
 #ifdef HAS_CUPTI
 bool& use_cupti_tsc() {
   static bool use_cupti_tsc = true;
@@ -374,10 +365,6 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
-    if (gpuOnly_) {
-      ApproximateClockToUnixTimeConverter clockConverter;
-      get_time_converter() = clockConverter.makeConverter();
-    }
     const int count = cupti_.processActivities(
         std::bind(
             &CuptiActivityProfiler::handleRoctracerActivity,
@@ -1036,6 +1023,8 @@ void CuptiActivityProfiler::configure(
     LOG(WARNING) << "CuptiActivityProfiler already busy, terminating";
     return;
   }
+  ApproximateClockToUnixTimeConverter clockConverter;
+  get_time_converter() = clockConverter.makeConverter();
 
   config_ = config.clone();
 

@@ -14,6 +14,7 @@
 #include <cstring>
 #include <mutex>
 
+#include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
@@ -101,19 +102,15 @@ void RoctracerLogger::api_callback(
 
     // Pack callbacks into row structures
 
-    thread_local std::unordered_map<activity_correlation_id_t, timespec>
+    thread_local std::unordered_map<activity_correlation_id_t, uint64_t>
         timestamps;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
-      timespec timestamp;
-      clock_gettime(CLOCK_MONOTONIC, &timestamp); // record proper clock
-      timestamps[data->correlation_id] = timestamp;
+      timestamps[data->correlation_id] = getApproximateTime();
     } else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
-      timespec startTime;
-      startTime = timestamps[data->correlation_id];
+      uint64_t startTime = timestamps[data->correlation_id];
       timestamps.erase(data->correlation_id);
-      timespec endTime;
-      clock_gettime(CLOCK_MONOTONIC, &endTime); // record proper clock
+      uint64_t endTime = getApproximateTime();
 
       switch (cid) {
         case HIP_API_ID_hipLaunchKernel:
@@ -128,8 +125,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.function_address,
               nullptr,
               args.numBlocks.x,
@@ -153,8 +150,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               nullptr,
               args.f,
               args.gridDimX,
@@ -178,8 +175,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.function_address,
               nullptr,
               args.numBlocks.x,
@@ -202,8 +199,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               data->args.hipMalloc.ptr__val,
               data->args.hipMalloc.size);
           insert_row_to_buffer(row);
@@ -215,8 +212,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               data->args.hipFree.ptr,
               0);
           insert_row_to_buffer(row);
@@ -229,8 +226,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.src,
               args.dst,
               args.sizeBytes,
@@ -248,8 +245,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime),
+              startTime,
+              endTime,
               args.src,
               args.dst,
               args.sizeBytes,
@@ -264,8 +261,8 @@ void RoctracerLogger::api_callback(
               cid,
               processId(),
               systemThreadId(),
-              timespec_to_ns(startTime),
-              timespec_to_ns(endTime));
+              startTime,
+              endTime);
           insert_row_to_buffer(row);
         } break;
       } // switch

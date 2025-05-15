@@ -68,8 +68,20 @@ inline bool RoctracerActivityApi::isLogged(
   return activityMaskSnapshot_ & (1 << static_cast<uint32_t>(atype));
 }
 
-void RoctracerActivityApi::setTimeOffset(timestamp_t toffset) {
-  toffset_ = toffset;
+timestamp_t getTimeOffset() {
+  int64_t t0, t00;
+  timespec t1;
+  t0 = libkineto::getApproximateTime();
+  clock_gettime(CLOCK_MONOTONIC, &t1);
+  t00 = libkineto::getApproximateTime();
+
+  // Confvert to ns (if necessary)
+  t0 = libkineto::get_time_converter()(t0);
+  t00 = libkineto::get_time_converter()(t00);
+
+  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
+  // domain (in ns).
+  return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
 }
 
 int RoctracerActivityApi::processActivities(
@@ -95,6 +107,13 @@ int RoctracerActivityApi::processActivities(
     std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
     externalCorrelations.clear();
   }
+
+  // Async ops are in CLOCK_MONOTONIC rather than junk clock.
+  // Convert these timestamps, poorly.
+  // These accurate timestamps will skew when converted to approximate time
+  // The time_converter is not available at collection time.  Or we could do a
+  // much better job.
+  auto toffset = getTimeOffset();
 
   // All Runtime API Calls
   for (auto& item : d->rows_) {
@@ -132,8 +151,16 @@ int RoctracerActivityApi::processActivities(
     if (!filtered) {
       // Convert the begin and end timestamps from monotonic clock to system
       // clock.
-      item->begin = item->begin + toffset_;
-      item->end = item->end + toffset_;
+      if (item->type == ROCTRACER_ACTIVITY_ASYNC) {
+        // Async ops are in CLOCK_MONOTONIC, apply offset to converted
+        // approximate
+        item->begin += toffset;
+        item->end += toffset;
+      } else {
+        // Runtime ranges are in approximate clock, just apply conversion
+        item->begin = libkineto::get_time_converter()(item->begin);
+        item->end = libkineto::get_time_converter()(item->end);
+      }
       handler(item);
       ++count;
     }

@@ -8,7 +8,6 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-
 #install libraries into correct locations on all platforms
 include(GNUInstallDirs)
 

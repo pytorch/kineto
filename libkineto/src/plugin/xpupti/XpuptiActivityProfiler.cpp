@@ -53,6 +53,15 @@ void XpuptiActivityProfilerSession::stop() {
       libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
 }
 
+void XpuptiActivityProfilerSession::toggleCollectionDynamic(
+    const bool enable) {
+  if (enable) {
+    xpti_.enableXpuptiActivities(activity_types_);
+  } else {
+    xpti_.disablePtiActivities(activity_types_);
+  }
+}
+
 void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
   traceBuffer_.span = libkineto::TraceSpan(
       profilerStartTs_, profilerEndTs_, "__xpu_profiler__");

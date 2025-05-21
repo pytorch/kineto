@@ -41,6 +41,9 @@
 #include "RoctracerActivityApi.h"
 #include "RoctracerLogger.h"
 #endif
+#ifdef HAS_XPUPTI
+#include "plugin/xpupti/XpuptiActivityProfiler.h"
+#endif
 #include "ActivityBuffers.h"
 #include "output_base.h"
 
@@ -1192,6 +1195,12 @@ void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
     cupti_.enableActivities(derivedConfig_->profileActivityTypes());
   } else {
     cupti_.disableActivities(derivedConfig_->profileActivityTypes());
+  }
+#endif
+#ifdef HAS_XPUPTI
+  for (auto& session : sessions_) {
+    auto xpu_session = dynamic_cast<XpuptiActivityProfilerSession*>(session.get());
+    xpu_session->toggleCollectionDynamic(enable);
   }
 #endif
 }

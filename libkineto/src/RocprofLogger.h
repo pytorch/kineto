@@ -18,6 +18,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <string>
 
 #include <rocprofiler-sdk/registration.h>
 

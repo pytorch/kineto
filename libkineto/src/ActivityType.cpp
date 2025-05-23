@@ -32,6 +32,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
      {"overhead", ActivityType::OVERHEAD},
      {"mtia_runtime", ActivityType::MTIA_RUNTIME},
      {"mtia_ccp_events", ActivityType::MTIA_CCP_EVENTS},
+     {"mtia_insight", ActivityType::MTIA_INSIGHT},
      {"cuda_sync", ActivityType::CUDA_SYNC},
      {"glow_runtime", ActivityType::GLOW_RUNTIME},
      {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},

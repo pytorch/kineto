@@ -103,6 +103,7 @@ TEST(ParseTest, ActivityTypes) {
            ActivityType::CUDA_DRIVER,
            ActivityType::CUDA_SYNC,
            ActivityType::MTIA_RUNTIME,
+           ActivityType::MTIA_INSIGHT,
            ActivityType::MTIA_CCP_EVENTS}));
 
   Config cfg2;

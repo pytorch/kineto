@@ -23,6 +23,7 @@ class XpuptiActivityProfilerSession
 
   void start() override;
   void stop() override;
+  void toggleCollectionDynamic(const bool);
   std::vector<std::string> errors() override {
     return errors_;
   };

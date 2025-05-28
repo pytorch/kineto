@@ -336,6 +336,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
   // used in unittests only
   if (opts.unitTest) {
     initSuccess_ = true;
+    unitTest_ = true;
     profiler_map[deviceId_] = this;
     return;
   }
@@ -714,7 +715,7 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
 }
 
 CuptiRBProfilerSession::~CuptiRBProfilerSession() {
-  if (initSuccess_) {
+  if (initSuccess_ && !unitTest_) {
     CuptiRBProfilerSession::deInitCupti();
   }
 }

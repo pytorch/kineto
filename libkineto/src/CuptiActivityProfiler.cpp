@@ -551,7 +551,10 @@ inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
             << captureWindowEndTime_;
     ecs_.out_of_range_events++;
   }
-  return out_of_range;
+  // Range Profiling mode returns kernels with 0 ts and duration that we can
+  // pass through to output
+  bool zero_ts = rangeProfilingActive_ && (act.timestamp() == 0);
+  return !zero_ts && out_of_range;
 }
 
 #ifdef HAS_CUPTI
@@ -788,6 +791,11 @@ void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
     // Buffer is out-of-order.
     // Swap so that runtime activity is first for the comparison below.
     std::swap(act1, act2);
+  }
+  // Range Profiling mode returns kernels with 0 ts and duration that we can
+  // pass through to output
+  if (act2->timestamp() == 0) {
+    return;
   }
   if (act1->timestamp() > act2->timestamp()) {
     LOG_FIRST_N(WARNING, 10)
@@ -1113,6 +1121,8 @@ void CuptiActivityProfiler::configure(
   if (profilers_.size() > 0) {
     configureChildProfilers();
   }
+  rangeProfilingActive_ = config_->selectedActivityTypes().count(
+                              ActivityType::CUDA_PROFILER_RANGE) > 0;
 
   if (libkineto::api().client()) {
     libkineto::api().client()->prepare(

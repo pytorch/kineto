@@ -296,7 +296,9 @@ const seconds Config::maxRequestAge() const {
 
 static std::string getTimeStr(time_point<system_clock> t) {
   std::time_t t_c = system_clock::to_time_t(t);
-  return fmt::format("{:%H:%M:%S}", fmt::localtime(t_c));
+  std::tm tm{};
+  localtime_r(&t_c, &tm);
+  return fmt::format("{:%H:%M:%S}", tm);
 }
 
 static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
@@ -588,8 +590,9 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
     }
   } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
-    s << "  Trace start time: "
-      << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(t_c));
+    std::tm tm{};
+    localtime_r(&t_c, &tm);
+    s << "  Trace start time: " << fmt::format("{:%Y-%m-%d %H:%M:%S}", tm);
     s << "  Trace duration: " << activitiesDuration().count() << "ms"
       << std::endl;
     s << "  Warmup duration: " << activitiesWarmupDuration().count() << "s"

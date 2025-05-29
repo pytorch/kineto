@@ -209,6 +209,7 @@ class CuptiRBProfilerSession {
 
   bool initSuccess_ = false;
   bool profilingActive_ = false;
+  bool unitTest_ = false;
 
   friend void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
 };

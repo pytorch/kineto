@@ -11,6 +11,7 @@
 #include <string>
 #include <thread>
 
+#include <folly/init/Init.h>
 #include <libkineto.h>
 
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -20,11 +21,15 @@ using namespace kineto;
 
 static const std::string kFileName = "/tmp/kineto_playground_trace.json";
 
-int main() {
+int main(int argc, char** argv) {
+  folly::init(&argc, &argv);
   warmup();
 
   // Kineto config
   std::set<libkineto::ActivityType> types_cupti_prof = {
+      libkineto::ActivityType::CUDA_DRIVER,
+      libkineto::ActivityType::CUDA_RUNTIME,
+      libkineto::ActivityType::CONCURRENT_KERNEL,
       libkineto::ActivityType::CUDA_PROFILER_RANGE,
   };
 
@@ -39,7 +44,7 @@ int main() {
 
   std::string profiler_config =
       "ACTIVITIES_WARMUP_PERIOD_SECS=0\n "
-      "CUPTI_PROFILER_METRICS=kineto__cuda_core_flops\n "
+      "CUPTI_PROFILER_METRICS=kineto__cuda_core_flops,sm__inst_executed.sum\n "
       "CUPTI_PROFILER_ENABLE_PER_KERNEL=true";
 
   auto& profiler = libkineto::api().activityProfiler();

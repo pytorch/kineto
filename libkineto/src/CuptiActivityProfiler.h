@@ -497,6 +497,7 @@ class CuptiActivityProfiler {
   bool gpuOnly_{false};
   bool cpuActivityPresent_{false};
   bool gpuActivityPresent_{false};
+  bool rangeProfilingActive_{false};
 
   // ***************************************************************************
   // Below state is shared with external threads.

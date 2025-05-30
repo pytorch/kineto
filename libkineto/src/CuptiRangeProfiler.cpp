@@ -60,6 +60,11 @@ std::unordered_map<std::string, std::vector<std::string>> kDerivedMetrics = {
     {"kineto__tensor_core_insts", {"sm__inst_executed_pipe_tensor.sum"}},
 };
 
+inline bool hasGPUActivitiesEnabled(const Config& config) {
+  return (config.selectedActivityTypes().count(
+             ActivityType::CONCURRENT_KERNEL)) > 0;
+}
+
 } // namespace
 
 CuptiRangeProfilerSession::CuptiRangeProfilerSession(
@@ -112,6 +117,7 @@ CuptiRangeProfilerSession::CuptiRangeProfilerSession(
   opts.numNestingLevels = 1;
   opts.cuContext = nullptr;
   opts.unitTest = false;
+  opts.has_gpu_activities_enabled_ = hasGPUActivitiesEnabled(config);
 
   for (auto device_id : CuptiRBProfilerSession::getActiveDevices()) {
     LOG(INFO) << "Init CUPTI range profiler on gpu = " << device_id
@@ -263,17 +269,13 @@ std::unique_ptr<IActivityProfilerSession> CuptiRangeProfiler::configure(
   if (activity_types_.find(kProfActivityType) == activity_types_.end()) {
     return nullptr;
   }
-  bool has_gpu_event_types =
-      (activity_types_.count(ActivityType::GPU_MEMCPY) +
-       activity_types_.count(ActivityType::GPU_MEMSET) +
-       activity_types_.count(ActivityType::CONCURRENT_KERNEL)) > 0;
 
-  if (has_gpu_event_types) {
+  if (!hasGPUActivitiesEnabled(config)) {
     LOG(WARNING)
-        << kProfilerName << " cannot run in combination with"
-        << " other cuda activity profilers, please configure"
-        << " with cuda_profiler_range and optionally cpu_op/user_annotations";
-    return nullptr;
+        << "Running " << kProfilerName
+        << " alongside other GPU kernel activities is preferred."
+        << "This enables more accurate tracking of nested/dynamic kernel names."
+        << "Please turn on CONCURRENT_KERNEL (CUDA) activity type to avoid obtaining invalid results in the above cases.";
   }
 
   return std::make_unique<CuptiRangeProfilerSession>(config, factory_);

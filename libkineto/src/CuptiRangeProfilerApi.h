@@ -141,12 +141,6 @@ class CuptiRBProfilerSession {
       const std::string& CounterDataFileName,
       const std::string& CounterDataSBFileName);
 
-  // This is not thread safe so please only call after
-  // profiling has stopped
-  const std::vector<std::string>& getKernelNames() const {
-    return kernelNames_;
-  }
-
   int deviceId() const {
     return deviceId_;
   }
@@ -182,12 +176,6 @@ class CuptiRBProfilerSession {
  private:
   bool createCounterDataImage();
 
-  // log kernel name that used with callbacks
-  void logKernelName(const char* kernel) {
-    std::lock_guard<std::mutex> lg(kernelNamesMutex_);
-    kernelNames_.emplace_back(kernel);
-  }
-
   std::vector<std::string> metricNames_;
   std::string chipName_;
 
@@ -201,10 +189,6 @@ class CuptiRBProfilerSession {
   std::vector<uint8_t> configImage;
   std::vector<uint8_t> counterDataImage;
   std::vector<uint8_t> counterDataScratchBuffer;
-
-  std::mutex kernelNamesMutex_;
-  // raw kernel names (not demangled)
-  std::vector<std::string> kernelNames_;
 
   bool callbacksEnabled_ = false;
   uint32_t numCallbacks_ = 0;
@@ -220,7 +204,10 @@ class CuptiRBProfilerSession {
   bool profilingActive_ = false;
   bool unitTest_ = false;
 
-  friend void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
+  friend void __trackCudaKernelLaunch(
+      CUcontext ctx,
+      const char* kernelName,
+      uint64_t correlation_id);
 };
 
 // Factory class used by the wrapping CuptiProfiler object
@@ -239,7 +226,10 @@ struct CuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {
 namespace testing {
 
 void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid);
-void trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
+void trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id);
 
 } // namespace testing
 

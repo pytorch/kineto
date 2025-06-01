@@ -15,6 +15,7 @@
 #include "include/Config.h"
 #include "include/libkineto.h"
 #include "src/CuptiRangeProfilerApi.h"
+#include "src/KernelRegistry.h"
 
 #include "CuptiRangeProfilerTestUtil.h"
 #include "src/Logger.h"
@@ -83,13 +84,13 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
 
   session->asyncStartAndEnable(CUPTI_UserRange, CUPTI_UserReplay);
 
-  simulateKernelLaunch(ctx0, "hello");
-  simulateKernelLaunch(ctx0, "foo");
-  simulateKernelLaunch(ctx0, "bar");
+  simulateKernelLaunch(ctx0, "hello", 1);
+  simulateKernelLaunch(ctx0, "foo", 2);
+  simulateKernelLaunch(ctx0, "bar", 3);
 
   session->asyncDisableAndStop();
   // stop happens after next kernel is run
-  simulateKernelLaunch(ctx0, "bar");
+  simulateKernelLaunch(ctx0, "bar", 4);
   simulateCudaContextDestroy(ctx0, 0 /*device_id*/);
 
   EXPECT_EQ(session->passes_ended, 1);
@@ -111,6 +112,7 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
       .metricNames = {"metricNames"},
       .deviceId = 0,
       .maxRanges = 1,
+      .has_gpu_activities_enabled_ = true,
       .numNestingLevels = 1,
       .cuContext = ctx0};
 
@@ -119,24 +121,37 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
 
   session->asyncStartAndEnable(CUPTI_AutoRange, CUPTI_KernelReplay);
 
-  simulateKernelLaunch(ctx0, "hello");
-  simulateKernelLaunch(ctx0, "foo");
-  simulateKernelLaunch(ctx1, "kernel_on_different_device");
-  simulateKernelLaunch(ctx0, "bar");
+  simulateKernelLaunch(ctx0, "hello", 1);
+  simulateKernelLaunch(ctx0, "foo", 2);
+  simulateKernelLaunch(ctx1, "kernel_on_different_device", 3);
+  simulateKernelLaunch(ctx0, "bar", 77);
 
   session->asyncDisableAndStop();
   // stop happens after next kernel is run
-  simulateKernelLaunch(ctx0, "bar");
+  simulateKernelLaunch(ctx0, "bar", 5);
+
+  auto V0 = KernelRegistry::singleton()->getKernelInfo(0, 0);
+  auto V1 = KernelRegistry::singleton()->getKernelInfo(0, 1);
+  auto V2 = KernelRegistry::singleton()->getKernelInfo(0, 2);
+  auto V3 = KernelRegistry::singleton()->getKernelInfo(0, 3);
+  EXPECT_TRUE(V0.has_value());
+  EXPECT_TRUE(V1.has_value());
+  EXPECT_TRUE(V2.has_value());
+  EXPECT_FALSE(V3.has_value());
+
+  EXPECT_EQ(V0.value().first, "hello");
+  EXPECT_EQ(V1.value().first, "foo");
+  EXPECT_EQ(V2.value().first, "bar");
+
+  EXPECT_EQ(V0.value().second, 1);
+  EXPECT_EQ(V1.value().second, 2);
+  EXPECT_EQ(V2.value().second, 77);
+
   simulateCudaContextDestroy(ctx0, 0 /*device_id*/);
 
   EXPECT_EQ(session->passes_ended, 0);
   EXPECT_EQ(session->ranges_ended, 0);
   EXPECT_TRUE(session->enabled);
-
-  EXPECT_EQ(
-      session->getKernelNames(),
-      std::vector<std::string>({"hello", "foo", "bar"}))
-      << "Kernel names were not tracked";
 }
 
 #endif // HAS_CUPTI_RANGE_PROFILER

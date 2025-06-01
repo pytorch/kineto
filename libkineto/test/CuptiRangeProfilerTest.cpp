@@ -112,10 +112,10 @@ class CuptiRangeProfilerTest : public ::testing::Test {
 
   int simulateWorkload() {
     for (const auto& k : kCtx0Kernels) {
-      simulateKernelLaunch(ctx0_, k);
+      simulateKernelLaunch(ctx0_, k, 1);
     }
     for (const auto& k : kCtx1Kernels) {
-      simulateKernelLaunch(ctx1_, k);
+      simulateKernelLaunch(ctx1_, k, 2);
     }
     return kCtx0Kernels.size() + kCtx1Kernels.size();
   }

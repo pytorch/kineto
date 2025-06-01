@@ -35,6 +35,7 @@
 #include "CuptiActivity.cpp"
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
+#include "KernelRegistry.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivity.h"
@@ -884,12 +885,16 @@ void CuptiActivityProfiler::handleCuptiActivity(
       handleRuntimeActivity(
           reinterpret_cast<const CUpti_ActivityAPI*>(record), logger);
       break;
-    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
-      handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityKernel4*>(record), logger);
-      updateCtxToDeviceId(
-          reinterpret_cast<const CUpti_ActivityKernel4*>(record));
+    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL: {
+      auto kernel = reinterpret_cast<const CUpti_ActivityKernel4*>(record);
+      // Register all kernels launches so we could correlate them with other
+      // events.
+      KernelRegistry::singleton()->recordKernel(
+          kernel->deviceId, demangle(kernel->name), kernel->correlationId);
+      handleGpuActivity(kernel, logger);
+      updateCtxToDeviceId(kernel);
       break;
+    }
     case CUPTI_ACTIVITY_KIND_SYNCHRONIZATION:
       handleCudaSyncActivity(
           reinterpret_cast<const CUpti_ActivitySynchronization*>(record),
@@ -1597,6 +1602,9 @@ void CuptiActivityProfiler::resetTraceData() {
   if (!cpuOnly_) {
     cupti_.clearActivities();
     cupti_.teardownContext();
+#ifdef HAS_CUPTI
+    KernelRegistry::singleton()->clear();
+#endif
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
   activityMap_.clear();

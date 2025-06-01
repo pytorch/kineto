@@ -19,6 +19,7 @@
 #include "CuptiRangeProfiler.h"
 #include "CuptiRangeProfilerConfig.h"
 #include "Demangle.h"
+#include "KernelRegistry.h"
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {
@@ -146,11 +147,12 @@ void CuptiRangeProfilerSession::addRangeEvents(
   const auto& metricNames = result.metricNames;
   auto& activities = traceBuffer_.activities;
   bool use_kernel_names = false;
-  int num_kernels = 0;
+  auto device_id = profiler->deviceId();
+  int num_kernels = KernelRegistry::singleton()->getNumKernels(device_id);
+  KernelRegistry* KR = KernelRegistry::singleton();
 
   if (rangeType_ == CUPTI_AutoRange) {
     use_kernel_names = true;
-    num_kernels = profiler->getKernelNames().size();
     if (num_kernels != result.rangeVals.size()) {
       LOG(WARNING) << "Number of kernels tracked does not match the "
                    << " number of ranges collected"
@@ -168,15 +170,24 @@ void CuptiRangeProfilerSession::addRangeEvents(
   int ridx = 0;
   for (const auto& measurement : result.rangeVals) {
     bool use_kernel_as_range = use_kernel_names && (ridx < num_kernels);
+
+    uint64_t correlationId = 0;
+    std::string rangeName = measurement.rangeName;
+
+    if (auto KI = KR->getKernelInfo(device_id, ridx)) {
+      rangeName = KI->first;
+      correlationId = KI->second;
+    }
+
     traceBuffer_.emplace_activity(
         traceBuffer_.span,
         kProfActivityType,
-        use_kernel_as_range ? demangle(profiler->getKernelNames()[ridx])
-                            : measurement.rangeName);
+        use_kernel_as_range ? rangeName : measurement.rangeName);
     auto& event = activities.back();
     event->startTime = startTime + interval * ridx;
     event->endTime = startTime + interval * (ridx + 1);
     event->device = profiler->deviceId();
+    event->addMetadata("correlation", correlationId);
 
     // add metadata per counter
     for (int i = 0; i < metricNames.size(); i++) {

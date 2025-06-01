@@ -18,6 +18,7 @@
 
 #include "Demangle.h"
 #include "DeviceUtil.h"
+#include "KernelRegistry.h"
 #include "Logger.h"
 #include "time_since_epoch.h"
 
@@ -59,7 +60,10 @@ std::set<uint32_t> active_devices;
 
 // forward declarations
 void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid);
-void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
+void __trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id);
 
 /// Helper functions
 
@@ -164,10 +168,13 @@ void trackCudaKernelLaunch(
   if (cbInfo->callbackSite != CUPTI_API_ENTER) {
     return;
   }
-  __trackCudaKernelLaunch(ctx, cbInfo->symbolName);
+  __trackCudaKernelLaunch(ctx, cbInfo->symbolName, cbInfo->correlationId);
 }
 
-void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
+void __trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id) {
   VLOG(0) << " Tracking kernel name = " << (kernelName ? kernelName : "")
           << " context ptr = " << ctx;
 
@@ -198,10 +205,10 @@ void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
     return;
   }
 
-  // TODO we should check has_gpu_activities_enabled_ here.
-  // If so, just skip saving the kernels.
   if (profiler->curRange_ == CUPTI_AutoRange) {
-    profiler->logKernelName(kernelName ? kernelName : "__missing__");
+    if (profiler->has_gpu_activities_enabled_)
+      KernelRegistry::singleton()->recordKernel(
+          device_id, demangle(kernelName), correlation_id);
   }
 
   // periodically flush profiler data from GPU
@@ -626,14 +633,6 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
     disableAndStop();
   }
 
-  LOG(INFO) << "Total kernels logged = " << kernelNames_.size();
-  if (verbose) {
-    for (const auto& kernel : kernelNames_) {
-      std::cout << demangle(kernel) << std::endl;
-    }
-    LOG(INFO) << "Profiler Range data : ";
-  }
-
   auto results = nvperf::evalMetricValues(
       chipName_, counterDataImage, metricNames_, verbose /*verbose*/);
 
@@ -802,9 +801,12 @@ void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
 #endif // HAS_CUPTI_RANGE_PROFILER
 }
 
-void trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
+void trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id) {
 #if HAS_CUPTI_RANGE_PROFILER
-  __trackCudaKernelLaunch(ctx, kernelName);
+  __trackCudaKernelLaunch(ctx, kernelName, correlation_id);
 #endif // HAS_CUPTI_RANGE_PROFILER
 }
 

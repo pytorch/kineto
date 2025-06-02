@@ -112,9 +112,9 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
       .metricNames = {"metricNames"},
       .deviceId = 0,
       .maxRanges = 1,
-      .has_gpu_activities_enabled_ = true,
       .numNestingLevels = 1,
-      .cuContext = ctx0};
+      .cuContext = ctx0,
+      .has_gpu_activities_enabled_ = true};
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());

@@ -13,10 +13,14 @@
 #include <cuda_runtime_api.h>
 // Using CUDA 11 and above due to usage of API:
 // cuptiProfilerGetCounterAvailability.
+// Starting from CUDA 12.06 the Profiler API is superseded by Range Profiler API
+// This needs significant rework. See
+// https://docs.nvidia.com/cupti/main/main.html#evolution-of-the-profiling-apis
 #if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && \
-    CUDART_VERSION >= 10000 && CUDA_VERSION >= 11000
+    CUDART_VERSION >= 10000 && CUDA_VERSION >= 11000 && CUDA_VERSION <= 12060
 #define HAS_CUPTI_RANGE_PROFILER 1
-#endif // CUDART_VERSION > 10.00 and CUDA_VERSION >= 11.00
+#endif // CUDART_VERSION > 10.00 and CUDA_VERSION >= 11.00 and CUDA_VERSION
+       // <= 12.06
 #endif // HAS_CUPTI
 
 #if HAS_CUPTI_RANGE_PROFILER
@@ -63,6 +67,9 @@ struct CuptiRangeProfilerOptions {
   int maxRanges = 1;
   int numNestingLevels = 1;
   CUcontext cuContext = nullptr;
+  // If GPU activities are enabled we need not use CUPTI callbacks
+  // to track CUDA kernels
+  bool has_gpu_activities_enabled_ = false;
   bool unitTest = false;
 };
 
@@ -134,12 +141,6 @@ class CuptiRBProfilerSession {
       const std::string& CounterDataFileName,
       const std::string& CounterDataSBFileName);
 
-  // This is not thread safe so please only call after
-  // profiling has stopped
-  const std::vector<std::string>& getKernelNames() const {
-    return kernelNames_;
-  }
-
   int deviceId() const {
     return deviceId_;
   }
@@ -167,18 +168,13 @@ class CuptiRBProfilerSession {
 
   CUpti_ProfilerRange curRange_ = CUPTI_AutoRange;
   CUpti_ProfilerReplayMode curReplay_ = CUPTI_KernelReplay;
+  bool has_gpu_activities_enabled_ = false;
 
   std::chrono::time_point<std::chrono::high_resolution_clock> profilerStartTs_,
       profilerStopTs_, profilerInitDoneTs_;
 
  private:
   bool createCounterDataImage();
-
-  // log kernel name that used with callbacks
-  void logKernelName(const char* kernel) {
-    std::lock_guard<std::mutex> lg(kernelNamesMutex_);
-    kernelNames_.emplace_back(kernel);
-  }
 
   std::vector<std::string> metricNames_;
   std::string chipName_;
@@ -194,10 +190,7 @@ class CuptiRBProfilerSession {
   std::vector<uint8_t> counterDataImage;
   std::vector<uint8_t> counterDataScratchBuffer;
 
-  std::mutex kernelNamesMutex_;
-  // raw kernel names (not demangled)
-  std::vector<std::string> kernelNames_;
-
+  bool callbacksEnabled_ = false;
   uint32_t numCallbacks_ = 0;
 
   static std::vector<uint8_t>& counterAvailabilityImage();
@@ -209,8 +202,12 @@ class CuptiRBProfilerSession {
 
   bool initSuccess_ = false;
   bool profilingActive_ = false;
+  bool unitTest_ = false;
 
-  friend void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
+  friend void __trackCudaKernelLaunch(
+      CUcontext ctx,
+      const char* kernelName,
+      uint64_t correlation_id);
 };
 
 // Factory class used by the wrapping CuptiProfiler object
@@ -229,7 +226,10 @@ struct CuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {
 namespace testing {
 
 void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid);
-void trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
+void trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id);
 
 } // namespace testing
 

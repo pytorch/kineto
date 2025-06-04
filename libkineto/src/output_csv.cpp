@@ -50,11 +50,13 @@ void EventCSVLogger::handleSample(
   if (out_) {
     auto now = system_clock::now();
     auto time = system_clock::to_time_t(now);
+    std::tm tm_result;
+    localtime_r(&time, &tm_result);
     for (const Stat& s : sample.stats) {
       if (eventNames_.find(s.name) == eventNames_.end()) {
         continue;
       }
-      *out_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", fmt::localtime(time)) << ",";
+      *out_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", tm_result) << ",";
       *out_ << sample.deltaMsec << ",";
       *out_ << device << ",";
       *out_ << s.name;

@@ -112,10 +112,10 @@ class CuptiRangeProfilerTest : public ::testing::Test {
 
   int simulateWorkload() {
     for (const auto& k : kCtx0Kernels) {
-      simulateKernelLaunch(ctx0_, k);
+      simulateKernelLaunch(ctx0_, k, 1);
     }
     for (const auto& k : kCtx1Kernels) {
-      simulateKernelLaunch(ctx1_, k);
+      simulateKernelLaunch(ctx1_, k, 2);
     }
     return kCtx0Kernels.size() + kCtx1Kernels.size();
   }
@@ -181,7 +181,7 @@ void saveTrace(ActivityTrace& /*trace*/) {
 #endif
 }
 
-TEST_F(CuptiRangeProfilerTest, BasicTest) {
+TEST_F(CuptiRangeProfilerTest, BasicSetupTest) {
   EXPECT_NE(profiler_->name().size(), 0);
   EXPECT_EQ(profiler_->availableActivities(), getActivityTypes());
 
@@ -193,16 +193,6 @@ TEST_F(CuptiRangeProfilerTest, BasicTest) {
   cfg_->setSelectedActivityTypes({});
   EXPECT_EQ(profiler_->configure(incorrect_act_types, *cfg_).get(), nullptr)
       << "Profiler config should fail for wrong activity type";
-
-  incorrect_act_types.insert(ActivityType::CUDA_PROFILER_RANGE);
-
-  cfg_ = std::make_unique<Config>();
-  cfg_->setClientDefaults();
-  cfg_->setSelectedActivityTypes(incorrect_act_types);
-
-  EXPECT_EQ(profiler_->configure(incorrect_act_types, *cfg_).get(), nullptr)
-      << "Profiler config should fail if the activity types is not exclusively"
-      << " CUDA_PROFILER_RANGE";
 }
 
 TEST_F(CuptiRangeProfilerTest, UserRangeTest) {

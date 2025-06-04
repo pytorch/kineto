@@ -35,6 +35,7 @@
 #include "CuptiActivity.cpp"
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
+#include "KernelRegistry.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
 #include "RoctracerActivity.h"
@@ -554,7 +555,10 @@ inline bool CuptiActivityProfiler::outOfRange(const ITraceActivity& act) {
             << captureWindowEndTime_;
     ecs_.out_of_range_events++;
   }
-  return out_of_range;
+  // Range Profiling mode returns kernels with 0 ts and duration that we can
+  // pass through to output
+  bool zero_ts = rangeProfilingActive_ && (act.timestamp() == 0);
+  return !zero_ts && out_of_range;
 }
 
 #ifdef HAS_CUPTI
@@ -792,6 +796,11 @@ void CuptiActivityProfiler::checkTimestampOrder(const ITraceActivity* act1) {
     // Swap so that runtime activity is first for the comparison below.
     std::swap(act1, act2);
   }
+  // Range Profiling mode returns kernels with 0 ts and duration that we can
+  // pass through to output
+  if (act2->timestamp() == 0) {
+    return;
+  }
   if (act1->timestamp() > act2->timestamp()) {
     LOG_FIRST_N(WARNING, 10)
         << "GPU op timestamp (" << act2->timestamp()
@@ -879,12 +888,16 @@ void CuptiActivityProfiler::handleCuptiActivity(
       handleRuntimeActivity(
           reinterpret_cast<const CUpti_ActivityAPI*>(record), logger);
       break;
-    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL:
-      handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityKernel4*>(record), logger);
-      updateCtxToDeviceId(
-          reinterpret_cast<const CUpti_ActivityKernel4*>(record));
+    case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL: {
+      auto kernel = reinterpret_cast<const CUpti_ActivityKernel4*>(record);
+      // Register all kernels launches so we could correlate them with other
+      // events.
+      KernelRegistry::singleton()->recordKernel(
+          kernel->deviceId, demangle(kernel->name), kernel->correlationId);
+      handleGpuActivity(kernel, logger);
+      updateCtxToDeviceId(kernel);
       break;
+    }
     case CUPTI_ACTIVITY_KIND_SYNCHRONIZATION:
       handleCudaSyncActivity(
           reinterpret_cast<const CUpti_ActivitySynchronization*>(record),
@@ -1116,6 +1129,8 @@ void CuptiActivityProfiler::configure(
   if (profilers_.size() > 0) {
     configureChildProfilers();
   }
+  rangeProfilingActive_ = config_->selectedActivityTypes().count(
+                              ActivityType::CUDA_PROFILER_RANGE) > 0;
 
   if (libkineto::api().client()) {
     libkineto::api().client()->prepare(
@@ -1596,6 +1611,9 @@ void CuptiActivityProfiler::resetTraceData() {
   if (!cpuOnly_) {
     cupti_.clearActivities();
     cupti_.teardownContext();
+#ifdef HAS_CUPTI
+    KernelRegistry::singleton()->clear();
+#endif
   }
 #endif // HAS_CUPTI || HAS_ROCTRACER
   activityMap_.clear();

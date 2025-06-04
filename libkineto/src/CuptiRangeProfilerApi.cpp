@@ -18,12 +18,15 @@
 
 #include "Demangle.h"
 #include "DeviceUtil.h"
+#include "KernelRegistry.h"
 #include "Logger.h"
 #include "time_since_epoch.h"
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiRangeProfilerApi.h"
+
+#define STRINGIFY(x) #x
 
 #if HAS_CUPTI_RANGE_PROFILER
 #include <cupti.h>
@@ -57,7 +60,10 @@ std::set<uint32_t> active_devices;
 
 // forward declarations
 void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid);
-void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName);
+void __trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id);
 
 /// Helper functions
 
@@ -110,8 +116,11 @@ inline uint32_t getDevID(CUcontext ctx) {
 //   executing
 //      the CUDA kernels. We use Callbacks to enable the profiler
 //      asynchronously from another thread.
+//
+//  UPDATE: We only reloy on CUPTI callbacks if CONCURRENT_KERNEL activity
+//  type is not enabled.
 
-void disableKernelCallbacks();
+bool disableKernelCallbacks();
 
 void trackCudaCtx(
     CUpti_CallbackDomain /*domain*/,
@@ -159,10 +168,13 @@ void trackCudaKernelLaunch(
   if (cbInfo->callbackSite != CUPTI_API_ENTER) {
     return;
   }
-  __trackCudaKernelLaunch(ctx, cbInfo->symbolName);
+  __trackCudaKernelLaunch(ctx, cbInfo->symbolName, cbInfo->correlationId);
 }
 
-void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
+void __trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id) {
   VLOG(0) << " Tracking kernel name = " << (kernelName ? kernelName : "")
           << " context ptr = " << ctx;
 
@@ -194,15 +206,10 @@ void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
   }
 
   if (profiler->curRange_ == CUPTI_AutoRange) {
-    profiler->logKernelName(kernelName ? kernelName : "__missing__");
+    if (profiler->has_gpu_activities_enabled_)
+      KernelRegistry::singleton()->recordKernel(
+          device_id, demangle(kernelName), correlation_id);
   }
-
-  /* TODO add per kernel time logging
-  if (measure_per_kernel) {
-    profiler->kernelStartTs_.push_back(
-        std::chrono::high_resolution_clock::now());
-  }
-  */
 
   // periodically flush profiler data from GPU
   if (profiler->numCallbacks_ % kCallbacksCountToFlush == 0) {
@@ -211,7 +218,7 @@ void __trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
   profiler->numCallbacks_++;
 }
 
-void enableKernelCallbacks() {
+bool enableKernelCallbacks() {
   auto cbapi = CuptiCallbackApi::singleton();
 
   bool status = cbapi->enableCallback(
@@ -227,12 +234,14 @@ void enableKernelCallbacks() {
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to "
                  << "enable cuda kernel launch callback.";
+    return false;
   }
 
   LOG(INFO) << "CUPTI Profiler kernel callbacks enabled";
+  return true;
 }
 
-void disableKernelCallbacks() {
+bool disableKernelCallbacks() {
   auto cbapi = CuptiCallbackApi::singleton();
 
   bool status = cbapi->disableCallback(
@@ -247,10 +256,11 @@ void disableKernelCallbacks() {
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to "
                  << "disable cuda kernel launch callback.";
-    return;
+    return false;
   }
 
   LOG(INFO) << "CUPTI Profiler kernel callbacks disabled";
+  return true;
 }
 
 // static
@@ -328,7 +338,8 @@ std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
 // Setup the profiler sessions
 CuptiRBProfilerSession::CuptiRBProfilerSession(
     const CuptiRangeProfilerOptions& opts)
-    : metricNames_(opts.metricNames),
+    : has_gpu_activities_enabled_(opts.has_gpu_activities_enabled_),
+      metricNames_(opts.metricNames),
       deviceId_(opts.deviceId),
       maxRanges_(opts.maxRanges),
       numNestingLevels_(opts.numNestingLevels),
@@ -336,6 +347,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
   // used in unittests only
   if (opts.unitTest) {
     initSuccess_ = true;
+    unitTest_ = true;
     profiler_map[deviceId_] = this;
     return;
   }
@@ -466,8 +478,10 @@ void CuptiRBProfilerSession::startInternal(
   }
   profilerInitDoneTs_ = std::chrono::high_resolution_clock::now();
 
+  // TODO we should check has_gpu_activities_enabled_ here and accordingly
+  // disable kernel callbacks. This will be added in following commits.
   if (curRange_ == CUPTI_AutoRange) {
-    enableKernelCallbacks();
+    callbacksEnabled_ = enableKernelCallbacks();
   }
   profilingActive_ = true;
 }
@@ -489,7 +503,10 @@ void CuptiRBProfilerSession::stop() {
   endSessionParams.ctx = cuContext_;
   CUPTI_CALL(cuptiProfilerEndSession(&endSessionParams));
 
-  disableKernelCallbacks();
+  if (callbacksEnabled_) {
+    disableKernelCallbacks();
+    callbacksEnabled_ = false;
+  }
 
   profilerStopTs_ = std::chrono::high_resolution_clock::now();
   profilingActive_ = false;
@@ -597,7 +614,8 @@ void CuptiRBProfilerSession::asyncStartAndEnable(
   curReplay_ = profilerReplayMode;
   curRange_ = profilerRange;
   enable_flag[deviceId_] = true;
-  enableKernelCallbacks();
+  // For async start we need the first callback to be enabled.
+  callbacksEnabled_ = enableKernelCallbacks();
 }
 
 void CuptiRBProfilerSession::asyncDisableAndStop() {
@@ -613,14 +631,6 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
   }
   if (profilingActive_) {
     disableAndStop();
-  }
-
-  LOG(INFO) << "Total kernels logged = " << kernelNames_.size();
-  if (verbose) {
-    for (const auto& kernel : kernelNames_) {
-      std::cout << demangle(kernel) << std::endl;
-    }
-    LOG(INFO) << "Profiler Range data : ";
   }
 
   auto results = nvperf::evalMetricValues(
@@ -714,7 +724,7 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
 }
 
 CuptiRBProfilerSession::~CuptiRBProfilerSession() {
-  if (initSuccess_) {
+  if (initSuccess_ && !unitTest_) {
     CuptiRBProfilerSession::deInitCupti();
   }
 }
@@ -728,7 +738,10 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
       deviceId_(opts.deviceId),
       maxRanges_(opts.maxRanges),
       numNestingLevels_(opts.numNestingLevels),
-      cuContext_(opts.cuContext){};
+      cuContext_(opts.cuContext) {
+  LOG(WARNING) << "CUPTI Range Profiler is not available on this CUDA version:"
+               << STRINGIFY(CUDA_VERSION);
+};
 CuptiRBProfilerSession::~CuptiRBProfilerSession() {}
 void CuptiRBProfilerSession::stop() {}
 void CuptiRBProfilerSession::enable() {}
@@ -788,9 +801,12 @@ void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
 #endif // HAS_CUPTI_RANGE_PROFILER
 }
 
-void trackCudaKernelLaunch(CUcontext ctx, const char* kernelName) {
+void trackCudaKernelLaunch(
+    CUcontext ctx,
+    const char* kernelName,
+    uint64_t correlation_id) {
 #if HAS_CUPTI_RANGE_PROFILER
-  __trackCudaKernelLaunch(ctx, kernelName);
+  __trackCudaKernelLaunch(ctx, kernelName, correlation_id);
 #endif // HAS_CUPTI_RANGE_PROFILER
 }
 

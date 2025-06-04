@@ -19,6 +19,7 @@
 #include "CuptiRangeProfiler.h"
 #include "CuptiRangeProfilerConfig.h"
 #include "Demangle.h"
+#include "KernelRegistry.h"
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {
@@ -59,6 +60,11 @@ std::unordered_map<std::string, std::vector<std::string>> kDerivedMetrics = {
       "smsp__sass_thread_inst_executed_op_fmul_pred_on.sum"}},
     {"kineto__tensor_core_insts", {"sm__inst_executed_pipe_tensor.sum"}},
 };
+
+inline bool hasGPUActivitiesEnabled(const Config& config) {
+  return (config.selectedActivityTypes().count(
+             ActivityType::CONCURRENT_KERNEL)) > 0;
+}
 
 } // namespace
 
@@ -112,6 +118,7 @@ CuptiRangeProfilerSession::CuptiRangeProfilerSession(
   opts.numNestingLevels = 1;
   opts.cuContext = nullptr;
   opts.unitTest = false;
+  opts.has_gpu_activities_enabled_ = hasGPUActivitiesEnabled(config);
 
   for (auto device_id : CuptiRBProfilerSession::getActiveDevices()) {
     LOG(INFO) << "Init CUPTI range profiler on gpu = " << device_id
@@ -140,11 +147,12 @@ void CuptiRangeProfilerSession::addRangeEvents(
   const auto& metricNames = result.metricNames;
   auto& activities = traceBuffer_.activities;
   bool use_kernel_names = false;
-  int num_kernels = 0;
+  auto device_id = profiler->deviceId();
+  int num_kernels = KernelRegistry::singleton()->getNumKernels(device_id);
+  KernelRegistry* KR = KernelRegistry::singleton();
 
   if (rangeType_ == CUPTI_AutoRange) {
     use_kernel_names = true;
-    num_kernels = profiler->getKernelNames().size();
     if (num_kernels != result.rangeVals.size()) {
       LOG(WARNING) << "Number of kernels tracked does not match the "
                    << " number of ranges collected"
@@ -162,15 +170,24 @@ void CuptiRangeProfilerSession::addRangeEvents(
   int ridx = 0;
   for (const auto& measurement : result.rangeVals) {
     bool use_kernel_as_range = use_kernel_names && (ridx < num_kernels);
+
+    uint64_t correlationId = 0;
+    std::string rangeName = measurement.rangeName;
+
+    if (auto KI = KR->getKernelInfo(device_id, ridx)) {
+      rangeName = KI->first;
+      correlationId = KI->second;
+    }
+
     traceBuffer_.emplace_activity(
         traceBuffer_.span,
         kProfActivityType,
-        use_kernel_as_range ? demangle(profiler->getKernelNames()[ridx])
-                            : measurement.rangeName);
+        use_kernel_as_range ? rangeName : measurement.rangeName);
     auto& event = activities.back();
     event->startTime = startTime + interval * ridx;
     event->endTime = startTime + interval * (ridx + 1);
     event->device = profiler->deviceId();
+    event->addMetadata("correlation", correlationId);
 
     // add metadata per counter
     for (int i = 0; i < metricNames.size(); i++) {
@@ -263,17 +280,13 @@ std::unique_ptr<IActivityProfilerSession> CuptiRangeProfiler::configure(
   if (activity_types_.find(kProfActivityType) == activity_types_.end()) {
     return nullptr;
   }
-  bool has_gpu_event_types =
-      (activity_types_.count(ActivityType::GPU_MEMCPY) +
-       activity_types_.count(ActivityType::GPU_MEMSET) +
-       activity_types_.count(ActivityType::CONCURRENT_KERNEL)) > 0;
 
-  if (has_gpu_event_types) {
+  if (!hasGPUActivitiesEnabled(config)) {
     LOG(WARNING)
-        << kProfilerName << " cannot run in combination with"
-        << " other cuda activity profilers, please configure"
-        << " with cuda_profiler_range and optionally cpu_op/user_annotations";
-    return nullptr;
+        << "Running " << kProfilerName
+        << " alongside other GPU kernel activities is preferred."
+        << "This enables more accurate tracking of nested/dynamic kernel names."
+        << "Please turn on CONCURRENT_KERNEL (CUDA) activity type to avoid obtaining invalid results in the above cases.";
   }
 
   return std::make_unique<CuptiRangeProfilerSession>(config, factory_);

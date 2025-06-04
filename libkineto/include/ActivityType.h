@@ -32,6 +32,7 @@ enum class ActivityType {
   OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
   MTIA_RUNTIME, // host side MTIA runtime events
   MTIA_CCP_EVENTS, // MTIA ondevice CCP events
+  MTIA_INSIGHT, // MTIA Insight Events
   CUDA_SYNC, // synchronization events between runtime and kernels
 
   // Optional Activity types
@@ -40,7 +41,6 @@ enum class ActivityType {
   HPU_OP, // HPU host side runtime event
   XPU_RUNTIME, // host side xpu runtime events
   COLLECTIVE_COMM, // collective communication
-  MTIA_WORKLOADD, // MTIA workloadd events
 
   // PRIVATEUSE1 Activity types are used for custom backends.
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.

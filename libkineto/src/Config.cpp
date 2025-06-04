@@ -12,6 +12,7 @@
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <fmt/ranges.h>
 #include <time.h>
 #include <chrono>
@@ -577,37 +578,46 @@ void Config::setReportPeriod(milliseconds msecs) {
 }
 
 void Config::printActivityProfilerConfig(std::ostream& s) const {
-  s << "  Log file: " << activitiesLogFile() << std::endl;
+  fmt::print(s, "  Log file: {}\n", activitiesLogFile());
   if (hasProfileStartIteration()) {
-    s << "  Trace start Iteration: " << profileStartIteration() << std::endl;
-    s << "  Trace warmup Iterations: " << activitiesWarmupIterations()
-      << std::endl;
-    s << "  Trace profile Iterations: " << activitiesRunIterations()
-      << std::endl;
+    fmt::print(
+        s,
+        "  Trace start Iteration: {}\n"
+        "  Trace warmup Iterations: {}\n"
+        "  Trace profile Iterations: {}\n",
+        profileStartIteration(),
+        activitiesWarmupIterations(),
+        activitiesRunIterations());
     if (profileStartIterationRoundUp() > 0) {
-      s << "  Trace start iteration roundup : "
-        << profileStartIterationRoundUp() << std::endl;
+      fmt::print(
+          "  Trace start iteration roundup : {}\n",
+          profileStartIterationRoundUp());
     }
   } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
     std::tm tm{};
     localtime_r(&t_c, &tm);
-    s << "  Trace start time: " << fmt::format("{:%Y-%m-%d %H:%M:%S}", tm);
-    s << "  Trace duration: " << activitiesDuration().count() << "ms"
-      << std::endl;
-    s << "  Warmup duration: " << activitiesWarmupDuration().count() << "s"
-      << std::endl;
+    fmt::print(
+        s,
+        "  Trace start time: {:%Y-%m-%d %H:%M:%S}\n"
+        "  Trace duration: {}ms\n"
+        "  Warmup duration: {}s\n",
+        tm,
+        activitiesDuration().count(),
+        activitiesWarmupDuration().count());
   }
 
-  s << "  Max GPU buffer size: " << activitiesMaxGpuBufferSize() / 1024 / 1024
-    << "MB" << std::endl;
+  fmt::print(
+      s,
+      "  Max GPU buffer size: {:.0f}MB\n",
+      activitiesMaxGpuBufferSize() / 1024.0 / 1024.0);
 
-  std::vector<const char*> activities;
+  std::vector<std::string> activities;
+  activities.reserve(selectedActivityTypes_.size());
   for (const auto& activity : selectedActivityTypes_) {
     activities.push_back(toString(activity));
   }
-  s << "  Enabled activities: " << fmt::format("{}", fmt::join(activities, ","))
-    << std::endl;
+  fmt::print(s, "  Enabled activities: {}\n", fmt::join(activities, ","));
 
   AbstractConfig::printActivityProfilerConfig(s);
 }

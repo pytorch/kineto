@@ -15,6 +15,8 @@
 #include <cuda_runtime.h>
 #include <cupti.h>
 
+// ok to use fmt::format as error will not occur often. Can't use fmt::print
+// easily since LOG(...) can return void, causes compiler error
 #define CUDA_CALL(call)                                    \
   [&]() -> cudaError_t {                                   \
     cudaError_t _status_ = call;                           \

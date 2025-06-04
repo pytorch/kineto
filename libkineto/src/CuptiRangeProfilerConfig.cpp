@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <fmt/ranges.h>
 #include <ostream>
 
@@ -59,12 +60,14 @@ void CuptiRangeProfilerConfig::setDefaults() {
 void CuptiRangeProfilerConfig::printActivityProfilerConfig(
     std::ostream& s) const {
   if (activitiesCuptiMetrics_.size() > 0) {
-    s << "Cupti Profiler metrics : "
-      << fmt::format("{}", fmt::join(activitiesCuptiMetrics_, ", "))
-      << std::endl;
-    s << "Cupti Profiler measure per kernel : " << cuptiProfilerPerKernel_
-      << std::endl;
-    s << "Cupti Profiler max ranges : " << cuptiProfilerMaxRanges_ << std::endl;
+    fmt::print(
+        s,
+        "Cupti Profiler metrics : {}\n",
+        "Cupti Profiler measure per kernel : {}\n",
+        "Cupti Profiler max ranges : {}\n",
+        fmt::join(activitiesCuptiMetrics_, ", "),
+        cuptiProfilerPerKernel_,
+        cuptiProfilerMaxRanges_);
   }
 }
 

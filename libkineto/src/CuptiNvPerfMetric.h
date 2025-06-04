@@ -32,6 +32,8 @@ struct CuptiProfilerResult {
 /* Utilities for CUPTI and NVIDIA PerfWorks Metric API
  */
 
+// ok to use fmt::format as error will not occur often. Can't use fmt::print
+// easily since LOG(...) can return void, causes compiler error
 #define NVPW_CALL(call)                                                \
   [&]() -> bool {                                                      \
     NVPA_Status _status_ = call;                                       \

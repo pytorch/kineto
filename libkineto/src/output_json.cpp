@@ -12,7 +12,6 @@
 #include <fmt/ostream.h>
 #include <time.h>
 #include <fstream>
-#include <iomanip>
 #include "Config.h"
 #include "TraceSpan.h"
 

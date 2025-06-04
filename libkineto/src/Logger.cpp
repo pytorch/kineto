@@ -21,6 +21,7 @@
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include "ThreadUtil.h"
 
@@ -41,10 +42,15 @@ Logger::Logger(int severity, int line, const char* filePath, int errnum)
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   std::tm tm_result;
   localtime_r(&tt, &tm_result);
-  const char* file = strrchr(filePath, '/');
-  buf_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", tm_result) << " "
-       << processId(false) << ":" << systemThreadId(false) << " "
-       << (file ? file + 1 : filePath) << ":" << line << "] ";
+  const char* file = std::strrchr(filePath, '/');
+  fmt::print(
+      buf_,
+      "{:%Y-%m-%d %H:%M:%S} {}:{} {}:{}] ",
+      tm_result,
+      processId(false),
+      systemThreadId(false),
+      (file ? file + 1 : filePath),
+      line);
 }
 
 Logger::~Logger() {

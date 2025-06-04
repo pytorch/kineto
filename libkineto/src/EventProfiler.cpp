@@ -9,6 +9,7 @@
 #include "EventProfiler.h"
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <fmt/ranges.h>
 #include <time.h>
 #include <algorithm>
@@ -144,7 +145,7 @@ struct Metric::CalculatedValues Metric::calculate(
 }
 
 void Metric::printDescription(ostream& s) const {
-  s << fmt::format("{} ({})", name, fmt::join(events_, ",")) << endl;
+  fmt::print(s, "{} ({})\n", name, fmt::join(events_, ","));
 }
 
 // ---------------------------------------------------------------------

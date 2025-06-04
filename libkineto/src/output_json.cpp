@@ -10,6 +10,7 @@
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
+#include <iterator>
 #include <time.h>
 #include <fstream>
 #include "Config.h"

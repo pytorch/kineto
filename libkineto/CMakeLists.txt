@@ -262,15 +262,11 @@ target_include_directories(kineto_api PUBLIC
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>)
 
-if(KINETO_LIBRARY_TYPE STREQUAL "default")
-  add_library(kineto
-    $<TARGET_OBJECTS:kineto_base>
-    $<TARGET_OBJECTS:kineto_api>)
-elseif(KINETO_LIBRARY_TYPE STREQUAL "static")
+if(KINETO_LIBRARY_TYPE STREQUAL "static")
   add_library(kineto STATIC
     $<TARGET_OBJECTS:kineto_base>
     $<TARGET_OBJECTS:kineto_api>)
-elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
+elseif(KINETO_LIBRARY_TYPE STREQUAL "shared" OR (KINETO_LIBRARY_TYPE STREQUAL "default" AND BUILD_SHARED_LIBS))
   add_library(kineto SHARED
     $<TARGET_OBJECTS:kineto_base>
     $<TARGET_OBJECTS:kineto_api>)
@@ -278,6 +274,10 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
   set_property(TARGET kineto_api PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_target_properties(kineto PROPERTIES
     CXX_VISIBILITY_PRESET hidden)
+elseif(KINETO_LIBRARY_TYPE STREQUAL "default")
+  add_library(kineto
+    $<TARGET_OBJECTS:kineto_base>
+    $<TARGET_OBJECTS:kineto_api>)
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()

@@ -10,9 +10,9 @@
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
-#include <iterator>
 #include <time.h>
 #include <fstream>
+#include <iterator>
 #include "Config.h"
 #include "TraceSpan.h"
 

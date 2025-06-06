@@ -1214,7 +1214,8 @@ void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 #endif
 #ifdef HAS_XPUPTI
   for (auto& session : sessions_) {
-    auto xpu_session = dynamic_cast<XpuptiActivityProfilerSession*>(session.get());
+    auto xpu_session =
+        dynamic_cast<XpuptiActivityProfilerSession*>(session.get());
     xpu_session->toggleCollectionDynamic(enable);
   }
 #endif

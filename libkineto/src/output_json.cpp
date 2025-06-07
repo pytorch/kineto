@@ -12,7 +12,7 @@
 #include <fmt/ostream.h>
 #include <time.h>
 #include <fstream>
-#include <iomanip>
+#include <iterator>
 #include "Config.h"
 #include "TraceSpan.h"
 
@@ -80,12 +80,13 @@ void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
 }
 
 static std::string string2hex(const std::string& str) {
-  std::stringstream ofs;
+  std::string out;
+  out.reserve(str.size() * 2);
   for (uint8_t c : str) {
-    ofs << std::nouppercase << std::setw(2) << std::setfill('0') << std::hex
-        << static_cast<int>(c);
+    // “:02x” -> two‐digit, zero‐padded, lowercase hex
+    fmt::format_to(std::back_inserter(out), "{:02x}", c);
   }
-  return ofs.str();
+  return out;
 }
 
 static void sanitizeForNonReadableChars(std::string& value) {

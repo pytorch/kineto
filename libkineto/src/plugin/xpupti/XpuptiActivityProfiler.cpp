@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #include "XpuptiActivityProfiler.h"
 #include "XpuptiActivityApi.h"
 
@@ -51,6 +59,14 @@ void XpuptiActivityProfilerSession::stop() {
   xpti_.disablePtiActivities(activity_types_);
   profilerEndTs_ =
       libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
+}
+
+void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
+  if (enable) {
+    xpti_.enableXpuptiActivities(activity_types_);
+  } else {
+    xpti_.disablePtiActivities(activity_types_);
+  }
 }
 
 void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {

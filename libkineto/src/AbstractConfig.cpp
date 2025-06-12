@@ -125,7 +125,6 @@ bool AbstractConfig::toBool(string& val) const {
     }
   }
   throw std::invalid_argument(fmt::format("Invalid bool argument: {}", val));
-  return false;
 }
 
 bool AbstractConfig::parse(const string& conf) {

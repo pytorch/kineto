@@ -18,7 +18,6 @@
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #endif
 
 #include "include/Config.h"

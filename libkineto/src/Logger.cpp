@@ -31,6 +31,16 @@ std::atomic_int Logger::severityLevel_{VERBOSE};
 std::atomic_int Logger::verboseLogLevel_{-1};
 std::atomic<uint64_t> Logger::verboseLogModules_{~0ull};
 
+void get_local_time(const time_t* time, struct tm* tm_result) {
+#ifdef _WIN32
+  // Windows-specific code
+  localtime_s(tm_result, time);
+#else
+  // Linux-specific code
+  localtime_r(time, tm_result);
+#endif
+}
+
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
     : buf_(),
       out_(LIBKINETO_DBG_STREAM),
@@ -41,7 +51,7 @@ Logger::Logger(int severity, int line, const char* filePath, int errnum)
   const auto tt =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   std::tm tm_result;
-  localtime_r(&tt, &tm_result);
+  get_local_time(&tt, &tm_result);
   const char* file = std::strrchr(filePath, '/');
   fmt::print(
       buf_,

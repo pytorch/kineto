@@ -62,8 +62,8 @@ void CuptiRangeProfilerConfig::printActivityProfilerConfig(
   if (activitiesCuptiMetrics_.size() > 0) {
     fmt::print(
         s,
-        "Cupti Profiler metrics : {}\n",
-        "Cupti Profiler measure per kernel : {}\n",
+        "Cupti Profiler metrics : {}\n"
+        "Cupti Profiler measure per kernel : {}\n"
         "Cupti Profiler max ranges : {}\n",
         fmt::join(activitiesCuptiMetrics_, ", "),
         cuptiProfilerPerKernel_,

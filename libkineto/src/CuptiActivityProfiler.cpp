@@ -1197,18 +1197,24 @@ void CuptiActivityProfiler::ensureCollectTraceDone() {
 }
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
 #ifdef HAS_CUPTI
+  CUDA_CALL(cudaDeviceSynchronize());
   if (enable) {
+    cupti_.flushActivities();
     cupti_.enableCuptiActivities(
         derivedConfig_->profileActivityTypes(),
         derivedConfig_->isPerThreadBufferEnabled());
   } else {
+    cupti_.flushActivities();
     cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
   }
 #endif
 #ifdef HAS_ROCTRACER
+  CUDA_CALL(cudaDeviceSynchronize());
   if (enable) {
+    cupti_.flushActivities();
     cupti_.enableActivities(derivedConfig_->profileActivityTypes());
   } else {
+    cupti_.flushActivities();
     cupti_.disableActivities(derivedConfig_->profileActivityTypes());
   }
 #endif

@@ -31,6 +31,7 @@ class XpuptiActivityApi {
       const std::set<ActivityType>& selected_activities);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
+  void flushActivities();
 
   virtual std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
 

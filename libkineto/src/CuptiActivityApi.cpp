@@ -240,6 +240,12 @@ const std::pair<int, size_t> CuptiActivityApi::processActivities(
   return res;
 }
 
+void CuptiActivityApi::flushActivities() {
+#ifdef HAS_CUPTI
+  CUPTI_CALL(cuptiActivityFlushAll(0));
+#endif
+}
+
 void CuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);

@@ -140,6 +140,12 @@ const std::pair<int, int> XpuptiActivityApi::processActivities(
   return res;
 }
 
+void XpuptiActivityApi::flushActivities() {
+#ifdef HAS_XPUPTI
+  XPUPTI_CALL(ptiFlushAllViews());
+#endif
+}
+
 void XpuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);

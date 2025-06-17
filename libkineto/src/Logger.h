@@ -49,6 +49,7 @@
 #endif // _MSC_VER
 
 namespace KINETO_NAMESPACE {
+void get_local_time(const time_t* time, struct tm* tm_result);
 
 class Logger {
  public:

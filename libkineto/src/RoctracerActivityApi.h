@@ -43,6 +43,7 @@ class RoctracerActivityApi {
   void enableActivities(const std::set<ActivityType>& selected_activities);
   void disableActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
+  void flushActivities();
   void teardownContext() {}
   void setMaxEvents(uint32_t maxEvents);
 

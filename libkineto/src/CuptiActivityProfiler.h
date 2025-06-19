@@ -498,6 +498,7 @@ class CuptiActivityProfiler {
   bool cpuActivityPresent_{false};
   bool gpuActivityPresent_{false};
   bool rangeProfilingActive_{false};
+  std::atomic<bool> toggleState_{true};
 
   // ***************************************************************************
   // Below state is shared with external threads.

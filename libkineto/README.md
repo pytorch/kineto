@@ -6,7 +6,7 @@ tools project.
 The library provides a way to collect GPU traces and metrics from the host
 process, either via the library public API or by sending a signal, if enabled.
 
-Currently only NVIDIA GPUs are supported.
+Currently only NVIDIA and AMD GPUs are supported.
 
 ## Build Notes
 Libkineto uses the standard CMAKE-based build flow.

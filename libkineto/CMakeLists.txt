@@ -4,26 +4,24 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
+project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-
 #install libraries into correct locations on all platforms
 include(GNUInstallDirs)
 
 # function to extract filelists from libkineto_defs.bzl file
-find_package(PythonInterp)
+find_package(Python3 COMPONENTS Interpreter)
 function(get_filelist name outputvar)
   execute_process(
-    COMMAND "${PYTHON_EXECUTABLE}" -c
+    COMMAND "${Python3_EXECUTABLE}" -c
             "exec(open('libkineto_defs.bzl').read());print(';'.join(${name}))"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     OUTPUT_VARIABLE _tempvar)
   string(REPLACE "\n" "" _tempvar "${_tempvar}")
   set(${outputvar} ${_tempvar} PARENT_SCOPE)
 endfunction()
-
-project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")

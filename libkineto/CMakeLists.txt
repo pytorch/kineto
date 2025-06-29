@@ -4,9 +4,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+cmake_minimum_required(VERSION 3.27 FATAL_ERROR)
+project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 #install libraries into correct locations on all platforms
 include(GNUInstallDirs)
@@ -22,8 +21,6 @@ function(get_filelist name outputvar)
   string(REPLACE "\n" "" _tempvar "${_tempvar}")
   set(${outputvar} ${_tempvar} PARENT_SCOPE)
 endfunction()
-
-project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")
@@ -42,8 +39,8 @@ if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-if (NOT CUDA_SOURCE_DIR)
-    set(CUDA_SOURCE_DIR "$ENV{CUDA_SOURCE_DIR}")
+if (DEFINED CUDA_SOURCE_DIR AND NOT DEFINED CUDAToolkit_ROOT)
+    set(CUDAToolkit_ROOT "${CUDA_SOURCE_DIR}")
     message(STATUS " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
 endif()
 
@@ -52,81 +49,20 @@ if (NOT ROCM_SOURCE_DIR)
     message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
 endif()
 
-if (KINETO_BUILD_TESTS)
-  enable_testing()
-  if (NOT CUDA_SOURCE_DIR)
-    set(CUDA_SOURCE_DIR "$ENV{CUDA_HOME}")
-    message(STATUS " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
-  endif()
-
-  if (NOT CUPTI_INCLUDE_DIR)
-    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
-        ${CUDA_SOURCE_DIR}/extras/CUPTI/include
-        ${CUDA_INCLUDE_DIRS}
-        ${CUDA_SOURCE_DIR}
-        ${CUDA_SOURCE_DIR}/include
-        NO_DEFAULT_PATH)
-  endif()
-
-  if (NOT CUDA_cupti_LIBRARY)
-    if(NOT MSVC)
-      set(CUPTI_LIB_NAME "libcupti.so")
-    else()
-      set(CUPTI_LIB_NAME "cupti.lib")
-    endif()
-    find_library(CUPTI_LIBRARY_PATH ${CUPTI_LIB_NAME} PATHS
-        ${CUDA_SOURCE_DIR}
-        ${CUDA_SOURCE_DIR}/extras/CUPTI/lib64
-        ${CUDA_SOURCE_DIR}/lib
-        ${CUDA_SOURCE_DIR}/lib64
-        NO_DEFAULT_PATH)
-  endif()
-
-  if (NOT CUDA_nvperf_host_LIBRARY)
-    set(CUDA_NVPERF_HOST_LIB_NAME "libnvperf_host.so")
-    find_library(CUDA_NVPERF_HOST_LIB_PATH ${CUDA_NVPERF_HOST_LIB_NAME} PATHS
-        ${CUDA_SOURCE_DIR}
-        ${CUDA_SOURCE_DIR}/extras/CUPTI/lib64
-        ${CUDA_SOURCE_DIR}/lib
-        ${CUDA_SOURCE_DIR}/lib64
-        NO_DEFAULT_PATH)
-  endif()
-
-  if (NOT CUDA_cudart_LIBRARY)
-    set(CUDA_CUDART_LIB_NAME "libcudart.so")
-    find_library(CUDA_CUDART_LIB_PATH ${CUDA_CUDART_LIB_NAME} PATHS
-        ${CUDA_SOURCE_DIR}
-        ${CUDA_SOURCE_DIR}/lib
-        ${CUDA_SOURCE_DIR}/lib64
-        NO_DEFAULT_PATH)
-  endif()
-
-  if(CUDA_NVPERF_HOST_LIB_PATH)
-    set(CUDA_nvperf_host_LIBRARY ${CUDA_NVPERF_HOST_LIB_PATH})
-    message(STATUS "  CUDA_nvperf_host_LIBRARY = ${CUDA_nvperf_host_LIBRARY}")
-  endif()
-
-  if(CUDA_CUDART_LIB_PATH)
-    set(CUDA_cudart_LIBRARY ${CUDA_CUDART_LIB_PATH})
-    message(STATUS "  CUDA_cudart_LIBRARY = ${CUDA_cudart_LIBRARY}")
-  endif()
-
-  if(CUPTI_LIBRARY_PATH AND CUPTI_INCLUDE_DIR)
-    message(STATUS "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
-    set(CUDA_cupti_LIBRARY ${CUPTI_LIBRARY_PATH})
-    message(STATUS "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
-    message(STATUS "Found CUPTI")
-    set(LIBKINETO_NOCUPTI OFF CACHE STRING "" FORCE)
-  else()
-    message(STATUS "Could not find CUPTI library")
-    set(LIBKINETO_NOCUPTI ON CACHE STRING "" FORCE)
-  endif()
-endif()
-
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
 # Otherwise, CUPTI is disabled if not found
-IF (NOT CUDA_SOURCE_DIR OR NOT CUPTI_INCLUDE_DIR OR NOT CUDA_cupti_LIBRARY)
-    set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
+set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
+
+find_package(CUDAToolkit)
+if(TARGET CUDA::cupti)
+  message(STATUS "Found CUPTI")
+  set(LIBKINETO_NOCUPTI OFF CACHE STRING "" FORCE)
+else()
+  message(STATUS "Could not find CUPTI library")
+endif()
+
+if (KINETO_BUILD_TESTS)
+  enable_testing()
 endif()
 
 IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
@@ -186,7 +122,7 @@ endif()
 if (DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
 endif()
-if (CUDA_nvperf_host_LIBRARY)
+if (TARGET CUDA::nvperf_host)
   list(APPEND KINETO_COMPILE_OPTIONS "-DUSE_CUPTI_RANGE_PROFILER")
 endif()
 if (NOT LIBKINETO_NOROCTRACER)
@@ -219,12 +155,6 @@ endif()
 set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
 message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
 message(STATUS "Kineto: FMT_INCLUDE_DIR = ${FMT_INCLUDE_DIR}")
-if (NOT CUPTI_INCLUDE_DIR)
-    set(CUPTI_INCLUDE_DIR "${CUDA_SOURCE_DIR}/extras/CUPTI/include")
-endif()
-if (NOT CUDA_INCLUDE_DIRS)
-    set(CUDA_INCLUDE_DIRS "${CUDA_SOURCE_DIR}/include")
-endif()
 if (NOT ROCTRACER_INCLUDE_DIR)
     set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
 endif()
@@ -235,7 +165,6 @@ endif()
 set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
 set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
 
-message(STATUS " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
 message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
 message(STATUS " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
 message(STATUS " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
@@ -249,8 +178,6 @@ target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${DYNOLOG_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${CUPTI_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${CUDA_INCLUDE_DIRS}>
       $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
 
@@ -262,25 +189,21 @@ target_include_directories(kineto_api PUBLIC
       $<BUILD_INTERFACE:${FMT_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>)
 
+file(WRITE ${CMAKE_BINARY_DIR}/dummy.cpp "")
 if(KINETO_LIBRARY_TYPE STREQUAL "static")
-  add_library(kineto STATIC
-    $<TARGET_OBJECTS:kineto_base>
-    $<TARGET_OBJECTS:kineto_api>)
+  add_library(kineto STATIC ${CMAKE_BINARY_DIR}/dummy.cpp)
 elseif(KINETO_LIBRARY_TYPE STREQUAL "shared" OR (KINETO_LIBRARY_TYPE STREQUAL "default" AND BUILD_SHARED_LIBS))
-  add_library(kineto SHARED
-    $<TARGET_OBJECTS:kineto_base>
-    $<TARGET_OBJECTS:kineto_api>)
+  add_library(kineto SHARED ${CMAKE_BINARY_DIR}/dummy.cpp)
   set_property(TARGET kineto_base PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_property(TARGET kineto_api PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_target_properties(kineto PROPERTIES
     CXX_VISIBILITY_PRESET hidden)
 elseif(KINETO_LIBRARY_TYPE STREQUAL "default")
-  add_library(kineto
-    $<TARGET_OBJECTS:kineto_base>
-    $<TARGET_OBJECTS:kineto_api>)
+  add_library(kineto ${CMAKE_BINARY_DIR}/dummy.cpp)
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
+target_link_libraries(kineto kineto_base kineto_api)
 
 if(NOT LIBKINETO_NOROCTRACER)
   find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS
@@ -292,18 +215,17 @@ if(NOT LIBKINETO_NOROCTRACER)
 endif()
 
 if(NOT LIBKINETO_NOCUPTI)
-  target_link_libraries(kineto "${CUDA_cupti_LIBRARY}")
+  target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
 endif()
-if(CUDA_nvperf_host_LIBRARY)
-  target_link_libraries(kineto "${CUDA_nvperf_host_LIBRARY}")
+if(TARGET CUDA::nvperf_host)
+  target_link_libraries(kineto_base PRIVATE CUDA::nvperf_host)
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_link_libraries(kineto "${XPU_xpupti_LIBRARY}")
 endif()
-target_link_libraries(kineto $<BUILD_INTERFACE:fmt::fmt-header-only>)
-add_dependencies(kineto fmt::fmt-header-only)
+target_link_libraries(kineto_base PRIVATE fmt::fmt-header-only)
 
-install(TARGETS kineto EXPORT kinetoLibraryConfig
+install(TARGETS kineto kineto_base kineto_api dynolog_ipcfabric_lib EXPORT kinetoLibraryConfig
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

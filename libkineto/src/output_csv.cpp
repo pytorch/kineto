@@ -51,7 +51,7 @@ void EventCSVLogger::handleSample(
     auto now = system_clock::now();
     auto time = system_clock::to_time_t(now);
     std::tm tm_result;
-    localtime_r(&time, &tm_result);
+    get_local_time(&time, &tm_result);
     for (const Stat& s : sample.stats) {
       if (eventNames_.find(s.name) == eventNames_.end()) {
         continue;

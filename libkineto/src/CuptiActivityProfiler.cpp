@@ -1096,6 +1096,7 @@ void CuptiActivityProfiler::configure(
     if (VLOG_IS_ON(1)) {
       timestamp = system_clock::now();
     }
+    toggleState_.store(true);
 #ifdef HAS_CUPTI
 #ifdef _WIN32
     CUPTI_CALL(cuptiActivityRegisterTimestampCallback([]() -> uint64_t {
@@ -1196,19 +1197,29 @@ void CuptiActivityProfiler::ensureCollectTraceDone() {
   }
 }
 void CuptiActivityProfiler::toggleCollectionDynamic(const bool enable) {
+  if (toggleState_.load() == enable) {
+    return;
+  }
+  toggleState_.store(enable);
 #ifdef HAS_CUPTI
+  CUDA_CALL(cudaDeviceSynchronize());
   if (enable) {
+    cupti_.flushActivities();
     cupti_.enableCuptiActivities(
         derivedConfig_->profileActivityTypes(),
         derivedConfig_->isPerThreadBufferEnabled());
   } else {
+    cupti_.flushActivities();
     cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
   }
 #endif
 #ifdef HAS_ROCTRACER
+  CUDA_CALL(hipDeviceSynchronize());
   if (enable) {
+    cupti_.flushActivities();
     cupti_.enableActivities(derivedConfig_->profileActivityTypes());
   } else {
+    cupti_.flushActivities();
     cupti_.disableActivities(derivedConfig_->profileActivityTypes());
   }
 #endif
@@ -1241,6 +1252,7 @@ void CuptiActivityProfiler::stopTraceInternal(
     if (VLOG_IS_ON(1)) {
       timestamp = system_clock::now();
     }
+    toggleState_.store(false);
 #ifdef HAS_CUPTI
     cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
 #else

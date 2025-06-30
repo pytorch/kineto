@@ -168,6 +168,9 @@ int RoctracerActivityApi::processActivities(
   return count;
 }
 
+// TODO: implement the actual flush with roctracer_flush_activity
+void RoctracerActivityApi::flushActivities() {}
+
 void RoctracerActivityApi::clearActivities() {
   d->clearLogs();
 }

@@ -13,7 +13,6 @@
 #ifndef _AIX
 #include <sys/syscall.h>
 #endif // _AIX
-#include <sys/types.h>
 #include <unistd.h>
 #else // _WIN32
 #include <codecvt>

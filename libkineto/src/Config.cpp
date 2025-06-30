@@ -298,7 +298,7 @@ const seconds Config::maxRequestAge() const {
 static std::string getTimeStr(time_point<system_clock> t) {
   std::time_t t_c = system_clock::to_time_t(t);
   std::tm tm{};
-  localtime_r(&t_c, &tm);
+  get_local_time(&t_c, &tm);
   return fmt::format("{:%H:%M:%S}", tm);
 }
 
@@ -596,7 +596,7 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   } else if (hasProfileStartTime()) {
     std::time_t t_c = system_clock::to_time_t(requestTimestamp());
     std::tm tm{};
-    localtime_r(&t_c, &tm);
+    get_local_time(&t_c, &tm);
     fmt::print(
         s,
         "  Trace start time: {:%Y-%m-%d %H:%M:%S}\n"

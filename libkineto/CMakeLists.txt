@@ -239,7 +239,7 @@ message(STATUS " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
 message(STATUS " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
 
 add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
-target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
+target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib dynolog_lib)
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>

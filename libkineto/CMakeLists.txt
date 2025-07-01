@@ -196,22 +196,6 @@ endif()
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
-if(NOT TARGET fmt::fmt-header-only)
-  if(NOT FMT_SOURCE_DIR)
-    set(FMT_SOURCE_DIR "${LIBKINETO_THIRDPARTY_DIR}/fmt"
-      CACHE STRING "fmt source directory from submodules")
-  endif()
-
-  # Build FMT.
-  # FMT and some other libraries use BUILD_SHARED_LIBS to control
-  # the library type.
-  # Save and restore the value after configuring FMT
-  add_subdirectory("${FMT_SOURCE_DIR}" "${LIBKINETO_BINARY_DIR}/fmt")
-endif()
-
-set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
-message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
-message(STATUS "Kineto: FMT_INCLUDE_DIR = ${FMT_INCLUDE_DIR}")
 if (NOT CUPTI_INCLUDE_DIR)
     set(CUPTI_INCLUDE_DIR "${CUDA_SOURCE_DIR}/extras/CUPTI/include")
 endif()
@@ -227,14 +211,28 @@ endif()
 
 set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
 set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
+add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
+
+if(NOT TARGET fmt::fmt-header-only)
+  if(NOT FMT_SOURCE_DIR)
+    set(FMT_SOURCE_DIR "${LIBKINETO_THIRDPARTY_DIR}/fmt"
+      CACHE STRING "fmt source directory from submodules")
+  endif()
+
+  # Build FMT.
+  # FMT and some other libraries use BUILD_SHARED_LIBS to control
+  # the library type.
+  # Save and restore the value after configuring FMT
+  add_subdirectory("${FMT_SOURCE_DIR}" "${LIBKINETO_BINARY_DIR}/fmt")
+  message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
+endif()
 
 message(STATUS " CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
 message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
 message(STATUS " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
 message(STATUS " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
 
-add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
-target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib dynolog_lib)
+target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
@@ -308,5 +306,7 @@ install(EXPORT kinetoLibraryConfig DESTINATION share/cmake/kineto
 
 if(KINETO_BUILD_TESTS)
   add_subdirectory(test)
-  add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
+  if(NOT TARGET gtest)
+    add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
+  endif()
 endif()

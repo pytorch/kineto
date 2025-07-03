@@ -119,7 +119,6 @@ set_target_properties(kineto_base kineto_api PROPERTIES
       CXX_EXTENSIONS NO)
 
 set(KINETO_COMPILE_OPTIONS "-DKINETO_NAMESPACE=libkineto")
-list(APPEND KINETO_COMPILE_OPTIONS "-DFMT_HEADER_ONLY")
 list(APPEND KINETO_COMPILE_OPTIONS "-DENABLE_IPC_FABRIC")
 list(APPEND KINETO_COMPILE_OPTIONS)
 if(MSVC)
@@ -144,9 +143,6 @@ endif()
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
-set(FMT_INCLUDE_DIR "${FMT_SOURCE_DIR}/include")
-message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
-message(STATUS "Kineto: FMT_INCLUDE_DIR = ${FMT_INCLUDE_DIR}")
 if (NOT ROCTRACER_INCLUDE_DIR)
     set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
 endif()

@@ -12,8 +12,7 @@ add_executable(ConfigTest ConfigTest.cpp)
 target_compile_options(ConfigTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(ConfigTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(ConfigTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(ConfigTest)
 
@@ -42,13 +41,10 @@ add_executable(CuptiCallbackApiTest CuptiCallbackApiTest.cpp)
 target_compile_options(CuptiCallbackApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiCallbackApiTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(CuptiCallbackApiTest PRIVATE
     "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
-    "${CUPTI_INCLUDE_DIR}"
-    "${CUDA_SOURCE_DIR}/include")
+    "${LIBKINETO_DIR}/include")
 gtest_discover_tests(CuptiCallbackApiTest)
 
 # CuptiRangeProfilerApiTest
@@ -57,14 +53,11 @@ target_compile_options(CuptiRangeProfilerApiTest PRIVATE
     "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(CuptiRangeProfilerApiTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
-    "${LIBKINETO_DIR}/src"
-    "${CUDA_SOURCE_DIR}/include"
-    "${CUPTI_INCLUDE_DIR}")
+    "${LIBKINETO_DIR}/src")
 # Skipping due to SEGFault in 12.4
 # Tracked here: https://github.com/pytorch/kineto/issues/949
 # gtest_discover_tests(CuptiRangeProfilerApiTest)
@@ -75,8 +68,7 @@ target_compile_options(CuptiRangeProfilerConfigTest PRIVATE
     "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(CuptiRangeProfilerConfigTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include")
@@ -88,14 +80,11 @@ target_compile_options(CuptiRangeProfilerTest PRIVATE
     "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(CuptiRangeProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
-    "${LIBKINETO_DIR}/src"
-    "${CUDA_SOURCE_DIR}/include"
-    "${CUPTI_INCLUDE_DIR}")
+    "${LIBKINETO_DIR}/src")
 # Skipping due to SEGFault in 12.4
 # Tracked here: https://github.com/pytorch/kineto/issues/949
 # gtest_discover_tests(CuptiRangeProfilerTest)
@@ -105,12 +94,9 @@ add_executable(CuptiStringsTest CuptiStringsTest.cpp)
 target_compile_options(CuptiStringsTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiStringsTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(CuptiStringsTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${CUDA_SOURCE_DIR}/include"
-    "${CUPTI_INCLUDE_DIR}")
+    "${LIBKINETO_DIR}")
 gtest_discover_tests(CuptiStringsTest)
 
 # EventProfilerTest
@@ -119,13 +105,10 @@ target_compile_options(EventProfilerTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(EventProfilerTest PRIVATE
     gtest_main
     gmock
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(EventProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
-    "${CUDA_SOURCE_DIR}/include"
-    "${CUPTI_INCLUDE_DIR}")
+    "${LIBKINETO_DIR}/include")
 gtest_discover_tests(EventProfilerTest)
 
 # LoggerObserverTest
@@ -133,8 +116,7 @@ add_executable(LoggerObserverTest LoggerObserverTest.cpp)
 target_compile_options(LoggerObserverTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(LoggerObserverTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(LoggerObserverTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
@@ -146,8 +128,7 @@ add_executable(PidInfoTest PidInfoTest.cpp)
 target_compile_options(PidInfoTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(PidInfoTest PRIVATE
     gtest_main
-    kineto
-    "${CUDA_cudart_LIBRARY}")
+    kineto)
 target_include_directories(PidInfoTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(PidInfoTest)
 
@@ -157,11 +138,9 @@ add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
 target_compile_options(CuptiProfilerApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiProfilerApiTest PRIVATE
     kineto
-    gtest_main
-    cuda
-    "${CUDA_cudart_LIBRARY}")
+    gtest_main)
 target_include_directories(CuptiProfilerApiTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
-    "${CUPTI_INCLUDE_DIR}")
+)
 #add_test(NAME CuptiProfilerApiTest_ COMMAND CuptiProfilerApiTest)

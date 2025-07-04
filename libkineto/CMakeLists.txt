@@ -124,6 +124,7 @@ list(APPEND KINETO_COMPILE_OPTIONS)
 if(MSVC)
   list(APPEND KINETO_COMPILE_OPTIONS "-DWIN32_LEAN_AND_MEAN")
   list(APPEND KINETO_COMPILE_OPTIONS "-DNOGDI")
+  list(APPEND KINETO_COMPILE_OPTIONS "/utf-8")
 endif()
 if (NOT LIBKINETO_NOCUPTI)
   list(APPEND KINETO_COMPILE_OPTIONS "-DHAS_CUPTI")
@@ -188,6 +189,7 @@ endif()
 target_link_libraries(kineto_base PRIVATE fmt::fmt-header-only)
 
 target_include_directories(kineto_api PUBLIC
+      $<BUILD_INTERFACE:${LIBKINETO_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>)
 target_link_libraries(kineto_api PRIVATE fmt::fmt-header-only)
 
@@ -205,8 +207,11 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "default")
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
-target_link_libraries(kineto kineto_base kineto_api)
-target_link_libraries(kineto $<BUILD_INTERFACE:fmt::fmt-header-only>)
+target_link_libraries(kineto PUBLIC kineto_api kineto_base)
+target_link_libraries(kineto PUBLIC $<BUILD_INTERFACE:fmt::fmt-header-only>)
+target_include_directories(kineto PUBLIC
+      $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
+      $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>)
 
 if(NOT LIBKINETO_NOROCTRACER)
   find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS

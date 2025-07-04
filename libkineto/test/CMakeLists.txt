@@ -4,8 +4,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 include(GoogleTest)
+set(CMAKE_CXX_STANDARD 17)
 
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
@@ -13,7 +14,6 @@ target_compile_options(ConfigTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(ConfigTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(ConfigTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(ConfigTest)
 
 # CuptiActivityProfilerTest
@@ -42,9 +42,6 @@ target_compile_options(CuptiCallbackApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiCallbackApiTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(CuptiCallbackApiTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include")
 gtest_discover_tests(CuptiCallbackApiTest)
 
 # CuptiRangeProfilerApiTest
@@ -54,10 +51,6 @@ target_compile_options(CuptiRangeProfilerApiTest PRIVATE
 target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(CuptiRangeProfilerApiTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
-    "${LIBKINETO_DIR}/src")
 # Skipping due to SEGFault in 12.4
 # Tracked here: https://github.com/pytorch/kineto/issues/949
 # gtest_discover_tests(CuptiRangeProfilerApiTest)
@@ -69,9 +62,6 @@ target_compile_options(CuptiRangeProfilerConfigTest PRIVATE
 target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(CuptiRangeProfilerConfigTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include")
 gtest_discover_tests(CuptiRangeProfilerConfigTest)
 
 # CuptiRangeProfilerTest
@@ -81,10 +71,6 @@ target_compile_options(CuptiRangeProfilerTest PRIVATE
 target_link_libraries(CuptiRangeProfilerTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(CuptiRangeProfilerTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
-    "${LIBKINETO_DIR}/src")
 # Skipping due to SEGFault in 12.4
 # Tracked here: https://github.com/pytorch/kineto/issues/949
 # gtest_discover_tests(CuptiRangeProfilerTest)
@@ -95,8 +81,6 @@ target_compile_options(CuptiStringsTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiStringsTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(CuptiStringsTest PRIVATE
-    "${LIBKINETO_DIR}")
 gtest_discover_tests(CuptiStringsTest)
 
 # EventProfilerTest
@@ -106,9 +90,6 @@ target_link_libraries(EventProfilerTest PRIVATE
     gtest_main
     gmock
     kineto)
-target_include_directories(EventProfilerTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include")
 gtest_discover_tests(EventProfilerTest)
 
 # LoggerObserverTest
@@ -118,8 +99,6 @@ target_link_libraries(LoggerObserverTest PRIVATE
     gtest_main
     kineto)
 target_include_directories(LoggerObserverTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
     "${LIBKINETO_DIR}/src")
 gtest_discover_tests(LoggerObserverTest)
 
@@ -129,18 +108,13 @@ target_compile_options(PidInfoTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(PidInfoTest PRIVATE
     gtest_main
     kineto)
-target_include_directories(PidInfoTest PRIVATE "${LIBKINETO_DIR}")
 gtest_discover_tests(PidInfoTest)
 
 # CuptiProfilerApiTest
-enable_language(CUDA)
-add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
-target_compile_options(CuptiProfilerApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_link_libraries(CuptiProfilerApiTest PRIVATE
-    kineto
-    gtest_main)
-target_include_directories(CuptiProfilerApiTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
-)
+# enable_language(CUDA)
+# add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
+# target_compile_options(CuptiProfilerApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
+# target_link_libraries(CuptiProfilerApiTest PRIVATE
+#     kineto
+#     gtest_main)
 #add_test(NAME CuptiProfilerApiTest_ COMMAND CuptiProfilerApiTest)

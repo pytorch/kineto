@@ -33,7 +33,6 @@
 
 using namespace KINETO_NAMESPACE;
 
-static int numRanges = 1;
 
 using Type = double;
 
@@ -219,6 +218,7 @@ bool runTestWithUserRange(
     bool async = false) {
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
+  constexpr int numRanges = 1;
   CuptiRangeProfilerOptions opts{
       .metricNames = metricNames,
       .deviceId = deviceNum,

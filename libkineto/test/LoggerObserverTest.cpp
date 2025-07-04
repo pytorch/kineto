@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 #include <memory>
+#include <thread>
+#include <vector>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -51,8 +53,8 @@ TEST(LoggerObserverTest, SingleCollectorObserver) {
 #define NUM_OF_WRITE_THREADS 200
 
 // Writes NUM_OF_MESSAGES_FOR_EACH_TYPE messages for each INFO, WARNING, and
-// ERROR. NOLINTNEXTLINE(clang-diagnostic-unused-parameter)
-void* writeSeveralMessages(void* ptr) {
+// ERROR.
+void* writeSeveralMessages() {
   for (int i = 0; i < NUM_OF_MESSAGES_FOR_EACH_TYPE; i++) {
     LOG(INFO) << InfoTestStr;
     LOG(WARNING) << WarningTestStr;
@@ -73,14 +75,14 @@ TEST(LoggerObserverTest, FourCollectorObserver) {
   Logger::addLoggerObserver(lc4.get());
 
   // Launch NUM_OF_WRITE_THREADS threads writing several messages.
-  pthread_t ListOfThreads[NUM_OF_WRITE_THREADS];
+  std::vector<std::thread> ListOfThreads;
   for (int i = 0; i < NUM_OF_WRITE_THREADS; i++) {
-    ::pthread_create(&ListOfThreads[i], nullptr, writeSeveralMessages, nullptr);
+    ListOfThreads.emplace_back(writeSeveralMessages);
   }
 
   // Wait for all threads to finish.
-  for (int i = 0; i < NUM_OF_WRITE_THREADS; i++) {
-    ::pthread_join(ListOfThreads[i], nullptr);
+  for (auto& thread: ListOfThreads) {
+    thread.join();
   }
 
   auto lc1MD = lc1->extractCollectorMetadata();

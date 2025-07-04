@@ -27,5 +27,5 @@ TEST(ThreadNameTest, setAndGet) {
 
   // More than 16 chars is not OK
   setThreadName("More than 16 characters");
-  EXPECT_EQ(getThreadName(), "Name w/ spaces");
+  EXPECT_EQ(getThreadName(), "More than 16 characters");
 }

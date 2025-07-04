@@ -4,7 +4,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 include(GoogleTest)
 set(CMAKE_CXX_STANDARD 17)
 

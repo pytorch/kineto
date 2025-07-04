@@ -141,8 +141,8 @@ if (NOT LIBKINETO_NOROCTRACER)
     target_compile_options(kineto_base PRIVATE "-D__HIP_PLATFORM_AMD__")
 endif()
 
-target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
+target_compile_options(kineto_base PUBLIC "${KINETO_COMPILE_OPTIONS}")
+target_compile_options(kineto_api PUBLIC "${KINETO_COMPILE_OPTIONS}")
 
 if (NOT ROCTRACER_INCLUDE_DIR)
     set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")

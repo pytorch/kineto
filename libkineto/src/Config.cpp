@@ -364,9 +364,9 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     vector<string> metric_names = splitAndTrim(val, ',');
     metricNames_.insert(metric_names.begin(), metric_names.end());
   } else if (!name.compare(kSamplePeriodKey)) {
-    samplePeriod_ = milliseconds(toInt32(val));
+    samplePeriod_ = milliseconds(toInt64(val));
   } else if (!name.compare(kMultiplexPeriodKey)) {
-    multiplexPeriod_ = milliseconds(toInt32(val));
+    multiplexPeriod_ = milliseconds(toInt64(val));
   } else if (!name.compare(kReportPeriodKey)) {
     setReportPeriod(seconds(toInt32(val)));
   } else if (!name.compare(kSamplesPerReportKey)) {

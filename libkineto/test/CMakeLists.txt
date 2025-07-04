@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
-target_compile_options(ConfigTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(ConfigTest PRIVATE
     gtest_main
     kineto)
@@ -20,8 +19,6 @@ gtest_discover_tests(ConfigTest)
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
     MockActivitySubProfiler.cpp)
-target_compile_options(CuptiActivityProfilerTest PRIVATE
-    "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
     gmock
@@ -37,7 +34,6 @@ gtest_discover_tests(CuptiActivityProfilerTest)
 ]]
 # CuptiCallbackApiTest
 add_executable(CuptiCallbackApiTest CuptiCallbackApiTest.cpp)
-target_compile_options(CuptiCallbackApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiCallbackApiTest PRIVATE
     gtest_main
     kineto)
@@ -45,8 +41,6 @@ gtest_discover_tests(CuptiCallbackApiTest)
 
 # CuptiRangeProfilerApiTest
 add_executable(CuptiRangeProfilerApiTest CuptiRangeProfilerApiTest.cpp)
-target_compile_options(CuptiRangeProfilerApiTest PRIVATE
-    "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
     gtest_main
     kineto)
@@ -56,8 +50,6 @@ target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
 
 # CuptiRangeProfilerConfigTest
 add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
-target_compile_options(CuptiRangeProfilerConfigTest PRIVATE
-    "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     gtest_main
     kineto)
@@ -65,8 +57,6 @@ gtest_discover_tests(CuptiRangeProfilerConfigTest)
 
 # CuptiRangeProfilerTest
 add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
-target_compile_options(CuptiRangeProfilerTest PRIVATE
-    "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiRangeProfilerTest PRIVATE
     gtest_main
     kineto)
@@ -76,7 +66,6 @@ target_link_libraries(CuptiRangeProfilerTest PRIVATE
 
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
-target_compile_options(CuptiStringsTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(CuptiStringsTest PRIVATE
     gtest_main
     kineto)
@@ -84,7 +73,6 @@ gtest_discover_tests(CuptiStringsTest)
 
 # EventProfilerTest
 add_executable(EventProfilerTest EventProfilerTest.cpp)
-target_compile_options(EventProfilerTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(EventProfilerTest PRIVATE
     gtest_main
     gmock
@@ -93,7 +81,6 @@ gtest_discover_tests(EventProfilerTest)
 
 # LoggerObserverTest
 add_executable(LoggerObserverTest LoggerObserverTest.cpp)
-target_compile_options(LoggerObserverTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(LoggerObserverTest PRIVATE
     gtest_main
     kineto)
@@ -103,7 +90,6 @@ gtest_discover_tests(LoggerObserverTest)
 
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
-target_compile_options(PidInfoTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_link_libraries(PidInfoTest PRIVATE
     gtest_main
     kineto)
@@ -112,7 +98,6 @@ gtest_discover_tests(PidInfoTest)
 # CuptiProfilerApiTest
 # enable_language(CUDA)
 # add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
-# target_compile_options(CuptiProfilerApiTest PRIVATE "${KINETO_COMPILE_OPTIONS}")
 # target_link_libraries(CuptiProfilerApiTest PRIVATE
 #     kineto
 #     gtest_main)

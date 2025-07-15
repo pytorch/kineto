@@ -26,6 +26,8 @@ TEST(ThreadNameTest, setAndGet) {
   EXPECT_EQ(getThreadName(), "Name w/ spaces");
 
   // More than 16 chars is not OK
-  setThreadName("More than 16 characters");
-  EXPECT_EQ(getThreadName(), "More than 16 characters");
+#ifndef _WIN32
+  GTEST_EXPECT_FALSE(setThreadName("More than 16 characters"));
+  EXPECT_EQ(getThreadName(), "Name w/ spaces");
+#endif
 }

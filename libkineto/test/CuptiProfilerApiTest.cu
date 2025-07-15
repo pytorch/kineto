@@ -17,18 +17,18 @@
 #include "src/CuptiRangeProfilerApi.h"
 #include "src/Logger.h"
 
-#define DRIVER_API_CALL(apiFuncCall)                                           \
-  do {                                                                         \
-    CUresult _status = apiFuncCall;                                            \
-    if (_status != CUDA_SUCCESS) {                                             \
-      LOG(ERROR) << "Failed invoking CUDA driver function " << #apiFuncCall    \
-                 << " status = " << _status;                                   \
-      exit(-1);                                                                \
-    }                                                                          \
+#define DRIVER_API_CALL(apiFuncCall)                                        \
+  do {                                                                      \
+    CUresult _status = apiFuncCall;                                         \
+    if (_status != CUDA_SUCCESS) {                                          \
+      LOG(ERROR) << "Failed invoking CUDA driver function " << #apiFuncCall \
+                 << " status = " << _status;                                \
+      exit(-1);                                                             \
+    }                                                                       \
   } while (0)
 
-#define EXPECT(expr)                                                           \
-  if (!(expr)) {                                                               \
+#define EXPECT(expr) \
+  if (!(expr)) {     \
   };
 
 using namespace KINETO_NAMESPACE;
@@ -36,7 +36,7 @@ using namespace KINETO_NAMESPACE;
 using Type = double;
 
 // Device code
-__global__ void VecAdd(const Type *A, const Type *B, Type *C, int N) {
+__global__ void VecAdd(const Type* A, const Type* B, Type* C, int N) {
   auto i = blockDim.x * blockIdx.x + threadIdx.x;
   if (i < N) {
     C[i] = A[i] + B[i];
@@ -44,21 +44,28 @@ __global__ void VecAdd(const Type *A, const Type *B, Type *C, int N) {
 }
 
 // Device code
-__global__ void VecSub(const Type *A, const Type *B, Type *C, int N) {
+__global__ void VecSub(const Type* A, const Type* B, Type* C, int N) {
   auto i = blockDim.x * blockIdx.x + threadIdx.x;
   if (i < N) {
     C[i] = A[i] - B[i];
   }
 }
 
-static void initVec(Type *vec, int n) {
+static void initVec(Type* vec, int n) {
   for (int i = 0; i < n; i++) {
     vec[i] = i;
   }
 }
 
-static void cleanUp(Type *h_A, Type *h_B, Type *h_C, Type *h_D, Type *d_A,
-                    Type *d_B, Type *d_C, Type *d_D) {
+static void cleanUp(
+    Type* h_A,
+    Type* h_B,
+    Type* h_C,
+    Type* h_D,
+    Type* d_A,
+    Type* d_B,
+    Type* d_C,
+    Type* d_D) {
   if (d_A)
     cudaFree(d_A);
   if (d_B)
@@ -94,10 +101,10 @@ void VectorAddSubtract() {
   Type sum, diff;
 
   // Allocate input vectors h_A and h_B in host memory
-  h_A = (Type *)malloc(size);
-  h_B = (Type *)malloc(size);
-  h_C = (Type *)malloc(size);
-  h_D = (Type *)malloc(size);
+  h_A = (Type*)malloc(size);
+  h_B = (Type*)malloc(size);
+  h_C = (Type*)malloc(size);
+  h_D = (Type*)malloc(size);
 
   // Initialize input vectors
   initVec(h_A, N);
@@ -106,10 +113,10 @@ void VectorAddSubtract() {
   memset(h_D, 0, size);
 
   // Allocate vectors in device memory
-  cudaMalloc((void **)&d_A, size);
-  cudaMalloc((void **)&d_B, size);
-  cudaMalloc((void **)&d_C, size);
-  cudaMalloc((void **)&d_D, size);
+  cudaMalloc((void**)&d_A, size);
+  cudaMalloc((void**)&d_B, size);
+  cudaMalloc((void**)&d_C, size);
+  cudaMalloc((void**)&d_D, size);
 
   // Copy vectors from host memory to device memory
   cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
@@ -118,8 +125,10 @@ void VectorAddSubtract() {
   // Invoke kernel
   threadsPerBlock = 256;
   blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
-  LOG(INFO) << fmt::format("Launching kernel: blocks {}, thread/block {}",
-                           blocksPerGrid, threadsPerBlock);
+  LOG(INFO) << fmt::format(
+      "Launching kernel: blocks {}, thread/block {}",
+      blocksPerGrid,
+      threadsPerBlock);
 
   VecAdd<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
 
@@ -144,16 +153,19 @@ void VectorAddSubtract() {
 }
 
 #if HAS_CUPTI_RANGE_PROFILER
-bool runTestWithAutoRange(int deviceNum,
-                          const std::vector<std::string> &metricNames,
-                          CUcontext cuContext, bool async) {
+bool runTestWithAutoRange(
+    int deviceNum,
+    const std::vector<std::string>& metricNames,
+    CUcontext cuContext,
+    bool async) {
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
-  CuptiRangeProfilerOptions opts{.metricNames = metricNames,
-                                 .deviceId = deviceNum,
-                                 .maxRanges = 2,
-                                 .numNestingLevels = 1,
-                                 .cuContext = async ? nullptr : cuContext};
+  CuptiRangeProfilerOptions opts{
+      .metricNames = metricNames,
+      .deviceId = deviceNum,
+      .maxRanges = 2,
+      .numNestingLevels = 1,
+      .cuContext = async ? nullptr : cuContext};
   CuptiRBProfilerSession profiler(opts);
 
   CUpti_ProfilerRange profilerRange = CUPTI_AutoRange;
@@ -182,7 +194,7 @@ bool runTestWithAutoRange(int deviceNum,
   EXPECT_EQ(result.metricNames.size(), 3);
   EXPECT_EQ(result.rangeVals.size(), 2);
 
-  for (const auto &measurement : result.rangeVals) {
+  for (const auto& measurement : result.rangeVals) {
     EXPECT_EQ(measurement.values.size(), 3);
 
     if (measurement.values.size() == 3) {
@@ -198,17 +210,20 @@ bool runTestWithAutoRange(int deviceNum,
   return true;
 }
 
-bool runTestWithUserRange(int deviceNum,
-                          const std::vector<std::string> &metricNames,
-                          CUcontext cuContext, bool async = false) {
+bool runTestWithUserRange(
+    int deviceNum,
+    const std::vector<std::string>& metricNames,
+    CUcontext cuContext,
+    bool async = false) {
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
   constexpr int numRanges = 1;
-  CuptiRangeProfilerOptions opts{.metricNames = metricNames,
-                                 .deviceId = deviceNum,
-                                 .maxRanges = numRanges,
-                                 .numNestingLevels = 1,
-                                 .cuContext = async ? nullptr : cuContext};
+  CuptiRangeProfilerOptions opts{
+      .metricNames = metricNames,
+      .deviceId = deviceNum,
+      .maxRanges = numRanges,
+      .numNestingLevels = 1,
+      .cuContext = async ? nullptr : cuContext};
   CuptiRBProfilerSession profiler(opts);
 
   CUpti_ProfilerRange profilerRange = CUPTI_UserRange;
@@ -252,7 +267,7 @@ bool runTestWithUserRange(int deviceNum,
   EXPECT_EQ(result.rangeVals.size(), 1);
 
   if (result.rangeVals.size() > 0) {
-    const auto &measurement = result.rangeVals[0];
+    const auto& measurement = result.rangeVals[0];
     EXPECT_EQ(measurement.values.size(), 3);
 
     if (measurement.values.size() == 3) {
@@ -271,7 +286,7 @@ bool runTestWithUserRange(int deviceNum,
 }
 #endif // HAS_CUPTI_RANGE_PROFILER
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   CUdevice cuDevice;
 
   int deviceCount, deviceNum;
@@ -295,15 +310,17 @@ int main(int argc, char *argv[]) {
 
   DRIVER_API_CALL(cuDeviceGet(&cuDevice, deviceNum));
   DRIVER_API_CALL(cuDeviceGetAttribute(
-      &computeCapabilityMajor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,
+      &computeCapabilityMajor,
+      CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,
       cuDevice));
   DRIVER_API_CALL(cuDeviceGetAttribute(
-      &computeCapabilityMinor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,
+      &computeCapabilityMinor,
+      CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,
       cuDevice));
 
   LOG(INFO) << "Compute Cabapbility = "
-            << fmt::format("{},{}", computeCapabilityMajor,
-                           computeCapabilityMinor);
+            << fmt::format(
+                   "{},{}", computeCapabilityMajor, computeCapabilityMinor);
 
   if (computeCapabilityMajor < 7) {
     LOG(ERROR)

@@ -36,15 +36,12 @@ TEST(LoggerObserverTest, SingleCollectorObserver) {
   LOG(ERROR) << ErrorTestStr;
 
   auto LoggerMD = lCollector->extractCollectorMetadata();
-  EXPECT_TRUE(
-      LoggerMD[LoggerOutputType::INFO][0].find(InfoTestStr) !=
-      std::string::npos);
-  EXPECT_TRUE(
-      LoggerMD[LoggerOutputType::WARNING][0].find(WarningTestStr) !=
-      std::string::npos);
-  EXPECT_TRUE(
-      LoggerMD[LoggerOutputType::ERROR][0].find(ErrorTestStr) !=
-      std::string::npos);
+  EXPECT_TRUE(LoggerMD[LoggerOutputType::INFO][0].find(InfoTestStr) !=
+              std::string::npos);
+  EXPECT_TRUE(LoggerMD[LoggerOutputType::WARNING][0].find(WarningTestStr) !=
+              std::string::npos);
+  EXPECT_TRUE(LoggerMD[LoggerOutputType::ERROR][0].find(ErrorTestStr) !=
+              std::string::npos);
 
   Logger::removeLoggerObserver(lCollector.get());
 }
@@ -54,7 +51,7 @@ TEST(LoggerObserverTest, SingleCollectorObserver) {
 
 // Writes NUM_OF_MESSAGES_FOR_EACH_TYPE messages for each INFO, WARNING, and
 // ERROR.
-void* writeSeveralMessages() {
+void *writeSeveralMessages() {
   for (int i = 0; i < NUM_OF_MESSAGES_FOR_EACH_TYPE; i++) {
     LOG(INFO) << InfoTestStr;
     LOG(WARNING) << WarningTestStr;
@@ -81,13 +78,13 @@ TEST(LoggerObserverTest, FourCollectorObserver) {
   }
 
   // Wait for all threads to finish.
-  for (auto& thread: ListOfThreads) {
+  for (auto &thread : ListOfThreads) {
     thread.join();
   }
 
   auto lc1MD = lc1->extractCollectorMetadata();
   int InfoCount = 0, WarnCount = 0, ErrorCount = 0;
-  for (auto& md : lc1MD) {
+  for (auto &md : lc1MD) {
     InfoCount += md.first == LoggerOutputType::INFO ? md.second.size() : 0;
     WarnCount += md.first == LoggerOutputType::WARNING ? md.second.size() : 0;
     ErrorCount += md.first == LoggerOutputType::ERROR ? md.second.size() : 0;
@@ -105,7 +102,7 @@ TEST(LoggerObserverTest, FourCollectorObserver) {
 
 #endif // !USE_GOOGLE_LOG
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -33,13 +33,11 @@
 
 using namespace KINETO_NAMESPACE;
 
-static int numRanges = 1;
-
 using Type = double;
 
 // Device code
 __global__ void VecAdd(const Type* A, const Type* B, Type* C, int N) {
-  int i = blockDim.x * blockIdx.x + threadIdx.x;
+  auto i = blockDim.x * blockIdx.x + threadIdx.x;
   if (i < N) {
     C[i] = A[i] + B[i];
   }
@@ -47,7 +45,7 @@ __global__ void VecAdd(const Type* A, const Type* B, Type* C, int N) {
 
 // Device code
 __global__ void VecSub(const Type* A, const Type* B, Type* C, int N) {
-  int i = blockDim.x * blockIdx.x + threadIdx.x;
+  auto i = blockDim.x * blockIdx.x + threadIdx.x;
   if (i < N) {
     C[i] = A[i] - B[i];
   }
@@ -219,6 +217,7 @@ bool runTestWithUserRange(
     bool async = false) {
   // create a CUPTI range based profiling profiler
   //  this configures the counter data as well
+  constexpr int numRanges = 1;
   CuptiRangeProfilerOptions opts{
       .metricNames = metricNames,
       .deviceId = deviceNum,

@@ -10,6 +10,7 @@
 
 #include <fmt/format.h>
 #include <array>
+#include <limits>
 #include <sstream>
 
 #include "Logger.h"
@@ -108,11 +109,11 @@ int64_t AbstractConfig::toIntRange(const string& val, int64_t min, int64_t max)
 }
 
 int32_t AbstractConfig::toInt32(const string& val) const {
-  return toIntRange(val, 0, ~0u / 2);
+  return toIntRange(val, 0, std::numeric_limits<int32_t>::max());
 }
 
 int64_t AbstractConfig::toInt64(const string& val) const {
-  return toIntRange(val, 0, ~0ul / 2);
+  return toIntRange(val, 0, std::numeric_limits<int64_t>::max());
 }
 
 bool AbstractConfig::toBool(string& val) const {

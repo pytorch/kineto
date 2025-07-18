@@ -419,14 +419,6 @@ void CuptiActivityApi::disableCuptiActivities(
     }
   }
   externalCorrelationEnabled_ = false;
-  // Clear out per-thread buffer flag in case it was set
-#if (CUDART_VERSION >= 12030)
-  uint8_t value = 0;
-  size_t sizeof_value = sizeof(value);
-
-  CUPTI_CALL(cuptiActivitySetAttribute(
-      CUPTI_ACTIVITY_ATTR_PER_THREAD_ACTIVITY_BUFFER, &sizeof_value, &value));
-#endif // (CUDART_VERSION >= 12030)
 #endif // HAS_CUPTI
 }
 

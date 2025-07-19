@@ -24,7 +24,7 @@ endfunction()
 
 set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")
-set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared)
+set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared static)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
 
 set(LIBKINETO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -188,17 +188,18 @@ target_include_directories(kineto_api PUBLIC
 target_link_libraries(kineto_api PRIVATE $<BUILD_INTERFACE:fmt::fmt-header-only>)
 
 if(KINETO_LIBRARY_TYPE STREQUAL "static")
-  add_library(kineto STATIC $<TARGET_OBJECTS:kineto_base> $<TARGET_OBJECTS:kineto_api>)
-elseif(KINETO_LIBRARY_TYPE STREQUAL "shared" OR (KINETO_LIBRARY_TYPE STREQUAL "default" AND BUILD_SHARED_LIBS))
-  add_library(kineto SHARED $<TARGET_OBJECTS:kineto_base> $<TARGET_OBJECTS:kineto_api>)
+  set(BUILD_SHARED_LIBS OFF)
+elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
+  set(BUILD_SHARED_LIBS ON)
+elseif(NOT KINETO_LIBRARY_TYPE STREQUAL "default")
+  message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
+endif()
+
+add_library(kineto $<TARGET_OBJECTS:kineto_base> $<TARGET_OBJECTS:kineto_api>)
+if(BUILD_SHARED_LIBS)
   set_property(TARGET kineto_base PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_property(TARGET kineto_api PROPERTY POSITION_INDEPENDENT_CODE ON)
-  set_target_properties(kineto PROPERTIES
-    CXX_VISIBILITY_PRESET hidden)
-elseif(KINETO_LIBRARY_TYPE STREQUAL "default")
-  add_library(kineto $<TARGET_OBJECTS:kineto_base> $<TARGET_OBJECTS:kineto_api>)
-else()
-  message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
+  set_target_properties(kineto PROPERTIES CXX_VISIBILITY_PRESET hidden)
 endif()
 
 set_target_properties(kineto kineto_base kineto_api PROPERTIES

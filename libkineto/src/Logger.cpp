@@ -13,7 +13,7 @@
 
 #ifndef USE_GOOGLE_LOG
 
-#include <time.h>
+#include <ctime>
 #include <chrono>
 #include <cstring>
 #include <iomanip>

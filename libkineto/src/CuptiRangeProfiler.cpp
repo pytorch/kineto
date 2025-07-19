@@ -219,9 +219,9 @@ void CuptiRangeProfilerSession::processTrace(ActivityLogger& logger) {
 
   for (const auto& event : traceBuffer_.activities) {
     static_assert(
-        std::is_same<
-            std::remove_reference<decltype(event)>::type,
-            const std::unique_ptr<GenericTraceActivity>>::value,
+        std::is_same_v<
+            std::remove_reference_t<decltype(event)>,
+            const std::unique_ptr<GenericTraceActivity>>,
         "handleActivity is unsafe and relies on the caller to maintain not "
         "only lifetime but also address stability.");
     logger.handleActivity(*event);

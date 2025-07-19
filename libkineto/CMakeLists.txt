@@ -117,11 +117,6 @@ add_library(kineto_api OBJECT ${LIBKINETO_API_SRCS})
 add_custom_target(libkineto_defs.bzl DEPENDS libkineto_defs.bzl)
 add_dependencies(kineto_base libkineto_defs.bzl)
 
-set_target_properties(kineto_base kineto_api PROPERTIES
-      CXX_STANDARD 17
-      CXX_STANDARD_REQUIRED YES
-      CXX_EXTENSIONS NO)
-
 set(KINETO_DEFINITIONS "-DKINETO_NAMESPACE=libkineto")
 list(APPEND KINETO_COMPILE_OPTIONS "-DENABLE_IPC_FABRIC")
 list(APPEND KINETO_COMPILE_OPTIONS)
@@ -213,6 +208,11 @@ elseif(KINETO_LIBRARY_TYPE STREQUAL "default")
 else()
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
+
+set_target_properties(kineto kineto_base kineto_api PROPERTIES
+      CXX_STANDARD 17
+      CXX_STANDARD_REQUIRED YES
+      CXX_EXTENSIONS NO)
 
 target_include_directories(kineto PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>

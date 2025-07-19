@@ -8,6 +8,7 @@ include(GoogleTest)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${LIBKINETO_DIR})
+link_libraries(fmt::fmt-header-only)
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
 target_link_libraries(ConfigTest PRIVATE

@@ -15,7 +15,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <queue>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -138,12 +137,12 @@ class CuptiActivityProfiler {
   // depending on required warm-up time and delayed start time.
   // When active, it's a good idea to invoke more frequently to stay below
   // memory usage limit (ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB) during warmup.
-  const std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
+  std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
       const std::chrono::time_point<std::chrono::system_clock>& now,
       const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
       int64_t currentIter = -1);
 
-  const void performMemoryLoop(
+  void performMemoryLoop(
       const std::string& path,
       uint32_t profile_time,
       ActivityLogger* logger,

@@ -20,7 +20,7 @@ _Pragma("GCC diagnostic pop");
 #endif
 #endif // _MSC_VER
 
-#include <string.h>
+#include <cstring>
 #include <string>
 
 namespace KINETO_NAMESPACE {

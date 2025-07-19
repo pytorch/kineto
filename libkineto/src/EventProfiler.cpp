@@ -11,7 +11,7 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
-#include <time.h>
+#include <ctime>
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -311,8 +311,7 @@ bool EventProfiler::initEventGroups() {
   eventGroupSets_ = cuptiEvents_->createGroupSets(ids);
   VLOG(0) << "Number of group sets: " << eventGroupSets_->numSets;
   for (int i = 0; i < eventGroupSets_->numSets; i++) {
-    sets_.push_back(
-        EventGroupSet(eventGroupSets_->sets[i], events_, *cuptiEvents_));
+    sets_.emplace_back(eventGroupSets_->sets[i], events_, *cuptiEvents_);
   }
   return !sets_.empty();
 }

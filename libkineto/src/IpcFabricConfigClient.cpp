@@ -10,7 +10,7 @@
 
 #include "IpcFabricConfigClient.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <random>
 #include <sstream>
 

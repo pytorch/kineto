@@ -6,8 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include "ILoggerObserver.h"
 #ifdef HAS_CUPTI
 #include <cupti.h>
@@ -742,7 +742,7 @@ CuptiRBProfilerSession::CuptiRBProfilerSession(
   LOG(WARNING) << "CUPTI Range Profiler is not available on this CUDA version:"
                << STRINGIFY(CUDA_VERSION);
 };
-CuptiRBProfilerSession::~CuptiRBProfilerSession() {}
+CuptiRBProfilerSession::~CuptiRBProfilerSession() = default;
 void CuptiRBProfilerSession::stop() {}
 void CuptiRBProfilerSession::enable() {}
 void CuptiRBProfilerSession::disable() {}

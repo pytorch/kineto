@@ -15,6 +15,7 @@ target_link_libraries(ConfigTest PRIVATE
     kineto)
 gtest_discover_tests(ConfigTest)
 
+if (NOT LIBKINETO_NOCUPTI)
 # CuptiActivityProfilerTest
 #[[
 add_executable(CuptiActivityProfilerTest
@@ -83,6 +84,7 @@ target_link_libraries(EventProfilerTest PRIVATE
     gmock
     kineto)
 gtest_discover_tests(EventProfilerTest)
+endif()
 
 # LoggerObserverTest
 add_executable(LoggerObserverTest LoggerObserverTest.cpp)

@@ -16,7 +16,7 @@ target_link_libraries(ConfigTest PRIVATE
     kineto)
 gtest_discover_tests(ConfigTest)
 
-if (NOT LIBKINETO_NOCUPTI)
+if(NOT LIBKINETO_NOCUPTI)
 # CuptiActivityProfilerTest
 #[[
 add_executable(CuptiActivityProfilerTest

@@ -74,14 +74,6 @@ if(NOT TARGET CUDA::nvperf_host)
   endif()
 endif()
 
-if (KINETO_BUILD_TESTS)
-  if(NOT TARGET gtest)
-    add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
-  endif()
-  enable_testing()
-  add_subdirectory(test)
-endif()
-
 IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
     set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
 endif()
@@ -238,6 +230,15 @@ if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_link_libraries(kineto "${XPU_xpupti_LIBRARY}")
 endif()
 target_compile_definitions(kineto PUBLIC "${KINETO_DEFINITIONS}")
+
+if(KINETO_BUILD_TESTS)
+  if(NOT TARGET gtest)
+    set(INSTALL_GTEST OFF)
+    add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
+  endif()
+  enable_testing()
+  add_subdirectory(test)
+endif()
 
 install(TARGETS kineto
   EXPORT kinetoLibraryConfig

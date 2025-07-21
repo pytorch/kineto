@@ -202,6 +202,15 @@ std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
     flushOverhead =
         duration_cast<microseconds>(system_clock::now() - t1).count();
   }
+
+#if (CUDART_VERSION >= 12030)
+  // Clear out per-thread buffer flag in case it was set
+  uint8_t value = 0;
+  size_t sizeof_value = sizeof(value);
+
+  CUPTI_CALL(cuptiActivitySetAttribute(
+      CUPTI_ACTIVITY_ATTR_PER_THREAD_ACTIVITY_BUFFER, &sizeof_value, &value));
+#endif // (CUDART_VERSION >= 12030)
 #endif
   std::lock_guard<std::mutex> guard(mutex_);
   // Transfer ownership of buffers to caller. A new map is created on-demand.

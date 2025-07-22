@@ -51,21 +51,47 @@ endif()
 
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
 # Otherwise, CUPTI is disabled if not found
-set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
+option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
 
 find_package(CUDAToolkit)
-if(TARGET CUDA::cupti)
-  message(STATUS "Found CUPTI")
-  set(LIBKINETO_NOCUPTI OFF CACHE BOOL "" FORCE)
-else()
-  message(STATUS "Could not find CUPTI library")
+if(NOT LIBKINETO_NOCUPTI)
+  if(NOT CUPTI_INCLUDE_DIR)
+    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
+      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/include"
+      "${CUDAToolkit_LIBRARY_ROOT}"
+      "${CUDAToolkit_LIBRARY_ROOT}/include"
+      NO_DEFAULT_PATH)
+  endif()
+
+  if(NOT CUDA_cupti_LIBRARY)
+    find_library(CUDA_cupti_LIBRARY cupti PATHS
+      "${CUDAToolkit_LIBRARY_ROOT}"
+      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
+      "${CUDAToolkit_LIBRARY_ROOT}/lib"
+      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
+      NO_DEFAULT_PATH)
+  endif()
+
+  if(CUDA_cupti_LIBRARY AND CUPTI_INCLUDE_DIR)
+    message(STATUS "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
+    message(STATUS "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
+    message(STATUS "Found CUPTI")
+    if(NOT TARGET CUDA::cupti)
+      add_library(CUDA::cupti INTERFACE IMPORTED)
+      target_link_libraries(CUDA::cupti INTERFACE "${CUDA_cupti_LIBRARY}")
+    endif()
+    target_include_directories(CUDA::cupti INTERFACE "${CUPTI_INCLUDE_DIR}")
+  else()
+    set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
+    message(STATUS "Could not find CUPTI library")
+  endif()
 endif()
 if(NOT TARGET CUDA::nvperf_host)
   find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
-        ${CUDAToolkit_LIBRARY_ROOT}
-        ${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64
-        ${CUDAToolkit_LIBRARY_ROOT}/lib
-        ${CUDAToolkit_LIBRARY_ROOT}/lib64
+        "${CUDAToolkit_LIBRARY_ROOT}"
+        "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib64"
         NO_DEFAULT_PATH)
   if(CUDA_NVPERF_HOST_LIB_PATH)
     message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
@@ -132,9 +158,9 @@ if(NOT LIBKINETO_NOROCTRACER)
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_AMD__")
 endif()
 
-target_compile_definitions(kineto_base PRIVATE "${KINETO_DEFINITIONS}")
+target_compile_definitions(kineto_base PUBLIC "${KINETO_DEFINITIONS}")
 target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
-target_compile_definitions(kineto_api PRIVATE "${KINETO_DEFINITIONS}")
+target_compile_definitions(kineto_api PUBLIC "${KINETO_DEFINITIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
 if(NOT ROCTRACER_INCLUDE_DIR)
@@ -221,8 +247,8 @@ if(NOT LIBKINETO_NOROCTRACER)
 endif()
 
 if(NOT LIBKINETO_NOCUPTI)
-  target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
+  target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
 endif()
 if(TARGET CUDA::nvperf_host)
   target_link_libraries(kineto_base PRIVATE CUDA::nvperf_host)

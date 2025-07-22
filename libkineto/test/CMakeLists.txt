@@ -13,7 +13,7 @@ link_libraries(fmt::fmt-header-only)
 add_executable(ConfigTest ConfigTest.cpp)
 target_link_libraries(ConfigTest PRIVATE
     gtest_main
-    kineto)
+    kineto_base kineto_api)
 gtest_discover_tests(ConfigTest)
 
 if(NOT LIBKINETO_NOCUPTI)
@@ -25,7 +25,7 @@ add_executable(CuptiActivityProfilerTest
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
     gmock
-    kineto)
+    kineto_base kineto_api)
 target_include_directories(CuptiActivityProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
@@ -38,7 +38,7 @@ gtest_discover_tests(CuptiActivityProfilerTest)
 add_executable(CuptiCallbackApiTest CuptiCallbackApiTest.cpp)
 target_link_libraries(CuptiCallbackApiTest PRIVATE
     gtest_main
-    kineto)
+    kineto_base kineto_api)
 gtest_discover_tests(CuptiCallbackApiTest)
 
 # CuptiRangeProfilerApiTest
@@ -56,7 +56,7 @@ gtest_discover_tests(CuptiCallbackApiTest)
 add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
 target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     gtest_main
-    kineto
+    kineto_base kineto_api
     $<BUILD_INTERFACE:fmt::fmt-header-only>)
 gtest_discover_tests(CuptiRangeProfilerConfigTest)
 
@@ -75,7 +75,7 @@ gtest_discover_tests(CuptiRangeProfilerConfigTest)
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
 target_link_libraries(CuptiStringsTest PRIVATE
     gtest_main
-    kineto)
+    kineto_base kineto_api)
 gtest_discover_tests(CuptiStringsTest)
 
 # EventProfilerTest
@@ -83,7 +83,7 @@ add_executable(EventProfilerTest EventProfilerTest.cpp)
 target_link_libraries(EventProfilerTest PRIVATE
     gtest_main
     gmock
-    kineto)
+    kineto_base kineto_api)
 gtest_discover_tests(EventProfilerTest)
 endif()
 
@@ -91,14 +91,14 @@ endif()
 add_executable(LoggerObserverTest LoggerObserverTest.cpp)
 target_link_libraries(LoggerObserverTest PRIVATE
     gtest_main
-    kineto)
+    kineto_base kineto_api)
 gtest_discover_tests(LoggerObserverTest)
 
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_link_libraries(PidInfoTest PRIVATE
     gtest_main
-    kineto)
+    kineto_base kineto_api)
 gtest_discover_tests(PidInfoTest)
 
 # CuptiProfilerApiTest

@@ -24,6 +24,7 @@
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
+#include "ApproximateClock.h"
 
 using namespace libkineto;
 using namespace std::chrono;
@@ -549,20 +550,16 @@ void RocprofLogger::api_callback(
     rocprofiler_callback_tracing_record_t record,
     rocprofiler_user_data_t* user_data,
     void* callback_data) {
-  thread_local std::unordered_map<uint64_t, timespec> timestamps;
+  thread_local std::unordered_map<uint64_t, uint64_t> timestamps;
 
   if (record.kind == ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API) {
     if (record.phase == ROCPROFILER_CALLBACK_PHASE_ENTER) {
-      timespec timestamp;
-      clock_gettime(CLOCK_MONOTONIC, &timestamp); // record proper clock
-      timestamps[record.correlation_id.internal] = timestamp;
+      timestamps[record.correlation_id.internal] = getApproximateTime();
     } // ROCPROFILER_CALLBACK_PHASE_ENTER
     else { // ROCPROFILER_CALLBACK_PHASE_EXIT
-      timespec startTime;
-      startTime = timestamps[record.correlation_id.internal];
+      uint64_t startTime = timestamps[record.correlation_id.internal];
       timestamps.erase(record.correlation_id.internal);
-      timespec endTime;
-      clock_gettime(CLOCK_MONOTONIC, &endTime); // record proper clock
+      uint64_t endTime = getApproximateTime();
 
       // Kernel Launch Records
       if (isKernelApi(record.operation)) {
@@ -580,8 +577,8 @@ void RocprofLogger::api_callback(
             record.operation,
             processId(),
             systemThreadId(),
-            timespec_to_ns(startTime),
-            timespec_to_ns(endTime),
+            startTime,
+            endTime,
             nullptr,
             nullptr,
             args.workgroupSize.x,
@@ -611,8 +608,8 @@ void RocprofLogger::api_callback(
           args.operation,
           processId(),
           systemThreadId(),
-          timespec_to_ns(startTime),
-          timespec_to_ns(endTime),
+          startTime,
+          endTime,
           args.src,
           args.dst,
           args.size,
@@ -636,8 +633,8 @@ void RocprofLogger::api_callback(
             record.operation,
             processId(),
             systemThreadId(),
-            timespec_to_ns(startTime),
-            timespec_to_ns(endTime),
+            startTime,
+            endTime,
             args.ptr,
             args.size);
         insert_row_to_buffer(row);
@@ -650,8 +647,8 @@ void RocprofLogger::api_callback(
             record.operation,
             processId(),
             systemThreadId(),
-            timespec_to_ns(startTime),
-            timespec_to_ns(endTime));
+            startTime,
+            endTime);
         insert_row_to_buffer(row);
       }
     } // ROCPROFILER_CALLBACK_PHASE_EXIT

@@ -84,6 +84,10 @@ auto extract_copy_args = [](rocprofiler_callback_tracing_kind_t,
 struct kernel_args {
   // const char *stream;
   hipStream_t stream{nullptr};
+  uint32_t privateSize {0};
+  uint32_t groupSize {0};
+  rocprofiler_dim3_t workgroupSize {0};
+  rocprofiler_dim3_t gridSize {0};
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
@@ -97,11 +101,27 @@ auto extract_kernel_args = [](rocprofiler_callback_tracing_kind_t,
                               const char* arg_value_str,
                               int32_t dereference_count,
                               void* cb_data) -> int {
-  if (strcmp("stream", arg_name) == 0) {
-    auto& args = *(static_cast<kernel_args*>(cb_data));
-    // args.stream = arg_value_str;
+  auto& args = *(static_cast<kernel_args*>(cb_data));
+  if (strcmp("stream", arg_name) == 0)
     args.stream = *(reinterpret_cast<const hipStream_t*>(arg_value_addr));
-  }
+  else if (strcmp("numBlocks", arg_name) == 0)
+    args.workgroupSize = *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
+  else if (strcmp("dimBlocks", arg_name) == 0)
+    args.gridSize = *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
+  else if (strcmp("sharedMemBytes", arg_name) == 0)
+    args.groupSize = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+  else if (strcmp("globalWorkSizeX", arg_name) == 0)
+    args.workgroupSize.x = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+  else if (strcmp("globalWorkSizeY", arg_name) == 0)
+    args.workgroupSize.y = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+  else if (strcmp("globalWorkSizeZ", arg_name) == 0)
+    args.workgroupSize.z = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+  else if (strcmp("localWorkSizeX", arg_name) == 0)
+    args.gridSize.x = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+  else if (strcmp("localWorkSizeY", arg_name) == 0)
+    args.gridSize.y = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+  else if (strcmp("localWorkSizeZ", arg_name) == 0)
+    args.gridSize.z = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   return 0;
 };
 
@@ -231,7 +251,7 @@ class RocprofLoggerShared {
   rocprofiler_context_id_t context = {0};
 
   // Buffers
-  // rocprofiler_buffer_id_t client_buffer = {};
+  rocprofiler_buffer_id_t buffer = {};
 
   // Manage kernel names - #betterThanRoctracer
   kernel_symbol_map_t kernel_info = {};
@@ -240,6 +260,7 @@ class RocprofLoggerShared {
 
   // Manage buffer name - #betterThanRoctracer
   callback_name_info name_info = {};
+  buffer_name_info buff_name_info = {};
 
   // Agent info
   // <rocprofiler_profile_config_id_t.handle, rocprofiler_agent_v0_t>
@@ -319,6 +340,7 @@ int RocprofLogger::toolInit(
     void* tool_data) {
   // Gather api names
   s->name_info = rocprofiler::sdk::get_callback_tracing_names();
+  s->buff_name_info = rocprofiler::sdk::get_buffer_tracing_names();
 
   // Gather agent info
   auto agent_info = get_gpu_device_agents();
@@ -376,6 +398,7 @@ int RocprofLogger::toolInit(
   //
   rocprofiler_create_context(&s->context);
 
+  // Collect api info via callback
   rocprofiler_configure_callback_tracing_service(
       s->context,
       ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
@@ -384,22 +407,29 @@ int RocprofLogger::toolInit(
       api_callback,
       nullptr);
 
-  rocprofiler_configure_callback_tracing_service(
-      s->context,
-      ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH,
-      nullptr,
-      0,
-      api_callback,
-      nullptr);
+  // Collect async ops via buffers
+  constexpr auto buffer_size_bytes      = 0x40000;
+  constexpr auto buffer_watermark_bytes = buffer_size_bytes / 2;
 
-  rocprofiler_configure_callback_tracing_service(
-      s->context,
-      ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY,
-      nullptr,
-      0,
-      api_callback,
-      nullptr);
+  rocprofiler_create_buffer(s->context,
+                            buffer_size_bytes,
+                            buffer_watermark_bytes,
+                            ROCPROFILER_BUFFER_POLICY_LOSSLESS,
+                            RocprofLogger::buffer_callback,
+                            nullptr,
+                            &s->buffer);
 
+  rocprofiler_configure_buffer_tracing_service(s->context,
+                                               ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
+                                               nullptr,
+                                               0,
+                                               s->buffer);
+
+  rocprofiler_configure_buffer_tracing_service(s->context,
+                                               ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
+                                               nullptr,
+                                               0,
+                                               s->buffer);
   {
     int isValid = 0;
     rocprofiler_context_is_valid(s->context, &isValid);
@@ -526,34 +556,6 @@ void RocprofLogger::api_callback(
       timespec timestamp;
       clock_gettime(CLOCK_MONOTONIC, &timestamp); // record proper clock
       timestamps[record.correlation_id.internal] = timestamp;
-
-      //---- Capture api args for copy and kernel apis
-      // These will be used during dispatch and copy callbacks to complete
-      // records
-      if (isCopyApi(record.operation)) {
-        auto& args = s->copyargs[record.correlation_id.internal];
-        rocprofiler_iterate_callback_tracing_kind_operation_args(
-            record,
-            extract_copy_args,
-            1 /*max_deref*/
-            ,
-            &args);
-        args.kind = record.kind;
-        args.operation = record.operation;
-      }
-      if (isKernelApi(record.operation)) {
-        auto& args = s->kernelargs[record.correlation_id.internal];
-        rocprofiler_iterate_callback_tracing_kind_operation_args(
-            record,
-            extract_kernel_args,
-            1 /*max_deref*/
-            ,
-            &args);
-        args.kind = record.kind;
-        args.operation = record.operation;
-      }
-      //-----------------------------------------------
-
     } // ROCPROFILER_CALLBACK_PHASE_ENTER
     else { // ROCPROFILER_CALLBACK_PHASE_EXIT
       timespec startTime;
@@ -564,15 +566,59 @@ void RocprofLogger::api_callback(
 
       // Kernel Launch Records
       if (isKernelApi(record.operation)) {
-        // handled in dispatch callback
-        s->kernelargs.erase(record.correlation_id.internal);
+        kernel_args args;
+        rocprofiler_iterate_callback_tracing_kind_operation_args(
+            record,
+            extract_kernel_args,
+            1 /*max_deref*/
+            ,
+            &args);
+
+        rocprofKernelRow* row = new rocprofKernelRow(
+            record.correlation_id.internal,
+            record.kind,
+            record.operation,
+            processId(),
+            systemThreadId(),
+            timespec_to_ns(startTime),
+            timespec_to_ns(endTime),
+            nullptr,
+            nullptr,
+            args.workgroupSize.x,
+            args.workgroupSize.y,
+            args.workgroupSize.z,
+            args.gridSize.x,
+            args.gridSize.y,
+            args.gridSize.z,
+            args.groupSize,
+            args.stream);
+        insert_row_to_buffer(row);
+
       }
       // Copy Records
       else if (isCopyApi(record.operation)) {
-        // handled in copy callback
-        // FIXME: do not remove here.  Used after the async operation
-        // DO it anyway, wait for crash,  async SDMA should assert below
-        s->copyargs.erase(record.correlation_id.internal);
+        copy_args args;
+        rocprofiler_iterate_callback_tracing_kind_operation_args(
+            record,
+            extract_copy_args,
+            1 /*max_deref*/
+            ,
+            &args);
+
+      rocprofCopyRow* row = new rocprofCopyRow(
+          record.correlation_id.internal,
+          args.kind,
+          args.operation,
+          processId(),
+          systemThreadId(),
+          timespec_to_ns(startTime),
+          timespec_to_ns(endTime),
+          args.src,
+          args.dst,
+          args.size,
+          args.copyKind,
+          args.stream);
+      insert_row_to_buffer(row);
       }
       // Malloc Records
       else if (isMallocApi(record.operation)) {
@@ -610,116 +656,60 @@ void RocprofLogger::api_callback(
       }
     } // ROCPROFILER_CALLBACK_PHASE_EXIT
   } // ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API
-
-  else if (record.kind == ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH) {
-    if (record.phase == ROCPROFILER_CALLBACK_PHASE_ENTER) {
-      ;
-    } else if (record.phase == ROCPROFILER_CALLBACK_PHASE_EXIT) {
-      auto& dispatch =
-          *(static_cast<rocprofiler_callback_tracing_kernel_dispatch_data_t*>(
-              record.payload));
-      auto& info = dispatch.dispatch_info;
-
-      // Lookup the stream and apiname from the enclosing hip call.
-      //  These are not provided in the dispatch record
-      hipStream_t stream = 0;
-      auto kind = record.kind;
-      auto operation = record.operation;
-      if (s->kernelargs.count(record.correlation_id.internal) > 0) {
-        // This row can be missing.  Some copy api dispatch kernels under the
-        // hood
-        auto& kargs = s->kernelargs.at(record.correlation_id.internal);
-        stream = kargs.stream;
-        kind = kargs.kind;
-        operation = kargs.operation;
-      } else if (s->copyargs.count(record.correlation_id.internal) > 0) {
-        // Grab the stream from the copy row instead
-        auto& cargs = s->copyargs.at(record.correlation_id.internal);
-        stream = cargs.stream;
-        kind = cargs.kind;
-        operation = cargs.operation;
-      }
-
-      // fetch up the timestamps
-      timespec startTime;
-      startTime = timestamps[record.correlation_id.internal];
-      timespec endTime;
-      clock_gettime(CLOCK_MONOTONIC, &endTime); // record proper clock
-
-      rocprofKernelRow* row = new rocprofKernelRow(
-          record.correlation_id.internal,
-          kind,
-          operation,
-          processId(),
-          systemThreadId(),
-          timespec_to_ns(startTime),
-          timespec_to_ns(endTime),
-          nullptr,
-          nullptr,
-          info.workgroup_size.x,
-          info.workgroup_size.y,
-          info.workgroup_size.z,
-          info.grid_size.x,
-          info.grid_size.y,
-          info.grid_size.z,
-          info.group_segment_size,
-          stream);
-      insert_row_to_buffer(row);
-    } else if (record.phase == ROCPROFILER_CALLBACK_PHASE_NONE) {
-      // completion callback - runtime thread
-      auto& dispatch =
-          *(static_cast<rocprofiler_callback_tracing_kernel_dispatch_data_t*>(
-              record.payload));
-      auto& info = dispatch.dispatch_info;
-
-      std::lock_guard<std::mutex> lock(s->kernel_lock);
-
-      rocprofAsyncRow* row = new rocprofAsyncRow(
-          record.correlation_id.internal,
-          record.kind,
-          record.operation,
-          record.operation, // shared op - No longer a thing.  Placeholder
-          s->agents.at(info.agent_id.handle).logical_node_type_id,
-          info.queue_id.handle,
-          dispatch.start_timestamp,
-          dispatch.end_timestamp,
-          s->kernel_names.at(info.kernel_id));
-      insert_row_to_buffer(row);
-    }
-  } // ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH
-
-  else if (record.kind == ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY) {
-    if (record.phase == ROCPROFILER_CALLBACK_PHASE_EXIT) {
-      auto& copy =
-          *(static_cast<rocprofiler_callback_tracing_memory_copy_data_t*>(
-              record.payload));
-
-      // Fetch args from the enclosing hip call
-      // FIXME async?  May need to remove it here rather than above
-      auto& args = s->copyargs.at(record.correlation_id.internal);
-
-      rocprofCopyRow* row = new rocprofCopyRow(
-          record.correlation_id.internal,
-          args.kind,
-          args.operation,
-          processId(),
-          systemThreadId(),
-          copy.start_timestamp,
-          copy.end_timestamp,
-          args.src,
-          args.dst,
-          args.size,
-          args.copyKind,
-          args.stream);
-      insert_row_to_buffer(row);
-    }
-  } // ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY
 }
+
+
+void RocprofLogger::buffer_callback(rocprofiler_context_id_t context, rocprofiler_buffer_id_t buffer_id, rocprofiler_record_header_t** headers, size_t num_headers, void* user_data, uint64_t drop_count)
+{
+  for (size_t i = 0; i < num_headers; ++i) {
+    auto* header = headers[i];
+
+    if (header->category == ROCPROFILER_BUFFER_CATEGORY_TRACING) {
+      if (header->kind == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH) {
+        auto& record = *(static_cast<rocprofiler_buffer_tracing_kernel_dispatch_record_t*>(header->payload));
+        auto& dispatch = record.dispatch_info;
+
+        rocprofAsyncRow* row = new rocprofAsyncRow(
+            record.correlation_id.internal,
+            record.kind,
+            record.operation,
+            record.operation, // shared op - No longer a thing.  Placeholder
+            s->agents.at(dispatch.agent_id.handle).logical_node_type_id,
+            dispatch.queue_id.handle,
+            record.start_timestamp,
+            record.end_timestamp,
+            s->kernel_names.at(dispatch.kernel_id));
+        insert_row_to_buffer(row);
+      }
+      else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
+        auto &record = *(static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(header->payload));
+        rocprofAsyncRow* row = new rocprofAsyncRow(
+            record.correlation_id.internal,
+            record.kind,
+            record.operation,
+            record.operation, // shared op - No longer a thing.  Placeholder
+            s->agents.at(record.dst_agent_id.handle).logical_node_type_id,
+            0,
+            record.start_timestamp,
+            record.end_timestamp,
+            "");
+        insert_row_to_buffer(row);
+      }
+    }
+  }
+}
+
 
 std::string RocprofLogger::opString(
     rocprofiler_callback_tracing_kind_t kind,
     rocprofiler_tracing_operation_t op) {
   return std::string(RocprofLoggerShared::singleton().name_info[kind][op]);
+}
+
+std::string RocprofLogger::opString(
+    rocprofiler_buffer_tracing_kind_t kind,
+    rocprofiler_tracing_operation_t op) {
+  return std::string(RocprofLoggerShared::singleton().buff_name_info[kind][op]);
 }
 
 void RocprofLogger::startLogging() {
@@ -739,7 +729,8 @@ void RocprofLogger::stopLogging() {
     return;
   logging_ = false;
 
-  // Flushing likely not required - using callbacks only
+  // Flush buffers
+  rocprofiler_flush_buffer(s->buffer);
 
   if (s != nullptr)
     rocprofiler_stop_context(s->context);

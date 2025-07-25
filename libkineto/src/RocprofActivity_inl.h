@@ -77,7 +77,7 @@ inline const std::string GpuActivity::name() const {
     auto op = raw().op;
     auto domain = raw().domain;
     std::string opString = RocprofLogger::opString(
-        static_cast<rocprofiler_callback_tracing_kind_t>(domain), op);
+        static_cast<rocprofiler_buffer_tracing_kind_t>(domain), op);
     const char* name = opString.c_str();
     return demangle(
         raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));

@@ -103,8 +103,8 @@ std::function<time_t(approx_time_t)>& get_time_converter() {
 }
 #ifdef HAS_ROCTRACER
 timestamp_t getTimeOffset() {
-  int64_t t0, t00;
   timespec t1;
+  int64_t t0, t00;
   t0 = libkineto::getApproximateTime();
   clock_gettime(CLOCK_MONOTONIC, &t1);
   t00 = libkineto::getApproximateTime();
@@ -113,8 +113,8 @@ timestamp_t getTimeOffset() {
   t0 = libkineto::get_time_converter()(t0);
   t00 = libkineto::get_time_converter()(t00);
 
-  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
-  // domain (in ns).
+  // Our stored timestamps (from roctracer and generated) are in
+  // CLOCK_MONOTONIC domain (in ns).
   return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
 }
 #endif
@@ -337,6 +337,9 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
         device_properties.push_back(props);
       }
     }
+    for (const auto& [key, value] : session->getMetadata()) {
+      addMetadata(key, value);
+    }
   }
   logger.handleTraceStart(
       metadata_, fmt::format("{}", fmt::join(device_properties, ",")));
@@ -389,6 +392,10 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 #ifdef HAS_ROCTRACER
   if (!cpuOnly_) {
     VLOG(0) << "Retrieving GPU activity buffers";
+    if (gpuOnly_) {
+      ApproximateClockToUnixTimeConverter clockConverter;
+      get_time_converter() = clockConverter.makeConverter();
+    }
     timestamp_t offset = getTimeOffset();
     cupti_.setTimeOffset(offset);
     const int count = cupti_.processActivities(
@@ -447,7 +454,7 @@ void CuptiActivityProfiler::processCpuTrace(
     return;
   }
   setCpuActivityPresent(true);
-
+  bool warn_once = false;
   CpuGpuSpanPair& span_pair =
       recordTraceSpan(cpuTrace.span, cpuTrace.gpuOpCount);
   TraceSpan& cpu_span = span_pair.first;
@@ -460,18 +467,23 @@ void CuptiActivityProfiler::processCpuTrace(
               const std::unique_ptr<GenericTraceActivity>>::value,
           "handleActivity is unsafe and relies on the caller to maintain not "
           "only lifetime but also address stability.");
-      if (act->type() == ActivityType::USER_ANNOTATION &&
-          act->duration() <= 0) {
+      if (act->duration() < 0) {
         act->endTime = captureWindowEndTime_;
         act->addMetadata("finished", "false");
-      } else {
-        act->addMetadata("finished", "true");
       }
       logger.handleActivity(*act);
     }
     clientActivityTraceMap_[act->correlationId()] = &span_pair;
     activityMap_[act->correlationId()] = act.get();
-
+    if (act->deviceId() == 0) {
+      if (!warn_once) {
+        LOG(WARNING)
+            << "CPU activity with pid 0 detected. This is likely due to the python stack"
+               " tracer not being able to determine the pid for an event. Overriding pid to main thread pid";
+      }
+      act->setDevice(processId());
+      warn_once = true;
+    }
     recordThreadInfo(act->resourceId(), act->getThreadId(), act->deviceId());
   }
   logger.handleTraceSpan(cpu_span);
@@ -582,8 +594,8 @@ inline static bool isBlockListedRuntimeCbid(CUpti_CallbackId cbid) {
   if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020 ||
-      // Support cudaEventRecord and cudaEventSynchronize, revisit if others are
-      // needed
+      // Support cudaEventRecord and cudaEventSynchronize, revisit if others
+      // are needed
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreate_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreateWithFlags_v3020 ||
       cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020) {
@@ -1068,6 +1080,7 @@ void CuptiActivityProfiler::configure(
     config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
   }
   if (!cpuOnly_ && !libkineto::api().client()) {
+    gpuOnly_ = true;
     if (derivedConfig_->isProfilingByIteration()) {
       LOG(INFO) << "GPU-only tracing for " << config_->activitiesRunIterations()
                 << " iterations";
@@ -1116,7 +1129,8 @@ void CuptiActivityProfiler::configure(
 #endif // _WIN32
     cupti_.enableCuptiActivities(
         config_->selectedActivityTypes(), config_->perThreadBufferEnabled());
-#else
+#else // HAS_ROCTRACER
+    cupti_.setMaxEvents(config_->maxEvents());
     cupti_.enableActivities(config_->selectedActivityTypes());
 #endif
     if (VLOG_IS_ON(1)) {
@@ -1276,6 +1290,10 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
       << "Run loop on application step(), iteration = " << currentIter;
 
   switch (currentRunloopState_) {
+    case RunloopState::CollectMemorySnapshot:
+      LOG(WARNING)
+          << "Entered CollectMemorySnapshot in Kineto Loop Step, skipping loop";
+      break;
     case RunloopState::WaitForRequest:
       VLOG(1) << "State: WaitForRequest";
       // Nothing to do
@@ -1340,20 +1358,21 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
           || cupti_.stopCollection
 #endif // HAS_CUPTI || HAS_ROCTRACER
       ) {
-        // Update runloop state first to prevent further updates to shared state
+        // Update runloop state first to prevent further updates to shared
+        // state
         LOG(INFO) << "Tracing complete.";
         VLOG_IF(1, currentIter >= 0)
             << "This state change was invoked by application's step() call";
 
         // currentIter >= 0 means this is called from the step() api of
-        // the profile in pytorch main thread, it should be executed in another
-        // thread in case pytorch main thread is blocked
+        // the profile in pytorch main thread, it should be executed in
+        // another thread in case pytorch main thread is blocked
         if (currentIter >= 0) {
           // if collectTraceThread_ is already running, there's no need to
           // execute collectTrace twice.
-          // Do not call collectTrace when profilerThread_ is collecting Trace.
-          // Otherwise, libkineto::api().client()->stop will be called twice,
-          // which leads to an unrecoverable ::c10:Error at
+          // Do not call collectTrace when profilerThread_ is collecting
+          // Trace. Otherwise, libkineto::api().client()->stop will be called
+          // twice, which leads to an unrecoverable ::c10:Error at
           // disableProfiler
           if (!collectTraceThread_ && !getCollectTraceState()) {
             std::lock_guard<std::recursive_mutex> guard(mutex_);
@@ -1411,6 +1430,25 @@ const time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
   return new_wakeup_time;
 }
 
+const void CuptiActivityProfiler::performMemoryLoop(
+    const string& path,
+    uint32_t profile_time,
+    ActivityLogger* logger,
+    Config& config) {
+  currentRunloopState_ = RunloopState::CollectMemorySnapshot;
+  if (libkineto::api().client()) {
+    libkineto::api().client()->start_memory_profile();
+    LOG(INFO) << "Running memory profiling for " << profile_time << " ms";
+    std::this_thread::sleep_for(std::chrono::milliseconds(profile_time));
+    LOG(INFO) << "Exporting memory profiling results to " << path;
+    libkineto::api().client()->export_memory_profile(path);
+    libkineto::api().client()->stop_memory_profile();
+    LOG(INFO) << "Finalizing trace";
+    logger->finalizeMemoryTrace(path, config);
+  }
+  currentRunloopState_ = RunloopState::WaitForRequest;
+}
+
 void CuptiActivityProfiler::finalizeTrace(
     const Config& config,
     ActivityLogger& logger) {
@@ -1422,13 +1460,33 @@ void CuptiActivityProfiler::finalizeTrace(
     iterationCountMap_.clear();
   }
 
+  // Thread & stream info
+  for (const auto& pair : resourceInfo_) {
+    const auto& resource = pair.second;
+    logger.handleResourceInfo(resource, captureWindowStartTime_);
+  }
+
+  bool use_default_device_info = true;
+  for (auto& session : sessions_) {
+    auto device_info = session->getDeviceInfo();
+    if (device_info != nullptr) {
+      use_default_device_info = false;
+      logger.handleDeviceInfo(*device_info, captureWindowStartTime_);
+    }
+
+    auto resource_infos = session->getResourceInfos();
+    for (const auto& resource_info : resource_infos) {
+      logger.handleResourceInfo(resource_info, captureWindowStartTime_);
+    }
+  }
+
   // Process names
   int32_t pid = processId();
   string process_name = processName(pid);
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
         {pid, pid, process_name, "CPU"}, captureWindowStartTime_);
-    if (!cpuOnly_) {
+    if (!cpuOnly_ && use_default_device_info) {
       // Usually, GPU events use device id as pid (0-7).
       // In some cases, CPU sockets are numbered starting from 0.
       // In the worst case, 8 CPU sockets + 8 GPUs, so the max GPU ID is 15.
@@ -1443,24 +1501,6 @@ void CuptiActivityProfiler::finalizeTrace(
              fmt::format("GPU {}", gpu)},
             captureWindowStartTime_);
       }
-    }
-  }
-
-  // Thread & stream info
-  for (auto pair : resourceInfo_) {
-    const auto& resource = pair.second;
-    logger.handleResourceInfo(resource, captureWindowStartTime_);
-  }
-
-  for (auto& session : sessions_) {
-    auto device_info = session->getDeviceInfo();
-    if (device_info != nullptr) {
-      logger.handleDeviceInfo(*device_info, captureWindowStartTime_);
-    }
-
-    auto resource_infos = session->getResourceInfos();
-    for (auto resource_info : resource_infos) {
-      logger.handleResourceInfo(resource_info, captureWindowStartTime_);
     }
   }
 

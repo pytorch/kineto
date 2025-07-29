@@ -27,6 +27,11 @@
 #include "LoggerCollector.h"
 
 namespace KINETO_NAMESPACE {
+enum ThreadType {
+  KINETO = 0,
+  MEMORY_SNAPSHOT,
+  THREAD_MAX_COUNT // Number of enum entries (used for array sizing)
+};
 
 class Config;
 
@@ -108,6 +113,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   bool shouldActivateTimestampConfig(
       const std::chrono::time_point<std::chrono::system_clock>& now);
   void profilerLoop();
+  void memoryProfilerLoop();
   void activateConfig(std::chrono::time_point<std::chrono::system_clock> now);
 
   std::unique_ptr<Config> asyncRequestConfig_;
@@ -116,7 +122,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<CuptiActivityProfiler> profiler_;
   std::unique_ptr<ActivityLogger> logger_;
   std::shared_ptr<LoggerCollector> loggerCollectorFactory_;
-  std::thread* profilerThread_{nullptr};
+  std::thread* profilerThreads_[ThreadType::THREAD_MAX_COUNT] = {nullptr};
   std::atomic_bool stopRunloop_{false};
   std::atomic<std::int64_t> iterationCount_{-1};
   ConfigLoader& configLoader_;

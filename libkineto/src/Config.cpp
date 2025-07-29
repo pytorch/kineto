@@ -94,6 +94,14 @@ constexpr char kProfileWithModules[] = "PROFILE_WITH_MODULES";
 constexpr char kActivitiesWarmupIterationsKey[] =
     "ACTIVITIES_WARMUP_ITERATIONS";
 constexpr char kActivitiesIterationsKey[] = "ACTIVITIES_ITERATIONS";
+
+// Memory Profiler
+constexpr char kProfileMemory[] = "PROFILE_MEMORY";
+constexpr char kProfileMemoryDuration[] = "PROFILE_MEMORY_DURATION_MSECS";
+
+// Roctracer
+constexpr char kRoctracerSetMaxEvents[] = "ROCTRACER_MAX_EVENTS";
+
 // Common
 
 // Client-side timestamp used for synchronized start across hosts for
@@ -160,6 +168,8 @@ constexpr char kLogVerboseLevelKey[] = "VERBOSE_LOG_LEVEL";
 // Example argument: ActivityProfiler.cpp,output_json.cpp
 constexpr char kLogVerboseModulesKey[] = "VERBOSE_LOG_MODULES";
 
+constexpr char kCustomConfigKey[] = "CUSTOM_CONFIG";
+
 // Max devices supported on any system
 constexpr uint8_t kMaxDevices = 8;
 
@@ -208,6 +218,10 @@ void Config::addConfigFactory(
 
 static string defaultTraceFileName() {
   return fmt::format("/tmp/libkineto_activities_{}.json", processId());
+}
+
+static string defaultMemoryTraceFileName() {
+  return fmt::format("/tmp/memory_snapshot_{}.pickle", processId());
 }
 
 Config::Config()
@@ -388,6 +402,13 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activityProfilerEnabled_ = toBool(val);
   } else if (!name.compare(kCuptiPerThreadBufferEnabledKey)) {
     perThreadBufferEnabled_ = toBool(val);
+  } else if (!name.compare(kProfileMemory)) {
+    memoryProfilerEnabled_ = toBool(val);
+    if (memoryProfilerEnabled_) {
+      activitiesLogFile_ = defaultMemoryTraceFileName();
+    }
+  } else if (!name.compare(kProfileMemoryDuration)) {
+    profileMemoryDuration_ = toInt32(val);
   } else if (!name.compare(kActivitiesLogFileKey)) {
     activitiesLogFile_ = val;
     activitiesLogUrl_ = fmt::format("file://{}", val);
@@ -415,6 +436,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     requestTraceID_ = val;
   } else if (!name.compare(kRequestGroupTraceID)) {
     requestGroupTraceID_ = val;
+  } else if (!name.compare(kRoctracerSetMaxEvents)) {
+    maxEvents_ = toInt32(val);
   }
 
   // TODO: Deprecate Client Interface
@@ -454,6 +477,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     enableIpcFabric_ = toBool(val);
   } else if (!name.compare(kOnDemandConfigUpdateIntervalSecsKey)) {
     onDemandConfigUpdateIntervalSecs_ = seconds(toInt32(val));
+  } else if (!name.compare(kCustomConfigKey)) {
+    customConfig_ = val;
   } else {
     return false;
   }

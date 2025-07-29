@@ -18,8 +18,6 @@
 #include <functional>
 #include <type_traits>
 
-namespace libkineto {
-
 #if defined(__i386__) || defined(__x86_64__) || defined(__amd64__)
 #define KINETO_RDTSC
 #if defined(_MSC_VER)
@@ -41,6 +39,8 @@ namespace libkineto {
 #else
 #define KINETO_UNUSED __attribute__((__unused__))
 #endif //_MSC_VER
+
+namespace libkineto {
 
 using time_t = int64_t;
 using steady_clock_t = std::conditional_t<
@@ -89,4 +89,24 @@ static_assert(
     "Expected either int64_t (`getTime`) or uint64_t (some TSC reads).");
 
 std::function<time_t(approx_time_t)>& get_time_converter();
+
+// Convert `getCount` results to Nanoseconds since unix epoch.
+class ApproximateClockToUnixTimeConverter final {
+ public:
+  ApproximateClockToUnixTimeConverter();
+  std::function<time_t(approx_time_t)> makeConverter();
+
+  struct UnixAndApproximateTimePair {
+    time_t t_;
+    approx_time_t approx_t_;
+  };
+  static UnixAndApproximateTimePair measurePair();
+
+ private:
+  static constexpr size_t replicates = 1001;
+  using time_pairs = std::array<UnixAndApproximateTimePair, replicates>;
+  time_pairs measurePairs();
+
+  time_pairs start_times_;
+};
 } // namespace libkineto

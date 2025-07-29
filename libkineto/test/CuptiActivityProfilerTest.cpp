@@ -627,7 +627,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   metadataMap.emplace(kProcessGroupDesc, fmt::format("\"{}\"", "test_purpose"));
 
   std::vector<int64_t> inSplitSizes(50, 0);
-  std::string inSplitSizesStr = "";
+  std::string inSplitSizesStr;
   // Logic is copied from: https://fburl.com/code/811a3wq8
   if (!inSplitSizes.empty() && inSplitSizes.size() <= kTruncatLength) {
     inSplitSizesStr = fmt::format("\"[{}]\"", fmt::join(inSplitSizes, ", "));
@@ -641,7 +641,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   }
 
   std::vector<int64_t> outSplitSizes(20, 1);
-  std::string outSplitSizesStr = "";
+  std::string outSplitSizesStr;
   // Logic is copied from: https://fburl.com/code/811a3wq8
   if (!outSplitSizes.empty() && outSplitSizes.size() <= kTruncatLength) {
     outSplitSizesStr = fmt::format("\"[{}]\"", fmt::join(outSplitSizes, ", "));
@@ -657,7 +657,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   }
 
   std::vector<int64_t> groupRanks(64, 0);
-  std::string groupRanksStr = "";
+  std::string groupRanksStr;
   if (!groupRanks.empty() && groupRanks.size() <= kTruncatLength) {
     metadataMap.emplace(
         kGroupRanks, fmt::format("\"[{}]\"", fmt::join(groupRanks, ", ")));

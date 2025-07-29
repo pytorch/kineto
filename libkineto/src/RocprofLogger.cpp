@@ -709,6 +709,12 @@ std::string RocprofLogger::opString(
   return std::string(RocprofLoggerShared::singleton().buff_name_info[kind][op]);
 }
 
+void RocprofLogger::setMaxEvents(uint32_t maxBufferSize) {
+  RocprofLogger* dis = &singleton();
+  std::lock_guard<std::mutex> lock(dis->rowsMutex_);
+  maxBufferSize_ = maxBufferSize;
+}
+
 void RocprofLogger::startLogging() {
   if (!registered_) {
   }

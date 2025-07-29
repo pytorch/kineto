@@ -53,6 +53,10 @@ void RocprofActivityApi::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
+void RocprofActivityApi::setMaxEvents(uint32_t maxEvents) {
+  d->setMaxEvents(maxEvents);
+}
+
 void RocprofActivityApi::setMaxBufferSize(int size) {
   // FIXME: implement?
   // maxGpuBufferCount_ = 1 + size / kBufSize;

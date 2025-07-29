@@ -40,6 +40,7 @@ class RocprofLogger {
   void startLogging();
   void stopLogging();
   void clearLogs();
+  void setMaxEvents(uint32_t maxBufferSize);
 
   static int toolInit(
       rocprofiler_client_finalize_t finalize_func,

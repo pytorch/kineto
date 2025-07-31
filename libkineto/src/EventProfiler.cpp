@@ -11,9 +11,10 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
-#include <ctime>
+
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <map>

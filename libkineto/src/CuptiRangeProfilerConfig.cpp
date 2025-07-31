@@ -29,8 +29,7 @@ constexpr char kCuptiProfilerPerKernelKey[] =
 constexpr char kCuptiProfilerMaxRangesKey[] = "CUPTI_PROFILER_MAX_RANGES";
 
 CuptiRangeProfilerConfig::CuptiRangeProfilerConfig(Config& cfg)
-    : parent_(&cfg)
-      {}
+    : parent_(&cfg) {}
 
 bool CuptiRangeProfilerConfig::handleOption(
     const std::string& name,

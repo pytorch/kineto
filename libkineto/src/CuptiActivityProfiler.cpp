@@ -652,7 +652,9 @@ void CuptiActivityProfiler::handleOverheadActivity(
   setGpuActivityPresent(true);
 }
 
-static std::optional<WaitEventInfo> getWaitEventInfo(uint32_t ctx, uint32_t eventId) {
+static std::optional<WaitEventInfo> getWaitEventInfo(
+    uint32_t ctx,
+    uint32_t eventId) {
   auto key = CtxEventPair{ctx, eventId};
   auto it = waitEventMap().find(key);
   if (it != waitEventMap().end()) {
@@ -771,7 +773,8 @@ inline void CuptiActivityProfiler::updateGpuNetSpan(
   if (gpuOp.timestamp() < gpu_span.startTime || gpu_span.startTime == 0) {
     gpu_span.startTime = gpuOp.timestamp();
   }
-  gpu_span.endTime = std::max(gpuOp.timestamp() + gpuOp.duration(), gpu_span.endTime);
+  gpu_span.endTime =
+      std::max(gpuOp.timestamp() + gpuOp.duration(), gpu_span.endTime);
 }
 
 // I've observed occasional broken timestamps attached to GPU events...

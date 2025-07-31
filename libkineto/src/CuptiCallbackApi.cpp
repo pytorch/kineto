@@ -11,8 +11,9 @@
 #include "CuptiCallbackApi.h"
 #include "CuptiActivityApi.h"
 
-#include <cassert>
+
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <mutex>
 

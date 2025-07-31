@@ -14,8 +14,9 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
-#include <ctime>
+
 #include <chrono>
+#include <ctime>
 #include <functional>
 #include <mutex>
 #include <ostream>

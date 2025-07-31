@@ -12,7 +12,6 @@
 #include <csignal>
 #endif
 
-
 #include <chrono>
 #include <cstdlib>
 #include <fstream>

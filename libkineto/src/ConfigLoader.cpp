@@ -9,11 +9,11 @@
 #include "ConfigLoader.h"
 
 #ifdef __linux__
-#include <signal.h>
+#include <csignal>
 #endif
 
-#include <stdlib.h>
 #include <chrono>
+#include <cstdlib>
 #include <fstream>
 #include <functional>
 #include <memory>

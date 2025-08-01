@@ -13,9 +13,9 @@
 
 #ifndef USE_GOOGLE_LOG
 
-#include <time.h>
 #include <chrono>
 #include <cstring>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 

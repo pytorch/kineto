@@ -8,14 +8,15 @@
 
 #include "Config.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
-#include <time.h>
+
 #include <chrono>
+#include <ctime>
 #include <functional>
 #include <mutex>
 #include <ostream>
@@ -615,7 +616,7 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   std::vector<std::string> activities;
   activities.reserve(selectedActivityTypes_.size());
   for (const auto& activity : selectedActivityTypes_) {
-    activities.push_back(toString(activity));
+    activities.emplace_back(toString(activity));
   }
   fmt::print(s, "  Enabled activities: {}\n", fmt::join(activities, ","));
 

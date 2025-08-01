@@ -10,7 +10,7 @@
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
-#include <time.h>
+#include <ctime>
 #include <fstream>
 #include <iterator>
 #include "Config.h"
@@ -450,7 +450,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         arg_values.append(",");
       }
       arg_values.append(fmt::format(
-          " \"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}, \"{}\": {}",
+          R"( "{}": {}, "{}": {}, "{}": {}, "{}": {}, "{}": {})",
           kCollectiveName,
           collectiveName,
           kInMsgNelems,
@@ -488,7 +488,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         arg_values.append(",");
       }
       arg_values.append(fmt::format(
-          " \"{}\": {}, \"{}\": {}",
+          R"( "{}": {}, "{}": {})",
           kInSplit,
           inSplitSize,
           kOutSplit,
@@ -623,7 +623,7 @@ void ChromeTraceLogger::handleLink(
   // Flow events much bind to specific slices in order to exist.
   // Only Flow end needs to specify a binding point to enclosing slice.
   // Flow start automatically sets binding point to enclosing slice.
-  const auto binding = (type == kFlowEnd) ? ", \"bp\": \"e\"" : "";
+  const auto binding = (type == kFlowEnd) ? R"(, "bp": "e")" : "";
   // clang-format off
   uint64_t ts = transToRelativeTime(e.timestamp());
   fmt::print(traceOf_, R"JSON(

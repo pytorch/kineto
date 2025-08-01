@@ -9,7 +9,7 @@
 #include <CuptiRangeProfilerConfig.h>
 #include <Logger.h>
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -29,9 +29,7 @@ constexpr char kCuptiProfilerPerKernelKey[] =
 constexpr char kCuptiProfilerMaxRangesKey[] = "CUPTI_PROFILER_MAX_RANGES";
 
 CuptiRangeProfilerConfig::CuptiRangeProfilerConfig(Config& cfg)
-    : parent_(&cfg),
-      cuptiProfilerPerKernel_(false),
-      cuptiProfilerMaxRanges_(0) {}
+    : parent_(&cfg) {}
 
 bool CuptiRangeProfilerConfig::handleOption(
     const std::string& name,

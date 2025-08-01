@@ -77,9 +77,7 @@ ActivityProfilerController::ActivityProfilerController(
 
 ActivityProfilerController::~ActivityProfilerController() {
   configLoader_.removeHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
-  for (int thread_type = 0; thread_type < ThreadType::THREAD_MAX_COUNT;
-       thread_type++) {
-    std::thread* profilerThread = profilerThreads_[thread_type];
+  for (auto profilerThread : profilerThreads_) {
     if (profilerThread) {
       // signaling termination of the profiler loop
       stopRunloop_ = true;

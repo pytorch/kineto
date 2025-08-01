@@ -37,8 +37,8 @@ ApproximateClockToUnixTimeConverter::measurePairs() {
   }
 
   time_pairs out;
-  for (int i = 0; i < out.size(); i++) {
-    out[i] = measurePair();
+  for (auto& i : out) {
+    i = measurePair();
   }
   return out;
 }

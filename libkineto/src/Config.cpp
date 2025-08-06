@@ -20,6 +20,7 @@
 #include <functional>
 #include <mutex>
 #include <ostream>
+#include <utility>
 
 #include "Logger.h"
 #include "ThreadUtil.h"
@@ -182,7 +183,7 @@ struct FactoryMap {
       std::string name,
       std::function<AbstractConfig*(Config&)> factory) {
     std::lock_guard<std::mutex> lock(lock_);
-    factories_[name] = factory;
+    factories_.emplace(std::move(name), std::move(factory));
   }
 
   void addFeatureConfigs(Config& cfg) {
@@ -214,7 +215,7 @@ void Config::addConfigFactory(
     std::function<AbstractConfig*(Config&)> factory) {
   auto factories = configFactories();
   if (factories) {
-    factories->addFactory(name, factory);
+    factories->addFactory(std::move(name), std::move(factory));
   }
 }
 
@@ -346,9 +347,9 @@ static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
 void Config::setActivityTypes(
     const std::vector<std::string>& selected_activities) {
   selectedActivityTypes_.clear();
-  if (selected_activities.size() > 0) {
+  if (!selected_activities.empty()) {
     for (const auto& activity : selected_activities) {
-      if (activity == "") {
+      if (activity.empty()) {
         continue;
       }
       selectedActivityTypes_.insert(toActivityType(activity));
@@ -568,7 +569,7 @@ void Config::validate(
     profileStartIteration_ = 0;
   }
 
-  if (selectedActivityTypes_.size() == 0) {
+  if (selectedActivityTypes_.empty()) {
     selectDefaultActivityTypes();
   }
   setActivityDependentConfig();

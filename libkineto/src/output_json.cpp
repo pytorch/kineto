@@ -111,7 +111,7 @@ static inline int32_t sanitizeTid(int32_t tid) {
 
 void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
-  for (auto [k, v] : metadata) {
+  for (const auto& [k, v] : metadata) {
     std::string sanitizedValue = v;
     // There is a seperate mechanism for recording distributedInfo in on-demand
     // so add a guard to prevent "double counting" in auto-trace.
@@ -528,7 +528,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       arg_values.append(fmt::format(", \"{}\": {}", kP2pSrc, srcRank));
     }
 
-    if (distInfo_.backend == "" && processGroupDesc == "\"default_pg\"") {
+    if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
       distInfo_.backend = "nccl";
       distInfo_.rank = collectiveRecord->getMetadataValue(kRank);
       distInfo_.world_size = groupSize;
@@ -644,7 +644,7 @@ void ChromeTraceLogger::finalizeTrace(
 }
 
 void ChromeTraceLogger::addOnDemandDistMetadata() {
-  if (distInfo_.backend == "") {
+  if (distInfo_.backend.empty()) {
     return;
   }
   fmt::print(

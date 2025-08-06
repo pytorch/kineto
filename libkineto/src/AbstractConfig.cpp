@@ -44,7 +44,7 @@ static inline string trim(string& s) {
 // Return the index of char d in string s.
 // If not found, returns the length of the string.
 static int find(const char* s, char delim) {
-  int i;
+  int i = 0;
   for (i = 0; s[i]; i++) {
     if (s[i] == delim) {
       break;
@@ -97,7 +97,7 @@ vector<string> AbstractConfig::splitAndTrim(const string& s, char delim) const {
 
 int64_t AbstractConfig::toIntRange(const string& val, int64_t min, int64_t max)
     const {
-  char* invalid;
+  char* invalid = nullptr;
   int64_t res = strtoll(val.c_str(), &invalid, 10);
   if (val.empty() || *invalid) {
     throw std::invalid_argument(fmt::format("Invalid integer: {}", val));

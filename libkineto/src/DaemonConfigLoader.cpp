@@ -71,7 +71,7 @@ void DaemonConfigLoader::setCommunicationFabric(bool enabled) {
     // This is probably a temporary problem - return -1 to indicate error.
     return;
   }
-  return configClient->setIpcFabricEnabled(enabled);
+  configClient->setIpcFabricEnabled(enabled);
 }
 
 void DaemonConfigLoader::registerFactory() {

@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // TODO(T90238193)
@@ -111,7 +112,7 @@ class MemoryTraceLogger : public ActivityLogger {
   }
 
   void setChromeLogger(std::shared_ptr<ActivityLogger> logger) {
-    chrome_logger_ = logger;
+    chrome_logger_ = std::move(logger);
   }
 
   std::shared_ptr<ActivityLogger> getChromeLogger() {

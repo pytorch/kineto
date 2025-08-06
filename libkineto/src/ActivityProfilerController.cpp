@@ -11,6 +11,7 @@
 #include <chrono>
 #include <functional>
 #include <thread>
+#include <utility>
 
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
@@ -37,7 +38,7 @@ static std::shared_ptr<LoggerCollector>& loggerCollectorFactory() {
 }
 
 void ActivityProfilerController::setLoggerCollectorFactory(
-    std::function<std::shared_ptr<LoggerCollector>()> factory) {
+    const std::function<std::shared_ptr<LoggerCollector>()>& factory) {
   loggerCollectorFactory() = factory();
 }
 
@@ -110,7 +111,7 @@ static ActivityLoggerFactory& loggerFactory() {
 void ActivityProfilerController::addLoggerFactory(
     const std::string& protocol,
     ActivityLoggerFactory::FactoryFunc factory) {
-  loggerFactory().addProtocol(protocol, factory);
+  loggerFactory().addProtocol(protocol, std::move(factory));
 }
 
 static std::unique_ptr<ActivityLogger> makeLogger(const Config& config) {
@@ -253,9 +254,6 @@ void ActivityProfilerController::profilerLoop() {
 }
 
 void ActivityProfilerController::memoryProfilerLoop() {
-  std::string path = asyncRequestConfig_->activitiesLogFile();
-  auto profile_time = asyncRequestConfig_->profileMemoryDuration();
-  std::unique_ptr<Config> config = asyncRequestConfig_->clone();
   while (!stopRunloop_) {
     // Perform Double-checked locking to reduce overhead of taking lock.
     if (asyncRequestConfig_ && !profiler_->isActive()) {
@@ -263,18 +261,13 @@ void ActivityProfilerController::memoryProfilerLoop() {
       if (asyncRequestConfig_ && !profiler_->isActive() &&
           asyncRequestConfig_->memoryProfilerEnabled()) {
         logger_ = makeLogger(*asyncRequestConfig_);
-        path = asyncRequestConfig_->activitiesLogFile();
-        profile_time = asyncRequestConfig_->profileMemoryDuration();
-        config = asyncRequestConfig_->clone();
+        auto path = asyncRequestConfig_->activitiesLogFile();
+        auto profile_time = asyncRequestConfig_->profileMemoryDuration();
+        auto config = asyncRequestConfig_->clone();
         asyncRequestConfig_ = nullptr;
-      } else {
-        continue;
+        profiler_->performMemoryLoop(path, profile_time, logger_.get(), *config);
       }
-    } else {
-      continue;
     }
-
-    profiler_->performMemoryLoop(path, profile_time, logger_.get(), *config);
   }
 }
 

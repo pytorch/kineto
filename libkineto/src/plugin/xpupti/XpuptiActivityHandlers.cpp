@@ -176,9 +176,7 @@ void XpuptiActivityProfilerSession::handleKernelActivity(
   kernel_activity->addMetadata("device", kernel_activity->deviceId());
   kernel_activity->addMetadataQuoted(
       "context", handleToHexString(activity->_context_handle));
-  kernel_activity->addMetadata("sycl queue", activity->_sycl_queue_id);
-  kernel_activity->addMetadataQuoted(
-      "l0 queue", handleToHexString(activity->_queue_handle));
+  addTraceQueueMetadata(*kernel_activity, getStreamParams(*activity));
   kernel_activity->addMetadata("correlation", activity->_correlation_id);
   kernel_activity->addMetadata("kernel_id", activity->_kernel_id);
 
@@ -191,6 +189,23 @@ void XpuptiActivityProfilerSession::handleKernelActivity(
     return;
   }
   kernel_activity->log(*logger);
+}
+
+void XpuptiActivityProfilerSession::addTraceQueueMetadata(
+  libkineto::GenericTraceActivity& kernel_activity,
+  const XpuptiActivityProfilerSession::StreamParams& stream_params
+) {
+  kernel_activity.addMetadata("sycl queue", stream_params.queue_id);
+  kernel_activity.addMetadataQuoted(
+      "l0 queue", handleToHexString(stream_params.queue_handler));
+}
+
+void XpuptiActivityProfilerSessionCudaFormat::addTraceQueueMetadata(
+  libkineto::GenericTraceActivity& kernel_activity,
+  const XpuptiActivityProfilerSession::StreamParams& stream_params
+) {
+  XpuptiActivityProfilerSession::addTraceQueueMetadata(kernel_activity, stream_params);
+  kernel_activity.addMetadata("stream", stream_params.queue_id);
 }
 
 inline std::string memcpyName(
@@ -240,9 +255,7 @@ void XpuptiActivityProfilerSession::handleMemcpyActivity(
   memcpy_activity->addMetadata("device", memcpy_activity->deviceId());
   memcpy_activity->addMetadataQuoted(
       "context", handleToHexString(activity->_context_handle));
-  memcpy_activity->addMetadata("sycl queue", activity->_sycl_queue_id);
-  memcpy_activity->addMetadataQuoted(
-      "l0 queue", handleToHexString(activity->_queue_handle));
+  addTraceQueueMetadata(*memcpy_activity, getStreamParams(*activity));
   memcpy_activity->addMetadata("correlation", activity->_correlation_id);
   memcpy_activity->addMetadata("memory opration id", activity->_mem_op_id);
   memcpy_activity->addMetadata("bytes", activity->_bytes);
@@ -288,9 +301,7 @@ void XpuptiActivityProfilerSession::handleMemsetActivity(
   memset_activity->addMetadata("device", memset_activity->deviceId());
   memset_activity->addMetadataQuoted(
       "context", handleToHexString(activity->_context_handle));
-  memset_activity->addMetadata("sycl queue", activity->_sycl_queue_id);
-  memset_activity->addMetadataQuoted(
-      "l0 queue", handleToHexString(activity->_queue_handle));
+  addTraceQueueMetadata(*memset_activity, getStreamParams(*activity));
   memset_activity->addMetadata("correlation", activity->_correlation_id);
   memset_activity->addMetadata("memory opration id", activity->_mem_op_id);
   memset_activity->addMetadata("bytes", activity->_bytes);

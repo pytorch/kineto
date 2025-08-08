@@ -192,7 +192,7 @@ std::unique_ptr<libkineto::IActivityProfilerSession>
 XPUActivityProfiler::configure(
     const std::set<ActivityType>& activity_types,
     const libkineto::Config& config) {
-  return std::make_unique<XpuptiActivityProfilerSession>(
+  return std::make_unique<XpuptiActivityProfilerSessionCudaFormat>(
       XpuptiActivityApi::singleton(), config, activity_types);
 }
 

@@ -568,6 +568,5 @@ const char* syncTypeString(CUpti_ActivitySynchronizationType kind) {
     default:
       return "Unknown Sync";
   }
-  return "<unknown>";
 }
 } // namespace libkineto

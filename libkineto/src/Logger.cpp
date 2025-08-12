@@ -42,9 +42,7 @@ void get_local_time(const time_t* time, struct tm* tm_result) {
 }
 
 Logger::Logger(int severity, int line, const char* filePath, int errnum)
-    : out_(LIBKINETO_DBG_STREAM),
-      errnum_(errnum),
-      messageSeverity_(severity) {
+    : out_(LIBKINETO_DBG_STREAM), errnum_(errnum), messageSeverity_(severity) {
   buf_ << toString((LoggerOutputType)severity) << ":";
 
   const auto tt =

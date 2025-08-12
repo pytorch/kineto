@@ -265,7 +265,8 @@ void ActivityProfilerController::memoryProfilerLoop() {
         auto profile_time = asyncRequestConfig_->profileMemoryDuration();
         auto config = asyncRequestConfig_->clone();
         asyncRequestConfig_ = nullptr;
-        profiler_->performMemoryLoop(path, profile_time, logger_.get(), *config);
+        profiler_->performMemoryLoop(
+            path, profile_time, logger_.get(), *config);
       }
     }
   }

@@ -28,7 +28,7 @@ std::string generate_uuid_v4() {
   static std::uniform_int_distribution<> dis2(8, 11);
 
   std::stringstream ss;
-  int i;
+  int i = 0;
   ss << std::hex;
   for (i = 0; i < 8; i++) {
     ss << dis(gen);

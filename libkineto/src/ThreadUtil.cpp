@@ -126,9 +126,9 @@ void resetTLS() {
 }
 
 namespace {
-static constexpr size_t kMaxThreadNameLength = 16;
+constexpr size_t kMaxThreadNameLength = 16;
 
-static constexpr const char* basename(const char* s, int off = 0) {
+constexpr const char* basename(const char* s, int off = 0) {
   return !s[off]      ? s
       : s[off] == '/' ? basename(&s[off + 1])
                       : basename(s, off + 1);
@@ -170,7 +170,7 @@ std::string getThreadName() {
   return "Unknown";
 #else
 #ifndef _WIN32
-  char buf[kMaxThreadNameLength] = "";
+  char buf[kMaxThreadNameLength];
   if (
 #ifndef __ANDROID__
       pthread_getname_np(pthread_self(), buf, kMaxThreadNameLength) != 0
@@ -232,7 +232,7 @@ static std::pair<int32_t, std::string> parentPidAndCommand(int32_t pid) {
   if (statfile == nullptr) {
     return std::make_pair(0, "");
   }
-  int32_t parent_pid;
+  int32_t parent_pid = 0;
   char* command = nullptr;
   int scanned = fscanf(statfile, "%*d (%m[^)]) %*c %d", &command, &parent_pid);
   fclose(statfile);

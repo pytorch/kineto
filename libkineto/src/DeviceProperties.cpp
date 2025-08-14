@@ -128,7 +128,7 @@ int smCount(uint32_t deviceId) {
 }
 #else
 const std::string& devicePropertiesJson() {
-  static std::string devicePropsJson = "";
+  static std::string devicePropsJson;
   return devicePropsJson;
 }
 

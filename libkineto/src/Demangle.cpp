@@ -37,7 +37,7 @@ std::string demangle(const char* name) {
     return name;
   }
 
-  int status;
+  int status = 0;
   size_t len = 0;
   char* demangled = abi::__cxa_demangle(name, nullptr, &len, &status);
   if (status != 0) {

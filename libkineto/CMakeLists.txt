@@ -35,18 +35,18 @@ set(LIBKINETO_THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #We should default to a Release build
-if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-if (DEFINED CUDA_SOURCE_DIR AND NOT DEFINED CUDAToolkit_ROOT)
-    set(CUDAToolkit_ROOT "${CUDA_SOURCE_DIR}")
-    message(STATUS " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
+if(DEFINED CUDA_SOURCE_DIR AND NOT DEFINED CUDAToolkit_ROOT)
+  set(CUDAToolkit_ROOT "${CUDA_SOURCE_DIR}")
+  message(STATUS " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
 endif()
 
-if (NOT ROCM_SOURCE_DIR)
-    set(ROCM_SOURCE_DIR "$ENV{ROCM_SOURCE_DIR}")
-    message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
+if(NOT ROCM_SOURCE_DIR)
+  set(ROCM_SOURCE_DIR "$ENV{ROCM_SOURCE_DIR}")
+  message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
 endif()
 
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
@@ -100,20 +100,20 @@ if(NOT TARGET CUDA::nvperf_host)
   endif()
 endif()
 
-IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
-    set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
+if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
+  set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
 endif()
 
-IF (DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   add_subdirectory(src/plugin/xpupti)
 else()
   set(LIBKINETO_NOXPUPTI ON)
 endif()
 
 # Define file lists
-if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI)
-    get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " CUPTI unavailable or disabled - not building GPU profilers")
+if(LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI)
+  get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
+  message(STATUS " CUPTI unavailable or disabled - not building GPU profilers")
 else()
   if(NOT LIBKINETO_NOROCTRACER)
     get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_roc_SRCS)

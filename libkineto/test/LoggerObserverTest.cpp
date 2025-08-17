@@ -54,7 +54,7 @@ TEST(LoggerObserverTest, SingleCollectorObserver) {
 
 // Writes NUM_OF_MESSAGES_FOR_EACH_TYPE messages for each INFO, WARNING, and
 // ERROR.
-void* writeSeveralMessages() {
+static void* writeSeveralMessages() {
   for (int i = 0; i < NUM_OF_MESSAGES_FOR_EACH_TYPE; i++) {
     LOG(INFO) << InfoTestStr;
     LOG(WARNING) << WarningTestStr;

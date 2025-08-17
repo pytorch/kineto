@@ -27,16 +27,16 @@ namespace KINETO_NAMESPACE {
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
 #ifdef HAS_CUPTI
-inline bool cuptiTearDown_() {
+static inline bool cuptiTearDown_() {
   auto teardown_env = getenv("TEARDOWN_CUPTI");
   return teardown_env != nullptr && strcmp(teardown_env, "1") == 0;
 }
 
-inline bool cuptiLazyInit_() {
+static inline bool cuptiLazyInit_() {
   return cuptiTearDown_() && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
 }
 
-inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
+static inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
   // Re-enable callbacks from the past if they exist.
   LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
   VLOG(1) << "  CUPTI subscriber before reinit:"
@@ -234,7 +234,7 @@ int CuptiActivityApi::processActivitiesForBuffer(
 }
 #endif
 
-const std::pair<int, size_t> CuptiActivityApi::processActivities(
+std::pair<int, size_t> CuptiActivityApi::processActivities(
     CuptiActivityBufferMap& buffers,
     const std::function<void(const CUpti_Activity*)>& handler) {
   std::pair<int, size_t> res{0, 0};

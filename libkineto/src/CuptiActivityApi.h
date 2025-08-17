@@ -65,7 +65,7 @@ class CuptiActivityApi {
 
   virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers();
 
-  virtual const std::pair<int, size_t> processActivities(
+  virtual std::pair<int, size_t> processActivities(
       CuptiActivityBufferMap&,
       const std::function<void(const CUpti_Activity*)>& handler);
 

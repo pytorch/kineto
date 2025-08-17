@@ -30,7 +30,7 @@ bool isCUDAGpuAvailable() {
   static bool cudaGpuAvailable = [] {
     // determine CUDA GPU availability on the system
     cudaError_t error;
-    int deviceCount;
+    int deviceCount = 0;
     error = cudaGetDeviceCount(&deviceCount);
     return (error == cudaSuccess && deviceCount > 0);
   }();

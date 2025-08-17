@@ -759,7 +759,7 @@ void CuptiRBProfilerSession::asyncStartAndEnable(
     CUpti_ProfilerRange /*profilerRange*/,
     CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
 void CuptiRBProfilerSession::asyncDisableAndStop() {}
-CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
+CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool /*verbose*/) {
   static CuptiProfilerResult res;
   return res;
 };

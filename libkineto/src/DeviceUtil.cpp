@@ -8,39 +8,36 @@
 
 #include "DeviceUtil.h"
 
-#include <mutex>
-
 namespace KINETO_NAMESPACE {
-
-bool amdGpuAvailable = false;
-bool cudaGpuAvailable = false;
 
 bool isAMDGpuAvailable() {
 #ifdef HAS_ROCTRACER
-  static std::once_flag once;
-  std::call_once(once, [] {
+  static bool amdGpuAvailable = [] {
     // determine AMD GPU availability on the system
     hipError_t error;
     int deviceCount;
     error = hipGetDeviceCount(&deviceCount);
-    amdGpuAvailable = (error == hipSuccess && deviceCount > 0);
-  });
-#endif
+    return (error == hipSuccess && deviceCount > 0);
+  }();
   return amdGpuAvailable;
+#else
+  return false;
+#endif
 }
 
 bool isCUDAGpuAvailable() {
 #ifdef HAS_CUPTI
-  static std::once_flag once;
-  std::call_once(once, [] {
+  static bool cudaGpuAvailable = [] {
     // determine CUDA GPU availability on the system
     cudaError_t error;
     int deviceCount;
     error = cudaGetDeviceCount(&deviceCount);
-    cudaGpuAvailable = (error == cudaSuccess && deviceCount > 0);
-  });
-#endif
+    return (error == cudaSuccess && deviceCount > 0);
+  }();
   return cudaGpuAvailable;
+#else
+  return false;
+#endif
 }
 
 bool isGpuAvailable() {

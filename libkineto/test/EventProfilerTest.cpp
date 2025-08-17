@@ -316,8 +316,8 @@ class EventProfilerTest : public ::testing::Test {
         loggers_,
         onDemandLoggers_);
 
-    for (int i = 0; i < kEventGroupCount; i++) {
-      eventGroups_[i] = &eventGroups_[i];
+    for (auto& eventGroup : eventGroups_) {
+      eventGroup = &eventGroup;
     }
     for (int i = 0; i < kGroupSetCount; i++) {
       // Default size to 1 but can be changed by test

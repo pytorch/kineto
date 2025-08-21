@@ -36,7 +36,8 @@ static inline bool cuptiLazyInit_() {
   return cuptiTearDown_() && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
 }
 
-static inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
+static inline void reenableCuptiCallbacks_(
+    std::shared_ptr<CuptiCallbackApi>& cbapi_) {
   // Re-enable callbacks from the past if they exist.
   LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
   VLOG(1) << "  CUPTI subscriber before reinit:"

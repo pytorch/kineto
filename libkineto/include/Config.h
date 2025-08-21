@@ -279,7 +279,7 @@ class Config : public AbstractConfig {
     return profileStartIteration_ - activitiesWarmupIterations_;
   }
 
-  static std::chrono::seconds maxRequestAge() ;
+  static std::chrono::seconds maxRequestAge();
 
   // All VLOG* macros will log if the verbose log level is >=
   // the verbosity specified for the verbose log message.

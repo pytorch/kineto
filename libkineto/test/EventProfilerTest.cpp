@@ -532,10 +532,10 @@ TEST_F(EventProfilerTest, ReportSample) {
 
   EXPECT_CALL(*cuptiEvents_, readEvent(_, _, _))
       .Times(6)
-      .WillRepeatedly(Invoke(
-          [](CUpti_EventGroup  /*g*/, CUpti_EventID  /*id*/, std::vector<int64_t>& vals) {
-            vals = {1, 2, 3, 4};
-          }));
+      .WillRepeatedly(
+          Invoke([](CUpti_EventGroup /*g*/,
+                    CUpti_EventID /*id*/,
+                    std::vector<int64_t>& vals) { vals = {1, 2, 3, 4}; }));
 
   // Need to collect four times - twice for each group set
   profiler_->collectSample();
@@ -557,9 +557,9 @@ TEST_F(EventProfilerTest, ReportSample) {
   auto& logger = dynamic_cast<MockLogger&>(*loggers_[0]);
   EXPECT_CALL(logger, handleSample(0, _, _))
       .Times(1)
-      .WillOnce(Invoke([](int  /*device*/,
+      .WillOnce(Invoke([](int /*device*/,
                           const Sample& sample,
-                          bool  /*from_new_version*/) {
+                          bool /*from_new_version*/) {
         // Sample will include all stats - logger must pick the
         // ones it wants.
         EXPECT_EQ(sample.stats.size(), 4);

@@ -102,6 +102,7 @@ class LibkinetoApi {
         }
         return true;
       }();
+      (void)once_flag;
     }
   }
 

@@ -61,6 +61,7 @@ jobs:
             set -eux
             mkdir build_static
             mkdir build_shared
+            pip install cmake
           "
 
           docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "

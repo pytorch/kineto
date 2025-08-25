@@ -79,7 +79,7 @@ class RocprofLogger {
       void* callback_data);
 
   // Api callback data
-  uint32_t maxBufferSize_{1000000}; // 1M GPU runtime/kernel events.
+  uint32_t maxBufferSize_{5000000}; // 5M GPU runtime/kernel events.
   std::vector<rocprofBase*> rows_;
   std::mutex rowsMutex_;
 

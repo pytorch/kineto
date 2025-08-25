@@ -500,6 +500,8 @@ void RocprofLogger::popCorrelationID(CorrelationDomain type) {
 }
 
 void RocprofLogger::clearLogs() {
+  for (auto &row : rows_)
+    delete row;
   rows_.clear();
   for (int i = 0; i < CorrelationDomain::size; ++i) {
     externalCorrelations_[i].clear();

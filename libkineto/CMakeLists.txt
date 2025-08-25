@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 project(kineto VERSION 0.1 LANGUAGES CXX C)
 
 #install libraries into correct locations on all platforms
@@ -52,6 +52,7 @@ endif()
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
 # Otherwise, CUPTI is disabled if not found
 option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
+option(USE_CUPTI_SO "Use CUPTI as a shared library" ON)
 
 find_package(CUDAToolkit)
 if(NOT LIBKINETO_NOCUPTI)
@@ -63,24 +64,65 @@ if(NOT LIBKINETO_NOCUPTI)
       NO_DEFAULT_PATH)
   endif()
 
-  if(NOT CUDA_cupti_LIBRARY)
-    find_library(CUDA_cupti_LIBRARY cupti PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
-      NO_DEFAULT_PATH)
+  if(USE_CUPTI_SO)
+    if(NOT CUDA_cupti_LIBRARY)
+      find_library(CUDA_cupti_LIBRARY cupti PATHS
+        "${CUDAToolkit_LIBRARY_ROOT}"
+        "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib64"
+        NO_DEFAULT_PATH)
+    endif()
+    set(cupti_LIBRARY ${CUDA_cupti_LIBRARY})
+  else()
+    if(NOT CUDA_cupti_static_LIBRARY)
+      find_library(CUDA_cupti_static_LIBRARY cupti_static PATHS
+        "${CUDAToolkit_LIBRARY_ROOT}"
+        "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib64"
+        NO_DEFAULT_PATH)
+    endif()
+    set(cupti_LIBRARY ${CUDA_cupti_static_LIBRARY})
   endif()
 
-  if(CUDA_cupti_LIBRARY AND CUPTI_INCLUDE_DIR)
+  if(cupti_LIBRARY AND CUPTI_INCLUDE_DIR)
     message(STATUS "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
     message(STATUS "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
+    message(STATUS "  CUDA_cupti_static_LIBRARY = ${CUDA_cupti_static_LIBRARY}")
     message(STATUS "Found CUPTI")
-    if(NOT TARGET CUDA::cupti)
-      add_library(CUDA::cupti INTERFACE IMPORTED)
-      target_link_libraries(CUDA::cupti INTERFACE "${CUDA_cupti_LIBRARY}")
+    if(USE_CUPTI_SO)
+      set(cupti_target CUDA::cupti)
+    else()
+      set(cupti_target CUDA::cupti_static)
     endif()
-    target_include_directories(CUDA::cupti INTERFACE "${CUPTI_INCLUDE_DIR}")
+    if(NOT TARGET ${cupti_target})
+      add_library(${cupti_target} INTERFACE IMPORTED)
+      target_link_libraries(${cupti_target} INTERFACE "${cupti_LIBRARY}")
+    endif()
+    target_include_directories(${cupti_target} INTERFACE "${CUPTI_INCLUDE_DIR}")
+
+    if(NOT USE_CUPTI_SO)
+      include(CheckCXXSourceRuns)
+      set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} "dl" "pthread" $<LINK_LIBRARY:WHOLE_ARCHIVE,${cupti_LIBRARY}>)
+
+      check_cxx_source_runs("#include <stdexcept>
+  int main() {
+  try {
+    throw std::runtime_error(\"error\");
+  } catch (...) {
+    return 0;
+  }
+  return 1;
+  }" EXCEPTIONS_WORK)
+      set(CMAKE_REQUIRED_LINK_OPTIONS "")
+      if(NOT EXCEPTIONS_WORK)
+        message(FATAL_ERROR
+          "Detected that statically linking against CUPTI causes exceptions to stop working. "
+          "See https://github.com/pytorch/pytorch/issues/57744 for more details. ")
+      endif()
+    endif()
+
   else()
     set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
     message(STATUS "Could not find CUPTI library")
@@ -254,8 +296,8 @@ if(NOT LIBKINETO_NOROCTRACER)
 endif()
 
 if(NOT LIBKINETO_NOCUPTI)
-  target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
-  target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
+  target_link_libraries(kineto PUBLIC ${cupti_target} CUDA::cudart CUDA::cuda_driver)
+  target_link_libraries(kineto_base PUBLIC ${cupti_target} CUDA::cudart CUDA::cuda_driver)
 endif()
 if(TARGET CUDA::nvperf_host)
   target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)

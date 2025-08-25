@@ -54,21 +54,24 @@ endif()
 option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
 
 find_package(CUDAToolkit)
+if (CUDAToolkit_LIBRARY_ROOT)
+  set(CUDA_PATHS
+      "${CUDAToolkit_LIBRARY_ROOT}"
+      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/include"
+      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
+      "${CUDAToolkit_LIBRARY_ROOT}/include"
+      "${CUDAToolkit_LIBRARY_ROOT}/lib"
+      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
+  )
+endif()
 if(NOT LIBKINETO_NOCUPTI)
   if(NOT CUPTI_INCLUDE_DIR)
-    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/include"
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/include"
+    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS ${CUDA_PATHS}
       NO_DEFAULT_PATH)
   endif()
 
   if(NOT CUDA_cupti_LIBRARY)
-    find_library(CUDA_cupti_LIBRARY cupti PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
+    find_library(CUDA_cupti_LIBRARY cupti PATHS ${CUDA_PATHS}
       NO_DEFAULT_PATH)
   endif()
 
@@ -87,11 +90,7 @@ if(NOT LIBKINETO_NOCUPTI)
   endif()
 endif()
 if(NOT TARGET CUDA::nvperf_host)
-  find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
-        "${CUDAToolkit_LIBRARY_ROOT}/lib/x64"
-        "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-        "${CUDAToolkit_LIBRARY_ROOT}/lib"
-        "${CUDAToolkit_LIBRARY_ROOT}/lib64"
+  find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS ${CUDA_PATHS}
         NO_DEFAULT_PATH)
   if(CUDA_NVPERF_HOST_LIB_PATH)
     message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")

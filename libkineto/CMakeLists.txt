@@ -104,7 +104,7 @@ if(NOT LIBKINETO_NOCUPTI)
 
     if(NOT USE_CUPTI_SO)
       include(CheckCXXSourceRuns)
-      set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} "dl" "pthread" $<LINK_LIBRARY:WHOLE_ARCHIVE,${cupti_LIBRARY}>)
+      set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} $<LINK_LIBRARY:WHOLE_ARCHIVE,${cupti_LIBRARY}>)
 
       check_cxx_source_runs("#include <stdexcept>
   int main() {

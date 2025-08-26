@@ -88,15 +88,22 @@ if(NOT LIBKINETO_NOCUPTI)
 endif()
 if(NOT TARGET CUDA::nvperf_host)
   find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
-        "${CUDAToolkit_LIBRARY_ROOT}"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib/x64"
         "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
         "${CUDAToolkit_LIBRARY_ROOT}/lib"
         "${CUDAToolkit_LIBRARY_ROOT}/lib64"
         NO_DEFAULT_PATH)
   if(CUDA_NVPERF_HOST_LIB_PATH)
     message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
-    add_library(CUDA::nvperf_host INTERFACE IMPORTED)
-    target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
+    if(WIN32)
+      add_library(CUDA::nvperf_host SHARED IMPORTED)
+      set_target_properties(CUDA::nvperf_host PROPERTIES
+        IMPORTED_IMPLIB "${CUDA_NVPERF_HOST_LIB_PATH}"
+      )
+    else()
+      add_library(CUDA::nvperf_host INTERFACE IMPORTED)
+      target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
+    endif()
   endif()
 endif()
 

@@ -103,10 +103,12 @@ if(NOT LIBKINETO_NOCUPTI)
     target_include_directories(${cupti_target} INTERFACE "${CUPTI_INCLUDE_DIR}")
 
     if(NOT USE_CUPTI_SO)
-      include(CheckCXXSourceRuns)
+      include(CMakePushCheckState)
+      include(CheckSourceRuns)
+      cmake_push_check_state(RESET)
       set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} $<LINK_LIBRARY:WHOLE_ARCHIVE,${cupti_LIBRARY}>)
 
-      check_cxx_source_runs("#include <stdexcept>
+      check_source_runs(CXX "#include <stdexcept>
   int main() {
   try {
     throw std::runtime_error(\"error\");
@@ -115,12 +117,12 @@ if(NOT LIBKINETO_NOCUPTI)
   }
   return 1;
   }" EXCEPTIONS_WORK)
-      set(CMAKE_REQUIRED_LINK_OPTIONS "")
       if(NOT EXCEPTIONS_WORK)
         message(FATAL_ERROR
           "Detected that statically linking against CUPTI causes exceptions to stop working. "
           "See https://github.com/pytorch/pytorch/issues/57744 for more details. ")
       endif()
+      cmake_pop_check_state()
     endif()
 
   else()

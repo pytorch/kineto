@@ -48,7 +48,7 @@ static void initProfilers() {
 #endif // __linux__ || defined(HAS_CUPTI)
 
 #ifdef HAS_CUPTI
-bool enableEventProfiler() {
+static bool enableEventProfiler() {
   if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
     return true;
   } else {
@@ -81,7 +81,7 @@ static bool shouldPreloadCuptiInstrumentation() {
 #endif
 }
 
-bool setupCuptiInitCallback(bool logOnError) {
+static bool setupCuptiInitCallback(bool logOnError) {
   // libcupti will be lazily loaded on this call.
   // If it is not available (e.g. CUDA is not installed),
   // then this call will return an error and we just abort init.

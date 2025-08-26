@@ -705,7 +705,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   // Marshal the logging to a functor so we can defer it if needed.
-  auto log_event = [=]() {
+  auto log_event = [=, this]() {
     const ITraceActivity* linked =
         linkedActivity(activity->correlationId, cpuCorrelationMap_);
     const auto& cuda_sync_activity = traceBuffers_->addActivityWrapper(

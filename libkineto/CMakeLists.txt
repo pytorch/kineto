@@ -183,7 +183,6 @@ endif()
 
 set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
 set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
-add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
 
 if(NOT TARGET fmt::fmt-header-only)
   if(NOT FMT_SOURCE_DIR)
@@ -204,7 +203,7 @@ message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
 message(STATUS " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
 message(STATUS " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
 
-target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
+# target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>

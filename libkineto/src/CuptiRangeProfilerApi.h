@@ -39,14 +39,13 @@ enum CUpti_ProfilerReplayMode {
 #endif // HAS_CUPTI_RANGE_PROFILER
 
 #include <chrono>
-#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "CuptiCallbackApi.h"
+// #include "CuptiCallbackApi.h"
 #include "CuptiNvPerfMetric.h"
 #include "TraceSpan.h"
 
@@ -213,7 +212,6 @@ class CuptiRBProfilerSession {
 struct ICuptiRBProfilerSessionFactory {
   virtual std::unique_ptr<CuptiRBProfilerSession> make(
       const CuptiRangeProfilerOptions& opts) = 0;
-  virtual ~ICuptiRBProfilerSessionFactory() {}
 };
 
 struct CuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {

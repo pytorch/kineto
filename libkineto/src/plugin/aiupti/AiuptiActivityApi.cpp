@@ -97,7 +97,7 @@ std::unique_ptr<AiuptiActivityBufferDeque> AiuptiActivityApi::activityBuffers() 
   {
     std::lock_guard<std::mutex> guard(mutex_);
 
-    // Differently other backends, aiuptiFlushAllActivities flushes all pending
+    // Unlike other backends, aiuptiFlushAllActivities flushes all pending
     // requests and triggers bufferCompleted, which transfers
     // allocatedAiuTraceBuffers_ to readyAiuTraceBuffers_. Therefore, we check
     // the readyAiuTraceBuffers_ deque here.

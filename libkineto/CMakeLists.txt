@@ -86,7 +86,8 @@ if(NOT LIBKINETO_NOCUPTI)
     message(STATUS "Could not find CUPTI library")
   endif()
 endif()
-if(NOT TARGET CUDA::nvperf_host)
+# Only look for NVPERF if CUPTI is enabled
+if(NOT LIBKINETO_NOCUPTI AND NOT TARGET CUDA::nvperf_host)
   find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
         "${CUDAToolkit_LIBRARY_ROOT}/lib/x64"
         "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"

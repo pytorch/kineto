@@ -88,15 +88,22 @@ if(NOT LIBKINETO_NOCUPTI)
 endif()
 if(NOT TARGET CUDA::nvperf_host)
   find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
-        "${CUDAToolkit_LIBRARY_ROOT}"
+        "${CUDAToolkit_LIBRARY_ROOT}/lib/x64"
         "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
         "${CUDAToolkit_LIBRARY_ROOT}/lib"
         "${CUDAToolkit_LIBRARY_ROOT}/lib64"
         NO_DEFAULT_PATH)
   if(CUDA_NVPERF_HOST_LIB_PATH)
     message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
-    add_library(CUDA::nvperf_host INTERFACE IMPORTED)
-    target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
+    if(WIN32)
+      add_library(CUDA::nvperf_host SHARED IMPORTED)
+      set_target_properties(CUDA::nvperf_host PROPERTIES
+        IMPORTED_IMPLIB "${CUDA_NVPERF_HOST_LIB_PATH}"
+      )
+    else()
+      add_library(CUDA::nvperf_host INTERFACE IMPORTED)
+      target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
+    endif()
   endif()
 endif()
 
@@ -163,8 +170,12 @@ if (DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   target_compile_definitions(kineto_base PRIVATE "-DHAS_AIUPTI")
 endif()
 if(TARGET CUDA::nvperf_host)
-  list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
+  # Disable CUPTI range profiler on Windows temporarily. Should fix in future
+  if(NOT WIN32)
+    list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
+  endif()
 endif()
+
 if(NOT LIBKINETO_NOROCTRACER)
   list(APPEND KINETO_DEFINITIONS "HAS_ROCTRACER")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_HCC__")
@@ -233,6 +244,7 @@ if(KINETO_LIBRARY_TYPE STREQUAL "static")
   set(BUILD_SHARED_LIBS OFF)
 elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
   set(BUILD_SHARED_LIBS ON)
+  set(WINDOWS_EXPORT_ALL_SYMBOLS ON)
 elseif(NOT KINETO_LIBRARY_TYPE STREQUAL "default")
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
@@ -267,7 +279,7 @@ if(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
 endif()
 if(TARGET CUDA::nvperf_host)
-  target_link_libraries(kineto_base PRIVATE CUDA::nvperf_host)
+  target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_link_libraries(kineto "${XPU_xpupti_LIBRARY}")

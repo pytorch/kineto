@@ -49,46 +49,34 @@ if(NOT ROCM_SOURCE_DIR)
   message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
 endif()
 
-# Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
+# Set USE_CUDA to explicitly enable CUDA/CUPTI support
 # Otherwise, CUPTI is disabled if not found
-option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
+option(USE_CUDA "Enable CUDA/CUPTI support" OFF)
+
+# Backwards compatibility: if LIBKINETO_NOCUPTI is set, map it to USE_CUDA
+if(DEFINED LIBKINETO_NOCUPTI)
+  if(LIBKINETO_NOCUPTI)
+    set(USE_CUDA OFF CACHE BOOL "Enable CUDA/CUPTI support" FORCE)
+    message(WARNING "LIBKINETO_NOCUPTI is deprecated. Use USE_CUDA=OFF instead.")
+  else()
+    set(USE_CUDA ON CACHE BOOL "Enable CUDA/CUPTI support" FORCE)
+    message(WARNING "LIBKINETO_NOCUPTI is deprecated. Use USE_CUDA=ON instead.")
+  endif()
+endif()
 
 find_package(CUDAToolkit)
-if(NOT LIBKINETO_NOCUPTI)
-  if(NOT CUPTI_INCLUDE_DIR)
-    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/include"
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/include"
-      NO_DEFAULT_PATH)
-  endif()
-
-  if(NOT CUDA_cupti_LIBRARY)
-    find_library(CUDA_cupti_LIBRARY cupti PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
-      NO_DEFAULT_PATH)
-  endif()
-
-  if(CUDA_cupti_LIBRARY AND CUPTI_INCLUDE_DIR)
-    message(STATUS "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
-    message(STATUS "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
+if(USE_CUDA)
+  if(TARGET CUDA::cupti)
     message(STATUS "Found CUPTI")
-    if(NOT TARGET CUDA::cupti)
-      add_library(CUDA::cupti INTERFACE IMPORTED)
-      target_link_libraries(CUDA::cupti INTERFACE "${CUDA_cupti_LIBRARY}")
-    endif()
-    target_include_directories(CUDA::cupti INTERFACE "${CUPTI_INCLUDE_DIR}")
   else()
-    set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
+    set(USE_CUDA OFF CACHE BOOL "" FORCE)
     message(STATUS "Could not find CUPTI library")
   endif()
 endif()
+
 # NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
 # Only check for NVPERF availability if CUPTI is enabled
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+if(USE_CUDA AND TARGET CUDA::nvperf_host)
   message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
 endif()
 
@@ -103,14 +91,14 @@ else()
 endif()
 
 # Define file lists
-if(LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI)
+if(NOT USE_CUDA AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI)
   get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
   message(STATUS " CUPTI unavailable or disabled - not building GPU profilers")
 else()
   if(NOT LIBKINETO_NOROCTRACER)
     get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_roc_SRCS)
     message(STATUS " Building with roctracer")
-  elseif(NOT LIBKINETO_NOCUPTI)
+  elseif(USE_CUDA)
     get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_cuda_SRCS)
   endif()
   if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
@@ -135,13 +123,13 @@ set(KINETO_COMPILE_OPTIONS)
 if(MSVC)
   list(APPEND KINETO_COMPILE_OPTIONS "/utf-8")
 endif()
-if(NOT LIBKINETO_NOCUPTI)
+if(USE_CUDA)
   list(APPEND KINETO_DEFINITIONS "HAS_CUPTI")
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
 endif()
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+if(USE_CUDA AND TARGET CUDA::nvperf_host)
   # Disable CUPTI range profiler on Windows temporarily. Should fix in future
   if(NOT WIN32)
     list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
@@ -243,11 +231,11 @@ if(NOT LIBKINETO_NOROCTRACER)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
 endif()
 
-if(NOT LIBKINETO_NOCUPTI)
+if(USE_CUDA)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
 endif()
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+if(USE_CUDA AND TARGET CUDA::nvperf_host)
   target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)

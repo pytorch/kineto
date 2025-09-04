@@ -35,7 +35,7 @@ class ConfigLoader {
   enum ConfigKind { ActivityProfiler = 0, EventProfiler, NumConfigKinds };
 
   struct ConfigHandler {
-    virtual ~ConfigHandler() {}
+    virtual ~ConfigHandler() = default;
     virtual bool canAcceptConfig() = 0;
     virtual void acceptConfig(const Config& cfg) = 0;
   };
@@ -85,7 +85,7 @@ class ConfigLoader {
     }
   }
 
-  inline std::unique_ptr<Config> getConfigCopy() {
+  std::unique_ptr<Config> getConfigCopy() {
     std::lock_guard<std::mutex> lock(configLock_);
     return config_->clone();
   }
@@ -98,7 +98,7 @@ class ConfigLoader {
   static void setDaemonConfigLoaderFactory(
       std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
 
-  const std::string getConfString();
+  static std::string getConfString();
 
  private:
   ConfigLoader();

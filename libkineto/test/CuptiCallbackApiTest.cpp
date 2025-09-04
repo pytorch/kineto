@@ -19,9 +19,9 @@ using namespace libkineto;
 
 const size_t some_data = 42;
 
-std::atomic<int> simple_cb_calls = 0;
+static std::atomic<int> simple_cb_calls = 0;
 
-void simple_cudaLaunchKernel_cb(
+static void simple_cudaLaunchKernel_cb(
     CUpti_CallbackDomain domain,
     CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo) {
@@ -35,7 +35,7 @@ void simple_cudaLaunchKernel_cb(
   simple_cb_calls++;
 }
 
-void simple_cudaLaunchKernelExC_cb(
+static void simple_cudaLaunchKernelExC_cb(
     CUpti_CallbackDomain domain,
     CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo) {
@@ -49,7 +49,7 @@ void simple_cudaLaunchKernelExC_cb(
   simple_cb_calls++;
 }
 
-void atomic_cb(
+static void atomic_cb(
     CUpti_CallbackDomain /*domain*/,
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* /*cbInfo)*/) {
@@ -60,7 +60,7 @@ void atomic_cb(
   }
 }
 
-void empty_cb(
+static void empty_cb(
     CUpti_CallbackDomain /*domain*/,
     CUpti_CallbackId /*cbid*/,
     const CUpti_CallbackData* /*cbInfo*/) {}

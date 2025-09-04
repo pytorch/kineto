@@ -61,7 +61,7 @@ TEST_F(CuptiRangeProfilerConfigTest, RangesDefaults) {
 
   cfg_auto.setClientDefaults();
 
-  int user_ranges, auto_ranges;
+  int user_ranges = 0, auto_ranges = 0;
 
   user_ranges = CuptiRangeProfilerConfig::get(cfg).cuptiProfilerMaxRanges();
   auto_ranges =

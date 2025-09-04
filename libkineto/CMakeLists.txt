@@ -86,25 +86,10 @@ if(NOT LIBKINETO_NOCUPTI)
     message(STATUS "Could not find CUPTI library")
   endif()
 endif()
-if(NOT TARGET CUDA::nvperf_host)
-  find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
-        "${CUDAToolkit_LIBRARY_ROOT}/lib/x64"
-        "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-        "${CUDAToolkit_LIBRARY_ROOT}/lib"
-        "${CUDAToolkit_LIBRARY_ROOT}/lib64"
-        NO_DEFAULT_PATH)
-  if(CUDA_NVPERF_HOST_LIB_PATH)
-    message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
-    if(WIN32)
-      add_library(CUDA::nvperf_host SHARED IMPORTED)
-      set_target_properties(CUDA::nvperf_host PROPERTIES
-        IMPORTED_IMPLIB "${CUDA_NVPERF_HOST_LIB_PATH}"
-      )
-    else()
-      add_library(CUDA::nvperf_host INTERFACE IMPORTED)
-      target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
-    endif()
-  endif()
+# NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
+# Only check for NVPERF availability if CUPTI is enabled
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+  message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
 endif()
 
 if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
@@ -156,7 +141,7 @@ endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
 endif()
-if(TARGET CUDA::nvperf_host)
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
   # Disable CUPTI range profiler on Windows temporarily. Should fix in future
   if(NOT WIN32)
     list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
@@ -262,7 +247,7 @@ if(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
 endif()
-if(TARGET CUDA::nvperf_host)
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
   target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)

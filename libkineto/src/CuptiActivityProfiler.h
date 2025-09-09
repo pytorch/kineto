@@ -30,7 +30,11 @@
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
+  #ifndef ROCTRACER_FALLBACK
 #include "RocprofLogger.h"
+  #else
+#include "RoctracerLogger.h"
+  #endif
 #endif // HAS_ROCTRACER
 
 #include "GenericTraceActivity.h"
@@ -46,6 +50,7 @@ namespace KINETO_NAMESPACE {
 class Config;
 class CuptiActivityApi;
 class RocprofActivityApi;
+class RoctracerActivityApi;
 
 // This struct is a derived snapshot of the Config. And should not
 // be mutable after construction.
@@ -122,6 +127,7 @@ class CuptiActivityProfiler {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
   CuptiActivityProfiler(RocprofActivityApi& rai, bool cpuOnly);
+  CuptiActivityProfiler(RoctracerActivityApi& rtai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
   ~CuptiActivityProfiler();
@@ -457,7 +463,11 @@ class CuptiActivityProfiler {
 
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
-  RocprofActivityApi& cupti_; // Design failure here
+  #ifndef ROCTRACER_FALLBACK
+    RocprofActivityApi& cupti_; // Design failure here
+  #else
+    RoctracerActivityApi& cupti_;
+  #endif
 #else
   CuptiActivityApi& cupti_;
 #endif

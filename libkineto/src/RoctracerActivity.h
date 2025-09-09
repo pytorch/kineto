@@ -81,10 +81,10 @@ struct RoctracerActivity : public ITraceActivity {
   std::unordered_map<std::string, std::string> metadata_;
 };
 
-// roctracerAsyncRow - Roctracer GPU activities
-struct GpuActivity : public RoctracerActivity<roctracerAsyncRow> {
+// rocprofAsyncRow - Roctracer GPU activities
+struct GpuActivity : public RoctracerActivity<rocprofAsyncRow> {
   explicit GpuActivity(
-      const roctracerAsyncRow* activity,
+      const rocprofAsyncRow* activity,
       const ITraceActivity* linked)
       : RoctracerActivity(activity, linked) {
     switch (activity_.kind) {

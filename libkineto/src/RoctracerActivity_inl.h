@@ -161,7 +161,7 @@ inline void RuntimeActivity<T>::log(ActivityLogger& logger) const {
 }
 
 template <>
-inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson()
+inline const std::string RuntimeActivity<rocprofKernelRow>::metadataJson()
     const {
   std::string kernel = "";
   if ((raw().functionAddr != nullptr)) {
@@ -209,7 +209,7 @@ inline const std::string RuntimeActivity<roctracerKernelRow>::metadataJson()
 }
 
 template <>
-inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson()
+inline const std::string RuntimeActivity<rocprofCopyRow>::metadataJson()
     const {
   correlationToSize[raw().id] = raw().size;
   return fmt::format(
@@ -224,7 +224,7 @@ inline const std::string RuntimeActivity<roctracerCopyRow>::metadataJson()
 }
 
 template <>
-inline const std::string RuntimeActivity<roctracerMallocRow>::metadataJson()
+inline const std::string RuntimeActivity<rocprofMallocRow>::metadataJson()
     const {
   correlationToSize[raw().id] = raw().size;
   std::string size = "";

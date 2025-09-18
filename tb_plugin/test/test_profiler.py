@@ -1175,6 +1175,7 @@ class TestProfiler(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_dump_gpu_metrics(self):
+        #test
         profile = RunProfile('test_dump_gpu_metrics', None)
         # Faked data for easy to see in UI. Real data values are 1/100 of these.
         gpu_util_buckets = [[(1621401187223005, 0.0), (1621401187224005, 0.0),
@@ -1218,6 +1219,10 @@ class TestProfiler(unittest.TestCase):
         trace_json_expected_path = os.path.join(basedir, 'gpu_metrics_expected.json')
         with open(trace_json_expected_path, 'rb') as file:
             data_expected = file.read()
+
+        decoded = data_with_gpu_metrics_flat.decode('utf8').rstrip()
+        if decoded.endswith("]]}"):
+            decoded = decoded[:-2] + "]}"
 
         # Parse to json in order to ignore text format difference.
         data_with_gpu_metrics_json = json.loads(

@@ -412,6 +412,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     static const std::set<libkineto::ActivityType> excludedTypes = {
         libkineto::ActivityType::GPU_MEMCPY,
         libkineto::ActivityType::GPU_MEMSET,
+        libkineto::ActivityType::GPU_PM_COUNTER,
         libkineto::ActivityType::CONCURRENT_KERNEL,
         libkineto::ActivityType::CUDA_RUNTIME,
         libkineto::ActivityType::CUDA_DRIVER,
@@ -569,6 +570,18 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
   // clang-format off
   ts = transToRelativeTime(ts);
+
+  if (op.type() == libkineto::ActivityType::GPU_PM_COUNTER) {
+    fmt::print(traceOf_, R"JSON(
+    {{
+      "ph": "C", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
+      "ts": {}.{:03} {}
+    }},)JSON",
+            toString(op.type()), op_name, device, sanitizeTid(resource),
+            ts/1000, ts %1000, args);
+    return;
+  }
+
   fmt::print(traceOf_, R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},

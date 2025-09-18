@@ -74,11 +74,7 @@ AiuptiActivityProfilerSession::getDeviceInfo() {
   std::string process_name = processName(pid);
   int aiu = 0;
   return std::make_unique<DeviceInfo>(
-    aiu,
-    aiu + kExceedMaxPid,
-    process_name,
-    fmt::format("AIU {}", 0)
-  );
+      aiu, aiu + kExceedMaxPid, process_name, fmt::format("AIU {}", 0));
 }
 
 std::vector<libkineto::ResourceInfo>
@@ -90,7 +86,9 @@ AiuptiActivityProfilerSession::getResourceInfos() {
   return resourceInfos;
 }
 
-bool AiuptiActivityProfilerSession::hasDeviceResource(uint32_t device, uint32_t id) {
+bool AiuptiActivityProfilerSession::hasDeviceResource(
+    uint32_t device,
+    uint32_t id) {
   return resourceInfo_.find({device, id}) != resourceInfo_.end();
 }
 
@@ -109,9 +107,7 @@ void AiuptiActivityProfilerSession::recordMemoryStream(
     std::string name) {
   if (!hasDeviceResource(device, id)) {
     resourceInfo_.emplace(
-        std::make_pair(device, id),
-        ResourceInfo(
-            device, id, id, name));
+        std::make_pair(device, id), ResourceInfo(device, id, id, name));
   }
 }
 

@@ -4,10 +4,10 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <deque>
 #include <map>
 #include <memory>
 #include <vector>
-#include <deque>
 
 namespace KINETO_NAMESPACE {
 

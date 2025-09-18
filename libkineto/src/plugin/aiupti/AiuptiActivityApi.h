@@ -58,14 +58,16 @@ class AiuptiActivityApi {
       size_t validSize,
       std::function<void(const Pti_Activity*)> handler);
 
-  static void bufferRequestedTrampoline(uint8_t **buffer, size_t *size,
-                                                 size_t *maxNumRecords);
-  static void bufferCompletedTrampoline(uint8_t *buffer, size_t size,
-                                        size_t validSize);
+  static void bufferRequestedTrampoline(
+      uint8_t** buffer,
+      size_t* size,
+      size_t* maxNumRecords);
+  static void
+  bufferCompletedTrampoline(uint8_t* buffer, size_t size, size_t validSize);
 
-protected:
-  void bufferRequested(uint8_t **buffer, size_t *size, size_t *maxNumRecords);
-  void bufferCompleted(uint8_t *buffer, size_t size, size_t validSize);
+ protected:
+  void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
+  void bufferCompleted(uint8_t* buffer, size_t size, size_t validSize);
 };
 
 } // namespace KINETO_NAMESPACE

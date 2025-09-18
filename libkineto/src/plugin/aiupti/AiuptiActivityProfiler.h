@@ -49,20 +49,25 @@ class AiuptiActivityProfilerSession
   const ITraceActivity* linkedActivity(
       int32_t correlationId,
       const std::unordered_map<int64_t, int64_t>& correlationMap);
-  void handleRuntimeActivity(const AIUpti_ActivityAPI *activity,
-                             ActivityLogger *logger);
-  void handleKernelActivity(const AIUpti_ActivityCompute *activity,
-                            ActivityLogger *logger);
-  void handleMemcpyActivity(const AIUpti_ActivityMemcpy *activity,
-                            ActivityLogger *logger);
-  void handleMemsetActivity(const AIUpti_ActivityMemset *activity,
-                            ActivityLogger *logger);
-  void handleMemoryActivity(const AIUpti_ActivityMemory *activity,
-                            ActivityLogger *logger);
-  void handlePtiActivity(const AIUpti_Activity *record, ActivityLogger *logger);
+  void handleRuntimeActivity(
+      const AIUpti_ActivityAPI* activity,
+      ActivityLogger* logger);
+  void handleKernelActivity(
+      const AIUpti_ActivityCompute* activity,
+      ActivityLogger* logger);
+  void handleMemcpyActivity(
+      const AIUpti_ActivityMemcpy* activity,
+      ActivityLogger* logger);
+  void handleMemsetActivity(
+      const AIUpti_ActivityMemset* activity,
+      ActivityLogger* logger);
+  void handleMemoryActivity(
+      const AIUpti_ActivityMemory* activity,
+      ActivityLogger* logger);
+  void handlePtiActivity(const AIUpti_Activity* record, ActivityLogger* logger);
 
   template <class memory_activity_type>
-  uint32_t getResourceId(memory_activity_type *activity);
+  uint32_t getResourceId(memory_activity_type* activity);
 
   static uint32_t iterationCount_;
   static std::vector<std::array<unsigned char, 16>> deviceUUIDs_;

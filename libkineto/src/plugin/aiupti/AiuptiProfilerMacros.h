@@ -10,15 +10,15 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
-#define AIUPTI_CALL(returnCode)                                                \
-  {                                                                            \
-    if (returnCode != AIUPTI_SUCCESS) {                                        \
-      std::string funcMsg(__func__);                                           \
-      std::string codeMsg = std::to_string(returnCode);                        \
-      std::string HeadMsg("Kineto Profiler on AIU got error from function ");  \
-      std::string Msg(". The error code is ");                                 \
-      throw std::runtime_error(HeadMsg + funcMsg + Msg + codeMsg);             \
-    }                                                                          \
+#define AIUPTI_CALL(returnCode)                                               \
+  {                                                                           \
+    if (returnCode != AIUPTI_SUCCESS) {                                       \
+      std::string funcMsg(__func__);                                          \
+      std::string codeMsg = std::to_string(returnCode);                       \
+      std::string HeadMsg("Kineto Profiler on AIU got error from function "); \
+      std::string Msg(". The error code is ");                                \
+      throw std::runtime_error(HeadMsg + funcMsg + Msg + codeMsg);            \
+    }                                                                         \
   }
 
 class AiuptiActivityApi;

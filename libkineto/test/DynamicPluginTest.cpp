@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
-#include "include/KinetoPluginFormat.h"
-#include "include/PluginProfiler.h"
+#include "include/DynamicPluginInterface.h"
+#include "src/dynamic_plugin/PluginProfiler.h"
 #include "src/output_membuf.h"
 
 using namespace KINETO_NAMESPACE;

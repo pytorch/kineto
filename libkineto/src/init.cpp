@@ -30,7 +30,7 @@
 #include "libkineto.h"
 
 #include "Logger.h"
-#include "PluginLoader.h"
+#include "dynamic_plugin/PluginLoader.h"
 
 namespace KINETO_NAMESPACE {
 

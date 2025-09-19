@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <cstdio>
 #include <cstdlib>
 #include "ILoggerObserver.h"
 #ifdef HAS_CUPTI
@@ -24,6 +23,7 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
+#include "CuptiCallbackApi.h"
 #include "CuptiRangeProfilerApi.h"
 
 #define STRINGIFY(x) #x
@@ -218,7 +218,7 @@ void __trackCudaKernelLaunch(
   profiler->numCallbacks_++;
 }
 
-bool enableKernelCallbacks() {
+static bool enableKernelCallbacks() {
   auto cbapi = CuptiCallbackApi::singleton();
 
   bool status = cbapi->enableCallback(

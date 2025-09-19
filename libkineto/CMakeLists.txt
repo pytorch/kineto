@@ -54,61 +54,19 @@ endif()
 option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
 
 find_package(CUDAToolkit)
-if (CUDAToolkit_LIBRARY_ROOT)
-  set(CUDA_PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/include"
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-      "${CUDAToolkit_LIBRARY_ROOT}/include"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
-  )
-endif()
 if(NOT LIBKINETO_NOCUPTI)
-  if(NOT CUPTI_INCLUDE_DIR)
-    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS ${CUDA_PATHS}
-      NO_DEFAULT_PATH)
-  endif()
-
-  if(NOT CUDA_cupti_LIBRARY)
-    find_library(CUDA_cupti_LIBRARY cupti PATHS ${CUDA_PATHS}
-      NO_DEFAULT_PATH)
-  endif()
-
-  if(CUDA_cupti_LIBRARY AND CUPTI_INCLUDE_DIR)
-    message(STATUS "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
-    message(STATUS "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
+  if(TARGET CUDA::cupti)
     message(STATUS "Found CUPTI")
-    if(NOT TARGET CUDA::cupti)
-      add_library(CUDA::cupti INTERFACE IMPORTED)
-      target_link_libraries(CUDA::cupti INTERFACE "${CUDA_cupti_LIBRARY}")
-    endif()
-    target_include_directories(CUDA::cupti INTERFACE "${CUPTI_INCLUDE_DIR}")
   else()
     set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
     message(STATUS "Could not find CUPTI library")
   endif()
 endif()
-if(NOT TARGET CUDA::nvperf_host)
-  find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS ${CUDA_PATHS}
-        NO_DEFAULT_PATH)
-  if(CUDA_NVPERF_HOST_LIB_PATH)
-    message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
-    if(WIN32)
-      add_library(CUDA::nvperf_host SHARED IMPORTED)
-      set_target_properties(CUDA::nvperf_host PROPERTIES
-        IMPORTED_IMPLIB "${CUDA_NVPERF_HOST_LIB_PATH}"
-      )
-    else()
-      add_library(CUDA::nvperf_host INTERFACE IMPORTED)
-      target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
-    endif()
-  endif()
-else()
-  get_target_property(CUDA_NVPERF_HOST_LIB_PATH CUDA::nvperf_host LOCATION)
-endif()
-if(CUDA_NVPERF_HOST_LIB_PATH)
-  message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
+
+# NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
+# Only check for NVPERF availability if CUPTI is enabled
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+  message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
 endif()
 
 if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
@@ -160,7 +118,7 @@ endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
 endif()
-if(TARGET CUDA::nvperf_host)
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
   # Disable CUPTI range profiler on Windows temporarily. Should fix in future
   if(NOT WIN32)
     list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
@@ -266,7 +224,7 @@ if(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
 endif()
-if(TARGET CUDA::nvperf_host)
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
   target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)

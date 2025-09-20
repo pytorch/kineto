@@ -40,7 +40,7 @@ namespace KINETO_NAMESPACE {
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
 static const std::vector<gpuDeviceProp> createDeviceProps() {
   std::vector<gpuDeviceProp> props;
-  int device_count;
+  int device_count = 0;
   gpuError_t error_id = gpuGetDeviceCount(&device_count);
   // Return empty vector if error.
   if (error_id != gpuSuccess) {

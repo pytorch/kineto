@@ -21,7 +21,7 @@
 namespace KINETO_NAMESPACE {
 
 namespace uuid {
-std::string generate_uuid_v4() {
+static std::string generate_uuid_v4() {
   static std::random_device rd;
   static std::mt19937 gen(rd());
   static std::uniform_int_distribution<> dis(0, 15);

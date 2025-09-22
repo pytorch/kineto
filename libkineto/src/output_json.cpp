@@ -60,7 +60,7 @@ ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
 // while a double can only represent 15-16 digits. By using relative time,
 // other applications can accurately read the 'ts' field as a double.
 // Use the program loading time as the baseline time.
-inline int64_t transToRelativeTime(int64_t time) {
+static inline int64_t transToRelativeTime(int64_t time) {
   // Sometimes after converting to relative time, it can be a few nanoseconds
   // negative. Since Chrome trace and json processing will throw a parser error,
   // guard this.

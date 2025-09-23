@@ -24,6 +24,17 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
   return instance;
 }
 
+XpuptiActivityApi::XpuptiActivityApi() {
+#ifdef HAS_XPUPTI
+  XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &device_count_));
+
+  if (device_count_ > 0) {
+    devices_ = std::make_unique<pti_device_properties_t[]>(device_count_);
+    XPUPTI_CALL(ptiMetricsGetDevices(devices_.get(), &device_count_));
+  }
+#endif
+}
+
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
@@ -58,8 +69,10 @@ void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
-static bool
-nextActivityRecord(uint8_t* buffer, size_t valid_size, Pti_Activity*& record) {
+static bool nextActivityRecord(
+    uint8_t* buffer,
+    size_t valid_size,
+    pti_view_record_base*& record) {
 #ifdef HAS_XPUPTI
   pti_result status = ptiViewGetNextRecord(buffer, valid_size, &record);
   if (status != pti_result::PTI_SUCCESS) {
@@ -67,10 +80,6 @@ nextActivityRecord(uint8_t* buffer, size_t valid_size, Pti_Activity*& record) {
   }
 #endif
   return record != nullptr;
-}
-
-void XpuptiActivityApi::setMaxBufferSize(int size) {
-  maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 
 void XpuptiActivityApi::bufferRequestedTrampoline(
@@ -81,9 +90,6 @@ void XpuptiActivityApi::bufferRequestedTrampoline(
 
 void XpuptiActivityApi::bufferRequested(uint8_t** buffer, size_t* size) {
   std::lock_guard<std::mutex> guard(mutex_);
-  if (allocatedGpuTraceBuffers_.size() >= (size_t)maxGpuBufferCount_) {
-    stopCollection = true;
-  }
 
   auto buf = std::make_unique<XpuptiActivityBuffer>(kBufSize);
   *buffer = buf->data();
@@ -113,10 +119,10 @@ std::unique_ptr<XpuptiActivityBufferMap> XpuptiActivityApi::activityBuffers() {
 int XpuptiActivityApi::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
-    std::function<void(const Pti_Activity*)> handler) {
+    std::function<void(const pti_view_record_base*)> handler) {
   int count = 0;
   if (buf && validSize) {
-    Pti_Activity* record{nullptr};
+    pti_view_record_base* record{nullptr};
     while (nextActivityRecord(buf, validSize, record)) {
       handler(record);
       ++count;
@@ -128,7 +134,7 @@ int XpuptiActivityApi::processActivitiesForBuffer(
 
 const std::pair<int, int> XpuptiActivityApi::processActivities(
     XpuptiActivityBufferMap& buffers,
-    std::function<void(const Pti_Activity*)> handler) {
+    std::function<void(const pti_view_record_base*)> handler) {
   std::pair<int, int> res{0, 0};
 #ifdef HAS_XPUPTI
   for (auto& pair : buffers) {
@@ -184,116 +190,265 @@ void XpuptiActivityApi::bufferCompleted(
 }
 #endif
 
-#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
+#if PTI_VERSION_AT_LEAST(0, 11)
 static void enableSpecifcRuntimeAPIsTracing() {
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMFill2D_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueUSMMemcpy2D_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueKernelLaunch_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1,
-      pti_api_group_id::PTI_API_GROUP_SYCL,
-      urEnqueueKernelLaunchCustomExp_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1,
-      pti_api_group_id::PTI_API_GROUP_SYCL,
-      urEnqueueCooperativeKernelLaunchExp_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferFill_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferRead_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferWrite_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urEnqueueMemBufferCopy_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMHostAlloc_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMSharedAlloc_id));
-  XPUPTI_CALL(ptiViewEnableRuntimeApi(
-      1, pti_api_group_id::PTI_API_GROUP_SYCL, urUSMDeviceAlloc_id));
+  std::array<pti_api_id_runtime_sycl> specifcRuntimeAPIsTracing = {
+      urEnqueueUSMFill_id,
+      urEnqueueUSMFill2D_id,
+      urEnqueueUSMMemcpy_id,
+      urEnqueueUSMMemcpy2D_id,
+      urEnqueueKernelLaunch_id,
+      urEnqueueKernelLaunchCustomExp_id,
+      urEnqueueCooperativeKernelLaunchExp_id,
+      urEnqueueMemBufferFill_id,
+      urEnqueueMemBufferRead_id,
+      urEnqueueMemBufferWrite_id,
+      urEnqueueMemBufferCopy_id,
+      urUSMHostAlloc_id,
+      urUSMSharedAlloc_id,
+      urUSMDeviceAlloc_id};
+
+  for (auto tracing_id : specifcRuntimeAPIsTracing) {
+    XPUPTI_CALL(ptiViewEnableRuntimeApi(
+        1, pti_api_group_id::PTI_API_GROUP_SYCL, tracing_id));
+  }
 }
 #endif
 
-void XpuptiActivityApi::enableXpuptiActivities(
+void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
+#ifdef HAS_XPUPTI
+#if PTI_VERSION_AT_LEAST(0, 14)
+  if (device_count_ == 0) {
+    Error();
+  }
+
+  if (!scopeHandleOpt_) {
+    XPUPTI_CALL(ptiMetricsScopeEnable(&*scopeHandleOpt_));
+
+    const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
+    const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
+
+    activitiesXpuptiMetricsNames_.clean();
+    activitiesXpuptiMetricsNames_.reserve(activitiesXpuptiMetrics.size());
+    std::transform(
+        activitiesXpuptiMetrics.begin(),
+        activitiesXpuptiMetrics.end(),
+        activitiesXpuptiMetricsNames_.begin(),
+        [](const std::string& s) { return s.c_str(); });
+
+    pti_metrics_scope_mode_t collection_mode = spcfg.xpuptiProfilerPerKernel()
+        ? PTI_METRICS_SCOPE_AUTO_KERNEL
+        : PTI_METRICS_SCOPE_USER;
+
+    XPUPTI_CALL(ptiMetricsScopeConfigure(
+        *scopeHandleOpt_,
+        collection_mode,
+        devices_,
+        device_count_,
+        activitiesXpuptiMetricsNames_.data(),
+        activitiesXpuptiMetricsNames_.size()));
+  }
+#endif
+#endif
+}
+
+void XpuptiActivityApi::disableScopeProfiler() {
+#ifdef HAS_XPUPTI
+#if PTI_VERSION_AT_LEAST(0, 14)
+  if (scopeHandleOpt_) {
+    XPUPTI_CALL(ptiMetricsScopeDisable(*scopeHandleOpt_));
+    scopeHandleOpt_.reset();
+  }
+#endif
+#endif
+}
+
+void XpuptiActivityApi::startScopedActivity() {
+#ifdef HAS_XPUPTI
+#if PTI_VERSION_AT_LEAST(0, 14)
+  if (scopeHandleOpt_) {
+    XPUPTI_CALL(ptiMetricsScopeStartCollection(*scopeHandleOpt_));
+  }
+#endif
+#endif
+}
+
+void XpuptiActivityApi::stopScopeActivity() {
+#ifdef HAS_XPUPTI
+#if PTI_VERSION_AT_LEAST(0, 14)
+  if (scopeHandleOpt_) {
+    XPUPTI_CALL(ptiMetricsScopeStopCollection(*scopeHandleOpt_));
+  }
+#endif
+#endif
+}
+
+bool XpuptiActivityApi::enableXpuptiActivities(
     const std::set<ActivityType>& selected_activities) {
+  bool scopeProfilerEnabled = false;
 #ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
 
   externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::GPU_MEMCPY) {
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
-    }
-    if (activity == ActivityType::GPU_MEMSET) {
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_FILL));
-    }
-    if (activity == ActivityType::CONCURRENT_KERNEL) {
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_KERNEL));
-    }
-    if (activity == ActivityType::EXTERNAL_CORRELATION) {
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_EXTERNAL_CORRELATION));
-      externalCorrelationEnabled_ = true;
-    }
-    if (activity == ActivityType::XPU_RUNTIME) {
-#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 11
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
-      XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
-          1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
-#elif PTI_VERSION_MAJOR == 0 && PTI_VERSION_MINOR == 11
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
-      enableSpecifcRuntimeAPIsTracing();
+    switch (activity) {
+      case ActivityType::GPU_MEMCPY:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
+        break;
+
+      case ActivityType::GPU_MEMSET:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_FILL));
+        break;
+
+      case ActivityType::CONCURRENT_KERNEL:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_KERNEL));
+        break;
+
+      case ActivityType::EXTERNAL_CORRELATION:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_EXTERNAL_CORRELATION));
+        externalCorrelationEnabled_ = true;
+        break;
+
+      case activity == ActivityType::XPU_RUNTIME:
+#if PTI_VERSION_AT_LEAST(0, 12)
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
+        XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
+            1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
+#elif PTI_VERSION_AT_LEAST(0, 11)
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
+        enableSpecifcRuntimeAPIsTracing();
 #else
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_SYCL_RUNTIME_CALLS));
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_SYCL_RUNTIME_CALLS));
 #endif
-    }
-    if (activity == ActivityType::OVERHEAD) {
-      XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+      case ActivityType::XPU_SCOPE_PROFILER:
+#if PTI_VERSION_AT_LEAST(0, 14)
+        scopeProfilerEnabled = true;
+#else
+        Error();
+#endif
+        break;
+
+      case ActivityType::OVERHEAD:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
     }
   }
-
-  tracingEnabled_ = 1;
 #endif
-
-  stopCollection = false;
+  return scopeProfilerEnabled;
 }
 
 void XpuptiActivityApi::disablePtiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_XPUPTI
   for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::GPU_MEMCPY) {
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
-    }
-    if (activity == ActivityType::GPU_MEMSET) {
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_FILL));
-    }
-    if (activity == ActivityType::CONCURRENT_KERNEL) {
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_KERNEL));
-    }
-    if (activity == ActivityType::EXTERNAL_CORRELATION) {
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_EXTERNAL_CORRELATION));
-    }
-    if (activity == ActivityType::XPU_RUNTIME) {
-#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_RUNTIME_API));
-#else
+    switch (activity) {
+      case ActivityType::GPU_MEMCPY:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
+        break;
 
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_SYCL_RUNTIME_CALLS));
+      case ActivityType::GPU_MEMSET:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_FILL));
+        break;
+
+      case ActivityType::CONCURRENT_KERNEL:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_KERNEL));
+        break;
+
+      case ActivityType::EXTERNAL_CORRELATION:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_EXTERNAL_CORRELATION));
+        break;
+
+      case ActivityType::XPU_RUNTIME:
+#if PTI_VERSION_AT_LEAST(0, 11)
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_RUNTIME_API));
+#else
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_SYCL_RUNTIME_CALLS));
 #endif
-    }
-    if (activity == ActivityType::OVERHEAD) {
-      XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+      case ActivityType::XPU_SCOPE_PROFILER:
+        // This case is handled by XpuptiActivityApi::disableScopeProfiler
+        break;
+
+      case ActivityType::OVERHEAD:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
     }
   }
   externalCorrelationEnabled_ = false;
+#endif
+}
+
+void XpuptiActivityApi::processScopeTrace(
+    std::function<void(const pti_view_record_base*)> handler) {
+#ifdef HAS_XPUPTI
+#if PTI_VERSION_AT_LEAST(0, 14)
+  if (scopeHandleOpt_) {
+    uint32_t metricsCount = 0;
+    XPUPTI_CALL(ptiMetricScopeGetCalculatedData(
+        *scopeHandleOpt_, nullptr, &metricsCount));
+
+    auto metricsValues = std::make_unique<pti_value_t[]>(metricsCount);
+    XPUPTI_CALL(ptiMetricScopeGetCalculatedData(
+        *scopeHandleOpt_, metricsValues.get(), &metricsCount));
+
+    // How obtained pti_value_t results relate to the rest of the API calls ?
+
+    uint64_t buffersCount = 0;
+    XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
+        *scopeHandleOpt_, &buffersCount));
+
+    for (uint64_t bufferId = 0; bufferId < buffersCount; ++bufferId) {
+      size_t bufferSize = 0;
+      XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
+          *scopeHandleOpt_, bufferId, nullptr, &bufferSize));
+
+      XPUPTI_CALL(
+          ptiMetricsScopeSetCollectionBuffer(*scopeHandleOpt_, bufferSize));
+
+      void* buffer = nullptr;
+      XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
+          *scopeHandleOpt_, bufferId, &buffer, &bufferSize));
+
+      pti_metrics_scope_buffer_properties props;
+      XPUPTI_CALL(
+          ptiMetricsScopeGetBufferProperties(*scopeHandleOpt_, buffer, &props));
+
+      size_t collectionBufferSize = 0;
+      XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
+          *scopeHandleOpt_, props._num_records, &collectionBufferSize));
+
+      auto collectionBuffer = std::make_unique<uint8_t[]>(collectionBufferSize);
+
+      size_t metricsCount = 0;
+      XPUPTI_CALL(ptiMetricScopeGetCollectedMetrics(
+          *scopeHandleOpt_, collectionBuffer.get(), &metricsCount));
+
+      pti_metrics_scope_record* records = nullptr;
+      size_t recordsCount = 0;
+      size_t recordArrayBytesSize = 0;
+      XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
+          *scopeHandleOpt_,
+          collectionBuffer,
+          activitiesXpuptiMetricsNames_.data(),
+          activitiesXpuptiMetricsNames_.size(),
+          &records,
+          &recordsCount,
+          &recordArrayBytesSize));
+
+      for (size_t recordId = 0; recordId < recordsCount; ++recordId) {
+        handler(records + recordId);
+      }
+
+      // Buffer cleanup functions
+      XPUPTI_CALL(ptiCollectionBufferRelease(buffer));
+    }
+    // XPUPTI_CALL(ptiCollectionBufferCleanupAll(void);
+  }
+#endif
 #endif
 }
 

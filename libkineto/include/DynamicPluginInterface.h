@@ -17,7 +17,8 @@
 extern "C" {
 #endif
 
-// A subset of event types that can be supported via plugin
+// Event types that can be supported via plugin. Please sync
+// with ActivityType.h if you add new event types.
 enum KinetoPlugin_ProfileEventType {
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_INVALID = 0,
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CPU_OP, // cpu side ops
@@ -33,11 +34,34 @@ enum KinetoPlugin_ProfileEventType {
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CPU_INSTANT_EVENT, // host side point-like
                                                       // events
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_PYTHON_FUNCTION,
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_OVERHEAD,  // CUPTI induced overhead events
-                                              // sampled from its overhead API.
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_OVERHEAD, // CUPTI induced overhead events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_RUNTIME,    // host side MTIA runtime
+                                                    // events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_CCP_EVENTS, // MTIA ondevice CCP events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_INSIGHT,    // MTIA Insight Events
+                                                    // sampled from its overhead
+                                                    // API.
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_SYNC, // synchronization events between
                                               // runtime and kernels
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_PM_COUNTER, // GPU PM counters
+  // Optional Activity types
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_GLOW_RUNTIME, // host side glow runtime
+                                                 // events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_PROFILER_RANGE, // CUPTI Profiler range
+                                                        // for performance
+                                                        // metrics
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_HPU_OP,      // HPU host side runtime event
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_XPU_RUNTIME, // host side xpu runtime events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_COLLECTIVE_COMM, // collective communication
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_PM_COUNTER, // GPU performance monitoring
+                                                   // counter
+
+  // PRIVATEUSE1 Activity types are used for custom backends.
+  // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_RUNTIME, // host side privateUse1
+                                                        // runtime events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_DRIVER,  // host side privateUse1
+                                                        // driver events
+
   KINETO_PLUGIN_PROFILE_EVENT_NUM_TYPES
 };
 

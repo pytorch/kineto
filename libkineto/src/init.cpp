@@ -54,6 +54,15 @@ static void initProfilers() {
   }
 }
 
+bool isKinetoDisableCuptiEnvVarOne() {
+  const char* ptr = getenv("KINETO_DISABLE_CUPTI");
+  return ptr != nullptr && atoi(ptr) == 1;
+}
+
+#else
+bool isKinetoDisableCuptiEnvVarOne() {
+  return false;
+}
 #endif // __linux__ || defined(HAS_CUPTI)
 
 #ifdef HAS_CUPTI
@@ -154,11 +163,9 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 #ifdef HAS_CUPTI
   bool initCupti = true;
 
-  const char* kDisableCuptiEnvVar = "KINETO_DISABLE_CUPTI";
-  const char* disableCuptiEnvVal = getenv(kDisableCuptiEnvVar);
-  if (disableCuptiEnvVal) {
-    initCupti = atoi(disableCuptiEnvVal) ? false : true;
-    LOG(INFO) << "Setting initCupti = " << initCupti << " from environment " << kDisableCuptiEnvVar << "=" << disableCuptiEnvVal;
+  if (isKinetoDisableCuptiEnvVarOne()) {
+    initCupti = false;
+    LOG(INFO) << "Setting initCupti = " << initCupti << " from environment KINETO_DISABLE_CUPTI=1";
   }
 
   bool initRangeProfiler = true;

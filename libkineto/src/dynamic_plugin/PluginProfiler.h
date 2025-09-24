@@ -3,8 +3,8 @@
 #include <chrono>
 #include <libkineto.h>
 
-#include "Logger.h"
 #include "IActivityProfiler.h"
+#include "Logger.h"
 #include "output_base.h"
 
 #include "DynamicPluginInterface.h"
@@ -18,26 +18,13 @@ namespace libkineto {
 class PluginProfilerSession : public IActivityProfilerSession {
 
 public:
-  PluginProfilerSession(const KinetoPlugin_ProfilerInterface &profiler)
-      : profiler_(profiler) {
-    int errorCode = 0;
-
-    char profilerName[32];
-    KinetoPlugin_ProfilerQuery_Params queryParams{
-        KINETO_PLUGIN_PROFILER_QUERY_PARAMS_UNPADDED_STRUCT_SIZE};
-    queryParams.pProfilerHandle = nullptr;
-    queryParams.pProfilerName = &profilerName[0];
-    queryParams.profilerNameMaxLen = 31;
-    errorCode = profiler_.profilerQuery(&queryParams);
-    if (errorCode != 0) {
-      name_.assign("N/A");
-    } else {
-      name_.assign(queryParams.pProfilerName);
-    }
-
+  PluginProfilerSession(const KinetoPlugin_ProfilerInterface &profiler,
+                        const std::string &name)
+      : name_(name), profiler_(profiler) {
     KinetoPlugin_ProfilerCreate_Params createParams{
         KINETO_PLUGIN_PROFILER_CREATE_PARAMS_UNPADDED_STRUCT_SIZE};
-    errorCode = profiler_.profilerCreate(&createParams);
+
+    int errorCode = profiler_.profilerCreate(&createParams);
     if (errorCode != 0) {
       LOG(ERROR) << "Plugin profiler " << name_
                  << " failed at profilerCreate() with error " << errorCode;
@@ -52,12 +39,11 @@ public:
       return;
     }
 
-    int errorCode = 0;
-
     KinetoPlugin_ProfilerDestroy_Params destroyParams{
         KINETO_PLUGIN_PROFILER_DESTROY_PARAMS_UNPADDED_STRUCT_SIZE};
     destroyParams.pProfilerHandle = pProfilerHandle_;
-    errorCode = profiler_.profilerDestroy(&destroyParams);
+
+    int errorCode = profiler_.profilerDestroy(&destroyParams);
     if (errorCode != 0) {
       LOG(ERROR) << "Plugin profiler " << name_
                  << " failed at profilerDestroy() with error " << errorCode;
@@ -75,12 +61,11 @@ public:
       return;
     }
 
-    int errorCode = 0;
-
     KinetoPlugin_ProfilerStart_Params startParams{
         KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE};
     startParams.pProfilerHandle = pProfilerHandle_;
-    errorCode = profiler_.profilerStart(&startParams);
+
+    int errorCode = profiler_.profilerStart(&startParams);
     if (errorCode != 0) {
       LOG(ERROR) << "Plugin profiler " << name_
                  << " failed at profilerStart() with error " << errorCode;
@@ -98,12 +83,11 @@ public:
       return;
     }
 
-    int errorCode = 0;
-
     KinetoPlugin_ProfilerStop_Params stopParams{
         KINETO_PLUGIN_PROFILER_STOP_PARAMS_UNPADDED_STRUCT_SIZE};
     stopParams.pProfilerHandle = pProfilerHandle_;
-    errorCode = profiler_.profilerStop(&stopParams);
+
+    int errorCode = profiler_.profilerStop(&stopParams);
     if (errorCode != 0) {
       LOG(ERROR) << "Plugin profiler " << name_
                  << " failed at profilerStop() with error " << errorCode;
@@ -127,13 +111,13 @@ public:
     const KinetoPlugin_TraceBuilder traceBuilder =
         pluginTraceBuilder.toCTraceBuilder();
 
-    int errorCode = 0;
-
     KinetoPlugin_ProfilerProcessEvents_Params profilerProcessEventsParams{
         KINETO_PLUGIN_PROFILER_PROCESS_EVENTS_PARAMS_UNPADDED_STRUCT_SIZE};
     profilerProcessEventsParams.pProfilerHandle = pProfilerHandle_;
     profilerProcessEventsParams.pTraceBuilder = &traceBuilder;
-    errorCode = profiler_.profilerProcessEvents(&profilerProcessEventsParams);
+
+    int errorCode =
+        profiler_.profilerProcessEvents(&profilerProcessEventsParams);
     if (errorCode != 0) {
       LOG(ERROR) << "Plugin profiler " << name_
                  << " failed at profilerProcessEvents() with error "
@@ -187,15 +171,14 @@ public:
       : profiler_(profiler) {
     validateProfiler();
 
-    int errorCode = 0;
-
     char profilerName[32];
     KinetoPlugin_ProfilerQuery_Params queryParams{
         KINETO_PLUGIN_PROFILER_QUERY_PARAMS_UNPADDED_STRUCT_SIZE};
     queryParams.pProfilerHandle = nullptr;
     queryParams.pProfilerName = &profilerName[0];
     queryParams.profilerNameMaxLen = 31;
-    errorCode = profiler_.profilerQuery(&queryParams);
+
+    int errorCode = profiler_.profilerQuery(&queryParams);
     if (errorCode != 0) {
       name_.assign("N/A");
     } else {
@@ -220,7 +203,7 @@ public:
   configure(const std::set<ActivityType> &activity_types,
             const Config &config) override {
     // [TODO] Check activity types to determine if creating session or nullptr
-    return std::make_unique<PluginProfilerSession>(profiler_);
+    return std::make_unique<PluginProfilerSession>(profiler_, name_);
   }
 
   std::unique_ptr<IActivityProfilerSession>

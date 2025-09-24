@@ -28,26 +28,20 @@ struct MockPluginHandle {
 // Mock implementation of the plugin interface
 class MockPlugin {
 public:
-  static MockPluginHandle *handles[10]; // Support up to 10 handles for testing
-  static int handleCount;
+  static std::vector<std::unique_ptr<MockPluginHandle>> handles;
+
+  static int getHandleCount() { return handles.size(); }
 
   // Reset state for clean tests
-  static void reset() {
-    for (int i = 0; i < handleCount; ++i) {
-      delete handles[i];
-      handles[i] = nullptr;
-    }
-    handleCount = 0;
-  }
+  static void reset() { handles.clear(); }
 
   // Mock profilerCreate implementation
   static int profilerCreate(KinetoPlugin_ProfilerCreate_Params *params) {
-    MockPluginHandle *handle = new MockPluginHandle();
+    handles.push_back(std::make_unique<MockPluginHandle>());
+    MockPluginHandle *handle = handles.back().get();
     handle->created = true;
-    handles[handleCount] = handle;
     params->pProfilerHandle =
         reinterpret_cast<KinetoPlugin_ProfilerHandle *>(handle);
-    handleCount++;
     return 0;
   }
 
@@ -57,12 +51,9 @@ public:
         reinterpret_cast<MockPluginHandle *>(params->pProfilerHandle);
 
     // Find and remove from our tracking
-    for (int i = 0; i < handleCount; ++i) {
-      if (handles[i] == handle) {
-        delete handles[i];
-        handles[i] = handles[handleCount - 1];
-        handles[handleCount - 1] = nullptr;
-        handleCount--;
+    for (auto it = handles.begin(); it != handles.end(); ++it) {
+      if (it->get() == handle) {
+        handles.erase(it);
         break;
       }
     }
@@ -170,8 +161,7 @@ public:
 };
 
 // Static member definitions
-MockPluginHandle *MockPlugin::handles[10] = {nullptr};
-int MockPlugin::handleCount = 0;
+std::vector<std::unique_ptr<MockPluginHandle>> MockPlugin::handles;
 
 } // anonymous namespace
 
@@ -199,13 +189,13 @@ TEST_F(DynamicPluginTest, PluginProfilerLifecycle) {
           .empty()); // Should have at least the default CUDA_PROFILER_RANGE
 
   // Create a profiler session which will test handle creation
-  EXPECT_EQ(MockPlugin::handleCount, 0);
+  EXPECT_EQ(MockPlugin::getHandleCount(), 0);
   auto session = pluginProfiler.configure(activities, Config{});
   EXPECT_NE(session, nullptr);
-  EXPECT_EQ(MockPlugin::handleCount, 1);
+  EXPECT_EQ(MockPlugin::getHandleCount(), 1);
 
   // Verify handle was created and is in correct state
-  MockPluginHandle *handle = MockPlugin::handles[0];
+  MockPluginHandle *handle = MockPlugin::handles[0].get();
   EXPECT_TRUE(handle->created);
   EXPECT_FALSE(handle->active);
 
@@ -219,7 +209,7 @@ TEST_F(DynamicPluginTest, PluginProfilerLifecycle) {
 
   // Test session destruction (handle cleanup)
   session.reset();
-  EXPECT_EQ(MockPlugin::handleCount, 0);
+  EXPECT_EQ(MockPlugin::getHandleCount(), 0);
 }
 
 // Test event builder functionality with processEvents

@@ -18,6 +18,8 @@
 #include <libkineto.h>
 #include <unistd.h>
 
+#include <folly/init/Init.h>
+
 #include <ApproximateClock.h>
 #include <c10/util/ApproximateClock.h>
 #include "kineto/libkineto/stress_test/stress_test_input.h"
@@ -237,6 +239,8 @@ int main(int argc, char* argv[]) {
 
   int rank = 0;
   int num_ranks = 0;
+
+  folly::init(&argc, &argv);
 
   MPICHECK(MPI_Init(&argc, &argv));
   MPICHECK(MPI_Comm_rank(MPI_COMM_WORLD, &rank));

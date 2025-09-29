@@ -35,18 +35,18 @@ set(LIBKINETO_THIRDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #We should default to a Release build
-if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-if (DEFINED CUDA_SOURCE_DIR AND NOT DEFINED CUDAToolkit_ROOT)
-    set(CUDAToolkit_ROOT "${CUDA_SOURCE_DIR}")
-    message(STATUS " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
+if(DEFINED CUDA_SOURCE_DIR AND NOT DEFINED CUDAToolkit_ROOT)
+  set(CUDAToolkit_ROOT "${CUDA_SOURCE_DIR}")
+  message(STATUS " CUDA_SOURCE_DIR = ${CUDA_SOURCE_DIR}")
 endif()
 
-if (NOT ROCM_SOURCE_DIR)
-    set(ROCM_SOURCE_DIR "$ENV{ROCM_SOURCE_DIR}")
-    message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
+if(NOT ROCM_SOURCE_DIR)
+  set(ROCM_SOURCE_DIR "$ENV{ROCM_SOURCE_DIR}")
+  message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
 endif()
 
 # Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
@@ -55,56 +55,25 @@ option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
 
 find_package(CUDAToolkit)
 if(NOT LIBKINETO_NOCUPTI)
-  if(NOT CUPTI_INCLUDE_DIR)
-    find_path(CUPTI_INCLUDE_DIR cupti.h PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/include"
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/include"
-      NO_DEFAULT_PATH)
-  endif()
-
-  if(NOT CUDA_cupti_LIBRARY)
-    find_library(CUDA_cupti_LIBRARY cupti PATHS
-      "${CUDAToolkit_LIBRARY_ROOT}"
-      "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib"
-      "${CUDAToolkit_LIBRARY_ROOT}/lib64"
-      NO_DEFAULT_PATH)
-  endif()
-
-  if(CUDA_cupti_LIBRARY AND CUPTI_INCLUDE_DIR)
-    message(STATUS "  CUPTI_INCLUDE_DIR = ${CUPTI_INCLUDE_DIR}")
-    message(STATUS "  CUDA_cupti_LIBRARY = ${CUDA_cupti_LIBRARY}")
+  if(TARGET CUDA::cupti)
     message(STATUS "Found CUPTI")
-    if(NOT TARGET CUDA::cupti)
-      add_library(CUDA::cupti INTERFACE IMPORTED)
-      target_link_libraries(CUDA::cupti INTERFACE "${CUDA_cupti_LIBRARY}")
-    endif()
-    target_include_directories(CUDA::cupti INTERFACE "${CUPTI_INCLUDE_DIR}")
   else()
     set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
     message(STATUS "Could not find CUPTI library")
   endif()
 endif()
-if(NOT TARGET CUDA::nvperf_host)
-  find_library(CUDA_NVPERF_HOST_LIB_PATH nvperf_host PATHS
-        "${CUDAToolkit_LIBRARY_ROOT}"
-        "${CUDAToolkit_LIBRARY_ROOT}/extras/CUPTI/lib64"
-        "${CUDAToolkit_LIBRARY_ROOT}/lib"
-        "${CUDAToolkit_LIBRARY_ROOT}/lib64"
-        NO_DEFAULT_PATH)
-  if(CUDA_NVPERF_HOST_LIB_PATH)
-    message(STATUS "Found NVPERF: ${CUDA_NVPERF_HOST_LIB_PATH}")
-    add_library(CUDA::nvperf_host INTERFACE IMPORTED)
-    target_link_libraries(CUDA::nvperf_host INTERFACE "${CUDA_NVPERF_HOST_LIB_PATH}")
-  endif()
+
+# NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
+# Only check for NVPERF availability if CUPTI is enabled
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+  message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
 endif()
 
-IF (NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
-    set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
+if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
+  set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
 endif()
 
-IF (DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   add_subdirectory(src/plugin/xpupti)
 else()
   set(LIBKINETO_NOXPUPTI ON)
@@ -154,11 +123,15 @@ if(NOT LIBKINETO_NOROCTRACER)
     message(STATUS "Building with: libroctracer")
   endif()
 endif()
+if(NOT DEFINED LIBKINETO_NOAIUPTI)
+  message(INFO " LIBKINETO_NOAIUPTI NOT DEFINED adding subdirectory(src/plugin/aiupti)")
+  add_subdirectory(src/plugin/aiupti)
+endif()
 
 # Define file lists
-if (LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI)
-    get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " CUPTI unavailable or disabled - not building GPU profilers")
+if(LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI AND LIBKINETO_NOAIUPTI)
+  get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
+  message(STATUS " CUPTI unavailable or disabled - not building GPU profilers")
 else()
   if(NOT LIBKINETO_NOROCTRACER)
     if (${USE_ROCPROFILER_SDK})
@@ -176,7 +149,11 @@ else()
     get_filelist("get_libkineto_xpupti_srcs(with_api=False)" LIBKINETO_xpu_SRCS)
     message(STATUS " Building with xpupti")
   endif()
-  set(LIBKINETO_SRCS ${LIBKINETO_roc_SRCS} ${LIBKINETO_xpu_SRCS} ${LIBKINETO_cuda_SRCS})
+  if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
+    get_filelist("get_libkineto_aiupti_srcs(with_api=False)" LIBKINETO_aiu_SRCS)
+    message(INFO " Building with aiupti")
+  endif()
+  set(LIBKINETO_SRCS ${LIBKINETO_roc_SRCS} ${LIBKINETO_xpu_SRCS} ${LIBKINETO_cuda_SRCS} ${LIBKINETO_aiu_SRCS})
 endif()
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
 get_filelist("get_libkineto_api_srcs()" LIBKINETO_API_SRCS)
@@ -200,9 +177,17 @@ endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
 endif()
-if(TARGET CUDA::nvperf_host)
-  list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
+if (DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
+  list(APPEND KINETO_COMPILE_OPTIONS ${AIUPTI_BUILD_FLAGS})
+  target_compile_definitions(kineto_base PRIVATE "-DHAS_AIUPTI")
 endif()
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+  # Disable CUPTI range profiler on Windows temporarily. Should fix in future
+  if(NOT WIN32)
+    list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
+  endif()
+endif()
+
 if(NOT LIBKINETO_NOROCTRACER)
   list(APPEND KINETO_DEFINITIONS "HAS_ROCTRACER")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_HCC__")
@@ -257,6 +242,9 @@ target_include_directories(kineto_base PUBLIC
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_include_directories(kineto_base PUBLIC ${XPUPTI_INCLUDE_DIR})
 endif()
+if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
+  target_include_directories(kineto_base PUBLIC ${AIU_INCLUDE_DIR})
+endif()
 target_link_libraries(kineto_base PRIVATE $<BUILD_INTERFACE:fmt::fmt-header-only>)
 
 target_include_directories(kineto_api PUBLIC
@@ -268,6 +256,7 @@ if(KINETO_LIBRARY_TYPE STREQUAL "static")
   set(BUILD_SHARED_LIBS OFF)
 elseif(KINETO_LIBRARY_TYPE STREQUAL "shared")
   set(BUILD_SHARED_LIBS ON)
+  set(WINDOWS_EXPORT_ALL_SYMBOLS ON)
 elseif(NOT KINETO_LIBRARY_TYPE STREQUAL "default")
   message(FATAL_ERROR "Unsupported library type ${KINETO_LIBRARY_TYPE}")
 endif()
@@ -303,14 +292,17 @@ endif()
 endif()
 
 if(NOT LIBKINETO_NOCUPTI)
-  target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
-  target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart CUDA::cuda_driver)
+  target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart)
+  target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart)
 endif()
-if(TARGET CUDA::nvperf_host)
-  target_link_libraries(kineto_base PRIVATE CUDA::nvperf_host)
+if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+  target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
 endif()
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_link_libraries(kineto "${XPU_xpupti_LIBRARY}")
+endif()
+if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
+  target_link_libraries(kineto "${AIU_aiupti_LIBRARY}")
 endif()
 target_compile_definitions(kineto PUBLIC "${KINETO_DEFINITIONS}")
 

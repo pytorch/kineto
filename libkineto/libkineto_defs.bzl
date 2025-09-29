@@ -48,6 +48,13 @@ def get_libkineto_xpupti_srcs(with_api = True):
         "src/plugin/xpupti/XpuptiActivityHandlers.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
+def get_libkineto_aiupti_srcs(with_api = True):
+    return [
+        "src/plugin/aiupti/AiuptiActivityApi.cpp",
+        "src/plugin/aiupti/AiuptiActivityProfiler.cpp",
+        "src/plugin/aiupti/AiuptiActivityHandlers.cpp",
+    ] + (get_libkineto_cpu_only_srcs(with_api))
+
 def get_libkineto_cpu_only_srcs(with_api = True):
     return [
         "src/AbstractConfig.cpp",

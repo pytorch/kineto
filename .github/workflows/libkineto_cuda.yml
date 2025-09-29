@@ -8,35 +8,29 @@ on:
 
 # Use TorchBench's docker image which has all basic dependencies.
 env:
-  CONDA_ENV: "torchbench"
   DOCKER_IMAGE: "ghcr.io/pytorch/torchbench:latest"
-  SETUP_SCRIPT: "/workspace/setup_instance.sh"
 
 jobs:
   pr-test:
     # AWS A10G GPU instance label: linux.g5.4xlarge.nvidia.gpu
     # OS version: Amazon Linux 2
-    runs-on: [linux.g5.4xlarge.nvidia.gpu]
+    runs-on: linux.g5.4xlarge.nvidia.gpu
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           path: kineto
-      - name: Checkout submodules
-        shell: bash
-        run: |
-          cd kineto
-          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
-          git submodule sync --recursive
-          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+          submodules: recursive
+
       - name: Pull docker image
         uses: pytorch/test-infra/.github/actions/pull-docker-image@main
         with:
           docker-image: ${{ env.DOCKER_IMAGE }}
+
       - name: Install NVIDIA Driver, docker runtime, set GPU_FLAG
-        id: install-nvidia-driver
         uses: pytorch/test-infra/.github/actions/setup-nvidia@main
+
       - name: Get env vars
         run: |
           echo GITHUB_WORKFLOW   = $GITHUB_WORKFLOW
@@ -49,26 +43,41 @@ jobs:
           echo GITHUB_WORKSPACE  = $GITHUB_WORKSPACE
           echo GITHUB_SHA        = $GITHUB_SHA
           echo GITHUB_REF        = $GITHUB_REF
+
       - name: Build libkineto (static and shared library) and tests
         run: |
           container_name=$(docker run \
-            -e CONDA_ENV="${CONDA_ENV}" \
-            -e SETUP_SCRIPT="${SETUP_SCRIPT}" \
+            ${GPU_FLAG:-} \
             --tty \
             --detach \
             --shm-size=32gb \
             -v "${PWD}/kineto:/kineto" \
-            --gpus all \
             -w / \
-            "${{ env.DOCKER_IMAGE }}" \
-            tail -f /dev/null
+            "${{ env.DOCKER_IMAGE }}"
           )
           echo "Container name: ${container_name}"
-          docker exec -t -w "/" "${container_name}" bash -c "sudo chown -R runner /kineto; sudo chgrp -R runner /kineto"
-          docker exec -t -w "/kineto" "${container_name}" bash -c "set -e; mkdir build_static; mkdir build_shared"
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c ". /workspace/setup_instance.sh; cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/; make -j"
-          docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c ". /workspace/setup_instance.sh; cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/; make -j"
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c ". /workspace/setup_instance.sh; make test"
+
+          docker exec -t -w "/kineto" "${container_name}" bash -c "
+            set -eux
+            mkdir build_static
+            mkdir build_shared
+            pip install cmake
+          "
+
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "
+            set -eux
+            cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/
+            make -j
+          "
+
+          docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c "
+            set -eux
+            cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/
+            make -j
+          "
+
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "make test"
+
       - name: Teardown Linux
         uses: pytorch/test-infra/.github/actions/teardown-linux@main
         if: always()

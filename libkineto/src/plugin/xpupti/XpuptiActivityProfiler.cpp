@@ -188,23 +188,11 @@ const std::set<ActivityType>& XPUActivityProfiler::availableActivities() const {
   return kXpuTypes;
 }
 
-namespace {
-  bool is_env_set(const std::string& env_name) {
-    const auto env = std::getenv(env_name.c_str());
-    return env != nullptr && strcmp(env, "1") == 0;
-  }
-}
-
 std::unique_ptr<libkineto::IActivityProfilerSession>
 XPUActivityProfiler::configure(
     const std::set<ActivityType>& activity_types,
     const libkineto::Config& config) {
-  const auto experimental_cuda_format_enabled = is_env_set("XPUPTI_USE_EXPERIMENTAL_CUDA_FORMAT");
-  if(experimental_cuda_format_enabled)
-    return std::make_unique<XpuptiActivityProfilerSessionCudaFormat>(
-      XpuptiActivityApi::singleton(), config, activity_types);
-  else
-    return std::make_unique<XpuptiActivityProfilerSession>(
+  return std::make_unique<XpuptiActivityProfilerSession>(
       XpuptiActivityApi::singleton(), config, activity_types);
 }
 

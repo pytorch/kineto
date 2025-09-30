@@ -50,22 +50,7 @@ class XpuptiActivityProfilerSession
   void pushUserCorrelationId(uint64_t id) override;
   void popUserCorrelationId() override;
 
- protected:
-  struct StreamParams {
-      pti_backend_queue_t queue_handler{};
-      std::uint64_t queue_id{};
-  };
-
-  virtual void addTraceQueueMetadata(
-      libkineto::GenericTraceActivity &kernel_activity,
-      const StreamParams &stream_params);
-
  private:
-  template<class T>
-  StreamParams getStreamParams(const T& activity) {
-    return {activity._queue_handle, activity._sycl_queue_id};
-  }
-
   void checkTimestampOrder(const ITraceActivity* act1);
   void removeCorrelatedPtiActivities(const ITraceActivity* act1);
   bool outOfRange(const ITraceActivity& act);
@@ -126,17 +111,6 @@ class XpuptiActivityProfilerSession
   std::vector<uint64_t> sycl_queue_pool_;
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;
-};
-
-class XpuptiActivityProfilerSessionCudaFormat : public XpuptiActivityProfilerSession
-{
- public:
-    using XpuptiActivityProfilerSession::XpuptiActivityProfilerSession;
-
- protected:
-    virtual void addTraceQueueMetadata(
-        libkineto::GenericTraceActivity &kernel_activity,
-        const StreamParams &StreamParams) override;
 };
 
 class XPUActivityProfiler : public libkineto::IActivityProfiler {

@@ -9,11 +9,15 @@
 #pragma once
 
 #include <mutex>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "XpuptiProfilerMacros.h"
 
 namespace KINETO_NAMESPACE {
+
+using DeviceUUIDsT = std::array<unsigned char, 16>;
 
 class XpuptiActivityProfilerSession
     : public libkineto::IActivityProfilerSession {
@@ -21,6 +25,7 @@ class XpuptiActivityProfilerSession
   XpuptiActivityProfilerSession() = delete;
   XpuptiActivityProfilerSession(
       XpuptiActivityApi& xpti,
+      const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
   XpuptiActivityProfilerSession(const XpuptiActivityProfilerSession&) = delete;
@@ -41,8 +46,12 @@ class XpuptiActivityProfilerSession
       libkineto::getLinkedActivityCallback get_linked_activity,
       int64_t captureWindowStartTime,
       int64_t captureWindowEndTime) override;
-  std::unique_ptr<libkineto::DeviceInfo> getDeviceInfo() override;
-  std::vector<libkineto::ResourceInfo> getResourceInfos() override;
+  std::unique_ptr<libkineto::DeviceInfo> getDeviceInfo() override {
+    return {};
+  }
+  std::vector<libkineto::ResourceInfo> getResourceInfos() override {
+    return {};
+  }
   std::unique_ptr<libkineto::CpuTraceBuffer> getTraceBuffer() override;
 
   void pushCorrelationId(uint64_t id) override;
@@ -53,29 +62,28 @@ class XpuptiActivityProfilerSession
  private:
   void checkTimestampOrder(const ITraceActivity* act1);
   void removeCorrelatedPtiActivities(const ITraceActivity* act1);
-  bool outOfRange(const ITraceActivity& act);
+  bool outOfScope(const ITraceActivity* act);
   int64_t getMappedQueueId(uint64_t sycl_queue_id);
   const ITraceActivity* linkedActivity(
       int32_t correlationId,
       const std::unordered_map<int64_t, int64_t>& correlationMap);
   void handleCorrelationActivity(
       const pti_view_record_external_correlation* correlation);
-  void handleRuntimeActivity(
-#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 10
-      const pti_view_record_api* activity,
+
+#if PTI_VERSION_AT_LEAST(0, 11)
+  using pti_view_record_api_t = pti_view_record_api;
 #else
-      const pti_view_record_sycl_runtime* activity,
+  using pti_view_record_api_t = pti_view_record_sycl_runtime;
 #endif
+
+  std::string XpuptiActivityProfilerSession::getApiName(
+      const pti_view_record_api_t* activity);
+
+  template <class pti_view_memory_record_type>
+  void handleRuntimeKernelMemcpyMemsetActivities(
+      const pti_view_memory_record_type* activity,
       ActivityLogger* logger);
-  void handleKernelActivity(
-      const pti_view_record_kernel* activity,
-      ActivityLogger* logger);
-  void handleMemcpyActivity(
-      const pti_view_record_memory_copy* activity,
-      ActivityLogger* logger);
-  void handleMemsetActivity(
-      const pti_view_record_memory_fill* activity,
-      ActivityLogger* logger);
+
   void handleOverheadActivity(
       const pti_view_record_overhead* activity,
       ActivityLogger* logger);
@@ -92,8 +100,8 @@ class XpuptiActivityProfilerSession
 
  private:
   static uint32_t iterationCount_;
-  static std::vector<std::array<unsigned char, 16>> deviceUUIDs_;
-  static std::vector<std::string> correlateRuntimeOps_;
+  static std::vector<DeviceUUIDsT> deviceUUIDs_;
+  static std::unordered_set<std::string_view> correlateRuntimeOps_;
 
   int64_t captureWindowStartTime_{0};
   int64_t captureWindowEndTime_{0};
@@ -108,9 +116,11 @@ class XpuptiActivityProfilerSession
 
   XpuptiActivityApi& xpti_;
   libkineto::CpuTraceBuffer traceBuffer_;
-  std::vector<uint64_t> sycl_queue_pool_;
+  std::unordered_map<uint64_t, uint64_t> sycl_queue_pool_;
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;
+  std::string name_;
+  bool scopeProfilerEnabled_{false};
 };
 
 class XPUActivityProfiler : public libkineto::IActivityProfiler {
@@ -119,7 +129,10 @@ class XPUActivityProfiler : public libkineto::IActivityProfiler {
   XPUActivityProfiler(const XPUActivityProfiler&) = delete;
   XPUActivityProfiler& operator=(const XPUActivityProfiler&) = delete;
 
-  const std::string& name() const override;
+  const std::string& name() const override {
+    return name_;
+  }
+
   const std::set<ActivityType>& availableActivities() const override;
   std::unique_ptr<libkineto::IActivityProfilerSession> configure(
       const std::set<ActivityType>& activity_types,
@@ -132,8 +145,6 @@ class XPUActivityProfiler : public libkineto::IActivityProfiler {
 
  private:
   std::string name_{"__xpu_profiler__"};
-  int64_t AsyncProfileStartTime_{0};
-  int64_t AsyncProfileEndTime_{0};
 };
 
 } // namespace KINETO_NAMESPACE

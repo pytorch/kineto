@@ -172,6 +172,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
 
 #ifdef HAS_XPUPTI
+  XpuptiScopeProfilerConfig::registerFactory();
+
   // register xpu pti profiler
   libkineto::api().registerProfilerFactory(
       []() -> std::unique_ptr<IActivityProfiler> {
@@ -180,7 +182,7 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
           std::string errPrefixMsg(
               "Fail to enable Kineto Profiler on XPU due to error code: ");
           errPrefixMsg = errPrefixMsg + std::to_string(returnCode);
-#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 9
+#if PTI_VERSION_AT_LEAST(0, 10)
           std::string errMsg(ptiResultTypeToString(returnCode));
           throw std::runtime_error(
               errPrefixMsg + std::string(". The detailed error message is: ") +

@@ -18,13 +18,11 @@
 
 namespace KINETO_NAMESPACE {
 
-using Pti_Activity = pti_view_record_base;
-
 class XpuptiActivityApi {
  public:
   enum CorrelationFlowType { Default, User };
 
-  XpuptiActivityApi() = default;
+  XpuptiActivityApi();
   XpuptiActivityApi(const XpuptiActivityApi&) = delete;
   XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
 
@@ -45,30 +43,27 @@ class XpuptiActivityApi {
 
   virtual const std::pair<int, int> processActivities(
       XpuptiActivityBufferMap&,
-      std::function<void(const Pti_Activity*)> handler);
-
-  void setMaxBufferSize(int size);
-  // void setDeviceBufferSize(size_t size);
-  // void setDeviceBufferPoolLimit(size_t limit);
-
-  std::atomic_bool stopCollection{false};
-  int64_t flushOverhead{0};
+      std::function<void(const pti_view_record_base*)> handler);
 
  private:
-  int maxGpuBufferCount_{0};
   XpuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<XpuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
-  std::atomic<uint32_t> tracingEnabled_{0};
   bool externalCorrelationEnabled_{false};
+  std::optional<pti_scope_collection_handle> scopeHandleOpt_;
+  std::unique_ptr<pti_device_properties_t[]> devices_;
+  uint32_t device_count_{0};
+  std::vector<const char*> activitiesXpuptiMetricsNames_;
 
   int processActivitiesForBuffer(
       uint8_t* buf,
       size_t validSize,
-      std::function<void(const Pti_Activity*)> handler);
+      std::function<void(const pti_view_record_base*)> handler);
   static void bufferRequestedTrampoline(uint8_t** buffer, size_t* size);
-  static void
-  bufferCompletedTrampoline(uint8_t* buffer, size_t size, size_t validSize);
+  static void bufferCompletedTrampoline(
+      uint8_t* buffer,
+      size_t size,
+      size_t validSize);
 
  protected:
   void bufferRequested(uint8_t** buffer, size_t* size);

@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
 #include <libkineto.h>
@@ -11,7 +19,11 @@ namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
-#if PTI_VERSION_MAJOR > 0 || PTI_VERSION_MINOR > 9
+#define PTI_VERSION_AT_LEAST(MAJOR, MINOR) \
+  (PTI_VERSION_MAJOR > MAJOR ||            \
+   (PTI_VERSION_MAJOR == MAJOR && PTI_VERSION_MINOR >= MINOR))
+
+#if PTI_VERSION_AT_LEAST(0, 10)
 #define XPUPTI_CALL(returnCode)                                                \
   {                                                                            \
     if (returnCode != PTI_SUCCESS) {                                           \

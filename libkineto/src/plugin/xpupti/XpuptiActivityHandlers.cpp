@@ -242,7 +242,7 @@ void XpuptiActivityProfilerSession::handleMemcpyActivity(
   memcpy_activity->addMetadataQuoted(
       "context", handleToHexString(activity->_context_handle));
   memcpy_activity->addMetadata("sycl queue", activity->_sycl_queue_id);
-  kernel_activity->addMetadata("stream", activity->_sycl_queue_id);
+  memcpy_activity->addMetadata("stream", activity->_sycl_queue_id);
   memcpy_activity->addMetadataQuoted(
       "l0 queue", handleToHexString(activity->_queue_handle));
   memcpy_activity->addMetadata("correlation", activity->_correlation_id);
@@ -291,7 +291,7 @@ void XpuptiActivityProfilerSession::handleMemsetActivity(
   memset_activity->addMetadataQuoted(
       "context", handleToHexString(activity->_context_handle));
   memset_activity->addMetadata("sycl queue", activity->_sycl_queue_id);
-  kernel_activity->addMetadata("stream", activity->_sycl_queue_id);
+  memset_activity->addMetadata("stream", activity->_sycl_queue_id);
   memset_activity->addMetadataQuoted(
       "l0 queue", handleToHexString(activity->_queue_handle));
   memset_activity->addMetadata("correlation", activity->_correlation_id);

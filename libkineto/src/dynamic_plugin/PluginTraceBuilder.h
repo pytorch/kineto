@@ -5,7 +5,7 @@
 #include "Logger.h"
 #include "libkineto.h"
 
-#include "DynamicPluginInterface.h"
+#include "KinetoDynamicPluginInterface.h"
 #include "PluginUtils.h"
 
 namespace libkineto {

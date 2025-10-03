@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-#include "include/DynamicPluginInterface.h"
+#include "include/KinetoDynamicPluginInterface.h"
 #include "src/dynamic_plugin/PluginProfiler.h"
 #include "src/output_membuf.h"
 

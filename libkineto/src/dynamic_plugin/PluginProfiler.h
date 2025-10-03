@@ -7,7 +7,7 @@
 #include "Logger.h"
 #include "output_base.h"
 
-#include "DynamicPluginInterface.h"
+#include "KinetoDynamicPluginInterface.h"
 #include "PluginTraceBuilder.h"
 #include "PluginUtils.h"
 

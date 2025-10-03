@@ -64,6 +64,27 @@ public:
   static int profilerQuery(KinetoPlugin_ProfilerQuery_Params *params) {
     strncpy(params->pProfilerName, "MockPlugin", params->profilerNameMaxLen);
     params->pProfilerName[params->profilerNameMaxLen] = '\0';
+
+    // Set supported activity types - simulate a plugin that supports CUDA
+    // activities
+    if (params->pSupportedActivityTypes &&
+        params->supportedActivityTypesMaxLen > 3) {
+      params->pSupportedActivityTypes[0] =
+          KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_RUNTIME;
+      params->pSupportedActivityTypes[1] =
+          KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_DRIVER;
+      params->pSupportedActivityTypes[2] =
+          KINETO_PLUGIN_PROFILE_EVENT_TYPE_CONCURRENT_KERNEL;
+      params->pSupportedActivityTypes[3] =
+          KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_MEMCPY;
+
+      // Fill remaining slots with invalid type
+      for (size_t i = 4; i < params->supportedActivityTypesMaxLen; i++) {
+        params->pSupportedActivityTypes[i] =
+            KINETO_PLUGIN_PROFILE_EVENT_TYPE_INVALID;
+      }
+    }
+
     return 0;
   }
 
@@ -272,4 +293,74 @@ TEST_F(DynamicPluginTest, EventBuilderProcessing) {
   EXPECT_EQ(activities_vec[3]->startTime, 1000060000);
   EXPECT_EQ(activities_vec[3]->endTime, 1000070000);
   EXPECT_EQ(activities_vec[3]->id, 4);
+}
+
+// Test configure() with activity types that intersect with plugin support
+// This tests the "ANY" logic - profiler should be enabled if it supports ANY of
+// the requested types
+TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
+  auto mockInterface = MockPlugin::getInterface();
+  PluginProfiler pluginProfiler(mockInterface);
+
+  // Test that the plugin correctly reports supported activities
+  auto supportedActivities = pluginProfiler.availableActivities();
+  EXPECT_FALSE(supportedActivities.empty());
+
+  // Verify specific supported activities (based on our mock implementation)
+  EXPECT_TRUE(supportedActivities.find(ActivityType::CUDA_RUNTIME) !=
+              supportedActivities.end());
+  EXPECT_TRUE(supportedActivities.find(ActivityType::CUDA_DRIVER) !=
+              supportedActivities.end());
+  EXPECT_TRUE(supportedActivities.find(ActivityType::CONCURRENT_KERNEL) !=
+              supportedActivities.end());
+  EXPECT_TRUE(supportedActivities.find(ActivityType::GPU_MEMCPY) !=
+              supportedActivities.end());
+
+  // Test case 1: Request activities that are all supported
+  std::set<ActivityType> allSupportedTypes = {
+      ActivityType::CUDA_RUNTIME, ActivityType::CUDA_DRIVER,
+      ActivityType::CONCURRENT_KERNEL, ActivityType::GPU_MEMCPY};
+
+  auto session1 = pluginProfiler.configure(allSupportedTypes, Config{});
+  EXPECT_NE(session1, nullptr)
+      << "Should succeed when all requested types are supported";
+
+  // Test case 2: Request activities where some are supported (intersection
+  // exists)
+  std::set<ActivityType> partialSupportedTypes = {
+      ActivityType::CUDA_RUNTIME,      // Supported
+      ActivityType::CPU_OP,            // Not supported
+      ActivityType::CONCURRENT_KERNEL, // Supported
+      ActivityType::USER_ANNOTATION    // Not supported
+  };
+
+  auto session2 = pluginProfiler.configure(partialSupportedTypes, Config{});
+  EXPECT_NE(session2, nullptr)
+      << "Should succeed when ANY requested types are supported";
+
+  // Test configure() with activity types that don't intersect with plugin
+  // support This tests the failure case - profiler should NOT be enabled if it
+  // supports NONE of the requested types
+
+  // Test case 3: Request activities that are completely unsupported
+  std::set<ActivityType> unsupportedTypes = {
+      ActivityType::CPU_OP, ActivityType::USER_ANNOTATION,
+      ActivityType::PYTHON_FUNCTION, ActivityType::OVERHEAD};
+
+  auto session3 = pluginProfiler.configure(unsupportedTypes, Config{});
+  EXPECT_EQ(session3, nullptr)
+      << "Should fail when NO requested types are supported";
+
+  // Test case 4: Request single unsupported activity type
+  std::set<ActivityType> singleUnsupportedType = {ActivityType::CPU_OP};
+
+  auto session4 = pluginProfiler.configure(singleUnsupportedType, Config{});
+  EXPECT_EQ(session4, nullptr)
+      << "Should fail with single unsupported activity type";
+
+  // Test case 5: Empty activity types set
+  std::set<ActivityType> emptyTypes = {};
+
+  auto session5 = pluginProfiler.configure(emptyTypes, Config{});
+  EXPECT_EQ(session5, nullptr) << "Should fail with empty activity types set";
 }

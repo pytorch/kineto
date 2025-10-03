@@ -205,6 +205,12 @@ struct KinetoPlugin_ProfilerQuery_Params {
 
   // [in] Max length of pProfilerName excluding null terminator
   size_t profilerNameMaxLen;
+
+  // [in/out] Supported activity types.
+  KinetoPlugin_ProfileEventType *pSupportedActivityTypes;
+
+  // [in] Max length of pSupportedActivityTypes
+  size_t supportedActivityTypesMaxLen;
 };
 #define KINETO_PLUGIN_PROFILER_QUERY_PARAMS_UNPADDED_STRUCT_SIZE               \
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfilerQuery_Params, \

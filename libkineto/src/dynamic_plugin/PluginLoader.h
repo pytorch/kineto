@@ -7,7 +7,7 @@
 #include <string.h>
 
 #include "Logger.h"
-#include "DynamicPluginInterface.h"
+#include "KinetoDynamicPluginInterface.h"
 #include "PluginProfiler.h"
 
 namespace libkineto {

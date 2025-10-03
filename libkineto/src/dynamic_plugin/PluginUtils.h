@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ActivityType.h"
-#include "DynamicPluginInterface.h"
+#include "KinetoDynamicPluginInterface.h"
 #include "GenericTraceActivity.h"
 
 namespace libkineto {

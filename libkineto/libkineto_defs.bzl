@@ -83,7 +83,7 @@ def get_libkineto_public_headers():
         "include/ActivityType.h",
         "include/Config.h",
         "include/ClientInterface.h",
-        "include/DynamicPluginInterface.h",
+        "include/KinetoDynamicPluginInterface.h",
         "include/GenericTraceActivity.h",
         "include/IActivityProfiler.h",
         "include/ILoggerObserver.h",

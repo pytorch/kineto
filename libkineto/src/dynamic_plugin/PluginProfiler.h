@@ -9,6 +9,7 @@
 
 #include "DynamicPluginInterface.h"
 #include "PluginTraceBuilder.h"
+#include "PluginUtils.h"
 
 namespace libkineto {
 
@@ -172,11 +173,20 @@ public:
     validateProfiler();
 
     char profilerName[32];
+
+    std::array<KinetoPlugin_ProfileEventType,
+               KINETO_PLUGIN_PROFILE_EVENT_NUM_TYPES>
+        supportedActivityTypes;
+    std::fill(supportedActivityTypes.begin(), supportedActivityTypes.end(),
+              KINETO_PLUGIN_PROFILE_EVENT_TYPE_INVALID);
+
     KinetoPlugin_ProfilerQuery_Params queryParams{
         KINETO_PLUGIN_PROFILER_QUERY_PARAMS_UNPADDED_STRUCT_SIZE};
     queryParams.pProfilerHandle = nullptr;
     queryParams.pProfilerName = &profilerName[0];
     queryParams.profilerNameMaxLen = 31;
+    queryParams.pSupportedActivityTypes = &supportedActivityTypes[0];
+    queryParams.supportedActivityTypesMaxLen = supportedActivityTypes.size();
 
     int errorCode = profiler_.profilerQuery(&queryParams);
     if (errorCode != 0) {
@@ -185,7 +195,14 @@ public:
       name_.assign(queryParams.pProfilerName);
     }
 
-    // [TODO] Query plugin for available activities
+    supportedActivities_.clear();
+    for (size_t i = 0; i < supportedActivityTypes.size(); i++) {
+      if (supportedActivityTypes[i] !=
+          KINETO_PLUGIN_PROFILE_EVENT_TYPE_INVALID) {
+        supportedActivities_.insert(
+            convertToActivityType(supportedActivityTypes[i]));
+      }
+    }
   }
 
   ~PluginProfiler() {}
@@ -193,16 +210,30 @@ public:
   const std::string &name() const override { return name_; }
 
   const std::set<ActivityType> &availableActivities() const override {
-    // [TODO] Fix below
-    static const std::set<ActivityType> supported{
-        ActivityType::CUDA_PROFILER_RANGE};
-    return supported;
+    return supportedActivities_;
   }
 
   std::unique_ptr<IActivityProfilerSession>
   configure(const std::set<ActivityType> &activity_types,
-            const Config &config) override {
-    // [TODO] Check activity types to determine if creating session or nullptr
+            const Config & /*config*/) override {
+    // Check if the plugin supports ANY of the requested activity types
+    bool hasSupported = false;
+    for (const auto &activity_type : activity_types) {
+      if (supportedActivities_.find(activity_type) !=
+          supportedActivities_.end()) {
+        hasSupported = true;
+        break;
+      }
+    }
+    if (!hasSupported) {
+      LOG(INFO) << "Plugin profiler " << name_
+                << " does not support any of the requested activity types";
+      return nullptr;
+    }
+
+    // [TODO] In future evolution of API we may want to pass in Config string or
+    // a subset of config strings perhaps by searching for "PLUGIN_NAME_" in the
+    // config string
     return std::make_unique<PluginProfilerSession>(profiler_, name_);
   }
 
@@ -241,6 +272,7 @@ private:
 
   KinetoPlugin_ProfilerInterface profiler_;
   std::string name_;
+  std::set<ActivityType> supportedActivities_;
 };
 
 } // namespace libkineto

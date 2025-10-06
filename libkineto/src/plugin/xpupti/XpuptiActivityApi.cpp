@@ -26,11 +26,16 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
 
 XpuptiActivityApi::XpuptiActivityApi() {
 #ifdef HAS_XPUPTI
-  XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &device_count_));
+  XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount_));
 
-  if (device_count_ > 0) {
-    devices_ = std::make_unique<pti_device_properties_t[]>(device_count_);
-    XPUPTI_CALL(ptiMetricsGetDevices(devices_.get(), &device_count_));
+  if (deviceCount_ > 0) {
+    auto devices = std::make_unique<pti_device_properties_t[]>(deviceCount_);
+    XPUPTI_CALL(ptiMetricsGetDevices(devices.get(), &deviceCount_));
+
+    devicesHandles_ = std::make_unique<pti_device_handle_t[]>(deviceCount_);
+    for (uint32_t i = 0; i < device_count; ++i) {
+      devicesHandles_[i] = devices[i]._handle;
+    }
   }
 #endif
 }
@@ -218,8 +223,8 @@ static void enableSpecifcRuntimeAPIsTracing() {
 void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
-  if (device_count_ == 0) {
-    Error();
+  if (deviceCount_ == 0) {
+    Error("No XPU devices available");
   }
 
   if (!scopeHandleOpt_) {
@@ -236,17 +241,26 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
         activitiesXpuptiMetricsNames_.begin(),
         [](const std::string& s) { return s.c_str(); });
 
-    pti_metrics_scope_mode_t collection_mode = spcfg.xpuptiProfilerPerKernel()
+    pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
         ? PTI_METRICS_SCOPE_AUTO_KERNEL
         : PTI_METRICS_SCOPE_USER;
 
     XPUPTI_CALL(ptiMetricsScopeConfigure(
         *scopeHandleOpt_,
-        collection_mode,
-        devices_,
-        device_count_,
+        collectionMode,
+        devicesHandles_,
+        deviceCount_,
         activitiesXpuptiMetricsNames_.data(),
         activitiesXpuptiMetricsNames_.size()));
+
+    uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
+    size_t estimatedBufferSize = 0;
+    XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
+        *scopeHandleOpt_, expectedKernels, &estimatedBufferSize));
+
+    size_t bufferSize = std::max(estimatedBufferSize, 1024u); // At least 1KB
+    XPUPTI_CALL(
+        ptiMetricsScopeSetCollectionBufferSize(*scopeHandleOpt_, bufferSize));
   }
 #endif
 #endif
@@ -383,70 +397,48 @@ void XpuptiActivityApi::disablePtiActivities(
 }
 
 void XpuptiActivityApi::processScopeTrace(
-    std::function<void(const pti_view_record_base*)> handler) {
+    std::function<void(const pti_metrics_scope_record_t*)> handler) {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
   if (scopeHandleOpt_) {
-    uint32_t metricsCount = 0;
-    XPUPTI_CALL(ptiMetricScopeGetCalculatedData(
-        *scopeHandleOpt_, nullptr, &metricsCount));
-
-    auto metricsValues = std::make_unique<pti_value_t[]>(metricsCount);
-    XPUPTI_CALL(ptiMetricScopeGetCalculatedData(
-        *scopeHandleOpt_, metricsValues.get(), &metricsCount));
-
-    // How obtained pti_value_t results relate to the rest of the API calls ?
-
     uint64_t buffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
         *scopeHandleOpt_, &buffersCount));
 
     for (uint64_t bufferId = 0; bufferId < buffersCount; ++bufferId) {
-      size_t bufferSize = 0;
+      void* bufferData = nullptr;
+      size_t actualBufferSize = 0;
       XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
-          *scopeHandleOpt_, bufferId, nullptr, &bufferSize));
+          *scopeHandleOpt_, bufferId, &bufferData, &actualBufferSize));
 
-      XPUPTI_CALL(
-          ptiMetricsScopeSetCollectionBuffer(*scopeHandleOpt_, bufferSize));
+      pti_metrics_scope_buffer_properties_t bufferProps;
+      XPUPTI_CALL(ptiMetricsScopeGetBufferProperties(
+          *scopeHandleOpt_, bufferData, &bufferProps));
 
-      void* buffer = nullptr;
-      XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
-          *scopeHandleOpt_, bufferId, &buffer, &bufferSize));
-
-      pti_metrics_scope_buffer_properties props;
-      XPUPTI_CALL(
-          ptiMetricsScopeGetBufferProperties(*scopeHandleOpt_, buffer, &props));
-
-      size_t collectionBufferSize = 0;
-      XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
-          *scopeHandleOpt_, props._num_records, &collectionBufferSize));
-
-      auto collectionBuffer = std::make_unique<uint8_t[]>(collectionBufferSize);
-
-      size_t metricsCount = 0;
+      size_t metricsCountInBuffer = 0;
       XPUPTI_CALL(ptiMetricScopeGetCollectedMetrics(
-          *scopeHandleOpt_, collectionBuffer.get(), &metricsCount));
+          *scopeHandleOpt_, bufferData, &metricsCountInBuffer));
 
-      pti_metrics_scope_record* records = nullptr;
+      pti_metrics_scope_record_t* records = nullptr;
       size_t recordsCount = 0;
       size_t recordArrayBytesSize = 0;
       XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
           *scopeHandleOpt_,
-          collectionBuffer,
-          activitiesXpuptiMetricsNames_.data(),
-          activitiesXpuptiMetricsNames_.size(),
+          bufferData,
           &records,
           &recordsCount,
           &recordArrayBytesSize));
 
       for (size_t recordId = 0; recordId < recordsCount; ++recordId) {
-        handler(records + recordId);
+        handler(records + recordId, &metricsCountInBuffer);
+        // Very bad. It has to resolved in the API.
+        free(records->_name);
+        free(records->_metrics_values);
       }
 
-      // Buffer cleanup functions
-      XPUPTI_CALL(ptiCollectionBufferRelease(buffer));
+      // Very bad. It has to resolved in the API.
+      free(records);
     }
-    // XPUPTI_CALL(ptiCollectionBufferCleanupAll(void);
   }
 #endif
 #endif

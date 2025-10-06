@@ -50,9 +50,9 @@ class XpuptiActivityApi {
   std::unique_ptr<XpuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
   bool externalCorrelationEnabled_{false};
-  std::optional<pti_scope_collection_handle> scopeHandleOpt_;
-  std::unique_ptr<pti_device_properties_t[]> devices_;
-  uint32_t device_count_{0};
+  std::optional<pti_scope_collection_handle_t> scopeHandleOpt_;
+  std::unique_ptr<pti_device_handle_t[]> devicesHandles_;
+  uint32_t deviceCount_{0};
   std::vector<const char*> activitiesXpuptiMetricsNames_;
 
   int processActivitiesForBuffer(

@@ -280,20 +280,62 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
   }
 }
 
+namespace {
+
+struct PtiValuesToUi64Iterator {
+  PtiValuesToUi64Iterator(pti_value_t* ptr) : ptr_(ptr) {}
+
+  bool operator!=(const PtiValuesToUi64Iterator& rhs) const {
+    return ptr_ != rhs.ptr_;
+  }
+
+  uint64_t operator*() const {
+    return ptr_->.ui64;
+  }
+
+  PtiValuesToUi64Iterator& operator++() {
+    ++ptr_;
+    return this*;
+  }
+
+  pti_value_t* ptr_ = nullptr;
+};
+
+struct PtiValuesToUi64 {
+  PtiValuesToUi64(pti_value_t* v, size_t s) : begin_(v), end_(v + s) {}
+
+  PtiValuesToUi64Iterator begin() const {
+    return PtiValuesToUi64Iterator(begin_);
+  }
+  PtiValuesToUi64Iterator end() const {
+    return PtiValuesToUi64Iterator(end_);
+  }
+
+  pti_value_t* begin_ = nullptr;
+  pti_value_t* end_ = nullptr;
+};
+
+} // namespace
+
 void XpuptiActivityProfilerSession::handleScopeRecord(
-    const pti_metrics_scope_record* record,
+    const pti_metrics_scope_record_t* record,
+    const void* userData,
     ActivityLogger* logger) {
+  size_t& metricsCount = *reinterpret_cast<size_t*>(userData);
+
   traceBuffer_.emplace_activity(
       traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "Scope");
 
   auto& scope_activity = traceBuffer_.activities.back();
   scope_activity->addMetadata("kernel id", record->_kernel_id);
-  scope_activity->addMetadata("queue", record->queue);
-  overhead_activity->addMetadataQuoted(
+  scope_activity->addMetadata("queue", record->_queue);
+  scope_activity->addMetadata("name", record->_name);
+  scope_activity->addMetadataQuoted(
       "metrics",
       fmt::format(
-          "{}\%",
-          activity->_overhead_duration_ns / overhead_activity->duration()));
+          "{}",
+          fmt::join(
+              PtiValuesToUi64(record->_metrics_values, metricsCount), ", ")));
 
   if (!outOfScope(scope_activity)) {
     scope_activity->log(*logger);

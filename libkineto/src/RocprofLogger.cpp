@@ -336,6 +336,7 @@ extern "C" rocprofiler_tool_configure_result_t* rocprofiler_configure(
     uint32_t priority,
     rocprofiler_client_id_t* id) {
   RocprofLoggerShared::singleton(); // CRITICAL: static init
+  std::cout << "RocprofLogger::rocprofiler_configure" << std::endl;
 
   id->name = "kineto";
   s->clientId = id;

@@ -76,20 +76,25 @@ class XpuptiActivityProfilerSession
   using pti_view_record_api_t = pti_view_record_sycl_runtime;
 #endif
 
-  std::string XpuptiActivityProfilerSession::getApiName(
-      const pti_view_record_api_t* activity);
+  std::string getApiName(const pti_view_record_api_t* activity);
 
   template <class pti_view_memory_record_type>
   void handleRuntimeKernelMemcpyMemsetActivities(
       const pti_view_memory_record_type* activity,
-      ActivityLogger* logger);
+      ActivityLogger& logger);
 
   void handleOverheadActivity(
       const pti_view_record_overhead* activity,
-      ActivityLogger* logger);
+      ActivityLogger& logger);
   void handlePtiActivity(
       const pti_view_record_base* record,
-      ActivityLogger* logger);
+      ActivityLogger& logger);
+
+  void handleScopeRecord(
+      const pti_metrics_scope_record_t* record,
+      const pti_metric_scope_display_info_t* displayInfo,
+      uint32_t infoCount,
+      ActivityLogger& logger);
 
   // enumerate XPU Device UUIDs from runtime for once
   void enumDeviceUUIDs();

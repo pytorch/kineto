@@ -33,17 +33,27 @@ class XpuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableXpuptiActivities(
+  bool enableXpuptiActivities(
       const std::set<ActivityType>& selected_activities);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();
+
+  void enableScopeProfiler(const Config&);
+  void disableScopeProfiler();
+  void startScopeActivity();
+  void stopScopeActivity();
 
   virtual std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
 
   virtual const std::pair<int, int> processActivities(
       XpuptiActivityBufferMap&,
       std::function<void(const pti_view_record_base*)> handler);
+
+  void processScopeTrace(std::function<void(
+                             const pti_metrics_scope_record_t*,
+                             const pti_metric_scope_display_info_t*,
+                             uint32_t)> handler);
 
  private:
   XpuptiActivityBufferMap allocatedGpuTraceBuffers_;

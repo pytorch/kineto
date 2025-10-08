@@ -8,6 +8,7 @@
 
 #include "XpuptiActivityProfiler.h"
 
+#include <fmt/ranges.h>
 #include <string>
 
 namespace KINETO_NAMESPACE {
@@ -80,7 +81,7 @@ inline int64_t XpuptiActivityProfilerSession::getMappedQueueId(
     uint64_t sycl_queue_id) {
   auto insert_result =
       sycl_queue_pool_.insert({sycl_queue_id, sycl_queue_pool_.size()});
-  return insert_result.first.second;
+  return insert_result.first->second;
 }
 
 inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
@@ -133,7 +134,7 @@ inline std::string bandwidth(pti_view_memory_record_type* activity) {
 template <class pti_view_memory_record_type>
 void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     const pti_view_memory_record_type* activity,
-    ActivityLogger* logger) {
+    ActivityLogger& logger) {
   constexpr bool handleRuntimeActivities =
       std::is_same_v<pti_view_memory_record_type, pti_view_record_api_t>;
   constexpr bool handleKernelActivities =
@@ -184,7 +185,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->device = activity->_process_id;
     trace_activity->resource = activity->_thread_id;
     trace_activity->flow.start =
-        (correlateRuntimeOps_.find(trace_activity->name()) > 0);
+        (correlateRuntimeOps_.count(trace_activity->name()) > 0);
   } else {
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
     trace_activity->resource = getMappedQueueId(activity->_sycl_queue_id);
@@ -216,20 +217,20 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->addMetadata("memory bandwidth (GB/s)", bandwidth(activity));
   }
 
-  checkTimestampOrder(trace_activity);
-  if (outOfScope(trace_activity)) {
+  checkTimestampOrder(trace_activity.get());
+  if (outOfScope(trace_activity.get())) {
     traceBuffer_.span.opCount -= 1;
     traceBuffer_.gpuOpCount -= 1;
-    removeCorrelatedPtiActivities(trace_activity);
+    removeCorrelatedPtiActivities(trace_activity.get());
     traceBuffer_.activities.pop_back();
     return;
   }
-  trace_activity->log(*logger);
+  trace_activity->log(logger);
 }
 
 void XpuptiActivityProfilerSession::handleOverheadActivity(
     const pti_view_record_overhead* activity,
-    ActivityLogger* logger) {
+    ActivityLogger& logger) {
   traceBuffer_.emplace_activity(
       traceBuffer_.span,
       ActivityType::OVERHEAD,
@@ -249,14 +250,14 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
           activity->_overhead_duration_ns / overhead_activity->duration()));
   overhead_activity->addMetadata("overhead count", activity->_overhead_count);
 
-  if (!outOfScope(overhead_activity)) {
-    overhead_activity->log(*logger);
+  if (!outOfScope(overhead_activity.get())) {
+    overhead_activity->log(logger);
   }
 }
 
 void XpuptiActivityProfilerSession::handlePtiActivity(
     const pti_view_record_base* record,
-    ActivityLogger* logger) {
+    ActivityLogger& logger) {
   switch (record->_view_kind) {
     case PTI_VIEW_EXTERNAL_CORRELATION:
       handleCorrelationActivity(
@@ -264,10 +265,20 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
               record));
       break;
     case PTI_VIEW_RUNTIME_API:
+      handleRuntimeKernelMemcpyMemsetActivities(
+          reinterpret_cast<const pti_view_record_api_t*>(record), logger);
+      break;
     case PTI_VIEW_DEVICE_GPU_KERNEL:
+      handleRuntimeKernelMemcpyMemsetActivities(
+          reinterpret_cast<const pti_view_record_kernel*>(record), logger);
+      break;
     case PTI_VIEW_DEVICE_GPU_MEM_COPY:
+      handleRuntimeKernelMemcpyMemsetActivities(
+          reinterpret_cast<const pti_view_record_memory_copy*>(record), logger);
+      break;
     case PTI_VIEW_DEVICE_GPU_MEM_FILL:
-      handleRuntimeKernelMemcpyMemsetActivities(record, logger);
+      handleRuntimeKernelMemcpyMemsetActivities(
+          reinterpret_cast<const pti_view_record_memory_fill*>(record), logger);
       break;
     case PTI_VIEW_COLLECTION_OVERHEAD:
       handleOverheadActivity(
@@ -280,49 +291,91 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
   }
 }
 
+static std::string PtiValueToStr(
+    pti_metric_value_type valueType,
+    const pti_value_t& value) {
+  switch (valueType) {
+#define CASE(T, FIELD)            \
+  case PTI_METRIC_VALUE_TYPE_##T: \
+    return std::to_string(value.FIELD)
+
+    CASE(UINT32, ui32);
+    CASE(UINT64, ui64);
+    CASE(FLOAT32, fp32);
+    CASE(FLOAT64, fp64);
+
+#undef CASE
+
+    case PTI_METRIC_VALUE_TYPE_BOOL8:
+      return (value.b8 ? "true" : "false");
+
+    default:
+      return "unknown";
+  }
+}
+
 namespace {
 
-struct PtiValuesToUi64Iterator {
-  PtiValuesToUi64Iterator(pti_value_t* ptr) : ptr_(ptr) {}
+struct DisplayInfoToStrIterator {
+  DisplayInfoToStrIterator(const pti_metric_scope_display_info_t* displayInfo)
+      : displayInfo_(displayInfo) {}
 
-  bool operator!=(const PtiValuesToUi64Iterator& rhs) const {
-    return ptr_ != rhs.ptr_;
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using value_type = std::string;
+  using pointer = value_type*;
+  using reference = value_type&;
+
+  bool operator==(const DisplayInfoToStrIterator& rhs) const {
+    return displayInfo_ == rhs.displayInfo_;
   }
 
-  uint64_t operator*() const {
-    return ptr_->.ui64;
+  bool operator!=(const DisplayInfoToStrIterator& rhs) const {
+    return !(*this == rhs);
   }
 
-  PtiValuesToUi64Iterator& operator++() {
-    ++ptr_;
-    return this*;
+  std::string operator*() const {
+    std::string s = std::string(displayInfo_->_name) + ": ";
+    s += PtiValueToStr(displayInfo_->_value_type, displayInfo_->_value);
+
+    if (displayInfo_->_units) {
+      s += " ";
+      s += displayInfo_->_units;
+    }
+
+    return s;
   }
 
-  pti_value_t* ptr_ = nullptr;
+  DisplayInfoToStrIterator& operator++() {
+    ++displayInfo_;
+    return *this;
+  }
+
+  const pti_metric_scope_display_info_t* displayInfo_ = nullptr;
 };
 
-struct PtiValuesToUi64 {
-  PtiValuesToUi64(pti_value_t* v, size_t s) : begin_(v), end_(v + s) {}
+struct DisplayInfoToStr {
+  DisplayInfoToStr(const pti_metric_scope_display_info_t* v, size_t s)
+      : begin_(v), end_(v + s) {}
 
-  PtiValuesToUi64Iterator begin() const {
-    return PtiValuesToUi64Iterator(begin_);
+  DisplayInfoToStrIterator begin() const {
+    return DisplayInfoToStrIterator(begin_);
   }
-  PtiValuesToUi64Iterator end() const {
-    return PtiValuesToUi64Iterator(end_);
+  DisplayInfoToStrIterator end() const {
+    return DisplayInfoToStrIterator(end_);
   }
 
-  pti_value_t* begin_ = nullptr;
-  pti_value_t* end_ = nullptr;
+  const pti_metric_scope_display_info_t* begin_ = nullptr;
+  const pti_metric_scope_display_info_t* end_ = nullptr;
 };
 
 } // namespace
 
 void XpuptiActivityProfilerSession::handleScopeRecord(
     const pti_metrics_scope_record_t* record,
-    const void* userData,
-    ActivityLogger* logger) {
-  size_t& metricsCount = *reinterpret_cast<size_t*>(userData);
-
+    const pti_metric_scope_display_info_t* displayInfo,
+    uint32_t infoCount,
+    ActivityLogger& logger) {
   traceBuffer_.emplace_activity(
       traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "Scope");
 
@@ -333,12 +386,10 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
   scope_activity->addMetadataQuoted(
       "metrics",
       fmt::format(
-          "{}",
-          fmt::join(
-              PtiValuesToUi64(record->_metrics_values, metricsCount), ", ")));
+          "{}", fmt::join(DisplayInfoToStr(displayInfo, infoCount), ", ")));
 
-  if (!outOfScope(scope_activity)) {
-    scope_activity->log(*logger);
+  if (!outOfScope(scope_activity.get())) {
+    scope_activity->log(logger);
   }
 }
 

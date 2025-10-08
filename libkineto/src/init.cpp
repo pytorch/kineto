@@ -26,6 +26,7 @@
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
+#include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif
 #ifdef HAS_AIUPTI
 #include "plugin/aiupti/AiuptiActivityApi.h"

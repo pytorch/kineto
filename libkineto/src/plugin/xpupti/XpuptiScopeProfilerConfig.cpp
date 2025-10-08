@@ -6,14 +6,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "XpuptiScopeProfilerConfig.h"
 #include <Logger.h>
-#include <XpuptiScopeProfilerConfig.h>
 
 #include <stdlib.h>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
-#include <fmt/scopes.h>
+#include <fmt/ranges.h>
 #include <ostream>
 
 namespace KINETO_NAMESPACE {

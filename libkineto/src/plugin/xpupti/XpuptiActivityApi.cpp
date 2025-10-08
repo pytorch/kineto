@@ -7,6 +7,7 @@
  */
 
 #include "XpuptiActivityApi.h"
+#include "XpuptiScopeProfilerConfig.h"
 
 #include <assert.h>
 #include <chrono>
@@ -33,7 +34,7 @@ XpuptiActivityApi::XpuptiActivityApi() {
     XPUPTI_CALL(ptiMetricsGetDevices(devices.get(), &deviceCount_));
 
     devicesHandles_ = std::make_unique<pti_device_handle_t[]>(deviceCount_);
-    for (uint32_t i = 0; i < device_count; ++i) {
+    for (uint32_t i = 0; i < deviceCount_; ++i) {
       devicesHandles_[i] = devices[i]._handle;
     }
   }
@@ -197,7 +198,7 @@ void XpuptiActivityApi::bufferCompleted(
 
 #if PTI_VERSION_AT_LEAST(0, 11)
 static void enableSpecifcRuntimeAPIsTracing() {
-  std::array<pti_api_id_runtime_sycl> specifcRuntimeAPIsTracing = {
+  std::array<pti_api_id_runtime_sycl, 14> specifcRuntimeAPIsTracing = {
       urEnqueueUSMFill_id,
       urEnqueueUSMFill2D_id,
       urEnqueueUSMMemcpy_id,
@@ -224,7 +225,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
   if (deviceCount_ == 0) {
-    Error("No XPU devices available");
+    throw std::runtime_error("No XPU devices available");
   }
 
   if (!scopeHandleOpt_) {
@@ -233,7 +234,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
     const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
     const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
 
-    activitiesXpuptiMetricsNames_.clean();
+    activitiesXpuptiMetricsNames_.clear();
     activitiesXpuptiMetricsNames_.reserve(activitiesXpuptiMetrics.size());
     std::transform(
         activitiesXpuptiMetrics.begin(),
@@ -248,7 +249,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
     XPUPTI_CALL(ptiMetricsScopeConfigure(
         *scopeHandleOpt_,
         collectionMode,
-        devicesHandles_,
+        devicesHandles_.get(),
         deviceCount_,
         activitiesXpuptiMetricsNames_.data(),
         activitiesXpuptiMetricsNames_.size()));
@@ -258,9 +259,8 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
     XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
         *scopeHandleOpt_, expectedKernels, &estimatedBufferSize));
 
-    size_t bufferSize = std::max(estimatedBufferSize, 1024u); // At least 1KB
-    XPUPTI_CALL(
-        ptiMetricsScopeSetCollectionBufferSize(*scopeHandleOpt_, bufferSize));
+    XPUPTI_CALL(ptiMetricsScopeSetCollectionBufferSize(
+        *scopeHandleOpt_, estimatedBufferSize));
   }
 #endif
 #endif
@@ -277,7 +277,7 @@ void XpuptiActivityApi::disableScopeProfiler() {
 #endif
 }
 
-void XpuptiActivityApi::startScopedActivity() {
+void XpuptiActivityApi::startScopeActivity() {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
   if (scopeHandleOpt_) {
@@ -324,7 +324,7 @@ bool XpuptiActivityApi::enableXpuptiActivities(
         externalCorrelationEnabled_ = true;
         break;
 
-      case activity == ActivityType::XPU_RUNTIME:
+      case ActivityType::XPU_RUNTIME:
 #if PTI_VERSION_AT_LEAST(0, 12)
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
         XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
@@ -341,7 +341,8 @@ bool XpuptiActivityApi::enableXpuptiActivities(
 #if PTI_VERSION_AT_LEAST(0, 14)
         scopeProfilerEnabled = true;
 #else
-        Error();
+        throw std::runtime_error(
+            "PTI version required to use scope profiler is at least 0.14");
 #endif
         break;
 
@@ -396,8 +397,41 @@ void XpuptiActivityApi::disablePtiActivities(
 #endif
 }
 
+static auto safeCallPtiMetricScopeCalculateMetrics(
+    pti_scope_collection_handle_t scopeHandle,
+    void* bufferData,
+    size_t& recordsCount) {
+  pti_metrics_scope_record_t* records = nullptr;
+  XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
+      scopeHandle, bufferData, &records, &recordsCount));
+
+  auto recordsDeleter = [recordsCount](pti_metrics_scope_record_t* records) {
+    ptiMetricScopeFreeRecords(records, recordsCount);
+  };
+
+  return std::unique_ptr<pti_metrics_scope_record_t, decltype(recordsDeleter)>(
+      records, recordsDeleter);
+}
+
+static auto safeCallMetricScopeGetDisplayInfo(
+    pti_scope_collection_handle_t scopeHandle,
+    pti_metrics_scope_record_t* record,
+    uint32_t& infoCount) {
+  pti_metric_scope_display_info_t* displayInfo = nullptr;
+  XPUPTI_CALL(ptiMetricScopeGetDisplayInfo(
+      scopeHandle, record, &displayInfo, &infoCount));
+
+  return std::unique_ptr<
+      pti_metric_scope_display_info_t,
+      decltype(&ptiMetricScopeFreeDisplayInfo)>(
+      displayInfo, ptiMetricScopeFreeDisplayInfo);
+}
+
 void XpuptiActivityApi::processScopeTrace(
-    std::function<void(const pti_metrics_scope_record_t*)> handler) {
+    std::function<void(
+        const pti_metrics_scope_record_t*,
+        const pti_metric_scope_display_info_t*,
+        uint32_t)> handler) {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
   if (scopeHandleOpt_) {
@@ -419,25 +453,19 @@ void XpuptiActivityApi::processScopeTrace(
       XPUPTI_CALL(ptiMetricScopeGetCollectedMetrics(
           *scopeHandleOpt_, bufferData, &metricsCountInBuffer));
 
-      pti_metrics_scope_record_t* records = nullptr;
       size_t recordsCount = 0;
-      size_t recordArrayBytesSize = 0;
-      XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
-          *scopeHandleOpt_,
-          bufferData,
-          &records,
-          &recordsCount,
-          &recordArrayBytesSize));
+      auto records = safeCallPtiMetricScopeCalculateMetrics(
+          *scopeHandleOpt_, bufferData, recordsCount);
 
       for (size_t recordId = 0; recordId < recordsCount; ++recordId) {
-        handler(records + recordId, &metricsCountInBuffer);
-        // Very bad. It has to resolved in the API.
-        free(records->_name);
-        free(records->_metrics_values);
-      }
+        auto record = records.get() + recordId;
 
-      // Very bad. It has to resolved in the API.
-      free(records);
+        uint32_t infoCount = 0;
+        auto displayInfo = safeCallMetricScopeGetDisplayInfo(
+            *scopeHandleOpt_, record, infoCount);
+
+        handler(record, displayInfo.get(), infoCount);
+      }
     }
   }
 #endif

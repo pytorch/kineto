@@ -49,7 +49,7 @@ XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
   enumDeviceUUIDs();
   scopeProfilerEnabled_ = xpti_.enableXpuptiActivities(activity_types_);
   if (scopeProfilerEnabled_) {
-    xpti_.enableScopeProfiler(config_);
+    xpti_.enableScopeProfiler(*config_);
   }
 }
 
@@ -107,9 +107,10 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
   if (scopeProfilerEnabled_) {
     xpti_.processScopeTrace(
         [this, &logger](
-            const pti_metrics_scope_record* record,
-            const void* userData) -> void {
-          handleScopeRecord(record, userData, logger);
+            const pti_metrics_scope_record_t* record,
+            const pti_metric_scope_display_info_t* displayInfo,
+            uint32_t infoCount) -> void {
+          handleScopeRecord(record, displayInfo, infoCount, logger);
         });
   }
 }
@@ -175,7 +176,7 @@ void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
 
 DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
     const uint8_t deviceUUID[16]) {
-  auto it = std::find(
+  auto it = std::find_if(
       deviceUUIDs_.begin(),
       deviceUUIDs_.end(),
       [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {

@@ -142,8 +142,7 @@ int RoctracerActivityApi::processActivities(
           if (!isLogged(ActivityType::CONCURRENT_KERNEL))
             filtered = true;
           // Don't record barriers/markers
-          if (reinterpret_cast<rocprofAsyncRow*>(item)->op ==
-              HIP_OP_ID_BARRIER)
+          if (reinterpret_cast<rocprofAsyncRow*>(item)->op == HIP_OP_ID_BARRIER)
             filtered = true;
           break;
       }

@@ -30,11 +30,11 @@
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
 #include "RocprofLogger.h"
-  #else
+#else
 #include "RoctracerLogger.h"
-  #endif
+#endif
 #endif // HAS_ROCTRACER
 
 #include "GenericTraceActivity.h"
@@ -418,9 +418,7 @@ class CuptiActivityProfiler {
 
 #ifdef HAS_ROCTRACER
   // Process generic RocProf activity
-  void handleRocprofActivity(
-      const rocprofBase* record,
-      ActivityLogger* logger);
+  void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
   void handleCorrelationActivity(
       uint64_t correlationId,
       uint64_t externalId,
@@ -428,9 +426,7 @@ class CuptiActivityProfiler {
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
-  void handleGpuActivity(
-      const rocprofAsyncRow* record,
-      ActivityLogger* logger);
+  void handleGpuActivity(const rocprofAsyncRow* record, ActivityLogger* logger);
 #endif // HAS_ROCTRACER
 
   void resetTraceData();
@@ -463,11 +459,11 @@ class CuptiActivityProfiler {
 
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
-    RocprofActivityApi& cupti_; // Design failure here
-  #else
-    RoctracerActivityApi& cupti_;
-  #endif
+#ifndef ROCTRACER_FALLBACK
+  RocprofActivityApi& cupti_; // Design failure here
+#else
+  RoctracerActivityApi& cupti_;
+#endif
 #else
   CuptiActivityApi& cupti_;
 #endif

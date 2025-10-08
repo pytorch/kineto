@@ -40,13 +40,13 @@
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
 #include "RocLogger.h"
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
 #include "RocprofActivity.h"
 #include "RocprofActivityApi.h"
-  #else
+#else
 #include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
-  #endif
+#endif
 #endif
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
@@ -219,15 +219,15 @@ void CuptiActivityProfiler::transferCpuTrace(
 }
 
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
 CuptiActivityProfiler::CuptiActivityProfiler(
     RocprofActivityApi& cupti,
     bool cpuOnly)
-  #else
+#else
 CuptiActivityProfiler::CuptiActivityProfiler(
     RoctracerActivityApi& cupti,
     bool cpuOnly)
-  #endif
+#endif
 #else
 CuptiActivityProfiler::CuptiActivityProfiler(
     CuptiActivityApi& cupti,
@@ -1582,13 +1582,13 @@ void CuptiActivityProfiler::pushCorrelationId(uint64_t id) {
       id, CuptiActivityApi::CorrelationFlowType::Default);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
   RocprofActivityApi::pushCorrelationID(
       id, RocprofActivityApi::CorrelationFlowType::Default);
-  #else
+#else
   RoctracerActivityApi::pushCorrelationID(
       id, RoctracerActivityApi::CorrelationFlowType::Default);
-  #endif
+#endif
 #endif
   for (auto& session : sessions_) {
     session->pushCorrelationId(id);
@@ -1601,13 +1601,13 @@ void CuptiActivityProfiler::popCorrelationId() {
       CuptiActivityApi::CorrelationFlowType::Default);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
   RocprofActivityApi::popCorrelationID(
       RocprofActivityApi::CorrelationFlowType::Default);
-  #else
+#else
   RoctracerActivityApi::popCorrelationID(
       RoctracerActivityApi::CorrelationFlowType::Default);
-  #endif
+#endif
 #endif
   for (auto& session : sessions_) {
     session->popCorrelationId();
@@ -1620,13 +1620,13 @@ void CuptiActivityProfiler::pushUserCorrelationId(uint64_t id) {
       id, CuptiActivityApi::CorrelationFlowType::User);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
   RocprofActivityApi::pushCorrelationID(
       id, RocprofActivityApi::CorrelationFlowType::User);
-  #else
+#else
   RoctracerActivityApi::pushCorrelationID(
       id, RoctracerActivityApi::CorrelationFlowType::User);
-  #endif
+#endif
 #endif
   for (auto& session : sessions_) {
     session->pushUserCorrelationId(id);
@@ -1639,13 +1639,13 @@ void CuptiActivityProfiler::popUserCorrelationId() {
       CuptiActivityApi::CorrelationFlowType::User);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-  #ifndef ROCTRACER_FALLBACK
+#ifndef ROCTRACER_FALLBACK
   RocprofActivityApi::popCorrelationID(
       RocprofActivityApi::CorrelationFlowType::User);
-  #else
+#else
   RoctracerActivityApi::popCorrelationID(
       RoctracerActivityApi::CorrelationFlowType::User);
-  #endif
+#endif
 #endif
   for (auto& session : sessions_) {
     session->popUserCorrelationId();

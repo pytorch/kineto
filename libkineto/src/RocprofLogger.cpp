@@ -21,10 +21,10 @@
 #include <cstring>
 #include <mutex>
 
+#include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
-#include "ApproximateClock.h"
 
 using namespace libkineto;
 using namespace std::chrono;
@@ -85,10 +85,10 @@ auto extract_copy_args = [](rocprofiler_callback_tracing_kind_t,
 struct kernel_args {
   // const char *stream;
   hipStream_t stream{nullptr};
-  uint32_t privateSize {0};
-  uint32_t groupSize {0};
-  rocprofiler_dim3_t workgroupSize {0};
-  rocprofiler_dim3_t gridSize {0};
+  uint32_t privateSize{0};
+  uint32_t groupSize{0};
+  rocprofiler_dim3_t workgroupSize{0};
+  rocprofiler_dim3_t gridSize{0};
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
@@ -106,23 +106,31 @@ auto extract_kernel_args = [](rocprofiler_callback_tracing_kind_t,
   if (strcmp("stream", arg_name) == 0)
     args.stream = *(reinterpret_cast<const hipStream_t*>(arg_value_addr));
   else if (strcmp("numBlocks", arg_name) == 0)
-    args.workgroupSize = *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
+    args.workgroupSize =
+        *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
   else if (strcmp("dimBlocks", arg_name) == 0)
-    args.gridSize = *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
+    args.gridSize =
+        *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
   else if (strcmp("sharedMemBytes", arg_name) == 0)
     args.groupSize = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   else if (strcmp("globalWorkSizeX", arg_name) == 0)
-    args.workgroupSize.x = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.workgroupSize.x =
+        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   else if (strcmp("globalWorkSizeY", arg_name) == 0)
-    args.workgroupSize.y = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.workgroupSize.y =
+        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   else if (strcmp("globalWorkSizeZ", arg_name) == 0)
-    args.workgroupSize.z = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.workgroupSize.z =
+        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   else if (strcmp("localWorkSizeX", arg_name) == 0)
-    args.gridSize.x = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.gridSize.x =
+        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   else if (strcmp("localWorkSizeY", arg_name) == 0)
-    args.gridSize.y = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.gridSize.y =
+        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   else if (strcmp("localWorkSizeZ", arg_name) == 0)
-    args.gridSize.z = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.gridSize.z =
+        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
   return 0;
 };
 
@@ -409,28 +417,31 @@ int RocprofLogger::toolInit(
       nullptr);
 
   // Collect async ops via buffers
-  constexpr auto buffer_size_bytes      = 0x40000;
+  constexpr auto buffer_size_bytes = 0x40000;
   constexpr auto buffer_watermark_bytes = buffer_size_bytes / 2;
 
-  rocprofiler_create_buffer(s->context,
-                            buffer_size_bytes,
-                            buffer_watermark_bytes,
-                            ROCPROFILER_BUFFER_POLICY_LOSSLESS,
-                            RocprofLogger::buffer_callback,
-                            nullptr,
-                            &s->buffer);
+  rocprofiler_create_buffer(
+      s->context,
+      buffer_size_bytes,
+      buffer_watermark_bytes,
+      ROCPROFILER_BUFFER_POLICY_LOSSLESS,
+      RocprofLogger::buffer_callback,
+      nullptr,
+      &s->buffer);
 
-  rocprofiler_configure_buffer_tracing_service(s->context,
-                                               ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
-                                               nullptr,
-                                               0,
-                                               s->buffer);
+  rocprofiler_configure_buffer_tracing_service(
+      s->context,
+      ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
+      nullptr,
+      0,
+      s->buffer);
 
-  rocprofiler_configure_buffer_tracing_service(s->context,
-                                               ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
-                                               nullptr,
-                                               0,
-                                               s->buffer);
+  rocprofiler_configure_buffer_tracing_service(
+      s->context,
+      ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
+      nullptr,
+      0,
+      s->buffer);
   {
     int isValid = 0;
     rocprofiler_context_is_valid(s->context, &isValid);
@@ -501,7 +512,7 @@ void RocprofLogger::popCorrelationID(CorrelationDomain type) {
 
 void RocprofLogger::clearLogs() {
   // CuptiActivityProfiler clears this before the output Loggers use the data
-  //for (auto &row : rows_)
+  // for (auto &row : rows_)
   //  delete row;
   rows_.clear();
   for (int i = 0; i < CorrelationDomain::size; ++i) {
@@ -605,20 +616,20 @@ void RocprofLogger::api_callback(
             ,
             &args);
 
-      rocprofCopyRow* row = new rocprofCopyRow(
-          record.correlation_id.internal,
-          args.kind,
-          args.operation,
-          processId(),
-          systemThreadId(),
-          startTime,
-          endTime,
-          args.src,
-          args.dst,
-          args.size,
-          args.copyKind,
-          args.stream);
-      insert_row_to_buffer(row);
+        rocprofCopyRow* row = new rocprofCopyRow(
+            record.correlation_id.internal,
+            args.kind,
+            args.operation,
+            processId(),
+            systemThreadId(),
+            startTime,
+            endTime,
+            args.src,
+            args.dst,
+            args.size,
+            args.copyKind,
+            args.stream);
+        insert_row_to_buffer(row);
       }
       // Malloc Records
       else if (isMallocApi(record.operation)) {
@@ -658,15 +669,21 @@ void RocprofLogger::api_callback(
   } // ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API
 }
 
-
-void RocprofLogger::buffer_callback(rocprofiler_context_id_t context, rocprofiler_buffer_id_t buffer_id, rocprofiler_record_header_t** headers, size_t num_headers, void* user_data, uint64_t drop_count)
-{
+void RocprofLogger::buffer_callback(
+    rocprofiler_context_id_t context,
+    rocprofiler_buffer_id_t buffer_id,
+    rocprofiler_record_header_t** headers,
+    size_t num_headers,
+    void* user_data,
+    uint64_t drop_count) {
   for (size_t i = 0; i < num_headers; ++i) {
     auto* header = headers[i];
 
     if (header->category == ROCPROFILER_BUFFER_CATEGORY_TRACING) {
       if (header->kind == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH) {
-        auto& record = *(static_cast<rocprofiler_buffer_tracing_kernel_dispatch_record_t*>(header->payload));
+        auto& record =
+            *(static_cast<rocprofiler_buffer_tracing_kernel_dispatch_record_t*>(
+                header->payload));
         auto& dispatch = record.dispatch_info;
 
         rocprofAsyncRow* row = new rocprofAsyncRow(
@@ -680,9 +697,10 @@ void RocprofLogger::buffer_callback(rocprofiler_context_id_t context, rocprofile
             record.end_timestamp,
             s->kernel_names.at(dispatch.kernel_id));
         insert_row_to_buffer(row);
-      }
-      else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
-        auto &record = *(static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(header->payload));
+      } else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
+        auto& record =
+            *(static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(
+                header->payload));
         rocprofAsyncRow* row = new rocprofAsyncRow(
             record.correlation_id.internal,
             record.kind,
@@ -698,7 +716,6 @@ void RocprofLogger::buffer_callback(rocprofiler_context_id_t context, rocprofile
     }
   }
 }
-
 
 std::string RocprofLogger::opString(
     rocprofiler_callback_tracing_kind_t kind,

@@ -209,8 +209,7 @@ inline const std::string RuntimeActivity<rocprofKernelRow>::metadataJson()
 }
 
 template <>
-inline const std::string RuntimeActivity<rocprofCopyRow>::metadataJson()
-    const {
+inline const std::string RuntimeActivity<rocprofCopyRow>::metadataJson() const {
   correlationToSize[raw().id] = raw().size;
   return fmt::format(
       R"JSON(

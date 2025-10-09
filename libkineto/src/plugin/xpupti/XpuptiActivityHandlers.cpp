@@ -8,8 +8,11 @@
 
 #include "XpuptiActivityProfiler.h"
 
+#include <iterator>
+#include <type_traits>
+
+#include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <string>
 
 namespace KINETO_NAMESPACE {
 
@@ -264,7 +267,11 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
           reinterpret_cast<const pti_view_record_external_correlation*>(
               record));
       break;
+#if PTI_VERSION_AT_LEAST(0, 11)
     case PTI_VIEW_RUNTIME_API:
+#else
+    case PTI_VIEW_SYCL_RUNTIME_CALLS:
+#endif
       handleRuntimeKernelMemcpyMemsetActivities(
           reinterpret_cast<const pti_view_record_api_t*>(record), logger);
       break;

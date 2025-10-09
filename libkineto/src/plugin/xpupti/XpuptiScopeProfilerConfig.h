@@ -11,8 +11,6 @@
 #include "Config.h"
 
 #include <chrono>
-#include <set>
-#include <string>
 #include <vector>
 
 namespace KINETO_NAMESPACE {

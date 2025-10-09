@@ -9,7 +9,13 @@
 #include "XpuptiActivityProfiler.h"
 #include "XpuptiActivityApi.h"
 
+#include "time_since_epoch.h"
+
+#include <sycl/sycl.hpp>
+
+#include <algorithm>
 #include <chrono>
+#include <iterator>
 
 namespace KINETO_NAMESPACE {
 
@@ -81,13 +87,9 @@ void XpuptiActivityProfilerSession::stop() {
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   if (enable) {
     xpti_.enableXpuptiActivities(activity_types_);
-    if (scopeProfilerEnabled_) {
-      xpti_.startScopeActivity();
-    }
+    xpti_.startScopeActivity();
   } else {
-    if (scopeProfilerEnabled_) {
-      xpti_.stopScopeActivity();
-    }
+    xpti_.stopScopeActivity();
     xpti_.disablePtiActivities(activity_types_);
   }
 }
@@ -224,8 +226,8 @@ std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
 
 std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
     configure(
-        int64_t /*ts_ms*/,
-        int64_t /*duration_ms*/,
+        [[maybe_unused]] int64_t ts_ms,
+        [[maybe_unused]] int64_t duration_ms,
         const std::set<ActivityType>& activity_types,
         const libkineto::Config& config) {
   return configure(activity_types, config);

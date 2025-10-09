@@ -8,12 +8,22 @@
 
 #pragma once
 
-#include <mutex>
-#include <string_view>
+#include "XpuptiProfilerMacros.h"
+
+#include "IActivityProfiler.h"
+#include "libkineto.h"
+
+#include <pti/pti_view.h>
+
+#if PTI_VERSION_AT_LEAST(0, 14)
+#include <pti/pti_metrics_scope.h>
+#endif
+
+#include <memory>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
-
-#include "XpuptiProfilerMacros.h"
+#include <vector>
 
 namespace KINETO_NAMESPACE {
 

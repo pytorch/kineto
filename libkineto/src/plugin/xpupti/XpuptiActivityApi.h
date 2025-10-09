@@ -11,9 +11,19 @@
 #include "XpuptiActivityBuffer.h"
 #include "XpuptiProfilerMacros.h"
 
-#include <atomic>
+#include "ActivityType.h"
+#include "Config.h"
+
+#include <pti/pti_view.h>
+
+#if PTI_VERSION_AT_LEAST(0, 14)
+#include <pti/pti_metrics_scope.h>
+#endif
+
 #include <functional>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 
 namespace KINETO_NAMESPACE {
@@ -63,7 +73,6 @@ class XpuptiActivityApi {
   std::optional<pti_scope_collection_handle_t> scopeHandleOpt_;
   std::unique_ptr<pti_device_handle_t[]> devicesHandles_;
   uint32_t deviceCount_{0};
-  std::vector<const char*> activitiesXpuptiMetricsNames_;
 
   int processActivitiesForBuffer(
       uint8_t* buf,

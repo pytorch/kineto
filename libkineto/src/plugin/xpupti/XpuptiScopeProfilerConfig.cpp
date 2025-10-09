@@ -7,14 +7,12 @@
  */
 
 #include "XpuptiScopeProfilerConfig.h"
+
 #include <Logger.h>
 
-#include <stdlib.h>
-
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
-#include <ostream>
 
 namespace KINETO_NAMESPACE {
 
@@ -23,21 +21,17 @@ namespace KINETO_NAMESPACE {
 constexpr int KMaxAutoScopes = 1500; // supports 1500 kernels
 constexpr int KMaxUserScopes = 10; // enable upto 10 sub regions marked by user
 
-constexpr char kXpuptiProfilerMetricsKey[] = "XPUPTI_PROFILER_METRICS";
-constexpr char kXpuptiProfilerPerKernelKey[] =
-    "XPUPTI_PROFILER_ENABLE_PER_KERNEL";
-constexpr char kXpuptiProfilerMaxScopesKey[] = "XPUPTI_PROFILER_MAX_SCOPES";
-
 bool XpuptiScopeProfilerConfig::handleOption(
     const std::string& name,
     std::string& val) {
   VLOG(0) << " handling : " << name << " = " << val;
   // Xpupti Scope based Profiler configuration
-  if (!name.compare(kXpuptiProfilerMetricsKey)) {
+  using namespace std::literals::string_view_literals;
+  if (name == "XPUPTI_PROFILER_METRICS"sv) {
     activitiesXpuptiMetrics_ = splitAndTrim(val, ',');
-  } else if (!name.compare(kXpuptiProfilerPerKernelKey)) {
+  } else if (name == "XPUPTI_PROFILER_ENABLE_PER_KERNEL"sv) {
     xpuptiProfilerPerKernel_ = toBool(val);
-  } else if (!name.compare(kXpuptiProfilerMaxScopesKey)) {
+  } else if (name == "XPUPTI_PROFILER_MAX_SCOPES"sv) {
     xpuptiProfilerMaxScopes_ = toInt64(val);
   } else {
     return false;

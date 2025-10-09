@@ -8,13 +8,8 @@
 
 #pragma once
 
-#include <libkineto.h>
-#include <output_base.h>
-#include <time_since_epoch.h>
-
-#include <pti/pti_metrics_scope.h>
-#include <pti/pti_view.h>
-#include <sycl/sycl.hpp>
+#include <stdexcept>
+#include <string>
 
 namespace KINETO_NAMESPACE {
 

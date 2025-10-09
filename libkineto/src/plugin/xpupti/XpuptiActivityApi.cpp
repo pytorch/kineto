@@ -9,12 +9,8 @@
 #include "XpuptiActivityApi.h"
 #include "XpuptiScopeProfilerConfig.h"
 
-#include <assert.h>
-#include <chrono>
-#include <mutex>
-#include <thread>
-
-using namespace std::chrono;
+#include <algorithm>
+#include <vector>
 
 namespace KINETO_NAMESPACE {
 
@@ -113,7 +109,7 @@ std::unique_ptr<XpuptiActivityBufferMap> XpuptiActivityApi::activityBuffers() {
   }
 
 #ifdef HAS_XPUPTI
-  time_point<system_clock> t1;
+  std::chrono::time_point<std::chrono::system_clock> t1;
   XPUPTI_CALL(ptiFlushAllViews());
 #endif
 
@@ -198,21 +194,22 @@ void XpuptiActivityApi::bufferCompleted(
 
 #if PTI_VERSION_AT_LEAST(0, 11)
 static void enableSpecifcRuntimeAPIsTracing() {
-  std::array<pti_api_id_runtime_sycl, 14> specifcRuntimeAPIsTracing = {
-      urEnqueueUSMFill_id,
-      urEnqueueUSMFill2D_id,
-      urEnqueueUSMMemcpy_id,
-      urEnqueueUSMMemcpy2D_id,
-      urEnqueueKernelLaunch_id,
-      urEnqueueKernelLaunchCustomExp_id,
-      urEnqueueCooperativeKernelLaunchExp_id,
-      urEnqueueMemBufferFill_id,
-      urEnqueueMemBufferRead_id,
-      urEnqueueMemBufferWrite_id,
-      urEnqueueMemBufferCopy_id,
-      urUSMHostAlloc_id,
-      urUSMSharedAlloc_id,
-      urUSMDeviceAlloc_id};
+  constexpr const std::array<pti_api_id_runtime_sycl, 14>
+      specifcRuntimeAPIsTracing = {
+          urEnqueueUSMFill_id,
+          urEnqueueUSMFill2D_id,
+          urEnqueueUSMMemcpy_id,
+          urEnqueueUSMMemcpy2D_id,
+          urEnqueueKernelLaunch_id,
+          urEnqueueKernelLaunchCustomExp_id,
+          urEnqueueCooperativeKernelLaunchExp_id,
+          urEnqueueMemBufferFill_id,
+          urEnqueueMemBufferRead_id,
+          urEnqueueMemBufferWrite_id,
+          urEnqueueMemBufferCopy_id,
+          urUSMHostAlloc_id,
+          urUSMSharedAlloc_id,
+          urUSMDeviceAlloc_id};
 
   for (auto tracing_id : specifcRuntimeAPIsTracing) {
     XPUPTI_CALL(ptiViewEnableRuntimeApi(
@@ -234,12 +231,12 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
     const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
     const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
 
-    activitiesXpuptiMetricsNames_.clear();
-    activitiesXpuptiMetricsNames_.reserve(activitiesXpuptiMetrics.size());
+    std::vector<const char*> activitiesXpuptiMetricsNames;
+    activitiesXpuptiMetricsNames.reserve(activitiesXpuptiMetrics.size());
     std::transform(
         activitiesXpuptiMetrics.begin(),
         activitiesXpuptiMetrics.end(),
-        activitiesXpuptiMetricsNames_.begin(),
+        activitiesXpuptiMetricsNames.begin(),
         [](const std::string& s) { return s.c_str(); });
 
     pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
@@ -251,8 +248,8 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
         collectionMode,
         devicesHandles_.get(),
         deviceCount_,
-        activitiesXpuptiMetricsNames_.data(),
-        activitiesXpuptiMetricsNames_.size()));
+        activitiesXpuptiMetricsNames.data(),
+        activitiesXpuptiMetricsNames.size()));
 
     uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
     size_t estimatedBufferSize = 0;

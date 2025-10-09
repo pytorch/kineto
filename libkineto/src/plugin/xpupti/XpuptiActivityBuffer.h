@@ -8,10 +8,9 @@
 
 #pragma once
 
-#include "XpuptiProfilerMacros.h"
-
-#include <assert.h>
-#include <stdlib.h>
+#include <stddef.h>
+#include <cassert>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <vector>

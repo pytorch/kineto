@@ -364,3 +364,44 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   auto session5 = pluginProfiler.configure(emptyTypes, Config{});
   EXPECT_EQ(session5, nullptr) << "Should fail with empty activity types set";
 }
+
+// Test profiler validation - missing critical functions should be invalid
+TEST_F(DynamicPluginTest, ProfilerValidation) {
+  // Test case 1: Missing critical function (profilerStart) should be invalid
+  auto incompleteInterface = MockPlugin::getInterface();
+  incompleteInterface.profilerStart =
+      nullptr; // Set critical function to nullptr
+
+  PluginProfiler invalidProfiler(incompleteInterface);
+
+  // Attempting to configure should fail since profiler is invalid
+  auto activities = invalidProfiler.availableActivities();
+  auto session1 = invalidProfiler.configure(activities, Config{});
+  EXPECT_EQ(session1, nullptr)
+      << "Should fail to configure when critical function is missing";
+
+  // Test case 2: Missing only optional correlation functions should be valid
+  auto noCorrelationInterface = MockPlugin::getInterface();
+  noCorrelationInterface.profilerPushCorrelationId = nullptr;
+  noCorrelationInterface.profilerPopCorrelationId = nullptr;
+  noCorrelationInterface.profilerPushUserCorrelationId = nullptr;
+  noCorrelationInterface.profilerPopUserCorrelationId = nullptr;
+
+  PluginProfiler validProfiler(noCorrelationInterface);
+
+  // Should still be able to configure and use the profiler
+  auto activities2 = validProfiler.availableActivities();
+  auto session2 = validProfiler.configure(activities2, Config{});
+  EXPECT_NE(session2, nullptr)
+      << "Should succeed when only optional correlation functions are missing";
+
+  // Should be able to use the session normally
+  session2->start();
+  session2->stop();
+
+  // Correlation functions should use default stubs (won't crash)
+  session2->pushCorrelationId(12345);
+  session2->popCorrelationId();
+  session2->pushUserCorrelationId(67890);
+  session2->popUserCorrelationId();
+}

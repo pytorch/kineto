@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ActivityType.h"
-#include "KinetoDynamicPluginInterface.h"
 #include "GenericTraceActivity.h"
+#include "KinetoDynamicPluginInterface.h"
 
 namespace libkineto {
 
@@ -35,10 +35,30 @@ convertToActivityType(KinetoPlugin_ProfileEventType type) {
     return ActivityType::PYTHON_FUNCTION;
   case KINETO_PLUGIN_PROFILE_EVENT_TYPE_OVERHEAD:
     return ActivityType::OVERHEAD;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_RUNTIME:
+    return ActivityType::MTIA_RUNTIME;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_CCP_EVENTS:
+    return ActivityType::MTIA_CCP_EVENTS;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_INSIGHT:
+    return ActivityType::MTIA_INSIGHT;
   case KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_SYNC:
     return ActivityType::CUDA_SYNC;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_GLOW_RUNTIME:
+    return ActivityType::GLOW_RUNTIME;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_PROFILER_RANGE:
+    return ActivityType::CUDA_PROFILER_RANGE;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_HPU_OP:
+    return ActivityType::HPU_OP;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_XPU_RUNTIME:
+    return ActivityType::XPU_RUNTIME;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_COLLECTIVE_COMM:
+    return ActivityType::COLLECTIVE_COMM;
   case KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_PM_COUNTER:
     return ActivityType::GPU_PM_COUNTER;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_RUNTIME:
+    return ActivityType::PRIVATEUSE1_RUNTIME;
+  case KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_DRIVER:
+    return ActivityType::PRIVATEUSE1_DRIVER;
   default:
     // use kernel type as a default
     return ActivityType::CONCURRENT_KERNEL;

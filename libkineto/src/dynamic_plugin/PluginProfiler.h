@@ -95,6 +95,63 @@ public:
     }
   }
 
+  void pushCorrelationId(uint64_t id) override {
+    KinetoPlugin_ProfilerPushCorrelationId_Params pushCorrelationIdParams{
+        KINETO_PLUGIN_PROFILER_PUSH_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE};
+    pushCorrelationIdParams.pProfilerHandle = pProfilerHandle_;
+    pushCorrelationIdParams.correlationId = id;
+
+    int errorCode =
+        profiler_.profilerPushCorrelationId(&pushCorrelationIdParams);
+    if (errorCode != 0) {
+      LOG(ERROR) << "Plugin profiler " << name_
+                 << " failed at profilerPushCorrelationId() with error "
+                 << errorCode;
+    }
+  }
+
+  void popCorrelationId() override {
+    KinetoPlugin_ProfilerPopCorrelationId_Params popCorrelationIdParams{
+        KINETO_PLUGIN_PROFILER_POP_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE};
+    popCorrelationIdParams.pProfilerHandle = pProfilerHandle_;
+
+    int errorCode = profiler_.profilerPopCorrelationId(&popCorrelationIdParams);
+    if (errorCode != 0) {
+      LOG(ERROR) << "Plugin profiler " << name_
+                 << " failed at profilerPopCorrelationId() with error "
+                 << errorCode;
+    }
+  }
+
+  void pushUserCorrelationId(uint64_t id) override {
+    KinetoPlugin_ProfilerPushUserCorrelationId_Params pushUserCorrelationIdParams{
+        KINETO_PLUGIN_PROFILER_PUSH_USER_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE};
+    pushUserCorrelationIdParams.pProfilerHandle = pProfilerHandle_;
+    pushUserCorrelationIdParams.userCorrelationId = id;
+
+    int errorCode =
+        profiler_.profilerPushUserCorrelationId(&pushUserCorrelationIdParams);
+    if (errorCode != 0) {
+      LOG(ERROR) << "Plugin profiler " << name_
+                 << " failed at profilerPushUserCorrelationId() with error "
+                 << errorCode;
+    }
+  }
+
+  void popUserCorrelationId() override {
+    KinetoPlugin_ProfilerPopUserCorrelationId_Params popUserCorrelationIdParams{
+        KINETO_PLUGIN_PROFILER_POP_USER_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE};
+    popUserCorrelationIdParams.pProfilerHandle = pProfilerHandle_;
+
+    int errorCode =
+        profiler_.profilerPopUserCorrelationId(&popUserCorrelationIdParams);
+    if (errorCode != 0) {
+      LOG(ERROR) << "Plugin profiler " << name_
+                 << " failed at profilerPopUserCorrelationId() with error "
+                 << errorCode;
+    }
+  }
+
   TraceStatus status() { return status_; }
 
   // returns errors with this trace
@@ -169,8 +226,13 @@ class PluginProfiler : public IActivityProfiler {
 
 public:
   PluginProfiler(const KinetoPlugin_ProfilerInterface &profiler)
-      : profiler_(profiler) {
-    validateProfiler();
+      : profiler_(profiler), isValid_(true) {
+    isValid_ = validateProfiler();
+    if (!isValid_) {
+      LOG(ERROR) << "Plugin profiler " << name_
+                 << " is not valid; skipping registration";
+      return;
+    }
 
     char profilerName[32];
 
@@ -216,6 +278,13 @@ public:
   std::unique_ptr<IActivityProfilerSession>
   configure(const std::set<ActivityType> &activity_types,
             const Config & /*config*/) override {
+    // Check if profiler is valid
+    if (!isValid_) {
+      LOG(ERROR) << "Plugin profiler " << name_
+                 << " is not valid, cannot configure";
+      return nullptr;
+    }
+
     // Check if the plugin supports ANY of the requested activity types
     bool hasSupported = false;
     for (const auto &activity_type : activity_types) {
@@ -245,7 +314,9 @@ public:
   }
 
 private:
-  void validateProfiler() {
+  bool validateProfiler() {
+    bool isValid = true;
+
     // Handle versioning
     // Currently expect the exact same version
     if (profiler_.unpaddedStructSize <
@@ -265,14 +336,128 @@ private:
       profiler_.profilerStop = [](struct KinetoPlugin_ProfilerStop_Params *) {
         return -1;
       };
+      profiler_.profilerPushCorrelationId =
+          [](struct KinetoPlugin_ProfilerPushCorrelationId_Params *) {
+            return -1;
+          };
+      profiler_.profilerPopCorrelationId =
+          [](struct KinetoPlugin_ProfilerPopCorrelationId_Params *) {
+            return -1;
+          };
+      profiler_.profilerPushUserCorrelationId =
+          [](struct KinetoPlugin_ProfilerPushUserCorrelationId_Params *) {
+            return -1;
+          };
+      profiler_.profilerPopUserCorrelationId =
+          [](struct KinetoPlugin_ProfilerPopUserCorrelationId_Params *) {
+            return -1;
+          };
       profiler_.profilerProcessEvents =
           [](struct KinetoPlugin_ProfilerProcessEvents_Params *) { return -1; };
+      return false;
     }
+
+    // Check if individual function pointers are implemented
+    // For critical functions, set them to error-returning stubs if nullptr and
+    // mark as invalid
+    if (profiler_.profilerCreate == nullptr) {
+      LOG(ERROR) << "Plugin profiler profilerCreate is not implemented";
+      profiler_.profilerCreate =
+          [](struct KinetoPlugin_ProfilerCreate_Params *) { return -1; };
+      isValid = false;
+    }
+
+    if (profiler_.profilerDestroy == nullptr) {
+      LOG(ERROR) << "Plugin profiler profilerDestroy is not implemented";
+      profiler_.profilerDestroy =
+          [](struct KinetoPlugin_ProfilerDestroy_Params *) { return -1; };
+      isValid = false;
+    }
+
+    if (profiler_.profilerQuery == nullptr) {
+      LOG(ERROR) << "Plugin profiler profilerQuery is not implemented";
+      profiler_.profilerQuery = [](struct KinetoPlugin_ProfilerQuery_Params *) {
+        return -1;
+      };
+      isValid = false;
+    }
+
+    if (profiler_.profilerStart == nullptr) {
+      LOG(ERROR) << "Plugin profiler profilerStart is not implemented";
+      profiler_.profilerStart = [](struct KinetoPlugin_ProfilerStart_Params *) {
+        return -1;
+      };
+      isValid = false;
+    }
+
+    if (profiler_.profilerStop == nullptr) {
+      LOG(ERROR) << "Plugin profiler profilerStop is not implemented";
+      profiler_.profilerStop = [](struct KinetoPlugin_ProfilerStop_Params *) {
+        return -1;
+      };
+      isValid = false;
+    }
+
+    if (profiler_.profilerProcessEvents == nullptr) {
+      LOG(ERROR) << "Plugin profiler profilerProcessEvents is not implemented";
+      profiler_.profilerProcessEvents =
+          [](struct KinetoPlugin_ProfilerProcessEvents_Params *) { return -1; };
+      isValid = false;
+    }
+
+    // For correlation functions, provide default warning implementations if not
+    // provided These don't affect validity
+    if (profiler_.profilerPushCorrelationId == nullptr) {
+      LOG(INFO) << "Plugin profiler profilerPushCorrelationId is not "
+                   "implemented, using default stub";
+      profiler_.profilerPushCorrelationId =
+          [](struct KinetoPlugin_ProfilerPushCorrelationId_Params *) {
+            LOG(WARNING) << "profilerPushCorrelationId called but not "
+                            "implemented by plugin";
+            return 0;
+          };
+    }
+
+    if (profiler_.profilerPopCorrelationId == nullptr) {
+      LOG(INFO) << "Plugin profiler profilerPopCorrelationId is not "
+                   "implemented, using default stub";
+      profiler_.profilerPopCorrelationId =
+          [](struct KinetoPlugin_ProfilerPopCorrelationId_Params *) {
+            LOG(WARNING) << "profilerPopCorrelationId called but not "
+                            "implemented by plugin";
+            return 0;
+          };
+    }
+
+    if (profiler_.profilerPushUserCorrelationId == nullptr) {
+      LOG(INFO) << "Plugin profiler profilerPushUserCorrelationId is not "
+                   "implemented, using default stub";
+      profiler_.profilerPushUserCorrelationId =
+          [](struct KinetoPlugin_ProfilerPushUserCorrelationId_Params *) {
+            LOG(WARNING) << "profilerPushUserCorrelationId called but not "
+                            "implemented by plugin";
+            return 0;
+          };
+    }
+
+    if (profiler_.profilerPopUserCorrelationId == nullptr) {
+      LOG(INFO) << "Plugin profiler profilerPopUserCorrelationId is not "
+                   "implemented, using default stub";
+      profiler_.profilerPopUserCorrelationId =
+          [](struct KinetoPlugin_ProfilerPopUserCorrelationId_Params *) {
+            LOG(WARNING) << "profilerPopUserCorrelationId called but not "
+                            "implemented by plugin";
+            return 0;
+          };
+    }
+
+    return isValid;
   }
 
   KinetoPlugin_ProfilerInterface profiler_;
   std::string name_;
   std::set<ActivityType> supportedActivities_;
+  bool isValid_;
 };
 
 } // namespace libkineto

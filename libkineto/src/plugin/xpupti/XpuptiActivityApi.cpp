@@ -226,7 +226,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
   }
 
   if (!scopeHandleOpt_) {
-    XPUPTI_CALL(ptiMetricsScopeEnable(&*scopeHandleOpt_));
+    XPUPTI_CALL(ptiMetricsScopeEnable(&scopeHandleOpt_.value()));
 
     const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
     const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();

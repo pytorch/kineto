@@ -198,22 +198,10 @@ DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
 }
 
 // =========== ActivityProfiler Public Methods ============= //
-const std::set<ActivityType> kXpuTypes{
-    ActivityType::GPU_MEMCPY,
-    ActivityType::GPU_MEMSET,
-    ActivityType::CONCURRENT_KERNEL,
-    ActivityType::XPU_RUNTIME,
-    ActivityType::EXTERNAL_CORRELATION,
-    ActivityType::OVERHEAD,
-#if PTI_VERSION_AT_LEAST(0, 14)
-    ActivityType::XPU_SCOPE_PROFILER,
-#endif
-};
-
-const std::set<ActivityType>& XPUActivityProfiler::availableActivities() const {
+[[noreturn]] const std::set<ActivityType>& XPUActivityProfiler::
+    availableActivities() const {
   throw std::runtime_error(
       "The availableActivities is legacy method and should not be called by kineto");
-  return kXpuTypes;
 }
 
 std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::

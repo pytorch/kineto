@@ -148,7 +148,9 @@ class XPUActivityProfiler : public libkineto::IActivityProfiler {
     return name_;
   }
 
-  const std::set<ActivityType>& availableActivities() const override;
+  [[noreturn]] const std::set<ActivityType>& availableActivities()
+      const override;
+
   std::unique_ptr<libkineto::IActivityProfilerSession> configure(
       const std::set<ActivityType>& activity_types,
       const libkineto::Config& config) override;

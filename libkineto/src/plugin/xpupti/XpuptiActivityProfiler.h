@@ -100,11 +100,13 @@ class XpuptiActivityProfilerSession
       const pti_view_record_base* record,
       ActivityLogger& logger);
 
+#if PTI_VERSION_AT_LEAST(0, 14)
   void handleScopeRecord(
       const pti_metrics_scope_record_t* record,
       const pti_metric_scope_display_info_t* displayInfo,
       uint32_t infoCount,
       ActivityLogger& logger);
+#endif
 
   // enumerate XPU Device UUIDs from runtime for once
   void enumDeviceUUIDs();

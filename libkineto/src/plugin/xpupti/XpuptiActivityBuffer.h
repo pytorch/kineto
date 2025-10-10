@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>

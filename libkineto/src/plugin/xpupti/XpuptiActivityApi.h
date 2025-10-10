@@ -60,18 +60,24 @@ class XpuptiActivityApi {
       XpuptiActivityBufferMap&,
       std::function<void(const pti_view_record_base*)> handler);
 
+#if PTI_VERSION_AT_LEAST(0, 14)
   void processScopeTrace(std::function<void(
                              const pti_metrics_scope_record_t*,
                              const pti_metric_scope_display_info_t*,
                              uint32_t)> handler);
+#endif
 
  private:
   XpuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<XpuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
   bool externalCorrelationEnabled_{false};
+
+#if PTI_VERSION_AT_LEAST(0, 14)
   std::optional<pti_scope_collection_handle_t> scopeHandleOpt_;
   std::unique_ptr<pti_device_handle_t[]> devicesHandles_;
+#endif
+
   uint32_t deviceCount_{0};
 
   int processActivitiesForBuffer(

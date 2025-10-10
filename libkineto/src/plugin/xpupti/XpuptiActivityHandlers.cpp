@@ -24,13 +24,12 @@ void XpuptiActivityProfilerSession::removeCorrelatedPtiActivities(
 
 void XpuptiActivityProfilerSession::checkTimestampOrder(
     const ITraceActivity* act1) {
-  auto insert_result =
+  auto [it, inserted] =
       correlatedPtiActivities_.insert({act1->correlationId(), act1});
-  if (insert_result.second) {
+  if (inserted) {
     return;
   }
 
-  const auto& it = insert_result.first;
   const ITraceActivity* act2 = it->second;
   if (act2->type() == ActivityType::XPU_RUNTIME) {
     std::swap(act1, act2);
@@ -82,9 +81,9 @@ inline std::string handleToHexString(ze_handle_type handle) {
 // from PTI
 inline int64_t XpuptiActivityProfilerSession::getMappedQueueId(
     uint64_t sycl_queue_id) {
-  auto insert_result =
+  auto [it, inserted] =
       sycl_queue_pool_.insert({sycl_queue_id, sycl_queue_pool_.size()});
-  return insert_result.first->second;
+  return it->second;
 }
 
 inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
@@ -298,6 +297,8 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
   }
 }
 
+#if PTI_VERSION_AT_LEAST(0, 14)
+
 static std::string PtiValueToStr(
     pti_metric_value_type valueType,
     const pti_value_t& value) {
@@ -399,5 +400,7 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
     scope_activity->log(logger);
   }
 }
+
+#endif
 
 } // namespace KINETO_NAMESPACE

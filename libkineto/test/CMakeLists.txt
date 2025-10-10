@@ -7,13 +7,32 @@
 include(GoogleTest)
 set(CMAKE_CXX_STANDARD 17)
 
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR))
+        include(FindSYCLToolkit.cmake)
+        if(NOT SYCLTOOLKIT_FOUND)
+            set(LIBKINETO_NOXPUPTI ON CACHE STRING "" FORCE PARENT_SCOPE)
+            message(WARNING "XPU PTI has not built because ${SYCL_NOT_FOUND_MESSAGE}")
+        endif()
+    endif()
+endif()
+
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    set(XPU_xpupti_LIBRARY ${SYCL_LIBRARY})
+    list(APPEND XPU_xpupti_LIBRARY ${PTI_LIBRARY})
+    set(XPU_xpupti_LIBRARY ${XPU_xpupti_LIBRARY} PARENT_SCOPE)
+else()
+    set(XPU_xpupti_LIBRARY "")
+endif()
+
 include_directories(${LIBKINETO_DIR})
 link_libraries(fmt::fmt-header-only)
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
 target_link_libraries(ConfigTest PRIVATE
     gtest_main
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    ${XPU_xpupti_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
 if(NOT LIBKINETO_NOCUPTI)
@@ -60,6 +79,17 @@ target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     $<BUILD_INTERFACE:fmt::fmt-header-only>)
 gtest_discover_tests(CuptiRangeProfilerConfigTest)
 
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    # XpuptiScopeProfilerConfigTest
+    add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
+    target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        $<BUILD_INTERFACE:fmt::fmt-header-only>
+        "${XPU_xpupti_LIBRARY}")
+    gtest_discover_tests(XpuptiScopeProfilerConfigTest)
+endif()
+
 # CuptiRangeProfilerTest
 # add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
 # target_link_libraries(CuptiRangeProfilerTest PRIVATE
@@ -91,14 +121,16 @@ endif()
 add_executable(LoggerObserverTest LoggerObserverTest.cpp)
 target_link_libraries(LoggerObserverTest PRIVATE
     gtest_main
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    ${XPU_xpupti_LIBRARY})
 gtest_discover_tests(LoggerObserverTest)
 
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_link_libraries(PidInfoTest PRIVATE
     gtest_main
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    ${XPU_xpupti_LIBRARY})
 gtest_discover_tests(PidInfoTest)
 
 # CuptiProfilerApiTest

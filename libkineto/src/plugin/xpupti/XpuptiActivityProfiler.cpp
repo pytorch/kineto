@@ -87,9 +87,13 @@ void XpuptiActivityProfilerSession::stop() {
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   if (enable) {
     xpti_.enableXpuptiActivities(activity_types_);
-    xpti_.startScopeActivity();
+    if (scopeProfilerEnabled_) {
+      xpti_.startScopeActivity();
+    }
   } else {
-    xpti_.stopScopeActivity();
+    if (scopeProfilerEnabled_) {
+      xpti_.stopScopeActivity();
+    }
     xpti_.disablePtiActivities(activity_types_);
   }
 }
@@ -107,6 +111,7 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
         });
   }
   if (scopeProfilerEnabled_) {
+#if PTI_VERSION_AT_LEAST(0, 14)
     xpti_.processScopeTrace(
         [this, &logger](
             const pti_metrics_scope_record_t* record,
@@ -114,6 +119,7 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
             uint32_t infoCount) -> void {
           handleScopeRecord(record, displayInfo, infoCount, logger);
         });
+#endif
   }
 }
 

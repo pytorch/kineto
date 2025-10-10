@@ -10,6 +10,7 @@
 #include "XpuptiScopeProfilerConfig.h"
 
 #include <algorithm>
+#include <chrono>
 #include <vector>
 
 namespace KINETO_NAMESPACE {
@@ -23,6 +24,7 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
 
 XpuptiActivityApi::XpuptiActivityApi() {
 #ifdef HAS_XPUPTI
+#if PTI_VERSION_AT_LEAST(0, 14)
   XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount_));
 
   if (deviceCount_ > 0) {
@@ -34,6 +36,7 @@ XpuptiActivityApi::XpuptiActivityApi() {
       devicesHandles_[i] = devices[i]._handle;
     }
   }
+#endif
 #endif
 }
 
@@ -394,6 +397,7 @@ void XpuptiActivityApi::disablePtiActivities(
 #endif
 }
 
+#if PTI_VERSION_AT_LEAST(0, 14)
 static auto safeCallPtiMetricScopeCalculateMetrics(
     pti_scope_collection_handle_t scopeHandle,
     void* bufferData,
@@ -430,7 +434,6 @@ void XpuptiActivityApi::processScopeTrace(
         const pti_metric_scope_display_info_t*,
         uint32_t)> handler) {
 #ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 14)
   if (scopeHandleOpt_) {
     uint64_t buffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
@@ -466,7 +469,7 @@ void XpuptiActivityApi::processScopeTrace(
     }
   }
 #endif
-#endif
 }
+#endif
 
 } // namespace KINETO_NAMESPACE

@@ -412,8 +412,9 @@ private:
                    "implemented, using default stub";
       profiler_.profilerPushCorrelationId =
           [](struct KinetoPlugin_ProfilerPushCorrelationId_Params *) {
-            LOG(WARNING) << "profilerPushCorrelationId called but not "
-                            "implemented by plugin";
+            LOG_FIRST_N(1, WARNING)
+                << "profilerPushCorrelationId called but not "
+                   "implemented by plugin";
             return 0;
           };
     }
@@ -423,8 +424,9 @@ private:
                    "implemented, using default stub";
       profiler_.profilerPopCorrelationId =
           [](struct KinetoPlugin_ProfilerPopCorrelationId_Params *) {
-            LOG(WARNING) << "profilerPopCorrelationId called but not "
-                            "implemented by plugin";
+            LOG_FIRST_N(1, WARNING)
+                << "profilerPopCorrelationId called but not "
+                   "implemented by plugin";
             return 0;
           };
     }
@@ -434,8 +436,9 @@ private:
                    "implemented, using default stub";
       profiler_.profilerPushUserCorrelationId =
           [](struct KinetoPlugin_ProfilerPushUserCorrelationId_Params *) {
-            LOG(WARNING) << "profilerPushUserCorrelationId called but not "
-                            "implemented by plugin";
+            LOG_FIRST_N(1, WARNING)
+                << "profilerPushUserCorrelationId called but not "
+                   "implemented by plugin";
             return 0;
           };
     }
@@ -445,8 +448,9 @@ private:
                    "implemented, using default stub";
       profiler_.profilerPopUserCorrelationId =
           [](struct KinetoPlugin_ProfilerPopUserCorrelationId_Params *) {
-            LOG(WARNING) << "profilerPopUserCorrelationId called but not "
-                            "implemented by plugin";
+            LOG_FIRST_N(1, WARNING)
+                << "profilerPopUserCorrelationId called but not "
+                   "implemented by plugin";
             return 0;
           };
     }

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "RoctracerActivity.h"
+#include "RocprofActivity.h"
 
 #include <fmt/format.h>
 #include <stddef.h>
@@ -27,43 +27,39 @@ thread_local std::unordered_map<int, std::string> correlationToBlock;
 thread_local std::unordered_map<int, size_t> correlationToSize;
 } // namespace
 
-const char* getGpuActivityKindString(uint32_t kind) {
-  switch (kind) {
-    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
-      return "DtoH";
-    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
-      return "HtoD";
-    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
-      return "DtoD";
-    case HIP_OP_COPY_KIND_FILL_BUFFER_:
-      return "Device";
-    case HIP_OP_DISPATCH_KIND_KERNEL_:
-      return "Dispatch Kernel";
-    case HIP_OP_DISPATCH_KIND_TASK_:
-      return "Dispatch Task";
-    default:
-      break;
+const char* getGpuActivityKindString(uint32_t domain, uint32_t op) {
+  if (domain == ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH)
+    return "Dispatch Kernel";
+  else if (domain == ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY) {
+    switch (op) {
+      case ROCPROFILER_MEMORY_COPY_HOST_TO_HOST:
+        return "HtoH";
+      case ROCPROFILER_MEMORY_COPY_HOST_TO_DEVICE:
+        return "HtoD";
+      case ROCPROFILER_MEMORY_COPY_DEVICE_TO_HOST:
+        return "DtoH";
+      case ROCPROFILER_MEMORY_COPY_DEVICE_TO_DEVICE:
+        return "DtoD";
+    }
   }
   return "<unknown>";
 }
 
 void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
   switch (kind) {
-    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+    case ROCPROFILER_MEMORY_COPY_HOST_TO_HOST:
+      src = "Host";
+      dst = "Host";
+      break;
+    case ROCPROFILER_MEMORY_COPY_DEVICE_TO_HOST:
       src = "Device";
       dst = "Host";
       break;
-    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+    case ROCPROFILER_MEMORY_COPY_HOST_TO_DEVICE:
       src = "Host";
       dst = "Device";
       break;
-    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+    case ROCPROFILER_MEMORY_COPY_DEVICE_TO_DEVICE:
       src = "Device";
       dst = "Device";
       break;
@@ -78,20 +74,29 @@ void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
 
 inline const std::string GpuActivity::name() const {
   if (type_ == ActivityType::CONCURRENT_KERNEL) {
-    const char* name = roctracer_op_string(raw().domain, raw().op, raw().kind);
+    auto op = raw().op;
+    auto domain = raw().domain;
+    std::string opString = RocprofLogger::opString(
+        static_cast<rocprofiler_buffer_tracing_kind_t>(domain), op);
+    const char* name = opString.c_str();
     return demangle(
         raw().kernelName.length() > 0 ? raw().kernelName : std::string(name));
   } else if (type_ == ActivityType::GPU_MEMSET) {
-    return fmt::format("Memset ({})", getGpuActivityKindString(raw().kind));
+    return fmt::format(
+        "Memset ({})", getGpuActivityKindString(raw().domain, raw().op));
   } else if (type_ == ActivityType::GPU_MEMCPY) {
     std::string src = "";
     std::string dst = "";
-    getMemcpySrcDstString(raw().kind, src, dst);
+    getMemcpySrcDstString(raw().op, src, dst);
     return fmt::format(
-        "Memcpy {} ({} -> {})", getGpuActivityKindString(raw().kind), src, dst);
+        "Memcpy {} ({} -> {})",
+        getGpuActivityKindString(raw().domain, raw().op),
+        src,
+        dst);
   } else {
     return "";
   }
+  return "";
 }
 
 inline void GpuActivity::log(ActivityLogger& logger) const {
@@ -115,7 +120,7 @@ inline const std::string GpuActivity::metadataJson() const {
       "correlation": {}, "kind": "{}",
       "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
       gpuActivity.device, gpuActivity.queue,
-      gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
+      gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       size, bandwidth_gib);
   } 
   
@@ -126,14 +131,14 @@ inline const std::string GpuActivity::metadataJson() const {
       "correlation": {}, "kind": "{}",
       "grid": {}, "block": {})JSON",
       gpuActivity.device, gpuActivity.queue,
-      gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
+      gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       correlationToGrid[gpuActivity.id], correlationToBlock[gpuActivity.id]);
   } else {
     return fmt::format(R"JSON(
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}")JSON",
       gpuActivity.device, gpuActivity.queue,
-      gpuActivity.id, getGpuActivityKindString(gpuActivity.kind));
+      gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op));
   }
   // clang-format on
 }
@@ -142,16 +147,18 @@ inline const std::string GpuActivity::metadataJson() const {
 
 template <class T>
 inline bool RuntimeActivity<T>::flowStart() const {
-  bool should_correlate = raw().cid == HIP_API_ID_hipLaunchKernel ||
-      raw().cid == HIP_API_ID_hipExtLaunchKernel ||
-      raw().cid == HIP_API_ID_hipLaunchCooperativeKernel ||
-      raw().cid == HIP_API_ID_hipHccModuleLaunchKernel ||
-      raw().cid == HIP_API_ID_hipModuleLaunchKernel ||
-      raw().cid == HIP_API_ID_hipExtModuleLaunchKernel ||
-      raw().cid == HIP_API_ID_hipMalloc || raw().cid == HIP_API_ID_hipFree ||
-      raw().cid == HIP_API_ID_hipMemcpy ||
-      raw().cid == HIP_API_ID_hipMemcpyAsync ||
-      raw().cid == HIP_API_ID_hipMemcpyWithStream;
+  bool should_correlate =
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchKernel ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipExtLaunchKernel ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchCooperativeKernel ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipHccModuleLaunchKernel ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipModuleLaunchKernel ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipExtModuleLaunchKernel ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMalloc ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipFree ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMemcpy ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMemcpyAsync ||
+      raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMemcpyWithStream;
   return should_correlate;
 }
 
@@ -227,7 +234,7 @@ inline const std::string RuntimeActivity<rocprofMallocRow>::metadataJson()
     const {
   correlationToSize[raw().id] = raw().size;
   std::string size = "";
-  if (raw().cid == HIP_API_ID_hipMalloc) {
+  if (raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMalloc) {
     size = fmt::format(
         R"JSON(
       "bytes": {}, )JSON",

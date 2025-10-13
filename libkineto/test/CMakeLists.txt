@@ -79,17 +79,6 @@ target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
     $<BUILD_INTERFACE:fmt::fmt-header-only>)
 gtest_discover_tests(CuptiRangeProfilerConfigTest)
 
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    # XpuptiScopeProfilerConfigTest
-    add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
-    target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE
-        gtest_main
-        kineto_base kineto_api
-        $<BUILD_INTERFACE:fmt::fmt-header-only>
-        "${XPU_xpupti_LIBRARY}")
-    gtest_discover_tests(XpuptiScopeProfilerConfigTest)
-endif()
-
 # CuptiRangeProfilerTest
 # add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
 # target_link_libraries(CuptiRangeProfilerTest PRIVATE
@@ -115,6 +104,26 @@ target_link_libraries(EventProfilerTest PRIVATE
     gmock
     kineto_base kineto_api)
 gtest_discover_tests(EventProfilerTest)
+endif()
+
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    # XpuptiScopeProfilerConfigTest
+    add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
+    target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        $<BUILD_INTERFACE:fmt::fmt-header-only>
+        "${XPU_xpupti_LIBRARY}")
+    gtest_discover_tests(XpuptiScopeProfilerConfigTest)
+
+    # XpuptiScopeProfilerTest
+    add_executable(XpuptiScopeProfilerTest XpuptiScopeProfilerTest.cpp)
+    target_link_libraries(XpuptiScopeProfilerTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        $<BUILD_INTERFACE:fmt::fmt-header-only>
+        "${XPU_xpupti_LIBRARY}")
+    gtest_discover_tests(XpuptiScopeProfilerTest)
 endif()
 
 # LoggerObserverTest

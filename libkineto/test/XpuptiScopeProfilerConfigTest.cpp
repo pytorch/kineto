@@ -9,23 +9,22 @@
 #include "src/plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #include "include/Config.h"
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <fmt/ranges.h>
-#include <gtest/gtest.h>
-#include <time.h>
-#include <chrono>
 
-using namespace KINETO_NAMESPACE;
+#include <gtest/gtest.h>
+
+namespace KN = KINETO_NAMESPACE;
 
 class XpuptiScopeProfilerConfigTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    XpuptiScopeProfilerConfig::registerFactory();
+    KN::XpuptiScopeProfilerConfig::registerFactory();
   }
 };
 
 TEST_F(XpuptiScopeProfilerConfigTest, ConfigureProfiler) {
-  Config cfg;
+  KN::Config cfg;
   std::vector<std::string> metrics = {
       "metric1",
       "metric2",
@@ -38,18 +37,18 @@ TEST_F(XpuptiScopeProfilerConfigTest, ConfigureProfiler) {
   EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_ENABLE_PER_KERNEL = true"));
   EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_MAX_SCOPES = 314159"));
 
-  const XpuptiScopeProfilerConfig& xpupti_cfg =
-      XpuptiScopeProfilerConfig::get(cfg);
+  const KN::XpuptiScopeProfilerConfig& xpupti_cfg =
+      KN::XpuptiScopeProfilerConfig::get(cfg);
 
   EXPECT_EQ(xpupti_cfg.activitiesXpuptiMetrics(), metrics);
   EXPECT_EQ(xpupti_cfg.xpuptiProfilerPerKernel(), true);
   EXPECT_EQ(xpupti_cfg.xpuptiProfilerMaxScopes(), 314159);
 }
 
-TEST_F(XpuptiScopeProfilerConfigTest, RangesDefaults) {
-  Config cfg, cfg_auto;
+TEST_F(XpuptiScopeProfilerConfigTest, ScopesDefaults) {
+  KN::Config cfg, cfg_auto;
 
-  // do not set max ranges in config, check defaults are sane
+  // do not set max scopes in config, check defaults are sane
   EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_METRICS = metric1"));
   EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_ENABLE_PER_KERNEL = false"));
 
@@ -60,12 +59,13 @@ TEST_F(XpuptiScopeProfilerConfigTest, RangesDefaults) {
 
   cfg_auto.setClientDefaults();
 
-  int user_ranges, auto_ranges;
+  int user_scopes, auto_scopes;
 
-  user_ranges = XpuptiScopeProfilerConfig::get(cfg).xpuptiProfilerMaxScopes();
-  auto_ranges =
-      XpuptiScopeProfilerConfig::get(cfg_auto).xpuptiProfilerMaxScopes();
+  user_scopes =
+      KN::XpuptiScopeProfilerConfig::get(cfg).xpuptiProfilerMaxScopes();
+  auto_scopes =
+      KN::XpuptiScopeProfilerConfig::get(cfg_auto).xpuptiProfilerMaxScopes();
 
-  EXPECT_EQ(user_ranges, 10)
-  EXPECT_EQ(auto_ranges, 1500)
+  EXPECT_EQ(user_scopes, 10);
+  EXPECT_EQ(auto_scopes, 1500);
 }

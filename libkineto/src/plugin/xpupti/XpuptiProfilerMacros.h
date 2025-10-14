@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <pti/pti_version.h>
+
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;

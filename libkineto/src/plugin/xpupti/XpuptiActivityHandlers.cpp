@@ -48,18 +48,22 @@ void XpuptiActivityProfilerSession::checkTimestampOrder(
 
 inline bool XpuptiActivityProfilerSession::outOfScope(
     const ITraceActivity* act) {
-  bool out_of_scope = act->timestamp() < captureWindowStartTime_ ||
-      (act->timestamp() + act->duration()) > captureWindowEndTime_;
-  if (out_of_scope) {
-    std::string err_msg;
-    err_msg += "TraceActivity outside of profiling window: " + act->name();
-    err_msg += " (" + std::to_string(act->timestamp());
-    err_msg += " < " + std::to_string(captureWindowStartTime_);
-    err_msg += " or " + std::to_string(act->timestamp() + act->duration());
-    err_msg += " > " + std::to_string(captureWindowEndTime_);
-    errors_.push_back(err_msg);
+  bool scopeEnabled = captureWindowStartTime_ || captureWindowEndTime_;
+  if (scopeEnabled) {
+    bool outOfScope = act->timestamp() < captureWindowStartTime_ ||
+        (act->timestamp() + act->duration()) > captureWindowEndTime_;
+    if (outOfScope) {
+      std::string err_msg;
+      err_msg += "TraceActivity outside of profiling window: " + act->name();
+      err_msg += " (" + std::to_string(act->timestamp());
+      err_msg += " < " + std::to_string(captureWindowStartTime_);
+      err_msg += " or " + std::to_string(act->timestamp() + act->duration());
+      err_msg += " > " + std::to_string(captureWindowEndTime_);
+      errors_.push_back(err_msg);
+    }
+    return outOfScope;
   }
-  return out_of_scope;
+  return false;
 }
 
 const ITraceActivity* XpuptiActivityProfilerSession::linkedActivity(

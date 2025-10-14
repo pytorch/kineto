@@ -117,7 +117,7 @@ if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
     gtest_discover_tests(XpuptiScopeProfilerConfigTest)
 
     # XpuptiScopeProfilerTest
-    add_executable(XpuptiScopeProfilerTest XpuptiScopeProfilerTest.cpp)
+    add_executable(XpuptiScopeProfilerTest XpuptiScopeProfilerTest.cpp XpuptiScopeProfilerCompute.cpp)
     target_link_libraries(XpuptiScopeProfilerTest PRIVATE
         gtest_main
         kineto_base kineto_api

@@ -229,6 +229,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
   }
 
   if (!scopeHandleOpt_) {
+    scopeHandleOpt_.emplace();
     XPUPTI_CALL(ptiMetricsScopeEnable(&scopeHandleOpt_.value()));
 
     const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
@@ -245,6 +246,11 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
     pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
         ? PTI_METRICS_SCOPE_AUTO_KERNEL
         : PTI_METRICS_SCOPE_USER;
+
+    if (collectionMode == PTI_METRICS_SCOPE_USER) {
+      throw std::runtime_error(
+          "XPUPTI_PROFILER_ENABLE_PER_KERNEL has to be set to 1. Other variants are currently not supported.");
+    }
 
     XPUPTI_CALL(ptiMetricsScopeConfigure(
         *scopeHandleOpt_,
@@ -342,7 +348,7 @@ bool XpuptiActivityApi::enableXpuptiActivities(
         scopeProfilerEnabled = true;
 #else
         throw std::runtime_error(
-            "PTI version required to use scope profiler is at least 0.14");
+            "Intel® oneAPI version required to use scope profiler is at least 2025.2.2");
 #endif
         break;
 
@@ -398,22 +404,6 @@ void XpuptiActivityApi::disablePtiActivities(
 }
 
 #if PTI_VERSION_AT_LEAST(0, 14)
-static auto safeCallPtiMetricScopeCalculateMetrics(
-    pti_scope_collection_handle_t scopeHandle,
-    void* bufferData,
-    size_t& recordsCount) {
-  pti_metrics_scope_record_t* records = nullptr;
-  XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
-      scopeHandle, bufferData, &records, &recordsCount));
-
-  auto recordsDeleter = [recordsCount](pti_metrics_scope_record_t* records) {
-    ptiMetricScopeFreeRecords(records, recordsCount);
-  };
-
-  return std::unique_ptr<pti_metrics_scope_record_t, decltype(recordsDeleter)>(
-      records, recordsDeleter);
-}
-
 static auto safeCallMetricScopeGetDisplayInfo(
     pti_scope_collection_handle_t scopeHandle,
     pti_metrics_scope_record_t* record,
@@ -426,6 +416,10 @@ static auto safeCallMetricScopeGetDisplayInfo(
       pti_metric_scope_display_info_t,
       decltype(&ptiMetricScopeFreeDisplayInfo)>(
       displayInfo, ptiMetricScopeFreeDisplayInfo);
+}
+
+static size_t IntDivRoundUp(size_t a, size_t b) {
+  return (a + b - 1) / b;
 }
 
 void XpuptiActivityApi::processScopeTrace(
@@ -453,18 +447,33 @@ void XpuptiActivityApi::processScopeTrace(
       XPUPTI_CALL(ptiMetricScopeGetCollectedMetrics(
           *scopeHandleOpt_, bufferData, &metricsCountInBuffer));
 
+      size_t requiredBufferSize = 0;
       size_t recordsCount = 0;
-      auto records = safeCallPtiMetricScopeCalculateMetrics(
-          *scopeHandleOpt_, bufferData, recordsCount);
+      XPUPTI_CALL(ptiMetricScopeQueryRecordsBufferSize(
+          *scopeHandleOpt_, bufferData, &requiredBufferSize, &recordsCount));
 
-      for (size_t recordId = 0; recordId < recordsCount; ++recordId) {
-        auto record = records.get() + recordId;
+      if (recordsCount > 0) {
+        auto userBuffer =
+            std::make_unique<pti_metrics_scope_record_t[]>(IntDivRoundUp(
+                requiredBufferSize, sizeof(pti_metrics_scope_record_t)));
 
-        uint32_t infoCount = 0;
-        auto displayInfo = safeCallMetricScopeGetDisplayInfo(
-            *scopeHandleOpt_, record, infoCount);
+        size_t actualRecordsCount = 0;
+        XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
+            *scopeHandleOpt_,
+            bufferData,
+            userBuffer.get(),
+            requiredBufferSize,
+            &actualRecordsCount));
 
-        handler(record, displayInfo.get(), infoCount);
+        for (size_t recordId = 0; recordId < actualRecordsCount; ++recordId) {
+          auto record = userBuffer.get() + recordId;
+
+          uint32_t infoCount = 0;
+          auto displayInfo = safeCallMetricScopeGetDisplayInfo(
+              *scopeHandleOpt_, record, infoCount);
+
+          handler(record, displayInfo.get(), infoCount);
+        }
       }
     }
   }

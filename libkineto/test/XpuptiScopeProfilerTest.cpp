@@ -49,6 +49,18 @@ class TestActivityLogger : public KN::ActivityLogger {
       override {}
 };
 
+std::ostream& operator<<(std::ostream& os, const KN::TraceSpan& span) {
+#define PRINT(V) os << std::endl << "      " #V " = " << span.V;
+  PRINT(startTime)
+  PRINT(endTime)
+  PRINT(opCount)
+  PRINT(iteration)
+  PRINT(name)
+  PRINT(prefix)
+#undef PRINT
+  return os;
+}
+
 void RunTest(std::string_view perKernel, unsigned maxScopes) {
   KN::Config cfg;
 
@@ -56,7 +68,7 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       "GpuTime",
       "GpuCoreClocks",
       "AvgGpuCoreFrequencyMHz",
-      "XVE_BUSY",
+      "XVE_INST_EXECUTED_ALU0_ALL_UTILIZATION",
       "XVE_ACTIVE",
       "XVE_STALL"};
 
@@ -79,17 +91,59 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       KN::ActivityType::XPU_SCOPE_PROFILER,
       KN::ActivityType::OVERHEAD};
 
-  auto pSession = profiler.configure(activities, cfg);
+#if PTI_VERSION_AT_LEAST(0, 14)
+  if (perKernel == "false") {
+    EXPECT_THROW(profiler.configure(activities, cfg), std::runtime_error);
+  } else {
+    auto pSession = profiler.configure(activities, cfg);
 
-  pSession->start();
+    pSession->start();
 
-  pSession->stop();
+    void ComputeOnXpu(unsigned size, unsigned repeatCount);
+    ComputeOnXpu(1024, 5);
 
-  TestActivityLogger logger;
-  pSession->processTrace(logger);
+    pSession->stop();
 
-  EXPECT_TRUE(pSession->errors().empty())
-      << fmt::format("{}", fmt::join(pSession->errors(), ","));
+    TestActivityLogger logger;
+    pSession->processTrace(logger);
+
+    EXPECT_TRUE(pSession->errors().empty())
+        << fmt::format("{}", fmt::join(pSession->errors(), ","));
+
+    auto pBuffer = pSession->getTraceBuffer();
+
+    std::cout << "span = " << pBuffer->span << std::endl;
+    std::cout << "gpuOpCount = " << pBuffer->gpuOpCount << std::endl;
+    std::cout << "activities.size = " << pBuffer->activities.size()
+              << std::endl;
+    for (auto&& pActivity : pBuffer->activities) {
+#define PRINT(A) std::cout << #A " = " << pActivity->A() << std::endl;
+      PRINT(deviceId)
+      PRINT(resourceId)
+      PRINT(getThreadId)
+      PRINT(timestamp)
+      PRINT(duration)
+      PRINT(correlationId)
+      PRINT(linkedActivity)
+      PRINT(flowType)
+      PRINT(flowId)
+      PRINT(flowStart)
+      PRINT(name)
+      PRINT(metadataJson)
+#undef PRINT
+
+      std::cout << "type = " << toString(pActivity->type()) << std::endl;
+
+      if (auto pSpan = pActivity->traceSpan()) {
+        std::cout << "traceSpan = " << *pSpan << std::endl;
+      }
+
+      std::cout << "-----" << std::endl;
+    }
+  }
+#else
+  EXPECT_THROW(profiler.configure(activities, cfg), std::runtime_error);
+#endif
 }
 
 TEST_F(XpuptiScopeProfilerTest, PerKernelScope) {

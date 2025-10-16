@@ -326,67 +326,9 @@ static std::string PtiValueToStr(
   }
 }
 
-namespace {
-
-struct DisplayInfoToStrIterator {
-  DisplayInfoToStrIterator(const pti_metric_scope_display_info_t* displayInfo)
-      : displayInfo_(displayInfo) {}
-
-  using iterator_category = std::forward_iterator_tag;
-  using difference_type = std::ptrdiff_t;
-  using value_type = std::string;
-  using pointer = value_type*;
-  using reference = value_type&;
-
-  bool operator==(const DisplayInfoToStrIterator& rhs) const {
-    return displayInfo_ == rhs.displayInfo_;
-  }
-
-  bool operator!=(const DisplayInfoToStrIterator& rhs) const {
-    return !(*this == rhs);
-  }
-
-  std::string operator*() const {
-    std::string s = std::string(displayInfo_->_name) + ": ";
-    s += PtiValueToStr(displayInfo_->_value_type, displayInfo_->_value);
-
-    if (displayInfo_->_units) {
-      s += " ";
-      s += displayInfo_->_units;
-    }
-
-    return s;
-  }
-
-  DisplayInfoToStrIterator& operator++() {
-    ++displayInfo_;
-    return *this;
-  }
-
-  const pti_metric_scope_display_info_t* displayInfo_ = nullptr;
-};
-
-struct DisplayInfoToStr {
-  DisplayInfoToStr(const pti_metric_scope_display_info_t* v, size_t s)
-      : begin_(v), end_(v + s) {}
-
-  DisplayInfoToStrIterator begin() const {
-    return DisplayInfoToStrIterator(begin_);
-  }
-  DisplayInfoToStrIterator end() const {
-    return DisplayInfoToStrIterator(end_);
-  }
-
-  const pti_metric_scope_display_info_t* begin_ = nullptr;
-  const pti_metric_scope_display_info_t* end_ = nullptr;
-};
-
-} // namespace
-
 void XpuptiActivityProfilerSession::handleScopeRecord(
     const pti_metrics_scope_record_t* record,
-    const pti_metric_scope_display_info_t* displayInfo,
-    uint32_t infoCount,
+    const pti_metrics_scope_buffer_metadata_t& metadata,
     ActivityLogger& logger) {
   traceBuffer_.emplace_activity(
       traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "Scope");
@@ -394,11 +336,19 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
   auto& scope_activity = traceBuffer_.activities.back();
   scope_activity->addMetadata("kernel id", record->_kernel_id);
   scope_activity->addMetadata("queue", record->_queue);
-  scope_activity->addMetadata("name", record->_name);
-  scope_activity->addMetadataQuoted(
-      "metrics",
-      fmt::format(
-          "{}", fmt::join(DisplayInfoToStr(displayInfo, infoCount), ", ")));
+  if (record->_name) {
+    scope_activity->addMetadata("name", record->_name);
+  }
+  for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
+    const auto& units = metadata._metric_units[m];
+    scope_activity->addMetadataQuoted(
+        metadata._metric_names[m],
+        fmt::format(
+            "{}{}{}",
+            PtiValueToStr(metadata._value_types[m], record->_metrics_values[m]),
+            units ? " " : "",
+            units ? units : ""));
+  }
 
   if (!outOfScope(scope_activity.get())) {
     scope_activity->log(logger);

@@ -404,20 +404,6 @@ void XpuptiActivityApi::disablePtiActivities(
 }
 
 #if PTI_VERSION_AT_LEAST(0, 14)
-static auto safeCallMetricScopeGetDisplayInfo(
-    pti_scope_collection_handle_t scopeHandle,
-    pti_metrics_scope_record_t* record,
-    uint32_t& infoCount) {
-  pti_metric_scope_display_info_t* displayInfo = nullptr;
-  XPUPTI_CALL(ptiMetricScopeGetDisplayInfo(
-      scopeHandle, record, &displayInfo, &infoCount));
-
-  return std::unique_ptr<
-      pti_metric_scope_display_info_t,
-      decltype(&ptiMetricScopeFreeDisplayInfo)>(
-      displayInfo, ptiMetricScopeFreeDisplayInfo);
-}
-
 static size_t IntDivRoundUp(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
@@ -425,10 +411,12 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
 void XpuptiActivityApi::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
-        const pti_metric_scope_display_info_t*,
-        uint32_t)> handler) {
+        const pti_metrics_scope_buffer_metadata_t& metadata)> handler) {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
+    pti_metrics_scope_buffer_metadata_t metadata;
+    XPUPTI_CALL(ptiMetricsScopeGetBufferMetadata(*scopeHandleOpt_, &metadata));
+
     uint64_t buffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
         *scopeHandleOpt_, &buffersCount));
@@ -467,12 +455,7 @@ void XpuptiActivityApi::processScopeTrace(
 
         for (size_t recordId = 0; recordId < actualRecordsCount; ++recordId) {
           auto record = userBuffer.get() + recordId;
-
-          uint32_t infoCount = 0;
-          auto displayInfo = safeCallMetricScopeGetDisplayInfo(
-              *scopeHandleOpt_, record, infoCount);
-
-          handler(record, displayInfo.get(), infoCount);
+          handler(record, metadata);
         }
       }
     }

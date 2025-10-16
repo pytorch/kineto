@@ -63,7 +63,7 @@ static float RunAndCheck(
     auto c_acc = c_buf.get_access<sycl::access::mode::write>(cgh);
 
     // To be enabled
-    if (false) {
+    if (true) {
       cgh.parallel_for<class __GEMM>(
           sycl::range<2>(size, size), [=](sycl::id<2> id) {
             auto a_acc_ptr = a_acc.get_multi_ptr<sycl::access::decorated::no>();

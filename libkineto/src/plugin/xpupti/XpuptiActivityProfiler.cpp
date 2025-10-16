@@ -115,9 +115,8 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
     xpti_.processScopeTrace(
         [this, &logger](
             const pti_metrics_scope_record_t* record,
-            const pti_metric_scope_display_info_t* displayInfo,
-            uint32_t infoCount) -> void {
-          handleScopeRecord(record, displayInfo, infoCount, logger);
+            const pti_metrics_scope_buffer_metadata_t& metadata) -> void {
+          handleScopeRecord(record, metadata, logger);
         });
 #endif
   }

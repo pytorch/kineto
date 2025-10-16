@@ -61,10 +61,10 @@ class XpuptiActivityApi {
       std::function<void(const pti_view_record_base*)> handler);
 
 #if PTI_VERSION_AT_LEAST(0, 14)
-  void processScopeTrace(std::function<void(
-                             const pti_metrics_scope_record_t*,
-                             const pti_metric_scope_display_info_t*,
-                             uint32_t)> handler);
+  void processScopeTrace(
+      std::function<void(
+          const pti_metrics_scope_record_t*,
+          const pti_metrics_scope_buffer_metadata_t& metadata)> handler);
 #endif
 
  private:

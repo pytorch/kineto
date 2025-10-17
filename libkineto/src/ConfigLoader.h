@@ -74,17 +74,6 @@ class ConfigLoader {
     return true;
   }
 
-  void initBaseConfig() {
-    bool init = false;
-    {
-      std::lock_guard<std::mutex> lock(configLock_);
-      init = !config_ || config_->source().empty();
-    }
-    if (init) {
-      updateBaseConfig();
-    }
-  }
-
   inline std::unique_ptr<Config> getConfigCopy() {
     std::lock_guard<std::mutex> lock(configLock_);
     return config_->clone();

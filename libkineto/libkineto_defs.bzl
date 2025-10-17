@@ -38,6 +38,7 @@ def get_libkineto_xpupti_srcs(with_api = True):
         "src/plugin/xpupti/XpuptiActivityApi.cpp",
         "src/plugin/xpupti/XpuptiActivityProfiler.cpp",
         "src/plugin/xpupti/XpuptiActivityHandlers.cpp",
+        "src/plugin/xpupti/XpuptiScopeProfilerConfig.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
 def get_libkineto_aiupti_srcs(with_api = True):

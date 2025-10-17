@@ -7,13 +7,32 @@
 include(GoogleTest)
 set(CMAKE_CXX_STANDARD 17)
 
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR))
+        include(FindSYCLToolkit.cmake)
+        if(NOT SYCLTOOLKIT_FOUND)
+            set(LIBKINETO_NOXPUPTI ON CACHE STRING "" FORCE PARENT_SCOPE)
+            message(WARNING "XPU PTI has not built because ${SYCL_NOT_FOUND_MESSAGE}")
+        endif()
+    endif()
+endif()
+
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    set(XPU_xpupti_LIBRARY ${SYCL_LIBRARY})
+    list(APPEND XPU_xpupti_LIBRARY ${PTI_LIBRARY})
+    set(XPU_xpupti_LIBRARY ${XPU_xpupti_LIBRARY} PARENT_SCOPE)
+else()
+    set(XPU_xpupti_LIBRARY "")
+endif()
+
 include_directories(${LIBKINETO_DIR})
 link_libraries(fmt::fmt-header-only)
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
 target_link_libraries(ConfigTest PRIVATE
     gtest_main
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    ${XPU_xpupti_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
 if(NOT LIBKINETO_NOCUPTI)
@@ -87,18 +106,50 @@ target_link_libraries(EventProfilerTest PRIVATE
 gtest_discover_tests(EventProfilerTest)
 endif()
 
+if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-fsycl" has_sycl)
+
+    if (NOT has_sycl)
+        message(WARNING "${PROJECT_NAME} requires a sycl compatible compiler")
+        return()
+    endif()
+
+    # XpuptiScopeProfilerConfigTest
+    add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
+    target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        $<BUILD_INTERFACE:fmt::fmt-header-only>
+        "${XPU_xpupti_LIBRARY}")
+    gtest_discover_tests(XpuptiScopeProfilerConfigTest)
+
+    # XpuptiScopeProfilerTest
+    add_executable(XpuptiScopeProfilerTest XpuptiScopeProfilerTest.cpp XpuptiScopeProfilerCompute.cpp)
+    target_compile_options(XpuptiScopeProfilerTest PUBLIC -fsycl)
+    target_link_options(XpuptiScopeProfilerTest PUBLIC -fsycl)
+    target_link_libraries(XpuptiScopeProfilerTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        $<BUILD_INTERFACE:fmt::fmt-header-only>
+        "${XPU_xpupti_LIBRARY}")
+    gtest_discover_tests(XpuptiScopeProfilerTest)
+endif()
+
 # LoggerObserverTest
 add_executable(LoggerObserverTest LoggerObserverTest.cpp)
 target_link_libraries(LoggerObserverTest PRIVATE
     gtest_main
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    ${XPU_xpupti_LIBRARY})
 gtest_discover_tests(LoggerObserverTest)
 
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_link_libraries(PidInfoTest PRIVATE
     gtest_main
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    ${XPU_xpupti_LIBRARY})
 gtest_discover_tests(PidInfoTest)
 
 # CuptiProfilerApiTest

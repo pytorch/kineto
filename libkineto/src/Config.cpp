@@ -442,7 +442,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kRequestGroupTraceID)) {
     requestGroupTraceID_ = val;
   } else if (!name.compare(kRoctracerSetMaxEvents)) {
-    maxEvents_ = toInt32(val);
+    maxEvents_ = toInt64(val);
   }
 
   // TODO: Deprecate Client Interface

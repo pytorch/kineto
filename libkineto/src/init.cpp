@@ -43,8 +43,12 @@ static bool initialized = false;
 
 static void initProfilers() {
   if (!initialized) {
+    // Caution: `initProfilerIfRegistered` spawns the `updateConfigThread`, so
+    // either:
+    // 1. Ensure nothing the main thread does not do anything which could race
+    // with the `updateConfigThread` (current invariant)
+    // 2. Guard the raceable data appropriately
     libkineto::api().initProfilerIfRegistered();
-    libkineto::api().configLoader().initBaseConfig();
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }

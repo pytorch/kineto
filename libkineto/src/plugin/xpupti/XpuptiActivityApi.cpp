@@ -404,6 +404,20 @@ void XpuptiActivityApi::disablePtiActivities(
 }
 
 #if PTI_VERSION_AT_LEAST(0, 14)
+struct safe_pti_metrics_scope_buffer_metadata_t {
+  safe_pti_metrics_scope_buffer_metadata_t(
+      pti_scope_collection_handle_t scope_collection_handle) {
+    XPUPTI_CALL(
+        ptiMetricsScopeGetBufferMetadata(scope_collection_handle, &metadata));
+  }
+
+  ~safe_pti_metrics_scope_buffer_metadata_t() {
+    XPUPTI_CALL(ptiMetricsScopeFreeBufferMetadata(&metadata));
+  }
+
+  pti_metrics_scope_buffer_metadata_t metadata;
+};
+
 static size_t IntDivRoundUp(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
@@ -414,8 +428,7 @@ void XpuptiActivityApi::processScopeTrace(
         const pti_metrics_scope_buffer_metadata_t& metadata)> handler) {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
-    pti_metrics_scope_buffer_metadata_t metadata;
-    XPUPTI_CALL(ptiMetricsScopeGetBufferMetadata(*scopeHandleOpt_, &metadata));
+    safe_pti_metrics_scope_buffer_metadata_t safe_metadata(*scopeHandleOpt_);
 
     uint64_t buffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
@@ -427,7 +440,9 @@ void XpuptiActivityApi::processScopeTrace(
       XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
           *scopeHandleOpt_, bufferId, &bufferData, &actualBufferSize));
 
-      pti_metrics_scope_buffer_properties_t bufferProps;
+      pti_metrics_scope_record_buffer_properties_t bufferProps;
+      bufferProps._struct_size =
+          sizeof(pti_metrics_scope_record_buffer_properties_t);
       XPUPTI_CALL(ptiMetricsScopeGetBufferProperties(
           *scopeHandleOpt_, bufferData, &bufferProps));
 
@@ -455,7 +470,7 @@ void XpuptiActivityApi::processScopeTrace(
 
         for (size_t recordId = 0; recordId < actualRecordsCount; ++recordId) {
           auto record = userBuffer.get() + recordId;
-          handler(record, metadata);
+          handler(record, safe_metadata.metadata);
         }
       }
     }

@@ -107,13 +107,13 @@ gtest_discover_tests(EventProfilerTest)
 endif()
 
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    include(CheckCXXCompilerFlag)
-    check_cxx_compiler_flag("-fsycl" has_sycl)
+    #include(CheckCXXCompilerFlag)
+    #check_cxx_compiler_flag("-fsycl" has_sycl)
 
-    if (NOT has_sycl)
-        message(WARNING "${PROJECT_NAME} requires a sycl compatible compiler")
-        return()
-    endif()
+    #if (NOT has_sycl)
+        #message(WARNING "${PROJECT_NAME} requires a sycl compatible compiler")
+        #return()
+    #endif()
 
     # XpuptiScopeProfilerConfigTest
     add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
@@ -126,8 +126,8 @@ if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
 
     # XpuptiScopeProfilerTest
     add_executable(XpuptiScopeProfilerTest XpuptiScopeProfilerTest.cpp XpuptiScopeProfilerCompute.cpp)
-    target_compile_options(XpuptiScopeProfilerTest PUBLIC -fsycl)
-    target_link_options(XpuptiScopeProfilerTest PUBLIC -fsycl)
+    #target_compile_options(XpuptiScopeProfilerTest PUBLIC -fsycl)
+    #target_link_options(XpuptiScopeProfilerTest PUBLIC -fsycl)
     target_link_libraries(XpuptiScopeProfilerTest PRIVATE
         gtest_main
         kineto_base kineto_api

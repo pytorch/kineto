@@ -336,8 +336,8 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
   auto& scope_activity = traceBuffer_.activities.back();
   scope_activity->addMetadata("kernel id", record->_kernel_id);
   scope_activity->addMetadata("queue", record->_queue);
-  if (record->_name) {
-    scope_activity->addMetadata("name", record->_name);
+  if (record->_kernel_name) {
+    scope_activity->addMetadata("kernel name", record->_kernel_name);
   }
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
     const auto& units = metadata._metric_units[m];

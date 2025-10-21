@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 include(GoogleTest)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
     if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR))

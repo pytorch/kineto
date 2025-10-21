@@ -74,7 +74,18 @@ class XpuptiActivityApi {
   bool externalCorrelationEnabled_{false};
 
 #if PTI_VERSION_AT_LEAST(0, 14)
-  std::optional<pti_scope_collection_handle_t> scopeHandleOpt_;
+  struct safe_pti_scope_collection_handle_t {
+    safe_pti_scope_collection_handle_t();
+    ~safe_pti_scope_collection_handle_t();
+
+    operator pti_scope_collection_handle_t() {
+      return handle;
+    }
+
+    pti_scope_collection_handle_t handle;
+  };
+
+  std::optional<safe_pti_scope_collection_handle_t> scopeHandleOpt_;
   std::unique_ptr<pti_device_handle_t[]> devicesHandles_;
 #endif
 

@@ -221,6 +221,18 @@ static void enableSpecifcRuntimeAPIsTracing() {
 }
 #endif
 
+#if PTI_VERSION_AT_LEAST(0, 14)
+XpuptiActivityApi::safe_pti_scope_collection_handle_t::
+    safe_pti_scope_collection_handle_t() {
+  XPUPTI_CALL(ptiMetricsScopeEnable(&handle));
+}
+
+XpuptiActivityApi::safe_pti_scope_collection_handle_t::
+    ~safe_pti_scope_collection_handle_t() {
+  XPUPTI_CALL(ptiMetricsScopeDisable(handle));
+}
+#endif
+
 void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
@@ -228,46 +240,43 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
     throw std::runtime_error("No XPU devices available");
   }
 
-  if (!scopeHandleOpt_) {
-    scopeHandleOpt_.emplace();
-    XPUPTI_CALL(ptiMetricsScopeEnable(&scopeHandleOpt_.value()));
+  scopeHandleOpt_.emplace();
 
-    const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
-    const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
+  const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
+  const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
 
-    std::vector<const char*> activitiesXpuptiMetricsNames;
-    activitiesXpuptiMetricsNames.reserve(activitiesXpuptiMetrics.size());
-    std::transform(
-        activitiesXpuptiMetrics.begin(),
-        activitiesXpuptiMetrics.end(),
-        activitiesXpuptiMetricsNames.begin(),
-        [](const std::string& s) { return s.c_str(); });
+  std::vector<const char*> activitiesXpuptiMetricsNames;
+  activitiesXpuptiMetricsNames.reserve(activitiesXpuptiMetrics.size());
+  std::transform(
+      activitiesXpuptiMetrics.begin(),
+      activitiesXpuptiMetrics.end(),
+      activitiesXpuptiMetricsNames.begin(),
+      [](const std::string& s) { return s.c_str(); });
 
-    pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
-        ? PTI_METRICS_SCOPE_AUTO_KERNEL
-        : PTI_METRICS_SCOPE_USER;
+  pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
+      ? PTI_METRICS_SCOPE_AUTO_KERNEL
+      : PTI_METRICS_SCOPE_USER;
 
-    if (collectionMode == PTI_METRICS_SCOPE_USER) {
-      throw std::runtime_error(
-          "XPUPTI_PROFILER_ENABLE_PER_KERNEL has to be set to 1. Other variants are currently not supported.");
-    }
-
-    XPUPTI_CALL(ptiMetricsScopeConfigure(
-        *scopeHandleOpt_,
-        collectionMode,
-        devicesHandles_.get(),
-        deviceCount_,
-        activitiesXpuptiMetricsNames.data(),
-        activitiesXpuptiMetricsNames.size()));
-
-    uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
-    size_t estimatedBufferSize = 0;
-    XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
-        *scopeHandleOpt_, expectedKernels, &estimatedBufferSize));
-
-    XPUPTI_CALL(ptiMetricsScopeSetCollectionBufferSize(
-        *scopeHandleOpt_, estimatedBufferSize));
+  if (collectionMode == PTI_METRICS_SCOPE_USER) {
+    throw std::runtime_error(
+        "XPUPTI_PROFILER_ENABLE_PER_KERNEL has to be set to 1. Other variants are currently not supported.");
   }
+
+  XPUPTI_CALL(ptiMetricsScopeConfigure(
+      *scopeHandleOpt_,
+      collectionMode,
+      devicesHandles_.get(),
+      deviceCount_,
+      activitiesXpuptiMetricsNames.data(),
+      activitiesXpuptiMetricsNames.size()));
+
+  uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
+  size_t estimatedBufferSize = 0;
+  XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
+      *scopeHandleOpt_, expectedKernels, &estimatedBufferSize));
+
+  XPUPTI_CALL(ptiMetricsScopeSetCollectionBufferSize(
+      *scopeHandleOpt_, estimatedBufferSize));
 #endif
 #endif
 }
@@ -275,10 +284,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 void XpuptiActivityApi::disableScopeProfiler() {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 14)
-  if (scopeHandleOpt_) {
-    XPUPTI_CALL(ptiMetricsScopeDisable(*scopeHandleOpt_));
-    scopeHandleOpt_.reset();
-  }
+  scopeHandleOpt_.reset();
 #endif
 #endif
 }
@@ -404,19 +410,6 @@ void XpuptiActivityApi::disablePtiActivities(
 }
 
 #if PTI_VERSION_AT_LEAST(0, 14)
-struct safe_pti_metrics_scope_buffer_metadata_t {
-  safe_pti_metrics_scope_buffer_metadata_t(
-      pti_scope_collection_handle_t scope_collection_handle) {
-    XPUPTI_CALL(
-        ptiMetricsScopeGetBufferMetadata(scope_collection_handle, &metadata));
-  }
-
-  ~safe_pti_metrics_scope_buffer_metadata_t() {
-    XPUPTI_CALL(ptiMetricsScopeFreeBufferMetadata(&metadata));
-  }
-
-  pti_metrics_scope_buffer_metadata_t metadata;
-};
 
 static size_t IntDivRoundUp(size_t a, size_t b) {
   return (a + b - 1) / b;
@@ -428,49 +421,64 @@ void XpuptiActivityApi::processScopeTrace(
         const pti_metrics_scope_buffer_metadata_t& metadata)> handler) {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
-    safe_pti_metrics_scope_buffer_metadata_t safe_metadata(*scopeHandleOpt_);
+    size_t metadataSize = 0;
+    XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferMetadata(
+        *scopeHandleOpt_, nullptr, &metadataSize));
+
+    auto metadata =
+        std::make_unique<pti_metrics_scope_buffer_metadata_t[]>(IntDivRoundUp(
+            metadataSize, sizeof(pti_metrics_scope_buffer_metadata_t)));
+
+    XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferMetadata(
+        *scopeHandleOpt_, metadata.get(), &metadataSize));
 
     uint64_t buffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
         *scopeHandleOpt_, &buffersCount));
 
     for (uint64_t bufferId = 0; bufferId < buffersCount; ++bufferId) {
-      void* bufferData = nullptr;
-      size_t actualBufferSize = 0;
+      void* collectionBuffer = nullptr;
+      size_t actualCollectionBufferSize = 0;
       XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
-          *scopeHandleOpt_, bufferId, &bufferData, &actualBufferSize));
+          *scopeHandleOpt_,
+          bufferId,
+          &collectionBuffer,
+          &actualCollectionBufferSize));
 
-      pti_metrics_scope_record_buffer_properties_t bufferProps;
-      bufferProps._struct_size =
-          sizeof(pti_metrics_scope_record_buffer_properties_t);
-      XPUPTI_CALL(ptiMetricsScopeGetBufferProperties(
-          *scopeHandleOpt_, bufferData, &bufferProps));
+      pti_metrics_scope_metrics_buffer_properties_t metricsBufferProps;
+      metricsBufferProps._struct_size =
+          sizeof(pti_metrics_scope_metrics_buffer_properties_t);
+      XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferProperties(
+          *scopeHandleOpt_, collectionBuffer, &metricsBufferProps));
 
       size_t metricsCountInBuffer = 0;
-      XPUPTI_CALL(ptiMetricScopeGetCollectedMetrics(
-          *scopeHandleOpt_, bufferData, &metricsCountInBuffer));
+      XPUPTI_CALL(ptiMetricsScopeGetCollectedMetricsCount(
+          *scopeHandleOpt_, collectionBuffer, &metricsCountInBuffer));
 
-      size_t requiredBufferSize = 0;
+      size_t requiredMetricsBufferSize = 0;
       size_t recordsCount = 0;
-      XPUPTI_CALL(ptiMetricScopeQueryRecordsBufferSize(
-          *scopeHandleOpt_, bufferData, &requiredBufferSize, &recordsCount));
+      XPUPTI_CALL(ptiMetricsScopeQueryMetricsBufferSize(
+          *scopeHandleOpt_,
+          collectionBuffer,
+          &requiredMetricsBufferSize,
+          &recordsCount));
 
       if (recordsCount > 0) {
-        auto userBuffer =
+        auto metricsBuffer =
             std::make_unique<pti_metrics_scope_record_t[]>(IntDivRoundUp(
-                requiredBufferSize, sizeof(pti_metrics_scope_record_t)));
+                requiredMetricsBufferSize, sizeof(pti_metrics_scope_record_t)));
 
         size_t actualRecordsCount = 0;
-        XPUPTI_CALL(ptiMetricScopeCalculateMetrics(
+        XPUPTI_CALL(ptiMetricsScopeCalculateMetrics(
             *scopeHandleOpt_,
-            bufferData,
-            userBuffer.get(),
-            requiredBufferSize,
+            collectionBuffer,
+            metricsBuffer.get(),
+            requiredMetricsBufferSize,
             &actualRecordsCount));
 
         for (size_t recordId = 0; recordId < actualRecordsCount; ++recordId) {
-          auto record = userBuffer.get() + recordId;
-          handler(record, safe_metadata.metadata);
+          auto record = metricsBuffer.get() + recordId;
+          handler(record, metadata[0]);
         }
       }
     }

@@ -103,7 +103,7 @@ class XpuptiActivityProfilerSession
 #if PTI_VERSION_AT_LEAST(0, 14)
   void handleScopeRecord(
       const pti_metrics_scope_record_t* record,
-      const pti_metrics_scope_buffer_metadata_t& metadata,
+      const pti_metrics_scope_record_metadata_t& metadata,
       ActivityLogger& logger);
 #endif
 

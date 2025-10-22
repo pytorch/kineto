@@ -245,12 +245,12 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
   const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
   const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
 
-  std::vector<const char*> activitiesXpuptiMetricsNames;
-  activitiesXpuptiMetricsNames.reserve(activitiesXpuptiMetrics.size());
+  std::vector<const char*> metricNames;
+  metricNames.reserve(activitiesXpuptiMetrics.size());
   std::transform(
       activitiesXpuptiMetrics.begin(),
       activitiesXpuptiMetrics.end(),
-      activitiesXpuptiMetricsNames.begin(),
+      metricNames.begin(),
       [](const std::string& s) { return s.c_str(); });
 
   pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
@@ -267,16 +267,16 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
       collectionMode,
       devicesHandles_.get(),
       deviceCount_,
-      activitiesXpuptiMetricsNames.data(),
-      activitiesXpuptiMetricsNames.size()));
+      metricNames.data(),
+      metricNames.size()));
 
   uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
-  size_t estimatedBufferSize = 0;
+  size_t estimatedCollectionBufferSize = 0;
   XPUPTI_CALL(ptiMetricsScopeQueryCollectionBufferSize(
-      *scopeHandleOpt_, expectedKernels, &estimatedBufferSize));
+      *scopeHandleOpt_, expectedKernels, &estimatedCollectionBufferSize));
 
   XPUPTI_CALL(ptiMetricsScopeSetCollectionBufferSize(
-      *scopeHandleOpt_, estimatedBufferSize));
+      *scopeHandleOpt_, estimatedCollectionBufferSize));
 #endif
 #endif
 }
@@ -418,25 +418,26 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
 void XpuptiActivityApi::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
-        const pti_metrics_scope_buffer_metadata_t& metadata)> handler) {
+        const pti_metrics_scope_record_metadata_t& metadata)> handler) {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
-    size_t metadataSize = 0;
+    size_t metadataBufferSize = 0;
     XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferMetadata(
-        *scopeHandleOpt_, nullptr, &metadataSize));
+        *scopeHandleOpt_, nullptr, &metadataBufferSize));
 
-    auto metadata =
-        std::make_unique<pti_metrics_scope_buffer_metadata_t[]>(IntDivRoundUp(
-            metadataSize, sizeof(pti_metrics_scope_buffer_metadata_t)));
+    auto metadataBuffer = std::make_unique<uint8_t[]>(metadataBufferSize);
+    // Metadata is placed in the beginning of metadataBuffer
+    auto metadata = reinterpret_cast<pti_metrics_scope_record_metadata_t*>(
+        metadataBuffer.get());
 
     XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferMetadata(
-        *scopeHandleOpt_, metadata.get(), &metadataSize));
+        *scopeHandleOpt_, metadata, &metadataBufferSize));
 
-    uint64_t buffersCount = 0;
+    uint64_t collectionBuffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
-        *scopeHandleOpt_, &buffersCount));
+        *scopeHandleOpt_, &collectionBuffersCount));
 
-    for (uint64_t bufferId = 0; bufferId < buffersCount; ++bufferId) {
+    for (uint64_t bufferId = 0; bufferId < collectionBuffersCount; ++bufferId) {
       void* collectionBuffer = nullptr;
       size_t actualCollectionBufferSize = 0;
       XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffer(
@@ -445,15 +446,11 @@ void XpuptiActivityApi::processScopeTrace(
           &collectionBuffer,
           &actualCollectionBufferSize));
 
-      pti_metrics_scope_metrics_buffer_properties_t metricsBufferProps;
+      pti_metrics_scope_collection_buffer_properties_t metricsBufferProps;
       metricsBufferProps._struct_size =
-          sizeof(pti_metrics_scope_metrics_buffer_properties_t);
-      XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferProperties(
+          sizeof(pti_metrics_scope_collection_buffer_properties_t);
+      XPUPTI_CALL(ptiMetricsScopeGetCollectionBufferProperties(
           *scopeHandleOpt_, collectionBuffer, &metricsBufferProps));
-
-      size_t metricsCountInBuffer = 0;
-      XPUPTI_CALL(ptiMetricsScopeGetCollectedMetricsCount(
-          *scopeHandleOpt_, collectionBuffer, &metricsCountInBuffer));
 
       size_t requiredMetricsBufferSize = 0;
       size_t recordsCount = 0;

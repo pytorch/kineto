@@ -328,7 +328,7 @@ static std::string PtiValueToStr(
 
 void XpuptiActivityProfilerSession::handleScopeRecord(
     const pti_metrics_scope_record_t* record,
-    const pti_metrics_scope_buffer_metadata_t& metadata,
+    const pti_metrics_scope_record_metadata_t& metadata,
     ActivityLogger& logger) {
   traceBuffer_.emplace_activity(
       traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "Scope");

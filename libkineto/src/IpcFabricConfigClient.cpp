@@ -95,7 +95,7 @@ IpcFabricConfigClient::IpcFabricConfigClient()
 
 // Connect to the Dynolog service through Fabric name `dynolog`
 constexpr const char* kDynoIpcName = "dynolog";
-constexpr int maxIpcRetries = 5;
+constexpr int maxIpcRetries = 9;
 constexpr int kSleepUs = 10000;
 
 int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {

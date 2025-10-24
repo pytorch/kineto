@@ -659,6 +659,7 @@ void RocprofLogger::stopLogging() {
   // Flush buffers
   if (s != nullptr) {
     rocprofiler_flush_buffer(s->buffer);
+    rocprofiler_stop_context(s->context);
   }
 }
 

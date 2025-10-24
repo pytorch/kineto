@@ -22,7 +22,7 @@ using namespace kineto;
 static const std::string kFileName = "/tmp/kineto_playground_trace.json";
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv);
+  const folly::Init init(&argc, &argv);
   warmup();
 
   // Kineto config

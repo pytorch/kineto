@@ -25,7 +25,7 @@ _Pragma("GCC diagnostic pop");
 
 namespace KINETO_NAMESPACE {
 
-static constexpr int kMaxSymbolSize = 1024;
+static constexpr int kMaxSymbolSize = 8192;
 
 std::string demangle(const char* name) {
 #ifndef _MSC_VER

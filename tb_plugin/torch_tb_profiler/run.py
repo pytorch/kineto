@@ -143,12 +143,25 @@ class RunProfile:
         self.pl_module_stats: Optional[List(Stats)] = None
 
     def append_gpu_metrics(self, raw_data: bytes):
-        counter_json_str = ', {}'.format(', '.join(self.gpu_metrics))
+        counter_json_str = '{}'.format(', '.join(self.gpu_metrics))
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
 
-        raw_data_without_tail = raw_data[: raw_data.rfind(b']')]
-        raw_data = b''.join([raw_data_without_tail, counter_json_bytes, b']}'])
-
+        # find '"traceEvents": [' via regex to allow single/double quotes and spaces in between
+        import re
+        pattern = rb"(['\"])traceEvents\1\s*:\s*\["
+        match = re.search(pattern, raw_data)
+        if not match:
+            raise ValueError("Could not find 'traceEvents' key in the raw_data")
+        matched = match.group(0)
+        pos = match.start(0)
+        raw_data = b"".join(
+            [
+                raw_data[: pos + len(matched)],
+                counter_json_bytes,
+                b",",
+                raw_data[pos + len(matched) :],
+            ]
+        )
         import gzip
         raw_data = gzip.compress(raw_data, 1)
         return raw_data

@@ -27,6 +27,10 @@
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
 #endif
+#ifdef HAS_AIUPTI
+#include "plugin/aiupti/AiuptiActivityApi.h"
+#include "plugin/aiupti/AiuptiActivityProfiler.h"
+#endif
 #include "libkineto.h"
 
 #include "Logger.h"
@@ -38,8 +42,12 @@ static bool initialized = false;
 
 static void initProfilers() {
   if (!initialized) {
+    // Caution: `initProfilerIfRegistered` spawns the `updateConfigThread`, so
+    // either:
+    // 1. Ensure nothing the main thread does not do anything which could race
+    // with the `updateConfigThread` (current invariant)
+    // 2. Guard the raceable data appropriately
     libkineto::api().initProfilerIfRegistered();
-    libkineto::api().configLoader().initBaseConfig();
     initialized = true;
     VLOG(0) << "libkineto profilers activated";
   }
@@ -188,6 +196,14 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
         return std::make_unique<XPUActivityProfiler>();
       });
 #endif // HAS_XPUPTI
+
+#ifdef HAS_AIUPTI
+  // register aiu pti profiler
+  libkineto::api().registerProfilerFactory(
+      []() -> std::unique_ptr<IActivityProfiler> {
+        return std::make_unique<AIUActivityProfiler>();
+      });
+#endif // HAS_AIUPTI
 
 #if __linux__
   // For open source users that would like to connect to a profiling daemon

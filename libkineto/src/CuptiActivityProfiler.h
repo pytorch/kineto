@@ -25,8 +25,8 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 
 #ifdef HAS_CUPTI
-#include "CuptiActivity.h"
 #include <cupti.h>
+#include "CuptiActivity.h"
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
@@ -56,33 +56,33 @@ class RoctracerActivityApi;
 // be mutable after construction.
 struct ConfigDerivedState final {
   ConfigDerivedState() = delete;
-  ConfigDerivedState(const Config &);
+  ConfigDerivedState(const Config&);
 
   // Calculate if starting is valid.
-  bool
-  canStart(const std::chrono::time_point<std::chrono::system_clock> &now) const;
+  bool canStart(
+      const std::chrono::time_point<std::chrono::system_clock>& now) const;
 
   // TODO: consider using union since only 1 arg is used.
-  bool
-  isWarmupDone(const std::chrono::time_point<std::chrono::system_clock> &now,
-               int64_t currentIter) const;
+  bool isWarmupDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
 
   bool isCollectionDone(
-      const std::chrono::time_point<std::chrono::system_clock> &now,
+      const std::chrono::time_point<std::chrono::system_clock>& now,
       int64_t currentIter) const;
 
   // Set and Get Functions below.
-  const std::set<ActivityType> &profileActivityTypes() const {
+  const std::set<ActivityType>& profileActivityTypes() const {
     return profileActivityTypes_;
   }
 
-  const std::chrono::time_point<std::chrono::system_clock>
-  profileStartTime() const {
+  const std::chrono::time_point<std::chrono::system_clock> profileStartTime()
+      const {
     return profileStartTime_;
   }
 
-  const std::chrono::time_point<std::chrono::system_clock>
-  profileEndTime() const {
+  const std::chrono::time_point<std::chrono::system_clock> profileEndTime()
+      const {
     return profileEndTime_;
   }
 
@@ -90,13 +90,21 @@ struct ConfigDerivedState final {
     return profileDuration_;
   }
 
-  int64_t profileStartIteration() const { return profileStartIter_; }
-  int64_t profileEndIteration() const { return profileEndIter_; }
-  bool isProfilingByIteration() const { return profilingByIter_; }
+  int64_t profileStartIteration() const {
+    return profileStartIter_;
+  }
+  int64_t profileEndIteration() const {
+    return profileEndIter_;
+  }
+  bool isProfilingByIteration() const {
+    return profilingByIter_;
+  }
 
-  bool isPerThreadBufferEnabled() const { return perThreadBufferEnabled_; }
+  bool isPerThreadBufferEnabled() const {
+    return perThreadBufferEnabled_;
+  }
 
-private:
+ private:
   std::set<ActivityType> profileActivityTypes_;
   // Start and end time used for triggering and stopping profiling
   std::chrono::time_point<std::chrono::system_clock> profileStartTime_;
@@ -116,12 +124,12 @@ inline size_t hash_combine(size_t seed, size_t value) {
 } // namespace detail
 
 class CuptiActivityProfiler {
-public:
-  CuptiActivityProfiler(CuptiActivityApi &cupti, bool cpuOnly);
-  CuptiActivityProfiler(RocprofActivityApi &rai, bool cpuOnly);
-  CuptiActivityProfiler(RoctracerActivityApi &rtai, bool cpuOnly);
-  CuptiActivityProfiler(const CuptiActivityProfiler &) = delete;
-  CuptiActivityProfiler &operator=(const CuptiActivityProfiler &) = delete;
+ public:
+  CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
+  CuptiActivityProfiler(RocprofActivityApi& rai, bool cpuOnly);
+  CuptiActivityProfiler(RoctracerActivityApi& rtai, bool cpuOnly);
+  CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
+  CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
   ~CuptiActivityProfiler();
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;
@@ -136,48 +144,59 @@ public:
   // When active, it's a good idea to invoke more frequently to stay below
   // memory usage limit (ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB) during warmup.
   std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
-      const std::chrono::time_point<std::chrono::system_clock> &now,
-      const std::chrono::time_point<std::chrono::system_clock> &nextWakeupTime,
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
       int64_t currentIter = -1);
 
-  void performMemoryLoop(const std::string &path, uint32_t profile_time,
-                         ActivityLogger *logger, Config &config);
+  void performMemoryLoop(
+      const std::string& path,
+      uint32_t profile_time,
+      ActivityLogger* logger,
+      Config& config);
 
   // Used for async requests
-  void setLogger(ActivityLogger *logger) { logger_ = logger; }
+  void setLogger(ActivityLogger* logger) {
+    logger_ = logger;
+  }
 
-  inline void setCpuActivityPresent(bool val) { cpuActivityPresent_ = val; }
+  inline void setCpuActivityPresent(bool val) {
+    cpuActivityPresent_ = val;
+  }
 
-  inline void setGpuActivityPresent(bool val) { gpuActivityPresent_ = val; }
+  inline void setGpuActivityPresent(bool val) {
+    gpuActivityPresent_ = val;
+  }
 
-  inline bool gpuActivityPresent() const { return gpuActivityPresent_; }
+  inline bool gpuActivityPresent() const {
+    return gpuActivityPresent_;
+  }
 
   inline bool traceNonEmpty() const {
     return cpuActivityPresent_ || gpuActivityPresent_;
   }
 
   // Synchronous control API
-  void
-  startTrace(const std::chrono::time_point<std::chrono::system_clock> &now) {
+  void startTrace(
+      const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     startTraceInternal(now);
   }
 
-  void
-  stopTrace(const std::chrono::time_point<std::chrono::system_clock> &now) {
+  void stopTrace(
+      const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     stopTraceInternal(now);
   }
 
   // Collect CPU and GPU traces
-  void
-  collectTrace(bool collection_done,
-               const std::chrono::time_point<std::chrono::system_clock> &now);
+  void collectTrace(
+      bool collection_done,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Ensure collectTrace is done
   void ensureCollectTraceDone();
   // Process CPU and GPU traces
-  void processTrace(ActivityLogger &logger) {
+  void processTrace(ActivityLogger& logger) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     processTraceInternal(logger);
   }
@@ -188,8 +207,9 @@ public:
   }
 
   // Set up profiler as specified in config.
-  void configure(const Config &config,
-                 const std::chrono::time_point<std::chrono::system_clock> &now);
+  void configure(
+      const Config& config,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Toggle GPU tracing during a profile instance
   void toggleCollectionDynamic(const bool enable);
@@ -197,7 +217,9 @@ public:
   // Registered with client API to pass CPU trace events over
   void transferCpuTrace(std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 
-  const Config &config() { return *config_; }
+  const Config& config() {
+    return *config_;
+  }
 
   inline void recordThreadInfo() {
     int32_t sysTid = systemThreadId();
@@ -215,18 +237,20 @@ public:
     if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
       resourceInfo_.emplace(
           std::make_pair(pid, tid),
-          ResourceInfo(pid, sysTid,
-                       sysTid, // sortindex
-                       fmt::format("thread {} ({})", sysTid, getThreadName())));
+          ResourceInfo(
+              pid,
+              sysTid,
+              sysTid, // sortindex
+              fmt::format("thread {} ({})", sysTid, getThreadName())));
     }
   }
 
-  void addMetadata(const std::string &key, const std::string &value) {
+  void addMetadata(const std::string& key, const std::string& value) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     metadata_[key] = value;
   }
 
-  void addVersionMetadata(const std::string &key, const std::string &value) {
+  void addVersionMetadata(const std::string& key, const std::string& value) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     versionMetadata_[key] = value;
   }
@@ -244,11 +268,11 @@ public:
   void pushUserCorrelationId(uint64_t id);
   void popUserCorrelationId();
 
-protected:
+ protected:
   using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
-  static const CpuGpuSpanPair &defaultTraceSpan();
+  static const CpuGpuSpanPair& defaultTraceSpan();
 
-private:
+ private:
   // Deferred logging of CUDA-event synchronization
   struct DeferredLogEntry {
     uint32_t device;
@@ -260,18 +284,21 @@ private:
 
   // Map of gpu activities to user defined events
   class GpuUserEventMap {
-  public:
+   public:
     // Insert a user defined event which maps to the gpu trace activity.
     // If the user defined event mapping already exists this will update the
     // gpu side span to include the span of gpuTraceActivity.
-    void insertOrExtendEvent(const ITraceActivity &cpuTraceActivity,
-                             const ITraceActivity &gpuTraceActivity);
+    void insertOrExtendEvent(
+        const ITraceActivity& cpuTraceActivity,
+        const ITraceActivity& gpuTraceActivity);
     // Log out the events to the logger
-    void logEvents(ActivityLogger *logger);
+    void logEvents(ActivityLogger* logger);
 
-    void clear() { streamSpanMap_.clear(); }
+    void clear() {
+      streamSpanMap_.clear();
+    }
 
-  private:
+   private:
     // device id and stream name
     using StreamKey = std::pair<int64_t, int64_t>;
 
@@ -283,13 +310,13 @@ private:
 
   GpuUserEventMap gpuUserEventMap_;
   // id -> activity*
-  std::unordered_map<int64_t, const ITraceActivity *> activityMap_;
+  std::unordered_map<int64_t, const ITraceActivity*> activityMap_;
   // cuda runtime id -> pytorch op id
   // CUPTI provides a mechanism for correlating Cuda events to arbitrary
   // external events, e.g.operator activities from PyTorch.
   std::unordered_map<int64_t, int64_t> cpuCorrelationMap_;
   // CUDA runtime <-> GPU Activity
-  std::unordered_map<int64_t, const ITraceActivity *> correlatedCudaActivities_;
+  std::unordered_map<int64_t, const ITraceActivity*> correlatedCudaActivities_;
   std::unordered_map<int64_t, int64_t> userCorrelationMap_;
 
   // data structure to collect cuptiActivityFlushAll() latency overhead
@@ -301,34 +328,35 @@ private:
   void logGpuVersions();
 
   void startTraceInternal(
-      const std::chrono::time_point<std::chrono::system_clock> &now);
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   void stopTraceInternal(
-      const std::chrono::time_point<std::chrono::system_clock> &now);
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  void processTraceInternal(ActivityLogger &logger);
+  void processTraceInternal(ActivityLogger& logger);
 
   void resetInternal();
 
-  void finalizeTrace(const Config &config, ActivityLogger &logger);
+  void finalizeTrace(const Config& config, ActivityLogger& logger);
 
   void configureChildProfilers();
 
   // Process a single CPU trace
-  void processCpuTrace(libkineto::CpuTraceBuffer &cpuTrace,
-                       ActivityLogger &logger);
+  void processCpuTrace(
+      libkineto::CpuTraceBuffer& cpuTrace,
+      ActivityLogger& logger);
 
   inline bool hasDeviceResource(int device, int id) {
     return resourceInfo_.find({device, id}) != resourceInfo_.end();
   }
 
   // Create resource names for streams
-  inline void recordStream(int device, int id, const char *postfix) {
+  inline void recordStream(int device, int id, const char* postfix) {
     if (!hasDeviceResource(device, id)) {
       resourceInfo_.emplace(
           std::make_pair(device, id),
-          ResourceInfo(device, id, id,
-                       fmt::format("stream {} {}", id, postfix)));
+          ResourceInfo(
+              device, id, id, fmt::format("stream {} {}", id, postfix)));
     }
   }
 
@@ -344,70 +372,77 @@ private:
 
   // Record client trace span for subsequent lookups from activities
   // Also creates a corresponding GPU-side span.
-  CpuGpuSpanPair &recordTraceSpan(TraceSpan &span, int gpuOpCount);
+  CpuGpuSpanPair& recordTraceSpan(TraceSpan& span, int gpuOpCount);
 
   // Returns true if net name is to be tracked for a specified number of
   // iterations.
-  bool iterationTargetMatch(libkineto::CpuTraceBuffer &trace);
+  bool iterationTargetMatch(libkineto::CpuTraceBuffer& trace);
 
   // net name to id
-  int netId(const std::string &netName);
+  int netId(const std::string& netName);
 
-  const ITraceActivity *
-  linkedActivity(int32_t correlationId,
-                 const std::unordered_map<int64_t, int64_t> &correlationMap);
+  const ITraceActivity* linkedActivity(
+      int32_t correlationId,
+      const std::unordered_map<int64_t, int64_t>& correlationMap);
 
-  const ITraceActivity *cpuActivity(int32_t correlationId);
-  void updateGpuNetSpan(const ITraceActivity &gpuOp);
-  bool outOfRange(const ITraceActivity &act);
-  void handleGpuActivity(const ITraceActivity &act, ActivityLogger *logger);
+  const ITraceActivity* cpuActivity(int32_t correlationId);
+  void updateGpuNetSpan(const ITraceActivity& gpuOp);
+  bool outOfRange(const ITraceActivity& act);
+  void handleGpuActivity(const ITraceActivity& act, ActivityLogger* logger);
 
 #ifdef HAS_CUPTI
   // Process generic CUPTI activity
-  void handleCuptiActivity(const CUpti_Activity *record,
-                           ActivityLogger *logger);
+  void handleCuptiActivity(
+      const CUpti_Activity* record,
+      ActivityLogger* logger);
   // Process specific GPU activity types
   void handleCorrelationActivity(
-      const CUpti_ActivityExternalCorrelation *correlation);
-  void handleRuntimeActivity(const CUpti_ActivityAPI *activity,
-                             ActivityLogger *logger);
-  void handleDriverActivity(const CUpti_ActivityAPI *activity,
-                            ActivityLogger *logger);
-  void handleOverheadActivity(const CUpti_ActivityOverhead *activity,
-                              ActivityLogger *logger);
-  void handleCudaEventActivity(const CUpti_ActivityCudaEvent *activity);
-  void handleCudaSyncActivity(const CUpti_ActivitySynchronization *activity,
-                              ActivityLogger *logger);
+      const CUpti_ActivityExternalCorrelation* correlation);
+  void handleRuntimeActivity(
+      const CUpti_ActivityAPI* activity,
+      ActivityLogger* logger);
+  void handleDriverActivity(
+      const CUpti_ActivityAPI* activity,
+      ActivityLogger* logger);
+  void handleOverheadActivity(
+      const CUpti_ActivityOverhead* activity,
+      ActivityLogger* logger);
+  void handleCudaEventActivity(const CUpti_ActivityCudaEvent* activity);
+  void handleCudaSyncActivity(
+      const CUpti_ActivitySynchronization* activity,
+      ActivityLogger* logger);
   template <class T>
-  void handleGpuActivity(const T *act, ActivityLogger *logger);
+  void handleGpuActivity(const T* act, ActivityLogger* logger);
   void logDeferredEvents();
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
   // Process generic RocProf activity
-  void handleRocprofActivity(const rocprofBase *record, ActivityLogger *logger);
-  void handleCorrelationActivity(uint64_t correlationId, uint64_t externalId,
-                                 RocLogger::CorrelationDomain externalKind);
+  void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
+  void handleCorrelationActivity(
+      uint64_t correlationId,
+      uint64_t externalId,
+      RocLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
-  void handleRuntimeActivity(const T *activity, ActivityLogger *logger);
-  void handleGpuActivity(const rocprofAsyncRow *record, ActivityLogger *logger);
+  void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
+  void handleGpuActivity(const rocprofAsyncRow* record, ActivityLogger* logger);
 #endif // HAS_ROCTRACER
 
   void resetTraceData();
 
-  void addOverheadSample(profilerOverhead &counter, int64_t overhead) {
+  void addOverheadSample(profilerOverhead& counter, int64_t overhead) {
     counter.overhead += overhead;
     counter.cntr++;
   }
-  int64_t getOverhead(const profilerOverhead &counter) {
+  int64_t getOverhead(const profilerOverhead& counter) {
     if (counter.cntr == 0) {
       return 0;
     }
     return counter.overhead / counter.cntr;
   }
 
-  void checkTimestampOrder(const ITraceActivity *act1);
+  void checkTimestampOrder(const ITraceActivity* act1);
 
   bool getCollectTraceState();
 
@@ -420,17 +455,17 @@ private:
   std::unique_ptr<ConfigDerivedState> derivedConfig_;
 
   // Logger used during trace processing
-  ActivityLogger *logger_;
+  ActivityLogger* logger_;
 
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
 #ifndef ROCTRACER_FALLBACK
-  RocprofActivityApi &cupti_; // Design failure here
+  RocprofActivityApi& cupti_; // Design failure here
 #else
-  RoctracerActivityApi &cupti_;
+  RoctracerActivityApi& cupti_;
 #endif
 #else
-  CuptiActivityApi &cupti_;
+  CuptiActivityApi& cupti_;
 #endif
 
   enum class RunloopState {
@@ -449,7 +484,7 @@ private:
 
   // Maintain a map of client trace activity to trace span.
   // Maps correlation id -> TraceSpan* held by traceSpans_.
-  using ActivityTraceMap = std::unordered_map<int64_t, CpuGpuSpanPair *>;
+  using ActivityTraceMap = std::unordered_map<int64_t, CpuGpuSpanPair*>;
   ActivityTraceMap clientActivityTraceMap_;
 
   // Cache thread names and system thread ids for pthread ids,
@@ -504,15 +539,15 @@ private:
   struct DevStream {
     int64_t ctx = 0;
     int64_t stream = 0;
-    bool operator==(const DevStream &other) const {
+    bool operator==(const DevStream& other) const {
       return (this->ctx == other.ctx) && (this->stream == other.stream);
     }
   };
 
   struct DevStreamHash {
-    std::size_t operator()(const DevStream &c) const {
-      return detail::hash_combine(std::hash<int64_t>()(c.ctx),
-                                  std::hash<int64_t>()(c.stream));
+    std::size_t operator()(const DevStream& c) const {
+      return detail::hash_combine(
+          std::hash<int64_t>()(c.ctx), std::hash<int64_t>()(c.stream));
     }
   };
 
@@ -527,7 +562,7 @@ private:
 #endif // HAS_CUPTI || HAS_ROCTRACER
   };
 
-  friend std::ostream &operator<<(std::ostream &oss, const ErrorCounts &ecs);
+  friend std::ostream& operator<<(std::ostream& oss, const ErrorCounts& ecs);
 
   // This set tracks the (device, cuda streams) observed in the trace
   // doing CUDA kernels/memcopies. This prevents emitting CUDA sync

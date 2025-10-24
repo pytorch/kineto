@@ -10,13 +10,13 @@
 
 ApiIdList::ApiIdList() : invert_(true) {}
 
-void ApiIdList::add(const std::string &apiName) {
+void ApiIdList::add(const std::string& apiName) {
   uint32_t cid = mapName(apiName);
   if (cid > 0)
     filter_[cid] = 1;
 }
 
-void ApiIdList::remove(const std::string &apiName) {
+void ApiIdList::remove(const std::string& apiName) {
   uint32_t cid = mapName(apiName);
   if (cid > 0)
     filter_.erase(cid);

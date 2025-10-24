@@ -8,21 +8,21 @@
 
 #include "RoctracerActivityApi.h"
 
+#include <time.h>
+#include <chrono>
+#include <cstring>
+#include <functional>
 #include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
 #include "output_base.h"
-#include <chrono>
-#include <cstring>
-#include <functional>
-#include <time.h>
 
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-RoctracerActivityApi &RoctracerActivityApi::singleton() {
+RoctracerActivityApi& RoctracerActivityApi::singleton() {
   static RoctracerActivityApi instance;
   return instance;
 }
@@ -63,8 +63,8 @@ inline bool inRange(int64_t start, int64_t end, int64_t stamp) {
   return ((stamp > start) && (stamp < end));
 }
 
-inline bool
-RoctracerActivityApi::isLogged(libkineto::ActivityType atype) const {
+inline bool RoctracerActivityApi::isLogged(
+    libkineto::ActivityType atype) const {
   return activityMaskSnapshot_ & (1 << static_cast<uint32_t>(atype));
 }
 
@@ -85,7 +85,7 @@ timestamp_t getTimeOffset() {
 }
 
 int RoctracerActivityApi::processActivities(
-    std::function<void(const rocprofBase *)> handler,
+    std::function<void(const rocprofBase*)> handler,
     std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
         correlationHandler) {
   // Find offset to map from monotonic clock to system clock.
@@ -95,11 +95,14 @@ int RoctracerActivityApi::processActivities(
 
   // Process all external correlations pairs
   for (int it = RocLogger::CorrelationDomain::begin;
-       it < RocLogger::CorrelationDomain::end; ++it) {
-    auto &externalCorrelations = d->externalCorrelations_[it];
-    for (auto &item : externalCorrelations) {
-      correlationHandler(item.first, item.second,
-                         static_cast<RocLogger::CorrelationDomain>(it));
+       it < RocLogger::CorrelationDomain::end;
+       ++it) {
+    auto& externalCorrelations = d->externalCorrelations_[it];
+    for (auto& item : externalCorrelations) {
+      correlationHandler(
+          item.first,
+          item.second,
+          static_cast<RocLogger::CorrelationDomain>(it));
     }
     std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
     externalCorrelations.clear();
@@ -113,35 +116,35 @@ int RoctracerActivityApi::processActivities(
   auto toffset = getTimeOffset();
 
   // All Runtime API Calls
-  for (auto &item : d->rows_) {
+  for (auto& item : d->rows_) {
     bool filtered = false;
     if (item->type != ROCTRACER_ACTIVITY_ASYNC &&
         !isLogged(ActivityType::CUDA_RUNTIME)) {
       filtered = true;
     } else {
-      switch (reinterpret_cast<rocprofAsyncRow *>(item)->kind) {
-      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
-      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
-        if (!isLogged(ActivityType::GPU_MEMCPY))
-          filtered = true;
-        break;
-      case HIP_OP_COPY_KIND_FILL_BUFFER_:
-        if (!isLogged(ActivityType::GPU_MEMSET))
-          filtered = true;
-        break;
-      case HIP_OP_DISPATCH_KIND_KERNEL_:
-      case HIP_OP_DISPATCH_KIND_TASK_:
-      default:
-        if (!isLogged(ActivityType::CONCURRENT_KERNEL))
-          filtered = true;
-        // Don't record barriers/markers
-        if (reinterpret_cast<rocprofAsyncRow *>(item)->op == HIP_OP_ID_BARRIER)
-          filtered = true;
-        break;
+      switch (reinterpret_cast<rocprofAsyncRow*>(item)->kind) {
+        case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+        case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+        case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+        case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+        case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+        case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+          if (!isLogged(ActivityType::GPU_MEMCPY))
+            filtered = true;
+          break;
+        case HIP_OP_COPY_KIND_FILL_BUFFER_:
+          if (!isLogged(ActivityType::GPU_MEMSET))
+            filtered = true;
+          break;
+        case HIP_OP_DISPATCH_KIND_KERNEL_:
+        case HIP_OP_DISPATCH_KIND_TASK_:
+        default:
+          if (!isLogged(ActivityType::CONCURRENT_KERNEL))
+            filtered = true;
+          // Don't record barriers/markers
+          if (reinterpret_cast<rocprofAsyncRow*>(item)->op == HIP_OP_ID_BARRIER)
+            filtered = true;
+          break;
       }
     }
     if (!filtered) {
@@ -167,7 +170,9 @@ int RoctracerActivityApi::processActivities(
 // TODO: implement the actual flush with roctracer_flush_activity
 void RoctracerActivityApi::flushActivities() {}
 
-void RoctracerActivityApi::clearActivities() { d->clearLogs(); }
+void RoctracerActivityApi::clearActivities() {
+  d->clearLogs();
+}
 
 void RoctracerActivityApi::setMaxEvents(uint32_t maxEvents) {
 #ifdef HAS_ROCTRACER
@@ -176,11 +181,11 @@ void RoctracerActivityApi::setMaxEvents(uint32_t maxEvents) {
 }
 
 void RoctracerActivityApi::enableActivities(
-    const std::set<ActivityType> &selected_activities) {
+    const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   d->startLogging();
 
-  for (const auto &activity : selected_activities) {
+  for (const auto& activity : selected_activities) {
     activityMask_ |= (1 << static_cast<uint32_t>(activity));
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       d->externalCorrelationEnabled_ = true;
@@ -190,13 +195,13 @@ void RoctracerActivityApi::enableActivities(
 }
 
 void RoctracerActivityApi::disableActivities(
-    const std::set<ActivityType> &selected_activities) {
+    const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   d->stopLogging();
 
   activityMaskSnapshot_ = activityMask_;
 
-  for (const auto &activity : selected_activities) {
+  for (const auto& activity : selected_activities) {
     activityMask_ &= ~(1 << static_cast<uint32_t>(activity));
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       d->externalCorrelationEnabled_ = false;

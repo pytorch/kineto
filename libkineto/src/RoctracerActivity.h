@@ -34,40 +34,21 @@ struct TraceSpan;
 // using the ITraceActivity interface and logged via ActivityLogger.
 
 // Abstract base class, templated on Roctracer activity type
-template <class T>
-struct RoctracerActivity : public ITraceActivity {
-  explicit RoctracerActivity(const T* activity, const ITraceActivity* linked)
+template <class T> struct RoctracerActivity : public ITraceActivity {
+  explicit RoctracerActivity(const T *activity, const ITraceActivity *linked)
       : activity_(*activity), linked_(linked) {}
   // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
   // domain (in ns). Convert the timestamps.
-  int64_t timestamp() const override {
-    return activity_.begin;
-  }
-  int64_t duration() const override {
-    return activity_.end - activity_.begin;
-  }
-  int64_t correlationId() const override {
-    return 0;
-  }
-  int32_t getThreadId() const override {
-    return 0;
-  }
-  const ITraceActivity* linkedActivity() const override {
-    return linked_;
-  }
-  int flowType() const override {
-    return kLinkAsyncCpuGpu;
-  }
-  int64_t flowId() const override {
-    return correlationId();
-  }
-  const T& raw() const {
-    return activity_;
-  }
-  const TraceSpan* traceSpan() const override {
-    return nullptr;
-  }
-  const std::string getMetadataValue(const std::string& key) const override {
+  int64_t timestamp() const override { return activity_.begin; }
+  int64_t duration() const override { return activity_.end - activity_.begin; }
+  int64_t correlationId() const override { return 0; }
+  int32_t getThreadId() const override { return 0; }
+  const ITraceActivity *linkedActivity() const override { return linked_; }
+  int flowType() const override { return kLinkAsyncCpuGpu; }
+  int64_t flowId() const override { return correlationId(); }
+  const T &raw() const { return activity_; }
+  const TraceSpan *traceSpan() const override { return nullptr; }
+  const std::string getMetadataValue(const std::string &key) const override {
     auto it = metadata_.find(key);
     if (it != metadata_.end()) {
       return it->second;
@@ -75,98 +56,74 @@ struct RoctracerActivity : public ITraceActivity {
     return "";
   }
 
- protected:
-  const T& activity_;
-  const ITraceActivity* linked_{nullptr};
+protected:
+  const T &activity_;
+  const ITraceActivity *linked_{nullptr};
   std::unordered_map<std::string, std::string> metadata_;
 };
 
 // rocprofAsyncRow - Roctracer GPU activities
 struct GpuActivity : public RoctracerActivity<rocprofAsyncRow> {
-  explicit GpuActivity(
-      const rocprofAsyncRow* activity,
-      const ITraceActivity* linked)
+  explicit GpuActivity(const rocprofAsyncRow *activity,
+                       const ITraceActivity *linked)
       : RoctracerActivity(activity, linked) {
     switch (activity_.kind) {
-      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
-      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
-        type_ = ActivityType::GPU_MEMCPY;
-        break;
-      case HIP_OP_COPY_KIND_FILL_BUFFER_:
-        type_ = ActivityType::GPU_MEMSET;
-        break;
-      case HIP_OP_DISPATCH_KIND_KERNEL_:
-      case HIP_OP_DISPATCH_KIND_TASK_:
-      default:
-        type_ = ActivityType::CONCURRENT_KERNEL;
-        break;
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      type_ = ActivityType::GPU_MEMCPY;
+      break;
+    case HIP_OP_COPY_KIND_FILL_BUFFER_:
+      type_ = ActivityType::GPU_MEMSET;
+      break;
+    case HIP_OP_DISPATCH_KIND_KERNEL_:
+    case HIP_OP_DISPATCH_KIND_TASK_:
+    default:
+      type_ = ActivityType::CONCURRENT_KERNEL;
+      break;
     }
   }
-  int64_t correlationId() const override {
-    return activity_.id;
-  }
-  int64_t deviceId() const override {
-    return activity_.device;
-  }
-  int64_t resourceId() const override {
-    return activity_.queue;
-  }
-  ActivityType type() const override {
-    return type_;
-  };
-  bool flowStart() const override {
-    return false;
-  }
+  int64_t correlationId() const override { return activity_.id; }
+  int64_t deviceId() const override { return activity_.device; }
+  int64_t resourceId() const override { return activity_.queue; }
+  ActivityType type() const override { return type_; };
+  bool flowStart() const override { return false; }
   const std::string name() const override;
-  void log(ActivityLogger& logger) const override;
+  void log(ActivityLogger &logger) const override;
   const std::string metadataJson() const override;
 
   // Add small buffer to fix visual error created by
   // https://github.com/ROCm/roctracer/issues/105 Once this is resolved we can
   // use ifdef to handle having this buffer or not based on version
-  int64_t timestamp() const override {
-    return activity_.begin + 1;
-  }
+  int64_t timestamp() const override { return activity_.begin + 1; }
   int64_t duration() const override {
     return activity_.end - (activity_.begin + 1);
   }
 
- private:
+private:
   ActivityType type_;
 };
 
 // roctracerRow, roctracerKernelRow, roctracerCopyRow, roctracerMallocRow -
 // Roctracer runtime activities
-template <class T>
-struct RuntimeActivity : public RoctracerActivity<T> {
-  explicit RuntimeActivity(const T* activity, const ITraceActivity* linked)
+template <class T> struct RuntimeActivity : public RoctracerActivity<T> {
+  explicit RuntimeActivity(const T *activity, const ITraceActivity *linked)
       : RoctracerActivity<T>(activity, linked) {}
-  int64_t correlationId() const override {
-    return raw().id;
-  }
-  int64_t deviceId() const override {
-    return raw().pid;
-  }
-  int64_t resourceId() const override {
-    return raw().tid;
-  }
-  ActivityType type() const override {
-    return ActivityType::CUDA_RUNTIME;
-  }
+  int64_t correlationId() const override { return raw().id; }
+  int64_t deviceId() const override { return raw().pid; }
+  int64_t resourceId() const override { return raw().tid; }
+  ActivityType type() const override { return ActivityType::CUDA_RUNTIME; }
   bool flowStart() const override;
   const std::string name() const override {
     return std::string(
         roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, raw().cid, 0));
   }
-  void log(ActivityLogger& logger) const override;
+  void log(ActivityLogger &logger) const override;
   const std::string metadataJson() const override;
-  const T& raw() const {
-    return RoctracerActivity<T>::raw();
-  }
+  const T &raw() const { return RoctracerActivity<T>::raw(); }
 };
 
 } // namespace KINETO_NAMESPACE

@@ -8,21 +8,21 @@
 
 #include "RocprofActivityApi.h"
 
-#include <time.h>
-#include <chrono>
-#include <cstring>
-#include <functional>
 #include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
 #include "output_base.h"
+#include <chrono>
+#include <cstring>
+#include <functional>
+#include <time.h>
 
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-RocprofActivityApi& RocprofActivityApi::singleton() {
+RocprofActivityApi &RocprofActivityApi::singleton() {
   static RocprofActivityApi instance;
   return instance;
 }
@@ -87,7 +87,7 @@ timestamp_t getTimeOffset() {
 }
 
 int RocprofActivityApi::processActivities(
-    std::function<void(const rocprofBase*)> handler,
+    std::function<void(const rocprofBase *)> handler,
     std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
         correlationHandler) {
   // Find offset to map from monotonic clock to system clock.
@@ -97,14 +97,11 @@ int RocprofActivityApi::processActivities(
 
   // Process all external correlations pairs
   for (int it = RocLogger::CorrelationDomain::begin;
-       it < RocLogger::CorrelationDomain::end;
-       ++it) {
-    auto& externalCorrelations = d->externalCorrelations_[it];
-    for (auto& item : externalCorrelations) {
-      correlationHandler(
-          item.first,
-          item.second,
-          static_cast<RocLogger::CorrelationDomain>(it));
+       it < RocLogger::CorrelationDomain::end; ++it) {
+    auto &externalCorrelations = d->externalCorrelations_[it];
+    for (auto &item : externalCorrelations) {
+      correlationHandler(item.first, item.second,
+                         static_cast<RocLogger::CorrelationDomain>(it));
     }
     std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
     externalCorrelations.clear();
@@ -118,22 +115,22 @@ int RocprofActivityApi::processActivities(
   auto toffset = getTimeOffset();
 
   // All Runtime API Calls
-  for (auto& item : d->rows_) {
+  for (auto &item : d->rows_) {
     bool filtered = false;
     if (item->type != ROCTRACER_ACTIVITY_ASYNC &&
         !isLogged(ActivityType::CUDA_RUNTIME)) {
       filtered = true;
     } else {
-      switch (reinterpret_cast<rocprofAsyncRow*>(item)->domain) {
-        case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-          if (!isLogged(ActivityType::GPU_MEMCPY))
-            filtered = true;
-          break;
-        case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
-        default:
-          if (!isLogged(ActivityType::CONCURRENT_KERNEL))
-            filtered = true;
-          break;
+      switch (reinterpret_cast<rocprofAsyncRow *>(item)->domain) {
+      case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
+        if (!isLogged(ActivityType::GPU_MEMCPY))
+          filtered = true;
+        break;
+      case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
+      default:
+        if (!isLogged(ActivityType::CONCURRENT_KERNEL))
+          filtered = true;
+        break;
       }
     }
     if (!filtered) {
@@ -159,16 +156,14 @@ int RocprofActivityApi::processActivities(
 // TODO: implement the actual flush with roctracer_flush_activity
 void RocprofActivityApi::flushActivities() {}
 
-void RocprofActivityApi::clearActivities() {
-  d->clearLogs();
-}
+void RocprofActivityApi::clearActivities() { d->clearLogs(); }
 
 void RocprofActivityApi::enableActivities(
-    const std::set<ActivityType>& selected_activities) {
+    const std::set<ActivityType> &selected_activities) {
 #ifdef HAS_ROCTRACER
   d->startLogging();
 
-  for (const auto& activity : selected_activities) {
+  for (const auto &activity : selected_activities) {
     activityMask_ |= (1 << static_cast<uint32_t>(activity));
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       d->externalCorrelationEnabled_ = true;
@@ -178,13 +173,13 @@ void RocprofActivityApi::enableActivities(
 }
 
 void RocprofActivityApi::disableActivities(
-    const std::set<ActivityType>& selected_activities) {
+    const std::set<ActivityType> &selected_activities) {
 #ifdef HAS_ROCTRACER
   d->stopLogging();
 
   activityMaskSnapshot_ = activityMask_;
 
-  for (const auto& activity : selected_activities) {
+  for (const auto &activity : selected_activities) {
     activityMask_ &= ~(1 << static_cast<uint32_t>(activity));
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       d->externalCorrelationEnabled_ = false;

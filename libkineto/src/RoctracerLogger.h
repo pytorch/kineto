@@ -59,19 +59,19 @@ class RoctracerActivityApi;
 }
 
 class RoctracerApiIdList : public ApiIdList {
- public:
-  uint32_t mapName(const std::string& apiName) override;
+public:
+  uint32_t mapName(const std::string &apiName) override;
 };
 
 class RoctracerLogger {
- public:
+public:
   RoctracerLogger();
-  RoctracerLogger(const RoctracerLogger&) = delete;
-  RoctracerLogger& operator=(const RoctracerLogger&) = delete;
+  RoctracerLogger(const RoctracerLogger &) = delete;
+  RoctracerLogger &operator=(const RoctracerLogger &) = delete;
 
   virtual ~RoctracerLogger();
 
-  static RoctracerLogger& singleton();
+  static RoctracerLogger &singleton();
 
   static void pushCorrelationID(uint64_t id, RocLogger::CorrelationDomain type);
   static void popCorrelationID(RocLogger::CorrelationDomain type);
@@ -81,24 +81,21 @@ class RoctracerLogger {
   void clearLogs();
   void setMaxEvents(uint32_t maxBufferSize);
 
- private:
+private:
   bool registered_{false};
   void endTracing();
 
-  roctracer_pool_t* hccPool_{NULL};
-  static void insert_row_to_buffer(rocprofBase* row);
-  static void api_callback(
-      uint32_t domain,
-      uint32_t cid,
-      const void* callback_data,
-      void* arg);
-  static void activity_callback(const char* begin, const char* end, void* arg);
+  roctracer_pool_t *hccPool_{NULL};
+  static void insert_row_to_buffer(rocprofBase *row);
+  static void api_callback(uint32_t domain, uint32_t cid,
+                           const void *callback_data, void *arg);
+  static void activity_callback(const char *begin, const char *end, void *arg);
 
   RoctracerApiIdList loggedIds_;
 
   // Api callback data
   uint32_t maxBufferSize_{5000000}; // 5M GPU runtime/kernel events.
-  std::vector<rocprofBase*> rows_;
+  std::vector<rocprofBase *> rows_;
   std::mutex rowsMutex_;
 
   // This vector collects pairs of correlationId and their respective

@@ -104,6 +104,8 @@ class XpuptiActivityProfilerSession
   void handleScopeRecord(
       const pti_metrics_scope_record_t* record,
       const pti_metrics_scope_record_metadata_t& metadata,
+      size_t recordId,
+      size_t actualRecordsCount,
       ActivityLogger& logger);
 #endif
 

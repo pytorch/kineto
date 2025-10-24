@@ -64,7 +64,9 @@ class XpuptiActivityApi {
   void processScopeTrace(
       std::function<void(
           const pti_metrics_scope_record_t*,
-          const pti_metrics_scope_record_metadata_t& metadata)> handler);
+          const pti_metrics_scope_record_metadata_t& metadata,
+          size_t recordId,
+          size_t actualRecordsCount)> handler);
 #endif
 
  private:

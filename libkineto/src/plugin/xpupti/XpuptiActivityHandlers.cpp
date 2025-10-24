@@ -303,13 +303,16 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
 
 #if PTI_VERSION_AT_LEAST(0, 14)
 
-static std::string PtiValueToStr(
+static void AddPtiValueToMetadata(
+    GenericTraceActivity* scope_activity,
+    const std::string& metricName,
     pti_metric_value_type valueType,
     const pti_value_t& value) {
   switch (valueType) {
-#define CASE(T, FIELD)            \
-  case PTI_METRIC_VALUE_TYPE_##T: \
-    return std::to_string(value.FIELD)
+#define CASE(T, FIELD)                                    \
+  case PTI_METRIC_VALUE_TYPE_##T:                         \
+    scope_activity->addMetadata(metricName, value.FIELD); \
+    return;
 
     CASE(UINT32, ui32);
     CASE(UINT64, ui64);
@@ -319,35 +322,44 @@ static std::string PtiValueToStr(
 #undef CASE
 
     case PTI_METRIC_VALUE_TYPE_BOOL8:
-      return (value.b8 ? "true" : "false");
+      scope_activity->addMetadata(metricName, value.b8 ? "true" : "false");
+      return;
 
     default:
-      return "unknown";
+      break;
   }
 }
 
 void XpuptiActivityProfilerSession::handleScopeRecord(
     const pti_metrics_scope_record_t* record,
     const pti_metrics_scope_record_metadata_t& metadata,
+    size_t recordId,
+    size_t actualRecordsCount,
     ActivityLogger& logger) {
+  int64_t startTime = traceBuffer_.span.startTime;
+  int64_t duration = traceBuffer_.span.endTime - startTime;
+  int64_t interval = duration / actualRecordsCount;
+
   traceBuffer_.emplace_activity(
       traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "Scope");
 
   auto& scope_activity = traceBuffer_.activities.back();
+  scope_activity->startTime = startTime + interval * recordId;
+  scope_activity->endTime = scope_activity->startTime + interval;
+  scope_activity->device = 0; // To be changed
   scope_activity->addMetadata("kernel id", record->_kernel_id);
   scope_activity->addMetadata("queue", record->_queue);
   if (record->_kernel_name) {
     scope_activity->addMetadata("kernel name", record->_kernel_name);
   }
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
-    const auto& units = metadata._metric_units[m];
-    scope_activity->addMetadataQuoted(
-        metadata._metric_names[m],
-        fmt::format(
-            "{}{}{}",
-            PtiValueToStr(metadata._value_types[m], record->_metrics_values[m]),
-            units ? " " : "",
-            units ? units : ""));
+    const auto& unit = metadata._metric_units[m];
+    std::string unitSuffix = unit ? fmt::format(" [{}]", unit) : "";
+    AddPtiValueToMetadata(
+        scope_activity.get(),
+        fmt::format("{}{}", metadata._metric_names[m], unitSuffix),
+        metadata._value_types[m],
+        record->_metrics_values[m]);
   }
 
   if (!outOfScope(scope_activity.get())) {

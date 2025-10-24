@@ -250,7 +250,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
   std::transform(
       activitiesXpuptiMetrics.begin(),
       activitiesXpuptiMetrics.end(),
-      metricNames.begin(),
+      std::back_inserter(metricNames),
       [](const std::string& s) { return s.c_str(); });
 
   pti_metrics_scope_mode_t collectionMode = spcfg.xpuptiProfilerPerKernel()
@@ -418,20 +418,15 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
 void XpuptiActivityApi::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
-        const pti_metrics_scope_record_metadata_t& metadata)> handler) {
+        const pti_metrics_scope_record_metadata_t& metadata,
+        size_t recordId,
+        size_t actualRecordsCount)> handler) {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
-    size_t metadataBufferSize = 0;
-    XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferMetadata(
-        *scopeHandleOpt_, nullptr, &metadataBufferSize));
+    pti_metrics_scope_record_metadata_t metadata;
+    metadata._struct_size = sizeof(pti_metrics_scope_record_metadata_t);
 
-    auto metadataBuffer = std::make_unique<uint8_t[]>(metadataBufferSize);
-    // Metadata is placed in the beginning of metadataBuffer
-    auto metadata = reinterpret_cast<pti_metrics_scope_record_metadata_t*>(
-        metadataBuffer.get());
-
-    XPUPTI_CALL(ptiMetricsScopeGetMetricsBufferMetadata(
-        *scopeHandleOpt_, metadata, &metadataBufferSize));
+    XPUPTI_CALL(ptiMetricsScopeGetMetricsMetadata(*scopeHandleOpt_, &metadata));
 
     uint64_t collectionBuffersCount = 0;
     XPUPTI_CALL(ptiMetricsScopeGetCollectionBuffersCount(
@@ -475,7 +470,7 @@ void XpuptiActivityApi::processScopeTrace(
 
         for (size_t recordId = 0; recordId < actualRecordsCount; ++recordId) {
           auto record = metricsBuffer.get() + recordId;
-          handler(record, metadata[0]);
+          handler(record, metadata, recordId, actualRecordsCount);
         }
       }
     }

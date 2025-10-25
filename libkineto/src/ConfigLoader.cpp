@@ -128,7 +128,7 @@ ConfigLoader& ConfigLoader::instance() {
 
 // return an empty string if polling gets any errors. Otherwise a config string.
 std::string ConfigLoader::readOnDemandConfigFromDaemon(
-    time_point<system_clock> now) {
+    time_point<system_clock> /*now*/) {
   if (!daemonConfigLoader_) {
     return "";
   }
@@ -222,7 +222,7 @@ const char* ConfigLoader::customConfigFileName() {
   return getenv(kConfigFileEnvVar);
 }
 
-const std::string ConfigLoader::getConfString() {
+std::string ConfigLoader::getConfString() {
   return readConfigFromConfigFile(configFileName(), false);
 }
 
@@ -251,7 +251,7 @@ void ConfigLoader::updateBaseConfig() {
 }
 
 void ConfigLoader::configureFromSignal(
-    time_point<system_clock> now,
+    time_point<system_clock> /*now*/,
     Config& config) {
   LOG(INFO) << "Received on-demand profiling signal, " << "reading config from "
             << kOnDemandConfigFile;

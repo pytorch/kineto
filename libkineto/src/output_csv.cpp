@@ -45,7 +45,7 @@ void EventCSVLogger::update(const Config& config) {
 void EventCSVLogger::handleSample(
     int device,
     const Sample& sample,
-    bool from_new_version) {
+    bool /*from_new_version*/) {
   using namespace std::chrono;
   if (out_) {
     auto now = system_clock::now();

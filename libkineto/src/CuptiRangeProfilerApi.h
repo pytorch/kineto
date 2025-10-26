@@ -13,14 +13,13 @@
 #include <cuda_runtime_api.h>
 // Using CUDA 11 and above due to usage of API:
 // cuptiProfilerGetCounterAvailability.
-// Starting from CUDA 12.06 the Profiler API is superseded by Range Profiler API
+// Starting from CUDA 12.6 the Profiler API is superseded by Range Profiler API
 // This needs significant rework. See
 // https://docs.nvidia.com/cupti/main/main.html#evolution-of-the-profiling-apis
 #if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && \
-    CUDART_VERSION >= 10000 && CUDA_VERSION >= 11000 && CUDA_VERSION <= 12060
+    CUDART_VERSION >= 10000 && CUDA_VERSION >= 12060
 #define HAS_CUPTI_RANGE_PROFILER 1
-#endif // CUDART_VERSION > 10.00 and CUDA_VERSION >= 11.00 and CUDA_VERSION
-       // <= 12.06
+#endif // CUDART_VERSION > 10.00 and CUDA_VERSION >= 12.6
 #endif // HAS_CUPTI
 
 #if HAS_CUPTI_RANGE_PROFILER
@@ -40,14 +39,13 @@ enum CUpti_ProfilerReplayMode {
 #endif // HAS_CUPTI_RANGE_PROFILER
 
 #include <chrono>
-#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "CuptiCallbackApi.h"
+// #include "CuptiCallbackApi.h"
 #include "CuptiNvPerfMetric.h"
 #include "TraceSpan.h"
 
@@ -214,7 +212,6 @@ class CuptiRBProfilerSession {
 struct ICuptiRBProfilerSessionFactory {
   virtual std::unique_ptr<CuptiRBProfilerSession> make(
       const CuptiRangeProfilerOptions& opts) = 0;
-  virtual ~ICuptiRBProfilerSessionFactory() {}
 };
 
 struct CuptiRBProfilerSessionFactory : ICuptiRBProfilerSessionFactory {

@@ -45,7 +45,7 @@ class RoctracerActivityApi {
   void clearActivities();
   void flushActivities();
   void teardownContext() {}
-  void setMaxEvents(uint32_t maxEvents);
+  void setMaxEvents(uint64_t maxEvents);
 
   virtual int processActivities(
       std::function<void(const roctracerBase*)> handler,

@@ -267,7 +267,7 @@ class RoctracerLogger {
   void startLogging();
   void stopLogging();
   void clearLogs();
-  void setMaxEvents(uint32_t maxBufferSize);
+  void setMaxEvents(uint64_t maxBufferSize);
 
  private:
   bool registered_{false};
@@ -285,7 +285,7 @@ class RoctracerLogger {
   ApiIdList loggedIds_;
 
   // Api callback data
-  uint32_t maxBufferSize_{5000000}; // 5M GPU runtime/kernel events.
+  uint64_t maxBufferSize_{5000000}; // 5M GPU runtime/kernel events.
   std::vector<roctracerBase*> rows_;
   std::mutex rowsMutex_;
 

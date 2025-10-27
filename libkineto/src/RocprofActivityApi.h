@@ -13,38 +13,38 @@
 #include <functional>
 #include <set>
 
-#include <roctracer.h>
-#include "RoctracerLogger.h"
+#include "RocprofLogger.h"
 
 #include "ActivityType.h"
 #include "GenericTraceActivity.h"
 
-class RoctracerLogger;
+class RocprofLogger;
 
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
 
-class RoctracerActivityApi {
+class RocprofActivityApi {
  public:
   enum CorrelationFlowType { Default, User };
 
-  RoctracerActivityApi();
-  RoctracerActivityApi(const RoctracerActivityApi&) = delete;
-  RoctracerActivityApi& operator=(const RoctracerActivityApi&) = delete;
+  RocprofActivityApi();
+  RocprofActivityApi(const RocprofActivityApi&) = delete;
+  RocprofActivityApi& operator=(const RocprofActivityApi&) = delete;
 
-  virtual ~RoctracerActivityApi();
+  virtual ~RocprofActivityApi();
 
-  static RoctracerActivityApi& singleton();
+  static RocprofActivityApi& singleton();
 
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
   void enableActivities(const std::set<ActivityType>& selected_activities);
   void disableActivities(const std::set<ActivityType>& selected_activities);
-  void clearActivities();
   void flushActivities();
+  void clearActivities();
   void teardownContext() {}
+  void setTimeOffset(timestamp_t toffset);
   void setMaxEvents(uint32_t maxEvents);
 
   virtual int processActivities(
@@ -58,13 +58,14 @@ class RoctracerActivityApi {
 
  private:
   bool registered_{false};
+  timestamp_t toffset_{0};
 
   // Enabled Activity Filters
   uint32_t activityMask_{0};
   uint32_t activityMaskSnapshot_{0};
   bool isLogged(libkineto::ActivityType atype) const;
 
-  RoctracerLogger* d;
+  RocprofLogger* d;
 };
 
 } // namespace KINETO_NAMESPACE

@@ -266,7 +266,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
       *scopeHandleOpt_,
       collectionMode,
       devicesHandles_.get(),
-      deviceCount_,
+      (deviceCount_, 1), // Only 1 device is currently supported
       metricNames.data(),
       metricNames.size()));
 

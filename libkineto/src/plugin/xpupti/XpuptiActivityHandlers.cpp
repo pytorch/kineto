@@ -345,12 +345,12 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
 
   auto& scope_activity = traceBuffer_.activities.back();
   scope_activity->startTime = startTime + interval * recordId;
-  scope_activity->endTime = scope_activity->startTime + interval;
+  scope_activity->endTime = scope_activity->startTime + interval * 4 / 5;
   scope_activity->device = 0; // To be changed
   scope_activity->addMetadata("kernel id", record->_kernel_id);
   scope_activity->addMetadata("queue", record->_queue);
   if (record->_kernel_name) {
-    scope_activity->addMetadata("kernel name", record->_kernel_name);
+    scope_activity->addMetadataQuoted("kernel name", record->_kernel_name);
   }
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
     const auto& unit = metadata._metric_units[m];
@@ -362,9 +362,7 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
         record->_metrics_values[m]);
   }
 
-  if (!outOfScope(scope_activity.get())) {
-    scope_activity->log(logger);
-  }
+  scope_activity->log(logger);
 }
 
 #endif

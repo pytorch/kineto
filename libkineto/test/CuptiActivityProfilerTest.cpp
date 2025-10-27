@@ -272,7 +272,7 @@ void checkTracefile(const char* filename) {
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
-  struct stat buf {};
+  struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
   close(fd);
@@ -297,16 +297,17 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
   auto now = system_clock::now();
   auto startTime = now + seconds(10);
 
-  bool success = cfg.parse(fmt::format(
-      R"CFG(
+  bool success = cfg.parse(
+      fmt::format(
+          R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-      warmup,
-      filename,
-      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+          warmup,
+          filename,
+          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());
@@ -387,18 +388,19 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
     int iter = 0;
     auto now = system_clock::now();
 
-    bool success = cfg.parse(fmt::format(
-        R"CFG(
+    bool success = cfg.parse(
+        fmt::format(
+            R"CFG(
       PROFILE_START_ITERATION = {}
       ACTIVITIES_WARMUP_ITERATIONS={}
       ACTIVITIES_ITERATIONS={}
       ACTIVITIES_DURATION_SECS = 1
       ACTIVITIES_LOG_FILE = {}
     )CFG",
-        start_iter,
-        warmup_iters,
-        trace_iters,
-        filename));
+            start_iter,
+            warmup_iters,
+            trace_iters,
+            filename));
 
     EXPECT_TRUE(success);
     EXPECT_FALSE(profiler.isActive());
@@ -591,7 +593,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
-  struct stat buf {};
+  struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 #endif
@@ -905,7 +907,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   EXPECT_TRUE(fd);
 
   // Should expect at least 100 bytes
-  struct stat buf {};
+  struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 }
@@ -967,15 +969,16 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   auto now = system_clock::now();
   auto startTime = now + seconds(2);
 
-  bool success = cfg.parse(fmt::format(
-      R"CFG(
+  bool success = cfg.parse(
+      fmt::format(
+          R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = 1
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-      filename,
-      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+          filename,
+          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(profiler.isActive());

@@ -686,27 +686,46 @@ void RocprofLogger::buffer_callback(
                 header->payload));
         auto& dispatch = record.dispatch_info;
 
+        // Safe access to agents map with default value
+        auto agent_it = s->agents.find(dispatch.agent_id.handle);
+        int device_id = (agent_it != s->agents.end())
+            ? agent_it->second.logical_node_type_id
+            : -1;
+
+        // Safe access to kernel_names map with default value
+        auto kernel_it = s->kernel_names.find(dispatch.kernel_id);
+        std::string kernel_name = (kernel_it != s->kernel_names.end())
+            ? kernel_it->second
+            : "<unknown kernel>";
+
         rocprofAsyncRow* row = new rocprofAsyncRow(
             record.correlation_id.internal,
             record.kind,
             record.operation,
             record.operation, // shared op - No longer a thing.  Placeholder
-            s->agents.at(dispatch.agent_id.handle).logical_node_type_id,
+            device_id,
             dispatch.queue_id.handle,
             record.start_timestamp,
             record.end_timestamp,
-            s->kernel_names.at(dispatch.kernel_id));
+            kernel_name);
         insert_row_to_buffer(row);
       } else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
         auto& record =
             *(static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(
                 header->payload));
+
+        // Safe access to agents map with default value
+        auto agent_it = s->agents.find(record.dst_agent_id.handle);
+        int device_id = (agent_it != s->agents.end())
+            ? agent_it->second.logical_node_type_id
+            : -1;
+
         rocprofAsyncRow* row = new rocprofAsyncRow(
             record.correlation_id.internal,
             record.kind,
             record.operation,
             record.operation, // shared op - No longer a thing.  Placeholder
-            s->agents.at(record.dst_agent_id.handle).logical_node_type_id,
+            device_id,
             0,
             record.start_timestamp,
             record.end_timestamp,
@@ -720,13 +739,23 @@ void RocprofLogger::buffer_callback(
 std::string RocprofLogger::opString(
     rocprofiler_callback_tracing_kind_t kind,
     rocprofiler_tracing_operation_t op) {
-  return std::string(RocprofLoggerShared::singleton().name_info[kind][op]);
+  auto& s = RocprofLoggerShared::singleton();
+  auto& ops = s.name_info[kind].operations;
+  if (op < ops.size()) {
+    return std::string(ops[op]);
+  }
+  return "<unknown operation:" + std::to_string(op) + ">";
 }
 
 std::string RocprofLogger::opString(
     rocprofiler_buffer_tracing_kind_t kind,
     rocprofiler_tracing_operation_t op) {
-  return std::string(RocprofLoggerShared::singleton().buff_name_info[kind][op]);
+  auto& s = RocprofLoggerShared::singleton();
+  auto& ops = s.buff_name_info[kind].operations;
+  if (op < ops.size()) {
+    return std::string(ops[op]);
+  }
+  return "<unknown operation:" + std::to_string(op) + ">";
 }
 
 void RocprofLogger::setMaxEvents(uint32_t maxBufferSize) {

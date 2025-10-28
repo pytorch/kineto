@@ -139,6 +139,26 @@ class XpuptiActivityProfilerSession
   const std::set<ActivityType>& activity_types_;
   std::string name_;
   bool scopeProfilerEnabled_{false};
+
+  struct KernelActivity {
+    void emplace(
+        int64_t startTime,
+        int64_t endTime,
+        int32_t device,
+        int32_t resource) {
+      startTime_ = startTime;
+      endTime_ = endTime;
+      device_ = device;
+      resource_ = resource;
+    }
+
+    int64_t startTime_{0};
+    int64_t endTime_{0};
+    int32_t device_{0};
+    int32_t resource_{0};
+  };
+
+  std::unordered_map<uint64_t, KernelActivity> kernelActivities_;
 };
 
 class XPUActivityProfiler : public libkineto::IActivityProfiler {

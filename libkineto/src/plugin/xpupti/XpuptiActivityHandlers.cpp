@@ -196,6 +196,14 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
     trace_activity->resource = getMappedQueueId(activity->_sycl_queue_id);
     trace_activity->flow.start = 0;
+
+    if constexpr (handleKernelActivities) {
+      kernelActivities_[activity->_kernel_id].emplace(
+          trace_activity->startTime,
+          trace_activity->endTime,
+          trace_activity->device,
+          trace_activity->resource);
+    }
   }
 
   if constexpr (handleMemcpyActivities || handleMemsetActivities) {
@@ -336,22 +344,34 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
     size_t recordId,
     size_t actualRecordsCount,
     ActivityLogger& logger) {
-  int64_t startTime = traceBuffer_.span.startTime;
-  int64_t duration = traceBuffer_.span.endTime - startTime;
-  int64_t interval = duration / actualRecordsCount;
-
   traceBuffer_.emplace_activity(
-      traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "Scope");
+      traceBuffer_.span,
+      ActivityType::XPU_SCOPE_PROFILER,
+      record->_kernel_name
+          ? fmt::format("metrics: {}", record->_kernel_name)
+          : fmt::format("metrics: kernel_{}", record->_kernel_id));
 
   auto& scope_activity = traceBuffer_.activities.back();
-  scope_activity->startTime = startTime + interval * recordId;
-  scope_activity->endTime = scope_activity->startTime + interval * 4 / 5;
-  scope_activity->device = 0; // To be changed
-  scope_activity->addMetadata("kernel id", record->_kernel_id);
-  scope_activity->addMetadata("queue", record->_queue);
-  if (record->_kernel_name) {
-    scope_activity->addMetadataQuoted("kernel name", record->_kernel_name);
+
+  auto it = kernelActivities_.find(record->_kernel_id);
+  if (it != kernelActivities_.end()) {
+    scope_activity->startTime = it->second.startTime_ - 1;
+    scope_activity->endTime = it->second.endTime_ + 1;
+    scope_activity->device = it->second.device_;
+    scope_activity->resource = it->second.resource_;
+  } else {
+    int64_t startTime = traceBuffer_.span.startTime;
+    int64_t duration = traceBuffer_.span.endTime - startTime;
+    int64_t interval = duration / actualRecordsCount;
+
+    scope_activity->startTime = startTime + interval * recordId;
+    scope_activity->endTime = scope_activity->startTime + interval * 4 / 5;
+    scope_activity->device = 0;
+    scope_activity->resource = 0;
   }
+
+  scope_activity->addMetadata("kernel_id", record->_kernel_id);
+  scope_activity->addMetadataQuoted("queue", fmt::format("{}", record->_queue));
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
     const auto& unit = metadata._metric_units[m];
     std::string unitSuffix = unit ? fmt::format(" [{}]", unit) : "";

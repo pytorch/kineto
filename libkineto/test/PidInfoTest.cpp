@@ -8,8 +8,6 @@
 
 #include "include/ThreadUtil.h"
 
-#include <thread>
-
 #include <gtest/gtest.h>
 
 using namespace KINETO_NAMESPACE;
@@ -26,8 +24,13 @@ TEST(ThreadNameTest, setAndGet) {
   EXPECT_EQ(getThreadName(), "Name w/ spaces");
 
   // More than 16 chars is not OK
-#ifndef _WIN32
+#if defined(__APPLE__)
+  GTEST_EXPECT_TRUE(setThreadName("More than 16 characters"));
+  EXPECT_EQ(getThreadName(), "More than 16 ch");
+#else
+#if !defined(_WIN32)
   GTEST_EXPECT_FALSE(setThreadName("More than 16 characters"));
   EXPECT_EQ(getThreadName(), "Name w/ spaces");
+#endif
 #endif
 }

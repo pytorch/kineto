@@ -16,6 +16,13 @@ target_link_libraries(ConfigTest PRIVATE
     kineto_base kineto_api)
 gtest_discover_tests(ConfigTest)
 
+# DynamicPluginTest
+add_executable(DynamicPluginTest DynamicPluginTest.cpp)
+target_link_libraries(DynamicPluginTest PRIVATE
+    gtest_main
+    kineto_base kineto_api)
+gtest_discover_tests(DynamicPluginTest)
+
 if(NOT LIBKINETO_NOCUPTI)
 # CuptiActivityProfilerTest
 #[[

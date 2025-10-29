@@ -34,6 +34,7 @@
 #include "libkineto.h"
 
 #include "Logger.h"
+#include "dynamic_plugin/PluginLoader.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -53,6 +54,15 @@ static void initProfilers() {
   }
 }
 
+bool isKinetoDisableCuptiEnvVarOne() {
+  const char* ptr = getenv("KINETO_DISABLE_CUPTI");
+  return ptr != nullptr && atoi(ptr) == 1;
+}
+
+#else
+bool isKinetoDisableCuptiEnvVarOne() {
+  return false;
+}
 #endif // __linux__ || defined(HAS_CUPTI)
 
 #ifdef HAS_CUPTI
@@ -151,10 +161,17 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 #endif
 
 #ifdef HAS_CUPTI
+  bool initCupti = true;
+
+  if (isKinetoDisableCuptiEnvVarOne()) {
+    initCupti = false;
+    LOG(INFO) << "Setting initCupti = " << initCupti << " from environment KINETO_DISABLE_CUPTI=1";
+  }
+
   bool initRangeProfiler = true;
 
   if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
-    bool success = setupCuptiInitCallback(logOnError);
+    bool success = initCupti ? setupCuptiInitCallback(logOnError) : false;
     cpuOnly = !success;
     initRangeProfiler = success;
   }
@@ -204,6 +221,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
         return std::make_unique<AIUActivityProfiler>();
       });
 #endif // HAS_AIUPTI
+
+  loadPlugins();
 
 #if __linux__
   // For open source users that would like to connect to a profiling daemon

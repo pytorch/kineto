@@ -191,6 +191,7 @@ public:
 
     // Take ownership of trace buffer from builder
     traceBuffer_ = pluginTraceBuilder.getTraceBuffer();
+    deviceInfos_ = pluginTraceBuilder.getDeviceInfos();
     resourceInfos_ = pluginTraceBuilder.getResourceInfos();
 
     // Log events
@@ -207,7 +208,12 @@ public:
   }
 
   // returns device info used in this trace, could be nullptr
-  std::unique_ptr<DeviceInfo> getDeviceInfo() override { return {}; }
+  std::unique_ptr<DeviceInfo> getDeviceInfo() override {
+    if (deviceInfos_.empty()) {
+      return {};
+    }
+    return std::make_unique<DeviceInfo>(deviceInfos_[0]);
+  }
 
   // returns resource info used in this trace, could be empty
   std::vector<ResourceInfo> getResourceInfos() override {
@@ -221,6 +227,7 @@ public:
 
 private:
   std::unique_ptr<CpuTraceBuffer> traceBuffer_;
+  std::vector<DeviceInfo> deviceInfos_;
   std::vector<ResourceInfo> resourceInfos_;
   const KinetoPlugin_ProfilerInterface profiler_;
   KinetoPlugin_ProfilerHandle *pProfilerHandle_ = nullptr;

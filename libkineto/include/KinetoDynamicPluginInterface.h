@@ -111,6 +111,21 @@ struct KinetoPlugin_ProfileEventFlow {
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfileEventFlow,     \
                                      isStartPoint)
 
+struct KinetoPlugin_ProfileDeviceInfo {
+  // Always set to KINETO_PLUGIN_PROFILE_DEVICE_INFO_UNPADDED_STRUCT_SIZE
+  size_t unpaddedStructSize;
+  // Device ID
+  int64_t deviceId;
+  // Device sort index
+  int64_t sortIndex;
+  // Device name
+  const char *pName;
+  // Device label
+  const char *pLabel;
+};
+#define KINETO_PLUGIN_PROFILE_DEVICE_INFO_UNPADDED_STRUCT_SIZE                 \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfileDeviceInfo,    \
+                                     pLabel)
 struct KinetoPlugin_ProfileResourceInfo {
   // Always set to KINETO_PLUGIN_PROFILE_RESOURCE_INFO_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
@@ -160,6 +175,10 @@ struct KinetoPlugin_TraceBuilder {
   int (*addLastEventMetadata)(
       KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle, const char *pKey,
       const char *pValue);
+
+  int (*addDeviceInfo)(
+      KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
+      const struct KinetoPlugin_ProfileDeviceInfo *pProfileDeviceInfo);
 
   int (*addResourceInfo)(
       KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,

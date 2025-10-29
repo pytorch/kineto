@@ -220,6 +220,12 @@ struct KinetoPlugin_ProfilerStart_Params {
   // Always set to KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
 
+  // [in] Enabled activity types.
+  KinetoPlugin_ProfileEventType *pEnabledActivityTypes;
+
+  // [in] Max length of pEnabledActivityTypes
+  size_t enabledActivityTypesMaxLen;
+
   // [in] An instance created via profilerCreate()
   KinetoPlugin_ProfilerHandle *pProfilerHandle;
 };

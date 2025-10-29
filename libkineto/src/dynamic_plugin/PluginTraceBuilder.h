@@ -29,7 +29,6 @@ public:
 
     if (pProfileEvent == nullptr) {
       LOG(ERROR) << "Failed to add event of nullptr";
-
       return -1;
     }
 
@@ -38,7 +37,6 @@ public:
     if (pProfileEvent->unpaddedStructSize <
         KINETO_PLUGIN_PROFILER_PROCESS_EVENTS_PARAMS_UNPADDED_STRUCT_SIZE) {
       LOG(ERROR) << "Profile event has an incompatible version";
-
       return -1;
     }
 
@@ -66,18 +64,15 @@ public:
 
     if (pName == nullptr) {
       LOG(ERROR) << "Failed to set last event name of nullptr";
-
       return -1;
     }
 
     if (buffer_->activities.empty()) {
       LOG(ERROR) << "Failed to set last event flow as there is no last event";
-
       return -1;
     }
 
     buffer_->activities.back()->activityName.assign(pName);
-
     return 0;
   }
 
@@ -97,13 +92,11 @@ public:
     if (pProfileEventFlow->unpaddedStructSize <
         KINETO_PLUGIN_PROFILE_EVENT_FLOW_UNPADDED_STRUCT_SIZE) {
       LOG(ERROR) << "Profile event flow has an incompatible version";
-
       return -1;
     }
 
     if (buffer_->activities.empty()) {
       LOG(ERROR) << "Failed to set last event flow as there is no last event";
-
       return -1;
     }
 
@@ -123,19 +116,43 @@ public:
 
     if (pKey == nullptr || pValue == nullptr) {
       LOG(ERROR) << "Failed to set last event metadata of nullptr";
-
       return -1;
     }
 
     if (buffer_->activities.empty()) {
       LOG(ERROR)
           << "Failed to set last event metadata as there is no last event";
-
       return -1;
     }
 
     buffer_->activities.back()->addMetadata(std::string{pKey},
                                             std::string{pValue});
+    return 0;
+  }
+
+  int addDeviceInfo(const KinetoPlugin_ProfileDeviceInfo *pProfileDeviceInfo) {
+    if (pProfileDeviceInfo == nullptr) {
+      LOG(ERROR) << "Failed to add device info of nullptr";
+      return -1;
+    }
+
+    // Handle versioning
+    // Currently expect the exact same version
+    if (pProfileDeviceInfo->unpaddedStructSize <
+        KINETO_PLUGIN_PROFILE_DEVICE_INFO_UNPADDED_STRUCT_SIZE) {
+      LOG(ERROR) << "Profile device info has an incompatible version";
+      return -1;
+    }
+
+    DeviceInfo deviceInfo(
+        pProfileDeviceInfo->deviceId, pProfileDeviceInfo->sortIndex,
+        pProfileDeviceInfo->pName
+            ? std::string(pProfileDeviceInfo->pName)
+            : std::to_string(pProfileDeviceInfo->deviceId),
+        pProfileDeviceInfo->pLabel ? std::string(pProfileDeviceInfo->pLabel)
+                                   : "");
+
+    deviceInfos_.push_back(deviceInfo);
 
     return 0;
   }
@@ -144,7 +161,6 @@ public:
       const KinetoPlugin_ProfileResourceInfo *pProfileResourceInfo) {
     if (pProfileResourceInfo == nullptr) {
       LOG(ERROR) << "Failed to add resource info of nullptr";
-
       return -1;
     }
 
@@ -153,7 +169,6 @@ public:
     if (pProfileResourceInfo->unpaddedStructSize <
         KINETO_PLUGIN_PROFILE_RESOURCE_INFO_UNPADDED_STRUCT_SIZE) {
       LOG(ERROR) << "Profile resource info has an incompatible version";
-
       return -1;
     }
 
@@ -178,6 +193,7 @@ public:
         .setLastEventName = cSetLastEventName,
         .setLastEventFlow = cSetLastEventFlow,
         .addLastEventMetadata = cAddLastEventMetadata,
+        .addDeviceInfo = cAddDeviceInfo,
         .addResourceInfo = cAddResourceInfo};
   }
 
@@ -185,6 +201,8 @@ public:
   std::unique_ptr<CpuTraceBuffer> getTraceBuffer() {
     return std::move(buffer_);
   }
+
+  std::vector<DeviceInfo> getDeviceInfos() { return deviceInfos_; }
 
   std::vector<ResourceInfo> getResourceInfos() { return resourceInfos_; }
 
@@ -220,6 +238,14 @@ private:
     return pPluginTraceBuilder->addLastEventMetadata(pKey, pValue);
   }
 
+  static int
+  cAddDeviceInfo(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
+                 const KinetoPlugin_ProfileDeviceInfo *pProfileDeviceInfo) {
+    auto pPluginTraceBuilder =
+        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+    return pPluginTraceBuilder->addDeviceInfo(pProfileDeviceInfo);
+  }
+
   static int cAddResourceInfo(
       KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
       const KinetoPlugin_ProfileResourceInfo *pProfileResourceInfo) {
@@ -229,6 +255,7 @@ private:
   }
 
   std::unique_ptr<CpuTraceBuffer> buffer_;
+  std::vector<DeviceInfo> deviceInfos_;
   std::vector<ResourceInfo> resourceInfos_;
 };
 

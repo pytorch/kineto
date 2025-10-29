@@ -23,6 +23,7 @@ struct MockPluginHandle {
   bool created = false;
   bool active = false;
   std::string name = "MockPlugin";
+  std::vector<KinetoPlugin_ProfileEventType> enabledActivityTypes;
 };
 
 // Mock implementation of the plugin interface
@@ -93,6 +94,16 @@ public:
     MockPluginHandle *handle =
         reinterpret_cast<MockPluginHandle *>(params->pProfilerHandle);
     handle->active = true;
+
+    // Capture the enabled activity types
+    handle->enabledActivityTypes.clear();
+    if (params->pEnabledActivityTypes) {
+      for (size_t i = 0; i < params->enabledActivityTypesMaxLen; i++) {
+        handle->enabledActivityTypes.push_back(
+            params->pEnabledActivityTypes[i]);
+      }
+    }
+
     return 0;
   }
 
@@ -224,6 +235,27 @@ TEST_F(DynamicPluginTest, PluginProfilerLifecycle) {
   session->start();
   EXPECT_TRUE(handle->active);
 
+  // Verify that enabled activity types were passed to the plugin
+  EXPECT_FALSE(handle->enabledActivityTypes.empty());
+
+  // The plugin should receive the activity types we configured with
+  // (which should be the intersection of requested and supported)
+  std::set<KinetoPlugin_ProfileEventType> receivedTypes(
+      handle->enabledActivityTypes.begin(), handle->enabledActivityTypes.end());
+
+  // Verify some expected types are present
+  EXPECT_TRUE(
+      receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_RUNTIME) !=
+      receivedTypes.end());
+  EXPECT_TRUE(
+      receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_DRIVER) !=
+      receivedTypes.end());
+  EXPECT_TRUE(
+      receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CONCURRENT_KERNEL) !=
+      receivedTypes.end());
+  EXPECT_TRUE(receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_MEMCPY) !=
+              receivedTypes.end());
+
   // Test stop profiling
   session->stop();
   EXPECT_FALSE(handle->active);
@@ -325,6 +357,34 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   EXPECT_NE(session1, nullptr)
       << "Should succeed when all requested types are supported";
 
+  // Verify that the plugin receives all the enabled activity types
+  session1->start();
+  ASSERT_EQ(MockPlugin::getHandleCount(), 1);
+  MockPluginHandle *handle1 = MockPlugin::handles[0].get();
+  EXPECT_FALSE(handle1->enabledActivityTypes.empty());
+
+  std::set<KinetoPlugin_ProfileEventType> receivedTypes1(
+      handle1->enabledActivityTypes.begin(),
+      handle1->enabledActivityTypes.end());
+
+  // Verify all 4 expected types are present
+  EXPECT_EQ(receivedTypes1.size(), 4);
+  EXPECT_TRUE(
+      receivedTypes1.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_RUNTIME) !=
+      receivedTypes1.end());
+  EXPECT_TRUE(
+      receivedTypes1.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_DRIVER) !=
+      receivedTypes1.end());
+  EXPECT_TRUE(
+      receivedTypes1.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CONCURRENT_KERNEL) !=
+      receivedTypes1.end());
+  EXPECT_TRUE(
+      receivedTypes1.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_MEMCPY) !=
+      receivedTypes1.end());
+
+  session1->stop();
+  session1.reset();
+
   // Test case 2: Request activities where some are supported (intersection
   // exists)
   std::set<ActivityType> partialSupportedTypes = {
@@ -337,6 +397,35 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   auto session2 = pluginProfiler.configure(partialSupportedTypes, Config{});
   EXPECT_NE(session2, nullptr)
       << "Should succeed when ANY requested types are supported";
+
+  // Verify that the plugin receives only the supported activity types
+  session2->start();
+  ASSERT_EQ(MockPlugin::getHandleCount(), 1);
+  MockPluginHandle *handle2 = MockPlugin::handles[0].get();
+  EXPECT_FALSE(handle2->enabledActivityTypes.empty());
+
+  std::set<KinetoPlugin_ProfileEventType> receivedTypes2(
+      handle2->enabledActivityTypes.begin(),
+      handle2->enabledActivityTypes.end());
+
+  // Should only have the 2 supported types from the requested set
+  EXPECT_EQ(receivedTypes2.size(), 2);
+  EXPECT_TRUE(
+      receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_RUNTIME) !=
+      receivedTypes2.end());
+  EXPECT_TRUE(
+      receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CONCURRENT_KERNEL) !=
+      receivedTypes2.end());
+
+  // Verify unsupported types are NOT present
+  EXPECT_TRUE(receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CPU_OP) ==
+              receivedTypes2.end());
+  EXPECT_TRUE(
+      receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_USER_ANNOTATION) ==
+      receivedTypes2.end());
+
+  session2->stop();
+  session2.reset();
 
   // Test configure() with activity types that don't intersect with plugin
   // support This tests the failure case - profiler should NOT be enabled if it

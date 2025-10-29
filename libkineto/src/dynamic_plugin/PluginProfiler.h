@@ -20,8 +20,10 @@ class PluginProfilerSession : public IActivityProfilerSession {
 
 public:
   PluginProfilerSession(const KinetoPlugin_ProfilerInterface &profiler,
-                        const std::string &name)
-      : name_(name), profiler_(profiler) {
+                        const std::string &name,
+                        const std::set<ActivityType> &enabled_activity_types)
+      : name_(name), profiler_(profiler),
+        enabled_activity_types_(enabled_activity_types) {
     KinetoPlugin_ProfilerCreate_Params createParams{
         KINETO_PLUGIN_PROFILER_CREATE_PARAMS_UNPADDED_STRUCT_SIZE};
 
@@ -65,6 +67,11 @@ public:
     KinetoPlugin_ProfilerStart_Params startParams{
         KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE};
     startParams.pProfilerHandle = pProfilerHandle_;
+
+    std::vector<KinetoPlugin_ProfileEventType> enabledActivityTypes =
+        convertActivityTypeSet(enabled_activity_types_);
+    startParams.pEnabledActivityTypes = enabledActivityTypes.data();
+    startParams.enabledActivityTypesMaxLen = enabledActivityTypes.size();
 
     int errorCode = profiler_.profilerStart(&startParams);
     if (errorCode != 0) {
@@ -218,6 +225,7 @@ private:
   const KinetoPlugin_ProfilerInterface profiler_;
   KinetoPlugin_ProfilerHandle *pProfilerHandle_ = nullptr;
   std::string name_;
+  std::set<ActivityType> enabled_activity_types_;
   int64_t lastStartTimestampUtcNs_ = 0;
   int64_t lastStopTimestampUtcNs_ = 0;
 };
@@ -286,15 +294,15 @@ public:
     }
 
     // Check if the plugin supports ANY of the requested activity types
-    bool hasSupported = false;
+    // and compute the intersection of requested and supported types
+    std::set<ActivityType> enabledTypes;
     for (const auto &activity_type : activity_types) {
       if (supportedActivities_.find(activity_type) !=
           supportedActivities_.end()) {
-        hasSupported = true;
-        break;
+        enabledTypes.insert(activity_type);
       }
     }
-    if (!hasSupported) {
+    if (enabledTypes.empty()) {
       LOG(INFO) << "Plugin profiler " << name_
                 << " does not support any of the requested activity types";
       return nullptr;
@@ -303,7 +311,8 @@ public:
     // [TODO] In future evolution of API we may want to pass in Config string or
     // a subset of config strings perhaps by searching for "PLUGIN_NAME_" in the
     // config string
-    return std::make_unique<PluginProfilerSession>(profiler_, name_);
+    return std::make_unique<PluginProfilerSession>(profiler_, name_,
+                                                   enabledTypes);
   }
 
   std::unique_ptr<IActivityProfilerSession>

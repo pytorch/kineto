@@ -577,6 +577,45 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
           toString(op.type()), op_name, device, sanitizeTid(resource),
           ts/1000, ts %1000, duration/1000, duration %1000, args);
   // clang-format on
+
+  if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
+    constexpr const std::string_view prefix = "metrics: ";
+    if (std::string_view(op_name).substr(0, prefix.size()) == prefix) {
+      for (const auto& [key, val] : op.getMetadata()) {
+        constexpr std::array<std::string_view, 2> keysExcluded = {
+            "queue", "kernel_id"};
+        if (std::none_of(
+                keysExcluded.begin(),
+                keysExcluded.end(),
+                [&key](std::string_view keyExcluded) {
+                  return keyExcluded == key;
+                })) {
+          auto timePoint = ts + duration / 2;
+          fmt::print(
+              traceOf_,
+              // clang-format off
+  R"JSON(
+  {{
+    "name": "{}",
+    "cat": "metric",
+    "ph": "C",
+    "ts": {}.{:03},
+    "pid": {},
+    "tid": {},
+    "args": {{ "value": {} }}
+  }},)JSON",
+              // clang-format on
+              key,
+              timePoint / 1000,
+              timePoint % 1000,
+              device,
+              sanitizeTid(resource),
+              val);
+        }
+      }
+    }
+  }
+
   if (op.flowId() > 0) {
     handleGenericLink(op);
   }

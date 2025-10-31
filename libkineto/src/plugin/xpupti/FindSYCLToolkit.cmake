@@ -105,6 +105,5 @@ if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR) OR (NOT SYCL_LIBRARY))
 endif()
 
 message(DEBUG "The SYCL compiler is ${SYCL_COMPILER}")
-message(DEBUG "The SYCL Flags are ${SYCL_FLAGS}")
 
 set(SYCLTOOLKIT_FOUND True)

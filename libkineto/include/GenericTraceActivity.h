@@ -129,6 +129,15 @@ class GenericTraceActivity : public ITraceActivity {
     return json.str();
   }
 
+  const std::vector<std::pair<std::string, std::string>> getMetadata()
+      const override {
+    std::vector<std::pair<std::string, std::string>> result;
+    for (const auto& [key, val] : metadataMap_) {
+      result.emplace_back(key, val.first);
+    }
+    return result;
+  }
+
   virtual ~GenericTraceActivity() override {}
 
   int64_t startTime{0};

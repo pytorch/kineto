@@ -34,6 +34,7 @@ enum class ActivityType {
   MTIA_CCP_EVENTS, // MTIA ondevice CCP events
   MTIA_INSIGHT, // MTIA Insight Events
   CUDA_SYNC, // synchronization events between runtime and kernels
+  CUDA_EVENT, // CUDA event activities (cudaEventRecord, etc.)
 
   // Optional Activity types
   GLOW_RUNTIME, // host side glow runtime events

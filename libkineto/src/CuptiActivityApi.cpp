@@ -365,6 +365,9 @@ void CuptiActivityApi::enableCuptiActivities(
       externalCorrelationEnabled_ = true;
     }
     if (activity == ActivityType::CUDA_SYNC) {
+#if CUDA_VERSION >= 13000
+      CUPTI_CALL(cuptiActivityEnableCudaEventDeviceTimestamps(true));
+#endif
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
     }
     if (activity == ActivityType::CUDA_RUNTIME) {

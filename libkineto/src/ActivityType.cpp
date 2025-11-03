@@ -34,6 +34,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
      {"mtia_ccp_events", ActivityType::MTIA_CCP_EVENTS},
      {"mtia_insight", ActivityType::MTIA_INSIGHT},
      {"cuda_sync", ActivityType::CUDA_SYNC},
+     {"cuda_event", ActivityType::CUDA_EVENT},
      {"glow_runtime", ActivityType::GLOW_RUNTIME},
      {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
      {"hpu_op", ActivityType::HPU_OP},

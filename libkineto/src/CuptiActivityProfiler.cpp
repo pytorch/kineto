@@ -664,7 +664,8 @@ static std::optional<WaitEventInfo> getWaitEventInfo(
 }
 
 void CuptiActivityProfiler::handleCudaEventActivity(
-    const CUpti_ActivityCudaEvent* activity) {
+    const CUpti_ActivityCudaEventType* activity,
+    ActivityLogger* logger) {
   VLOG(2) << ": CUPTI_ACTIVITY_KIND_CUDA_EVENT"
           << " corrId=" << activity->correlationId
           << " eventId=" << activity->eventId
@@ -675,6 +676,28 @@ void CuptiActivityProfiler::handleCudaEventActivity(
   auto key = CtxEventPair{activity->contextId, activity->eventId};
   waitEventMap()[key] =
       WaitEventInfo{activity->streamId, activity->correlationId};
+
+  // Create and log the CUDA event activity
+  const ITraceActivity* linked =
+      linkedActivity(activity->correlationId, cpuCorrelationMap_);
+  const auto& cuda_event_activity =
+      traceBuffers_->addActivityWrapper(CudaEventActivity(activity, linked));
+
+  if (outOfRange(cuda_event_activity)) {
+    return;
+  }
+
+  auto device_id = contextIdtoDeviceId(activity->contextId);
+  if (int32_t(activity->streamId) != -1) {
+    recordStream(device_id, activity->streamId, "");
+  } else {
+    recordDevice(device_id);
+  }
+
+  VLOG(2) << "Logging CUDA event activity device = " << device_id
+          << " stream = " << activity->streamId;
+  cuda_event_activity.log(*logger);
+  setGpuActivityPresent(true);
 }
 
 void CuptiActivityProfiler::handleCudaSyncActivity(
@@ -907,7 +930,7 @@ void CuptiActivityProfiler::handleCuptiActivity(
       break;
     case CUPTI_ACTIVITY_KIND_CUDA_EVENT:
       handleCudaEventActivity(
-          reinterpret_cast<const CUpti_ActivityCudaEvent*>(record));
+          reinterpret_cast<const CUpti_ActivityCudaEventType*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY:
       handleGpuActivity(

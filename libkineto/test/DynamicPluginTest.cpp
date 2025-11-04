@@ -28,28 +28,32 @@ struct MockPluginHandle {
 
 // Mock implementation of the plugin interface
 class MockPlugin {
-public:
+ public:
   static std::vector<std::unique_ptr<MockPluginHandle>> handles;
 
-  static int getHandleCount() { return handles.size(); }
+  static int getHandleCount() {
+    return handles.size();
+  }
 
   // Reset state for clean tests
-  static void reset() { handles.clear(); }
+  static void reset() {
+    handles.clear();
+  }
 
   // Mock profilerCreate implementation
-  static int profilerCreate(KinetoPlugin_ProfilerCreate_Params *params) {
+  static int profilerCreate(KinetoPlugin_ProfilerCreate_Params* params) {
     handles.push_back(std::make_unique<MockPluginHandle>());
-    MockPluginHandle *handle = handles.back().get();
+    MockPluginHandle* handle = handles.back().get();
     handle->created = true;
     params->pProfilerHandle =
-        reinterpret_cast<KinetoPlugin_ProfilerHandle *>(handle);
+        reinterpret_cast<KinetoPlugin_ProfilerHandle*>(handle);
     return 0;
   }
 
   // Mock profilerDestroy implementation
-  static int profilerDestroy(KinetoPlugin_ProfilerDestroy_Params *params) {
-    MockPluginHandle *handle =
-        reinterpret_cast<MockPluginHandle *>(params->pProfilerHandle);
+  static int profilerDestroy(KinetoPlugin_ProfilerDestroy_Params* params) {
+    MockPluginHandle* handle =
+        reinterpret_cast<MockPluginHandle*>(params->pProfilerHandle);
 
     // Find and remove from our tracking
     for (auto it = handles.begin(); it != handles.end(); ++it) {
@@ -62,7 +66,7 @@ public:
   }
 
   // Mock profilerQuery implementation
-  static int profilerQuery(KinetoPlugin_ProfilerQuery_Params *params) {
+  static int profilerQuery(KinetoPlugin_ProfilerQuery_Params* params) {
     strncpy(params->pProfilerName, "MockPlugin", params->profilerNameMaxLen);
     params->pProfilerName[params->profilerNameMaxLen] = '\0';
 
@@ -90,9 +94,9 @@ public:
   }
 
   // Mock profilerStart implementation
-  static int profilerStart(KinetoPlugin_ProfilerStart_Params *params) {
-    MockPluginHandle *handle =
-        reinterpret_cast<MockPluginHandle *>(params->pProfilerHandle);
+  static int profilerStart(KinetoPlugin_ProfilerStart_Params* params) {
+    MockPluginHandle* handle =
+        reinterpret_cast<MockPluginHandle*>(params->pProfilerHandle);
     handle->active = true;
 
     // Capture the enabled activity types
@@ -108,17 +112,17 @@ public:
   }
 
   // Mock profilerStop implementation
-  static int profilerStop(KinetoPlugin_ProfilerStop_Params *params) {
-    MockPluginHandle *handle =
-        reinterpret_cast<MockPluginHandle *>(params->pProfilerHandle);
+  static int profilerStop(KinetoPlugin_ProfilerStop_Params* params) {
+    MockPluginHandle* handle =
+        reinterpret_cast<MockPluginHandle*>(params->pProfilerHandle);
     handle->active = false;
     return 0;
   }
 
   // Mock profilerProcessEvents implementation
-  static int
-  profilerProcessEvents(KinetoPlugin_ProfilerProcessEvents_Params *params) {
-    const KinetoPlugin_TraceBuilder *traceBuilder = params->pTraceBuilder;
+  static int profilerProcessEvents(
+      KinetoPlugin_ProfilerProcessEvents_Params* params) {
+    const KinetoPlugin_TraceBuilder* traceBuilder = params->pTraceBuilder;
 
     // Create sample events of different types
     int64_t baseTime = 1000000000; // 1 second in nanoseconds
@@ -133,8 +137,8 @@ public:
         .deviceId = 0,
         .resourceId = 123};
     traceBuilder->addEvent(traceBuilder->pTraceBuilderHandle, &runtimeEvent);
-    traceBuilder->setLastEventName(traceBuilder->pTraceBuilderHandle,
-                                   "cudaLaunchKernel");
+    traceBuilder->setLastEventName(
+        traceBuilder->pTraceBuilderHandle, "cudaLaunchKernel");
 
     // 2. Driver activity (CUDA driver API call)
     KinetoPlugin_ProfileEvent driverEvent{
@@ -146,8 +150,8 @@ public:
         .deviceId = 0,
         .resourceId = 124};
     traceBuilder->addEvent(traceBuilder->pTraceBuilderHandle, &driverEvent);
-    traceBuilder->setLastEventName(traceBuilder->pTraceBuilderHandle,
-                                   "cuLaunchKernel");
+    traceBuilder->setLastEventName(
+        traceBuilder->pTraceBuilderHandle, "cuLaunchKernel");
 
     // 3. Kernel activity (GPU kernel execution)
     KinetoPlugin_ProfileEvent kernelEvent{
@@ -159,8 +163,8 @@ public:
         .deviceId = 0,
         .resourceId = 1};
     traceBuilder->addEvent(traceBuilder->pTraceBuilderHandle, &kernelEvent);
-    traceBuilder->setLastEventName(traceBuilder->pTraceBuilderHandle,
-                                   "test_kernel");
+    traceBuilder->setLastEventName(
+        traceBuilder->pTraceBuilderHandle, "test_kernel");
 
     // 4. Memcpy activity (GPU memory copy)
     KinetoPlugin_ProfileEvent memcpyEvent{
@@ -172,8 +176,8 @@ public:
         .deviceId = 0,
         .resourceId = 2};
     traceBuilder->addEvent(traceBuilder->pTraceBuilderHandle, &memcpyEvent);
-    traceBuilder->setLastEventName(traceBuilder->pTraceBuilderHandle,
-                                   "cudaMemcpyHtoD");
+    traceBuilder->setLastEventName(
+        traceBuilder->pTraceBuilderHandle, "cudaMemcpyHtoD");
 
     return 0;
   }
@@ -198,10 +202,14 @@ std::vector<std::unique_ptr<MockPluginHandle>> MockPlugin::handles;
 } // anonymous namespace
 
 class DynamicPluginTest : public ::testing::Test {
-protected:
-  void SetUp() override { MockPlugin::reset(); }
+ protected:
+  void SetUp() override {
+    MockPlugin::reset();
+  }
 
-  void TearDown() override { MockPlugin::reset(); }
+  void TearDown() override {
+    MockPlugin::reset();
+  }
 };
 
 // Test complete plugin lifecycle through PluginProfiler
@@ -227,7 +235,7 @@ TEST_F(DynamicPluginTest, PluginProfilerLifecycle) {
   EXPECT_EQ(MockPlugin::getHandleCount(), 1);
 
   // Verify handle was created and is in correct state
-  MockPluginHandle *handle = MockPlugin::handles[0].get();
+  MockPluginHandle* handle = MockPlugin::handles[0].get();
   EXPECT_TRUE(handle->created);
   EXPECT_FALSE(handle->active);
 
@@ -253,8 +261,9 @@ TEST_F(DynamicPluginTest, PluginProfilerLifecycle) {
   EXPECT_TRUE(
       receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CONCURRENT_KERNEL) !=
       receivedTypes.end());
-  EXPECT_TRUE(receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_MEMCPY) !=
-              receivedTypes.end());
+  EXPECT_TRUE(
+      receivedTypes.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_MEMCPY) !=
+      receivedTypes.end());
 
   // Test stop profiling
   session->stop();
@@ -296,7 +305,7 @@ TEST_F(DynamicPluginTest, EventBuilderProcessing) {
   EXPECT_EQ(traceBuffer->activities.size(), 4);
 
   // Verify the different activity types were created correctly
-  auto &activities_vec = traceBuffer->activities;
+  auto& activities_vec = traceBuffer->activities;
 
   // Check runtime activity (first event)
   EXPECT_EQ(activities_vec[0]->type(), ActivityType::CUDA_RUNTIME);
@@ -339,19 +348,25 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   EXPECT_FALSE(supportedActivities.empty());
 
   // Verify specific supported activities (based on our mock implementation)
-  EXPECT_TRUE(supportedActivities.find(ActivityType::CUDA_RUNTIME) !=
-              supportedActivities.end());
-  EXPECT_TRUE(supportedActivities.find(ActivityType::CUDA_DRIVER) !=
-              supportedActivities.end());
-  EXPECT_TRUE(supportedActivities.find(ActivityType::CONCURRENT_KERNEL) !=
-              supportedActivities.end());
-  EXPECT_TRUE(supportedActivities.find(ActivityType::GPU_MEMCPY) !=
-              supportedActivities.end());
+  EXPECT_TRUE(
+      supportedActivities.find(ActivityType::CUDA_RUNTIME) !=
+      supportedActivities.end());
+  EXPECT_TRUE(
+      supportedActivities.find(ActivityType::CUDA_DRIVER) !=
+      supportedActivities.end());
+  EXPECT_TRUE(
+      supportedActivities.find(ActivityType::CONCURRENT_KERNEL) !=
+      supportedActivities.end());
+  EXPECT_TRUE(
+      supportedActivities.find(ActivityType::GPU_MEMCPY) !=
+      supportedActivities.end());
 
   // Test case 1: Request activities that are all supported
   std::set<ActivityType> allSupportedTypes = {
-      ActivityType::CUDA_RUNTIME, ActivityType::CUDA_DRIVER,
-      ActivityType::CONCURRENT_KERNEL, ActivityType::GPU_MEMCPY};
+      ActivityType::CUDA_RUNTIME,
+      ActivityType::CUDA_DRIVER,
+      ActivityType::CONCURRENT_KERNEL,
+      ActivityType::GPU_MEMCPY};
 
   auto session1 = pluginProfiler.configure(allSupportedTypes, Config{});
   EXPECT_NE(session1, nullptr)
@@ -360,7 +375,7 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   // Verify that the plugin receives all the enabled activity types
   session1->start();
   ASSERT_EQ(MockPlugin::getHandleCount(), 1);
-  MockPluginHandle *handle1 = MockPlugin::handles[0].get();
+  MockPluginHandle* handle1 = MockPlugin::handles[0].get();
   EXPECT_FALSE(handle1->enabledActivityTypes.empty());
 
   std::set<KinetoPlugin_ProfileEventType> receivedTypes1(
@@ -388,10 +403,10 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   // Test case 2: Request activities where some are supported (intersection
   // exists)
   std::set<ActivityType> partialSupportedTypes = {
-      ActivityType::CUDA_RUNTIME,      // Supported
-      ActivityType::CPU_OP,            // Not supported
+      ActivityType::CUDA_RUNTIME, // Supported
+      ActivityType::CPU_OP, // Not supported
       ActivityType::CONCURRENT_KERNEL, // Supported
-      ActivityType::USER_ANNOTATION    // Not supported
+      ActivityType::USER_ANNOTATION // Not supported
   };
 
   auto session2 = pluginProfiler.configure(partialSupportedTypes, Config{});
@@ -401,7 +416,7 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
   // Verify that the plugin receives only the supported activity types
   session2->start();
   ASSERT_EQ(MockPlugin::getHandleCount(), 1);
-  MockPluginHandle *handle2 = MockPlugin::handles[0].get();
+  MockPluginHandle* handle2 = MockPlugin::handles[0].get();
   EXPECT_FALSE(handle2->enabledActivityTypes.empty());
 
   std::set<KinetoPlugin_ProfileEventType> receivedTypes2(
@@ -418,8 +433,9 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
       receivedTypes2.end());
 
   // Verify unsupported types are NOT present
-  EXPECT_TRUE(receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CPU_OP) ==
-              receivedTypes2.end());
+  EXPECT_TRUE(
+      receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_CPU_OP) ==
+      receivedTypes2.end());
   EXPECT_TRUE(
       receivedTypes2.find(KINETO_PLUGIN_PROFILE_EVENT_TYPE_USER_ANNOTATION) ==
       receivedTypes2.end());
@@ -433,8 +449,10 @@ TEST_F(DynamicPluginTest, ConfigureActivityTypes) {
 
   // Test case 3: Request activities that are completely unsupported
   std::set<ActivityType> unsupportedTypes = {
-      ActivityType::CPU_OP, ActivityType::USER_ANNOTATION,
-      ActivityType::PYTHON_FUNCTION, ActivityType::OVERHEAD};
+      ActivityType::CPU_OP,
+      ActivityType::USER_ANNOTATION,
+      ActivityType::PYTHON_FUNCTION,
+      ActivityType::OVERHEAD};
 
   auto session3 = pluginProfiler.configure(unsupportedTypes, Config{});
   EXPECT_EQ(session3, nullptr)

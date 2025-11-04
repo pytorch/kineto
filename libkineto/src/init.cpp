@@ -165,7 +165,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 
   if (isKinetoDisableCuptiEnvVarOne()) {
     initCupti = false;
-    LOG(INFO) << "Setting initCupti = " << initCupti << " from environment KINETO_DISABLE_CUPTI=1";
+    LOG(INFO) << "Setting initCupti = " << initCupti
+              << " from environment KINETO_DISABLE_CUPTI=1";
   }
 
   bool initRangeProfiler = true;

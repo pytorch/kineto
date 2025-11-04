@@ -16,13 +16,13 @@ namespace libkineto {
 // need to translate a few things around
 
 class PluginTraceBuilder {
-public:
+ public:
   PluginTraceBuilder(TraceSpan span) {
     buffer_ = std::make_unique<CpuTraceBuffer>();
     buffer_->span = span;
   }
 
-  int addEvent(const KinetoPlugin_ProfileEvent *pProfileEvent) {
+  int addEvent(const KinetoPlugin_ProfileEvent* pProfileEvent) {
     if (buffer_ == nullptr) {
       return -1;
     }
@@ -42,11 +42,11 @@ public:
 
     ActivityType activityType = convertToActivityType(pProfileEvent->eventType);
 
-    buffer_->emplace_activity(buffer_->span, activityType /*ActivityType*/,
-                              "" /*name - set it later*/
+    buffer_->emplace_activity(
+        buffer_->span, activityType /*ActivityType*/, "" /*name - set it later*/
     );
 
-    auto &event = buffer_->activities.back();
+    auto& event = buffer_->activities.back();
     event->startTime = pProfileEvent->startTimeUtcNs;
     event->endTime = pProfileEvent->endTimeUtcNs;
     event->id = pProfileEvent->eventId;
@@ -57,7 +57,7 @@ public:
     return 0;
   }
 
-  int setLastEventName(const char *pName) {
+  int setLastEventName(const char* pName) {
     if (buffer_ == nullptr) {
       return -1;
     }
@@ -76,7 +76,7 @@ public:
     return 0;
   }
 
-  int setLastEventFlow(const KinetoPlugin_ProfileEventFlow *pProfileEventFlow) {
+  int setLastEventFlow(const KinetoPlugin_ProfileEventFlow* pProfileEventFlow) {
     if (buffer_ == nullptr) {
       return -1;
     }
@@ -100,7 +100,7 @@ public:
       return -1;
     }
 
-    auto &event = buffer_->activities.back();
+    auto& event = buffer_->activities.back();
 
     event->flow.id = pProfileEventFlow->flowId;
     event->flow.type = convertToLinkType(pProfileEventFlow->flowType);
@@ -109,7 +109,7 @@ public:
     return 0;
   }
 
-  int addLastEventMetadata(const char *pKey, const char *pValue) {
+  int addLastEventMetadata(const char* pKey, const char* pValue) {
     if (buffer_ == nullptr) {
       return -1;
     }
@@ -125,12 +125,12 @@ public:
       return -1;
     }
 
-    buffer_->activities.back()->addMetadata(std::string{pKey},
-                                            std::string{pValue});
+    buffer_->activities.back()->addMetadata(
+        std::string{pKey}, std::string{pValue});
     return 0;
   }
 
-  int addDeviceInfo(const KinetoPlugin_ProfileDeviceInfo *pProfileDeviceInfo) {
+  int addDeviceInfo(const KinetoPlugin_ProfileDeviceInfo* pProfileDeviceInfo) {
     if (pProfileDeviceInfo == nullptr) {
       LOG(ERROR) << "Failed to add device info of nullptr";
       return -1;
@@ -145,7 +145,8 @@ public:
     }
 
     DeviceInfo deviceInfo(
-        pProfileDeviceInfo->deviceId, pProfileDeviceInfo->sortIndex,
+        pProfileDeviceInfo->deviceId,
+        pProfileDeviceInfo->sortIndex,
         pProfileDeviceInfo->pName
             ? std::string(pProfileDeviceInfo->pName)
             : std::to_string(pProfileDeviceInfo->deviceId),
@@ -158,7 +159,7 @@ public:
   }
 
   int addResourceInfo(
-      const KinetoPlugin_ProfileResourceInfo *pProfileResourceInfo) {
+      const KinetoPlugin_ProfileResourceInfo* pProfileResourceInfo) {
     if (pProfileResourceInfo == nullptr) {
       LOG(ERROR) << "Failed to add resource info of nullptr";
       return -1;
@@ -173,7 +174,8 @@ public:
     }
 
     ResourceInfo resourceInfo(
-        pProfileResourceInfo->deviceId, pProfileResourceInfo->resourceId,
+        pProfileResourceInfo->deviceId,
+        pProfileResourceInfo->resourceId,
         pProfileResourceInfo->displayOrder,
         pProfileResourceInfo->pName
             ? std::string(pProfileResourceInfo->pName)
@@ -188,7 +190,7 @@ public:
     return KinetoPlugin_TraceBuilder{
         .unpaddedStructSize = KINETO_PLUGIN_TRACE_BUILDER_UNPADDED_STRUCT_SIZE,
         .pTraceBuilderHandle =
-            reinterpret_cast<KinetoPlugin_TraceBuilderHandle *>(this),
+            reinterpret_cast<KinetoPlugin_TraceBuilderHandle*>(this),
         .addEvent = cAddEvent,
         .setLastEventName = cSetLastEventName,
         .setLastEventFlow = cSetLastEventFlow,
@@ -202,55 +204,61 @@ public:
     return std::move(buffer_);
   }
 
-  std::vector<DeviceInfo> getDeviceInfos() { return deviceInfos_; }
+  std::vector<DeviceInfo> getDeviceInfos() {
+    return deviceInfos_;
+  }
 
-  std::vector<ResourceInfo> getResourceInfos() { return resourceInfos_; }
+  std::vector<ResourceInfo> getResourceInfos() {
+    return resourceInfos_;
+  }
 
-private:
-  static int cAddEvent(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                       const KinetoPlugin_ProfileEvent *pProfileEvent) {
+ private:
+  static int cAddEvent(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const KinetoPlugin_ProfileEvent* pProfileEvent) {
     auto pPluginTraceBuilder =
-        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+        reinterpret_cast<PluginTraceBuilder*>(pTraceBuilderHandle);
     return pPluginTraceBuilder->addEvent(pProfileEvent);
   }
 
-  static int
-  cSetLastEventName(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                    const char *name) {
+  static int cSetLastEventName(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const char* name) {
     auto pPluginTraceBuilder =
-        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+        reinterpret_cast<PluginTraceBuilder*>(pTraceBuilderHandle);
     return pPluginTraceBuilder->setLastEventName(name);
   }
 
-  static int
-  cSetLastEventFlow(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                    const KinetoPlugin_ProfileEventFlow *pProfileEventFlow) {
+  static int cSetLastEventFlow(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const KinetoPlugin_ProfileEventFlow* pProfileEventFlow) {
     auto pPluginTraceBuilder =
-        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+        reinterpret_cast<PluginTraceBuilder*>(pTraceBuilderHandle);
     return pPluginTraceBuilder->setLastEventFlow(pProfileEventFlow);
   }
 
-  static int
-  cAddLastEventMetadata(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                        const char *pKey, const char *pValue) {
+  static int cAddLastEventMetadata(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const char* pKey,
+      const char* pValue) {
     auto pPluginTraceBuilder =
-        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+        reinterpret_cast<PluginTraceBuilder*>(pTraceBuilderHandle);
     return pPluginTraceBuilder->addLastEventMetadata(pKey, pValue);
   }
 
-  static int
-  cAddDeviceInfo(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                 const KinetoPlugin_ProfileDeviceInfo *pProfileDeviceInfo) {
+  static int cAddDeviceInfo(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const KinetoPlugin_ProfileDeviceInfo* pProfileDeviceInfo) {
     auto pPluginTraceBuilder =
-        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+        reinterpret_cast<PluginTraceBuilder*>(pTraceBuilderHandle);
     return pPluginTraceBuilder->addDeviceInfo(pProfileDeviceInfo);
   }
 
   static int cAddResourceInfo(
-      KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-      const KinetoPlugin_ProfileResourceInfo *pProfileResourceInfo) {
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const KinetoPlugin_ProfileResourceInfo* pProfileResourceInfo) {
     auto pPluginTraceBuilder =
-        reinterpret_cast<PluginTraceBuilder *>(pTraceBuilderHandle);
+        reinterpret_cast<PluginTraceBuilder*>(pTraceBuilderHandle);
     return pPluginTraceBuilder->addResourceInfo(pProfileResourceInfo);
   }
 

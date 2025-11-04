@@ -9,9 +9,9 @@
 // To support backward compatibility, do NOT remove, reorder, or resize the
 // existing fields For details, visit
 // https://github.com/annarev/community/commit/09e231324c3b2b1f653c3f385fd2120edd460815
-#define KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct_type, last_field_name)       \
-  (size_t)(offsetof(struct_type, last_field_name) +                            \
-           sizeof(((struct_type *)1000)->last_field_name))
+#define KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct_type, last_field_name) \
+  (size_t)(offsetof(struct_type, last_field_name) +                      \
+           sizeof(((struct_type*)1000)->last_field_name))
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,17 +30,17 @@ enum KinetoPlugin_ProfileEventType {
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_EXTERNAL_CORRELATION,
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_RUNTIME, // host side cuda runtime
                                                  // events
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_DRIVER,  // host side cuda driver events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_DRIVER, // host side cuda driver events
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CPU_INSTANT_EVENT, // host side point-like
                                                       // events
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_PYTHON_FUNCTION,
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_OVERHEAD, // CUPTI induced overhead events
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_RUNTIME,    // host side MTIA runtime
-                                                    // events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_RUNTIME, // host side MTIA runtime
+                                                 // events
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_CCP_EVENTS, // MTIA ondevice CCP events
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_INSIGHT,    // MTIA Insight Events
-                                                    // sampled from its overhead
-                                                    // API.
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_MTIA_INSIGHT, // MTIA Insight Events
+                                                 // sampled from its overhead
+                                                 // API.
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_SYNC, // synchronization events between
                                               // runtime and kernels
   // Optional Activity types
@@ -49,7 +49,7 @@ enum KinetoPlugin_ProfileEventType {
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_PROFILER_RANGE, // CUPTI Profiler range
                                                         // for performance
                                                         // metrics
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_HPU_OP,      // HPU host side runtime event
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_HPU_OP, // HPU host side runtime event
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_XPU_RUNTIME, // host side xpu runtime events
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_COLLECTIVE_COMM, // collective communication
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_GPU_PM_COUNTER, // GPU performance monitoring
@@ -59,8 +59,8 @@ enum KinetoPlugin_ProfileEventType {
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
   KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_RUNTIME, // host side privateUse1
                                                         // runtime events
-  KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_DRIVER,  // host side privateUse1
-                                                        // driver events
+  KINETO_PLUGIN_PROFILE_EVENT_TYPE_PRIVATEUSE1_DRIVER, // host side privateUse1
+                                                       // driver events
 
   KINETO_PLUGIN_PROFILE_EVENT_NUM_TYPES
 };
@@ -87,7 +87,7 @@ struct KinetoPlugin_ProfileEvent {
     int32_t threadId;
   };
 };
-#define KINETO_PLUGIN_PROFILE_EVENT_UNPADDED_STRUCT_SIZE                       \
+#define KINETO_PLUGIN_PROFILE_EVENT_UNPADDED_STRUCT_SIZE \
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfileEvent, threadId)
 
 enum KinetoPlugin_ProfileEventFlowType {
@@ -107,9 +107,9 @@ struct KinetoPlugin_ProfileEventFlow {
   // Set to true if flow is a starting point
   bool isStartPoint;
 };
-#define KINETO_PLUGIN_PROFILE_EVENT_FLOW_UNPADDED_STRUCT_SIZE                  \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfileEventFlow,     \
-                                     isStartPoint)
+#define KINETO_PLUGIN_PROFILE_EVENT_FLOW_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                         \
+      struct KinetoPlugin_ProfileEventFlow, isStartPoint)
 
 struct KinetoPlugin_ProfileDeviceInfo {
   // Always set to KINETO_PLUGIN_PROFILE_DEVICE_INFO_UNPADDED_STRUCT_SIZE
@@ -119,13 +119,13 @@ struct KinetoPlugin_ProfileDeviceInfo {
   // Device sort index
   int64_t sortIndex;
   // Device name
-  const char *pName;
+  const char* pName;
   // Device label
-  const char *pLabel;
+  const char* pLabel;
 };
-#define KINETO_PLUGIN_PROFILE_DEVICE_INFO_UNPADDED_STRUCT_SIZE                 \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfileDeviceInfo,    \
-                                     pLabel)
+#define KINETO_PLUGIN_PROFILE_DEVICE_INFO_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                          \
+      struct KinetoPlugin_ProfileDeviceInfo, pLabel)
 struct KinetoPlugin_ProfileResourceInfo {
   // Always set to KINETO_PLUGIN_PROFILE_RESOURCE_INFO_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
@@ -142,11 +142,11 @@ struct KinetoPlugin_ProfileResourceInfo {
   // Lower value is displayed more towards top
   int32_t displayOrder;
   // Textual display in the viewer (ephemeral pointer)
-  const char *pName;
+  const char* pName;
 };
-#define KINETO_PLUGIN_PROFILE_RESOURCE_INFO_UNPADDED_STRUCT_SIZE               \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfileResourceInfo,  \
-                                     pName)
+#define KINETO_PLUGIN_PROFILE_RESOURCE_INFO_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                            \
+      struct KinetoPlugin_ProfileResourceInfo, pName)
 
 typedef struct KinetoPlugin_TraceBuilderHandle KinetoPlugin_TraceBuilderHandle;
 
@@ -157,36 +157,39 @@ struct KinetoPlugin_TraceBuilder {
   // Always set to KINETO_PLUGIN_TRACE_BUILDER_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
 
-  KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle;
+  KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle;
 
-  int (*addEvent)(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                  const struct KinetoPlugin_ProfileEvent *pProfileEvent);
+  int (*addEvent)(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const struct KinetoPlugin_ProfileEvent* pProfileEvent);
 
-  int (*setLastEventName)(KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-                          const char *pName);
+  int (*setLastEventName)(
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const char* pName);
 
   int (*setLastEventFlow)(
-      KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-      const struct KinetoPlugin_ProfileEventFlow *pProfileEventFlow);
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const struct KinetoPlugin_ProfileEventFlow* pProfileEventFlow);
   // If metadata value is a string itself (e.g., "metadata value"), MUST add
   // additional quote around it (e.g., "\"metadata value\"") If metadata value
   // is a list (e.g., 1, 2, 3), MUST add square bracket around it (e.g., "[1, 2,
   // 3]")
   int (*addLastEventMetadata)(
-      KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle, const char *pKey,
-      const char *pValue);
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const char* pKey,
+      const char* pValue);
 
   int (*addDeviceInfo)(
-      KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-      const struct KinetoPlugin_ProfileDeviceInfo *pProfileDeviceInfo);
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const struct KinetoPlugin_ProfileDeviceInfo* pProfileDeviceInfo);
 
   int (*addResourceInfo)(
-      KinetoPlugin_TraceBuilderHandle *pTraceBuilderHandle,
-      const struct KinetoPlugin_ProfileResourceInfo *pProfileResourceInfo);
+      KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
+      const struct KinetoPlugin_ProfileResourceInfo* pProfileResourceInfo);
 };
-#define KINETO_PLUGIN_TRACE_BUILDER_UNPADDED_STRUCT_SIZE                       \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_TraceBuilder,         \
-                                     addResourceInfo)
+#define KINETO_PLUGIN_TRACE_BUILDER_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                    \
+      struct KinetoPlugin_TraceBuilder, addResourceInfo)
 
 typedef struct KinetoPlugin_ProfilerHandle KinetoPlugin_ProfilerHandle;
 
@@ -195,10 +198,10 @@ struct KinetoPlugin_ProfilerCreate_Params {
   size_t unpaddedStructSize;
 
   // [out] An instance created by plugin
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
-#define KINETO_PLUGIN_PROFILER_CREATE_PARAMS_UNPADDED_STRUCT_SIZE              \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                          \
+#define KINETO_PLUGIN_PROFILER_CREATE_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                             \
       struct KinetoPlugin_ProfilerCreate_Params, pProfilerHandle)
 
 struct KinetoPlugin_ProfilerDestroy_Params {
@@ -206,10 +209,10 @@ struct KinetoPlugin_ProfilerDestroy_Params {
   size_t unpaddedStructSize;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
-#define KINETO_PLUGIN_PROFILER_DESTROY_PARAMS_UNPADDED_STRUCT_SIZE             \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                          \
+#define KINETO_PLUGIN_PROFILER_DESTROY_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                              \
       struct KinetoPlugin_ProfilerDestroy_Params, pProfilerHandle)
 
 struct KinetoPlugin_ProfilerQuery_Params {
@@ -217,51 +220,51 @@ struct KinetoPlugin_ProfilerQuery_Params {
   size_t unpaddedStructSize;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 
   // [in/out] Memory space to receive profiler name
-  char *pProfilerName;
+  char* pProfilerName;
 
   // [in] Max length of pProfilerName excluding null terminator
   size_t profilerNameMaxLen;
 
   // [in/out] Supported activity types.
-  KinetoPlugin_ProfileEventType *pSupportedActivityTypes;
+  KinetoPlugin_ProfileEventType* pSupportedActivityTypes;
 
   // [in] Max length of pSupportedActivityTypes
   size_t supportedActivityTypesMaxLen;
 };
-#define KINETO_PLUGIN_PROFILER_QUERY_PARAMS_UNPADDED_STRUCT_SIZE               \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfilerQuery_Params, \
-                                     supportedActivityTypesMaxLen)
+#define KINETO_PLUGIN_PROFILER_QUERY_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                            \
+      struct KinetoPlugin_ProfilerQuery_Params, supportedActivityTypesMaxLen)
 
 struct KinetoPlugin_ProfilerStart_Params {
   // Always set to KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
 
   // [in] Enabled activity types.
-  KinetoPlugin_ProfileEventType *pEnabledActivityTypes;
+  KinetoPlugin_ProfileEventType* pEnabledActivityTypes;
 
   // [in] Max length of pEnabledActivityTypes
   size_t enabledActivityTypesMaxLen;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
-#define KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE               \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfilerStart_Params, \
-                                     pProfilerHandle)
+#define KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                            \
+      struct KinetoPlugin_ProfilerStart_Params, pProfilerHandle)
 
 struct KinetoPlugin_ProfilerStop_Params {
   // Always set to KINETO_PLUGIN_PROFILER_STOP_PARAMS_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
-#define KINETO_PLUGIN_PROFILER_STOP_PARAMS_UNPADDED_STRUCT_SIZE                \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfilerStop_Params,  \
-                                     pProfilerHandle)
+#define KINETO_PLUGIN_PROFILER_STOP_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                           \
+      struct KinetoPlugin_ProfilerStop_Params, pProfilerHandle)
 
 struct KinetoPlugin_ProfilerProcessEvents_Params {
   // Always set to
@@ -269,13 +272,13 @@ struct KinetoPlugin_ProfilerProcessEvents_Params {
   size_t unpaddedStructSize;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 
   // [in] APIs to build a trace
-  const struct KinetoPlugin_TraceBuilder *pTraceBuilder;
+  const struct KinetoPlugin_TraceBuilder* pTraceBuilder;
 };
-#define KINETO_PLUGIN_PROFILER_PROCESS_EVENTS_PARAMS_UNPADDED_STRUCT_SIZE      \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                          \
+#define KINETO_PLUGIN_PROFILER_PROCESS_EVENTS_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                     \
       struct KinetoPlugin_ProfilerProcessEvents_Params, pTraceBuilder)
 
 struct KinetoPlugin_ProfilerPushCorrelationId_Params {
@@ -287,7 +290,7 @@ struct KinetoPlugin_ProfilerPushCorrelationId_Params {
   uint64_t correlationId;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
 #define KINETO_PLUGIN_PROFILER_PUSH_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE \
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                          \
@@ -299,10 +302,10 @@ struct KinetoPlugin_ProfilerPopCorrelationId_Params {
   size_t unpaddedStructSize;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
-#define KINETO_PLUGIN_PROFILER_POP_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE  \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                          \
+#define KINETO_PLUGIN_PROFILER_POP_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                         \
       struct KinetoPlugin_ProfilerPopCorrelationId_Params, pProfilerHandle)
 
 struct KinetoPlugin_ProfilerPushUserCorrelationId_Params {
@@ -314,7 +317,7 @@ struct KinetoPlugin_ProfilerPushUserCorrelationId_Params {
   uint64_t userCorrelationId;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
 #define KINETO_PLUGIN_PROFILER_PUSH_USER_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE \
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                               \
@@ -327,7 +330,7 @@ struct KinetoPlugin_ProfilerPopUserCorrelationId_Params {
   size_t unpaddedStructSize;
 
   // [in] An instance created via profilerCreate()
-  KinetoPlugin_ProfilerHandle *pProfilerHandle;
+  KinetoPlugin_ProfilerHandle* pProfilerHandle;
 };
 #define KINETO_PLUGIN_PROFILER_POP_USER_CORRELATION_ID_PARAMS_UNPADDED_STRUCT_SIZE \
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                                              \
@@ -340,24 +343,24 @@ struct KinetoPlugin_ProfilerInterface {
 
   // Create an instance of the profiler session
   int (*profilerCreate)(
-      struct KinetoPlugin_ProfilerCreate_Params *pProfilerCreateParams);
+      struct KinetoPlugin_ProfilerCreate_Params* pProfilerCreateParams);
 
   // Destroy an instance of the profiler session
   int (*profilerDestroy)(
-      struct KinetoPlugin_ProfilerDestroy_Params *pProfilerDestroyParams);
+      struct KinetoPlugin_ProfilerDestroy_Params* pProfilerDestroyParams);
 
   // Query additional information about the profile such as its name, supported
   // activity types, etc.
   int (*profilerQuery)(
-      struct KinetoPlugin_ProfilerQuery_Params *pProfilerQueryParams);
+      struct KinetoPlugin_ProfilerQuery_Params* pProfilerQueryParams);
 
   // Start the trace collection
   int (*profilerStart)(
-      struct KinetoPlugin_ProfilerStart_Params *pProfilerStartParams);
+      struct KinetoPlugin_ProfilerStart_Params* pProfilerStartParams);
 
   // Stop the trace collection
   int (*profilerStop)(
-      struct KinetoPlugin_ProfilerStop_Params *pProfilerStopParams);
+      struct KinetoPlugin_ProfilerStop_Params* pProfilerStopParams);
 
   // The following interfaces are optional and can be used to track correlation
   // IDs If not implemented, the correlation IDs will not be tracked through the
@@ -365,32 +368,32 @@ struct KinetoPlugin_ProfilerInterface {
 
   // Push a correlation ID to the profiler session
   int (*profilerPushCorrelationId)(
-      struct KinetoPlugin_ProfilerPushCorrelationId_Params
-          *pProfilerPushCorrelationIdParams);
+      struct KinetoPlugin_ProfilerPushCorrelationId_Params*
+          pProfilerPushCorrelationIdParams);
 
   // Pop a correlation ID from the profiler session
   int (*profilerPopCorrelationId)(
-      struct KinetoPlugin_ProfilerPopCorrelationId_Params
-          *pProfilerPopCorrelationIdParams);
+      struct KinetoPlugin_ProfilerPopCorrelationId_Params*
+          pProfilerPopCorrelationIdParams);
 
   // Push a user correlation ID to the profiler session
   int (*profilerPushUserCorrelationId)(
-      struct KinetoPlugin_ProfilerPushUserCorrelationId_Params
-          *pProfilerPushUserCorrelationIdParams);
+      struct KinetoPlugin_ProfilerPushUserCorrelationId_Params*
+          pProfilerPushUserCorrelationIdParams);
 
   // Pop a user correlation ID from the profiler session
   int (*profilerPopUserCorrelationId)(
-      struct KinetoPlugin_ProfilerPopUserCorrelationId_Params
-          *pProfilerPopUserCorrelationIdParams);
+      struct KinetoPlugin_ProfilerPopUserCorrelationId_Params*
+          pProfilerPopUserCorrelationIdParams);
 
   // Process the events collected by the profiler session to the central
   // profiler. This leverages the trace builder to enqueue events.
-  int (*profilerProcessEvents)(struct KinetoPlugin_ProfilerProcessEvents_Params
-                                   *pProfilerProcessEventsParams);
+  int (*profilerProcessEvents)(struct KinetoPlugin_ProfilerProcessEvents_Params*
+                                   pProfilerProcessEventsParams);
 };
-#define KINETO_PLUGIN_PROFILER_INTERFACE_UNPADDED_STRUCT_SIZE                  \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_ProfilerInterface,    \
-                                     profilerProcessEvents)
+#define KINETO_PLUGIN_PROFILER_INTERFACE_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                         \
+      struct KinetoPlugin_ProfilerInterface, profilerProcessEvents)
 
 typedef struct KinetoPlugin_RegistryHandle KinetoPlugin_RegistryHandle;
 
@@ -398,20 +401,20 @@ struct KinetoPlugin_Registry {
   // Always set to KINETO_PLUGIN_REGISTRY_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
 
-  KinetoPlugin_RegistryHandle *pRegistryHandle;
+  KinetoPlugin_RegistryHandle* pRegistryHandle;
 
   int (*registerProfiler)(
-      KinetoPlugin_RegistryHandle *pRegistryHandle,
-      const struct KinetoPlugin_ProfilerInterface *pProfiler);
+      KinetoPlugin_RegistryHandle* pRegistryHandle,
+      const struct KinetoPlugin_ProfilerInterface* pProfiler);
 };
-#define KINETO_PLUGIN_REGISTRY_UNPADDED_STRUCT_SIZE                            \
-  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(struct KinetoPlugin_Registry,             \
-                                     registerProfiler)
+#define KINETO_PLUGIN_REGISTRY_UNPADDED_STRUCT_SIZE \
+  KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(               \
+      struct KinetoPlugin_Registry, registerProfiler)
 
 // .so function signature
 // To be implemented by plugin
 // To be called by Kineto
-int KinetoPlugin_register(const struct KinetoPlugin_Registry *pRegistry);
+int KinetoPlugin_register(const struct KinetoPlugin_Registry* pRegistry);
 
 #ifdef __cplusplus
 }

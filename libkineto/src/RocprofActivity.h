@@ -8,17 +8,15 @@
 
 #pragma once
 
-#include <roctracer.h>
-#include <roctracer_ext.h>
-#include <roctracer_hip.h>
-#include <roctracer_roctx.h>
-
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "GenericTraceActivity.h"
 #include "ITraceActivity.h"
-#include "RoctracerLogger.h"
+#include "RocprofLogger.h"
 #include "ThreadUtil.h"
+
+#include <rocprofiler-sdk/cxx/name_info.hpp>
+#include <rocprofiler-sdk/fwd.h>
 
 namespace libkineto {
 class ActivityLogger;
@@ -29,16 +27,16 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 struct TraceSpan;
 
-// These classes wrap the various Roctracer activity types
+// These classes wrap the various Rocprof activity types
 // into subclasses of ITraceActivity so that they can all be accessed
 // using the ITraceActivity interface and logged via ActivityLogger.
 
-// Abstract base class, templated on Roctracer activity type
+// Abstract base class, templated on Rocprof activity type
 template <class T>
-struct RoctracerActivity : public ITraceActivity {
-  explicit RoctracerActivity(const T* activity, const ITraceActivity* linked)
+struct RocprofActivity : public ITraceActivity {
+  explicit RocprofActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
-  // Our stored timestamps (from roctracer and generated) are in CLOCK_MONOTONIC
+  // Our stored timestamps (from rocprof and generated) are in CLOCK_MONOTONIC
   // domain (in ns). Convert the timestamps.
   int64_t timestamp() const override {
     return activity_.begin;
@@ -81,26 +79,17 @@ struct RoctracerActivity : public ITraceActivity {
   std::unordered_map<std::string, std::string> metadata_;
 };
 
-// rocprofAsyncRow - Roctracer GPU activities
-struct GpuActivity : public RoctracerActivity<rocprofAsyncRow> {
+// rocprofAsyncRow - Rocprof GPU activities
+struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
   explicit GpuActivity(
       const rocprofAsyncRow* activity,
       const ITraceActivity* linked)
-      : RoctracerActivity(activity, linked) {
-    switch (activity_.kind) {
-      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
-      case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
-      case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      : RocprofActivity(activity, linked) {
+    switch (activity_.domain) {
+      case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
         type_ = ActivityType::GPU_MEMCPY;
         break;
-      case HIP_OP_COPY_KIND_FILL_BUFFER_:
-        type_ = ActivityType::GPU_MEMSET;
-        break;
-      case HIP_OP_DISPATCH_KIND_KERNEL_:
-      case HIP_OP_DISPATCH_KIND_TASK_:
+      case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
       default:
         type_ = ActivityType::CONCURRENT_KERNEL;
         break;
@@ -126,7 +115,7 @@ struct GpuActivity : public RoctracerActivity<rocprofAsyncRow> {
   const std::string metadataJson() const override;
 
   // Add small buffer to fix visual error created by
-  // https://github.com/ROCm/roctracer/issues/105 Once this is resolved we can
+  // https://github.com/ROCm/rocprof/issues/105 Once this is resolved we can
   // use ifdef to handle having this buffer or not based on version
   int64_t timestamp() const override {
     return activity_.begin + 1;
@@ -139,12 +128,12 @@ struct GpuActivity : public RoctracerActivity<rocprofAsyncRow> {
   ActivityType type_;
 };
 
-// roctracerRow, roctracerKernelRow, roctracerCopyRow, roctracerMallocRow -
-// Roctracer runtime activities
+// rocprofRow, rocprofKernelRow, rocprofCopyRow, rocprofMallocRow -
+// Rocprof runtime activities
 template <class T>
-struct RuntimeActivity : public RoctracerActivity<T> {
+struct RuntimeActivity : public RocprofActivity<T> {
   explicit RuntimeActivity(const T* activity, const ITraceActivity* linked)
-      : RoctracerActivity<T>(activity, linked) {}
+      : RocprofActivity<T>(activity, linked) {}
   int64_t correlationId() const override {
     return raw().id;
   }
@@ -159,13 +148,13 @@ struct RuntimeActivity : public RoctracerActivity<T> {
   }
   bool flowStart() const override;
   const std::string name() const override {
-    return std::string(
-        roctracer_op_string(ACTIVITY_DOMAIN_HIP_API, raw().cid, 0));
+    return RocprofLogger::opString(
+        ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API, raw().cid);
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
   const T& raw() const {
-    return RoctracerActivity<T>::raw();
+    return RocprofActivity<T>::raw();
   }
 };
 
@@ -173,4 +162,4 @@ struct RuntimeActivity : public RoctracerActivity<T> {
 
 // Include the implementation detail of this header file.
 // The *_inl.h helps separate header interface from implementation details.
-#include "RoctracerActivity_inl.h"
+#include "RocprofActivity_inl.h"

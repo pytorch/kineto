@@ -46,8 +46,6 @@ class OpTreeBuilder:
         _, ts2parent = OpTreeBuilder._get_node_parents(backward_nodes)
         agg_nodes = OpTreeBuilder._group_backward_nodes(backward_nodes)
         fwd_bwd_root = self._get_backward_roots(fwd_bwd_map, ts2parent, agg_nodes)
-        if len(agg_nodes) > 0:
-            logger.warning('some nodes cannot find forward nodes')
 
         backward_modules: List[BackwardNode] = []
         for module in modules:
@@ -253,12 +251,14 @@ class OpTreeBuilder:
 
         fwd_to_bwdroot: Dict[int, List[OperatorNode]] = {}
         for fwd, bwd in fwd_bwd_map.items():
-            parent = ts2parent.get(bwd)
-            while parent is not None and not parent.name.startswith(OpTreeBuilder.BACKWARD_ROOT_PREFIX):
-                parent = ts2parent.get(parent.start_time)
-
-            if parent:
-                fwd_to_bwdroot[fwd] = backward_nodes.pop(parent)
+            cur = ts2parent.get(bwd)
+            bwdroot = None
+            while cur is not None:
+                if cur.name.startswith(OpTreeBuilder.BACKWARD_ROOT_PREFIX):
+                    bwdroot = cur
+                cur = ts2parent.get(cur.start_time)
+            if bwdroot and bwdroot in backward_nodes:
+                fwd_to_bwdroot[fwd] = backward_nodes.get(bwdroot)
             else:
                 logger.warning('parent is None for', bwd)
 

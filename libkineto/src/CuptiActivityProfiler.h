@@ -30,7 +30,11 @@
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
+#ifndef ROCTRACER_FALLBACK
+#include "RocprofLogger.h"
+#else
 #include "RoctracerLogger.h"
+#endif
 #endif // HAS_ROCTRACER
 
 #include "GenericTraceActivity.h"
@@ -45,6 +49,7 @@ namespace KINETO_NAMESPACE {
 
 class Config;
 class CuptiActivityApi;
+class RocprofActivityApi;
 class RoctracerActivityApi;
 
 // This struct is a derived snapshot of the Config. And should not
@@ -121,7 +126,8 @@ inline size_t hash_combine(size_t seed, size_t value) {
 class CuptiActivityProfiler {
  public:
   CuptiActivityProfiler(CuptiActivityApi& cupti, bool cpuOnly);
-  CuptiActivityProfiler(RoctracerActivityApi& rai, bool cpuOnly);
+  CuptiActivityProfiler(RocprofActivityApi& rai, bool cpuOnly);
+  CuptiActivityProfiler(RoctracerActivityApi& rtai, bool cpuOnly);
   CuptiActivityProfiler(const CuptiActivityProfiler&) = delete;
   CuptiActivityProfiler& operator=(const CuptiActivityProfiler&) = delete;
   ~CuptiActivityProfiler();
@@ -413,20 +419,16 @@ class CuptiActivityProfiler {
 #endif // HAS_CUPTI
 
 #ifdef HAS_ROCTRACER
-  // Process generic RocTracer activity
-  void handleRoctracerActivity(
-      const roctracerBase* record,
-      ActivityLogger* logger);
+  // Process generic RocProf activity
+  void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
   void handleCorrelationActivity(
       uint64_t correlationId,
       uint64_t externalId,
-      RoctracerLogger::CorrelationDomain externalKind);
+      RocLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
-  void handleGpuActivity(
-      const roctracerAsyncRow* record,
-      ActivityLogger* logger);
+  void handleGpuActivity(const rocprofAsyncRow* record, ActivityLogger* logger);
 #endif // HAS_ROCTRACER
 
   void resetTraceData();
@@ -459,7 +461,11 @@ class CuptiActivityProfiler {
 
   // Calls to CUPTI is encapsulated behind this interface
 #ifdef HAS_ROCTRACER
-  RoctracerActivityApi& cupti_; // Design failure here
+#ifndef ROCTRACER_FALLBACK
+  RocprofActivityApi& cupti_; // Design failure here
+#else
+  RoctracerActivityApi& cupti_;
+#endif
 #else
   CuptiActivityApi& cupti_;
 #endif

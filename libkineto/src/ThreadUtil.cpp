@@ -47,6 +47,7 @@ thread_local int32_t _tid = 0;
 thread_local int32_t _sysTid = 0;
 } // namespace
 
+#ifdef __linux__
 int32_t pidNamespace(ino_t& ns) {
   int fd = open("/proc/self/ns/pid", O_RDONLY);
 
@@ -61,6 +62,7 @@ int32_t pidNamespace(ino_t& ns) {
   ns = self_stat.st_ino;
   return 0;
 }
+#endif
 
 int32_t processId(bool cache) {
   int32_t pid = 0;

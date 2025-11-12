@@ -25,7 +25,7 @@
 #ifdef HAS_CUPTI
 #include <cupti.h>
 #elif defined(HAS_ROCTRACER)
-#include <rocprofiler-sdk/version.h>
+#include <roctracer.h>
 #endif
 
 #include "Config.h"
@@ -39,14 +39,9 @@
 #include "KernelRegistry.h"
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-#include "RocLogger.h"
-#ifndef ROCTRACER_FALLBACK
-#include "RocprofActivity.h"
-#include "RocprofActivityApi.h"
-#else
 #include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
-#endif
+#include "RoctracerLogger.h"
 #endif
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
@@ -131,14 +126,14 @@ bool ConfigDerivedState::canStart(
     return true;
   }
   if (profileStartTime_ < now) {
-    LOG(ERROR) << "Not starting tracing - start timestamp is in the past. Time "
-                  "difference (ms): "
-               << duration_cast<milliseconds>(now - profileStartTime_).count();
+    LOG(ERROR)
+        << "Not starting tracing - start timestamp is in the past. Time difference (ms): "
+        << duration_cast<milliseconds>(now - profileStartTime_).count();
     return false;
   } else if ((profileStartTime_ - now) < profileWarmupDuration_) {
-    LOG(ERROR) << "Not starting tracing - insufficient time for warmup. Time "
-                  "to warmup (ms): "
-               << duration_cast<milliseconds>(profileStartTime_ - now).count();
+    LOG(ERROR)
+        << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): "
+        << duration_cast<milliseconds>(profileStartTime_ - now).count();
     return false;
   }
   return true;
@@ -219,15 +214,9 @@ void CuptiActivityProfiler::transferCpuTrace(
 }
 
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-CuptiActivityProfiler::CuptiActivityProfiler(
-    RocprofActivityApi& cupti,
-    bool cpuOnly)
-#else
 CuptiActivityProfiler::CuptiActivityProfiler(
     RoctracerActivityApi& cupti,
     bool cpuOnly)
-#endif
 #else
 CuptiActivityProfiler::CuptiActivityProfiler(
     CuptiActivityApi& cupti,
@@ -267,23 +256,23 @@ void CuptiActivityProfiler::logGpuVersions() {
   addVersionMetadata("cuda_driver_version", std::to_string(cudaDriverVersion));
 
 #elif defined(HAS_ROCTRACER)
-  uint32_t majorVersion = ROCPROFILER_VERSION_MAJOR;
-  uint32_t minorVersion = ROCPROFILER_VERSION_MINOR;
+  uint32_t majorVersion = roctracer_version_major();
+  uint32_t minorVersion = roctracer_version_minor();
   std::string roctracerVersion =
       std::to_string(majorVersion) + "." + std::to_string(minorVersion);
   int hipRuntimeVersion = 0, hipDriverVersion = 0;
   CUDA_CALL(hipRuntimeGetVersion(&hipRuntimeVersion));
   CUDA_CALL(hipDriverGetVersion(&hipDriverVersion));
-  LOG(INFO) << "HIP versions. Rocprofiler-sdk: " << roctracerVersion
+  LOG(INFO) << "HIP versions. Roctracer: " << roctracerVersion
             << "; Runtime: " << hipRuntimeVersion
             << "; Driver: " << hipDriverVersion;
 
-  LOGGER_OBSERVER_ADD_METADATA("rocprofiler-sdk_version", roctracerVersion);
+  LOGGER_OBSERVER_ADD_METADATA("roctracer_version", roctracerVersion);
   LOGGER_OBSERVER_ADD_METADATA(
       "hip_runtime_version", std::to_string(hipRuntimeVersion));
   LOGGER_OBSERVER_ADD_METADATA(
       "hip_driver_version", std::to_string(hipDriverVersion));
-  addVersionMetadata("rocprofiler-sdk_version", roctracerVersion);
+  addVersionMetadata("roctracer_version", roctracerVersion);
   addVersionMetadata("hip_runtime_version", std::to_string(hipRuntimeVersion));
   addVersionMetadata("hip_driver_version", std::to_string(hipDriverVersion));
 
@@ -383,7 +372,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     VLOG(0) << "Retrieving GPU activity buffers";
     const int count = cupti_.processActivities(
         std::bind(
-            &CuptiActivityProfiler::handleRocprofActivity,
+            &CuptiActivityProfiler::handleRoctracerActivity,
             this,
             std::placeholders::_1,
             &logger),
@@ -460,10 +449,9 @@ void CuptiActivityProfiler::processCpuTrace(
     activityMap_[act->correlationId()] = act.get();
     if (act->deviceId() == 0) {
       if (!warn_once) {
-        LOG(WARNING) << "CPU activity with pid 0 detected. This is likely due "
-                        "to the python stack"
-                        " tracer not being able to determine the pid for an "
-                        "event. Overriding pid to main thread pid";
+        LOG(WARNING)
+            << "CPU activity with pid 0 detected. This is likely due to the python stack"
+               " tracer not being able to determine the pid for an event. Overriding pid to main thread pid";
       }
       act->setDevice(processId());
       warn_once = true;
@@ -482,8 +470,8 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
       correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1) {
     userCorrelationMap_[correlation->correlationId] = correlation->externalId;
   } else {
-    LOG(WARNING) << "Invalid CUpti_ActivityExternalCorrelation sent to "
-                    "handleCuptiActivity";
+    LOG(WARNING)
+        << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
     ecs_.invalid_external_correlation_events++;
   }
 }
@@ -492,14 +480,14 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
 inline void CuptiActivityProfiler::handleCorrelationActivity(
     uint64_t correlationId,
     uint64_t externalId,
-    RocLogger::CorrelationDomain externalKind) {
-  if (externalKind == RocLogger::CorrelationDomain::Domain0) {
+    RoctracerLogger::CorrelationDomain externalKind) {
+  if (externalKind == RoctracerLogger::CorrelationDomain::Domain0) {
     cpuCorrelationMap_[correlationId] = externalId;
-  } else if (externalKind == RocLogger::CorrelationDomain::Domain1) {
+  } else if (externalKind == RoctracerLogger::CorrelationDomain::Domain1) {
     userCorrelationMap_[correlationId] = externalId;
   } else {
-    LOG(WARNING) << "Invalid CUpti_ActivityExternalCorrelation sent to "
-                    "handleCuptiActivity";
+    LOG(WARNING)
+        << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
     ecs_.invalid_external_correlation_events++;
   }
 }
@@ -995,7 +983,7 @@ void CuptiActivityProfiler::handleRuntimeActivity(
 }
 
 inline void CuptiActivityProfiler::handleGpuActivity(
-    const rocprofAsyncRow* act,
+    const roctracerAsyncRow* act,
     ActivityLogger* logger) {
   const ITraceActivity* linked = linkedActivity(act->id, cpuCorrelationMap_);
   const auto& gpu_activity =
@@ -1003,29 +991,29 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   handleGpuActivity(gpu_activity, logger);
 }
 
-void CuptiActivityProfiler::handleRocprofActivity(
-    const rocprofBase* record,
+void CuptiActivityProfiler::handleRoctracerActivity(
+    const roctracerBase* record,
     ActivityLogger* logger) {
   switch (record->type) {
     case ROCTRACER_ACTIVITY_DEFAULT:
       handleRuntimeActivity(
-          reinterpret_cast<const rocprofRow*>(record), logger);
+          reinterpret_cast<const roctracerRow*>(record), logger);
       break;
     case ROCTRACER_ACTIVITY_KERNEL:
       handleRuntimeActivity(
-          reinterpret_cast<const rocprofKernelRow*>(record), logger);
+          reinterpret_cast<const roctracerKernelRow*>(record), logger);
       break;
     case ROCTRACER_ACTIVITY_COPY:
       handleRuntimeActivity(
-          reinterpret_cast<const rocprofCopyRow*>(record), logger);
+          reinterpret_cast<const roctracerCopyRow*>(record), logger);
       break;
     case ROCTRACER_ACTIVITY_MALLOC:
       handleRuntimeActivity(
-          reinterpret_cast<const rocprofMallocRow*>(record), logger);
+          reinterpret_cast<const roctracerMallocRow*>(record), logger);
       break;
     case ROCTRACER_ACTIVITY_ASYNC:
       handleGpuActivity(
-          reinterpret_cast<const rocprofAsyncRow*>(record), logger);
+          reinterpret_cast<const roctracerAsyncRow*>(record), logger);
       break;
     case ROCTRACER_ACTIVITY_NONE:
     default:
@@ -1606,13 +1594,8 @@ void CuptiActivityProfiler::pushCorrelationId(uint64_t id) {
       id, CuptiActivityApi::CorrelationFlowType::Default);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-  RocprofActivityApi::pushCorrelationID(
-      id, RocprofActivityApi::CorrelationFlowType::Default);
-#else
   RoctracerActivityApi::pushCorrelationID(
       id, RoctracerActivityApi::CorrelationFlowType::Default);
-#endif
 #endif
   for (auto& session : sessions_) {
     session->pushCorrelationId(id);
@@ -1625,13 +1608,8 @@ void CuptiActivityProfiler::popCorrelationId() {
       CuptiActivityApi::CorrelationFlowType::Default);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-  RocprofActivityApi::popCorrelationID(
-      RocprofActivityApi::CorrelationFlowType::Default);
-#else
   RoctracerActivityApi::popCorrelationID(
       RoctracerActivityApi::CorrelationFlowType::Default);
-#endif
 #endif
   for (auto& session : sessions_) {
     session->popCorrelationId();
@@ -1644,13 +1622,8 @@ void CuptiActivityProfiler::pushUserCorrelationId(uint64_t id) {
       id, CuptiActivityApi::CorrelationFlowType::User);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-  RocprofActivityApi::pushCorrelationID(
-      id, RocprofActivityApi::CorrelationFlowType::User);
-#else
   RoctracerActivityApi::pushCorrelationID(
       id, RoctracerActivityApi::CorrelationFlowType::User);
-#endif
 #endif
   for (auto& session : sessions_) {
     session->pushUserCorrelationId(id);
@@ -1663,13 +1636,8 @@ void CuptiActivityProfiler::popUserCorrelationId() {
       CuptiActivityApi::CorrelationFlowType::User);
 #endif // HAS_CUPTI
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-  RocprofActivityApi::popCorrelationID(
-      RocprofActivityApi::CorrelationFlowType::User);
-#else
   RoctracerActivityApi::popCorrelationID(
       RoctracerActivityApi::CorrelationFlowType::User);
-#endif
 #endif
   for (auto& session : sessions_) {
     session->popUserCorrelationId();

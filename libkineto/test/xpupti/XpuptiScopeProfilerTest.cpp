@@ -91,7 +91,7 @@ void CheckCountsInMap(
     const MAP& map,
     unsigned expSize,
     unsigned repeatCount,
-    ARRAY expArray) {
+    const ARRAY& expArray) {
   EXPECT_EQ(map.size(), expSize);
 
   std::map<unsigned, unsigned> countsMap;

@@ -90,6 +90,12 @@ void RoctracerLogger::insert_row_to_buffer(roctracerBase* row) {
   dis->rows_.push_back(row);
 }
 
+uint64_t roctracer_ts() {
+    uint64_t t0;
+    roctracer_get_timestamp(&t0);
+    return t0;
+}
+
 void RoctracerLogger::api_callback(
     uint32_t domain,
     uint32_t cid,
@@ -103,14 +109,24 @@ void RoctracerLogger::api_callback(
     // Pack callbacks into row structures
 
     thread_local std::unordered_map<activity_correlation_id_t, uint64_t>
-        timestamps;
+        timestamps, timestamps_mono;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
-      timestamps[data->correlation_id] = getApproximateTime();
+      uint64_t roctr = roctracer_ts();
+      uint64_t approx = getApproximateTime();
+      roctr = roctracer_ts();
+      approx = (getApproximateTime() + approx) / 2;
+      timestamps[data->correlation_id] = approx;
+      timestamps_mono[data->correlation_id] = roctr;
     } else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
       uint64_t startTime = timestamps[data->correlation_id];
+      uint64_t startTime_mono = timestamps_mono[data->correlation_id];
       timestamps.erase(data->correlation_id);
+      timestamps_mono.erase(data->correlation_id);
+      uint64_t endTime_mono = roctracer_ts();
       uint64_t endTime = getApproximateTime();
+      endTime_mono = roctracer_ts();
+      endTime = (getApproximateTime() + endTime) / 2;
 
       switch (cid) {
         case HIP_API_ID_hipLaunchKernel:
@@ -137,6 +153,8 @@ void RoctracerLogger::api_callback(
               args.dimBlocks.z,
               args.sharedMemBytes,
               args.stream);
+          row->begin_mono = startTime_mono;
+          row->end_mono = endTime_mono;
           insert_row_to_buffer(row);
         } break;
         case HIP_API_ID_hipHccModuleLaunchKernel:
@@ -162,6 +180,8 @@ void RoctracerLogger::api_callback(
               args.blockDimZ,
               args.sharedMemBytes,
               args.stream);
+          row->begin_mono = startTime_mono;
+          row->end_mono = endTime_mono;
           insert_row_to_buffer(row);
         } break;
         case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
@@ -289,10 +309,30 @@ void RoctracerLogger::activity_callback(
   const roctracer_record_t* record = (const roctracer_record_t*)(begin);
   const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
 
+  static uint64_t page = 0;
+  bool justOne = true;
+
   while (record < end_record) {
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
       s_flush.maxCompletedCorrelationId_ = record->correlation_id;
     }
+    if (justOne) {
+        justOne = false;        //all?
+        roctracerAsyncRow* row = new roctracerAsyncRow(
+            -record->correlation_id,
+            record->domain,
+            record->kind,
+            record->op,
+            record->device_id,
+            record->queue_id,
+            roctracer_ts(),
+            0,
+            std::string());
+        row->page = page;
+        row->end = row->begin;
+        insert_row_to_buffer(row);
+    }
+
     roctracerAsyncRow* row = new roctracerAsyncRow(
         record->correlation_id,
         record->domain,
@@ -306,9 +346,11 @@ void RoctracerLogger::activity_callback(
          (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
             ? demangle(record->kernel_name)
             : std::string());
+        row->page = page;
     insert_row_to_buffer(row);
     roctracer_next_record(record, &record);
   }
+  ++page;
 }
 
 void RoctracerLogger::setMaxEvents(uint32_t maxBufferSize) {

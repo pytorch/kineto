@@ -107,7 +107,6 @@ inline int64_t CudaEventActivity::resourceId() const {
 
 inline void CudaEventActivity::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);
-  LOG(INFO) << "CudaEventActivity: " << name() << " " << metadataJson();
 }
 
 inline const std::string CudaEventActivity::metadataJson() const {

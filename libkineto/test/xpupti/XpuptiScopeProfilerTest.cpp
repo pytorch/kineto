@@ -145,6 +145,9 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
   } else {
     auto pSession = profiler.configure(activities, cfg);
 
+    int64_t startTime = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::system_clock::now().time_since_epoch())
+                            .count();
     pSession->start();
 
     constexpr unsigned repeatCount = 5;
@@ -152,9 +155,16 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
     ComputeOnXpu(1024, repeatCount);
 
     pSession->stop();
+    int64_t endTime = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+
+    auto getLinkedActivity = [](int32_t) -> const KN::ITraceActivity* {
+      return nullptr;
+    };
 
     TestActivityLogger logger;
-    pSession->processTrace(logger);
+    pSession->processTrace(logger, getLinkedActivity, startTime, endTime);
 
     EXPECT_TRUE(pSession->errors().empty())
         << fmt::format("{}", fmt::join(pSession->errors(), ","));

@@ -177,8 +177,6 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
 
 #ifdef HAS_XPUPTI
-  XpuptiScopeProfilerConfig::registerFactory();
-
   // register xpu pti profiler
   libkineto::api().registerProfilerFactory(
       []() -> std::unique_ptr<IActivityProfiler> {
@@ -196,6 +194,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
           throw std::runtime_error(errPrefixMsg);
 #endif
         }
+
+        XpuptiScopeProfilerConfig::registerFactory();
         return std::make_unique<XPUActivityProfiler>();
       });
 #endif // HAS_XPUPTI

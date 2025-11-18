@@ -581,13 +581,20 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
     constexpr const std::string_view prefix = "metrics: ";
     if (std::string_view(op_name).substr(0, prefix.size()) == prefix) {
-      for (const auto& [key, val] : op.getMetadata()) {
+      for (const auto& [key_, val] : op.getMetadata()) {
+        // Prevent clang error when capturing key in lambda a few lines below:
+        // error: 'key' in capture list does not name a variable
+        // As accroding to C++ standard:
+        // - A lambda capture can only capture variables
+        // - key in a structured binding is not a variable, it is a name of a
+        //   binding declaration
+        const auto& key = key_;
         constexpr std::array<std::string_view, 2> keysExcluded = {
             "queue", "kernel_id"};
         if (std::none_of(
                 keysExcluded.begin(),
                 keysExcluded.end(),
-                [key](std::string_view keyExcluded) {
+                [&key](std::string_view keyExcluded) {
                   return keyExcluded == key;
                 })) {
           auto timePoint = ts + duration / 2;

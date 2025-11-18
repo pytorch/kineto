@@ -587,7 +587,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         if (std::none_of(
                 keysExcluded.begin(),
                 keysExcluded.end(),
-                [&key](std::string_view keyExcluded) {
+                [key](std::string_view keyExcluded) {
                   return keyExcluded == key;
                 })) {
           auto timePoint = ts + duration / 2;

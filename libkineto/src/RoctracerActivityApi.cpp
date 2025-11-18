@@ -33,6 +33,7 @@ RoctracerActivityApi::RoctracerActivityApi()
     : d(&RoctracerLogger::singleton()) 
 {
     logfile = fopen("roctracer_timestamps.csv", "w");
+    fprintf(logfile, "domain,correlation,start,end,toffset,page,drift\n");
 }
 
 RoctracerActivityApi::~RoctracerActivityApi() {

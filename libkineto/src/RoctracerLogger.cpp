@@ -40,11 +40,18 @@ RoctracerLogger& RoctracerLogger::singleton() {
   return instance;
 }
 
-RoctracerLogger::RoctracerLogger() {}
+FILE *logfile {nullptr};
+
+RoctracerLogger::RoctracerLogger()
+{
+    logfile = fopen("roctracer_audit.csv", "w");
+    fprintf(logfile, "domain,correlation,start,end\n");
+}
 
 RoctracerLogger::~RoctracerLogger() {
   stopLogging();
   endTracing();
+  fclose(logfile);
 }
 
 namespace {
@@ -156,6 +163,7 @@ void RoctracerLogger::api_callback(
           row->begin_mono = startTime_mono;
           row->end_mono = endTime_mono;
           insert_row_to_buffer(row);
+          fprintf(logfile, "hip_audit,%ld,%ld,%ld\n", data->correlation_id, startTime_mono, endTime_mono);
         } break;
         case HIP_API_ID_hipHccModuleLaunchKernel:
         case HIP_API_ID_hipModuleLaunchKernel:
@@ -183,6 +191,7 @@ void RoctracerLogger::api_callback(
           row->begin_mono = startTime_mono;
           row->end_mono = endTime_mono;
           insert_row_to_buffer(row);
+          fprintf(logfile, "hip_audit,%ld,%ld,%ld\n", data->correlation_id, startTime_mono, endTime_mono);
         } break;
         case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
         case HIP_API_ID_hipExtLaunchMultiKernelMultiDevice:

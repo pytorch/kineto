@@ -450,19 +450,18 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
-      arg_values.append(
-          fmt::format(
-              R"( "{}": {}, "{}": {}, "{}": {}, "{}": {}, "{}": {})",
-              kCollectiveName,
-              collectiveName,
-              kInMsgNelems,
-              inMsgSize,
-              kOutMsgNelems,
-              outMsgSize,
-              kGroupSize,
-              groupSize,
-              kDtype,
-              dtype));
+      arg_values.append(fmt::format(
+          R"( "{}": {}, "{}": {}, "{}": {}, "{}": {}, "{}": {})",
+          kCollectiveName,
+          collectiveName,
+          kInMsgNelems,
+          inMsgSize,
+          kOutMsgNelems,
+          outMsgSize,
+          kGroupSize,
+          groupSize,
+          kDtype,
+          dtype));
     }
     const auto& input_tensor_starts =
         collectiveRecord->getMetadataValue(kInTensorsStart);
@@ -489,13 +488,12 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
-      arg_values.append(
-          fmt::format(
-              R"( "{}": {}, "{}": {})",
-              kInSplit,
-              inSplitSize,
-              kOutSplit,
-              outSplitSize));
+      arg_values.append(fmt::format(
+          R"( "{}": {}, "{}": {})",
+          kInSplit,
+          inSplitSize,
+          kOutSplit,
+          outSplitSize));
     }
     const auto& processGroupName =
         collectiveRecord->getMetadataValue(kProcessGroupName);

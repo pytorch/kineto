@@ -565,60 +565,54 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   sanitizeStrForJSON(op_name);
   sanitizeForNonReadableChars(op_name);
 
-  // clang-format off
   ts = transToRelativeTime(ts);
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}.{:03}, "dur": {}.{:03}{}
-  }},)JSON",
-          toString(op.type()), op_name, device, sanitizeTid(resource),
-          ts/1000, ts %1000, duration/1000, duration %1000, args);
-  // clang-format on
 
   if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
-    constexpr const std::string_view prefix = "metrics: ";
-    if (std::string_view(op_name).substr(0, prefix.size()) == prefix) {
-      for (const auto& [key_, val] : op.getMetadata()) {
-        // Prevent clang error when capturing key in lambda a few lines below:
-        // error: 'key' in capture list does not name a variable
-        // As accroding to C++ standard:
-        // - A lambda capture can only capture variables
-        // - key in a structured binding is not a variable, it is a name of a
-        //   binding declaration
-        const auto& key = key_;
-        constexpr std::array<std::string_view, 2> keysExcluded = {
-            "queue", "kernel_id"};
-        if (std::none_of(
-                keysExcluded.begin(),
-                keysExcluded.end(),
-                [&key](std::string_view keyExcluded) {
-                  return keyExcluded == key;
-                })) {
-          auto timePoint = ts + duration / 2;
-          fmt::print(
-              traceOf_,
-              // clang-format off
+    std::string metricsStr;
+    const char* sep = "";
+    for (const auto& [key, val] : op.getMetadata()) {
+      metricsStr += fmt::format("{}\"{}\": {}", sep, key, val);
+      sep = ", ";
+    }
+    std::string activityName = toString(op.type());
+    fmt::print(
+        traceOf_,
+        // clang-format off
   R"JSON(
   {{
     "name": "{}",
-    "cat": "metric",
     "ph": "C",
     "ts": {}.{:03},
     "pid": {},
     "tid": {},
-    "args": {{ "value": {} }}
+    "args": {{ {} }}
   }},)JSON",
-              // clang-format on
-              key,
-              timePoint / 1000,
-              timePoint % 1000,
-              device,
-              sanitizeTid(resource),
-              val);
-        }
-      }
-    }
+        // clang-format on
+        activityName.substr(0, activityName.find('_')),
+        ts / 1000,
+        ts % 1000,
+        device,
+        sanitizeTid(resource),
+        metricsStr);
+  } else {
+    fmt::print(
+        traceOf_,
+        // clang-format off
+  R"JSON(
+  {{
+    "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
+    "ts": {}.{:03}, "dur": {}.{:03}{}
+  }},)JSON",
+        // clang-format on
+        toString(op.type()),
+        op_name,
+        device,
+        sanitizeTid(resource),
+        ts / 1000,
+        ts % 1000,
+        duration / 1000,
+        duration % 1000,
+        args);
   }
 
   if (op.flowId() > 0) {

@@ -418,9 +418,7 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
 void XpuptiActivityApi::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
-        const pti_metrics_scope_record_metadata_t& metadata,
-        size_t recordId,
-        size_t actualRecordsCount)> handler) {
+        const pti_metrics_scope_record_metadata_t& metadata)> handler) {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     pti_metrics_scope_record_metadata_t metadata;
@@ -470,7 +468,7 @@ void XpuptiActivityApi::processScopeTrace(
 
         for (size_t recordId = 0; recordId < actualRecordsCount; ++recordId) {
           auto record = metricsBuffer.get() + recordId;
-          handler(record, metadata, recordId, actualRecordsCount);
+          handler(record, metadata);
         }
       }
     }

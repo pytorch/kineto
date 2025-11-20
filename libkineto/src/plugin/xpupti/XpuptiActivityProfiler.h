@@ -104,8 +104,6 @@ class XpuptiActivityProfilerSession
   void handleScopeRecord(
       const pti_metrics_scope_record_t* record,
       const pti_metrics_scope_record_metadata_t& metadata,
-      size_t recordId,
-      size_t actualRecordsCount,
       ActivityLogger& logger);
 #endif
 
@@ -159,6 +157,7 @@ class XpuptiActivityProfilerSession
   };
 
   std::unordered_map<uint64_t, KernelActivity> kernelActivities_;
+  uint64_t lastKernelActivityEndTime_{0};
 };
 
 class XPUActivityProfiler : public libkineto::IActivityProfiler {

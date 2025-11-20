@@ -17,11 +17,12 @@
 namespace KINETO_NAMESPACE {
 
 // TODO : implications of this singleton being thread safe on forks?
-IpcFabricConfigClient* DaemonConfigLoader::getConfigClient() {
-  if (!configClient) {
-    configClient = std::make_unique<IpcFabricConfigClient>();
+IpcFabricConfigClient* DaemonConfigLoader::getConfigClient(
+    bool createIfNotFound) {
+  if (!configClient_ && createIfNotFound) {
+    configClient_ = std::make_unique<IpcFabricConfigClient>();
   }
-  return configClient.get();
+  return configClient_.get();
 }
 
 std::string DaemonConfigLoader::readBaseConfig() {
@@ -64,7 +65,7 @@ int DaemonConfigLoader::gpuContextCount(uint32_t device) {
 
 void DaemonConfigLoader::setCommunicationFabric(bool enabled) {
   LOG(INFO) << "Setting communication fabric enabled = " << enabled;
-  auto configClient = getConfigClient();
+  auto configClient = getConfigClient(true);
 
   if (!configClient) {
     LOG(WARNING) << "Failed to read config: No dyno config client";

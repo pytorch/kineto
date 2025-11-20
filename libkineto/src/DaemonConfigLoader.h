@@ -56,12 +56,12 @@ class DaemonConfigLoader : public IDaemonConfigLoader {
 
   void setCommunicationFabric(bool enabled) override;
 
-  IpcFabricConfigClient* getConfigClient();
+  IpcFabricConfigClient* getConfigClient(bool createIfNotFound = false);
 
   static void registerFactory();
 
  private:
-  std::unique_ptr<IpcFabricConfigClient> configClient;
+  std::unique_ptr<IpcFabricConfigClient> configClient_;
 };
 #endif // __linux__
 

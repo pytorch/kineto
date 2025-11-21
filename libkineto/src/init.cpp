@@ -26,6 +26,7 @@
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
+#include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif
 #ifdef HAS_AIUPTI
 #include "plugin/aiupti/AiuptiActivityApi.h"
@@ -193,6 +194,8 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
           throw std::runtime_error(errPrefixMsg);
 #endif
         }
+
+        XpuptiScopeProfilerConfig::registerFactory();
         return std::make_unique<XPUActivityProfiler>();
       });
 #endif // HAS_XPUPTI

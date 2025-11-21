@@ -25,7 +25,7 @@ void AiuptiActivityProfilerSession::checkTimestampOrder(
   }
 
   const ITraceActivity* act2 = it->second;
-  if (act2->type() == ActivityType::CUDA_RUNTIME)
+  if (act2->type() == ActivityType::PRIVATEUSE1_RUNTIME)
     std::swap(act1, act2);
   if (act1->timestamp() > act2->timestamp()) {
     std::string err_msg;
@@ -164,7 +164,7 @@ void AiuptiActivityProfilerSession::handleRuntimeActivity(
   auto cbIDName =
       runtimeCbidName((AIUpti_runtime_api_trace_cbid)activity->cbid);
   traceBuffer_.emplace_activity(
-      traceBuffer_.span, ActivityType::CUDA_RUNTIME, cbIDName);
+      traceBuffer_.span, ActivityType::PRIVATEUSE1_RUNTIME, cbIDName);
   auto& runtime_activity = traceBuffer_.activities.back();
   runtime_activity->startTime = activity->start;
   runtime_activity->endTime = activity->end;
@@ -436,7 +436,7 @@ void AiuptiActivityProfilerSession::handleMemoryActivity(
       linkedActivity(activity->correlation_id, cpuCorrelationMap_);
   traceBuffer_.emplace_activity(
       traceBuffer_.span,
-      ActivityType::CUDA_DRIVER,
+      ActivityType::PRIVATEUSE1_DRIVER,
       fmt::format(
           "Memory ({})", memoryOperationName(activity->memory_operation_type)));
   auto& mem_activity = traceBuffer_.activities.back();

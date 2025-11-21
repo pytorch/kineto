@@ -366,7 +366,6 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
       act->device = it->second.device_;
       act->resource = it->second.resource_;
     };
-    kernelActivities_.erase(it);
   } else {
     FillActivityRecord = [this](GenericTraceActivity* act) {
       act->startTime = lastKernelActivityEndTime_ + 1;
@@ -379,6 +378,10 @@ void XpuptiActivityProfilerSession::handleScopeRecord(
     FillActivityRecord(sa);
   }
   scopeActivities[2]->startTime = scopeActivities[2]->endTime;
+
+  if (it != kernelActivities_.end()) {
+    kernelActivities_.erase(it);
+  }
   lastKernelActivityEndTime_ = scopeActivities[0]->endTime;
 
   scopeActivities[0]->addMetadata("kernel_id", record->_kernel_id);

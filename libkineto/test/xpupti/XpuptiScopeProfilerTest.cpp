@@ -86,12 +86,12 @@ auto CountMetricsInString(
   return std::pair{metricsCount, metricsMask};
 }
 
-template <class MAP, class ARRAY>
+template <class MAP, class EXPMAP>
 void CheckCountsInMap(
     const MAP& map,
     unsigned expSize,
     unsigned repeatCount,
-    const ARRAY& expArray) {
+    const EXPMAP& expMap) {
   EXPECT_EQ(map.size(), expSize);
 
   std::map<unsigned, unsigned> countsMap;
@@ -99,15 +99,29 @@ void CheckCountsInMap(
     countsMap[val]++;
   }
 
-  EXPECT_EQ(countsMap.size(), expArray.size());
+  EXPECT_EQ(countsMap.size(), expMap.size());
 
-  for (auto itCountsMap = countsMap.begin(), itExpArray = expArray.begin();
-       (itCountsMap != countsMap.end()) && (itExpArray != expArray.end());
+  for (auto itCountsMap = countsMap.begin(), itExpArray = expMap.begin();
+       (itCountsMap != countsMap.end()) && (itExpArray != expMap.end());
        ++itCountsMap, ++itExpArray) {
     EXPECT_EQ(itCountsMap->first, itExpArray->first * repeatCount);
     EXPECT_EQ(itCountsMap->second, itExpArray->second);
   }
 }
+
+auto CountsMap(const std::vector<std::string>& names) {
+  std::map<std::string, unsigned> counts;
+  for (const auto& name : names) {
+    counts[name]++;
+  }
+
+  std::map<unsigned, unsigned> countsMap;
+  for (const auto& [name, count] : counts) {
+    countsMap[count]++;
+  }
+
+  return std::pair{countsMap, counts.size()};
+};
 
 void RunTest(std::string_view perKernel, unsigned maxScopes) {
   KN::Config cfg;
@@ -180,16 +194,50 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
                 << std::endl;
     }
 
-    constexpr unsigned numMemWrites = 3;
-    constexpr unsigned numMemWritesCount = 2;
-    constexpr unsigned numMemReads = 1;
-    constexpr unsigned numMemReadsCount = 2;
-    constexpr unsigned numKernels = 1;
-    constexpr unsigned numKernelsCount = 3;
-    constexpr unsigned numActivities = numMemWrites * numMemWritesCount +
-        numMemReads * numMemReadsCount + numKernels * numKernelsCount;
+    const std::vector<std::string> expectedActivities = {
+        "urEnqueueMemBufferWrite",
+        "urEnqueueMemBufferWrite",
+        "urEnqueueMemBufferWrite",
+        "Memcpy M2D",
+        "Memcpy M2D",
+        "Memcpy M2D",
+        "urEnqueueKernelLaunch",
+        "Run(sycl::_V1::queue, ...)",
+        "urEnqueueMemBufferRead",
+        "Memcpy D2M",
+        "metrics: Run(sycl::_V1::queue, ...)",
+        "metrics",
+        "metrics"};
 
-    EXPECT_EQ(pBuffer->activities.size(), repeatCount * numActivities);
+    auto [expectedActivitiesCountsMap, numUniqueActivities] =
+        CountsMap(expectedActivities);
+
+    const unsigned numMetrics = std::count_if(
+        expectedActivities.begin(),
+        expectedActivities.end(),
+        [](const std::string& name) { return name.find("metrics") == 0; });
+
+    const std::vector<std::string> expectedTypes = {
+        "xpu_runtime",
+        "xpu_runtime",
+        "xpu_runtime",
+        "gpu_memcpy",
+        "gpu_memcpy",
+        "gpu_memcpy",
+        "xpu_runtime",
+        "kernel",
+        "xpu_runtime",
+        "gpu_memcpy",
+        "kernel",
+        "xpu_scope_profiler",
+        "xpu_scope_profiler"};
+
+    auto [expectedTypesCountsMap, numUniqueTypes] = CountsMap(expectedTypes);
+
+    const unsigned numActivities = expectedActivities.size();
+    EXPECT_EQ(numActivities, expectedTypes.size());
+
+    EXPECT_EQ(pBuffer->activities.size(), numActivities * repeatCount);
 
     std::map<std::string, unsigned> activitiesCount;
     std::map<KN::ActivityType, unsigned> typesCount;
@@ -199,19 +247,31 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       activitiesCount[pActivity->name()]++;
       typesCount[pActivity->type()]++;
 
-      auto posMetricsStr = pActivity->name().find("metrics: ");
+      bool isNameMetrics = pActivity->name() == "metrics";
+      bool nameStartsWithMetrics = pActivity->name().find("metrics:") == 0;
       auto [metricsCount, metricsMask] =
           CountMetricsInString(metrics, pActivity->metadataJson());
 
-      if (pActivity->type() == KN::ActivityType::XPU_SCOPE_PROFILER) {
-        EXPECT_EQ(posMetricsStr, 0);
-        EXPECT_EQ(metricsCount, metrics.size());
-        EXPECT_EQ(metricsMask, (1u << metrics.size()) - 1);
-        ++scopeProfilerActCount;
-      } else {
-        EXPECT_EQ(posMetricsStr, std::string::npos);
-        EXPECT_EQ(metricsCount, 0);
-        EXPECT_EQ(metricsMask, 0);
+      switch (pActivity->type()) {
+        case KN::ActivityType::CONCURRENT_KERNEL:
+          if (nameStartsWithMetrics)
+            goto label_scope;
+          else
+            goto label_default;
+
+        case KN::ActivityType::XPU_SCOPE_PROFILER:
+          EXPECT_TRUE(isNameMetrics);
+        label_scope:
+          EXPECT_EQ(metricsCount, metrics.size());
+          EXPECT_EQ(metricsMask, (1u << metrics.size()) - 1);
+          ++scopeProfilerActCount;
+          break;
+
+        default:
+        label_default:
+          EXPECT_FALSE(isNameMetrics);
+          EXPECT_EQ(metricsCount, 0);
+          EXPECT_EQ(metricsMask, 0);
       }
 
       if (isVerbose) {
@@ -239,22 +299,16 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       }
     }
 
-    EXPECT_EQ(scopeProfilerActCount, repeatCount);
+    EXPECT_EQ(scopeProfilerActCount, numMetrics * repeatCount);
 
     CheckCountsInMap(
         activitiesCount,
-        7,
+        numUniqueActivities,
         repeatCount,
-        std::array{std::pair{1u, 5}, std::pair{numMemWrites, 2}});
+        expectedActivitiesCountsMap);
 
     CheckCountsInMap(
-        typesCount,
-        4,
-        repeatCount,
-        std::array{
-            std::pair{1u, 2},
-            std::pair{numMemWrites + numMemReads, 1},
-            std::pair{numMemWrites + numMemReads + numKernels, 1}});
+        typesCount, numUniqueTypes, repeatCount, expectedTypesCountsMap);
   }
 #else
   EXPECT_THROW(profiler.configure(activities, cfg), std::runtime_error);

@@ -217,6 +217,7 @@ void AiuptiActivityApi::enableAiuptiActivities(
   AIUPTI_CALL(aiuptiActivityRegisterCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
   bool activityEnabled = false;
+  bool privateUseCPUActivityEnabled = false;
   externalCorrelationEnabled_ = false;
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
@@ -236,11 +237,11 @@ void AiuptiActivityApi::enableAiuptiActivities(
     }
     if (activity == ActivityType::PRIVATEUSE1_RUNTIME) {
       AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_RUNTIME));
-      activityEnabled = true;
+      privateUseCPUActivityEnabled = true;
     }
     if (activity == ActivityType::PRIVATEUSE1_DRIVER) {
       AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_DRIVER));
-      activityEnabled = true;
+      privateUseCPUActivityEnabled = true;
     }
   }
 
@@ -257,8 +258,10 @@ void AiuptiActivityApi::enableAiuptiActivities(
       // do not track memset events because they are the same as memory
       // allocation events
       AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_CMPT));
-      AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_RUNTIME));
-      AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_DRIVER));
+      if (!privateUseCPUActivityEnabled) {
+        AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_RUNTIME));
+        AIUPTI_CALL(aiuptiActivityEnable(AIUPTI_ACTIVITY_KIND_DRIVER));
+      }
     }
   }
 
@@ -272,6 +275,7 @@ void AiuptiActivityApi::disablePtiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_AIUPTI
   bool activityEnabled = false;
+  bool privateUseCPUActivityEnabled = false;
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
       AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_MEMCPY));
@@ -289,11 +293,11 @@ void AiuptiActivityApi::disablePtiActivities(
     }
     if (activity == ActivityType::PRIVATEUSE1_RUNTIME) {
       AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_RUNTIME));
-      activityEnabled = true;
+      privateUseCPUActivityEnabled = true;
     }
     if (activity == ActivityType::PRIVATEUSE1_DRIVER) {
       AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_DRIVER));
-      activityEnabled = true;
+      privateUseCPUActivityEnabled = true;
     }
   }
 
@@ -305,8 +309,10 @@ void AiuptiActivityApi::disablePtiActivities(
       AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
       AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_MEMORY));
       AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_CMPT));
-      AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_RUNTIME));
-      AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_DRIVER));
+      if (!privateUseCPUActivityEnabled) {
+        AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_RUNTIME));
+        AIUPTI_CALL(aiuptiActivityDisable(AIUPTI_ACTIVITY_KIND_DRIVER));
+      }
     }
   }
   externalCorrelationEnabled_ = false;

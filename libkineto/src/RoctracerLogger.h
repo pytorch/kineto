@@ -105,6 +105,9 @@ struct roctracerBase {
   uint64_t begin;
   uint64_t end;
   uint32_t domain;
+  uint64_t begin_mono {0};
+  uint64_t end_mono {0};
+  uint64_t page {(uint64_t)(-1)};
   roctracer_activity_types type;
 };
 

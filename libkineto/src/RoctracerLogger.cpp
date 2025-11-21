@@ -35,16 +35,31 @@ class Flush {
 };
 static Flush s_flush;
 
+uint64_t roctracer_ts() {
+    uint64_t t0;
+    roctracer_get_timestamp(&t0);
+    return t0;
+}
+
 RoctracerLogger& RoctracerLogger::singleton() {
   static RoctracerLogger instance;
   return instance;
 }
 
-RoctracerLogger::RoctracerLogger() {}
+FILE *logfile {nullptr};
+
+RoctracerLogger::RoctracerLogger()
+{
+    logfile = fopen("roctracer_audit.csv", "w");
+    fprintf(logfile, "domain,correlation,start,end,sequence\n");
+    uint64_t start = roctracer_ts();
+    fprintf(logfile, "origin,%lu,%lu,%lu,%lu\n", (uint64_t)0, start, start, (uint64_t)0);
+}
 
 RoctracerLogger::~RoctracerLogger() {
   stopLogging();
   endTracing();
+  fclose(logfile);
 }
 
 namespace {
@@ -103,14 +118,27 @@ void RoctracerLogger::api_callback(
     // Pack callbacks into row structures
 
     thread_local std::unordered_map<activity_correlation_id_t, uint64_t>
-        timestamps;
+        timestamps, timestamps_mono;
 
     if (data->phase == ACTIVITY_API_PHASE_ENTER) {
-      timestamps[data->correlation_id] = getApproximateTime();
+      uint64_t roctr = roctracer_ts();
+      uint64_t approx = getApproximateTime();
+      roctr = roctracer_ts();
+      approx = (getApproximateTime() + approx) / 2;
+      timestamps[data->correlation_id] = approx;
+      timestamps_mono[data->correlation_id] = roctr;
     } else { // (data->phase == ACTIVITY_API_PHASE_EXIT)
       uint64_t startTime = timestamps[data->correlation_id];
+      uint64_t startTime_mono = timestamps_mono[data->correlation_id];
       timestamps.erase(data->correlation_id);
+      timestamps_mono.erase(data->correlation_id);
+      uint64_t endTime_mono = roctracer_ts();
       uint64_t endTime = getApproximateTime();
+      endTime_mono = roctracer_ts();
+      endTime = (getApproximateTime() + endTime) / 2;
+
+      static std::atomic<uint64_t> s_sequence{0};
+      auto seq = s_sequence.fetch_add(1);
 
       switch (cid) {
         case HIP_API_ID_hipLaunchKernel:
@@ -137,7 +165,10 @@ void RoctracerLogger::api_callback(
               args.dimBlocks.z,
               args.sharedMemBytes,
               args.stream);
+          row->begin_mono = startTime_mono;
+          row->end_mono = endTime_mono;
           insert_row_to_buffer(row);
+          fprintf(logfile, "hip_audit,%lu,%lu,%lu,%lu\n", data->correlation_id, startTime_mono, endTime_mono, seq);
         } break;
         case HIP_API_ID_hipHccModuleLaunchKernel:
         case HIP_API_ID_hipModuleLaunchKernel:
@@ -162,7 +193,10 @@ void RoctracerLogger::api_callback(
               args.blockDimZ,
               args.sharedMemBytes,
               args.stream);
+          row->begin_mono = startTime_mono;
+          row->end_mono = endTime_mono;
           insert_row_to_buffer(row);
+          fprintf(logfile, "hip_audit,%lu,%lu,%lu,%lu\n", data->correlation_id, startTime_mono, endTime_mono, seq);
         } break;
         case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
         case HIP_API_ID_hipExtLaunchMultiKernelMultiDevice:
@@ -289,10 +323,32 @@ void RoctracerLogger::activity_callback(
   const roctracer_record_t* record = (const roctracer_record_t*)(begin);
   const roctracer_record_t* end_record = (const roctracer_record_t*)(end);
 
+  static uint64_t page = 0;
+  bool justOne = true;
+
+  uint64_t start = roctracer_ts();
+
   while (record < end_record) {
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
       s_flush.maxCompletedCorrelationId_ = record->correlation_id;
     }
+    if (justOne) {
+        justOne = false;        //all?
+        roctracerAsyncRow* row = new roctracerAsyncRow(
+            -record->correlation_id,
+            record->domain,
+            record->kind,
+            record->op,
+            record->device_id,
+            record->queue_id,
+            roctracer_ts(),
+            0,
+            std::string());
+        row->page = page;
+        row->end = row->begin;
+        insert_row_to_buffer(row);
+    }
+
     roctracerAsyncRow* row = new roctracerAsyncRow(
         record->correlation_id,
         record->domain,
@@ -306,9 +362,12 @@ void RoctracerLogger::activity_callback(
          (record->kind == HIP_OP_DISPATCH_KIND_TASK_))
             ? demangle(record->kernel_name)
             : std::string());
+        row->page = page;
     insert_row_to_buffer(row);
     roctracer_next_record(record, &record);
   }
+  fprintf(logfile, "activity_callback,%lu,%lu,%lu,%lu\n", (uint64_t)0, start, roctracer_ts(), page);
+  ++page;
 }
 
 void RoctracerLogger::setMaxEvents(uint32_t maxBufferSize) {
@@ -320,6 +379,7 @@ void RoctracerLogger::setMaxEvents(uint32_t maxBufferSize) {
 }
 
 void RoctracerLogger::startLogging() {
+  uint64_t start = roctracer_ts();
   if (!registered_) {
     roctracer_set_properties(
         ACTIVITY_DOMAIN_HIP_API, nullptr); // Magic encantation
@@ -378,11 +438,13 @@ void RoctracerLogger::startLogging() {
     roctracer_enable_domain_activity_expl(ACTIVITY_DOMAIN_HCC_OPS, hccPool_);
 
     registered_ = true;
+    fprintf(logfile, "startLogging,%lu,%lu,%lu,%lu\n", (uint64_t)0, start, roctracer_ts(), (uint64_t)0);
   }
 
   externalCorrelationEnabled_ = true;
   logging_ = true;
   roctracer_start();
+  fprintf(logfile, "startLogging,%lu,%lu,%lu,%lu\n", (uint64_t)0, start, roctracer_ts(), (uint64_t)1);
 }
 
 void RoctracerLogger::stopLogging() {
@@ -390,10 +452,13 @@ void RoctracerLogger::stopLogging() {
     return;
   logging_ = false;
 
-  hipError_t err = hipDeviceSynchronize();
-  if (err != hipSuccess) {
-    LOG(ERROR) << "hipDeviceSynchronize failed with code " << err;
-  }
+  //hipError_t err = hipDeviceSynchronize();
+  //if (err != hipSuccess) {
+  //  LOG(ERROR) << "hipDeviceSynchronize failed with code " << err;
+  //}
+
+  uint64_t start = roctracer_ts();
+
   roctracer_flush_activity_expl(hccPool_);
 
   // If we are stopping the tracer, implement reliable flushing
@@ -402,16 +467,27 @@ void RoctracerLogger::stopLogging() {
   auto correlationId =
       s_flush.maxCorrelationId_.load(); // load ending id from the running max
 
+  uint64_t flush_ts = roctracer_ts();
+  uint64_t flushCount = 0;
+
+  fprintf(logfile, "flush,%lu,%lu,%lu,%lu\n", (uint64_t)s_flush.maxCompletedCorrelationId_, start, start, (uint64_t)correlationId);
+
   // Poll on the worker finding the final correlation id
-  int timeout = 50;
+  int timeout = 1000 * 600;	// 10 minutes or bust
   while ((s_flush.maxCompletedCorrelationId_ < correlationId) && --timeout) {
     lock.unlock();
     roctracer_flush_activity_expl(hccPool_);
     usleep(1000);
     lock.lock();
+    ++flushCount;
+    uint64_t flush_end_ts = roctracer_ts();
+    fprintf(logfile, "flush,%lu,%lu,%lu,%lu\n", (uint64_t)s_flush.maxCompletedCorrelationId_, flush_ts, flush_end_ts, (uint64_t)correlationId);
+    flush_ts = flush_end_ts;
   }
 
   roctracer_stop();
+
+  fprintf(logfile, "stopLogging,%lu,%lu,%lu,%lu\n", (uint64_t)600, start, roctracer_ts(), flushCount);
 }
 
 void RoctracerLogger::endTracing() {
@@ -423,6 +499,8 @@ void RoctracerLogger::endTracing() {
     roctracer_close_pool_expl(hccPool_);
     hccPool_ = nullptr;
   }
+  uint64_t start = roctracer_ts();
+  fprintf(logfile, "terminus,%lu,%lu,%lu,%lu\n", (uint64_t)0, start, roctracer_ts(), (uint64_t)0);
 }
 
 ApiIdList::ApiIdList() : invert_(true) {}

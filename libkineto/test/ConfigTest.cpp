@@ -134,6 +134,11 @@ TEST(ParseTest, ActivityTypes) {
       cfg2.selectedActivityTypes(),
       std::set<ActivityType>({ActivityType::XPU_RUNTIME}));
 
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = xpu_scope_profiler"));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>({ActivityType::XPU_SCOPE_PROFILER}));
+
   EXPECT_TRUE(
       cfg2.parse("ACTIVITY_TYPES=privateuse1_Runtime,privateuse1_driver"));
   EXPECT_EQ(

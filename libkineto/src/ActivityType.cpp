@@ -71,8 +71,7 @@ const std::array<ActivityType, activityTypeCount> activityTypes() {
   return res;
 }
 
-const std::array<ActivityType, defaultActivityTypeCount>
-defaultActivityTypes() {
+const std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes() {
   std::array<ActivityType, defaultActivityTypeCount> res;
   for (int i = 0; i < defaultActivityTypeCount; i++) {
     res[i] = map[i].type;

@@ -9,39 +9,50 @@
 #include "XpuptiActivityProfiler.h"
 #include "XpuptiActivityApi.h"
 
+#include "time_since_epoch.h"
+
+#include <sycl/sycl.hpp>
+
+#include <algorithm>
 #include <chrono>
+#include <iterator>
 
 namespace KINETO_NAMESPACE {
 
+using namespace std::literals::string_view_literals;
+
 uint32_t XpuptiActivityProfilerSession::iterationCount_ = 0;
-std::vector<std::array<unsigned char, 16>>
-    XpuptiActivityProfilerSession::deviceUUIDs_ = {};
-std::vector<std::string> XpuptiActivityProfilerSession::correlateRuntimeOps_ = {
-    "piextUSMEnqueueFill",
-    "urEnqueueUSMFill",
-    "piextUSMEnqueueFill2D",
-    "urEnqueueUSMFill2D",
-    "piextUSMEnqueueMemcpy",
-    "urEnqueueUSMMemcpy",
-    "piextUSMEnqueueMemset",
-    "piextUSMEnqueueMemcpy2D",
-    "urEnqueueUSMMemcpy2D",
-    "piextUSMEnqueueMemset2D",
-    "piEnqueueKernelLaunch",
-    "urEnqueueKernelLaunch",
-    "piextEnqueueKernelLaunchCustom",
-    "urEnqueueKernelLaunchCustomExp",
-    "piextEnqueueCooperativeKernelLaunch",
-    "urEnqueueCooperativeKernelLaunchExp"};
+std::vector<DeviceUUIDsT> XpuptiActivityProfilerSession::deviceUUIDs_ = {};
+std::unordered_set<std::string_view>
+    XpuptiActivityProfilerSession::correlateRuntimeOps_ = {
+        "piextUSMEnqueueFill"sv,
+        "urEnqueueUSMFill"sv,
+        "piextUSMEnqueueFill2D"sv,
+        "urEnqueueUSMFill2D"sv,
+        "piextUSMEnqueueMemcpy"sv,
+        "urEnqueueUSMMemcpy"sv,
+        "piextUSMEnqueueMemset"sv,
+        "piextUSMEnqueueMemcpy2D"sv,
+        "urEnqueueUSMMemcpy2D"sv,
+        "piextUSMEnqueueMemset2D"sv,
+        "piEnqueueKernelLaunch"sv,
+        "urEnqueueKernelLaunch"sv,
+        "piextEnqueueKernelLaunchCustom"sv,
+        "urEnqueueKernelLaunchCustomExp"sv,
+        "piextEnqueueCooperativeKernelLaunch"sv,
+        "urEnqueueCooperativeKernelLaunchExp"sv};
 
 // =========== Session Constructor ============= //
 XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
     XpuptiActivityApi& xpti,
+    const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
-    : xpti_(xpti), config_(config.clone()), activity_types_(activity_types) {
+    : xpti_(xpti),
+      name_(name),
+      config_(config.clone()),
+      activity_types_(activity_types) {
   enumDeviceUUIDs();
-  xpti_.setMaxBufferSize(config_->activitiesMaxGpuBufferSize());
   xpti_.enableXpuptiActivities(activity_types_);
 }
 
@@ -70,18 +81,16 @@ void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
 }
 
 void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
-  traceBuffer_.span = libkineto::TraceSpan(
-      profilerStartTs_, profilerEndTs_, "__xpu_profiler__");
+  traceBuffer_.span =
+      libkineto::TraceSpan(profilerStartTs_, profilerEndTs_, name_);
   traceBuffer_.span.iteration = iterationCount_++;
   auto gpuBuffer = xpti_.activityBuffers();
   if (gpuBuffer) {
     xpti_.processActivities(
         *gpuBuffer,
-        std::bind(
-            &XpuptiActivityProfilerSession::handlePtiActivity,
-            this,
-            std::placeholders::_1,
-            &logger));
+        [this, &logger](const pti_view_record_base* record) -> void {
+          handlePtiActivity(record, logger);
+        });
   }
 }
 
@@ -96,18 +105,8 @@ void XpuptiActivityProfilerSession::processTrace(
   processTrace(logger);
 }
 
-std::unique_ptr<libkineto::DeviceInfo>
-XpuptiActivityProfilerSession::getDeviceInfo() {
-  return {};
-}
-
-std::vector<libkineto::ResourceInfo>
-XpuptiActivityProfilerSession::getResourceInfos() {
-  return {};
-}
-
-std::unique_ptr<libkineto::CpuTraceBuffer>
-XpuptiActivityProfilerSession::getTraceBuffer() {
+std::unique_ptr<libkineto::CpuTraceBuffer> XpuptiActivityProfilerSession::
+    getTraceBuffer() {
   return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
 }
 
@@ -147,7 +146,7 @@ void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
           std::cerr
               << "Warnings: UUID is not supported for this XPU device. The device index of records will be 0."
               << std::endl;
-          deviceUUIDs_.push_back(std::array<unsigned char, 16>{});
+          deviceUUIDs_.push_back(DeviceUUIDsT{});
         }
       }
     }
@@ -156,9 +155,16 @@ void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
 
 DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
     const uint8_t deviceUUID[16]) {
-  std::array<unsigned char, 16> key;
-  memcpy(key.data(), deviceUUID, 16);
-  auto it = std::find(deviceUUIDs_.begin(), deviceUUIDs_.end(), key);
+  auto it = std::find_if(
+      deviceUUIDs_.begin(),
+      deviceUUIDs_.end(),
+      [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {
+        return std::equal(
+            deviceUUIDinVec.begin(),
+            deviceUUIDinVec.end(),
+            deviceUUID,
+            deviceUUID + 16);
+      });
   if (it == deviceUUIDs_.end()) {
     std::cerr
         << "Warnings: Can't find the legal XPU device from the given UUID."
@@ -169,41 +175,26 @@ DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
 }
 
 // =========== ActivityProfiler Public Methods ============= //
-const std::set<ActivityType> kXpuTypes{
-    ActivityType::GPU_MEMCPY,
-    ActivityType::GPU_MEMSET,
-    ActivityType::CONCURRENT_KERNEL,
-    ActivityType::XPU_RUNTIME,
-    ActivityType::EXTERNAL_CORRELATION,
-    ActivityType::OVERHEAD,
-};
-
-const std::string& XPUActivityProfiler::name() const {
-  return name_;
-}
-
-const std::set<ActivityType>& XPUActivityProfiler::availableActivities() const {
+[[noreturn]] const std::set<ActivityType>& XPUActivityProfiler::
+    availableActivities() const {
   throw std::runtime_error(
       "The availableActivities is legacy method and should not be called by kineto");
-  return kXpuTypes;
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession>
-XPUActivityProfiler::configure(
-    const std::set<ActivityType>& activity_types,
-    const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
+    configure(
+        const std::set<ActivityType>& activity_types,
+        const libkineto::Config& config) {
   return std::make_unique<XpuptiActivityProfilerSession>(
-      XpuptiActivityApi::singleton(), config, activity_types);
+      XpuptiActivityApi::singleton(), name(), config, activity_types);
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession>
-XPUActivityProfiler::configure(
-    int64_t ts_ms,
-    int64_t duration_ms,
-    const std::set<ActivityType>& activity_types,
-    const libkineto::Config& config) {
-  AsyncProfileStartTime_ = ts_ms;
-  AsyncProfileEndTime_ = ts_ms + duration_ms;
+std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
+    configure(
+        [[maybe_unused]] int64_t ts_ms,
+        [[maybe_unused]] int64_t duration_ms,
+        const std::set<ActivityType>& activity_types,
+        const libkineto::Config& config) {
   return configure(activity_types, config);
 }
 } // namespace KINETO_NAMESPACE

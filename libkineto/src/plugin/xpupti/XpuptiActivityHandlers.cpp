@@ -305,7 +305,7 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
   }
 }
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
 
 static void AddPtiValueToMetadata(
     GenericTraceActivity* scopeActivity,

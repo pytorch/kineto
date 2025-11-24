@@ -24,7 +24,7 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
 
 XpuptiActivityApi::XpuptiActivityApi() {
 #ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount_));
 
   if (deviceCount_ > 0) {
@@ -221,7 +221,7 @@ static void enableSpecifcRuntimeAPIsTracing() {
 }
 #endif
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
 XpuptiActivityApi::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t() {
   XPUPTI_CALL(ptiMetricsScopeEnable(&handle));
@@ -235,7 +235,7 @@ XpuptiActivityApi::safe_pti_scope_collection_handle_t::
 
 void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   if (deviceCount_ == 0) {
     throw std::runtime_error("No XPU devices available");
   }
@@ -283,7 +283,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 
 void XpuptiActivityApi::disableScopeProfiler() {
 #ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   scopeHandleOpt_.reset();
 #endif
 #endif
@@ -291,7 +291,7 @@ void XpuptiActivityApi::disableScopeProfiler() {
 
 void XpuptiActivityApi::startScopeActivity() {
 #ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStartCollection(*scopeHandleOpt_));
   }
@@ -301,7 +301,7 @@ void XpuptiActivityApi::startScopeActivity() {
 
 void XpuptiActivityApi::stopScopeActivity() {
 #ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStopCollection(*scopeHandleOpt_));
   }
@@ -350,11 +350,11 @@ bool XpuptiActivityApi::enableXpuptiActivities(
         break;
 
       case ActivityType::XPU_SCOPE_PROFILER:
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
         scopeProfilerEnabled = true;
 #else
         throw std::runtime_error(
-            "Intel® oneAPI version required to use scope profiler is at least 2025.3.0");
+            "Intel® oneAPI version required to use scope profiler is at least 2025.3.1");
 #endif
         break;
 
@@ -409,7 +409,7 @@ void XpuptiActivityApi::disablePtiActivities(
 #endif
 }
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
 
 static size_t IntDivRoundUp(size_t a, size_t b) {
   return (a + b - 1) / b;

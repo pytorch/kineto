@@ -16,7 +16,7 @@
 
 #include <pti/pti_view.h>
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
 #include <pti/pti_metrics_scope.h>
 #endif
 
@@ -60,7 +60,7 @@ class XpuptiActivityApi {
       XpuptiActivityBufferMap&,
       std::function<void(const pti_view_record_base*)> handler);
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   void processScopeTrace(
       std::function<void(
           const pti_metrics_scope_record_t*,
@@ -73,7 +73,7 @@ class XpuptiActivityApi {
   std::mutex mutex_;
   bool externalCorrelationEnabled_{false};
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   struct safe_pti_scope_collection_handle_t {
     safe_pti_scope_collection_handle_t();
     ~safe_pti_scope_collection_handle_t();

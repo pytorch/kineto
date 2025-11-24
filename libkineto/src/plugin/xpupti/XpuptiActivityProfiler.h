@@ -15,7 +15,7 @@
 
 #include <pti/pti_view.h>
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
 #include <pti/pti_metrics_scope.h>
 #endif
 
@@ -100,7 +100,7 @@ class XpuptiActivityProfilerSession
       const pti_view_record_base* record,
       ActivityLogger& logger);
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   void handleScopeRecord(
       const pti_metrics_scope_record_t* record,
       const pti_metrics_scope_record_metadata_t& metadata,

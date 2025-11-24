@@ -153,7 +153,7 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       KN::ActivityType::XPU_SCOPE_PROFILER,
       KN::ActivityType::OVERHEAD};
 
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
   if (perKernel == "false") {
     EXPECT_THROW(profiler.configure(activities, cfg), std::runtime_error);
   } else {

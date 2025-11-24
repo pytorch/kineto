@@ -111,7 +111,7 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
         });
   }
   if (scopeProfilerEnabled_) {
-#if PTI_VERSION_AT_LEAST(0, 14)
+#if PTI_VERSION_AT_LEAST(0, 15)
     xpti_.processScopeTrace(
         [this, &logger](
             const pti_metrics_scope_record_t* record,

@@ -694,8 +694,6 @@ void CuptiActivityProfiler::handleCudaEventActivity(
     recordDevice(device_id);
   }
 
-  VLOG(2) << "Logging CUDA event activity device = " << device_id
-          << " stream = " << activity->streamId;
   cuda_event_activity.log(*logger);
   setGpuActivityPresent(true);
 }

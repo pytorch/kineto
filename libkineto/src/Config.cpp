@@ -293,7 +293,7 @@ uint8_t Config::createDeviceMask(const string& val) {
   return res;
 }
 
-const seconds Config::maxRequestAge() const {
+seconds Config::maxRequestAge() {
   return kMaxRequestAge;
 }
 

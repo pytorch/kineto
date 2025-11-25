@@ -185,7 +185,7 @@ void CuptiCallbackApi::initCallbackApi() {
 CuptiCallbackApi::CallbackList* CuptiCallbackApi::CallbackTable::lookup(
     CUpti_CallbackDomain domain,
     CuptiCallBackID cbid) {
-  size_t idx;
+  size_t idx = 0;
 
   switch (domain) {
     case CUPTI_CB_DOMAIN_RESOURCE:

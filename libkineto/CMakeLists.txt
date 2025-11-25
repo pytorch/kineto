@@ -190,7 +190,7 @@ target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
 
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-  target_include_directories(kineto_base PUBLIC ${XPUPTI_INCLUDE_DIR})
+  target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
 endif()
 if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   target_include_directories(kineto_base PUBLIC ${AIU_INCLUDE_DIR})

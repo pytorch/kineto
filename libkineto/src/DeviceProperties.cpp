@@ -19,6 +19,10 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#if defined(HAS_XPUPTI)
+#include "plugin/xpupti/XpuptiActivityProfiler.h"
+#endif
+
 #include "Logger.h"
 
 namespace KINETO_NAMESPACE {
@@ -125,6 +129,11 @@ const std::string& devicePropertiesJson() {
 int smCount(uint32_t deviceId) {
   const std::vector<gpuDeviceProp>& props = deviceProps();
   return deviceId >= props.size() ? 0 : props[deviceId].multiProcessorCount;
+}
+#elif defined(HAS_XPUPTI)
+const std::string& devicePropertiesJson() {
+  static std::string devicePropsJson = getXpuDeviceProperties();
+  return devicePropsJson;
 }
 #else
 const std::string& devicePropertiesJson() {

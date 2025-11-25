@@ -7,6 +7,9 @@
  */
 
 #include "XpuptiActivityProfiler.h"
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+#include <sycl/sycl.hpp>
 #include "XpuptiActivityApi.h"
 
 #include <chrono>
@@ -69,6 +72,43 @@ void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   }
 }
 
+std::string getXpuDeviceProperties() {
+  std::vector<std::string> jsonProps;
+  auto platform_list = sycl::platform::get_platforms();
+  // Enumerated GPU devices from the specific platform.
+
+  for (const auto& platform : platform_list) {
+    if (platform.get_backend() != sycl::backend::ext_oneapi_level_zero) {
+      continue;
+    }
+    const auto& device_list = platform.get_devices();
+    for (size_t i = 0; i < device_list.size(); i++) {
+      const auto& device = device_list[i];
+      jsonProps.push_back(
+          fmt::format(
+              R"JSON(
+    {{
+      "id": {}, "name": "{}", "totalGlobalMem": {}, "maxComputeUnits": {},
+      "maxWorkGroupSize": {}, "maxClockFrequency": {}, "maxMemAllocSize": {},
+      "localMemSize": {}, "vendor": "{}", "driverVersion": "{}"
+    }})JSON",
+              i,
+              device.get_info<sycl::info::device::name>(),
+              device.get_info<sycl::info::device::global_mem_size>(),
+              device.get_info<sycl::info::device::max_compute_units>(),
+              device.get_info<sycl::info::device::max_work_group_size>(),
+              device.get_info<sycl::info::device::max_clock_frequency>(),
+              device.get_info<sycl::info::device::max_mem_alloc_size>(),
+              device.get_info<sycl::info::device::local_mem_size>(),
+              device.get_info<sycl::info::device::vendor>(),
+              device.get_info<sycl::info::device::driver_version>()));
+    }
+    std::cout << jsonProps.back() << std::endl;
+  }
+
+  return fmt::format("{}", fmt::join(jsonProps, ","));
+}
+
 void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
   traceBuffer_.span = libkineto::TraceSpan(
       profilerStartTs_, profilerEndTs_, "__xpu_profiler__");
@@ -96,18 +136,18 @@ void XpuptiActivityProfilerSession::processTrace(
   processTrace(logger);
 }
 
-std::unique_ptr<libkineto::DeviceInfo>
-XpuptiActivityProfilerSession::getDeviceInfo() {
+std::unique_ptr<libkineto::DeviceInfo> XpuptiActivityProfilerSession::
+    getDeviceInfo() {
   return {};
 }
 
-std::vector<libkineto::ResourceInfo>
-XpuptiActivityProfilerSession::getResourceInfos() {
+std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
+    getResourceInfos() {
   return {};
 }
 
-std::unique_ptr<libkineto::CpuTraceBuffer>
-XpuptiActivityProfilerSession::getTraceBuffer() {
+std::unique_ptr<libkineto::CpuTraceBuffer> XpuptiActivityProfilerSession::
+    getTraceBuffer() {
   return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
 }
 
@@ -188,20 +228,20 @@ const std::set<ActivityType>& XPUActivityProfiler::availableActivities() const {
   return kXpuTypes;
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession>
-XPUActivityProfiler::configure(
-    const std::set<ActivityType>& activity_types,
-    const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
+    configure(
+        const std::set<ActivityType>& activity_types,
+        const libkineto::Config& config) {
   return std::make_unique<XpuptiActivityProfilerSession>(
       XpuptiActivityApi::singleton(), config, activity_types);
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession>
-XPUActivityProfiler::configure(
-    int64_t ts_ms,
-    int64_t duration_ms,
-    const std::set<ActivityType>& activity_types,
-    const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
+    configure(
+        int64_t ts_ms,
+        int64_t duration_ms,
+        const std::set<ActivityType>& activity_types,
+        const libkineto::Config& config) {
   AsyncProfileStartTime_ = ts_ms;
   AsyncProfileEndTime_ = ts_ms + duration_ms;
   return configure(activity_types, config);

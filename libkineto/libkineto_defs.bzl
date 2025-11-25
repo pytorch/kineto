@@ -73,6 +73,7 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/dynamic_plugin/PluginLoader.h",
         "src/dynamic_plugin/PluginProfiler.h",
         "src/dynamic_plugin/PluginTraceBuilder.h",
+        "src/dynamic_plugin/PluginUtils.h",
     ] + (get_libkineto_api_srcs() if with_api else [])
 
 def get_libkineto_public_headers():

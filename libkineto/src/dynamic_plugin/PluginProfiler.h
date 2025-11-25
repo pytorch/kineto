@@ -28,6 +28,11 @@ class PluginProfilerSession : public IActivityProfilerSession {
     KinetoPlugin_ProfilerCreate_Params createParams{
         KINETO_PLUGIN_PROFILER_CREATE_PARAMS_UNPADDED_STRUCT_SIZE};
 
+    std::vector<KinetoPlugin_ProfileEventType> enabledActivityTypes =
+        convertActivityTypeSet(enabled_activity_types_);
+    createParams.pEnabledActivityTypes = enabledActivityTypes.data();
+    createParams.enabledActivityTypesMaxLen = enabledActivityTypes.size();
+
     int errorCode = profiler_.profilerCreate(&createParams);
     if (errorCode != 0) {
       LOG(ERROR) << "Plugin profiler " << name_
@@ -68,11 +73,6 @@ class PluginProfilerSession : public IActivityProfilerSession {
     KinetoPlugin_ProfilerStart_Params startParams{
         KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE};
     startParams.pProfilerHandle = pProfilerHandle_;
-
-    std::vector<KinetoPlugin_ProfileEventType> enabledActivityTypes =
-        convertActivityTypeSet(enabled_activity_types_);
-    startParams.pEnabledActivityTypes = enabledActivityTypes.data();
-    startParams.enabledActivityTypesMaxLen = enabledActivityTypes.size();
 
     int errorCode = profiler_.profilerStart(&startParams);
     if (errorCode != 0) {
@@ -290,7 +290,7 @@ class PluginProfiler : public IActivityProfiler {
     }
   }
 
-  ~PluginProfiler() {}
+  ~PluginProfiler() = default;
 
   const std::string& name() const override {
     return name_;

@@ -22,6 +22,10 @@ class PluginTraceBuilder {
     buffer_->span = span;
   }
 
+  // Several of these APIs do not have failure cases, but we still return an
+  // integer for future extensibility.
+
+  // returns 0 on success, -1 on failure, generally this is not expected to fail.
   int addEvent(const KinetoPlugin_ProfileEvent* pProfileEvent) {
     if (buffer_ == nullptr) {
       return -1;
@@ -57,6 +61,7 @@ class PluginTraceBuilder {
     return 0;
   }
 
+  // returns 0 on success, -1 on failure, this can happen if the last event is not set.
   int setLastEventName(const char* pName) {
     if (buffer_ == nullptr) {
       return -1;
@@ -109,6 +114,7 @@ class PluginTraceBuilder {
     return 0;
   }
 
+  // returns 0 on success, -1 on failure, this can happen if the last event is not set.
   int addLastEventMetadata(const char* pKey, const char* pValue) {
     if (buffer_ == nullptr) {
       return -1;
@@ -130,6 +136,7 @@ class PluginTraceBuilder {
     return 0;
   }
 
+  // returns 0 on success, -1 on failure, generally this is not expected to fail.
   int addDeviceInfo(const KinetoPlugin_ProfileDeviceInfo* pProfileDeviceInfo) {
     if (pProfileDeviceInfo == nullptr) {
       LOG(ERROR) << "Failed to add device info of nullptr";
@@ -158,6 +165,7 @@ class PluginTraceBuilder {
     return 0;
   }
 
+  // returns 0 on success, -1 on failure, generally this is not expected to fail.
   int addResourceInfo(
       const KinetoPlugin_ProfileResourceInfo* pProfileResourceInfo) {
     if (pProfileResourceInfo == nullptr) {

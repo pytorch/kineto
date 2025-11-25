@@ -47,6 +47,15 @@ class MockPlugin {
     handle->created = true;
     params->pProfilerHandle =
         reinterpret_cast<KinetoPlugin_ProfilerHandle*>(handle);
+
+    // Capture the enabled activity types
+    handle->enabledActivityTypes.clear();
+    if (params->pEnabledActivityTypes) {
+      for (size_t i = 0; i < params->enabledActivityTypesMaxLen; i++) {
+        handle->enabledActivityTypes.push_back(params->pEnabledActivityTypes[i]);
+      }
+    }
+
     return 0;
   }
 
@@ -98,16 +107,6 @@ class MockPlugin {
     MockPluginHandle* handle =
         reinterpret_cast<MockPluginHandle*>(params->pProfilerHandle);
     handle->active = true;
-
-    // Capture the enabled activity types
-    handle->enabledActivityTypes.clear();
-    if (params->pEnabledActivityTypes) {
-      for (size_t i = 0; i < params->enabledActivityTypesMaxLen; i++) {
-        handle->enabledActivityTypes.push_back(
-            params->pEnabledActivityTypes[i]);
-      }
-    }
-
     return 0;
   }
 

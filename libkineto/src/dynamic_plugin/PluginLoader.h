@@ -12,6 +12,14 @@
 
 namespace libkineto {
 
+#ifdef _WIN32
+constexpr const char* kPluginExtension = "dll";
+#elif defined(__linux__) || defined(__APPLE__)
+constexpr const char* kPluginExtension = "so";
+#else
+constexpr const char* kPluginExtension = "DONOTMATCHANYTHING";
+#endif
+
 class PluginRegistry {
  public:
   static PluginRegistry& instance() {
@@ -74,19 +82,11 @@ inline void loadPlugins() {
     return;
   }
 
-  if (unsetenv(pPluginLibDirPathEnvVar) == -1) {
-    LOG(ERROR) << "Failed to unset environment variable "
-               << pPluginLibDirPathEnvVar << " at unsetenv() with error "
-               << strerror(errno);
-
-    return;
-  }
-
   std::vector<std::string> libFilePaths;
   try {
     for (const auto& entry :
          std::filesystem::directory_iterator(pPluginLibDirPath)) {
-      if (entry.is_regular_file() && entry.path().extension() == ".so") {
+      if (entry.is_regular_file() && entry.path().extension() == kPluginExtension) {
         libFilePaths.push_back(entry.path().string());
       }
     }
@@ -119,7 +119,7 @@ inline void loadPlugins() {
       char* pError = dlerror();
       LOG(VERBOSE) << "Failed to find symbol KinetoPlugin_register() from "
                    << libFilePath << " at dlsym() with error " << pError;
-
+      dlclose(pHandle);
       continue;
     }
 
@@ -129,6 +129,8 @@ inline void loadPlugins() {
     if (errorCode != 0) {
       LOG(ERROR) << "Failed to register plugin profiler from " << libFilePath
                  << " at pfxRegister() with error " << errorCode;
+      dlclose(pHandle);
+      continue;
     }
   }
 

@@ -159,14 +159,36 @@ struct KinetoPlugin_TraceBuilder {
 
   KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle;
 
+
+  // Usage: For each event, call addEvent(), then setLastEventName().
+  // Optionally call addLastEventMetadata() and setLastEventFlow().
+  // Use addDeviceInfo() and addResourceInfo() for device/resource metadata.
+  //
+  // Example:
+  //   KinetoPlugin_ProfileEvent event = {
+  //     .unpaddedStructSize = KINETO_PLUGIN_PROFILE_EVENT_UNPADDED_STRUCT_SIZE,
+  //     .eventType = KINETO_PLUGIN_PROFILE_EVENT_TYPE_CUDA_RUNTIME,
+  //     .startTimeUtcNs = 1000000000, .endTimeUtcNs = 1000005000,
+  //     .eventId = 1, .deviceId = 0, .resourceId = 123
+  //   };
+  //   traceBuilder->addEvent(traceBuilder->pTraceBuilderHandle, &event);
+  //   traceBuilder->setLastEventName(traceBuilder->pTraceBuilderHandle,
+  //   "cudaLaunchKernel");
+
+  // Several of these APIs do not have failure cases, but we still return an
+  // integer for future extensibility.
+
+  // returns 0 on success, -1 on failure, generally this is not expected to fail.
   int (*addEvent)(
       KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
       const struct KinetoPlugin_ProfileEvent* pProfileEvent);
 
+  // returns 0 on success, -1 on failure, this can happen if the last event is not set.
   int (*setLastEventName)(
       KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
       const char* pName);
 
+  // returns 0 on success, -1 on failure, this can happen if the last event is not set.
   int (*setLastEventFlow)(
       KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
       const struct KinetoPlugin_ProfileEventFlow* pProfileEventFlow);
@@ -174,15 +196,18 @@ struct KinetoPlugin_TraceBuilder {
   // additional quote around it (e.g., "\"metadata value\"") If metadata value
   // is a list (e.g., 1, 2, 3), MUST add square bracket around it (e.g., "[1, 2,
   // 3]")
+  // returns 0 on success, -1 on failure, this can happen if the last event is not set.
   int (*addLastEventMetadata)(
       KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
       const char* pKey,
       const char* pValue);
 
+  // returns 0 on success, -1 on failure, generally this is not expected to fail.
   int (*addDeviceInfo)(
       KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
       const struct KinetoPlugin_ProfileDeviceInfo* pProfileDeviceInfo);
 
+  // returns 0 on success, -1 on failure, generally this is not expected to fail.
   int (*addResourceInfo)(
       KinetoPlugin_TraceBuilderHandle* pTraceBuilderHandle,
       const struct KinetoPlugin_ProfileResourceInfo* pProfileResourceInfo);
@@ -199,10 +224,16 @@ struct KinetoPlugin_ProfilerCreate_Params {
 
   // [out] An instance created by plugin
   KinetoPlugin_ProfilerHandle* pProfilerHandle;
+
+  // [in] Enabled activity types.
+  KinetoPlugin_ProfileEventType* pEnabledActivityTypes;
+
+  // [in] Max length of pEnabledActivityTypes
+  size_t enabledActivityTypesMaxLen;
 };
 #define KINETO_PLUGIN_PROFILER_CREATE_PARAMS_UNPADDED_STRUCT_SIZE \
   KINETO_PLUGIN_UNPADDED_STRUCT_SIZE(                             \
-      struct KinetoPlugin_ProfilerCreate_Params, pProfilerHandle)
+      struct KinetoPlugin_ProfilerCreate_Params, enabledActivityTypesMaxLen)
 
 struct KinetoPlugin_ProfilerDestroy_Params {
   // Always set to KINETO_PLUGIN_PROFILER_DESTROY_PARAMS_UNPADDED_STRUCT_SIZE
@@ -241,12 +272,6 @@ struct KinetoPlugin_ProfilerQuery_Params {
 struct KinetoPlugin_ProfilerStart_Params {
   // Always set to KINETO_PLUGIN_PROFILER_START_PARAMS_UNPADDED_STRUCT_SIZE
   size_t unpaddedStructSize;
-
-  // [in] Enabled activity types.
-  KinetoPlugin_ProfileEventType* pEnabledActivityTypes;
-
-  // [in] Max length of pEnabledActivityTypes
-  size_t enabledActivityTypesMaxLen;
 
   // [in] An instance created via profilerCreate()
   KinetoPlugin_ProfilerHandle* pProfilerHandle;

@@ -74,10 +74,8 @@ void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
 
 std::string getXpuDeviceProperties() {
   std::vector<std::string> jsonProps;
-  auto platform_list = sycl::platform::get_platforms();
-  // Enumerated GPU devices from the specific platform.
-
-  for (const auto& platform : platform_list) {
+  // Enumerated GPU devices from the specific platform
+  for (const auto& platform : sycl::platform::get_platforms()) {
     if (platform.get_backend() != sycl::backend::ext_oneapi_level_zero) {
       continue;
     }
@@ -88,9 +86,16 @@ std::string getXpuDeviceProperties() {
           fmt::format(
               R"JSON(
     {{
-      "id": {}, "name": "{}", "totalGlobalMem": {}, "maxComputeUnits": {},
-      "maxWorkGroupSize": {}, "maxClockFrequency": {}, "maxMemAllocSize": {},
-      "localMemSize": {}, "vendor": "{}", "driverVersion": "{}"
+      "id": {},
+      "name": "{}",
+      "totalGlobalMem": {},
+      "maxComputeUnits": {},
+      "maxWorkGroupSize": {},
+      "maxClockFrequency": {},
+      "maxMemAllocSize": {},
+      "localMemSize": {},
+      "vendor": "{}",
+      "driverVersion": "{}"
     }})JSON",
               i,
               device.get_info<sycl::info::device::name>(),
@@ -103,7 +108,6 @@ std::string getXpuDeviceProperties() {
               device.get_info<sycl::info::device::vendor>(),
               device.get_info<sycl::info::device::driver_version>()));
     }
-    std::cout << jsonProps.back() << std::endl;
   }
 
   return fmt::format("{}", fmt::join(jsonProps, ","));

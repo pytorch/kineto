@@ -1,4 +1,4 @@
-name: libkineto PR Test on A10G
+name: libkineto PR Test
 
 on:
   push:
@@ -12,9 +12,19 @@ env:
 
 jobs:
   pr-test:
-    # AWS A10G GPU instance label: linux.g5.4xlarge.nvidia.gpu
-    # OS version: Amazon Linux 2
-    runs-on: linux.g5.4xlarge.nvidia.gpu
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: linux.g5.4xlarge.nvidia.gpu
+            backend: cuda
+            docker_image: "ghcr.io/pytorch/torchbench:latest"
+            setup_action: pytorch/test-infra/.github/actions/setup-nvidia@main
+          - runner: linux.rocm.gpu
+            backend: rocm
+            docker_image: "ghcr.io/pytorch/torchbench-rocm:latest"
+            setup_action: pytorch/test-infra/.github/actions/setup-rocm@main
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto
@@ -26,10 +36,10 @@ jobs:
       - name: Pull docker image
         uses: pytorch/test-infra/.github/actions/pull-docker-image@main
         with:
-          docker-image: ${{ env.DOCKER_IMAGE }}
+          docker-image: ${{ matrix.docker_image }}
 
-      - name: Install NVIDIA Driver, docker runtime, set GPU_FLAG
-        uses: pytorch/test-infra/.github/actions/setup-nvidia@main
+      - name: Setup GPU driver and runtime
+        uses: ${{ matrix.setup_action }}
 
       - name: Get env vars
         run: |
@@ -53,7 +63,7 @@ jobs:
             --shm-size=32gb \
             -v "${PWD}/kineto:/kineto" \
             -w / \
-            "${{ env.DOCKER_IMAGE }}"
+            "${{ matrix.docker_image }}"
           )
           echo "Container name: ${container_name}"
 
@@ -77,6 +87,46 @@ jobs:
           "
 
           docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "make test"
+
+      - name: Clone PyTorch
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/" "${container_name}" bash -c "
+            set -eux
+            git clone --recursive https://github.com/pytorch/pytorch.git
+          "
+
+      - name: Replace PyTorch's Kineto with PR version
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            rm -rf third_party/kineto
+            ln -s /kineto third_party/kineto
+          "
+
+      - name: Build PyTorch from source
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            pip install -r requirements.txt
+            export BUILD_TEST=1
+            if [ '${{ matrix.backend }}' == 'cuda' ]; then
+              export USE_CUDA=1
+            elif [ '${{ matrix.backend }}' == 'rocm' ]; then
+              export USE_ROCM=1
+            fi
+            python setup.py develop
+          "
+
+      - name: Run PyTorch profiler tests
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            python test/test_profiler.py -v
+          "
 
       - name: Teardown Linux
         uses: pytorch/test-infra/.github/actions/teardown-linux@main

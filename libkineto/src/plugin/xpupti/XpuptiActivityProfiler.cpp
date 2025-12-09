@@ -140,18 +140,18 @@ void XpuptiActivityProfilerSession::processTrace(
   processTrace(logger);
 }
 
-std::unique_ptr<libkineto::DeviceInfo> XpuptiActivityProfilerSession::
-    getDeviceInfo() {
+std::unique_ptr<libkineto::DeviceInfo>
+XpuptiActivityProfilerSession::getDeviceInfo() {
   return {};
 }
 
-std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
-    getResourceInfos() {
+std::vector<libkineto::ResourceInfo>
+XpuptiActivityProfilerSession::getResourceInfos() {
   return {};
 }
 
-std::unique_ptr<libkineto::CpuTraceBuffer> XpuptiActivityProfilerSession::
-    getTraceBuffer() {
+std::unique_ptr<libkineto::CpuTraceBuffer>
+XpuptiActivityProfilerSession::getTraceBuffer() {
   return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
 }
 
@@ -232,20 +232,20 @@ const std::set<ActivityType>& XPUActivityProfiler::availableActivities() const {
   return kXpuTypes;
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
-    configure(
-        const std::set<ActivityType>& activity_types,
-        const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession>
+XPUActivityProfiler::configure(
+    const std::set<ActivityType>& activity_types,
+    const libkineto::Config& config) {
   return std::make_unique<XpuptiActivityProfilerSession>(
       XpuptiActivityApi::singleton(), config, activity_types);
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
-    configure(
-        int64_t ts_ms,
-        int64_t duration_ms,
-        const std::set<ActivityType>& activity_types,
-        const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession>
+XPUActivityProfiler::configure(
+    int64_t ts_ms,
+    int64_t duration_ms,
+    const std::set<ActivityType>& activity_types,
+    const libkineto::Config& config) {
   AsyncProfileStartTime_ = ts_ms;
   AsyncProfileEndTime_ = ts_ms + duration_ms;
   return configure(activity_types, config);

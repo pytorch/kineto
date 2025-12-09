@@ -78,6 +78,42 @@ jobs:
 
           docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "make test"
 
+      - name: Clone PyTorch
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/" "${container_name}" bash -c "
+            set -eux
+            git clone --recursive https://github.com/pytorch/pytorch.git
+          "
+
+      - name: Replace PyTorch's Kineto with PR version
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            rm -rf third_party/kineto
+            ln -s /kineto third_party/kineto
+          "
+
+      - name: Build PyTorch from source
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            pip install -r requirements.txt
+            export USE_CUDA=1
+            export BUILD_TEST=1
+            python setup.py develop
+          "
+
+      - name: Run PyTorch profiler tests
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            python test/test_profiler.py -v
+          "
+
       - name: Teardown Linux
         uses: pytorch/test-infra/.github/actions/teardown-linux@main
         if: always()

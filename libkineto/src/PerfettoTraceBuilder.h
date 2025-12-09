@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <parfait/protos/perfetto/trace/perfetto_trace.pb.h>
+#include <kineto/libkineto/src/perfetto_trace.pb.h>
 #include <string>
 #include <unordered_map>
 #include "output_base.h"
@@ -16,9 +16,9 @@
 namespace KINETO_NAMESPACE {
 
 // PerfettoTraceBuilder is a helper class that constructs Perfetto protobuf
-// traces It provides similar interface to ActivityLogger but builds a Perfetto
-// trace object This class is designed to be used alongside ChromeTraceLogger to
-// generate both JSON and Perfetto protobuf traces
+// traces It provides similar interface to ActivityLogger but builds a
+// Perfetto trace object This class is designed to be used alongside
+// ChromeTraceLogger to generate both JSON and Perfetto protobuf traces
 class PerfettoTraceBuilder {
  public:
   PerfettoTraceBuilder();
@@ -76,7 +76,8 @@ class PerfettoTraceBuilder {
   // Map from (deviceId, resourceId, threadId) to track UUID
   std::unordered_map<std::string, TrackDescriptor*> trackUuids_;
 
-  // Map from deviceId to process TrackDescriptor pointer for later name updates
+  // Map from deviceId to process TrackDescriptor pointer for later name
+  // updates
   std::unordered_map<int64_t, TrackDescriptor*> deviceProcessDescriptors_;
 
   // Map from Main Thread to child thread

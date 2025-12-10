@@ -106,24 +106,30 @@ jobs:
             python setup.py develop
           "
 
+      - name: Generate dynamic test exclusions
+        id: exclusions
+        run: |
+          # Generate pytest exclusion arguments based on PyTorch trunk test status
+          # This queries PyTorch's test-infra and recent runs to identify currently
+          # failing profiler tests, preventing Kineto PRs from being blocked by
+          # pre-existing PyTorch issues.
+          python3 kineto/.github/scripts/get_trunk_test_exclusions.py > exclusions.txt
+          echo "Generated exclusions:"
+          cat exclusions.txt
+
       - name: Run PyTorch profiler tests
         run: |
           container_name=$(docker ps -lq)
+          # Copy exclusions file into container
+          docker cp exclusions.txt "${container_name}:/exclusions.txt"
+
           docker exec -t -w "/pytorch" "${container_name}" bash -c "
             set -eux
-            # TODO: Dynamically add/remove tests to the exclusion list based on their
-            # status on trunk instead of maintaining a hardcoded list of known failures.
-            # This will prevent the list from becoming stale as tests get fixed upstream.
-            python -m pytest test/profiler/ -v \
-              --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
-              --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd \
-              --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd \
-              --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step \
-              --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
-              --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
-              --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
-              --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
-              --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+            # Read dynamically generated test exclusions based on PyTorch trunk status
+            # This prevents Kineto PRs from being blocked by pre-existing PyTorch issues
+            # while maintaining test coverage for new issues introduced by Kineto changes.
+            EXCLUSIONS=\$(cat /exclusions.txt)
+            python -m pytest test/profiler/ -v \$EXCLUSIONS
           "
 
       - name: Teardown Linux

@@ -27,11 +27,18 @@ RoctracerActivityApi& RoctracerActivityApi::singleton() {
   return instance;
 }
 
+FILE *logfile {nullptr};
+
 RoctracerActivityApi::RoctracerActivityApi()
-    : d(&RoctracerLogger::singleton()) {}
+    : d(&RoctracerLogger::singleton()) 
+{
+    logfile = fopen("roctracer_timestamps.csv", "w");
+    fprintf(logfile, "domain,correlation,start,end,toffset,page,drift,approx_start\n");
+}
 
 RoctracerActivityApi::~RoctracerActivityApi() {
   disableActivities(std::set<ActivityType>());
+  fclose(logfile);
 }
 
 void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
@@ -154,12 +161,17 @@ int RoctracerActivityApi::processActivities(
       if (item->type == ROCTRACER_ACTIVITY_ASYNC) {
         // Async ops are in CLOCK_MONOTONIC, apply offset to converted
         // approximate
+        fprintf(logfile, "op,%ld,%lu,%lu,%lu,%lu,0,0\n", item->id, item->begin, item->end, toffset, item->page);
         item->begin += toffset;
         item->end += toffset;
       } else {
         // Runtime ranges are in approximate clock, just apply conversion
+        uint64_t optd_begin = item->begin_mono + toffset;
+        uint64_t approx_start = item->begin;
         item->begin = libkineto::get_time_converter()(item->begin);
         item->end = libkineto::get_time_converter()(item->end);
+        if (item->begin_mono != 0)
+            fprintf(logfile, "hip,%ld,%lu,%lu,%lu,0,%lu,%lu\n", item->id, item->begin_mono, item->end_mono, toffset, item->begin - optd_begin, approx_start);
       }
       handler(item);
       ++count;

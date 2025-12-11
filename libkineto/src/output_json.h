@@ -21,17 +21,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityBuffers.h"
 #include "GenericTraceActivity.h"
-#if __has_include(<kineto/libkineto/src/PerfettoTraceBuilder.h>)
 #include "PerfettoTraceBuilder.h"
-#define HAS_PERFETTO_TRACE_BUILDER 1
-#else
-// Forward declaration for xplat builds where PerfettoTraceBuilder is not
-// available
-namespace KINETO_NAMESPACE {
-class PerfettoTraceBuilder;
-}
-#define HAS_PERFETTO_TRACE_BUILDER 0
-#endif
 #include "output_base.h"
 #include "time_since_epoch.h"
 
@@ -135,9 +125,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // pg_name, value is pgConfig that will be used to populate pg_config in
   // distributedInfo of trace
   std::unordered_map<std::string, pgConfig> pgMap = {};
-#if HAS_PERFETTO_TRACE_BUILDER
   std::unique_ptr<PerfettoTraceBuilder> perfettoBuilder_ = nullptr;
-#endif
 };
 
 // std::chrono header start

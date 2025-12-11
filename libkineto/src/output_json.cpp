@@ -17,9 +17,7 @@
 #include "Config.h"
 #include "Logger.h"
 // PerfettoTraceBuilder is only available in fbcode builds (in fb/ directory)
-#if HAS_PERFETTO_TRACE_BUILDER
 #include "PerfettoTraceBuilder.h"
-#endif
 #include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
@@ -138,11 +136,9 @@ void ChromeTraceLogger::handleTraceStart(
   if (!traceOf_) {
     return;
   }
-#if HAS_PERFETTO_TRACE_BUILDER
   if (perfettoBuilder_) {
     perfettoBuilder_->handleTraceStart(metadata, device_properties);
   }
-#endif
   std::string display_unit = "ms";
 #ifdef DISPLAY_TRACE_IN_NS
   display_unit = "ns";
@@ -205,12 +201,10 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
   fileName_ = traceFileName.empty() ? defaultFileName() : traceFileName;
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile();
-#if HAS_PERFETTO_TRACE_BUILDER
   if (get_protobuf_trace_enabled()) {
     perfettoBuilder_ = std::make_unique<PerfettoTraceBuilder>();
     LOG(INFO) << "initing perfetto trace builder";
   }
-#endif
 }
 
 void ChromeTraceLogger::handleDeviceInfo(
@@ -220,11 +214,9 @@ void ChromeTraceLogger::handleDeviceInfo(
     return;
   }
 
-#if HAS_PERFETTO_TRACE_BUILDER
   if (perfettoBuilder_) {
     perfettoBuilder_->handleDeviceInfo(info);
   }
-#endif
 
   // M is for metadata
   // process_name needs a pid and a name arg
@@ -265,11 +257,9 @@ void ChromeTraceLogger::handleResourceInfo(
     return;
   }
 
-#if HAS_PERFETTO_TRACE_BUILDER
   if (perfettoBuilder_) {
     perfettoBuilder_->handleResourceInfo(info);
   }
-#endif
 
   // M is for metadata
   // thread_name needs a pid and a name arg
@@ -298,12 +288,10 @@ void ChromeTraceLogger::handleResourceInfo(
 void ChromeTraceLogger::handleOverheadInfo(
     const OverheadInfo& info,
     int64_t time) {
-#if HAS_PERFETTO_TRACE_BUILDER
   // Also send to Perfetto trace builder
   if (perfettoBuilder_) {
     perfettoBuilder_->handleOverheadInfo(info, time);
   }
-#endif
 
   if (!traceOf_) {
     return;
@@ -338,11 +326,9 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
     return;
   }
 
-#if HAS_PERFETTO_TRACE_BUILDER
   if (perfettoBuilder_) {
     perfettoBuilder_->handleTraceSpan(span);
   }
-#endif
 
   uint64_t start = transToRelativeTime(span.startTime);
 
@@ -428,11 +414,9 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     return;
   }
 
-#if HAS_PERFETTO_TRACE_BUILDER
   if (perfettoBuilder_) {
     perfettoBuilder_->handleActivity(op);
   }
-#endif
 
   if (op.type() == ActivityType::CPU_INSTANT_EVENT) {
     handleGenericInstantEvent(op);
@@ -790,7 +774,6 @@ void ChromeTraceLogger::finalizeTrace(
   traceOf_.close();
 
   // Write Perfetto trace to separate file alongside JSON
-#if HAS_PERFETTO_TRACE_BUILDER
   if (perfettoBuilder_) {
     std::string perfettoFileName = getPerfettoFileName();
     if (perfettoBuilder_->writeToFile(perfettoFileName)) {
@@ -799,7 +782,6 @@ void ChromeTraceLogger::finalizeTrace(
       LOG(WARNING) << "Failed to write Perfetto protobuf trace to " << perfettoFileName;
     }
   }
-#endif
 
 
   // On some systems, rename() fails if the destination file exists.

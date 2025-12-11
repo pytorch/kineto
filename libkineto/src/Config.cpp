@@ -631,4 +631,11 @@ void Config::setActivityDependentConfig() {
   AbstractConfig::setActivityDependentConfig();
 }
 
+// Returns a reference to the protobuf trace enabled flag.
+// Default is false. FBConfig will set this based on JustKnobs.
+bool& get_protobuf_trace_enabled() {
+  static bool _protobuf_trace_enabled = false;
+  return _protobuf_trace_enabled;
+}
+
 } // namespace KINETO_NAMESPACE

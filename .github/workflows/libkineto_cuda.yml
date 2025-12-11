@@ -83,7 +83,7 @@ jobs:
           container_name=$(docker ps -lq)
           docker exec -t -w "/" "${container_name}" bash -c "
             set -eux
-            git clone --recursive https://github.com/pytorch/pytorch.git
+            git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git
           "
 
       - name: Replace PyTorch's Kineto with PR version

@@ -15,9 +15,10 @@
 #include <fstream>
 #include <iterator>
 #include "Config.h"
-#include "TraceSpan.h"
-
 #include "Logger.h"
+// PerfettoTraceBuilder is only available in fbcode builds (in fb/ directory)
+#include "PerfettoTraceBuilder.h"
+#include "TraceSpan.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -114,7 +115,7 @@ void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (const auto& [k, v] : metadata) {
     std::string sanitizedValue = v;
-    // There is a seperate mechanism for recording distributedInfo in on-demand
+    // There is a separate mechanism for recording distributedInfo in on-demand
     // so add a guard to prevent "double counting" in auto-trace.
     if (k == "distributedInfo") {
       distInfo_.distInfo_present_ = true;
@@ -134,6 +135,9 @@ void ChromeTraceLogger::handleTraceStart(
     const std::string& device_properties) {
   if (!traceOf_) {
     return;
+  }
+  if (perfettoBuilder_) {
+    perfettoBuilder_->handleTraceStart(metadata, device_properties);
   }
   std::string display_unit = "ms";
 #ifdef DISPLAY_TRACE_IN_NS
@@ -181,10 +185,26 @@ void ChromeTraceLogger::finalizeMemoryTrace(const std::string&, const Config&) {
   LOG(INFO) << "finalizeMemoryTrace not implemented for ChromeTraceLogger";
 }
 
+std::string ChromeTraceLogger::getPerfettoFileName() const {
+  // Replace .json extension with .pb
+  std::string pbFileName = fileName_;
+  size_t pos = pbFileName.rfind(".json");
+  if (pos != std::string::npos) {
+    pbFileName.replace(pos, 5, ".pb");
+  } else {
+    pbFileName += ".pb";
+  }
+  return pbFileName;
+}
+
 ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
   fileName_ = traceFileName.empty() ? defaultFileName() : traceFileName;
   traceOf_.clear(std::ios_base::badbit);
   openTraceFile();
+  if (get_protobuf_trace_enabled()) {
+    perfettoBuilder_ = std::make_unique<PerfettoTraceBuilder>();
+    LOG(INFO) << "initing perfetto trace builder";
+  }
 }
 
 void ChromeTraceLogger::handleDeviceInfo(
@@ -192,6 +212,10 @@ void ChromeTraceLogger::handleDeviceInfo(
     uint64_t time) {
   if (!traceOf_) {
     return;
+  }
+
+  if (perfettoBuilder_) {
+    perfettoBuilder_->handleDeviceInfo(info);
   }
 
   // M is for metadata
@@ -233,6 +257,10 @@ void ChromeTraceLogger::handleResourceInfo(
     return;
   }
 
+  if (perfettoBuilder_) {
+    perfettoBuilder_->handleResourceInfo(info);
+  }
+
   // M is for metadata
   // thread_name needs a pid and a name arg
   // clang-format off
@@ -260,6 +288,11 @@ void ChromeTraceLogger::handleResourceInfo(
 void ChromeTraceLogger::handleOverheadInfo(
     const OverheadInfo& info,
     int64_t time) {
+  // Also send to Perfetto trace builder
+  if (perfettoBuilder_) {
+    perfettoBuilder_->handleOverheadInfo(info, time);
+  }
+
   if (!traceOf_) {
     return;
   }
@@ -291,6 +324,10 @@ void ChromeTraceLogger::handleOverheadInfo(
 void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
   if (!traceOf_) {
     return;
+  }
+
+  if (perfettoBuilder_) {
+    perfettoBuilder_->handleTraceSpan(span);
   }
 
   uint64_t start = transToRelativeTime(span.startTime);
@@ -375,6 +412,10 @@ void ChromeTraceLogger::handleGenericInstantEvent(
 void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
+  }
+
+  if (perfettoBuilder_) {
+    perfettoBuilder_->handleActivity(op);
   }
 
   if (op.type() == ActivityType::CPU_INSTANT_EVENT) {
@@ -731,6 +772,18 @@ void ChromeTraceLogger::finalizeTrace(
 }})JSON", fileName_);
 
   traceOf_.close();
+
+  // Write Perfetto trace to separate file alongside JSON
+  if (perfettoBuilder_) {
+    std::string perfettoFileName = getPerfettoFileName();
+    if (perfettoBuilder_->writeToFile(perfettoFileName)) {
+      LOG(INFO) << "Perfetto protobuf trace written alongside JSON trace";
+    } else {
+      LOG(WARNING) << "Failed to write Perfetto protobuf trace to " << perfettoFileName;
+    }
+  }
+
+
   // On some systems, rename() fails if the destination file exists.
   // So, remove the destination file first.
   remove(fileName_.c_str());

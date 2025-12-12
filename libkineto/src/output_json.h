@@ -21,6 +21,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityBuffers.h"
 #include "GenericTraceActivity.h"
+#include "PerfettoTraceBuilder.h"
 #include "output_base.h"
 #include "time_since_epoch.h"
 
@@ -115,6 +116,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void addOnDemandDistMetadata();
 
+  std::string getPerfettoFileName() const;
   std::string fileName_;
   std::string tempFileName_;
   std::ofstream traceOf_;
@@ -123,6 +125,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // pg_name, value is pgConfig that will be used to populate pg_config in
   // distributedInfo of trace
   std::unordered_map<std::string, pgConfig> pgMap = {};
+  std::unique_ptr<PerfettoTraceBuilder> perfettoBuilder_ = nullptr;
 };
 
 // std::chrono header start

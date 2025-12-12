@@ -541,4 +541,9 @@ constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
 bool isDaemonEnvVarSet();
 
+// Returns a reference to the protobuf trace enabled flag.
+// This allows the flag to be set externally (e.g., from JustKnobs in FBConfig)
+// and read in other components (e.g., ChromeTraceLogger).
+bool& get_protobuf_trace_enabled();
+
 } // namespace libkineto

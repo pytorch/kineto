@@ -14,7 +14,6 @@
 #include "Logger.h"
 #include "TraceSpan.h"
 #include "output_base.h"
-#include "parfait/protos/perfetto/trace/perfetto_trace.pb.h"
 
 namespace KINETO_NAMESPACE {
 

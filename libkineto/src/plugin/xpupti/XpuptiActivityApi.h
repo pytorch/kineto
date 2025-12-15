@@ -96,10 +96,8 @@ class XpuptiActivityApi {
       size_t validSize,
       std::function<void(const pti_view_record_base*)> handler);
   static void bufferRequestedTrampoline(uint8_t** buffer, size_t* size);
-  static void bufferCompletedTrampoline(
-      uint8_t* buffer,
-      size_t size,
-      size_t validSize);
+  static void
+  bufferCompletedTrampoline(uint8_t* buffer, size_t size, size_t validSize);
 
  protected:
   void bufferRequested(uint8_t** buffer, size_t* size);

@@ -55,9 +55,7 @@ class XpuptiActivityProfilerSession
   std::unique_ptr<libkineto::DeviceInfo> getDeviceInfo() override {
     return {};
   }
-  std::vector<libkineto::ResourceInfo> getResourceInfos() override {
-    return {};
-  }
+  std::vector<libkineto::ResourceInfo> getResourceInfos() override;
   std::unique_ptr<libkineto::CpuTraceBuffer> getTraceBuffer() override;
 
   void pushCorrelationId(uint64_t id) override;
@@ -103,6 +101,8 @@ class XpuptiActivityProfilerSession
   // for profiling activity creation
   DeviceIndex_t getDeviceIdxFromUUID(const uint8_t deviceUUID[16]);
 
+  void addResouceInfo(int32_t device_id, int32_t sycl_queue_id);
+
  private:
   static uint32_t iterationCount_;
   static std::vector<DeviceUUIDsT> deviceUUIDs_;
@@ -121,6 +121,7 @@ class XpuptiActivityProfilerSession
 
   XpuptiActivityApi& xpti_;
   libkineto::CpuTraceBuffer traceBuffer_;
+  std::vector<std::pair<uint32_t, uint32_t>> resourceInfo_;
   std::unordered_map<uint64_t, uint64_t> sycl_queue_pool_;
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;

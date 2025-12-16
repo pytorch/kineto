@@ -105,8 +105,8 @@ void XpuptiActivityProfilerSession::processTrace(
   processTrace(logger);
 }
 
-std::unique_ptr<libkineto::CpuTraceBuffer> XpuptiActivityProfilerSession::
-    getTraceBuffer() {
+std::unique_ptr<libkineto::CpuTraceBuffer>
+XpuptiActivityProfilerSession::getTraceBuffer() {
   return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
 }
 
@@ -175,26 +175,26 @@ DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
 }
 
 // =========== ActivityProfiler Public Methods ============= //
-[[noreturn]] const std::set<ActivityType>& XPUActivityProfiler::
-    availableActivities() const {
+[[noreturn]] const std::set<ActivityType>&
+XPUActivityProfiler::availableActivities() const {
   throw std::runtime_error(
       "The availableActivities is legacy method and should not be called by kineto");
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
-    configure(
-        const std::set<ActivityType>& activity_types,
-        const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession>
+XPUActivityProfiler::configure(
+    const std::set<ActivityType>& activity_types,
+    const libkineto::Config& config) {
   return std::make_unique<XpuptiActivityProfilerSession>(
       XpuptiActivityApi::singleton(), name(), config, activity_types);
 }
 
-std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
-    configure(
-        [[maybe_unused]] int64_t ts_ms,
-        [[maybe_unused]] int64_t duration_ms,
-        const std::set<ActivityType>& activity_types,
-        const libkineto::Config& config) {
+std::unique_ptr<libkineto::IActivityProfilerSession>
+XPUActivityProfiler::configure(
+    [[maybe_unused]] int64_t ts_ms,
+    [[maybe_unused]] int64_t duration_ms,
+    const std::set<ActivityType>& activity_types,
+    const libkineto::Config& config) {
   return configure(activity_types, config);
 }
 } // namespace KINETO_NAMESPACE

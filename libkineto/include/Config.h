@@ -395,7 +395,7 @@ class Config : public AbstractConfig {
     return customConfig_;
   }
 
-  uint32_t maxEvents() const {
+  uint64_t maxEvents() const {
     return maxEvents_;
   }
 
@@ -534,7 +534,7 @@ class Config : public AbstractConfig {
   std::string customConfig_;
 
   // Roctracer settings
-  uint32_t maxEvents_{5000000};
+  uint64_t maxEvents_{5000000};
 };
 
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";

@@ -471,7 +471,6 @@ void XpuptiActivityApi::processScopeTrace(
           handler(record, metadata);
         }
       }
-    }
   }
 #endif
 }

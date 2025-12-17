@@ -1,0 +1,42 @@
+name: Lint
+
+on:
+  pull_request:
+
+# Linting is separate from tests - this only checks code formatting
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          pip install lintrunner
+
+      - name: Initialize lintrunner
+        run: |
+          lintrunner init
+
+      - name: Run lintrunner on changed files
+        if: github.event_name == 'pull_request'
+        run: |
+          set +e
+          lintrunner --take CLANGFORMAT,NEWLINE,SPACES,TABS
+          status=$?
+          if [ $status -ne 0 ]; then
+            echo ""
+            echo "❌ Linting failed! Please run 'lintrunner -a' locally to fix issues."
+            echo ""
+            exit $status
+          fi

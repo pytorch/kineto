@@ -40,6 +40,7 @@
 #include "TraceSpan.h"
 #include "libkineto.h"
 #include "output_base.h"
+#include "VersionLogger.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -244,11 +245,6 @@ class CuptiActivityProfiler {
     metadata_[key] = value;
   }
 
-  void addVersionMetadata(const std::string& key, const std::string& value) {
-    std::lock_guard<std::recursive_mutex> guard(mutex_);
-    versionMetadata_[key] = value;
-  }
-
   void addChildActivityProfiler(std::unique_ptr<IActivityProfiler> profiler) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     profilers_.push_back(std::move(profiler));
@@ -318,8 +314,6 @@ class CuptiActivityProfiler {
     int64_t overhead;
     int cntr;
   };
-
-  void logGpuVersions();
 
   void startTraceInternal(
       const std::chrono::time_point<std::chrono::system_clock>& now);
@@ -571,8 +565,8 @@ class CuptiActivityProfiler {
   // Trace metadata
   std::unordered_map<std::string, std::string> metadata_;
 
-  // Version metadata
-  std::unordered_map<std::string, std::string> versionMetadata_;
+  // version logger for device software versions
+  std::unique_ptr<DeviceVersionLogger> versionLogger_;
 
   // child activity profilers
   std::vector<std::unique_ptr<IActivityProfiler>> profilers_;

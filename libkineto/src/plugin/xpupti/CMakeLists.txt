@@ -42,11 +42,15 @@ if(TARGET Pti::pti_view)
     # find dependent lib
     set(XPU_xpupti_LIBRARY ${SYCL_LIBRARY})
     list(APPEND XPU_xpupti_LIBRARY ${PTI_LIBRARY})
-    set(XPU_xpupti_LIBRARY ${XPU_xpupti_LIBRARY} PARENT_SCOPE)
 
     # find dependent include
     list(APPEND XPUPTI_INCLUDE_DIR ${PTI_INCLUDE_DIR})
     set(XPUPTI_INCLUDE_DIR ${XPUPTI_INCLUDE_DIR} PARENT_SCOPE)
+
+    # find level zero library
+    find_library(LEVEL_ZERO_LIBRARY ze_loader)
+    list(APPEND XPU_xpupti_LIBRARY ${LEVEL_ZERO_LIBRARY})
+    set(XPU_xpupti_LIBRARY ${XPU_xpupti_LIBRARY} PARENT_SCOPE)
 
     set(XPUPTI_BUILD_FLAG "-DHAS_XPUPTI" PARENT_SCOPE)
 

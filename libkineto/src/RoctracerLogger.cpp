@@ -332,7 +332,6 @@ void RoctracerLogger::startLogging() {
     loggedIds_.add("__hipPushCallConfiguration");
     loggedIds_.add("__hipPopCallConfiguration");
     loggedIds_.add("hipCtxSetCurrent");
-    loggedIds_.add("hipEventRecord");
     loggedIds_.add("hipEventQuery");
     loggedIds_.add("hipGetDeviceProperties");
     loggedIds_.add("hipPeekAtLastError");

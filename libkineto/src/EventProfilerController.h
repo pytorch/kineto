@@ -33,8 +33,10 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
  public:
   EventProfilerController(const EventProfilerController&) = delete;
   EventProfilerController& operator=(const EventProfilerController&) = delete;
+  EventProfilerController(EventProfilerController&&) = delete;
+  EventProfilerController& operator=(EventProfilerController&&) = delete;
 
-  ~EventProfilerController();
+  ~EventProfilerController() override;
 
   static void start(CUcontext ctx, ConfigLoader& configLoader);
   static void stopIfEnabled(CUcontext ctx);

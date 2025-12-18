@@ -231,7 +231,9 @@ bool runTestWithUserRange(
 
   if (async) {
     profiler.asyncStartAndEnable(profilerRange, profilerReplayMode);
-    { VectorAddSubtract(); }
+    {
+      VectorAddSubtract();
+    }
     profiler.disableAndStop();
   } else {
     profiler.start(profilerRange, profilerReplayMode);
@@ -246,7 +248,9 @@ bool runTestWithUserRange(
         std::string rangeName = "vecAddSub";
         profiler.pushRange(rangeName);
 
-        { VectorAddSubtract(); }
+        {
+          VectorAddSubtract();
+        }
 
         profiler.popRange();
         profiler.disable();

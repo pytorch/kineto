@@ -401,7 +401,9 @@ class CuptiActivityProfiler {
   void handleOverheadActivity(
       const CUpti_ActivityOverhead* activity,
       ActivityLogger* logger);
-  void handleCudaEventActivity(const CUpti_ActivityCudaEvent* activity);
+  void handleCudaEventActivity(
+      const CUpti_ActivityCudaEventType* activity,
+      ActivityLogger* logger);
   void handleCudaSyncActivity(
       const CUpti_ActivitySynchronization* activity,
       ActivityLogger* logger);

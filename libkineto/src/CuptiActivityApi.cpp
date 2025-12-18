@@ -365,6 +365,9 @@ void CuptiActivityApi::enableCuptiActivities(
       externalCorrelationEnabled_ = true;
     }
     if (activity == ActivityType::CUDA_SYNC) {
+#if CUDA_VERSION >= 13000
+      CUPTI_CALL(cuptiActivityEnableCudaEventDeviceTimestamps(true));
+#endif
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
     }
     if (activity == ActivityType::CUDA_RUNTIME) {
@@ -436,7 +439,11 @@ void CuptiActivityApi::teardownContext() {
   if (!tracingEnabled_) {
     return;
   }
+  if (tearingDown_) {
+    return;
+  }
   if (cuptiTearDown_()) {
+    tearingDown_ = 1;
     LOG(INFO) << "teardownCupti starting";
 
     // PyTorch Profiler is synchronous, so teardown needs to be run async in
@@ -447,6 +454,7 @@ void CuptiActivityApi::teardownContext() {
         cbapi_->initCallbackApi();
         if (!cbapi_->initSuccess()) {
           LOG(WARNING) << "CUPTI Callback failed to init, skipping teardown";
+          tearingDown_ = 0;
           return;
         }
       }
@@ -458,6 +466,7 @@ void CuptiActivityApi::teardownContext() {
       if (!status) {
         LOG(WARNING)
             << "CUPTI Callback failed to enable for domain, skipping teardown";
+        tearingDown_ = 0;
         return;
       }
 
@@ -484,6 +493,7 @@ void CuptiActivityApi::teardownContext() {
         reenableCuptiCallbacks_(cbapi_);
       }
       cbapi_.reset();
+      tearingDown_ = 0;
     });
     teardownThread.detach();
   }

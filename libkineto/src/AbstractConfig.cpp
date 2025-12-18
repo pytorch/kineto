@@ -102,8 +102,9 @@ int64_t AbstractConfig::toIntRange(const string& val, int64_t min, int64_t max)
   if (val.empty() || *invalid) {
     throw std::invalid_argument(fmt::format("Invalid integer: {}", val));
   } else if (res < min || res > max) {
-    throw std::invalid_argument(fmt::format(
-        "Invalid argument: {} - expected range [{}, {}]", res, min, max));
+    throw std::invalid_argument(
+        fmt::format(
+            "Invalid argument: {} - expected range [{}, {}]", res, min, max));
   }
   return res;
 }

@@ -308,16 +308,18 @@ static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
   auto t = time_point<system_clock>(milliseconds(ms));
   auto now = system_clock::now();
   if (t > now) {
-    throw std::invalid_argument(fmt::format(
-        "Invalid {}: {} - time is in future",
-        kRequestTimestampKey,
-        getTimeStr(t)));
+    throw std::invalid_argument(
+        fmt::format(
+            "Invalid {}: {} - time is in future",
+            kRequestTimestampKey,
+            getTimeStr(t)));
   } else if ((now - t) > kMaxRequestAge) {
-    throw std::invalid_argument(fmt::format(
-        "Invalid {}: {} - time is more than {}s in the past",
-        kRequestTimestampKey,
-        getTimeStr(t),
-        kMaxRequestAge.count()));
+    throw std::invalid_argument(
+        fmt::format(
+            "Invalid {}: {} - time is more than {}s in the past",
+            kRequestTimestampKey,
+            getTimeStr(t),
+            kMaxRequestAge.count()));
   }
   return t;
 }
@@ -335,11 +337,12 @@ static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
   // But we can still check that the start time is not in the past.
   auto now = system_clock::now();
   if ((now - t) > kMaxRequestAge) {
-    throw std::invalid_argument(fmt::format(
-        "Invalid {}: {} - start time is more than {}s in the past",
-        kProfileStartTimeKey,
-        getTimeStr(t),
-        kMaxRequestAge.count()));
+    throw std::invalid_argument(
+        fmt::format(
+            "Invalid {}: {} - start time is more than {}s in the past",
+            kProfileStartTimeKey,
+            getTimeStr(t),
+            kMaxRequestAge.count()));
   }
   return t;
 }
@@ -626,6 +629,13 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
 
 void Config::setActivityDependentConfig() {
   AbstractConfig::setActivityDependentConfig();
+}
+
+// Returns a reference to the protobuf trace enabled flag.
+// Default is false. FBConfig will set this based on JustKnobs.
+bool& get_protobuf_trace_enabled() {
+  static bool _protobuf_trace_enabled = false;
+  return _protobuf_trace_enabled;
 }
 
 } // namespace KINETO_NAMESPACE

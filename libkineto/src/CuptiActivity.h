@@ -240,6 +240,64 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
   const int32_t srcCorrId_;
 };
 
+// Use CUpti_ActivityCudaEvent2 in CUDA 12.8+ for enhanced event tracking
+#if CUDA_VERSION >= 12080
+using CUpti_ActivityCudaEventType = CUpti_ActivityCudaEvent2;
+#else
+using CUpti_ActivityCudaEventType = CUpti_ActivityCudaEvent;
+#endif
+
+// Template specialization for timestamp() and duration() for CudaEvent types
+template <>
+inline int64_t CuptiActivity<CUpti_ActivityCudaEventType>::timestamp() const {
+#if CUDA_VERSION >= 12080
+#if defined(_WIN32)
+  return activity_.deviceTimestamp;
+#else
+  if (use_cupti_tsc()) {
+    return get_time_converter()(activity_.deviceTimestamp);
+  } else {
+    return activity_.deviceTimestamp;
+  }
+#endif
+#else
+  // For CUDA < 12.8, deviceTimestamp doesn't exist, set to 0
+  return 0;
+#endif
+}
+
+template <>
+inline int64_t CuptiActivity<CUpti_ActivityCudaEventType>::duration() const {
+  // Set duration to 1 to make events visible in trace
+  return 1;
+}
+
+// CUpti_ActivityCudaEvent - CUDA event activities
+struct CudaEventActivity : public CuptiActivity<CUpti_ActivityCudaEventType> {
+  explicit CudaEventActivity(
+      const CUpti_ActivityCudaEventType* activity,
+      const ITraceActivity* linked)
+      : CuptiActivity(activity, linked) {}
+
+  int64_t correlationId() const override {
+    return raw().correlationId;
+  }
+  int64_t deviceId() const override;
+  int64_t resourceId() const override;
+  ActivityType type() const override {
+    return ActivityType::CUDA_EVENT;
+  }
+  bool flowStart() const override {
+    return false;
+  }
+  const std::string name() const override;
+  void log(ActivityLogger& logger) const override;
+  const std::string metadataJson() const override;
+  const CUpti_ActivityCudaEventType& raw() const {
+    return CuptiActivity<CUpti_ActivityCudaEventType>::raw();
+  }
+};
+
 // Base class for GPU activities.
 // Can also be instantiated directly.
 template <class T>

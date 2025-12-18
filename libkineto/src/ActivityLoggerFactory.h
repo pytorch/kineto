@@ -37,8 +37,9 @@ class ActivityLoggerFactory {
     if (it != factories_.end()) {
       return it->second(stripProtocol(url));
     }
-    throw std::invalid_argument(fmt::format(
-        "No logger registered for the {} protocol prefix", protocol));
+    throw std::invalid_argument(
+        fmt::format(
+            "No logger registered for the {} protocol prefix", protocol));
     return nullptr;
   }
 

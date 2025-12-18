@@ -367,8 +367,9 @@ class Config : public AbstractConfig {
   void printActivityProfilerConfig(std::ostream& s) const override;
   void setActivityDependentConfig() override;
 
-  void validate(const std::chrono::time_point<std::chrono::system_clock>&
-                    fallbackProfileStartTime) override;
+  void validate(
+      const std::chrono::time_point<std::chrono::system_clock>&
+          fallbackProfileStartTime) override;
 
   static void addConfigFactory(
       std::string name,
@@ -539,5 +540,10 @@ class Config : public AbstractConfig {
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
 bool isDaemonEnvVarSet();
+
+// Returns a reference to the protobuf trace enabled flag.
+// This allows the flag to be set externally (e.g., from JustKnobs in FBConfig)
+// and read in other components (e.g., ChromeTraceLogger).
+bool& get_protobuf_trace_enabled();
 
 } // namespace libkineto

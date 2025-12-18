@@ -93,6 +93,37 @@ inline const std::string CudaSyncActivity::metadataJson() const {
   return "";
 }
 
+inline const std::string CudaEventActivity::name() const {
+  return "cudaEvent";
+}
+
+inline int64_t CudaEventActivity::deviceId() const {
+  return contextIdtoDeviceId(raw().contextId);
+}
+
+inline int64_t CudaEventActivity::resourceId() const {
+  return static_cast<int32_t>(raw().streamId);
+}
+
+inline void CudaEventActivity::log(ActivityLogger& logger) const {
+  logger.handleActivity(*this);
+}
+
+inline const std::string CudaEventActivity::metadataJson() const {
+  const CUpti_ActivityCudaEventType& event = raw();
+  // clang-format off
+  return fmt::format(R"JSON(
+      "event_id": {},
+      "stream": {}, "correlation": {},
+      "device": {}, "context": {})JSON",
+      event.eventId,
+      static_cast<int32_t>(event.streamId),
+      event.correlationId,
+      deviceId(),
+      event.contextId);
+  // clang-format on
+}
+
 template <class T>
 inline void GpuActivity<T>::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);

@@ -8,6 +8,7 @@
 
 #include "ApproximateClock.h"
 #include <fmt/format.h>
+#include <algorithm>
 
 namespace libkineto {
 

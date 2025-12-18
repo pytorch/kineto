@@ -283,7 +283,7 @@ void checkTracefile(const char* filename) {
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
-  struct stat buf {};
+  struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
   close(fd);
@@ -385,7 +385,7 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
-  struct stat buf {};
+  struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 #endif
@@ -702,7 +702,7 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
   EXPECT_TRUE(fd);
 
   // Should expect at least 100 bytes
-  struct stat buf {};
+  struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 }

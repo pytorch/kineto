@@ -32,7 +32,7 @@ class XpuptiActivityApi {
  public:
   enum CorrelationFlowType { Default, User };
 
-  XpuptiActivityApi();
+  XpuptiActivityApi() = default;
   XpuptiActivityApi(const XpuptiActivityApi&) = delete;
   XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
 
@@ -82,14 +82,11 @@ class XpuptiActivityApi {
       return handle;
     }
 
-    pti_scope_collection_handle_t handle;
+    pti_scope_collection_handle_t handle{};
   };
 
   std::optional<safe_pti_scope_collection_handle_t> scopeHandleOpt_;
-  std::unique_ptr<pti_device_handle_t[]> devicesHandles_;
 #endif
-
-  uint32_t deviceCount_{0};
 
   int processActivitiesForBuffer(
       uint8_t* buf,

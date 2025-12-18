@@ -22,24 +22,6 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
   return instance;
 }
 
-XpuptiActivityApi::XpuptiActivityApi() {
-#ifdef HAS_XPUPTI
-#if PTI_VERSION_AT_LEAST(0, 15)
-  XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount_));
-
-  if (deviceCount_ > 0) {
-    auto devices = std::make_unique<pti_device_properties_t[]>(deviceCount_);
-    XPUPTI_CALL(ptiMetricsGetDevices(devices.get(), &deviceCount_));
-
-    devicesHandles_ = std::make_unique<pti_device_handle_t[]>(deviceCount_);
-    for (uint32_t i = 0; i < deviceCount_; ++i) {
-      devicesHandles_[i] = devices[i]._handle;
-    }
-  }
-#endif
-#endif
-}
-
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
@@ -236,11 +218,20 @@ XpuptiActivityApi::safe_pti_scope_collection_handle_t::
 void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 15)
-  if (deviceCount_ == 0) {
+  uint32_t deviceCount = 0;
+  XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount));
+
+  if (deviceCount == 0) {
     throw std::runtime_error("No XPU devices available");
   }
 
-  scopeHandleOpt_.emplace();
+  auto devices = std::make_unique<pti_device_properties_t[]>(deviceCount);
+  XPUPTI_CALL(ptiMetricsGetDevices(devices.get(), &deviceCount));
+
+  auto devicesHandles = std::make_unique<pti_device_handle_t[]>(deviceCount);
+  for (uint32_t i = 0; i < deviceCount; ++i) {
+    devicesHandles[i] = devices[i]._handle;
+  }
 
   const auto& spcfg = XpuptiScopeProfilerConfig::get(cfg);
   const auto& activitiesXpuptiMetrics = spcfg.activitiesXpuptiMetrics();
@@ -262,11 +253,12 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
         "XPUPTI_PROFILER_ENABLE_PER_KERNEL has to be set to 1. Other variants are currently not supported.");
   }
 
+  scopeHandleOpt_.emplace();
   XPUPTI_CALL(ptiMetricsScopeConfigure(
       *scopeHandleOpt_,
       collectionMode,
-      devicesHandles_.get(),
-      (deviceCount_, 1), // Only 1 device is currently supported
+      devicesHandles.get(),
+      (deviceCount, 1), // Only 1 device is currently supported
       metricNames.data(),
       metricNames.size()));
 

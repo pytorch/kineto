@@ -19,6 +19,7 @@ endif()
 
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
     set(XPU_XPUPTI_LIBRARY ${PTI_LIBRARY} ${SYCL_LIBRARY})
+    add_subdirectory(xpupti)
 else()
     set(XPU_XPUPTI_LIBRARY "")
 endif()

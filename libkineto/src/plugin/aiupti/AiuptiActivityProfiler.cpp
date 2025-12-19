@@ -9,8 +9,8 @@ uint32_t AiuptiActivityProfilerSession::iterationCount_ = 0;
 std::vector<std::array<unsigned char, 16>>
     AiuptiActivityProfilerSession::deviceUUIDs_ = {};
 std::vector<std::string> AiuptiActivityProfilerSession::correlateRuntimeOps_ = {
-    "launchCb",
-    "launchComputeStream"};
+    "aiuLaunchControlBlocks"
+  };
 
 // =========== Session Constructor ============= //
 AiuptiActivityProfilerSession::AiuptiActivityProfilerSession(

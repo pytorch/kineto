@@ -47,7 +47,8 @@ TEST_F(CuptiRangeProfilerConfigTest, ConfigureProfiler) {
 }
 
 TEST_F(CuptiRangeProfilerConfigTest, RangesDefaults) {
-  Config cfg, cfg_auto;
+  Config cfg;
+  Config cfg_auto;
 
   // do not set max ranges in config, check defaults are sane
   EXPECT_TRUE(cfg.parse("CUPTI_PROFILER_METRICS = kineto__cuda_core_flops"));
@@ -61,7 +62,8 @@ TEST_F(CuptiRangeProfilerConfigTest, RangesDefaults) {
 
   cfg_auto.setClientDefaults();
 
-  int user_ranges, auto_ranges;
+  int user_ranges;
+  int auto_ranges;
 
   user_ranges = CuptiRangeProfilerConfig::get(cfg).cuptiProfilerMaxRanges();
   auto_ranges =

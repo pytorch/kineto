@@ -75,17 +75,20 @@ class XpuptiActivityApi {
 
 #if PTI_VERSION_AT_LEAST(0, 15)
   struct safe_pti_scope_collection_handle_t {
-    safe_pti_scope_collection_handle_t();
-    ~safe_pti_scope_collection_handle_t();
+    safe_pti_scope_collection_handle_t(
+        std::exception_ptr& exceptFromDestructor);
+    ~safe_pti_scope_collection_handle_t() noexcept;
 
     operator pti_scope_collection_handle_t() {
-      return handle;
+      return handle_;
     }
 
-    pti_scope_collection_handle_t handle{};
+    pti_scope_collection_handle_t handle_{};
+    std::exception_ptr& exceptFromDestructor_;
   };
 
   std::optional<safe_pti_scope_collection_handle_t> scopeHandleOpt_;
+  std::exception_ptr exceptFromScopeHandleDestructor_;
 #endif
 
   int processActivitiesForBuffer(

@@ -205,13 +205,18 @@ static void enableSpecifcRuntimeAPIsTracing() {
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 XpuptiActivityApi::safe_pti_scope_collection_handle_t::
-    safe_pti_scope_collection_handle_t() {
-  XPUPTI_CALL(ptiMetricsScopeEnable(&handle));
+    safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
+    : exceptFromDestructor_(exceptFromDestructor) {
+  XPUPTI_CALL(ptiMetricsScopeEnable(&handle_));
 }
 
 XpuptiActivityApi::safe_pti_scope_collection_handle_t::
-    ~safe_pti_scope_collection_handle_t() {
-  XPUPTI_CALL(ptiMetricsScopeDisable(handle));
+    ~safe_pti_scope_collection_handle_t() noexcept {
+  try {
+    XPUPTI_CALL(ptiMetricsScopeDisable(handle_));
+  } catch (...) {
+    exceptFromDestructor_ = std::current_exception();
+  }
 }
 #endif
 
@@ -253,7 +258,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
         "XPUPTI_PROFILER_ENABLE_PER_KERNEL has to be set to 1. Other variants are currently not supported.");
   }
 
-  scopeHandleOpt_.emplace();
+  scopeHandleOpt_.emplace(exceptFromScopeHandleDestructor_);
   XPUPTI_CALL(ptiMetricsScopeConfigure(
       *scopeHandleOpt_,
       collectionMode,
@@ -277,6 +282,9 @@ void XpuptiActivityApi::disableScopeProfiler() {
 #ifdef HAS_XPUPTI
 #if PTI_VERSION_AT_LEAST(0, 15)
   scopeHandleOpt_.reset();
+  if (exceptFromScopeHandleDestructor_) {
+    std::rethrow_exception(exceptFromScopeHandleDestructor_);
+  }
 #endif
 #endif
 }

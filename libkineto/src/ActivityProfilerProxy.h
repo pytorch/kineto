@@ -34,6 +34,10 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
  public:
   ActivityProfilerProxy(bool cpuOnly, ConfigLoader& configLoader);
   ~ActivityProfilerProxy() override;
+  ActivityProfilerProxy(const ActivityProfilerProxy&) = delete;
+  ActivityProfilerProxy& operator=(const ActivityProfilerProxy&) = delete;
+  ActivityProfilerProxy(ActivityProfilerProxy&&) = delete;
+  ActivityProfilerProxy& operator=(ActivityProfilerProxy&&) = delete;
 
   void init() override;
   bool isInitialized() override {

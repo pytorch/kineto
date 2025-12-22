@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <vector>
 
 namespace KINETO_NAMESPACE {

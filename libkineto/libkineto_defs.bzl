@@ -71,6 +71,10 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/init.cpp",
         "src/output_csv.cpp",
         "src/output_json.cpp",
+        "src/dynamic_plugin/PluginLoader.h",
+        "src/dynamic_plugin/PluginProfiler.h",
+        "src/dynamic_plugin/PluginTraceBuilder.h",
+        "src/dynamic_plugin/PluginUtils.h",
     ] + (get_libkineto_api_srcs() if with_api else [])
 
 def get_libkineto_public_headers():
@@ -81,6 +85,7 @@ def get_libkineto_public_headers():
         "include/ActivityType.h",
         "include/Config.h",
         "include/ClientInterface.h",
+        "include/KinetoDynamicPluginInterface.h",
         "include/GenericTraceActivity.h",
         "include/IActivityProfiler.h",
         "include/ILoggerObserver.h",

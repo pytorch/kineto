@@ -17,32 +17,31 @@ struct ActivityTypeName {
   ActivityType type;
 };
 
-static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
-    {{"cpu_op", ActivityType::CPU_OP},
-     {"user_annotation", ActivityType::USER_ANNOTATION},
-     {"gpu_user_annotation", ActivityType::GPU_USER_ANNOTATION},
-     {"gpu_memcpy", ActivityType::GPU_MEMCPY},
-     {"gpu_memset", ActivityType::GPU_MEMSET},
-     {"kernel", ActivityType::CONCURRENT_KERNEL},
-     {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
-     {"cuda_runtime", ActivityType::CUDA_RUNTIME},
-     {"cuda_driver", ActivityType::CUDA_DRIVER},
-     {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
-     {"python_function", ActivityType::PYTHON_FUNCTION},
-     {"overhead", ActivityType::OVERHEAD},
-     {"mtia_runtime", ActivityType::MTIA_RUNTIME},
-     {"mtia_ccp_events", ActivityType::MTIA_CCP_EVENTS},
-     {"mtia_insight", ActivityType::MTIA_INSIGHT},
-     {"cuda_sync", ActivityType::CUDA_SYNC},
-     {"cuda_event", ActivityType::CUDA_EVENT},
-     {"glow_runtime", ActivityType::GLOW_RUNTIME},
-     {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
-     {"hpu_op", ActivityType::HPU_OP},
-     {"xpu_runtime", ActivityType::XPU_RUNTIME},
-     {"collective_comm", ActivityType::COLLECTIVE_COMM},
-     {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
-     {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
-     {"ENUM_COUNT", ActivityType::ENUM_COUNT}}};
+// Canonical names for each unique ActivityType value, ordered by enum value.
+// This array is used for toString() via direct indexing.
+static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{{
+    // Accelerator-Agnostic Event Types
+    {"cpu_op", ActivityType::CPU_OP},
+    {"user_annotation", ActivityType::USER_ANNOTATION},
+    {"gpu_user_annotation", ActivityType::GPU_USER_ANNOTATION},
+    {"gpu_memcpy", ActivityType::GPU_MEMCPY},
+    {"gpu_memset", ActivityType::GPU_MEMSET},
+    {"kernel", ActivityType::CONCURRENT_KERNEL},
+    {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
+    {"runtime", ActivityType::RUNTIME},
+    {"driver", ActivityType::DRIVER},
+    {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
+    {"python_function", ActivityType::PYTHON_FUNCTION},
+    {"overhead", ActivityType::OVERHEAD},
+    {"collective_comm", ActivityType::COLLECTIVE_COMM},
+    {"gpu_pm_counter", ActivityType::GPU_PM_COUNTER},
+    // Accelerator-Specific Event Types
+    {"mtia_insight", ActivityType::MTIA_INSIGHT},
+    {"cuda_sync", ActivityType::CUDA_SYNC},
+    {"cuda_event", ActivityType::CUDA_EVENT},
+    {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
+    {"ENUM_COUNT", ActivityType::ENUM_COUNT},
+}};
 
 static constexpr bool matchingOrder(int idx = 0) {
   return map[idx].type == ActivityType::ENUM_COUNT ||
@@ -50,14 +49,35 @@ static constexpr bool matchingOrder(int idx = 0) {
 }
 static_assert(matchingOrder(), "ActivityTypeName map is out of order");
 
+// Alias names for backward compatibility in toActivityType().
+// These map old/alternate string names to their canonical ActivityType.
+static constexpr std::array<ActivityTypeName, 9> aliasMap{{
+    {"cuda_runtime", ActivityType::CUDA_RUNTIME},
+    {"cuda_driver", ActivityType::CUDA_DRIVER},
+    {"mtia_runtime", ActivityType::MTIA_RUNTIME},
+    {"mtia_ccp_events", ActivityType::MTIA_CCP_EVENTS},
+    {"glow_runtime", ActivityType::GLOW_RUNTIME},
+    {"hpu_op", ActivityType::HPU_OP},
+    {"xpu_runtime", ActivityType::XPU_RUNTIME},
+    {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
+    {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
+}};
+
 const char* toString(ActivityType t) {
   return map[(int)t].name;
 }
 
 ActivityType toActivityType(const std::string& str) {
+  // Search canonical names first
   for (int i = 0; i < activityTypeCount; i++) {
     if (str == map[i].name) {
       return map[i].type;
+    }
+  }
+  // Search alias names for backward compatibility
+  for (const auto& alias : aliasMap) {
+    if (str == alias.name) {
+      return alias.type;
     }
   }
   throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
@@ -66,15 +86,6 @@ ActivityType toActivityType(const std::string& str) {
 const std::array<ActivityType, activityTypeCount> activityTypes() {
   std::array<ActivityType, activityTypeCount> res;
   for (int i = 0; i < activityTypeCount; i++) {
-    res[i] = map[i].type;
-  }
-  return res;
-}
-
-const std::array<ActivityType, defaultActivityTypeCount>
-defaultActivityTypes() {
-  std::array<ActivityType, defaultActivityTypeCount> res;
-  for (int i = 0; i < defaultActivityTypeCount; i++) {
     res[i] = map[i].type;
   }
   return res;

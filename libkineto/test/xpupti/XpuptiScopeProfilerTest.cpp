@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "include/Config.h"
 #include "include/output_base.h"
 
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"

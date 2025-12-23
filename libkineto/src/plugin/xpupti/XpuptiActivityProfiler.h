@@ -15,6 +15,10 @@
 
 #include <pti/pti_view.h>
 
+#if PTI_VERSION_AT_LEAST(0, 15)
+#include <pti/pti_metrics_scope.h>
+#endif
+
 #include <memory>
 #include <set>
 #include <unordered_map>
@@ -96,6 +100,13 @@ class XpuptiActivityProfilerSession
       const pti_view_record_base* record,
       ActivityLogger& logger);
 
+#if PTI_VERSION_AT_LEAST(0, 15)
+  void handleScopeRecord(
+      const pti_metrics_scope_record_t* record,
+      const pti_metrics_scope_record_metadata_t& metadata,
+      ActivityLogger& logger);
+#endif
+
   // enumerate XPU Device UUIDs from runtime for once
   void enumDeviceUUIDs();
 
@@ -125,6 +136,28 @@ class XpuptiActivityProfilerSession
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;
   std::string name_;
+  bool scopeProfilerEnabled_{false};
+
+  struct KernelActivity {
+    void emplace(
+        int64_t startTime,
+        int64_t endTime,
+        int32_t device,
+        int32_t resource) {
+      startTime_ = startTime;
+      endTime_ = endTime;
+      device_ = device;
+      resource_ = resource;
+    }
+
+    int64_t startTime_{0};
+    int64_t endTime_{0};
+    int32_t device_{0};
+    int32_t resource_{0};
+  };
+
+  std::unordered_map<uint64_t, KernelActivity> kernelActivities_;
+  uint64_t lastKernelActivityEndTime_{0};
 };
 
 class XPUActivityProfiler : public libkineto::IActivityProfiler {

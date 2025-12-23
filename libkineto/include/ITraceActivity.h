@@ -53,6 +53,10 @@ struct ITraceActivity {
   virtual const std::string getMetadataValue(const std::string& key) const {
     return "";
   }
+  virtual const std::vector<std::pair<std::string, std::string>> getMetadata()
+      const {
+    return {};
+  }
 
   static int64_t nsToUs(int64_t ns) {
     // It's important that this conversion is the same everywhere.

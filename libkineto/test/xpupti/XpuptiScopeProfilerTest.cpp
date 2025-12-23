@@ -150,8 +150,7 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       KN::ActivityType::CONCURRENT_KERNEL,
       KN::ActivityType::EXTERNAL_CORRELATION,
       KN::ActivityType::XPU_RUNTIME,
-      KN::ActivityType::XPU_SCOPE_PROFILER,
-      KN::ActivityType::OVERHEAD};
+      KN::ActivityType::XPU_SCOPE_PROFILER};
 
 #if PTI_VERSION_AT_LEAST(0, 15)
   if (perKernel == "false") {

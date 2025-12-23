@@ -355,7 +355,8 @@ bool XpuptiActivityApi::enableXpuptiActivities(
         scopeProfilerEnabled = true;
 #else
         throw std::runtime_error(
-            "Intel® oneAPI version required to use scope profiler is at least 2025.3.1");
+            "Intel® PTI version required to use scope profiler is at least 0.15 "
+            "(available with Intel® oneAPI in version at least 2025.3.1).");
 #endif
         break;
 

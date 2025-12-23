@@ -111,6 +111,9 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void metadataToJSON(
       const std::unordered_map<std::string, std::string>& metadata);
 
+  std::unordered_map<std::string, std::string> addEnvVarsToMetadata(
+      const std::unordered_map<std::string, std::string>& metadata);
+
   void sanitizeStrForJSON(std::string& value);
 
   void addOnDemandDistMetadata();

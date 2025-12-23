@@ -789,6 +789,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     static const std::set<libkineto::ActivityType> excludedTypes = {
         libkineto::ActivityType::GPU_MEMCPY,
         libkineto::ActivityType::GPU_MEMSET,
+        libkineto::ActivityType::GPU_PM_COUNTER,
         libkineto::ActivityType::CONCURRENT_KERNEL,
         libkineto::ActivityType::CUDA_RUNTIME,
         libkineto::ActivityType::CUDA_DRIVER,
@@ -851,6 +852,18 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   sanitizeForNonReadableChars(op_name);
 
   ts = transToRelativeTime(ts);
+
+  if (op.type() == libkineto::ActivityType::GPU_PM_COUNTER) {
+    writeCounterEvent(
+        /*cat=*/toString(op.type()),
+        /*name=*/op_name,
+        /*pid=*/device,
+        /*tid=*/sanitizeTid(resource),
+        /*ts=*/ts,
+        /*args=*/args);
+    return;
+  }
+
   writeCompleteEvent(
       /*cat=*/toString(op.type()),
       /*name=*/op_name,

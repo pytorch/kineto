@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iterator>
 #include "Config.h"
+#include "EnvMetadata.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
@@ -129,6 +130,18 @@ void ChromeTraceLogger::metadataToJSON(
   }
 }
 
+std::unordered_map<std::string, std::string>
+ChromeTraceLogger::addEnvVarsToMetadata(
+    const std::unordered_map<std::string, std::string>& metadata) {
+  // Get environment metadata from the EnvMetadata module
+  auto combined = libkineto::getEnvMetadata();
+  // Original metadata takes precedence
+  for (const auto& [k, v] : metadata) {
+    combined[k] = v;
+  }
+  return combined;
+}
+
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata,
     const std::string& device_properties) {
@@ -152,7 +165,8 @@ void ChromeTraceLogger::handleTraceStart(
     ],)JSON",
       device_properties);
 
-  metadataToJSON(metadata);
+  auto combinedMetadata = addEnvVarsToMetadata(metadata);
+  metadataToJSON(combinedMetadata);
   fmt::print(
       traceOf_,
       R"JSON(

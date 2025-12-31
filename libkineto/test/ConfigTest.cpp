@@ -86,6 +86,7 @@ TEST(ParseTest, ActivityTypes) {
   EXPECT_TRUE(cfg.parse("ACTIVITY_TYPES="));
   EXPECT_FALSE(cfg.parse("=ACTIVITY_TYPES="));
 
+  // Default activity types
   EXPECT_EQ(
       cfg.selectedActivityTypes(),
       std::set<ActivityType>(
@@ -141,6 +142,32 @@ TEST(ParseTest, ActivityTypes) {
       std::set<ActivityType>(
           {ActivityType::PRIVATEUSE1_RUNTIME,
            ActivityType::PRIVATEUSE1_DRIVER}));
+
+  // Generic events
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = runtime, driver, kernel"));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>(
+          {ActivityType::RUNTIME,
+           ActivityType::DRIVER,
+           ActivityType::CONCURRENT_KERNEL}));
+
+  // Generic events match aliases
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::CUDA_RUNTIME) > 0);
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::CUDA_DRIVER) > 0);
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::MTIA_RUNTIME) > 0);
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::MTIA_CCP_EVENTS) > 0);
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::XPU_RUNTIME) > 0);
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::PRIVATEUSE1_RUNTIME) >
+      0);
+  EXPECT_TRUE(
+      cfg2.selectedActivityTypes().count(ActivityType::PRIVATEUSE1_DRIVER) > 0);
 }
 
 TEST(ParseTest, SamplePeriod) {

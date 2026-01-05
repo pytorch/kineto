@@ -508,7 +508,8 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     }
     const auto& processGroupDesc =
         collectiveRecord->getMetadataValue(kProcessGroupDesc);
-    if (!processGroupName.empty() && !processGroupDesc.empty()) {
+    if (processGroupDesc.size() >= 2 && processGroupDesc.front() == '"' &&
+        processGroupDesc.back() == '"') {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }

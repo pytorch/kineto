@@ -49,7 +49,7 @@ class SampleValue {
     return dbl_;
   }
 
-  inline void operator*=(double x) {
+  void operator*=(double x) {
     assert(isDouble() || isInt());
     if (isDouble()) {
       dbl_ *= x;
@@ -58,7 +58,7 @@ class SampleValue {
     }
   }
 
-  inline bool operator<(const SampleValue& o) const {
+  bool operator<(const SampleValue& o) const {
     if (type_ != o.type_) {
       return type_ < o.type_;
     } else if (type_ == INT64) {

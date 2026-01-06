@@ -217,7 +217,7 @@ struct MockCuptiActivityBuffer {
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
-  virtual const std::pair<int, size_t> processActivities(
+  const std::pair<int, size_t> processActivities(
       CuptiActivityBufferMap&, /*unused*/
       const std::function<void(const CUpti_Activity*)>& handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
@@ -226,7 +226,7 @@ class MockCuptiActivities : public CuptiActivityApi {
     return {activityBuffer->activities.size(), 100};
   }
 
-  virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers() override {
+  std::unique_ptr<CuptiActivityBufferMap> activityBuffers() override {
     auto map = std::make_unique<CuptiActivityBufferMap>();
     auto buf = std::make_unique<CuptiActivityBuffer>(100);
     uint8_t* addr = buf->data();

@@ -1520,7 +1520,7 @@ void CuptiActivityProfiler::finalizeTrace(
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
         {pid, pid, process_name, "CPU"}, captureWindowStartTime_);
-    if (!cpuOnly_ && use_default_device_info) {
+    if (use_default_device_info) {
       // Usually, GPU events use device id as pid (0-7).
       // In some cases, CPU sockets are numbered starting from 0.
       // In the worst case, 8 CPU sockets + 8 GPUs, so the max GPU ID is 15.

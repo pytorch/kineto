@@ -118,7 +118,7 @@ XpuptiActivityProfilerSession::getResourceInfos() {
         device_id,
         sycl_queue_id,
         sycl_queue_id,
-        fmt::format("sycl queue {}", sycl_queue_id));
+        fmt::format("Stream {}", sycl_queue_id));
   }
   resourceInfo_.clear();
   return result;

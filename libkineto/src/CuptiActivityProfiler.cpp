@@ -344,12 +344,10 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     }
     if (traceBuffers_->gpu) {
       const auto count_and_size = cupti_.processActivities(
-          *traceBuffers_->gpu,
-          std::bind(
-              &CuptiActivityProfiler::handleCuptiActivity,
-              this,
-              std::placeholders::_1,
-              &logger));
+          *traceBuffers_->gpu, [this, capture0 = &logger](auto&& activity) {
+            handleCuptiActivity(
+                std::forward<decltype(activity)>(activity), capture0);
+          });
       logDeferredEvents();
       LOG(INFO) << "Processed " << count_and_size.first << " GPU records ("
                 << count_and_size.second << " bytes)";
@@ -399,8 +397,10 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     // need to be processed.
     session->processTrace(
         logger,
-        std::bind(
-            &CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
+        [this](auto&& correlationId) {
+          return cpuActivity(
+              std::forward<decltype(correlationId)>(correlationId));
+        },
         captureWindowStartTime_,
         captureWindowEndTime_);
   }

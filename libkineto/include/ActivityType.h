@@ -14,43 +14,61 @@
 
 namespace libkineto {
 
-// Note : All activity types are not enabled by default. Please add them
-// at correct position in the enum
 enum class ActivityType {
-  // Activity types enabled by default
-  CPU_OP = 0, // cpu side ops
-  USER_ANNOTATION,
-  GPU_USER_ANNOTATION,
-  GPU_MEMCPY,
-  GPU_MEMSET,
-  CONCURRENT_KERNEL, // on-device kernels
-  EXTERNAL_CORRELATION,
-  CUDA_RUNTIME, // host side cuda runtime events
-  CUDA_DRIVER, // host side cuda driver events
-  CPU_INSTANT_EVENT, // host side point-like events
-  PYTHON_FUNCTION,
-  OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
-  MTIA_RUNTIME, // host side MTIA runtime events
-  MTIA_CCP_EVENTS, // MTIA ondevice CCP events
-  MTIA_INSIGHT, // MTIA Insight Events
-  CUDA_SYNC, // synchronization events between runtime and kernels
+  // -------------------------------------------------------------------------
+  // Accelerator-Agnostic Event Types
+  // -------------------------------------------------------------------------
+  // These are the canonical event types that work across all accelerators.
+  // Prefer using these over device-specific types for better extensibility
+  // and maintainability.
+
+  CPU_OP = 0, // CPU-side ops (e.g., from PyTorch)
+  USER_ANNOTATION, // User-defined annotations
+  GPU_USER_ANNOTATION, // GPU-side user annotations
+  GPU_MEMCPY, // Memory copy operations
+  GPU_MEMSET, // Memory set operations
+  CONCURRENT_KERNEL, // On-device kernel execution
+  EXTERNAL_CORRELATION, // Correlation with external events
+  RUNTIME, // Host-side runtime events
+  DRIVER, // Host-side driver events
+  CPU_INSTANT_EVENT, // Host-side point-like events
+  PYTHON_FUNCTION, // Python function calls
+  OVERHEAD, // Profiler-induced overhead events
+  COLLECTIVE_COMM, // Collective communication operations
+  GPU_PM_COUNTER, // Performance monitoring counters
+
+  // -------------------------------------------------------------------------
+  // Device-Specific Event Types
+  // -------------------------------------------------------------------------
+  // These events don't fit into the accelerator-agnostic categories above.
+  // Use sparingly; prefer agnostic types when possible.
+
+  MTIA_INSIGHT, // MTIA Insight events
+  CUDA_SYNC, // CUDA synchronization events
   CUDA_EVENT, // CUDA event activities (cudaEventRecord, etc.)
-
-  // Optional Activity types
-  GLOW_RUNTIME, // host side glow runtime events
   CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
-  HPU_OP, // HPU host side runtime event
-  XPU_RUNTIME, // host side xpu runtime events
-  COLLECTIVE_COMM, // collective communication
 
-  // PRIVATEUSE1 Activity types are used for custom backends.
-  // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
-  PRIVATEUSE1_RUNTIME, // host side privateUse1 runtime events
-  PRIVATEUSE1_DRIVER, // host side privateUse1 driver events
+  // -------------------------------------------------------------------------
+  ENUM_COUNT, // Sentinel value; add new types above this line
 
-  ENUM_COUNT, // This is to add buffer and not used for any profiling logic. Add
-  // your new type before it.
-  OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
+  // -------------------------------------------------------------------------
+  // Aliased Event Types (Deprecated)
+  // -------------------------------------------------------------------------
+  // These are aliases to accelerator-agnostic types for backward compatibility.
+  // Do NOT add new aliases. We aim to remove these in the future.
+
+  CUDA_RUNTIME = RUNTIME,
+  CUDA_DRIVER = DRIVER,
+  MTIA_RUNTIME = RUNTIME,
+  MTIA_CCP_EVENTS = CONCURRENT_KERNEL,
+  GLOW_RUNTIME = RUNTIME,
+  HPU_OP = RUNTIME,
+  XPU_RUNTIME = RUNTIME,
+
+  // PrivateUse1: Custom backend activity types
+  // Corresponds to DeviceType::PrivateUse1 in PyTorch.
+  PRIVATEUSE1_RUNTIME = RUNTIME,
+  PRIVATEUSE1_DRIVER = DRIVER,
 };
 
 const char* toString(ActivityType t);
@@ -58,9 +76,35 @@ ActivityType toActivityType(const std::string& str);
 
 // Return an array of all activity types except COUNT
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;
-constexpr int defaultActivityTypeCount =
-    (int)ActivityType::OPTIONAL_ACTIVITY_TYPE_START;
+
+// Return an array of all activity types, note does not return aliases.
 const std::array<ActivityType, activityTypeCount> activityTypes();
-const std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
+
+// Default activity types that are enabled by default during profiling
+inline constexpr std::array defaultActivityTypesArray = {
+    ActivityType::CPU_OP,
+    ActivityType::USER_ANNOTATION,
+    ActivityType::GPU_USER_ANNOTATION,
+    ActivityType::GPU_MEMCPY,
+    ActivityType::GPU_MEMSET,
+    ActivityType::CONCURRENT_KERNEL,
+    ActivityType::EXTERNAL_CORRELATION,
+    ActivityType::RUNTIME,
+    ActivityType::DRIVER,
+    ActivityType::CPU_INSTANT_EVENT,
+    ActivityType::PYTHON_FUNCTION,
+    ActivityType::OVERHEAD,
+    ActivityType::MTIA_RUNTIME,
+    ActivityType::MTIA_CCP_EVENTS,
+    ActivityType::MTIA_INSIGHT,
+    ActivityType::CUDA_SYNC,
+    ActivityType::CUDA_EVENT,
+};
+
+constexpr int defaultActivityTypeCount = defaultActivityTypesArray.size();
+
+constexpr auto defaultActivityTypes() {
+  return defaultActivityTypesArray;
+}
 
 } // namespace libkineto

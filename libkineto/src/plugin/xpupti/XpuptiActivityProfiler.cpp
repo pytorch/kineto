@@ -53,10 +53,16 @@ XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
       config_(config.clone()),
       activity_types_(activity_types) {
   enumDeviceUUIDs();
-  xpti_.enableXpuptiActivities(activity_types_);
+  scopeProfilerEnabled_ = xpti_.enableXpuptiActivities(activity_types_);
+  if (scopeProfilerEnabled_) {
+    xpti_.enableScopeProfiler(*config_);
+  }
 }
 
 XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
+  if (scopeProfilerEnabled_) {
+    xpti_.disableScopeProfiler();
+  }
   xpti_.clearActivities();
 }
 
@@ -64,9 +70,15 @@ XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
 void XpuptiActivityProfilerSession::start() {
   profilerStartTs_ =
       libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
+  if (scopeProfilerEnabled_) {
+    xpti_.startScopeActivity();
+  }
 }
 
 void XpuptiActivityProfilerSession::stop() {
+  if (scopeProfilerEnabled_) {
+    xpti_.stopScopeActivity();
+  }
   xpti_.disablePtiActivities(activity_types_);
   profilerEndTs_ =
       libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
@@ -75,7 +87,13 @@ void XpuptiActivityProfilerSession::stop() {
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   if (enable) {
     xpti_.enableXpuptiActivities(activity_types_);
+    if (scopeProfilerEnabled_) {
+      xpti_.startScopeActivity();
+    }
   } else {
+    if (scopeProfilerEnabled_) {
+      xpti_.stopScopeActivity();
+    }
     xpti_.disablePtiActivities(activity_types_);
   }
 }
@@ -91,6 +109,16 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
         [this, &logger](const pti_view_record_base* record) -> void {
           handlePtiActivity(record, logger);
         });
+  }
+  if (scopeProfilerEnabled_) {
+#if PTI_VERSION_AT_LEAST(0, 15)
+    xpti_.processScopeTrace(
+        [this, &logger](
+            const pti_metrics_scope_record_t* record,
+            const pti_metrics_scope_record_metadata_t& metadata) -> void {
+          handleScopeRecord(record, metadata, logger);
+        });
+#endif
   }
 }
 

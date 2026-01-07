@@ -23,6 +23,8 @@
 
 namespace KINETO_NAMESPACE {
 
+std::string getXpuDeviceProperties();
+
 using DeviceUUIDsT = std::array<unsigned char, 16>;
 
 class XpuptiActivityProfilerSession

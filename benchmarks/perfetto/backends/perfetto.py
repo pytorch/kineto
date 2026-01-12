@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import argparse
-
 from typing import List
 
 from perfetto.trace_processor import TraceProcessor

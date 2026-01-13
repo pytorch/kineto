@@ -26,7 +26,7 @@ ApproximateClockToUnixTimeConverter::measurePair() {
       wall.time_since_epoch());
 
   // `x + (y - x) / 2` is a more numerically stable average than `(x + y) / 2`.
-  return {t.count(), fast_0 + (fast_1 - fast_0) / 2};
+  return {t.count(), fast_0 + ((fast_1 - fast_0) / 2)};
 }
 
 ApproximateClockToUnixTimeConverter::time_pairs
@@ -56,7 +56,7 @@ ApproximateClockToUnixTimeConverter::makeConverter() {
     scale_factors[i] = (double)delta_ns / (double)delta_approx;
   }
   std::sort(scale_factors.begin(), scale_factors.end());
-  long double scale_factor = scale_factors[replicates / 2 + 1];
+  long double scale_factor = scale_factors[(replicates / 2) + 1];
 
   // We shift all times by `t0` for better numerics. Double precision only has
   // 16 decimal digits of accuracy, so if we blindly multiply times by

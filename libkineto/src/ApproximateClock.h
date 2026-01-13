@@ -61,7 +61,7 @@ inline time_t getTime(bool allow_monotonic = false) {
     mode = CLOCK_MONOTONIC;
   }
   clock_gettime(mode, &t);
-  return static_cast<time_t>(t.tv_sec) * 1000000000 +
+  return (static_cast<time_t>(t.tv_sec) * 1000000000) +
       static_cast<time_t>(t.tv_nsec);
 #endif
 }

@@ -18,7 +18,7 @@
     "antd": "^4.17.0",
     "browserslist": "^4.16.5",
     "clsx": "^1.1.1",
-    "nanoid": "^3.1.31",
+    "nanoid": "^3.3.8",
     "portable-fetch": "^3.0.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",

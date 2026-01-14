@@ -7,6 +7,9 @@
  */
 
 #include "XpuptiActivityProfiler.h"
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+#include <sycl/sycl.hpp>
 #include "XpuptiActivityApi.h"
 
 #include "time_since_epoch.h"
@@ -78,6 +81,47 @@ void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   } else {
     xpti_.disablePtiActivities(activity_types_);
   }
+}
+
+std::string getXpuDeviceProperties() {
+  std::vector<std::string> jsonProps;
+  // Enumerated GPU devices from the specific platform
+  for (const auto& platform : sycl::platform::get_platforms()) {
+    if (platform.get_backend() != sycl::backend::ext_oneapi_level_zero) {
+      continue;
+    }
+    const auto& device_list = platform.get_devices();
+    for (size_t i = 0; i < device_list.size(); i++) {
+      const auto& device = device_list[i];
+      jsonProps.push_back(
+          fmt::format(
+              R"JSON(
+    {{
+      "id": {},
+      "name": "{}",
+      "totalGlobalMem": {},
+      "maxComputeUnits": {},
+      "maxWorkGroupSize": {},
+      "maxClockFrequency": {},
+      "maxMemAllocSize": {},
+      "localMemSize": {},
+      "vendor": "{}",
+      "driverVersion": "{}"
+    }})JSON",
+              i,
+              device.get_info<sycl::info::device::name>(),
+              device.get_info<sycl::info::device::global_mem_size>(),
+              device.get_info<sycl::info::device::max_compute_units>(),
+              device.get_info<sycl::info::device::max_work_group_size>(),
+              device.get_info<sycl::info::device::max_clock_frequency>(),
+              device.get_info<sycl::info::device::max_mem_alloc_size>(),
+              device.get_info<sycl::info::device::local_mem_size>(),
+              device.get_info<sycl::info::device::vendor>(),
+              device.get_info<sycl::info::device::driver_version>()));
+    }
+  }
+
+  return fmt::format("{}", fmt::join(jsonProps, ","));
 }
 
 void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {

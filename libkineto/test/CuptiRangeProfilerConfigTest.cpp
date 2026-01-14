@@ -12,8 +12,8 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <gtest/gtest.h>
-#include <time.h>
 #include <chrono>
+#include <ctime>
 
 using namespace KINETO_NAMESPACE;
 

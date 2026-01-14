@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <iostream>

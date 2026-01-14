@@ -28,29 +28,34 @@ static constexpr char kFlowEnd = 'f';
 
 // CPU op name that is used to store collectives metadata
 // TODO: share the same string across c10d, profiler and libkineto
-static constexpr const char* kParamCommsCallName = "record_param_comms";
+static constexpr const std::string_view kParamCommsCallName =
+    "record_param_comms";
 // Collective function metadata populated from CPU op to GPU kernel
-static constexpr const char* kCollectiveName = "Collective name";
-static constexpr const char* kDtype = "dtype";
-static constexpr const char* kInMsgNelems = "In msg nelems";
-static constexpr const char* kOutMsgNelems = "Out msg nelems";
-static constexpr const char* kGroupSize = "Group size";
-static constexpr const char* kInSplit = "In split size";
-static constexpr const char* kOutSplit = "Out split size";
-static constexpr const char* kProcessGroupName = "Process Group Name";
-static constexpr const char* kProcessGroupDesc = "Process Group Description";
-static constexpr const char* kGroupRanks = "Process Group Ranks";
-static constexpr const char* kInTensorsStart = "Input Tensors start";
-static constexpr const char* kOutTensorsStart = "Output Tensors start";
-static constexpr const char* kRank = "Rank";
-static constexpr const char* kP2pSrc = "Src Rank";
-static constexpr const char* kP2pDst = "Dst Rank";
+static constexpr const std::string_view kCollectiveName = "Collective name";
+static constexpr const std::string_view kDtype = "dtype";
+static constexpr const std::string_view kInMsgNelems = "In msg nelems";
+static constexpr const std::string_view kOutMsgNelems = "Out msg nelems";
+static constexpr const std::string_view kGroupSize = "Group size";
+static constexpr const std::string_view kInSplit = "In split size";
+static constexpr const std::string_view kOutSplit = "Out split size";
+static constexpr const std::string_view kProcessGroupName =
+    "Process Group Name";
+static constexpr const std::string_view kProcessGroupDesc =
+    "Process Group Description";
+static constexpr const std::string_view kGroupRanks = "Process Group Ranks";
+static constexpr const std::string_view kInTensorsStart = "Input Tensors start";
+static constexpr const std::string_view kOutTensorsStart =
+    "Output Tensors start";
+static constexpr const std::string_view kRank = "Rank";
+static constexpr const std::string_view kP2pSrc = "Src Rank";
+static constexpr const std::string_view kP2pDst = "Dst Rank";
 
 #ifdef __linux__
-static constexpr char kDefaultLogFileFmt[] =
+static constexpr std::string_view kDefaultLogFileFmt =
     "/tmp/libkineto_activities_{}.json";
 #else
-static constexpr char kDefaultLogFileFmt[] = "libkineto_activities_{}.json";
+static constexpr std::string_view kDefaultLogFileFmt =
+    "libkineto_activities_{}.json";
 #endif
 
 ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
@@ -448,11 +453,14 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     const auto* collectiveRecord = op.linkedActivity();
     // Get the value out of the collective record
     const auto& collectiveName =
-        collectiveRecord->getMetadataValue(kCollectiveName);
-    const auto& inMsgSize = collectiveRecord->getMetadataValue(kInMsgNelems);
-    const auto& outMsgSize = collectiveRecord->getMetadataValue(kOutMsgNelems);
-    const auto& groupSize = collectiveRecord->getMetadataValue(kGroupSize);
-    const auto& dtype = collectiveRecord->getMetadataValue(kDtype);
+        collectiveRecord->getMetadataValue(std::string(kCollectiveName));
+    const auto& inMsgSize =
+        collectiveRecord->getMetadataValue(std::string(kInMsgNelems));
+    const auto& outMsgSize =
+        collectiveRecord->getMetadataValue(std::string(kOutMsgNelems));
+    const auto& groupSize =
+        collectiveRecord->getMetadataValue(std::string(kGroupSize));
+    const auto& dtype = collectiveRecord->getMetadataValue(std::string(kDtype));
     if (!collectiveName.empty() && !inMsgSize.empty() && !outMsgSize.empty() &&
         !groupSize.empty() && !dtype.empty()) {
       if (!arg_values.empty()) {
@@ -473,9 +481,9 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
               dtype));
     }
     const auto& input_tensor_starts =
-        collectiveRecord->getMetadataValue(kInTensorsStart);
+        collectiveRecord->getMetadataValue(std::string(kInTensorsStart));
     const auto output_tensor_starts =
-        collectiveRecord->getMetadataValue(kOutTensorsStart);
+        collectiveRecord->getMetadataValue(std::string(kOutTensorsStart));
     if (!input_tensor_starts.empty()) {
       if (!arg_values.empty()) {
         arg_values.append(",");
@@ -491,8 +499,10 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
           fmt::format(" \"{}\": {}", kOutTensorsStart, output_tensor_starts));
     }
     // In/out split size are valid for all_to_all
-    const auto& inSplitSize = collectiveRecord->getMetadataValue(kInSplit);
-    const auto& outSplitSize = collectiveRecord->getMetadataValue(kOutSplit);
+    const auto& inSplitSize =
+        collectiveRecord->getMetadataValue(std::string(kInSplit));
+    const auto& outSplitSize =
+        collectiveRecord->getMetadataValue(std::string(kOutSplit));
     if (!inSplitSize.empty() && !outSplitSize.empty()) {
       if (!arg_values.empty()) {
         arg_values.append(",");
@@ -506,7 +516,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
               outSplitSize));
     }
     const auto& processGroupName =
-        collectiveRecord->getMetadataValue(kProcessGroupName);
+        collectiveRecord->getMetadataValue(std::string(kProcessGroupName));
     if (!processGroupName.empty()) {
       if (!arg_values.empty()) {
         arg_values.append(",");
@@ -515,7 +525,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
           fmt::format(" \"{}\": {}", kProcessGroupName, processGroupName));
     }
     const auto& processGroupDesc =
-        collectiveRecord->getMetadataValue(kProcessGroupDesc);
+        collectiveRecord->getMetadataValue(std::string(kProcessGroupDesc));
     if (processGroupDesc.size() >= 2 && processGroupDesc.front() == '"' &&
         processGroupDesc.back() == '"') {
       if (!arg_values.empty()) {
@@ -524,15 +534,18 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       arg_values.append(
           fmt::format(" \"{}\": {}", kProcessGroupDesc, processGroupDesc));
     }
-    const auto& groupRanks = collectiveRecord->getMetadataValue(kGroupRanks);
+    const auto& groupRanks =
+        collectiveRecord->getMetadataValue(std::string(kGroupRanks));
     if (!groupRanks.empty()) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
       arg_values.append(fmt::format(" \"{}\": {}", kGroupRanks, groupRanks));
     }
-    const auto& dstRank = collectiveRecord->getMetadataValue(kP2pDst);
-    const auto& srcRank = collectiveRecord->getMetadataValue(kP2pSrc);
+    const auto& dstRank =
+        collectiveRecord->getMetadataValue(std::string(kP2pDst));
+    const auto& srcRank =
+        collectiveRecord->getMetadataValue(std::string(kP2pSrc));
     if (!dstRank.empty()) {
       arg_values.append(fmt::format(", \"{}\": {}", kP2pDst, dstRank));
     }
@@ -542,7 +555,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
     if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
       distInfo_.backend = "nccl";
-      distInfo_.rank = collectiveRecord->getMetadataValue(kRank);
+      distInfo_.rank = collectiveRecord->getMetadataValue(std::string(kRank));
       distInfo_.world_size = groupSize;
       // Not sure if we want to have output.json depend on nccl at compilation
       // so set nccl_version to "unknown" for now until we can determine if we

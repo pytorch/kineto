@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 from .. import io, utils
 from ..utils import href
 from . import trace
+from ..device.aiu_utils import run_acelyzer
 from .communication import analyze_communication_nodes
 from .event_parser import CommLibTypes, EventParser, ProfileRole
 from .gpu_metrics_parser import GPUMetricsParser
@@ -168,6 +169,11 @@ class RunProfileData:
                 del trace_json['traceEvents'][end_index]
                 json_reencode = True
 
+        # run Acelyzer for AIU-specific trace preprocessing
+        device_props = trace_json.get('deviceProperties')
+        if device_props and len(device_props) > 0 and device_props[0].get('type') == 'AIU':
+            trace_json, json_reencode = run_acelyzer(trace_path, trace_json, json_reencode)
+        
         if json_reencode:
             fp = tempfile.NamedTemporaryFile('w+t', suffix='.json.gz', dir=cache_dir, delete=False)
             fp.close()

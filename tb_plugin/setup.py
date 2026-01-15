@@ -38,7 +38,8 @@ EXTRAS = {
     "s3": ["boto3"],
     "blob": ["azure-storage-blob"],
     "gs": ["google-cloud-storage"],
-    "hdfs": ["fsspec", "pyarrow"]
+    "hdfs": ["fsspec", "pyarrow"],
+    "aiu": ["aiu-trace-analyzer"]
 }
 
 

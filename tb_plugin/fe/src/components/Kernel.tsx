@@ -27,10 +27,7 @@ import { AntTableChart } from './charts/AntTableChart'
 import { PieChart } from './charts/PieChart'
 import { DataLoading } from './DataLoading'
 import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
-import {
-  GPUKernelTotalTimeTooltip,
-  TensorCoresPieChartTooltip
-} from './TooltipDescriptions'
+import { GPUKernelTotalTimeTooltip } from './TooltipDescriptions'
 
 export interface IProps {
   run: string
@@ -71,6 +68,8 @@ export const Kernel: React.FC<IProps> = (props) => {
     undefined
   )
   const [tcGraph, setTcGraph] = React.useState<Graph | undefined>(undefined)
+  const [tcGraphTitle, setTcGraphTitle] = React.useState('')
+  const [tcGraphTooltip, setTcGraphTooltip] = React.useState('')
   const [kernelTable, setKernelTable] = React.useState<Graph | undefined>(
     undefined
   )
@@ -111,6 +110,8 @@ export const Kernel: React.FC<IProps> = (props) => {
 
   React.useEffect(() => {
     api.defaultApi.kernelTcPieGet(run, worker, span).then((resp) => {
+      setTcGraphTitle(resp.metadata.title)
+      setTcGraphTooltip(resp.metadata.tooltip)
       setTcGraph(resp.total)
     })
   }, [run, worker, span])
@@ -152,12 +153,8 @@ export const Kernel: React.FC<IProps> = (props) => {
   )
 
   const TensorCoresTitle = React.useMemo(
-    () =>
-      chartHeaderRenderer(
-        'Tensor Cores Utilization',
-        TensorCoresPieChartTooltip
-      ),
-    [chartHeaderRenderer]
+    () => chartHeaderRenderer(tcGraphTitle, tcGraphTooltip),
+    [chartHeaderRenderer, tcGraphTitle, tcGraphTooltip]
   )
 
   return (

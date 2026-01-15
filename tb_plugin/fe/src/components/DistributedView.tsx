@@ -21,7 +21,6 @@ import { GpuInfoTable } from './GpuInfoTable'
 import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
 import {
   DistributedCommopsTableTooltip,
-  DistributedGpuInfoTableTooltip,
   DistributedOverlapGraphTooltip,
   DistributedWaittimeGraphTooltip
 } from './TooltipDescriptions'
@@ -170,7 +169,7 @@ export const DistributedView: React.FC<IProps> = (props) => {
                   <CardHeader
                     title={chartHeaderRenderer(
                       gpuInfo.metadata.title,
-                      DistributedGpuInfoTableTooltip
+                      gpuInfo.metadata.tooltip
                     )}
                   />
                   <CardContent>

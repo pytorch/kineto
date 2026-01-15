@@ -38,6 +38,11 @@ class RunProfileData:
         self.data_schema_version = trace_json.get('schemaVersion', None)
         self.distributed_info = trace_json.get('distributedInfo', None)
         self.device_props = trace_json.get('deviceProperties', None)
+        self.device_type = 'GPU'
+        self.core = 'Tensor Core'
+        if self.device_props:
+            self.device_type = self.device_props[0].get('type', 'GPU')
+            self.core = self.device_props[0].get('core', 'Tensor Core')
 
         self.profiler_start_ts = float('inf')
         self.events: List[BaseEvent] = []
@@ -211,7 +216,7 @@ class RunProfileData:
 
         logger.debug('GPUMetricsParser')
         self.gpu_metrics_parser = GPUMetricsParser.parse_events(
-            self.events, parser.global_start_ts, parser.global_end_ts, parser.steps[0][0], parser.steps[-1][1])
+            self.events, parser.global_start_ts, parser.global_end_ts, parser.steps[0][0], parser.steps[-1][1], self.device_type)
 
         logger.debug('TensorCoresParser')
         tensorcores_parser = TensorCoresParser.parse_events(
@@ -229,7 +234,7 @@ class RunProfileData:
 
         memory_events = self._memory_events()
         if memory_events:
-            memory_parser = MemoryParser(memory_events)
+            memory_parser = MemoryParser(memory_events, self.device_type)
             self.memory_snapshot = memory_parser.find_memory_nodes(self.tid2tree)
 
     def analyze(self):

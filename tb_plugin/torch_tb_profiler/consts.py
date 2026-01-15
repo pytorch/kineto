@@ -74,3 +74,15 @@ TOOLTIP_KERNEL_USES_TC = \
     'Whether this kernel uses Tensor Cores.'
 TOOLTIP_KERNEL_OP_TC_ELIGIBLE = \
     'Whether the operator launched this kernel is eligible to use Tensor Cores.'
+TOOLTIP_DEVICE_SELF_TIME = \
+    'The accumulated time spent on GPU, not including this operator’s child operators.'
+TOOLTIP_DEVICE_TOTAL_TIME = \
+    'The accumulated time spent on GPU, including this operator’s child operators.'
+TOOLTIP_HOST_SELF_TIME = \
+    'The accumulated time spent on Host, not including this operator’s child operators.'
+TOOLTIP_HOST_TOTAL_TIME = \
+    'The accumulated time spent on Host, including this operator’s child operators.'
+DISTRIBUTED_GPU_INFO_TABLE_TOOLTIP = \
+    'Information about GPU hardware used during the run.'
+TENSOR_CORES_PIE_CHART_TOOLTIP = \
+    'The accumulated time of all kernels using or not using Tensor Cores.'

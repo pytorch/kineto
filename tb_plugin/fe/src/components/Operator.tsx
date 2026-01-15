@@ -33,12 +33,6 @@ import { PieChart } from './charts/PieChart'
 import { DataLoading } from './DataLoading'
 import { makeChartHeaderRenderer, useTooltipCommonStyles } from './helpers'
 import { OperationTable } from './tables/OperationTable'
-import {
-  DeviceSelfTimeTooltip,
-  DeviceTotalTimeTooltip,
-  HostSelfTimeTooltip,
-  HostTotalTimeTooltip
-} from './TooltipDescriptions'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -88,6 +82,9 @@ export const Operator: React.FC<IProps> = (props) => {
   const [tableTooltips, setTableTooltips] = React.useState<any | undefined>(
     undefined
   )
+  const [tableColumnNames, setTableColumnNames] = React.useState<
+    any | undefined
+  >(undefined)
   const [groupBy, setGroupBy] = React.useState(OperationGroupBy.Operation)
   const [searchOperatorName, setSearchOperatorName] = React.useState('')
   const [topText, actualTop, useTop, setTopText, setUseTop] = useTopN({
@@ -127,6 +124,7 @@ export const Operator: React.FC<IProps> = (props) => {
       .then((resp) => {
         setSortColumn(resp.metadata.sort)
         setTableTooltips(resp.metadata.tooltips)
+        setTableColumnNames(resp.metadata.col_names)
         setOperatorTable(resp.data)
       })
   }, [run, worker, span, groupBy])
@@ -165,7 +163,7 @@ export const Operator: React.FC<IProps> = (props) => {
                 <CardHeader
                   title={chartHeaderRenderer(
                     graph.device_self_time.title,
-                    DeviceSelfTimeTooltip
+                    graph.tooltips.device_self_time
                   )}
                 />
               )}
@@ -180,7 +178,7 @@ export const Operator: React.FC<IProps> = (props) => {
                 <CardHeader
                   title={chartHeaderRenderer(
                     graph.device_total_time.title,
-                    DeviceTotalTimeTooltip
+                    graph.tooltips.device_total_time
                   )}
                 />
               )}
@@ -194,7 +192,7 @@ export const Operator: React.FC<IProps> = (props) => {
               <CardHeader
                 title={chartHeaderRenderer(
                   graph.host_self_time.title,
-                  HostSelfTimeTooltip
+                  graph.tooltips.host_self_time
                 )}
               />
             )}
@@ -207,7 +205,7 @@ export const Operator: React.FC<IProps> = (props) => {
               <CardHeader
                 title={chartHeaderRenderer(
                   graph.host_total_time.title,
-                  HostTotalTimeTooltip
+                  graph.tooltips.host_total_time
                 )}
               />
             )}
@@ -295,6 +293,7 @@ export const Operator: React.FC<IProps> = (props) => {
                       worker={worker}
                       sortColumn={sortColumn}
                       tooltips={tableTooltips}
+                      columnNames={tableColumnNames}
                     />
                   )}
                 </DataLoading>

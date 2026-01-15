@@ -7,6 +7,7 @@ import sys
 from collections import defaultdict
 from enum import IntEnum
 from typing import Dict, Iterable, List, Optional, Tuple
+from copy import copy
 
 from .. import utils
 from .communication import generate_communication_nodes
@@ -167,7 +168,8 @@ class NodeParserMixin:
             rt_node = RuntimeNode.create(event, device_nodes)
             # pyre-fixme[6]: For 1st argument expected `int` but got `Optional[int]`.
             corrid_to_runtime[corrid] = rt_node
-            externalid_to_runtime[rt_node.external_id].append(rt_node)
+            if rt_node.external_id:
+                externalid_to_runtime[rt_node.external_id].append(rt_node)
             # Some runtimes has external_id 0, which will not be correlated to any operator.
             # So get them and attach them to root node.
             if rt_node.external_id == 0:
@@ -182,6 +184,16 @@ class NodeParserMixin:
                             'Runtime and Device-op have same correlation id %s but with different external id!'
                             ' (rt external_id, device external_id): (%s, %s)' %
                             (corrid, rt_node.external_id, device_node.external_id))
+            # Mock OperatorEvent attributes for runtime events so they can be included in the
+            # Operator and Memory Views
+            rt_as_operator_event = copy(event)
+            rt_as_operator_event.input_shape = None
+            rt_as_operator_event.input_type = None
+            rt_as_operator_event.callstack = None
+            rt_as_operator_event.type = EventTypes.OPERATOR
+            rt_op_node = create_operator_node(rt_as_operator_event)
+            tid2list[int(tid)].append(rt_op_node)
+
         elif event.type in [EventTypes.PYTHON,
                             EventTypes.OPERATOR,
                             EventTypes.PL_MODULE,

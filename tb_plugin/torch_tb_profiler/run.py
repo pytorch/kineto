@@ -128,6 +128,8 @@ class RunProfile:
         self.kernel_table = None
         self.tc_pie = None
         self.trace_file_path: str = None
+        self.device_type = None
+        self.core = None
 
         self.gpu_metrics = None
 

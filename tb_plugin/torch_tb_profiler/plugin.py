@@ -146,11 +146,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
 
     @wrappers.Request.application
     def views_route(self, request: werkzeug.Request):
+        data = {}
         name = request.args.get('run')
         self._validate(run=name)
         run = self._get_run(name)
-        views_list = [view.display_name for view in run.views]
-        return self.respond_as_json(views_list)
+        data['list'] = [view.display_name for view in run.views]
+        for profile in run.profiles.values():
+            if isinstance(profile, RunProfile) and profile.device_type:
+                data['compute_function_name'] = '{} Kernel'.format(profile.device_type)
+        return self.respond_as_json(data)
 
     @wrappers.Request.application
     def workers_route(self, request: werkzeug.Request):
@@ -175,13 +179,15 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
+        
         normal_workers = [worker for worker in run.workers if worker != 'All']
         data['environments'] = [{'title': 'Number of Worker(s)', 'value': str(len(normal_workers))},
-                                {'title': 'Device Type', 'value': 'GPU' if is_gpu_used else 'CPU'}]
+                                {'title': 'Device Type', 'value': profile.device_type if profile.device_type else 'GPU' if is_gpu_used else 'CPU'}]
         if profile.gpu_summary and profile.gpu_tooltip:
-            data['gpu_metrics'] = {'title': 'GPU Summary',
+            data['gpu_metrics'] = {'title': '{} Summary'.format(profile.device_type if profile.device_type else 'GPU'),
                                    'data': profile.gpu_summary,
-                                   'tooltip': profile.gpu_tooltip}
+                                   'tooltip': profile.gpu_tooltip,
+                                   'device_type': profile.device_type if profile.device_type else 'GPU'}
 
         return self.respond_as_json(data)
 

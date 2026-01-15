@@ -21,7 +21,7 @@ class KernelParser:
         events = [vars(event) for event in events if event.type == EventTypes.KERNEL]
         events = pd.DataFrame(events)
         events = events.astype({'type': 'category', 'name': 'string'}, copy=False)
-        events['tc_used'] = events['name'].map(lambda name: name in TC_Allowlist)
+        events['tc_used'] = events.apply(lambda row: row['name'] in TC_Allowlist or row['core_used'] == True, axis=1)
 
         def weighted_avg(x: pd.Series):
             try:

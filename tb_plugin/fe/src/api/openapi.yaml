@@ -28,16 +28,23 @@ paths:
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  type: string
-                  enum:
+                type: object
+                required:
+                  - list
+                properties:
+                  list:
+                    type: array
+                    items:
+                      type: string
+                    enum:
                     - Overview
                     - Operator
                     - Kernel
                     - Trace
                     - Distributed
                     - Memory
+                  compute_function_name:
+                    type: string
   /workers:
     get:
       parameters:
@@ -777,6 +784,7 @@ components:
         - device_self_time
         - host_total_time
         - host_self_time
+        - tooltips
       properties:
         device_total_time:
           $ref: '#/components/schemas/Graph'
@@ -786,6 +794,8 @@ components:
           $ref: '#/components/schemas/Graph'
         host_self_time:
           $ref: '#/components/schemas/Graph'
+        tooltips:
+          type: object
     TableMetadata:
       type: object
       required:
@@ -794,6 +804,8 @@ components:
         sort:
           type: string
         tooltips:
+          type: object
+        col_names:
           type: object
     TableData:
       type: object
@@ -815,8 +827,19 @@ components:
     TensorCoresGraph:
       type: object
       required:
+        - metadata
         - total
       properties:
+        metadata:
+          type: object
+          required:
+            - title
+            - tooltip
+          properties:
+            title:
+              type: string
+            tooltip:
+              type: string
         total:
           $ref: '#/components/schemas/Graph'
     OperationTableData:
@@ -917,22 +940,31 @@ components:
           type: object
           required:
             - title
+            - tooltip
           properties:
             title:
+              type: string
+            tooltip:
               type: string
         data:
           type: object
     GpuMetrics:
       type: object
       required:
+        - title
         - data
         - tooltip
+        - device_type
       properties:
+        title:
+          type: string
         data:
           type: array
           items:
             $ref: '#/components/schemas/GpuMetric'
         tooltip:
+          type: string
+        device_type:
           type: string
     GpuMetric:
       type: object

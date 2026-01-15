@@ -48,12 +48,14 @@ export const CallStackTable = (props: IProps) => {
     CallStackTableData | undefined
   >(undefined)
   const [tooltips, setTooltips] = React.useState<any | undefined>()
+  const [columnNames, setColumnNames] = React.useState<any | undefined>()
 
   React.useEffect(() => {
     api.defaultApi
       .operationStackGet(run, worker, span, groupBy, name, input_shape)
       .then((resp) => {
         setTooltips(resp.metadata.tooltips)
+        setColumnNames(resp.metadata.col_names)
         setStackData(resp.data)
       })
   }, [name, input_shape, run, worker, span, groupBy])
@@ -66,7 +68,7 @@ export const CallStackTable = (props: IProps) => {
   const columns = React.useMemo(
     () =>
       transformedData &&
-      getCommonOperationColumns(transformedData, undefined, tooltips, classes),
+      getCommonOperationColumns(transformedData, undefined, tooltips, columnNames, classes),
     [transformedData]
   )
 

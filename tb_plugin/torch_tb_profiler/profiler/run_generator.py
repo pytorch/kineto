@@ -32,6 +32,8 @@ class RunGenerator:
         profile_run.profiler_start_ts = self.profile_data.profiler_start_ts
         profile_run.views.append(consts.OVERALL_VIEW)
         profile_run.overview = self._generate_overview()
+        profile_run.device_type = self.profile_data.device_type
+        profile_run.core = self.profile_data.core
 
         profile_run.views.append(consts.OP_VIEW)
         profile_run.operation_pie_by_name = self._generate_op_pie()
@@ -184,6 +186,7 @@ class RunGenerator:
             html = ''
             for recommendation in self.profile_data.recommendations:
                 html += '<li>{}</li>'.format(recommendation)
+            html = html.replace('GPU', self.profile_data.device_type).replace('Tensor Core', self.profile_data.core)
         data['recommendations'] = '<ul>{}</ul>'.format(html)
 
         return data
@@ -253,6 +256,12 @@ class RunGenerator:
         data['device_self_time'] = device_self_time
         data['host_total_time'] = host_total_time
         data['host_self_time'] = host_self_time
+        data['tooltips'] = {
+            'device_self_time': consts.TOOLTIP_DEVICE_SELF_TIME.replace('GPU', self.profile_data.device_type),
+            'device_total_time': consts.TOOLTIP_DEVICE_TOTAL_TIME.replace('GPU', self.profile_data.device_type),
+            'host_self_time': consts.TOOLTIP_HOST_SELF_TIME,
+            'host_total_time': consts.TOOLTIP_HOST_TOTAL_TIME
+        }
 
         return data
 
@@ -273,9 +282,14 @@ class RunGenerator:
             'metadata': {
                 'sort': 'device_self_duration' if show_gpu else 'host_self_duration',
                 'tooltips': {
-                    'tc_eligible': consts.TOOLTIP_OP_TC_ELIGIBLE,
-                    'tc_self_ratio': consts.TOOLTIP_OP_TC_SELF,
-                    'tc_total_ratio': consts.TOOLTIP_OP_TC_TOTAL
+                    'tc_eligible': consts.TOOLTIP_OP_TC_ELIGIBLE.replace('Tensor Core', self.profile_data.core),
+                    'tc_self_ratio': consts.TOOLTIP_OP_TC_SELF.replace('Tensor Core', self.profile_data.core),
+                    'tc_total_ratio': consts.TOOLTIP_OP_TC_TOTAL.replace('Tensor Core', self.profile_data.core)
+                },
+                'col_names': {
+                    'tc_eligible': f"{self.profile_data.core}s Eligible",
+                    'tc_self_ratio': f"{self.profile_data.core}s Self(%)",
+                    'tc_total_ratio': f"{self.profile_data.core}s Total(%)"
                 }
             },
             'data': data
@@ -332,14 +346,14 @@ class RunGenerator:
                             {'type': 'string', 'name': 'Block'},
                             {'type': 'number', 'name': 'Register Per Thread'},
                             {'type': 'number', 'name': 'Shared Memory'},
-                            {'type': 'string', 'name': 'Kernel Uses Tensor Cores',
-                             'tooltip': consts.TOOLTIP_KERNEL_USES_TC},
-                            {'type': 'string', 'name': 'Op is Tensor Cores eligible',
-                             'tooltip': consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE}]
+                            {'type': 'string', 'name': f"Kernel Uses {self.profile_data.core}s",
+                             'tooltip': consts.TOOLTIP_KERNEL_USES_TC.replace('Tensor Core', self.profile_data.core)},
+                            {'type': 'string', 'name': f"Op is {self.profile_data.core}s Eligible",
+                             'tooltip': consts.TOOLTIP_KERNEL_OP_TC_ELIGIBLE.replace('Tensor Core', self.profile_data.core)}]
         col_names = ['Calls', 'Total Duration (us)', 'Mean Duration (us)', 'Max Duration (us)', 'Min Duration (us)']
         for column in col_names:
             table['columns'].append({'type': 'number', 'name': column})
-        gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns()
+        gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns(self.profile_data.device_type)
         table['columns'].extend(gpu_metrics_columns)
 
         table['rows'] = []
@@ -377,8 +391,8 @@ class RunGenerator:
             'data': table
         }
         table['columns'] = [{'type': 'string', 'name': 'Name'},
-                            {'type': 'string', 'name': 'Tensor Cores Used',
-                             'tooltip': consts.TOOLTIP_KERNEL_USES_TC}]
+                            {'type': 'string', 'name': f"{self.profile_data.core}s Used",
+                             'tooltip': consts.TOOLTIP_KERNEL_USES_TC.replace('Tensor Core', self.profile_data.core)}]
         columns = ['count', 'sum', 'mean', 'max', 'min']
         round_digits = [0, 0, 0, 0, 0]
         if self.profile_data.gpu_metrics_parser.has_blocks_per_sm:
@@ -390,7 +404,7 @@ class RunGenerator:
         col_names = ['Calls', 'Total Duration (us)', 'Mean Duration (us)', 'Max Duration (us)', 'Min Duration (us)']
         for column in col_names:
             table['columns'].append({'type': 'number', 'name': column})
-        gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns()
+        gpu_metrics_columns = self.profile_data.gpu_metrics_parser.get_gpu_metrics_columns(self.profile_data.device_type)
         table['columns'].extend(gpu_metrics_columns)
 
         table['rows'] = []
@@ -404,9 +418,10 @@ class RunGenerator:
 
     def _generate_tc_pie(self):
         pie = {'columns': [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}], 'rows': []}
-        pie['rows'].append(['Using Tensor Cores', self.profile_data.tc_used_ratio])
-        pie['rows'].append(['Not Using Tensor Cores', 1.0 - self.profile_data.tc_used_ratio])
-        data = {'total': pie}
+        pie['rows'].append([f"Using {self.profile_data.core}s", self.profile_data.tc_used_ratio])
+        pie['rows'].append([f"Not Using {self.profile_data.core}s", 1.0 - self.profile_data.tc_used_ratio])
+        metadata = {'title': f"{self.profile_data.core}s Utilization", 'tooltip': consts.TENSOR_CORES_PIE_CHART_TOOLTIP.replace('Tensor Core', self.profile_data.core)}
+        data = {'metadata': metadata, 'total': pie}
         return data
 
     @staticmethod
@@ -419,6 +434,14 @@ class RunGenerator:
         name = device_prop.get('name')
         if name is not None:
             gpu_info['Name'] = name
+
+        type = device_prop.get('type')
+        if type is not None:
+            gpu_info['Type'] = type
+
+        core = device_prop.get('core')
+        if core is not None:
+            gpu_info['Accelerator Core'] = core
 
         mem = device_prop.get('totalGlobalMem')
         if mem is not None:
@@ -473,13 +496,22 @@ class DistributedRunGenerator:
             for used_device in data.used_devices:
                 gpu_info = RunGenerator._get_gpu_info(data.device_props, used_device)
                 if gpu_info is not None:
-                    result[node][process_id]['GPU'+str(used_device)] = gpu_info
+                    if 'Type' in gpu_info:
+                        device_type = gpu_info['Type']
+                    else:
+                        device_type = 'GPU'
+                    result[node][process_id][device_type+str(used_device)] = gpu_info
 
         if result:
             for k, v in result.items():
                 result[k] = OrderedDict(sorted(v.items()))
+                tooltip = consts.DISTRIBUTED_GPU_INFO_TABLE_TOOLTIP
+                if device_type:
+                    tooltip = tooltip.replace('GPU', device_type)
             return {
-                'metadata': {'title': 'Device Information'},
+                'metadata': {'title': 'Device Information',
+                             'tooltip': tooltip
+                             },
                 'data': result
             }
         else:

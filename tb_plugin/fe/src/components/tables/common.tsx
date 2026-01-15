@@ -13,6 +13,7 @@ export function getCommonOperationColumns<
   data: T[] | undefined,
   defaultSort?: string,
   tooltips?: any,
+  columnNames?: any,
   classes?: ClassNameMap<'tooltip'>
 ): ColumnsType<T> {
   const firstData = firstOrUndefined(data)
@@ -97,7 +98,7 @@ export function getCommonOperationColumns<
       ? {
           dataIndex: 'tc_eligible',
           key: 'tc_eligible',
-          title: 'Tensor Cores Eligible',
+          title: columnNames?.['tc_eligible'] ?? 'Tensor Cores Eligible',
           sorter: tcEligibleCompare
         }
       : undefined,
@@ -105,7 +106,7 @@ export function getCommonOperationColumns<
       ? {
           dataIndex: 'tc_self_ratio',
           key: 'tc_self_ratio',
-          title: 'Tensor Cores Self(%)',
+          title: columnNames?.['tc_self_ratio'] ?? 'Tensor Cores Self(%)',
           sorter: tcSelfRatioCompare
         }
       : undefined,
@@ -113,7 +114,7 @@ export function getCommonOperationColumns<
       ? {
           dataIndex: 'tc_total_ratio',
           key: 'tc_total_ratio',
-          title: 'Tensor Cores Total(%)',
+          title: columnNames?.['tc_total_ratio'] ?? 'Tensor Cores Total(%)',
           sorter: tcTotalRatioCompare
         }
       : undefined

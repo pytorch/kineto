@@ -52,7 +52,7 @@ export enum Views {
   Lightning = 'Lightning'
 }
 
-const ViewNames = {
+const DefaultViewNames = {
   [Views.Overview]: Views.Overview,
   [Views.Operator]: Views.Operator,
   [Views.Kernel]: 'GPU Kernel',
@@ -156,6 +156,7 @@ export const App = () => {
   const [span, setSpan] = React.useState<string | ''>('')
 
   const [views, setViews] = React.useState<Views[]>([])
+  const [viewNames, setViewNames] = React.useState(DefaultViewNames)
   const [view, setView] = React.useState<Views | ''>('')
   const [loaded, setLoaded] = React.useState(false)
   const iframeRef = React.useRef<HTMLIFrameElement>(null)
@@ -259,11 +260,17 @@ export const App = () => {
 
   React.useEffect(() => {
     if (run) {
-      api.defaultApi.viewsGet(run).then((rawViews) => {
+      api.defaultApi.viewsGet(run).then((response) => {
+        const rawViews = response['list']
         const views = rawViews
           .map((v) => Views[Views[v as Views]])
           .filter(Boolean)
         setViews(views)
+        const newViewNames = { ...DefaultViewNames }
+        if (response.compute_function_name !== undefined) {
+          newViewNames[Views.Kernel] = response['compute_function_name']
+        }
+        setViewNames(newViewNames)
       })
     }
   }, [run])
@@ -503,7 +510,7 @@ export const App = () => {
               <FormControl variant="outlined" className={classes.formControl}>
                 <Select value={view} onChange={handleViewChange}>
                   {views.map((view) => (
-                    <MenuItem value={view}>{ViewNames[view]}</MenuItem>
+                    <MenuItem value={view}>{viewNames[view]}</MenuItem>
                   ))}
                 </Select>
               </FormControl>

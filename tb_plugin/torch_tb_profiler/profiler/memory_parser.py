@@ -26,13 +26,14 @@ class MemoryMetrics(IntEnum):
 
 class MemoryRecord:
     def __init__(self, scope: str, pid: int, tid: int, ts: int,
-                 device_type: DeviceType, device_id: int,
+                 device_type: DeviceType, device_type_str: str, device_id: int,
                  address: int, bytes: int, total_allocated: float, total_reserved: float):
         self.scope = scope
         self.tid = tid
         self.pid = pid
         self.ts = ts
         self.device_type = device_type
+        self.device_type_str = device_type_str
         self.device_id = device_id
         self.addr = address
         self.bytes = bytes
@@ -46,7 +47,7 @@ class MemoryRecord:
         if self.device_type == DeviceType.CPU:
             return 'CPU'
         elif self.device_type == DeviceType.CUDA:
-            return 'GPU{}'.format(self.device_id)
+            return '{}{}'.format(self.device_type_str, self.device_id)
         else:
             return None
 
@@ -59,8 +60,8 @@ class MemoryRecord:
         return self.op_name if self.op_name else '<unknown>'
 
     @classmethod
-    def from_event(cls, event: MemoryEvent):
-        return cls(event.scope, event.pid, event.tid, event.ts, event.device_type, event.device_id,
+    def from_event(cls, event: MemoryEvent, device_type_str: str):
+        return cls(event.scope, event.pid, event.tid, event.ts, event.device_type, device_type_str, event.device_id,
                    event.addr, event.bytes, event.total_allocated, event.total_reserved)
 
     def __repr__(self) -> str:
@@ -189,11 +190,11 @@ class MemorySnapshot:
 
 
 class MemoryParser:
-    def __init__(self, memory_events: Iterable[MemoryEvent]):
+    def __init__(self, memory_events: Iterable[MemoryEvent], device_type_str: str):
         # statistics purpose
         self.staled_records: List[MemoryRecord] = []
         self.processed_records: List[MemoryRecord] = []
-        self.memory_records: List[MemoryRecord] = [MemoryRecord.from_event(e) for e in memory_events]
+        self.memory_records: List[MemoryRecord] = [MemoryRecord.from_event(e, device_type_str) for e in memory_events]
 
     def find_memory_nodes(self, tid2tree: Dict[int, OperatorNode]) -> MemorySnapshot:
         records_by_tid: Dict[int, List[MemoryRecord]] = defaultdict(list)

@@ -23,6 +23,7 @@ export interface IProps {
   groupBy: OperationGroupBy
   sortColumn: string
   tooltips?: any
+  columnNames?: any
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -37,13 +38,13 @@ const expandIcon = makeExpandIcon<OperationTableDataInner>(
   (record) => !record.has_call_stack
 )
 export const OperationTable = (props: IProps) => {
-  const { data, run, worker, span, groupBy, sortColumn, tooltips } = props
+  const { data, run, worker, span, groupBy, sortColumn, tooltips, columnNames } = props
   const classes = useStyles(props)
 
   const rows = React.useMemo(() => attachId(data), [data])
 
   const columns = React.useMemo(
-    () => getCommonOperationColumns(rows, sortColumn, tooltips, classes),
+    () => getCommonOperationColumns(rows, sortColumn, tooltips, columnNames, classes),
     [rows]
   )
 

@@ -104,9 +104,14 @@ export const Overview: React.FC<IProps> = (props) => {
     [tooltipCommonClasses]
   )
 
+  const deviceType = gpuMetrics?.device_type || 'GPU'
   const stepTimeBreakDownTitle = React.useMemo(
-    () => chartHeaderRenderer('Step Time Breakdown', StepTimeBreakDownTooltip),
-    [tooltipCommonClasses, chartHeaderRenderer]
+    () =>
+      chartHeaderRenderer(
+        'Step Time Breakdown',
+        StepTimeBreakDownTooltip.replaceAll('GPU', deviceType)
+      ),
+    [tooltipCommonClasses, chartHeaderRenderer, deviceType]
   )
 
   const cardSizes = gpuMetrics
@@ -139,7 +144,10 @@ export const Overview: React.FC<IProps> = (props) => {
             <Grid item sm={cardSizes[1]}>
               <Card variant="outlined">
                 <CardHeader
-                  title={chartHeaderRenderer('GPU Summary', gpuMetrics.tooltip)}
+                  title={chartHeaderRenderer(
+                    gpuMetrics.title,
+                    gpuMetrics.tooltip
+                  )}
                 />
                 <CardContent
                   className={classes.topGraph}

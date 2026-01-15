@@ -253,7 +253,7 @@ class EventProfiler {
   void reportOnDemandSamples();
 
   bool enabled() {
-    return sets_.size() > 0;
+    return !sets_.empty();
   }
 
   bool multiplexEnabled() {

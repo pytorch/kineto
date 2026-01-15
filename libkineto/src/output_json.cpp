@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iterator>
 #include "Config.h"
+#include "EnvMetadata.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
@@ -129,6 +130,18 @@ void ChromeTraceLogger::metadataToJSON(
   }
 }
 
+std::unordered_map<std::string, std::string>
+ChromeTraceLogger::addEnvVarsToMetadata(
+    const std::unordered_map<std::string, std::string>& metadata) {
+  // Get environment metadata from the EnvMetadata module
+  auto combined = libkineto::getEnvMetadata();
+  // Original metadata takes precedence
+  for (const auto& [k, v] : metadata) {
+    combined[k] = v;
+  }
+  return combined;
+}
+
 void ChromeTraceLogger::handleTraceStart(
     const std::unordered_map<std::string, std::string>& metadata,
     const std::string& device_properties) {
@@ -152,7 +165,8 @@ void ChromeTraceLogger::handleTraceStart(
     ],)JSON",
       device_properties);
 
-  metadataToJSON(metadata);
+  auto combinedMetadata = addEnvVarsToMetadata(metadata);
+  metadataToJSON(combinedMetadata);
   fmt::print(
       traceOf_,
       R"JSON(
@@ -385,13 +399,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   int64_t ts = op.timestamp();
   int64_t duration = op.duration();
 
-  if (duration < 0) {
-    // This should never happen but can occasionally suffer from regression in
-    // handling incomplete events. Having negative duration in Chrome trace can
-    // yield in very poor experience so add an extra guard before we generate
-    // trace events.
-    duration = 0;
-  }
+  duration = std::max<int64_t>(duration, 0);
 
   if (op.type() == ActivityType::GPU_USER_ANNOTATION) {
     // The GPU user annotations start at the same time as the
@@ -506,7 +514,8 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     }
     const auto& processGroupDesc =
         collectiveRecord->getMetadataValue(kProcessGroupDesc);
-    if (!processGroupName.empty() && !processGroupDesc.empty()) {
+    if (processGroupDesc.size() >= 2 && processGroupDesc.front() == '"' &&
+        processGroupDesc.back() == '"') {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }

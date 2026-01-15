@@ -25,7 +25,7 @@ constexpr char kEmptyTrace[] =
 #include <map>
 #include <vector>
 
-#include <stdint.h>
+#include <cstdint>
 
 #ifdef _MSC_VER
 // unset a predefined ERROR (windows)

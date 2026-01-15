@@ -11,13 +11,17 @@
 #include <folly/json/json.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <stdlib.h> // NOLINT(modernize-deprecated-headers) required for setenv unsetenv
+
 #include <strings.h>
-#include <time.h>
 #include <chrono>
+#include <cstdint>
+#include <cstdio>
 
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #include "include/Config.h"
@@ -217,7 +221,7 @@ struct MockCuptiActivityBuffer {
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
-  virtual const std::pair<int, size_t> processActivities(
+  const std::pair<int, size_t> processActivities(
       CuptiActivityBufferMap&, /*unused*/
       const std::function<void(const CUpti_Activity*)>& handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
@@ -226,7 +230,7 @@ class MockCuptiActivities : public CuptiActivityApi {
     return {activityBuffer->activities.size(), 100};
   }
 
-  virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers() override {
+  std::unique_ptr<CuptiActivityBufferMap> activityBuffers() override {
     auto map = std::make_unique<CuptiActivityBufferMap>();
     auto buf = std::make_unique<CuptiActivityBuffer>(100);
     uint8_t* addr = buf->data();
@@ -952,11 +956,16 @@ TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
 }
 
 TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
-  // Check for Json string sanitation
+  // Check for Json string sanitation and env var injection
   // based on AsyncTrace test
   std::vector<std::string> log_modules(
       {"CuptiActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
+
+  // Set environment variables for testing
+  setenv("PT_PROFILER_JOB_NAME", "test_training_job", 1);
+  setenv("PT_PROFILER_JOB_VERSION", "2", 1);
+  setenv("PT_PROFILER_JOB_ATTEMPT_INDEX", "5", 1);
 
   MockCuptiActivities activities;
   CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
@@ -1019,6 +1028,7 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  folly::dynamic jsonData = folly::parseJson(jsonStr);
 
   auto countSubstrings = [](const std::string& source,
                             const std::string& substring) {
@@ -1035,7 +1045,17 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   EXPECT_EQ(3, countSubstrings(jsonStr, keyPrefix));
   EXPECT_EQ(2, countSubstrings(jsonStr, "metadata value"));
   EXPECT_EQ(1, countSubstrings(jsonStr, "/test/metadata/path"));
+
+  // Verify injected env vars are in trace metadata with correct values
+  EXPECT_EQ(jsonData["PT_PROFILER_JOB_NAME"].asString(), "test_training_job");
+  EXPECT_EQ(jsonData["PT_PROFILER_JOB_VERSION"].asString(), "2");
+  EXPECT_EQ(jsonData["PT_PROFILER_JOB_ATTEMPT_INDEX"].asString(), "5");
 #endif
+
+  // Clean up environment variables
+  unsetenv("PT_PROFILER_JOB_NAME");
+  unsetenv("PT_PROFILER_JOB_VERSION");
+  unsetenv("PT_PROFILER_JOB_ATTEMPT_INDEX");
 }
 
 TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {

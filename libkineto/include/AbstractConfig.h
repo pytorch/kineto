@@ -111,13 +111,13 @@ class AbstractConfig {
 
  private:
   // Time config was created / updated
-  std::chrono::time_point<std::chrono::system_clock> timestamp_{};
+  std::chrono::time_point<std::chrono::system_clock> timestamp_;
 
   // Original configuration string, used for comparison
   std::string source_;
 
   // Configuration objects for optional features
-  std::map<std::string, AbstractConfig*> featureConfigs_{};
+  std::map<std::string, AbstractConfig*> featureConfigs_;
 };
 
 } // namespace libkineto

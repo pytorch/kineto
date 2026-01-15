@@ -74,7 +74,7 @@ class ConfigLoader {
     return true;
   }
 
-  inline std::unique_ptr<Config> getConfigCopy() {
+  std::unique_ptr<Config> getConfigCopy() {
     std::lock_guard<std::mutex> lock(configLock_);
     return config_->clone();
   }

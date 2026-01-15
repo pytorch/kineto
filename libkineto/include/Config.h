@@ -11,7 +11,7 @@
 #include "AbstractConfig.h"
 #include "ActivityType.h"
 
-#include <assert.h>
+#include <cassert>
 #include <chrono>
 #include <functional>
 #include <set>

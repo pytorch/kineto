@@ -12,7 +12,6 @@ import argparse
 import sys
 
 from .backends import AVAILABLE_TASKS, DEFAULT_METRICS
-
 from .framework import TraceAnalysisBenchmark
 
 

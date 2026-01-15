@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <time.h>
+#include <ctime>
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;

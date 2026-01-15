@@ -11,9 +11,9 @@ from . import BENCHMARK_DATA_DIR
 
 
 def decompress_s3_data(s3_tarball_path: Path):
-    assert str(s3_tarball_path.absolute()).endswith(
-        ".tar.gz"
-    ), f"Expected .tar.gz file path but got {s3_tarball_path}."
+    assert str(s3_tarball_path.absolute()).endswith(".tar.gz"), (
+        f"Expected .tar.gz file path but got {s3_tarball_path}."
+    )
     import tarfile
 
     # Hide decompressed file in .data directory so that they won't be checked in

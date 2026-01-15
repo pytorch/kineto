@@ -49,7 +49,7 @@ bool CuptiRangeProfilerConfig::handleOption(
 }
 
 void CuptiRangeProfilerConfig::setDefaults() {
-  if (activitiesCuptiMetrics_.size() > 0 && cuptiProfilerMaxRanges_ == 0) {
+  if (!activitiesCuptiMetrics_.empty() && cuptiProfilerMaxRanges_ == 0) {
     cuptiProfilerMaxRanges_ =
         cuptiProfilerPerKernel_ ? KMaxAutoRanges : KMaxUserRanges;
   }
@@ -57,7 +57,7 @@ void CuptiRangeProfilerConfig::setDefaults() {
 
 void CuptiRangeProfilerConfig::printActivityProfilerConfig(
     std::ostream& s) const {
-  if (activitiesCuptiMetrics_.size() > 0) {
+  if (!activitiesCuptiMetrics_.empty()) {
     fmt::print(
         s,
         "Cupti Profiler metrics : {}\n"

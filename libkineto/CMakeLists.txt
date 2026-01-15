@@ -26,6 +26,7 @@ set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared static)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
+option(KINETO_BUILD_BENCHMARKS "Build kineto benchmarks" OFF)
 
 set(LIBKINETO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LIBKINETO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -268,6 +269,13 @@ if(KINETO_BUILD_TESTS)
   endif()
   enable_testing()
   add_subdirectory(test)
+endif()
+
+if(KINETO_BUILD_BENCHMARKS)
+  add_subdirectory(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../benchmarks"
+    "${CMAKE_CURRENT_BINARY_DIR}/benchmarks"
+  )
 endif()
 
 install(TARGETS kineto

@@ -577,12 +577,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   ts = transToRelativeTime(ts);
 
   if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
-    std::string metricsStr;
-    const char* sep = "";
-    for (const auto& [key, val] : op.getMetadata()) {
-      metricsStr += fmt::format("{}\"{}\": {}", sep, key, val);
-      sep = ", ";
-    }
+    std::string metricsStr = op.metadataJson();
     std::string activityName = toString(op.type());
     fmt::print(
         traceOf_,

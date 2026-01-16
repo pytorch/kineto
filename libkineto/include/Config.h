@@ -236,8 +236,7 @@ class Config : public AbstractConfig {
   }
 
   // Timestamp at which the profiling to start, requested by the user.
-  const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
-      const {
+  std::chrono::time_point<std::chrono::system_clock> requestTimestamp() const {
     if (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }

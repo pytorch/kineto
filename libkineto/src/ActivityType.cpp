@@ -63,7 +63,7 @@ ActivityType toActivityType(const std::string& str) {
   throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
 }
 
-const std::array<ActivityType, activityTypeCount> activityTypes() {
+std::array<ActivityType, activityTypeCount> activityTypes() {
   std::array<ActivityType, activityTypeCount> res;
   for (int i = 0; i < activityTypeCount; i++) {
     res[i] = map[i].type;
@@ -71,8 +71,7 @@ const std::array<ActivityType, activityTypeCount> activityTypes() {
   return res;
 }
 
-const std::array<ActivityType, defaultActivityTypeCount>
-defaultActivityTypes() {
+std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes() {
   std::array<ActivityType, defaultActivityTypeCount> res;
   for (int i = 0; i < defaultActivityTypeCount; i++) {
     res[i] = map[i].type;

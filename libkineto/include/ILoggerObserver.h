@@ -58,8 +58,8 @@ class ILoggerObserver {
   virtual void addDevice(const int64_t device) = 0;
   virtual void setTraceDurationMS(const int64_t duration) = 0;
   virtual void addEventCount(const int64_t count) = 0;
-  virtual void setTraceID(const std::string&) {}
-  virtual void setGroupTraceID(const std::string&) {}
+  virtual void setTraceID(const std::string& /*unused*/) {}
+  virtual void setGroupTraceID(const std::string& /*unused*/) {}
   virtual void addDestination(const std::string& dest) = 0;
   virtual void setTriggerOnDemand() {}
   virtual void addMetadata(

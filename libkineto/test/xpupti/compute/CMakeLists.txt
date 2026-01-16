@@ -6,7 +6,7 @@
 
 include(GoogleTest)
 cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
-project(XpuptiScopeProfilerTest LANGUAGES CXX)
+project(${PROJECT_NAME} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -38,18 +38,18 @@ endfunction()
 
 find_libraries(gtest gtest_main)
 
-add_executable(XpuptiScopeProfilerTest XpuptiScopeProfilerCompute.cpp)
-target_compile_options(XpuptiScopeProfilerTest PRIVATE -fsycl)
-target_link_options(XpuptiScopeProfilerTest PRIVATE -fsycl)
+add_executable(${PROJECT_NAME} XpuptiScopeProfilerCompute.cpp)
+target_compile_options(${PROJECT_NAME} PRIVATE -fsycl)
+target_link_options(${PROJECT_NAME} PRIVATE -fsycl)
 
-target_link_libraries(XpuptiScopeProfilerTest PRIVATE
+target_link_libraries(${PROJECT_NAME} PRIVATE
   ${gtest_main_FOR_XPU_PATH}
   ${gtest_FOR_XPU_PATH}
   ${LINK_LIBRARY}
 )
 
-set_target_properties(XpuptiScopeProfilerTest PROPERTIES INSTALL_RPATH "$ORIGIN")
+set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN")
 
-gtest_discover_tests(XpuptiScopeProfilerTest)
+gtest_discover_tests(${PROJECT_NAME})
 
-install(TARGETS XpuptiScopeProfilerTest DESTINATION .)
+install(TARGETS ${PROJECT_NAME} DESTINATION .)

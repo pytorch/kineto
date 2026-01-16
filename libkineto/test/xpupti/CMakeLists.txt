@@ -19,27 +19,34 @@ add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
 target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiScopeProfilerConfigTest)
 
-add_library(XpuptiScopeProfilerTestLib SHARED XpuptiScopeProfilerTest.cpp)
-target_link_libraries(XpuptiScopeProfilerTestLib PRIVATE ${LINK_LIBRARIES})
-set_target_properties(XpuptiScopeProfilerTestLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-install(TARGETS XpuptiScopeProfilerTestLib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-
 include(ExternalProject)
 
-ExternalProject_Add(XpuptiScopeProfilerTest
-  SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-  CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
-  CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
-  CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/libXpuptiScopeProfilerTestLib.so
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-  BUILD_ALWAYS TRUE
-)
+function(make_test test_file)
+  get_filename_component(test_name "${test_file}" NAME_WE)
+  set(lib_name "${test_name}Lib")
+  add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
+  target_link_libraries(${lib_name} PRIVATE ${LINK_LIBRARIES})
+  set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-add_dependencies(XpuptiScopeProfilerTest XpuptiScopeProfilerTestLib)
-add_dependencies(XpuptiScopeProfilerTest gtest)
-add_dependencies(XpuptiScopeProfilerTest gtest_main)
+  set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
+  install(TARGETS ${lib_name}
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+  )
+
+  ExternalProject_Add(${test_name}
+    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
+    CMAKE_ARGS -DPROJECT_NAME=${test_name}
+    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
+    CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
+    CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+    BUILD_ALWAYS TRUE
+  )
+
+  add_dependencies(${test_name} ${lib_name})
+  add_dependencies(${test_name} gtest)
+  add_dependencies(${test_name} gtest_main)
+endfunction()
+
+make_test(XpuptiScopeProfilerTest.cpp)

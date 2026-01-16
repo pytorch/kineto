@@ -24,7 +24,7 @@
 #include "EventProfilerController.h"
 #endif
 #ifdef HAS_XPUPTI
-#include "plugin/xpupti/XpuptiActivityApi.h"
+#include "plugin/xpupti/XpuptiActivityApiV2.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
 #include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif
@@ -182,19 +182,9 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
       []() -> std::unique_ptr<IActivityProfiler> {
         auto returnCode = ptiViewGPULocalAvailable();
         if (returnCode != PTI_SUCCESS) {
-          std::string errPrefixMsg(
-              "Fail to enable Kineto Profiler on XPU due to error code: ");
-          errPrefixMsg = errPrefixMsg + std::to_string(returnCode);
-#if PTI_VERSION_AT_LEAST(0, 10)
-          std::string errMsg(ptiResultTypeToString(returnCode));
-          throw std::runtime_error(
-              errPrefixMsg + std::string(". The detailed error message is: ") +
-              errMsg);
-#else
-          throw std::runtime_error(errPrefixMsg);
-#endif
+          throwXpuRuntimeError(
+              "Fail to enable Kineto Profiler on XPU.", returnCode);
         }
-
         XpuptiScopeProfilerConfig::registerFactory();
         return std::make_unique<XPUActivityProfiler>();
       });

@@ -69,7 +69,7 @@ class AbstractConfig {
   }
 
  protected:
-  AbstractConfig() {}
+  AbstractConfig() = default;
   AbstractConfig(const AbstractConfig& other) = default;
 
   // Return true if the option was recognized and successfully parsed.

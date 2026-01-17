@@ -176,8 +176,8 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
 
   try {
     if (!fabricManager_->sync_send(*msg, std::string(kDynoIpcName))) {
-      LOG(ERROR) << "Failed to send config type=" << type
-                 << " to dyno: IPC sync_send fail";
+      VLOG(1) << "Failed to send config type=" << type
+              << " to dyno: IPC sync_send fail";
       free(req);
       req = nullptr;
       return "";

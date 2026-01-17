@@ -16,6 +16,10 @@
 
 #include <pti/pti_view.h>
 
+#if PTI_VERSION_AT_LEAST(0, 15)
+#include <pti/pti_metrics_scope.h>
+#endif
+
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -39,11 +43,16 @@ class XpuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableXpuptiActivities(
+  bool enableXpuptiActivities(
       const std::set<ActivityType>& selected_activities);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();
+
+  void enableScopeProfiler(const Config&);
+  void disableScopeProfiler();
+  void startScopeActivity();
+  void stopScopeActivity();
 
   virtual std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
 
@@ -51,11 +60,36 @@ class XpuptiActivityApi {
       XpuptiActivityBufferMap&,
       std::function<void(const pti_view_record_base*)> handler);
 
+#if PTI_VERSION_AT_LEAST(0, 15)
+  void processScopeTrace(
+      std::function<void(
+          const pti_metrics_scope_record_t*,
+          const pti_metrics_scope_record_metadata_t& metadata)> handler);
+#endif
+
  private:
   XpuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<XpuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
   bool externalCorrelationEnabled_{false};
+
+#if PTI_VERSION_AT_LEAST(0, 15)
+  struct safe_pti_scope_collection_handle_t {
+    safe_pti_scope_collection_handle_t(
+        std::exception_ptr& exceptFromDestructor);
+    ~safe_pti_scope_collection_handle_t() noexcept;
+
+    operator pti_scope_collection_handle_t() {
+      return handle_;
+    }
+
+    pti_scope_collection_handle_t handle_{};
+    std::exception_ptr& exceptFromDestructor_;
+  };
+
+  std::optional<safe_pti_scope_collection_handle_t> scopeHandleOpt_;
+  std::exception_ptr exceptFromScopeHandleDestructor_;
+#endif
 
   int processActivitiesForBuffer(
       uint8_t* buf,

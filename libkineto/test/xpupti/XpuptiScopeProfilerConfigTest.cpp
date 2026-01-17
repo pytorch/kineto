@@ -7,7 +7,6 @@
  */
 
 #include "src/plugin/xpupti/XpuptiScopeProfilerConfig.h"
-#include "include/Config.h"
 
 #include <fmt/core.h>
 #include <fmt/ranges.h>

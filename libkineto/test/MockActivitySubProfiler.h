@@ -19,7 +19,7 @@ namespace libkineto {
 
 class MockProfilerSession : public IActivityProfilerSession {
  public:
-  explicit MockProfilerSession() {}
+  explicit MockProfilerSession() = default;
 
   void start() override {
     start_count++;

@@ -22,7 +22,7 @@ namespace KINETO_NAMESPACE {
 
 class IDaemonConfigLoader {
  public:
-  virtual ~IDaemonConfigLoader() {}
+  virtual ~IDaemonConfigLoader() = default;
 
   // Return the base config from the daemon
   virtual std::string readBaseConfig() = 0;
@@ -42,7 +42,7 @@ class IDaemonConfigLoader {
 #ifdef __linux__
 class DaemonConfigLoader : public IDaemonConfigLoader {
  public:
-  DaemonConfigLoader() {}
+  DaemonConfigLoader() = default;
 
   // Return the base config from the daemon
   std::string readBaseConfig() override;

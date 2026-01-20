@@ -1,4 +1,4 @@
-name: libkineto PR Test on A10G
+name: Linux CPU build and test
 
 on:
   push:
@@ -12,9 +12,7 @@ env:
 
 jobs:
   pr-test:
-    # AWS A10G GPU instance label: linux.g5.4xlarge.nvidia.gpu
-    # OS version: Amazon Linux 2
-    runs-on: linux.g5.4xlarge.nvidia.gpu
+    runs-on: ubuntu-latest
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto
@@ -27,9 +25,6 @@ jobs:
         uses: pytorch/test-infra/.github/actions/pull-docker-image@main
         with:
           docker-image: ${{ env.DOCKER_IMAGE }}
-
-      - name: Install NVIDIA Driver, docker runtime, set GPU_FLAG
-        uses: pytorch/test-infra/.github/actions/setup-nvidia@main
 
       - name: Get env vars
         run: |

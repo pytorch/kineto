@@ -1,4 +1,4 @@
-name: libkineto PR Test on A10G
+name: Linux CUDA build and test
 
 on:
   push:

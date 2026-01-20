@@ -24,7 +24,7 @@ TEST(XpuptiProfilerTest, XpuDriverEvents) {
       KN::ActivityType::XPU_DRIVER,
   };
 
-  const std::vector<std::string> expectedActivities = {
+  std::vector<std::string_view> expectedActivities = {
       "urEnqueueMemBufferWrite",
       "urEnqueueMemBufferWrite",
       "urEnqueueMemBufferWrite",
@@ -32,9 +32,19 @@ TEST(XpuptiProfilerTest, XpuDriverEvents) {
       "urEnqueueMemBufferRead",
   };
 
-  const std::vector<std::string> expectedTypes = {"xpu_runtime", "xpu_driver"};
+  std::vector<std::string_view> expectedTypes = {
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime"};
 
   constexpr unsigned repeatCount = 1;
   RunProfilerTest(
-      metrics, activities, cfg, repeatCount, expectedActivities, expectedTypes);
+      metrics,
+      activities,
+      cfg,
+      repeatCount,
+      std::move(expectedActivities),
+      std::move(expectedTypes));
 }

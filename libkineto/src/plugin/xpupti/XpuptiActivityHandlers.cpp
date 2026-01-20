@@ -31,15 +31,9 @@ void XpuptiActivityProfilerSession::checkTimestampOrder(
   }
 
   const ITraceActivity* act2 = it->second;
-  switch (act2->type()) {
-    case ActivityType::XPU_RUNTIME:
-    case ActivityType::XPU_DRIVER:
-      std::swap(act1, act2);
-      break;
-    default:
-      break;
+  if (act2->type() == ActivityType::XPU_RUNTIME) {
+    std::swap(act1, act2);
   }
-
   if (act1->timestamp() > act2->timestamp()) {
     std::string err_msg;
     err_msg += "GPU op timestamp (" + std::to_string(act2->timestamp());

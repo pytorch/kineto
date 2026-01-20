@@ -139,7 +139,7 @@ class SampleListener {
   SampleListener(const SampleListener&) = delete;
   SampleListener& operator=(const SampleListener&) = delete;
 
-  virtual ~SampleListener() {}
+  virtual ~SampleListener() = default;
 
   // Report bucketed & aggregated values for event
   virtual void

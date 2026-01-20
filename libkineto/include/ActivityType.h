@@ -61,7 +61,7 @@ ActivityType toActivityType(const std::string& str);
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;
 constexpr int defaultActivityTypeCount =
     (int)ActivityType::OPTIONAL_ACTIVITY_TYPE_START;
-const std::array<ActivityType, activityTypeCount> activityTypes();
-const std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
+std::array<ActivityType, activityTypeCount> activityTypes();
+std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
 
 } // namespace libkineto

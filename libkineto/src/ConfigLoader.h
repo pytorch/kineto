@@ -35,7 +35,7 @@ class ConfigLoader {
   enum ConfigKind { ActivityProfiler = 0, EventProfiler, NumConfigKinds };
 
   struct ConfigHandler {
-    virtual ~ConfigHandler() {}
+    virtual ~ConfigHandler() = default;
     virtual bool canAcceptConfig() = 0;
     virtual void acceptConfig(const Config& cfg) = 0;
   };

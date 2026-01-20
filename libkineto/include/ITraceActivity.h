@@ -19,7 +19,7 @@ struct TraceSpan;
 
 // Generic activity interface is borrowed from tensorboard protobuf format.
 struct ITraceActivity {
-  virtual ~ITraceActivity() {}
+  virtual ~ITraceActivity() = default;
   // Device is a physical or logical entity, e.g. CPU, GPU or process
   virtual int64_t deviceId() const = 0;
   // A resource is something on the device, h/w thread,

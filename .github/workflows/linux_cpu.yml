@@ -12,7 +12,7 @@ env:
 
 jobs:
   pr-test:
-    runs-on: ubuntu-latest
+    runs-on: linux.c7i.2xlarge
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto

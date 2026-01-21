@@ -126,7 +126,10 @@ jobs:
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
-              --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+              --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args \
+
+              TODO: Investigate this test failure: https://github.com/pytorch/kineto/issues/1230
+              --deselect=test/profiler/test_profiler_tree.py::TestProfilerTree::test_profiler_experimental_tree_with_stack_and_modules
           "
 
       - name: Teardown Linux

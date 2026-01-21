@@ -78,7 +78,7 @@ class ActivityProfilerInterface {
   virtual void transferCpuTrace(std::unique_ptr<CpuTraceBuffer> traceBuffer) {}
 
   // Correlation ids for user defined spans
-  virtual void pushUserCorrelationId(uint64_t) {}
+  virtual void pushUserCorrelationId(uint64_t /*unused*/) {}
   virtual void popUserCorrelationId() {}
 
   // Saves information for the current thread to be used in profiler output
@@ -99,10 +99,10 @@ class ActivityProfilerInterface {
   // Log Invariant Violation to factories enabled. This helps record
   // instances when the profiler behaves unexpectedly.
   virtual void logInvariantViolation(
-      const std::string&,
-      const std::string&,
-      const std::string&,
-      const std::string& = "") {}
+      const std::string& /*unused*/,
+      const std::string& /*unused*/,
+      const std::string& /*unused*/,
+      const std::string& /*unused*/ = "") {}
 };
 
 } // namespace libkineto

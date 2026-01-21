@@ -106,6 +106,7 @@ jobs:
             export USE_NCCL=0
             export USE_ROCM=0
             export BUILD_TEST=1
+            export MAX_JOBS=4
             python setup.py develop
           "
 

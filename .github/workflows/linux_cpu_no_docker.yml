@@ -1,0 +1,93 @@
+name: Linux CPU build and test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+defaults:
+  run:
+    shell: bash -l -eo pipefail {0}
+
+jobs:
+  pr-test:
+    runs-on: linux.c7i.4xlarge
+    timeout-minutes: 180 # 3 hours
+    steps:
+      - name: Checkout Kineto
+        uses: actions/checkout@v5
+        with:
+          path: kineto
+          submodules: recursive
+
+      - name: Build libkineto (static and shared library)
+        run: |
+
+          mkdir kineto/build_static
+          mkdir kineto/build_shared
+          pip install cmake
+
+          # Note that we are making these CPU-only builds through cmake flags.
+          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "
+          cd kineto/build_static
+          cmake -DLIBKINETO_NOCUPTI=1 -DKINETO_LIBRARY_TYPE=static ../libkineto/
+          make -j
+          cd
+
+          cd kineto/build_shared
+          cmake -DLIBKINETO_NOCUPTI=1 -DKINETO_LIBRARY_TYPE=shared ../libkineto/
+          make -j
+          cd
+
+      - name:  Run libkineto tests
+        run: |
+          cd kineto/build_static
+          make test
+          cd
+
+      - name: Clone PyTorch
+        run: |
+          git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git
+
+      - name: Replace PyTorch's Kineto with PR version
+        run: |
+          cd pytorch
+          rm -rf third_party/kineto
+          ln -s /kineto third_party/kineto
+
+      # Note that we are explicitly turning off all GPU support.
+      - name: Build PyTorch from source
+        run: |
+          pip install -r requirements.txt
+          export USE_CUDA=0
+          export USE_CUDNN=0
+          export USE_NCCL=0
+          export USE_ROCM=0
+          export BUILD_TEST=1
+          export MAX_JOBS=4
+          python setup.py develop
+
+      - name: Run PyTorch profiler tests
+        run: |
+          # TODO: Dynamically add/remove tests to the exclusion list based on their
+          # status on trunk instead of maintaining a hardcoded list of known failures.
+          # This will prevent the list from becoming stale as tests get fixed upstream.
+          python -m pytest test/profiler/ -v \
+            --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
+            --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd \
+            --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd \
+            --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step \
+            --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
+            --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
+            --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
+            --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
+            --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+
+      - name: Teardown Linux
+        uses: pytorch/test-infra/.github/actions/teardown-linux@main
+        if: always()
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}-${{ github.event_name == 'workflow_dispatch' }}
+  cancel-in-progress: true

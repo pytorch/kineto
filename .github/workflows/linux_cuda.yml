@@ -44,7 +44,7 @@ jobs:
           echo GITHUB_SHA        = $GITHUB_SHA
           echo GITHUB_REF        = $GITHUB_REF
 
-      - name: Build libkineto (static and shared library) and tests
+      - name: Build libkineto (static and shared library)
         run: |
           container_name=$(docker run \
             ${GPU_FLAG:-} \
@@ -76,6 +76,9 @@ jobs:
             make -j
           "
 
+      - name:  Run libkineto tests
+        run: |
+          container_name=$(docker ps -lq)
           docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "make test"
 
       - name: Clone PyTorch

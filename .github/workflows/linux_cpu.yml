@@ -12,7 +12,7 @@ env:
 
 jobs:
   pr-test:
-    runs-on: linux.c7i.4xlarge
+    runs-on: linux.12xlarge
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto
@@ -106,7 +106,6 @@ jobs:
             export USE_NCCL=0
             export USE_ROCM=0
             export BUILD_TEST=1
-            export MAX_JOBS=4
             python setup.py develop
           "
 

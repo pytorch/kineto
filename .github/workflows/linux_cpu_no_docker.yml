@@ -29,7 +29,6 @@ jobs:
           pip install cmake
 
           # Note that we are making these CPU-only builds through cmake flags.
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "
           cd kineto/build_static
           cmake -DLIBKINETO_NOCUPTI=1 -DKINETO_LIBRARY_TYPE=static ../libkineto/
           make -j

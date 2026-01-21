@@ -105,11 +105,11 @@ class LibkinetoApi {
     }
   }
 
-  bool isProfilerInitialized() const {
+  [[nodiscard]] bool isProfilerInitialized() const {
     return activityProfiler_ && activityProfiler_->isInitialized();
   }
 
-  bool isProfilerRegistered() const {
+  [[nodiscard]] bool isProfilerRegistered() const {
     return activityProfiler_ != nullptr;
   }
 

@@ -1,4 +1,4 @@
-name: Linux CPU build and test
+name: Linux CPU build and test non-docker
 
 on:
   push:

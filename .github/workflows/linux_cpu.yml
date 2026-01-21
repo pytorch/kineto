@@ -117,6 +117,9 @@ jobs:
             # TODO: Dynamically add/remove tests to the exclusion list based on their
             # status on trunk instead of maintaining a hardcoded list of known failures.
             # This will prevent the list from becoming stale as tests get fixed upstream.
+            #
+            # TODO: Investigate test_profiler_experimental_tree_with_stack_and_modules:
+            #     https://github.com/pytorch/kineto/issues/1230
             python -m pytest test/profiler/ -v \
               --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
               --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd \
@@ -127,8 +130,6 @@ jobs:
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
               --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args \
-
-              # TODO: Investigate this test failure: https://github.com/pytorch/kineto/issues/1230
               --deselect=test/profiler/test_profiler_tree.py::TestProfilerTree::test_profiler_experimental_tree_with_stack_and_modules
           "
 

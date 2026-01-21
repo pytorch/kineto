@@ -94,7 +94,7 @@ jobs:
             ln -s /kineto third_party/kineto
           "
 
-      # Note that we are explicitly turning off CUDA support
+      # Note that we are explicitly turning off all GPU support.
       - name: Build PyTorch from source
         run: |
           container_name=$(docker ps -lq)
@@ -102,6 +102,9 @@ jobs:
             set -eux
             pip install -r requirements.txt
             export USE_CUDA=0
+            export USE_CUDNN=0
+            export USE_NCCL=0
+            export USE_ROCM=0
             export BUILD_TEST=1
             python setup.py develop
           "

@@ -1,4 +1,4 @@
-name: Linux CUDA build and test
+name: Linux ROCM build and test
 
 on:
   push:

@@ -13,7 +13,7 @@ namespace libkineto {
 
 class ClientInterface {
  public:
-  virtual ~ClientInterface() {}
+  virtual ~ClientInterface() = default;
   virtual void init() = 0;
   virtual void prepare(bool, bool, bool, bool, bool) = 0;
   virtual void start() = 0;

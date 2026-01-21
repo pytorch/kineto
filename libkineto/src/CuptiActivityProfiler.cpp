@@ -237,7 +237,8 @@ void CuptiActivityProfiler::logGpuVersions() {
 #ifdef HAS_CUPTI
   // check Nvidia versions
   uint32_t cuptiVersion = 0;
-  int cudaRuntimeVersion = 0, cudaDriverVersion = 0;
+  int cudaRuntimeVersion = 0;
+  int cudaDriverVersion = 0;
   CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
   CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
   CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
@@ -343,12 +344,10 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     }
     if (traceBuffers_->gpu) {
       const auto count_and_size = cupti_.processActivities(
-          *traceBuffers_->gpu,
-          std::bind(
-              &CuptiActivityProfiler::handleCuptiActivity,
-              this,
-              std::placeholders::_1,
-              &logger));
+          *traceBuffers_->gpu, [this, capture0 = &logger](auto&& activity) {
+            handleCuptiActivity(
+                std::forward<decltype(activity)>(activity), capture0);
+          });
       logDeferredEvents();
       LOG(INFO) << "Processed " << count_and_size.first << " GPU records ("
                 << count_and_size.second << " bytes)";
@@ -398,8 +397,10 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
     // need to be processed.
     session->processTrace(
         logger,
-        std::bind(
-            &CuptiActivityProfiler::cpuActivity, this, std::placeholders::_1),
+        [this](auto&& correlationId) {
+          return cpuActivity(
+              std::forward<decltype(correlationId)>(correlationId));
+        },
         captureWindowStartTime_,
         captureWindowEndTime_);
   }
@@ -716,7 +717,8 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  int32_t src_stream = -1, src_corrid = -1;
+  int32_t src_stream = -1;
+  int32_t src_corrid = -1;
 
   if (isEventSync(activity->type)) {
     auto maybe_wait_event_info =
@@ -1315,7 +1317,8 @@ time_point<system_clock> CuptiActivityProfiler::performRunLoopStep(
     const time_point<system_clock>& nextWakeupTime,
     int64_t currentIter) {
   auto new_wakeup_time = nextWakeupTime;
-  bool warmup_done = false, collection_done = false;
+  bool warmup_done = false;
+  bool collection_done = false;
 
   VLOG_IF(1, currentIter >= 0)
       << "Run loop on application step(), iteration = " << currentIter;

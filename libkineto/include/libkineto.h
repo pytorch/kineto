@@ -149,7 +149,7 @@ class LibkinetoApi {
   void initClientIfRegistered();
 
   ConfigLoader& configLoader_;
-  std::unique_ptr<ActivityProfilerInterface> activityProfiler_{};
+  std::unique_ptr<ActivityProfilerInterface> activityProfiler_;
   ClientInterface* client_{};
   int32_t clientRegisterThread_{0};
 

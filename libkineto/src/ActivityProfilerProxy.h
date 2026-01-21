@@ -34,6 +34,10 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
  public:
   ActivityProfilerProxy(bool cpuOnly, ConfigLoader& configLoader);
   ~ActivityProfilerProxy() override;
+  ActivityProfilerProxy(const ActivityProfilerProxy&) = delete;
+  ActivityProfilerProxy& operator=(const ActivityProfilerProxy&) = delete;
+  ActivityProfilerProxy(ActivityProfilerProxy&&) = delete;
+  ActivityProfilerProxy& operator=(ActivityProfilerProxy&&) = delete;
 
   void init() override;
   bool isInitialized() override {
@@ -67,7 +71,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   void addMetadata(const std::string& key, const std::string& value) override;
 
-  virtual void addChildActivityProfiler(
+  void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) override;
 
   void logInvariantViolation(

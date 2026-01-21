@@ -18,7 +18,7 @@ struct ITraceActivity;
 
 class ActivityTraceInterface {
  public:
-  virtual ~ActivityTraceInterface() {}
+  virtual ~ActivityTraceInterface() = default;
   virtual const std::vector<const ITraceActivity*>* activities() {
     return nullptr;
   }

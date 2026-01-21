@@ -11,7 +11,7 @@
 #include "AbstractConfig.h"
 #include "ActivityType.h"
 
-#include <assert.h>
+#include <cassert>
 #include <chrono>
 #include <functional>
 #include <set>
@@ -236,8 +236,7 @@ class Config : public AbstractConfig {
   }
 
   // Timestamp at which the profiling to start, requested by the user.
-  const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
-      const {
+  std::chrono::time_point<std::chrono::system_clock> requestTimestamp() const {
     if (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }
@@ -279,7 +278,7 @@ class Config : public AbstractConfig {
     return profileStartIteration_ - activitiesWarmupIterations_;
   }
 
-  const std::chrono::seconds maxRequestAge() const;
+  std::chrono::seconds maxRequestAge() const;
 
   // All VLOG* macros will log if the verbose log level is >=
   // the verbosity specified for the verbose log message.
@@ -540,5 +539,10 @@ class Config : public AbstractConfig {
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
 bool isDaemonEnvVarSet();
+
+// Returns a reference to the protobuf trace enabled flag.
+// This allows the flag to be set externally (e.g., from JustKnobs in FBConfig)
+// and read in other components (e.g., ChromeTraceLogger).
+bool& get_protobuf_trace_enabled();
 
 } // namespace libkineto

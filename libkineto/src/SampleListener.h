@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -49,7 +49,7 @@ class SampleValue {
     return dbl_;
   }
 
-  inline void operator*=(double x) {
+  void operator*=(double x) {
     assert(isDouble() || isInt());
     if (isDouble()) {
       dbl_ *= x;
@@ -58,7 +58,7 @@ class SampleValue {
     }
   }
 
-  inline bool operator<(const SampleValue& o) const {
+  bool operator<(const SampleValue& o) const {
     if (type_ != o.type_) {
       return type_ < o.type_;
     } else if (type_ == INT64) {
@@ -139,7 +139,7 @@ class SampleListener {
   SampleListener(const SampleListener&) = delete;
   SampleListener& operator=(const SampleListener&) = delete;
 
-  virtual ~SampleListener() {}
+  virtual ~SampleListener() = default;
 
   // Report bucketed & aggregated values for event
   virtual void

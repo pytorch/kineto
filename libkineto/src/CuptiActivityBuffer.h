@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include <assert.h>
-#include <stdlib.h>
 #include <sys/types.h>
+#include <cassert>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <vector>

@@ -6,10 +6,8 @@
 
 import argparse
 import os
-
 import time
 from dataclasses import dataclass, field, fields
-
 from typing import Callable, Dict
 
 import numpy

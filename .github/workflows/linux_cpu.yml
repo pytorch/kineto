@@ -62,13 +62,13 @@ jobs:
           # Note that we are making these CPU-only builds through cmake flags.
           docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "
             set -eux
-            cmake -DLIBKINETO_NOCUPTI=1 -DKINETO_LIBRARY_TYPE=static ../libkineto/
+            cmake -DLIBKINETO_NOCUPTI=1 -DLIBKINETO_NOROCTRACER=1 -DLIBKINETO_NOXPUPTI=1 -DLIBKINETO_NOAIUPTI=1 -DKINETO_LIBRARY_TYPE=static ../libkineto/
             make -j
           "
 
           docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c "
             set -eux
-            cmake -DLIBKINETO_NOCUPTI=1 -DKINETO_LIBRARY_TYPE=shared ../libkineto/
+            cmake -DLIBKINETO_NOCUPTI=1 -DLIBKINETO_NOROCTRACER=1 -DLIBKINETO_NOXPUPTI=1 -DLIBKINETO_NOAIUPTI=1 -DKINETO_LIBRARY_TYPE=shared ../libkineto/
             make -j
           "
 

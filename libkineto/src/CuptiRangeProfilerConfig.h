@@ -32,19 +32,19 @@ class CuptiRangeProfilerConfig : public AbstractConfig {
         cfg.feature(kCuptiProfilerConfigName));
   }
 
-  Config& parent() const {
+  [[nodiscard]] Config& parent() const {
     return *parent_;
   }
 
-  std::vector<std::string> activitiesCuptiMetrics() const {
+  [[nodiscard]] std::vector<std::string> activitiesCuptiMetrics() const {
     return activitiesCuptiMetrics_;
   }
 
-  bool cuptiProfilerPerKernel() const {
+  [[nodiscard]] bool cuptiProfilerPerKernel() const {
     return cuptiProfilerPerKernel_;
   }
 
-  int64_t cuptiProfilerMaxRanges() const {
+  [[nodiscard]] int64_t cuptiProfilerMaxRanges() const {
     return cuptiProfilerMaxRanges_;
   }
 

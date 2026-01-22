@@ -30,7 +30,7 @@ class CuptiActivityBuffer {
   CuptiActivityBuffer(CuptiActivityBuffer&&) = default;
   CuptiActivityBuffer& operator=(CuptiActivityBuffer&&) = default;
 
-  size_t size() const {
+  [[nodiscard]] size_t size() const {
     return size_;
   }
 

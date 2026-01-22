@@ -19,7 +19,7 @@ namespace KINETO_NAMESPACE {
 class CuptiEventApi {
  public:
   explicit CuptiEventApi(CUcontext context_);
-  virtual ~CuptiEventApi() {}
+  virtual ~CuptiEventApi() = default;
 
   CUdevice device() {
     return device_;

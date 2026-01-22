@@ -49,16 +49,17 @@ class AbstractConfig {
   }
 
   // Time config was created / updated
-  std::chrono::time_point<std::chrono::system_clock> timestamp() const {
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> timestamp()
+      const {
     return timestamp_;
   }
 
   // Source config string that this was parsed from
-  const std::string& source() const {
+  [[nodiscard]] const std::string& source() const {
     return source_;
   }
 
-  AbstractConfig& feature(const std::string& name) const {
+  [[nodiscard]] AbstractConfig& feature(const std::string& name) const {
     const auto& pos = featureConfigs_.find(name);
     return *pos->second;
   }
@@ -69,7 +70,7 @@ class AbstractConfig {
   }
 
  protected:
-  AbstractConfig() {}
+  AbstractConfig() = default;
   AbstractConfig(const AbstractConfig& other) = default;
 
   // Return true if the option was recognized and successfully parsed.
@@ -92,15 +93,19 @@ class AbstractConfig {
 
   // Helpers for use in handleOption
   // Split a string by delimiter and remove external white space
-  std::vector<std::string> splitAndTrim(const std::string& s, char delim) const;
+  [[nodiscard]] std::vector<std::string> splitAndTrim(
+      const std::string& s,
+      char delim) const;
   // Lowercase for case-insensitive comparisons
   std::string toLower(std::string& s) const;
   // Does string end with suffix
-  bool endsWith(const std::string& s, const std::string& suffix) const;
+  [[nodiscard]] bool endsWith(const std::string& s, const std::string& suffix)
+      const;
   // Conversions
-  int64_t toIntRange(const std::string& val, int64_t min, int64_t max) const;
-  int32_t toInt32(const std::string& val) const;
-  int64_t toInt64(const std::string& val) const;
+  [[nodiscard]] int64_t
+  toIntRange(const std::string& val, int64_t min, int64_t max) const;
+  [[nodiscard]] int32_t toInt32(const std::string& val) const;
+  [[nodiscard]] int64_t toInt64(const std::string& val) const;
   bool toBool(std::string& val) const;
 
   void cloneFeaturesInto(AbstractConfig& cfg) const {

@@ -222,7 +222,7 @@ struct MockCuptiActivityBuffer {
 class MockCuptiActivities : public CuptiActivityApi {
  public:
   const std::pair<int, size_t> processActivities(
-      CuptiActivityBufferMap&, /*unused*/
+      CuptiActivityBufferMap& /*unused*/, /*unused*/
       const std::function<void(const CUpti_Activity*)>& handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
       handler(act);

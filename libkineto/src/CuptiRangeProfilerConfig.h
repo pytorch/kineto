@@ -62,7 +62,7 @@ class CuptiRangeProfilerConfig : public AbstractConfig {
 
  protected:
   AbstractConfig* cloneDerived(AbstractConfig& parent) const override {
-    CuptiRangeProfilerConfig* clone = new CuptiRangeProfilerConfig(*this);
+    auto* clone = new CuptiRangeProfilerConfig(*this);
     clone->parent_ = dynamic_cast<Config*>(&parent);
     return clone;
   }

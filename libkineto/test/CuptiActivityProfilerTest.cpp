@@ -1005,7 +1005,7 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   std::string keyPrefix = "TEST_METADATA_";
   profiler.addMetadata(keyPrefix + "NORMAL", "\"metadata value\"");
   profiler.addMetadata(keyPrefix + "NEWLINE", "\"metadata \nvalue\"");
-  profiler.addMetadata(keyPrefix + "BACKSLASH", "\"/test/metadata\\path\"");
+  profiler.addMetadata(keyPrefix + "BACKSLASH", R"("/test/metadata\path")");
 
   // Profiling activity at start up/during active/after duration
   auto next = startTime + milliseconds(1000);

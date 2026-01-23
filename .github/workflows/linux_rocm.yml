@@ -1,4 +1,4 @@
-name: Linux ROCM build and test
+name: Linux  build and test
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
 
 jobs:
   pr-test:
-    runs-on: linux-rocm-gpu-4
+    runs-on: linux.rocm.gpu.gfx942
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto
@@ -25,6 +25,9 @@ jobs:
         uses: pytorch/test-infra/.github/actions/pull-docker-image@main
         with:
           docker-image: ${{ env.DOCKER_IMAGE }}
+
+      - name: Setup ROCM
+        uses: pytorch/pytorch/.github/actions/setup-rocm@main
 
       - name: Get env vars
         run: |
@@ -42,6 +45,7 @@ jobs:
       - name: Build libkineto (static and shared library)
         run: |
           container_name=$(docker run \
+            ${GPU_FLAG:-} \
             --tty \
             --detach \
             --shm-size=32gb \

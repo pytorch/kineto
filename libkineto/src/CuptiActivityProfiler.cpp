@@ -1166,7 +1166,8 @@ void CuptiActivityProfiler::configure(
         config_->isProfileMemoryEnabled(),
         config_->isWithStackEnabled(),
         config_->isWithFlopsEnabled(),
-        config_->isWithModulesEnabled());
+        config_->isWithModulesEnabled(),
+        config_->isAdjustProfilerStepEnabled());
   }
 
   if (derivedConfig_->isProfilingByIteration()) {

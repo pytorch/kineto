@@ -15,7 +15,7 @@ class ClientInterface {
  public:
   virtual ~ClientInterface() = default;
   virtual void init() = 0;
-  virtual void prepare(bool, bool, bool, bool, bool) = 0;
+  virtual void prepare(bool, bool, bool, bool, bool, bool) = 0;
   virtual void start() = 0;
   virtual void stop() = 0;
   virtual void start_memory_profile() = 0;

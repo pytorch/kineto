@@ -112,7 +112,7 @@ int32_t threadId() {
     _tid = (int32_t)GetCurrentThreadId();
 #else
     pthread_t pth = pthread_self();
-    int32_t* ptr = reinterpret_cast<int32_t*>(&pth);
+    auto* ptr = reinterpret_cast<int32_t*>(&pth);
     _tid = *ptr;
 #endif
   }

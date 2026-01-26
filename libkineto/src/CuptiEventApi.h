@@ -21,7 +21,7 @@ class CuptiEventApi {
   explicit CuptiEventApi(CUcontext context_);
   virtual ~CuptiEventApi() = default;
 
-  CUdevice device() {
+  CUdevice device() const {
     return device_;
   }
 

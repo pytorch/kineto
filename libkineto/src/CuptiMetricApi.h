@@ -22,7 +22,7 @@ namespace KINETO_NAMESPACE {
 class CuptiMetricApi {
  public:
   explicit CuptiMetricApi(CUdevice device) : device_(device) {}
-  virtual ~CuptiMetricApi() {}
+  virtual ~CuptiMetricApi() = default;
 
   virtual CUpti_MetricID idFromName(const std::string& name);
   virtual std::map<CUpti_EventID, std::string> events(CUpti_MetricID metric_id);

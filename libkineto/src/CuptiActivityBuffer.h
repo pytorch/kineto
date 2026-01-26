@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include <assert.h>
-#include <stdlib.h>
 #include <sys/types.h>
+#include <cassert>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <vector>
@@ -30,7 +30,7 @@ class CuptiActivityBuffer {
   CuptiActivityBuffer(CuptiActivityBuffer&&) = default;
   CuptiActivityBuffer& operator=(CuptiActivityBuffer&&) = default;
 
-  size_t size() const {
+  [[nodiscard]] size_t size() const {
     return size_;
   }
 

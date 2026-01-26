@@ -11,7 +11,7 @@
 #include "AbstractConfig.h"
 #include "ActivityType.h"
 
-#include <assert.h>
+#include <cassert>
 #include <chrono>
 #include <functional>
 #include <set>
@@ -29,7 +29,7 @@ class Config : public AbstractConfig {
   ~Config() override = default;
 
   // Return a full copy including feature config object
-  std::unique_ptr<Config> clone() const {
+  [[nodiscard]] std::unique_ptr<Config> clone() const {
     auto cfg = std::unique_ptr<Config>(new Config(*this));
     cloneFeaturesInto(*cfg);
     return cfg;
@@ -40,22 +40,22 @@ class Config : public AbstractConfig {
   void setClientDefaults() override;
 
   // Log events to this file
-  const std::string& eventLogFile() const {
+  [[nodiscard]] const std::string& eventLogFile() const {
     return eventLogFile_;
   }
 
-  bool activityProfilerEnabled() const {
+  [[nodiscard]] bool activityProfilerEnabled() const {
     return activityProfilerEnabled_ ||
         activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
   }
 
   // Log activitiy trace to this file
-  const std::string& activitiesLogFile() const {
+  [[nodiscard]] const std::string& activitiesLogFile() const {
     return activitiesLogFile_;
   }
 
   // Log activitiy trace to this url
-  const std::string& activitiesLogUrl() const {
+  [[nodiscard]] const std::string& activitiesLogUrl() const {
     return activitiesLogUrl_;
   }
 
@@ -63,16 +63,16 @@ class Config : public AbstractConfig {
     activitiesLogUrl_ = url;
   }
 
-  bool activitiesLogToMemory() const {
+  [[nodiscard]] bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
   }
 
-  bool eventProfilerEnabled() const {
+  [[nodiscard]] bool eventProfilerEnabled() const {
     return !eventNames_.empty() || !metricNames_.empty();
   }
 
   // Is profiling enabled for the given device?
-  bool eventProfilerEnabledForDevice(uint32_t dev) const {
+  [[nodiscard]] bool eventProfilerEnabledForDevice(uint32_t dev) const {
     return 0 != (eventProfilerDeviceMask_ & (1 << dev));
   }
 
@@ -80,7 +80,7 @@ class Config : public AbstractConfig {
   // This controls how often counters are read - if all counters cannot
   // be collected simultaneously then multiple samples are needed to
   // collect all requested counters - see multiplex period.
-  std::chrono::milliseconds samplePeriod() const {
+  [[nodiscard]] std::chrono::milliseconds samplePeriod() const {
     return samplePeriod_;
   }
 
@@ -92,7 +92,7 @@ class Config : public AbstractConfig {
   // counters will be multiplexed at this frequency.
   // Multiplexing can have a large performance impact if done frequently.
   // To avoid a perf impact, keep this at 1s or above.
-  std::chrono::milliseconds multiplexPeriod() const {
+  [[nodiscard]] std::chrono::milliseconds multiplexPeriod() const {
     return multiplexPeriod_;
   }
 
@@ -102,7 +102,7 @@ class Config : public AbstractConfig {
 
   // Report counters at this frequency. Note that several samples can
   // be reported each time, see samplesPerReport.
-  std::chrono::milliseconds reportPeriod() const {
+  [[nodiscard]] std::chrono::milliseconds reportPeriod() const {
     return reportPeriod_;
   }
 
@@ -111,7 +111,7 @@ class Config : public AbstractConfig {
   // Number of samples dispatched each report period.
   // Must be in the range [1, report period / sample period].
   // In other words, aggregation is supported but not interpolation.
-  int samplesPerReport() const {
+  [[nodiscard]] int samplesPerReport() const {
     return samplesPerReport_;
   }
 
@@ -120,7 +120,7 @@ class Config : public AbstractConfig {
   }
 
   // The names of events to collect
-  const std::set<std::string>& eventNames() const {
+  [[nodiscard]] const std::set<std::string>& eventNames() const {
     return eventNames_;
   }
 
@@ -130,7 +130,7 @@ class Config : public AbstractConfig {
   }
 
   // The names of metrics to collect
-  const std::set<std::string>& metricNames() const {
+  [[nodiscard]] const std::set<std::string>& metricNames() const {
     return metricNames_;
   }
 
@@ -139,12 +139,12 @@ class Config : public AbstractConfig {
     metricNames_.insert(names.begin(), names.end());
   }
 
-  const std::vector<int>& percentiles() const {
+  [[nodiscard]] const std::vector<int>& percentiles() const {
     return eventReportPercentiles_;
   }
 
   // Profile for this long, then revert to base config
-  std::chrono::seconds eventProfilerOnDemandDuration() const {
+  [[nodiscard]] std::chrono::seconds eventProfilerOnDemandDuration() const {
     return eventProfilerOnDemandDuration_;
   }
 
@@ -158,7 +158,7 @@ class Config : public AbstractConfig {
   // per GPU.
   // NOTE: Communication with a daemon is needed for this feature.
   // Library must be built with an active DaemonConfigLoader.
-  int maxEventProfilersPerGpu() const {
+  [[nodiscard]] int maxEventProfilersPerGpu() const {
     return eventProfilerMaxInstancesPerGpu_;
   }
 
@@ -166,17 +166,18 @@ class Config : public AbstractConfig {
   // Monitor profiling threads and report when a thread is not responding
   // for a given number of seconds.
   // A period of 0 means disable.
-  std::chrono::seconds eventProfilerHeartbeatMonitorPeriod() const {
+  [[nodiscard]] std::chrono::seconds eventProfilerHeartbeatMonitorPeriod()
+      const {
     return eventProfilerHeartbeatMonitorPeriod_;
   }
 
   // The types of activities selected in the configuration file
-  const std::set<ActivityType>& selectedActivityTypes() const {
+  [[nodiscard]] const std::set<ActivityType>& selectedActivityTypes() const {
     return selectedActivityTypes_;
   }
 
   // Set the types of activities to be traced
-  bool perThreadBufferEnabled() const {
+  [[nodiscard]] bool perThreadBufferEnabled() const {
     return perThreadBufferEnabled_;
   }
 
@@ -184,50 +185,50 @@ class Config : public AbstractConfig {
     selectedActivityTypes_ = types;
   }
 
-  bool isReportInputShapesEnabled() const {
+  [[nodiscard]] bool isReportInputShapesEnabled() const {
     return enableReportInputShapes_;
   }
 
-  bool isProfileMemoryEnabled() const {
+  [[nodiscard]] bool isProfileMemoryEnabled() const {
     return enableProfileMemory_;
   }
 
-  bool isWithStackEnabled() const {
+  [[nodiscard]] bool isWithStackEnabled() const {
     return enableWithStack_;
   }
 
-  bool isWithFlopsEnabled() const {
+  [[nodiscard]] bool isWithFlopsEnabled() const {
     return enableWithFlops_;
   }
 
-  bool isWithModulesEnabled() const {
+  [[nodiscard]] bool isWithModulesEnabled() const {
     return enableWithModules_;
   }
 
   // Trace for this long
-  std::chrono::milliseconds activitiesDuration() const {
+  [[nodiscard]] std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
   }
 
   // Trace for this many iterations, determined by external API
-  int activitiesRunIterations() const {
+  [[nodiscard]] int activitiesRunIterations() const {
     return activitiesRunIterations_;
   }
 
-  int activitiesMaxGpuBufferSize() const {
+  [[nodiscard]] int activitiesMaxGpuBufferSize() const {
     return activitiesMaxGpuBufferSize_;
   }
 
-  std::chrono::seconds activitiesWarmupDuration() const {
+  [[nodiscard]] std::chrono::seconds activitiesWarmupDuration() const {
     return activitiesWarmupDuration_;
   }
 
-  int activitiesWarmupIterations() const {
+  [[nodiscard]] int activitiesWarmupIterations() const {
     return activitiesWarmupIterations_;
   }
 
   // Show CUDA Synchronization Stream Wait Events
-  bool activitiesCudaSyncWaitEvents() const {
+  [[nodiscard]] bool activitiesCudaSyncWaitEvents() const {
     return activitiesCudaSyncWaitEvents_;
   }
 
@@ -236,8 +237,8 @@ class Config : public AbstractConfig {
   }
 
   // Timestamp at which the profiling to start, requested by the user.
-  const std::chrono::time_point<std::chrono::system_clock> requestTimestamp()
-      const {
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
+  requestTimestamp() const {
     if (profileStartTime_.time_since_epoch().count()) {
       return profileStartTime_;
     }
@@ -250,16 +251,16 @@ class Config : public AbstractConfig {
     return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
   }
 
-  bool hasProfileStartTime() const {
+  [[nodiscard]] bool hasProfileStartTime() const {
     return requestTimestamp_.time_since_epoch().count() > 0 ||
         profileStartTime_.time_since_epoch().count() > 0;
   }
 
-  int profileStartIteration() const {
+  [[nodiscard]] int profileStartIteration() const {
     return profileStartIteration_;
   }
 
-  bool hasProfileStartIteration() const {
+  [[nodiscard]] bool hasProfileStartIteration() const {
     return profileStartIteration_ >= 0 && activitiesRunIterations_ > 0;
   }
 
@@ -267,42 +268,42 @@ class Config : public AbstractConfig {
     profileStartIteration_ = iter;
   }
 
-  int profileStartIterationRoundUp() const {
+  [[nodiscard]] int profileStartIterationRoundUp() const {
     return profileStartIterationRoundUp_;
   }
 
   // calculate the start iteration accounting for warmup
-  int startIterationIncludingWarmup() const {
+  [[nodiscard]] int startIterationIncludingWarmup() const {
     if (!hasProfileStartIteration()) {
       return -1;
     }
     return profileStartIteration_ - activitiesWarmupIterations_;
   }
 
-  const std::chrono::seconds maxRequestAge() const;
+  [[nodiscard]] std::chrono::seconds maxRequestAge() const;
 
   // All VLOG* macros will log if the verbose log level is >=
   // the verbosity specified for the verbose log message.
   // Default value is -1, so messages with log level 0 will log by default.
-  int verboseLogLevel() const {
+  [[nodiscard]] int verboseLogLevel() const {
     return verboseLogLevel_;
   }
 
   // Modules for which verbose logging is enabled.
   // If empty, logging is enabled for all modules.
-  const std::vector<std::string>& verboseLogModules() const {
+  [[nodiscard]] const std::vector<std::string>& verboseLogModules() const {
     return verboseLogModules_;
   }
 
-  bool sigUsr2Enabled() const {
+  [[nodiscard]] bool sigUsr2Enabled() const {
     return enableSigUsr2_;
   }
 
-  bool ipcFabricEnabled() const {
+  [[nodiscard]] bool ipcFabricEnabled() const {
     return enableIpcFabric_;
   }
 
-  std::chrono::seconds onDemandConfigUpdateIntervalSecs() const {
+  [[nodiscard]] std::chrono::seconds onDemandConfigUpdateIntervalSecs() const {
     return onDemandConfigUpdateIntervalSecs_;
   }
 
@@ -313,17 +314,17 @@ class Config : public AbstractConfig {
     return duration - (duration % alignment);
   }
 
-  std::chrono::time_point<std::chrono::system_clock>
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandStartTime() const {
     return eventProfilerOnDemandTimestamp_;
   }
 
-  std::chrono::time_point<std::chrono::system_clock>
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
   eventProfilerOnDemandEndTime() const {
     return eventProfilerOnDemandTimestamp_ + eventProfilerOnDemandDuration_;
   }
 
-  std::chrono::time_point<std::chrono::system_clock>
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
   activityProfilerRequestReceivedTime() const {
     return activitiesOnDemandTimestamp_;
   }
@@ -331,7 +332,7 @@ class Config : public AbstractConfig {
   static constexpr std::chrono::milliseconds kControllerIntervalMsecs{1000};
 
   // Users may request and set trace id and group trace id.
-  const std::string& requestTraceID() const {
+  [[nodiscard]] const std::string& requestTraceID() const {
     return requestTraceID_;
   }
 
@@ -339,7 +340,7 @@ class Config : public AbstractConfig {
     requestTraceID_ = tid;
   }
 
-  const std::string& requestGroupTraceID() const {
+  [[nodiscard]] const std::string& requestGroupTraceID() const {
     return requestGroupTraceID_;
   }
 
@@ -347,19 +348,19 @@ class Config : public AbstractConfig {
     requestGroupTraceID_ = gtid;
   }
 
-  size_t cuptiDeviceBufferSize() const {
+  [[nodiscard]] size_t cuptiDeviceBufferSize() const {
     return cuptiDeviceBufferSize_;
   }
 
-  size_t cuptiDeviceBufferPoolLimit() const {
+  [[nodiscard]] size_t cuptiDeviceBufferPoolLimit() const {
     return cuptiDeviceBufferPoolLimit_;
   }
 
-  bool memoryProfilerEnabled() const {
+  [[nodiscard]] bool memoryProfilerEnabled() const {
     return memoryProfilerEnabled_;
   }
 
-  int profileMemoryDuration() const {
+  [[nodiscard]] int profileMemoryDuration() const {
     return profileMemoryDuration_;
   }
   void updateActivityProfilerRequestReceivedTime();
@@ -383,7 +384,7 @@ class Config : public AbstractConfig {
   // correct destruction order can be ensured.
   static std::shared_ptr<void> getStaticObjectsLifetimeHandle();
 
-  bool getTSCTimestampFlag() const {
+  [[nodiscard]] bool getTSCTimestampFlag() const {
     return useTSCTimestamp_;
   }
 
@@ -391,11 +392,11 @@ class Config : public AbstractConfig {
     useTSCTimestamp_ = flag;
   }
 
-  const std::string& getCustomConfig() const {
+  [[nodiscard]] const std::string& getCustomConfig() const {
     return customConfig_;
   }
 
-  uint32_t maxEvents() const {
+  [[nodiscard]] uint32_t maxEvents() const {
     return maxEvents_;
   }
 
@@ -540,5 +541,10 @@ class Config : public AbstractConfig {
 constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
 bool isDaemonEnvVarSet();
+
+// Returns a reference to the protobuf trace enabled flag.
+// This allows the flag to be set externally (e.g., from JustKnobs in FBConfig)
+// and read in other components (e.g., ChromeTraceLogger).
+bool& get_protobuf_trace_enabled();
 
 } // namespace libkineto

@@ -26,6 +26,7 @@ set(KINETO_LIBRARY_TYPE "default" CACHE STRING
   "Type of library (default, static or shared) to build")
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared static)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
+option(KINETO_BUILD_BENCHMARKS "Build kineto benchmarks" OFF)
 
 set(LIBKINETO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LIBKINETO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -79,81 +80,31 @@ else()
   set(LIBKINETO_NOXPUPTI ON)
 endif()
 
-# Detect ROCM Version
-if(NOT LIBKINETO_NOROCTRACER)
-  if(NOT ROCM_INCLUDE_DIRS)
-    set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
-  endif()
-
-  find_file(ROCM_VERSION_HEADER_PATH
-    NAMES rocm-core/rocm_version.h
-    NO_DEFAULT_PATH
-    PATHS ${ROCM_INCLUDE_DIRS}
-  )
-
-  if(EXISTS ${ROCM_VERSION_HEADER_PATH})
-    set(ROCM_HEADER_FILE ${ROCM_VERSION_HEADER_PATH})
-  endif()
-
-  # Read the ROCM headerfile into a variable
-  message(STATUS "Reading ROCM version from: ${ROCM_HEADER_FILE}")
-  file(READ "${ROCM_HEADER_FILE}" ROCM_HEADER_CONTENT)
-
-  string(REGEX MATCH "ROCM_VERSION_MAJOR[ ]+[0-9]+" TEMP1 ${ROCM_HEADER_CONTENT})
-  string(REPLACE "ROCM_VERSION_MAJOR" "" TEMP2 ${TEMP1})
-  string(STRIP ${TEMP2} ROCM_VERSION_DEV_MAJOR)
-  string(REGEX MATCH "ROCM_VERSION_MINOR[ ]+[0-9]+" TEMP1 ${ROCM_HEADER_CONTENT})
-  string(REPLACE "ROCM_VERSION_MINOR" "" TEMP2 ${TEMP1})
-  string(STRIP ${TEMP2} ROCM_VERSION_DEV_MINOR)
-  string(REGEX MATCH "ROCM_VERSION_PATCH[ ]+[0-9]+" TEMP1 ${ROCM_HEADER_CONTENT})
-  string(REPLACE "ROCM_VERSION_PATCH" "" TEMP2 ${TEMP1})
-  string(STRIP ${TEMP2} ROCM_VERSION_DEV_PATCH)
-
-  message(STATUS "ROCM major: ${ROCM_VERSION_DEV_MAJOR}")
-  message(STATUS "ROCM minor: ${ROCM_VERSION_DEV_MINOR}")
-  message(STATUS "ROCM patch: ${ROCM_VERSION_DEV_PATCH}")
-
-# Use rocprofiler-sdk for rocm version 6.4 forward
-  if ((${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 7) OR (${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 6 AND ${ROCM_VERSION_DEV_MINOR} GREATER_EQUAL 4))
-    set(USE_ROCPROFILER_SDK ON)
-  endif()
-  if (${USE_ROCPROFILER_SDK})
-    message(STATUS "Building with: rocprofiler-sdk")
-  else()
-    message(STATUS "Building with: libroctracer")
-  endif()
-endif()
-if(NOT DEFINED LIBKINETO_NOAIUPTI)
-  message(INFO " LIBKINETO_NOAIUPTI NOT DEFINED adding subdirectory(src/plugin/aiupti)")
+if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   add_subdirectory(src/plugin/aiupti)
+else()
+  set(LIBKINETO_NOAIUPTI ON)
 endif()
 
 # Define file lists
+# All backends are mutually exclusive - only one can be active at a time
 if(LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI AND LIBKINETO_NOAIUPTI)
   get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
-  message(STATUS " CUPTI unavailable or disabled - not building GPU profilers")
+  message(STATUS " No GPU backend available - building CPU-only profilers")
 else()
   if(NOT LIBKINETO_NOROCTRACER)
-    if (${USE_ROCPROFILER_SDK})
-      get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_roc_SRCS)
-      message(STATUS " Building with rocprofiler-sdk")
-    else()
-      get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_roc_SRCS)
-      add_compile_options(-DROCTRACER_FALLBACK)
-      message(STATUS " Building with roctracer")
-    endif()
+    get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
+    message(STATUS " Building with roctracer")
   elseif(NOT LIBKINETO_NOCUPTI)
-    get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_cuda_SRCS)
-  endif()
-  if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    get_filelist("get_libkineto_xpupti_srcs(with_api=False)" LIBKINETO_xpu_SRCS)
+    get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
+    message(STATUS " Building with cupti")
+  elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    get_filelist("get_libkineto_xpupti_srcs(with_api=False)" LIBKINETO_SRCS)
     message(STATUS " Building with xpupti")
+  elseif(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
+    get_filelist("get_libkineto_aiupti_srcs(with_api=False)" LIBKINETO_SRCS)
+    message(STATUS " Building with aiupti")
   endif()
-  if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
-    get_filelist("get_libkineto_aiupti_srcs(with_api=False)" LIBKINETO_aiu_SRCS)
-    message(INFO " Building with aiupti")
-  endif()
-  set(LIBKINETO_SRCS ${LIBKINETO_roc_SRCS} ${LIBKINETO_xpu_SRCS} ${LIBKINETO_cuda_SRCS} ${LIBKINETO_aiu_SRCS})
 endif()
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
 get_filelist("get_libkineto_api_srcs()" LIBKINETO_API_SRCS)
@@ -240,7 +191,7 @@ target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
 
 if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-  target_include_directories(kineto_base PUBLIC ${XPUPTI_INCLUDE_DIR})
+  target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
 endif()
 if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   target_include_directories(kineto_base PUBLIC ${AIU_INCLUDE_DIR})
@@ -277,31 +228,23 @@ target_include_directories(kineto PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>)
 
+# Link backend libraries - mutually exclusive (only one backend active)
 if(NOT LIBKINETO_NOROCTRACER)
-if (${USE_ROCPROFILER_SDK})
-  find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
+  find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
-else()
-  find_library(ROCPROF_LIBRARY NAMES libroctracer64.so HINTS
-    ${ROCM_SOURCE_DIR}/lib)
-endif()
-  target_link_libraries(kineto "${ROCPROF_LIBRARY}")
+  target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
-endif()
-
-if(NOT LIBKINETO_NOCUPTI)
+elseif(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart)
-endif()
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
-  target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
-endif()
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+  if(TARGET CUDA::nvperf_host)
+    target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
+  endif()
+elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_link_libraries(kineto "${XPU_xpupti_LIBRARY}")
-endif()
-if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
+elseif(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   target_link_libraries(kineto "${AIU_aiupti_LIBRARY}")
 endif()
 target_compile_definitions(kineto PUBLIC "${KINETO_DEFINITIONS}")
@@ -316,6 +259,13 @@ if(KINETO_BUILD_TESTS)
   endif()
   enable_testing()
   add_subdirectory(test)
+endif()
+
+if(KINETO_BUILD_BENCHMARKS)
+  add_subdirectory(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../benchmarks"
+    "${CMAKE_CURRENT_BINARY_DIR}/benchmarks"
+  )
 endif()
 
 install(TARGETS kineto

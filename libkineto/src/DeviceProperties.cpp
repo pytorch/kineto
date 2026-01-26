@@ -10,6 +10,7 @@
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <algorithm>
 #include <vector>
 
 #if defined(HAS_CUPTI)
@@ -38,7 +39,7 @@ namespace KINETO_NAMESPACE {
 #endif
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-static const std::vector<gpuDeviceProp> createDeviceProps() {
+static std::vector<gpuDeviceProp> createDeviceProps() {
   std::vector<gpuDeviceProp> props;
   int device_count;
   gpuError_t error_id = gpuGetDeviceCount(&device_count);
@@ -67,7 +68,7 @@ static const std::vector<gpuDeviceProp>& deviceProps() {
   return props;
 }
 
-static const std::string createDevicePropertiesJson(
+static std::string createDevicePropertiesJson(
     size_t id,
     const gpuDeviceProp& props) {
   std::string gpuSpecific;
@@ -108,7 +109,7 @@ static const std::string createDevicePropertiesJson(
       gpuSpecific);
 }
 
-static const std::string createDevicePropertiesJson() {
+static std::string createDevicePropertiesJson() {
   std::vector<std::string> jsonProps;
   const auto& props = deviceProps();
   for (size_t i = 0; i < props.size(); i++) {
@@ -200,9 +201,8 @@ float kernelOccupancy(
         blockSize,
         dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
-      if (occ_result.activeBlocksPerMultiprocessor < blocksPerSm) {
-        blocksPerSm = occ_result.activeBlocksPerMultiprocessor;
-      }
+      blocksPerSm = std::min<float>(
+          occ_result.activeBlocksPerMultiprocessor, blocksPerSm);
       occupancy = blocksPerSm * blockSize /
           (float)props[deviceId].maxThreadsPerMultiProcessor;
     } else {

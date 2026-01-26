@@ -18,11 +18,7 @@
 
 #include "CuptiActivityApi.h"
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-#include "RocprofActivityApi.h"
-#else
 #include "RoctracerActivityApi.h"
-#endif
 #endif
 
 #include "ThreadUtil.h"
@@ -71,13 +67,8 @@ ActivityProfilerController::ActivityProfilerController(
 #endif // !USE_GOOGLE_LOG
 
 #ifdef HAS_ROCTRACER
-#ifndef ROCTRACER_FALLBACK
-  profiler_ = std::make_unique<CuptiActivityProfiler>(
-      RocprofActivityApi::singleton(), cpuOnly);
-#else
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       RoctracerActivityApi::singleton(), cpuOnly);
-#endif
 #else
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityApi::singleton(), cpuOnly);

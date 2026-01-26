@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <time.h>
+#include <ctime>
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
@@ -406,7 +406,8 @@ TEST_F(EventProfilerTest, ConfigureOnDemand) {
   using namespace testing;
 
   // Test base + on-demand config, one event and one metric
-  Config cfg, on_demand_cfg;
+  Config cfg;
+  Config on_demand_cfg;
   bool parsed = cfg.parse(R"(
     EVENTS = active_cycles
     SAMPLE_PERIOD_MSECS=500
@@ -452,7 +453,9 @@ TEST_F(EventProfilerTest, ConfigureOnDemand) {
   EXPECT_CALL(*cuptiEvents_, enablePerInstance(eventGroups_[0])).Times(1);
   EXPECT_CALL(*cuptiEvents_, enablePerInstance(eventGroups_[1])).Times(1);
   EXPECT_CALL(*cuptiEvents_, enablePerInstance(eventGroups_[2])).Times(1);
-  std::vector<CUpti_EventID> ids_g1{3}, ids_g2{4}, ids_g3{5};
+  std::vector<CUpti_EventID> ids_g1{3};
+  std::vector<CUpti_EventID> ids_g2{4};
+  std::vector<CUpti_EventID> ids_g3{5};
   EXPECT_CALL(*cuptiEvents_, eventsInGroup(eventGroups_[0]))
       .Times(1)
       .WillOnce(Return(ids_g1));
@@ -477,7 +480,8 @@ TEST_F(EventProfilerTest, ReportSample) {
   using namespace testing;
 
   // Test base + on-demand config, one event and one metric
-  Config cfg, on_demand_cfg;
+  Config cfg;
+  Config on_demand_cfg;
   bool parsed = cfg.parse("EVENTS = active_cycles");
   EXPECT_TRUE(parsed);
 
@@ -512,7 +516,9 @@ TEST_F(EventProfilerTest, ReportSample) {
   EXPECT_CALL(*cuptiEvents_, instanceCount(_))
       .Times(3)
       .WillRepeatedly(Return(4));
-  std::vector<CUpti_EventID> ids_g1{3}, ids_g2{4}, ids_g3{5};
+  std::vector<CUpti_EventID> ids_g1{3};
+  std::vector<CUpti_EventID> ids_g2{4};
+  std::vector<CUpti_EventID> ids_g3{5};
   // These will be called by collectSample() as well, which is called twice
   // per group set
   EXPECT_CALL(*cuptiEvents_, eventsInGroup(eventGroups_[0]))

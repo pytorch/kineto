@@ -82,7 +82,7 @@ using getLinkedActivityCallback = std::function<const ITraceActivity*(int32_t)>;
  */
 class IActivityProfilerSession {
  public:
-  virtual ~IActivityProfilerSession() {}
+  virtual ~IActivityProfilerSession() = default;
 
   // start the trace collection synchronously
   virtual void start() = 0;
@@ -146,13 +146,14 @@ class IActivityProfilerSession {
  */
 class IActivityProfiler {
  public:
-  virtual ~IActivityProfiler() {}
+  virtual ~IActivityProfiler() = default;
 
   // name of profiler
-  virtual const std::string& name() const = 0;
+  [[nodiscard]] virtual const std::string& name() const = 0;
 
   // returns activity types this profiler supports
-  virtual const std::set<ActivityType>& availableActivities() const = 0;
+  [[nodiscard]] virtual const std::set<ActivityType>& availableActivities()
+      const = 0;
 
   // Calls prepare() on registered tracer providers passing in the relevant
   // activity types. Returns a profiler session handle

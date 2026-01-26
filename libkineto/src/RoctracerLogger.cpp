@@ -35,12 +35,6 @@ class Flush {
 };
 static Flush s_flush;
 
-uint32_t RoctracerApiIdList::mapName(const std::string& apiName) {
-  uint32_t cid = 0;
-  roctracer_op_code(ACTIVITY_DOMAIN_HIP_API, apiName.c_str(), &cid, nullptr);
-  return cid;
-}
-
 RoctracerLogger& RoctracerLogger::singleton() {
   static RoctracerLogger instance;
   return instance;
@@ -55,19 +49,17 @@ RoctracerLogger::~RoctracerLogger() {
 
 namespace {
 thread_local std::deque<uint64_t>
-    t_externalIds[RocLogger::CorrelationDomain::size];
+    t_externalIds[RoctracerLogger::CorrelationDomain::size];
 }
 
-void RoctracerLogger::pushCorrelationID(
-    uint64_t id,
-    RocLogger::CorrelationDomain type) {
+void RoctracerLogger::pushCorrelationID(uint64_t id, CorrelationDomain type) {
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
   t_externalIds[type].push_back(id);
 }
 
-void RoctracerLogger::popCorrelationID(RocLogger::CorrelationDomain type) {
+void RoctracerLogger::popCorrelationID(CorrelationDomain type) {
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
@@ -81,12 +73,12 @@ void RoctracerLogger::popCorrelationID(RocLogger::CorrelationDomain type) {
 
 void RoctracerLogger::clearLogs() {
   rows_.clear();
-  for (int i = 0; i < RocLogger::CorrelationDomain::size; ++i) {
+  for (int i = 0; i < CorrelationDomain::size; ++i) {
     externalCorrelations_[i].clear();
   }
 }
 
-void RoctracerLogger::insert_row_to_buffer(rocprofBase* row) {
+void RoctracerLogger::insert_row_to_buffer(roctracerBase* row) {
   RoctracerLogger* dis = &singleton();
   std::lock_guard<std::mutex> lock(dis->rowsMutex_);
   if (dis->rows_.size() >= dis->maxBufferSize_) {
@@ -127,7 +119,7 @@ void RoctracerLogger::api_callback(
         {
           s_flush.reportCorrelation(data->correlation_id);
           auto& args = data->args.hipLaunchKernel;
-          rocprofKernelRow* row = new rocprofKernelRow(
+          roctracerKernelRow* row = new roctracerKernelRow(
               data->correlation_id,
               domain,
               cid,
@@ -152,7 +144,7 @@ void RoctracerLogger::api_callback(
         case HIP_API_ID_hipExtModuleLaunchKernel: {
           s_flush.reportCorrelation(data->correlation_id);
           auto& args = data->args.hipModuleLaunchKernel;
-          rocprofKernelRow* row = new rocprofKernelRow(
+          roctracerKernelRow* row = new roctracerKernelRow(
               data->correlation_id,
               domain,
               cid,
@@ -177,7 +169,7 @@ void RoctracerLogger::api_callback(
 #if 0
           {
             auto &args = data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val;
-            rocprofKernelRow* row = new rocprofKernelRow(
+            roctracerKernelRow* row = new roctracerKernelRow(
               data->correlation_id,
               domain,
               cid,
@@ -201,7 +193,7 @@ void RoctracerLogger::api_callback(
 #endif
           break;
         case HIP_API_ID_hipMalloc: {
-          rocprofMallocRow* row = new rocprofMallocRow(
+          roctracerMallocRow* row = new roctracerMallocRow(
               data->correlation_id,
               domain,
               cid,
@@ -214,7 +206,7 @@ void RoctracerLogger::api_callback(
           insert_row_to_buffer(row);
         } break;
         case HIP_API_ID_hipFree: {
-          rocprofMallocRow* row = new rocprofMallocRow(
+          roctracerMallocRow* row = new roctracerMallocRow(
               data->correlation_id,
               domain,
               cid,
@@ -228,7 +220,7 @@ void RoctracerLogger::api_callback(
         } break;
         case HIP_API_ID_hipMemcpy: {
           auto& args = data->args.hipMemcpy;
-          rocprofCopyRow* row = new rocprofCopyRow(
+          roctracerCopyRow* row = new roctracerCopyRow(
               data->correlation_id,
               domain,
               cid,
@@ -247,7 +239,7 @@ void RoctracerLogger::api_callback(
         case HIP_API_ID_hipMemcpyAsync:
         case HIP_API_ID_hipMemcpyWithStream: {
           auto& args = data->args.hipMemcpyAsync;
-          rocprofCopyRow* row = new rocprofCopyRow(
+          roctracerCopyRow* row = new roctracerCopyRow(
               data->correlation_id,
               domain,
               cid,
@@ -263,7 +255,7 @@ void RoctracerLogger::api_callback(
           insert_row_to_buffer(row);
         } break;
         default: {
-          rocprofRow* row = new rocprofRow(
+          roctracerRow* row = new roctracerRow(
               data->correlation_id,
               domain,
               cid,
@@ -275,8 +267,7 @@ void RoctracerLogger::api_callback(
         } break;
       } // switch
       // External correlation
-      for (int it = RocLogger::CorrelationDomain::begin;
-           it < RocLogger::CorrelationDomain::end;
+      for (int it = CorrelationDomain::begin; it < CorrelationDomain::end;
            ++it) {
         if (t_externalIds[it].size() > 0) {
           std::lock_guard<std::mutex> lock(dis->externalCorrelationsMutex_);
@@ -302,7 +293,7 @@ void RoctracerLogger::activity_callback(
     if (record->correlation_id > s_flush.maxCompletedCorrelationId_) {
       s_flush.maxCompletedCorrelationId_ = record->correlation_id;
     }
-    rocprofAsyncRow* row = new rocprofAsyncRow(
+    roctracerAsyncRow* row = new roctracerAsyncRow(
         record->correlation_id,
         record->domain,
         record->kind,
@@ -331,8 +322,7 @@ void RoctracerLogger::setMaxEvents(uint32_t maxBufferSize) {
 void RoctracerLogger::startLogging() {
   if (!registered_) {
     roctracer_set_properties(
-        ACTIVITY_DOMAIN_HIP_API,
-        nullptr); // Magic encantation
+        ACTIVITY_DOMAIN_HIP_API, nullptr); // Magic encantation
 
     // Set some api calls to ignore
     loggedIds_.setInvertMode(true); // Omit the specified api
@@ -342,7 +332,6 @@ void RoctracerLogger::startLogging() {
     loggedIds_.add("__hipPushCallConfiguration");
     loggedIds_.add("__hipPopCallConfiguration");
     loggedIds_.add("hipCtxSetCurrent");
-    loggedIds_.add("hipEventRecord");
     loggedIds_.add("hipEventQuery");
     loggedIds_.add("hipGetDeviceProperties");
     loggedIds_.add("hipPeekAtLastError");
@@ -434,4 +423,31 @@ void RoctracerLogger::endTracing() {
     roctracer_close_pool_expl(hccPool_);
     hccPool_ = nullptr;
   }
+}
+
+ApiIdList::ApiIdList() : invert_(true) {}
+
+void ApiIdList::add(const std::string& apiName) {
+  uint32_t cid = 0;
+  if (roctracer_op_code(
+          ACTIVITY_DOMAIN_HIP_API, apiName.c_str(), &cid, nullptr) ==
+      ROCTRACER_STATUS_SUCCESS) {
+    filter_[cid] = 1;
+  }
+}
+void ApiIdList::remove(const std::string& apiName) {
+  uint32_t cid = 0;
+  if (roctracer_op_code(
+          ACTIVITY_DOMAIN_HIP_API, apiName.c_str(), &cid, nullptr) ==
+      ROCTRACER_STATUS_SUCCESS) {
+    filter_.erase(cid);
+  }
+}
+
+bool ApiIdList::loadUserPrefs() {
+  // placeholder
+  return false;
+}
+bool ApiIdList::contains(uint32_t apiId) {
+  return (filter_.find(apiId) != filter_.end()) ? !invert_ : invert_; // XOR
 }

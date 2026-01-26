@@ -10,8 +10,8 @@
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>
-#include <time.h>
 #include <chrono>
+#include <ctime>
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;

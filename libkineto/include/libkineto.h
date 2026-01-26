@@ -105,11 +105,11 @@ class LibkinetoApi {
     }
   }
 
-  bool isProfilerInitialized() const {
+  [[nodiscard]] bool isProfilerInitialized() const {
     return activityProfiler_ && activityProfiler_->isInitialized();
   }
 
-  bool isProfilerRegistered() const {
+  [[nodiscard]] bool isProfilerRegistered() const {
     return activityProfiler_ != nullptr;
   }
 
@@ -149,7 +149,7 @@ class LibkinetoApi {
   void initClientIfRegistered();
 
   ConfigLoader& configLoader_;
-  std::unique_ptr<ActivityProfilerInterface> activityProfiler_{};
+  std::unique_ptr<ActivityProfilerInterface> activityProfiler_;
   ClientInterface* client_{};
   int32_t clientRegisterThread_{0};
 

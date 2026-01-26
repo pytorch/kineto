@@ -222,7 +222,7 @@ const char* ConfigLoader::customConfigFileName() {
   return getenv(kConfigFileEnvVar);
 }
 
-const std::string ConfigLoader::getConfString() {
+std::string ConfigLoader::getConfString() {
   return readConfigFromConfigFile(configFileName(), false);
 }
 

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 
 #ifdef HAS_CUPTI

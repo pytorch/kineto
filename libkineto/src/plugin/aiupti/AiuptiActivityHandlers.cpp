@@ -214,37 +214,6 @@ void AiuptiActivityProfilerSession::handleRuntimeActivity(
   runtime_activity->log(*logger);
 }
 
-// Finds the first number in the string after an underscore or hyphen
-// and replaces it with "[N]". The replaced number is returned so that
-// it can be preservered in the fn_idx metadata field
-inline std::string extractInvocationNumber(std::string& str) {
-  size_t start = 0;
-  while (start < str.size() - 1) {
-    size_t sep_idx = str.find_first_of("_-", start);
-    // If no underscore or hyphen is found, return empty string
-    if (sep_idx == std::string::npos || sep_idx + 1 >= str.size())
-      return "";
-    size_t end = str.find_first_not_of("0123456789", sep_idx + 1);
-    // If all remaining characters are digits, replace them with "[N]"
-    if (end == std::string::npos) {
-      std::string num = str.substr(sep_idx + 1);
-      str.replace(sep_idx + 1, std::string::npos, "[N]");
-      return num;
-    }
-    // If the next character is not a digit, search for the next underscore or
-    // hyphen
-    if (end - sep_idx == 1) {
-      start = sep_idx + 1;
-      continue;
-    }
-    // Replace the found number following the underscore or hyphen with "[N]"
-    std::string num = str.substr(sep_idx + 1, end - sep_idx - 1);
-    str.replace(sep_idx + 1, end - sep_idx, "[N]");
-    return num;
-  }
-  return "";
-}
-
 void AiuptiActivityProfilerSession::handleKernelActivity(
     const AIUpti_ActivityCompute* activity,
     ActivityLogger* logger) {
@@ -253,10 +222,8 @@ void AiuptiActivityProfilerSession::handleKernelActivity(
   cpuCorrelationMap_[activity->correlation_id] = 0; // fake add correlation
   const ITraceActivity* linked =
       linkedActivity(activity->correlation_id, cpuCorrelationMap_);
-  std::string name = activity->name;
-  std::string num = extractInvocationNumber(name);
   traceBuffer_.emplace_activity(
-      traceBuffer_.span, ActivityType::CONCURRENT_KERNEL, name);
+      traceBuffer_.span, ActivityType::CONCURRENT_KERNEL, activity->name);
   auto& kernel_activity = traceBuffer_.activities.back();
   kernel_activity->startTime = activity->start;
   kernel_activity->endTime = activity->end;
@@ -275,8 +242,6 @@ void AiuptiActivityProfilerSession::handleKernelActivity(
   kernel_activity->addMetadataQuoted(
       "context", std::to_string(activity->context_id));
   kernel_activity->addMetadata("correlation", activity->correlation_id);
-  if (num != "")
-    kernel_activity->addMetadata("fn_idx", num);
 
   recordStream(kernel_activity->device, kernel_activity->resource);
 

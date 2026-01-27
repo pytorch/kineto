@@ -8,7 +8,7 @@ on:
 
 # This is the docker image that pytorch/pytorch uses for ROCM CI.
 env:
-  DOCKER_IMAGE: "ghcr.io/pytorch/ci-image:pytorch-linux-noble-rocm-nightly-py3"
+  DOCKER_IMAGE: "ghcr.io/pytorch/ci-image:pytorch-linux-noble-rocm-n-py3"
 
 jobs:
   pr-test:

@@ -1,4 +1,4 @@
-name: Linux  build and test
+name: Linux ROCm build and test
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 # This is the docker image that pytorch/pytorch uses for ROCM CI.
 env:
-  DOCKER_IMAGE: "ghcr.io/pytorch/manylinux2_28-builder:rocm7.0"
+  DOCKER_IMAGE: "ghcr.io/pytorch/ci-image:pytorch-linux-noble-rocm-nightly-py3"
 
 jobs:
   pr-test:

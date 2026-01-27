@@ -44,7 +44,7 @@
 #include "RoctracerLogger.h"
 #endif
 #ifdef HAS_XPUPTI
-#include "plugin/xpupti/XpuptiActivityProfiler.h"
+#include "plugin/xpupti/XpuptiActivityProfilerSession.h"
 #endif
 #include "ActivityBuffers.h"
 #include "output_base.h"

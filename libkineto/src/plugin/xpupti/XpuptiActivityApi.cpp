@@ -8,20 +8,13 @@
 
 #include "XpuptiActivityApi.h"
 
-#include <algorithm>
-#include <chrono>
-#include <vector>
+#include <stdexcept>
 
 namespace KINETO_NAMESPACE {
 
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
-XpuptiActivityApi& XpuptiActivityApi::singleton() {
-  static XpuptiActivityApi instance;
-  return instance;
-}
-
-void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
+void XpuptiActivityApiV1::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
@@ -38,7 +31,7 @@ void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #endif
 }
 
-void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
+void XpuptiActivityApiV1::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
@@ -68,13 +61,13 @@ static bool nextActivityRecord(
   return record != nullptr;
 }
 
-void XpuptiActivityApi::bufferRequestedTrampoline(
+void XpuptiActivityApiV1::bufferRequestedTrampoline(
     uint8_t** buffer,
     size_t* size) {
   singleton().bufferRequested(buffer, size);
 }
 
-void XpuptiActivityApi::bufferRequested(uint8_t** buffer, size_t* size) {
+void XpuptiActivityApiV1::bufferRequested(uint8_t** buffer, size_t* size) {
   std::lock_guard<std::mutex> guard(mutex_);
 
   auto buf = std::make_unique<XpuptiActivityBuffer>(kBufSize);
@@ -84,7 +77,8 @@ void XpuptiActivityApi::bufferRequested(uint8_t** buffer, size_t* size) {
   allocatedGpuTraceBuffers_[*buffer] = std::move(buf);
 }
 
-std::unique_ptr<XpuptiActivityBufferMap> XpuptiActivityApi::activityBuffers() {
+std::unique_ptr<XpuptiActivityBufferMap>
+XpuptiActivityApiV1::activityBuffers() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
@@ -102,7 +96,7 @@ std::unique_ptr<XpuptiActivityBufferMap> XpuptiActivityApi::activityBuffers() {
 }
 
 #ifdef HAS_XPUPTI
-int XpuptiActivityApi::processActivitiesForBuffer(
+int XpuptiActivityApiV1::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
     std::function<void(const pti_view_record_base*)> handler) {
@@ -118,7 +112,7 @@ int XpuptiActivityApi::processActivitiesForBuffer(
 }
 #endif
 
-const std::pair<int, int> XpuptiActivityApi::processActivities(
+const std::pair<int, int> XpuptiActivityApiV1::processActivities(
     XpuptiActivityBufferMap& buffers,
     std::function<void(const pti_view_record_base*)> handler) {
   std::pair<int, int> res{0, 0};
@@ -132,13 +126,13 @@ const std::pair<int, int> XpuptiActivityApi::processActivities(
   return res;
 }
 
-void XpuptiActivityApi::flushActivities() {
+void XpuptiActivityApiV1::flushActivities() {
 #ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiFlushAllViews());
 #endif
 }
 
-void XpuptiActivityApi::clearActivities() {
+void XpuptiActivityApiV1::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
@@ -153,14 +147,14 @@ void XpuptiActivityApi::clearActivities() {
 }
 
 #ifdef HAS_XPUPTI
-void XpuptiActivityApi::bufferCompletedTrampoline(
+void XpuptiActivityApiV1::bufferCompletedTrampoline(
     uint8_t* buffer,
     size_t size,
     size_t validSize) {
   singleton().bufferCompleted(buffer, size, validSize);
 }
 
-void XpuptiActivityApi::bufferCompleted(
+void XpuptiActivityApiV1::bufferCompleted(
     uint8_t* buffer,
     size_t size,
     size_t validSize) {
@@ -202,8 +196,9 @@ static void enableSpecifcRuntimeAPIsTracing() {
 }
 #endif
 
-void XpuptiActivityApi::enableXpuptiActivities(
-    const std::set<ActivityType>& selected_activities) {
+void XpuptiActivityApiV1::enableXpuptiActivities(
+    const std::set<ActivityType>& selected_activities,
+    bool scopeProfilerActivityAccepted) {
 #ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
@@ -241,6 +236,14 @@ void XpuptiActivityApi::enableXpuptiActivities(
 #endif
         break;
 
+      case ActivityType::XPU_SCOPE_PROFILER:
+        if (!scopeProfilerActivityAccepted) {
+          throw std::runtime_error(
+              "Intel® PTI version required to use scope profiler is at least 0.15 "
+              "(available with Intel® oneAPI in version at least 2025.3.1).");
+        }
+        break;
+
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
@@ -249,7 +252,7 @@ void XpuptiActivityApi::enableXpuptiActivities(
 #endif
 }
 
-void XpuptiActivityApi::disablePtiActivities(
+void XpuptiActivityApiV1::disablePtiActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_XPUPTI
   for (const auto& activity : selected_activities) {

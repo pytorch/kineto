@@ -86,6 +86,7 @@ class XpuptiActivityProfilerSession
 
   template <class pti_view_memory_record_type>
   void handleRuntimeKernelMemcpyMemsetActivities(
+      ActivityType activityType,
       const pti_view_memory_record_type* activity,
       ActivityLogger& logger);
 

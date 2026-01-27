@@ -41,6 +41,7 @@ enum class ActivityType {
   CUDA_PROFILER_RANGE, // CUPTI Profiler range for performance metrics
   HPU_OP, // HPU host side runtime event
   XPU_RUNTIME, // host side xpu runtime events
+  XPU_DRIVER, // host side xpu driver events
   COLLECTIVE_COMM, // collective communication
 
   // PRIVATEUSE1 Activity types are used for custom backends.

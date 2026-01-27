@@ -297,7 +297,7 @@ void CuptiActivityProfiler::processTraceInternal(ActivityLogger& logger) {
 
   // Pass metadata within the trace to the logger observer.
   for (const auto& pair : metadata_) {
-    if (getLoggerMedataAllowList().contains(pair.first)) {
+    if (getLoggerMedataAllowList().count(pair.first) > 0) {
       LOGGER_OBSERVER_ADD_METADATA(pair.first, pair.second);
     }
   }
@@ -433,7 +433,7 @@ void CuptiActivityProfiler::processCpuTrace(
   TraceSpan& cpu_span = span_pair.first;
   for (auto const& act : cpuTrace.activities) {
     VLOG(2) << act->correlationId() << ": OP " << act->activityName;
-    if (derivedConfig_->profileActivityTypes().contains(act->type())) {
+    if (derivedConfig_->profileActivityTypes().count(act->type())) {
       static_assert(
           std::is_same_v<
               std::remove_reference_t<decltype(act)>,
@@ -866,7 +866,7 @@ inline void CuptiActivityProfiler::handleGpuActivity(
   act.log(*logger);
   setGpuActivityPresent(true);
   updateGpuNetSpan(act);
-  if (derivedConfig_->profileActivityTypes().contains(
+  if (derivedConfig_->profileActivityTypes().count(
           ActivityType::GPU_USER_ANNOTATION)) {
     const auto& it = userCorrelationMap_.find(act.correlationId());
     if (it != userCorrelationMap_.end()) {
@@ -1157,8 +1157,8 @@ void CuptiActivityProfiler::configure(
   if (!profilers_.empty()) {
     configureChildProfilers();
   }
-  rangeProfilingActive_ = config_->selectedActivityTypes().contains(
-      ActivityType::CUDA_PROFILER_RANGE);
+  rangeProfilingActive_ = config_->selectedActivityTypes().count(
+                              ActivityType::CUDA_PROFILER_RANGE) > 0;
 
   if (libkineto::api().client()) {
     libkineto::api().client()->prepare(

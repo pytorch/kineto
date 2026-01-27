@@ -12,7 +12,7 @@ env:
 
 jobs:
   pr-test:
-    runs-on: linux.rocm.gpu.gfx942
+    runs-on: linux.rocm.gpu.gfx942.1
     timeout-minutes: 180 # 3 hours
     steps:
       - name: Checkout Kineto

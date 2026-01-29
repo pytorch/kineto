@@ -6,6 +6,7 @@ on:
       - ciflow/rocm/*
     branches:
       - main
+  pull_request:
 
 env:
   DOCKER_IMAGE: "pytorch/manylinux2_28-builder:rocm7.2"

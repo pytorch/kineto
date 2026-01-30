@@ -13,8 +13,10 @@ Checks: >
   -google-readability-todo,
   -google-runtime-references,
   misc-*,
+  -misc-const-correctness
   -misc-non-private-member-variables-in-classes,
   -misc-no-recursion,
+  -misc-include-cleaner
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-avoid-c-arrays,
@@ -37,9 +39,9 @@ CheckOptions:
   - key: readability-identifier-naming.StructCase
     value: CamelCase
   - key: readability-identifier-naming.FunctionCase
-    value: camelBack
+    value: aNy_CasE
   - key: readability-identifier-naming.VariableCase
-    value: camelBack
+    value: aNy_CasE
   - key: readability-identifier-naming.GlobalConstantCase
     value: CamelCase
   - key: readability-identifier-naming.GlobalConstantPrefix
@@ -49,5 +51,5 @@ CheckOptions:
   - key: readability-identifier-naming.StaticConstantPrefix
     value: k
   - key: readability-identifier-naming.ParameterCase
-    value: camelBack
+    value: aNy_CasE
 ...

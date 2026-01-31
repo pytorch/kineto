@@ -93,6 +93,8 @@ constexpr char kProfileProfileMemory[] = "PROFILE_PROFILE_MEMORY";
 constexpr char kProfileWithStack[] = "PROFILE_WITH_STACK";
 constexpr char kProfileWithFlops[] = "PROFILE_WITH_FLOPS";
 constexpr char kProfileWithModules[] = "PROFILE_WITH_MODULES";
+constexpr char kProfileCaptureOverloadNames[] =
+    "PROFILE_CAPTURE_OVERLOAD_NAMES";
 
 constexpr char kActivitiesWarmupIterationsKey[] =
     "ACTIVITIES_WARMUP_ITERATIONS";
@@ -466,6 +468,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     enableWithFlops_ = toBool(val);
   } else if (!name.compare(kProfileWithModules)) {
     enableWithModules_ = toBool(val);
+  } else if (!name.compare(kProfileCaptureOverloadNames)) {
+    enableCaptureOverloadNames_ = toBool(val);
   }
 
   // Common

@@ -205,6 +205,10 @@ class Config : public AbstractConfig {
     return enableWithModules_;
   }
 
+  [[nodiscard]] bool isCaptureOverloadNamesEnabled() const {
+    return enableCaptureOverloadNames_;
+  }
+
   // Trace for this long
   [[nodiscard]] std::chrono::milliseconds activitiesDuration() const {
     return activitiesDuration_;
@@ -480,6 +484,7 @@ class Config : public AbstractConfig {
   bool enableWithStack_{false};
   bool enableWithFlops_{false};
   bool enableWithModules_{false};
+  bool enableCaptureOverloadNames_{false};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;

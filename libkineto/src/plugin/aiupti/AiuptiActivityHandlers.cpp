@@ -172,8 +172,12 @@ void AiuptiActivityProfilerSession::handleRuntimeActivity(
   runtime_activity->device = activity->process_id;
   runtime_activity->resource = systemThreadId();
   runtime_activity->threadId = threadId();
-  // TODO: verify the flow logic
-  runtime_activity->flow.id = activity->correlation_id;
+  // only enable outgoing flow for launch control block runtime activities
+  if (activity->cbid == AIUPTI_RUNTIME_TRACE_CBID_LAUNCH_CB_CMPT) {
+    runtime_activity->flow.id = activity->correlation_id;
+  } else {
+    runtime_activity->flow.id = 0;
+  }
   runtime_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
   runtime_activity->flow.start = bool(
       std::find(
@@ -345,7 +349,7 @@ void AiuptiActivityProfilerSession::handleMemcpyActivity(
   memcpy_activity->device = activity->device_id;
   memcpy_activity->resource = getResourceId(activity);
   memcpy_activity->threadId = activity->stream_id;
-  memcpy_activity->flow.id = activity->correlation_id;
+  memcpy_activity->flow.id = 0;
   memcpy_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
   memcpy_activity->flow.start = 0;
   memcpy_activity->linked = linked;
@@ -417,7 +421,7 @@ void AiuptiActivityProfilerSession::handleMemoryActivity(
     mem_activity->device = activity->device_id;
     mem_activity->resource = getResourceId(activity);
     mem_activity->threadId = activity->stream_id;
-    mem_activity->flow.id = activity->correlation_id;
+    mem_activity->flow.id = 0;
     mem_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
     mem_activity->flow.start = 0;
     mem_activity->linked = linked;
@@ -499,7 +503,7 @@ void AiuptiActivityProfilerSession::handleMemsetActivity(
   // of order This prevents us from using getResourceId which handles overlap
   memset_activity->resource = getBaseResourceId(activity);
   memset_activity->threadId = activity->stream_id;
-  memset_activity->flow.id = activity->correlation_id;
+  memset_activity->flow.id = 0;
   memset_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
   memset_activity->flow.start = 0;
   memset_activity->linked = linked;

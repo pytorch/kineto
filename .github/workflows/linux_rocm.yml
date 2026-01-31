@@ -106,6 +106,10 @@ jobs:
           docker exec -t -w "/pytorch" "${container_name}" bash -c "
             set -eux
             pip install -r requirements.txt
+
+            # Hipify PyTorch source code for ROCm build
+            python tools/amd_build/build_amd.py
+
             export USE_ROCM=1
             export BUILD_TEST=1
             python setup.py develop

@@ -134,7 +134,7 @@ jobs:
             #
             # TODO: Investigate ROCm memory leak on CI integration tests:
             #       https://github.com/pytorch/kineto/issues/1241
-            #       Test deselected below: test/profiler/test_profiler.py::TestProfilerCUDA::test_test_mem_leak
+            #       Test deselected below: test/profiler/test_profiler.py::TestProfilerCUDA::test_mem_leak
             #
             # TODO: Investigate ROCm failure on CI: test_disable_external_correlation
             #       https://github.com/pytorch/kineto/issues/1242
@@ -153,7 +153,7 @@ jobs:
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_profiler_cuda_sync_events \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
-              --deselect=test/profiler/test_profiler.py::TestProfilerCUDA::test_test_mem_leak \
+              --deselect=test/profiler/test_profiler.py::TestProfilerCUDA::test_mem_leak \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
               --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args

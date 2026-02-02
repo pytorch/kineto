@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "include/libkineto.h"
 #include "include/output_base.h"
 
 namespace KN = KINETO_NAMESPACE;
@@ -21,5 +20,5 @@ RunProfilerTest(
     const std::set<KN::ActivityType>& activities,
     const KN::Config& cfg,
     unsigned repeatCount,
-    const std::vector<std::string>& expectedActivities,
-    const std::vector<std::string>& expectedTypes);
+    std::vector<std::string_view>&& expectedActivities,
+    std::vector<std::string_view>&& expectedTypes);

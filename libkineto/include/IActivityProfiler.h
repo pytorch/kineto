@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "Config.h"
@@ -45,12 +46,11 @@ enum class TraceStatus {
  *   processes and gpu rows in the trace viewer.
  */
 struct DeviceInfo {
-  DeviceInfo(
-      int64_t id,
-      int64_t sortIndex,
-      const std::string& name,
-      const std::string& label)
-      : id(id), sortIndex(sortIndex), name(name), label(label) {}
+  DeviceInfo(int64_t id, int64_t sortIndex, std::string name, std::string label)
+      : id(id),
+        sortIndex(sortIndex),
+        name(std::move(name)),
+        label(std::move(label)) {}
   int64_t id; // process id
   int64_t sortIndex; // position in trace view
   const std::string name; // process name
@@ -65,8 +65,11 @@ struct ResourceInfo {
       int64_t deviceId,
       int64_t id,
       int64_t sortIndex,
-      const std::string& name)
-      : id(id), sortIndex(sortIndex), deviceId(deviceId), name(name) {}
+      std::string name)
+      : id(id),
+        sortIndex(sortIndex),
+        deviceId(deviceId),
+        name(std::move(name)) {}
   int64_t id; // resource id
   int64_t sortIndex; // position in trace view
   int64_t deviceId; // id of device which owns this resource (specified in
@@ -149,10 +152,11 @@ class IActivityProfiler {
   virtual ~IActivityProfiler() = default;
 
   // name of profiler
-  virtual const std::string& name() const = 0;
+  [[nodiscard]] virtual const std::string& name() const = 0;
 
   // returns activity types this profiler supports
-  virtual const std::set<ActivityType>& availableActivities() const = 0;
+  [[nodiscard]] virtual const std::set<ActivityType>& availableActivities()
+      const = 0;
 
   // Calls prepare() on registered tracer providers passing in the relevant
   // activity types. Returns a profiler session handle

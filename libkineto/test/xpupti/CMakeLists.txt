@@ -49,4 +49,5 @@ function(make_test test_file)
   add_dependencies(${test_name} gtest_main)
 endfunction()
 
+make_test(XpuptiProfilerTest.cpp)
 make_test(XpuptiScopeProfilerTest.cpp)

@@ -135,6 +135,7 @@ inline std::string bandwidth(pti_view_memory_record_type* activity) {
 
 template <class pti_view_memory_record_type>
 void XpuptiActivityProfilerSessionV1::handleRuntimeKernelMemcpyMemsetActivities(
+    ActivityType activityType,
     const pti_view_memory_record_type* activity,
     ActivityLogger& logger) {
   constexpr bool handleRuntimeActivities =
@@ -153,22 +154,20 @@ void XpuptiActivityProfilerSessionV1::handleRuntimeKernelMemcpyMemsetActivities(
 
   if constexpr (handleRuntimeActivities) {
     traceBuffer_.emplace_activity(
-        traceBuffer_.span, ActivityType::XPU_RUNTIME, getApiName(activity));
+        traceBuffer_.span, activityType, getApiName(activity));
   } else if constexpr (handleKernelActivities) {
     traceBuffer_.emplace_activity(
-        traceBuffer_.span,
-        ActivityType::CONCURRENT_KERNEL,
-        std::string(activity->_name));
+        traceBuffer_.span, activityType, std::string(activity->_name));
   } else if constexpr (handleMemcpyActivities) {
     traceBuffer_.emplace_activity(
         traceBuffer_.span,
-        ActivityType::GPU_MEMCPY,
+        activityType,
         memcpyName(
             activity->_memcpy_type, activity->_mem_src, activity->_mem_dst));
   } else if constexpr (handleMemsetActivities) {
     traceBuffer_.emplace_activity(
         traceBuffer_.span,
-        ActivityType::GPU_MEMSET,
+        activityType,
         fmt::format(
             "Memset ({})", ptiViewMemoryTypeToString(activity->_mem_type)));
   }
@@ -280,19 +279,33 @@ void XpuptiActivityProfilerSessionV1::handlePtiActivity(
     case PTI_VIEW_SYCL_RUNTIME_CALLS:
 #endif
       handleRuntimeKernelMemcpyMemsetActivities(
-          reinterpret_cast<const pti_view_record_api_t*>(record), logger);
+          ActivityType::XPU_RUNTIME,
+          reinterpret_cast<const pti_view_record_api_t*>(record),
+          logger);
+      break;
+    case PTI_VIEW_DRIVER_API:
+      handleRuntimeKernelMemcpyMemsetActivities(
+          ActivityType::XPU_DRIVER,
+          reinterpret_cast<const pti_view_record_api_t*>(record),
+          logger);
       break;
     case PTI_VIEW_DEVICE_GPU_KERNEL:
       handleRuntimeKernelMemcpyMemsetActivities(
-          reinterpret_cast<const pti_view_record_kernel*>(record), logger);
+          ActivityType::CONCURRENT_KERNEL,
+          reinterpret_cast<const pti_view_record_kernel*>(record),
+          logger);
       break;
     case PTI_VIEW_DEVICE_GPU_MEM_COPY:
       handleRuntimeKernelMemcpyMemsetActivities(
-          reinterpret_cast<const pti_view_record_memory_copy*>(record), logger);
+          ActivityType::GPU_MEMCPY,
+          reinterpret_cast<const pti_view_record_memory_copy*>(record),
+          logger);
       break;
     case PTI_VIEW_DEVICE_GPU_MEM_FILL:
       handleRuntimeKernelMemcpyMemsetActivities(
-          reinterpret_cast<const pti_view_record_memory_fill*>(record), logger);
+          ActivityType::GPU_MEMSET,
+          reinterpret_cast<const pti_view_record_memory_fill*>(record),
+          logger);
       break;
     case PTI_VIEW_COLLECTION_OVERHEAD:
       handleOverheadActivity(

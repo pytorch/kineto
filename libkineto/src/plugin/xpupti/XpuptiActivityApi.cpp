@@ -236,6 +236,10 @@ void XpuptiActivityApiV1::enableXpuptiActivities(
 #endif
         break;
 
+      case ActivityType::XPU_DRIVER:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DRIVER_API));
+        break;
+
       case ActivityType::XPU_SCOPE_PROFILER:
         if (!scopeProfilerActivityAccepted) {
           throw std::runtime_error(
@@ -279,6 +283,10 @@ void XpuptiActivityApiV1::disablePtiActivities(
 #else
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_SYCL_RUNTIME_CALLS));
 #endif
+        break;
+
+      case ActivityType::XPU_DRIVER:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DRIVER_API));
         break;
 
       case ActivityType::OVERHEAD:

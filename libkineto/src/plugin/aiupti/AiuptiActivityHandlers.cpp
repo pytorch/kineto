@@ -25,7 +25,7 @@ void AiuptiActivityProfilerSession::checkTimestampOrder(
   }
 
   const ITraceActivity* act2 = it->second;
-  if (act2->type() == ActivityType::CUDA_RUNTIME)
+  if (act2->type() == ActivityType::PRIVATEUSE1_RUNTIME)
     std::swap(act1, act2);
   if (act1->timestamp() > act2->timestamp()) {
     std::string err_msg;
@@ -164,7 +164,7 @@ void AiuptiActivityProfilerSession::handleRuntimeActivity(
   auto cbIDName =
       runtimeCbidName((AIUpti_runtime_api_trace_cbid)activity->cbid);
   traceBuffer_.emplace_activity(
-      traceBuffer_.span, ActivityType::CUDA_RUNTIME, cbIDName);
+      traceBuffer_.span, ActivityType::PRIVATEUSE1_RUNTIME, cbIDName);
   auto& runtime_activity = traceBuffer_.activities.back();
   runtime_activity->startTime = activity->start;
   runtime_activity->endTime = activity->end;
@@ -214,37 +214,6 @@ void AiuptiActivityProfilerSession::handleRuntimeActivity(
   runtime_activity->log(*logger);
 }
 
-// Finds the first number in the string after an underscore or hyphen
-// and replaces it with "[N]". The replaced number is returned so that
-// it can be preservered in the fn_idx metadata field
-inline std::string extractInvocationNumber(std::string& str) {
-  size_t start = 0;
-  while (start < str.size() - 1) {
-    size_t sep_idx = str.find_first_of("_-", start);
-    // If no underscore or hyphen is found, return empty string
-    if (sep_idx == std::string::npos || sep_idx + 1 >= str.size())
-      return "";
-    size_t end = str.find_first_not_of("0123456789", sep_idx + 1);
-    // If all remaining characters are digits, replace them with "[N]"
-    if (end == std::string::npos) {
-      std::string num = str.substr(sep_idx + 1);
-      str.replace(sep_idx + 1, std::string::npos, "[N]");
-      return num;
-    }
-    // If the next character is not a digit, search for the next underscore or
-    // hyphen
-    if (end - sep_idx == 1) {
-      start = sep_idx + 1;
-      continue;
-    }
-    // Replace the found number following the underscore or hyphen with "[N]"
-    std::string num = str.substr(sep_idx + 1, end - sep_idx - 1);
-    str.replace(sep_idx + 1, end - sep_idx, "[N]");
-    return num;
-  }
-  return "";
-}
-
 void AiuptiActivityProfilerSession::handleKernelActivity(
     const AIUpti_ActivityCompute* activity,
     ActivityLogger* logger) {
@@ -253,10 +222,8 @@ void AiuptiActivityProfilerSession::handleKernelActivity(
   cpuCorrelationMap_[activity->correlation_id] = 0; // fake add correlation
   const ITraceActivity* linked =
       linkedActivity(activity->correlation_id, cpuCorrelationMap_);
-  std::string name = activity->name;
-  std::string num = extractInvocationNumber(name);
   traceBuffer_.emplace_activity(
-      traceBuffer_.span, ActivityType::CONCURRENT_KERNEL, name);
+      traceBuffer_.span, ActivityType::CONCURRENT_KERNEL, activity->name);
   auto& kernel_activity = traceBuffer_.activities.back();
   kernel_activity->startTime = activity->start;
   kernel_activity->endTime = activity->end;
@@ -275,8 +242,6 @@ void AiuptiActivityProfilerSession::handleKernelActivity(
   kernel_activity->addMetadataQuoted(
       "context", std::to_string(activity->context_id));
   kernel_activity->addMetadata("correlation", activity->correlation_id);
-  if (num != "")
-    kernel_activity->addMetadata("fn_idx", num);
 
   recordStream(kernel_activity->device, kernel_activity->resource);
 
@@ -321,7 +286,7 @@ inline uint32_t getBaseResourceId(const AIUpti_ActivityMemory* activity) {
 }
 
 inline uint32_t getBaseResourceId(const AIUpti_ActivityMemset* activity) {
-  return 500;
+  return 400; // put memset and memory release on the same PID
 }
 
 template <class memory_activity_type>
@@ -430,52 +395,59 @@ inline std::string memoryOperationName(uint8_t kind) {
 void AiuptiActivityProfilerSession::handleMemoryActivity(
     const AIUpti_ActivityMemory* activity,
     ActivityLogger* logger) {
-  traceBuffer_.span.opCount += 1;
-  traceBuffer_.gpuOpCount += 1;
-  const ITraceActivity* linked =
-      linkedActivity(activity->correlation_id, cpuCorrelationMap_);
-  traceBuffer_.emplace_activity(
-      traceBuffer_.span,
-      ActivityType::CUDA_DRIVER,
-      fmt::format(
-          "Memory ({})", memoryOperationName(activity->memory_operation_type)));
-  auto& mem_activity = traceBuffer_.activities.back();
-  mem_activity->startTime = activity->start;
-  mem_activity->endTime = activity->end;
-  mem_activity->id = activity->correlation_id;
-  mem_activity->device = activity->device_id;
-  mem_activity->resource = getResourceId(activity);
-  mem_activity->threadId = activity->stream_id;
-  mem_activity->flow.id = activity->correlation_id;
-  mem_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
-  mem_activity->flow.start = 0;
-  mem_activity->linked = linked;
-  mem_activity->addMetadataQuoted(
-      "call", memoryOperationName(activity->memory_operation_type));
-  mem_activity->addMetadata("device", mem_activity->deviceId());
-  mem_activity->addMetadataQuoted(
-      "context", std::to_string(activity->process_id));
-  mem_activity->addMetadata("correlation", activity->correlation_id);
-  mem_activity->addMetadata(
-      "memory operation id", activity->memory_operation_type);
-  mem_activity->addMetadata("bytes", activity->bytes);
-  mem_activity->addMetadata("memory bandwidth (GB/s)", bandwidth(activity));
+  // do not track memory allocation events because they are the same as memset
+  if (activity->memory_operation_type ==
+      (uint8_t)AIUPTI_ACTIVITY_MEMORY_OPERATION_TYPE_RELEASE) {
+    traceBuffer_.span.opCount += 1;
+    traceBuffer_.gpuOpCount += 1;
+    const ITraceActivity* linked =
+        linkedActivity(activity->correlation_id, cpuCorrelationMap_);
+    traceBuffer_.emplace_activity(
+        traceBuffer_.span,
+        ActivityType::PRIVATEUSE1_DRIVER,
+        fmt::format(
+            "Memory ({})",
+            memoryOperationName(activity->memory_operation_type)));
+    // memcpyName(
+    //     activity->memcpy_type, activity->mem_src, activity->mem_dst));
+    auto& mem_activity = traceBuffer_.activities.back();
+    mem_activity->startTime = activity->start;
+    mem_activity->endTime = activity->end;
+    mem_activity->id = activity->correlation_id;
+    mem_activity->device = activity->device_id;
+    mem_activity->resource = getResourceId(activity);
+    mem_activity->threadId = activity->stream_id;
+    mem_activity->flow.id = activity->correlation_id;
+    mem_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
+    mem_activity->flow.start = 0;
+    mem_activity->linked = linked;
+    mem_activity->addMetadataQuoted(
+        "call", memoryOperationName(activity->memory_operation_type));
+    mem_activity->addMetadata("device", mem_activity->deviceId());
+    mem_activity->addMetadataQuoted(
+        "context", std::to_string(activity->process_id));
+    mem_activity->addMetadata("correlation", activity->correlation_id);
+    mem_activity->addMetadata(
+        "memory operation id", activity->memory_operation_type);
+    mem_activity->addMetadata("bytes", activity->bytes);
+    mem_activity->addMetadata("memory bandwidth (GB/s)", bandwidth(activity));
 
-  if (mem_activity->resource == getBaseResourceId(activity)) {
-    recordMemoryStream(
-        mem_activity->device, mem_activity->resource, "Memory management:");
-  } else {
-    recordMemoryStream(mem_activity->device, mem_activity->resource, " ");
+    if (mem_activity->resource == getBaseResourceId(activity)) {
+      recordMemoryStream(
+          mem_activity->device, mem_activity->resource, "Memory management:");
+    } else {
+      recordMemoryStream(mem_activity->device, mem_activity->resource, " ");
+    }
+    // checkTimestampOrder(&*mem_activity);
+    // if (outOfRange(*mem_activity)) {
+    //   traceBuffer_.span.opCount -= 1;
+    //   traceBuffer_.gpuOpCount -= 1;
+    //   removeCorrelatedPtiActivities(&*mem_activity);
+    //   traceBuffer_.activities.pop_back();
+    //   return;
+    // }
+    mem_activity->log(*logger);
   }
-  // checkTimestampOrder(&*mem_activity);
-  // if (outOfRange(*mem_activity)) {
-  //   traceBuffer_.span.opCount -= 1;
-  //   traceBuffer_.gpuOpCount -= 1;
-  //   removeCorrelatedPtiActivities(&*mem_activity);
-  //   traceBuffer_.activities.pop_back();
-  //   return;
-  // }
-  mem_activity->log(*logger);
 
   // Create event for AIU memory view
   traceBuffer_.span.opCount += 1;
@@ -510,8 +482,6 @@ void AiuptiActivityProfilerSession::handleMemoryActivity(
 void AiuptiActivityProfilerSession::handleMemsetActivity(
     const AIUpti_ActivityMemset* activity,
     ActivityLogger* logger) {
-  // do not track memset events because they are the same as memory allocation
-  // events
   traceBuffer_.span.opCount += 1;
   traceBuffer_.gpuOpCount += 1;
   // TODO(mamaral): implement the libaiupti to add external correlation ID
@@ -543,7 +513,9 @@ void AiuptiActivityProfilerSession::handleMemsetActivity(
 
   if (memset_activity->resource == getBaseResourceId(activity)) {
     recordMemoryStream(
-        memset_activity->device, memset_activity->resource, "Memset (Device):");
+        memset_activity->device,
+        memset_activity->resource,
+        "Memory management:");
   } else {
     recordMemoryStream(memset_activity->device, memset_activity->resource, " ");
   }

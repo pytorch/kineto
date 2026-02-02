@@ -80,9 +80,10 @@ else()
   set(LIBKINETO_NOXPUPTI ON)
 endif()
 
-if(NOT DEFINED LIBKINETO_NOAIUPTI)
-  message(INFO " LIBKINETO_NOAIUPTI NOT DEFINED adding subdirectory(src/plugin/aiupti)")
+if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   add_subdirectory(src/plugin/aiupti)
+else()
+  set(LIBKINETO_NOAIUPTI ON)
 endif()
 
 # Define file lists

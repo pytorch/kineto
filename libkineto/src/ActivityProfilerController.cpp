@@ -16,8 +16,16 @@
 #include "ActivityLoggerFactory.h"
 #include "ActivityTrace.h"
 
+// TODO DEVICE_AGNOSTIC: Move the device decision out of C++ files to be
+//                       determined entirely by the build process. For the
+//                       controller, we'll need some registration mechanism.
+#ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
+#include "CuptiActivityProfiler.h"
+#endif
+
 #ifdef HAS_ROCTRACER
+#include "RocmActivityProfiler.h"
 #include "RoctracerActivityApi.h"
 #endif
 
@@ -67,11 +75,15 @@ ActivityProfilerController::ActivityProfilerController(
 #endif // !USE_GOOGLE_LOG
 
 #ifdef HAS_ROCTRACER
-  profiler_ = std::make_unique<CuptiActivityProfiler>(
+  profiler_ = std::make_unique<RocmActivityProfiler>(
       RoctracerActivityApi::singleton(), cpuOnly);
-#else
+#elif defined(HAS_CUPTI)
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityApi::singleton(), cpuOnly);
+#else
+  // CPU-only profiling without any GPU backends is handled
+  // directly by the GenericActivityProfiler.
+  profiler_ = std::make_unique<GenericActivityProfiler>(cpuOnly);
 #endif
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 }
@@ -388,6 +400,39 @@ void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {
 void ActivityProfilerController::startTrace() {
   UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
   profiler_->startTrace(std::chrono::system_clock::now());
+}
+bool ActivityProfilerController::isActive() {
+  return profiler_->isActive();
+}
+
+void ActivityProfilerController::transferCpuTrace(
+    std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
+  return profiler_->transferCpuTrace(std::move(cpuTrace));
+}
+
+void ActivityProfilerController::recordThreadInfo() {
+  profiler_->recordThreadInfo();
+}
+
+void ActivityProfilerController::addChildActivityProfiler(
+    std::unique_ptr<IActivityProfiler> profiler) {
+  profiler_->addChildActivityProfiler(std::move(profiler));
+}
+
+void ActivityProfilerController::pushCorrelationId(uint64_t id) {
+  profiler_->pushCorrelationId(id);
+}
+
+void ActivityProfilerController::popCorrelationId() {
+  profiler_->popCorrelationId();
+}
+
+void ActivityProfilerController::pushUserCorrelationId(uint64_t id) {
+  profiler_->pushUserCorrelationId(id);
+}
+
+void ActivityProfilerController::popUserCorrelationId() {
+  profiler_->popUserCorrelationId();
 }
 
 std::unique_ptr<ActivityTraceInterface>

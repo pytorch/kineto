@@ -71,7 +71,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
 
   void addMetadata(const std::string& key, const std::string& value) override;
 
-  virtual void addChildActivityProfiler(
+  void addChildActivityProfiler(
       std::unique_ptr<IActivityProfiler> profiler) override;
 
   void logInvariantViolation(

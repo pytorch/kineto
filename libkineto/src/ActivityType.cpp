@@ -39,6 +39,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
      {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
      {"hpu_op", ActivityType::HPU_OP},
      {"xpu_runtime", ActivityType::XPU_RUNTIME},
+     {"xpu_driver", ActivityType::XPU_DRIVER},
      {"collective_comm", ActivityType::COLLECTIVE_COMM},
      {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
      {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
@@ -63,7 +64,7 @@ ActivityType toActivityType(const std::string& str) {
   throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
 }
 
-const std::array<ActivityType, activityTypeCount> activityTypes() {
+std::array<ActivityType, activityTypeCount> activityTypes() {
   std::array<ActivityType, activityTypeCount> res;
   for (int i = 0; i < activityTypeCount; i++) {
     res[i] = map[i].type;
@@ -71,8 +72,7 @@ const std::array<ActivityType, activityTypeCount> activityTypes() {
   return res;
 }
 
-const std::array<ActivityType, defaultActivityTypeCount>
-defaultActivityTypes() {
+std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes() {
   std::array<ActivityType, defaultActivityTypeCount> res;
   for (int i = 0; i < defaultActivityTypeCount; i++) {
     res[i] = map[i].type;

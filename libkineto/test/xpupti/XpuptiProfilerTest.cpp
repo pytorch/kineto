@@ -77,3 +77,38 @@ TEST(XpuptiProfilerTest, TestEvents) {
         << ", resourceId=" << resourceInfos[i].id << " never used.";
   }
 }
+
+TEST(XpuptiProfilerTest, XpuDriverEvents) {
+  KN::Config cfg;
+
+  std::vector<std::string_view> metrics;
+
+  std::set<KN::ActivityType> activities{
+      KN::ActivityType::XPU_RUNTIME,
+      KN::ActivityType::XPU_DRIVER,
+  };
+
+  std::vector<std::string_view> expectedActivities = {
+      "urEnqueueMemBufferWrite",
+      "urEnqueueMemBufferWrite",
+      "urEnqueueMemBufferWrite",
+      "urEnqueueKernelLaunch",
+      "urEnqueueMemBufferRead",
+  };
+
+  std::vector<std::string_view> expectedTypes = {
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime"};
+
+  constexpr unsigned repeatCount = 1;
+  RunProfilerTest(
+      metrics,
+      activities,
+      cfg,
+      repeatCount,
+      std::move(expectedActivities),
+      std::move(expectedTypes));
+}

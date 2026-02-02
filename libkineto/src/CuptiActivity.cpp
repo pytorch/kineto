@@ -162,7 +162,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson()
       std::isinf(warpsPerSmVal) ? "\"inf\"" : std::to_string(warpsPerSmVal),
       kernel.gridX, kernel.gridY, kernel.gridZ,
       kernel.blockX, kernel.blockY, kernel.blockZ,
-      (int) (0.5 + kernelOccupancy(kernel) * 100.0));
+      (int) (0.5 + (kernelOccupancy(kernel) * 100.0)));
   // clang-format on
 }
 

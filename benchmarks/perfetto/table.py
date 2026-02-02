@@ -6,7 +6,6 @@
 
 import os
 from dataclasses import asdict, dataclass, field
-
 from typing import Dict, List, Tuple
 
 import tabulate

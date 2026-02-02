@@ -78,10 +78,10 @@ class Event {
   }
 
   // Sum samples for a single domain instance
-  int64_t sumInstance(int i, const SampleSlice& slice) const;
+  [[nodiscard]] int64_t sumInstance(int i, const SampleSlice& slice) const;
 
   // Sum all samples across all domain instances
-  int64_t sumAll(const SampleSlice& slice) const;
+  [[nodiscard]] int64_t sumAll(const SampleSlice& slice) const;
 
   // Create list of percentiles
   PercentileList& percentiles(PercentileList& pcs, const SampleSlice& slice)
@@ -110,7 +110,7 @@ class Event {
   int instanceCount = 0;
 
  private:
-  std::pair<int, int> toIdxRange(const SampleSlice& slice) const {
+  [[nodiscard]] std::pair<int, int> toIdxRange(const SampleSlice& slice) const {
     int size = (samples_.size() - slice.offset) / slice.count;
     return std::make_pair(slice.offset + (slice.index * size), size);
   }
@@ -179,7 +179,7 @@ class EventGroupSet {
   EventGroupSet& operator=(EventGroupSet&&) = delete;
 
   // Number of groups = number of domains profiled
-  int groupCount() const {
+  [[nodiscard]] int groupCount() const {
     return set_.numEventGroups;
   }
 
@@ -253,7 +253,7 @@ class EventProfiler {
   void reportOnDemandSamples();
 
   bool enabled() {
-    return sets_.size() > 0;
+    return !sets_.empty();
   }
 
   bool multiplexEnabled() {

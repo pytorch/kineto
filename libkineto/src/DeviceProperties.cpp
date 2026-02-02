@@ -10,6 +10,7 @@
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <algorithm>
 #include <vector>
 
 #if defined(HAS_CUPTI)
@@ -17,6 +18,10 @@
 #include <cuda_runtime.h>
 #elif defined(HAS_ROCTRACER)
 #include <hip/hip_runtime.h>
+#endif
+
+#if defined(HAS_XPUPTI)
+#include "plugin/xpupti/XpuptiActivityProfiler.h"
 #endif
 
 #include "Logger.h"
@@ -38,7 +43,7 @@ namespace KINETO_NAMESPACE {
 #endif
 
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
-static const std::vector<gpuDeviceProp> createDeviceProps() {
+static std::vector<gpuDeviceProp> createDeviceProps() {
   std::vector<gpuDeviceProp> props;
   int device_count;
   gpuError_t error_id = gpuGetDeviceCount(&device_count);
@@ -67,7 +72,7 @@ static const std::vector<gpuDeviceProp>& deviceProps() {
   return props;
 }
 
-static const std::string createDevicePropertiesJson(
+static std::string createDevicePropertiesJson(
     size_t id,
     const gpuDeviceProp& props) {
   std::string gpuSpecific;
@@ -108,7 +113,7 @@ static const std::string createDevicePropertiesJson(
       gpuSpecific);
 }
 
-static const std::string createDevicePropertiesJson() {
+static std::string createDevicePropertiesJson() {
   std::vector<std::string> jsonProps;
   const auto& props = deviceProps();
   for (size_t i = 0; i < props.size(); i++) {
@@ -125,6 +130,11 @@ const std::string& devicePropertiesJson() {
 int smCount(uint32_t deviceId) {
   const std::vector<gpuDeviceProp>& props = deviceProps();
   return deviceId >= props.size() ? 0 : props[deviceId].multiProcessorCount;
+}
+#elif defined(HAS_XPUPTI)
+const std::string& devicePropertiesJson() {
+  static std::string devicePropsJson = getXpuDeviceProperties();
+  return devicePropsJson;
 }
 #else
 const std::string& devicePropertiesJson() {
@@ -200,9 +210,8 @@ float kernelOccupancy(
         blockSize,
         dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
-      if (occ_result.activeBlocksPerMultiprocessor < blocksPerSm) {
-        blocksPerSm = occ_result.activeBlocksPerMultiprocessor;
-      }
+      blocksPerSm = std::min<float>(
+          occ_result.activeBlocksPerMultiprocessor, blocksPerSm);
       occupancy = blocksPerSm * blockSize /
           (float)props[deviceId].maxThreadsPerMultiProcessor;
     } else {

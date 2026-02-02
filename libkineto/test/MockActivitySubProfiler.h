@@ -19,7 +19,7 @@ namespace libkineto {
 
 class MockProfilerSession : public IActivityProfilerSession {
  public:
-  explicit MockProfilerSession() {}
+  explicit MockProfilerSession() = default;
 
   void start() override {
     start_count++;
@@ -62,9 +62,10 @@ class MockActivityProfiler : public IActivityProfiler {
  public:
   explicit MockActivityProfiler(std::deque<GenericTraceActivity>& activities);
 
-  const std::string& name() const override;
+  [[nodiscard]] const std::string& name() const override;
 
-  const std::set<ActivityType>& availableActivities() const override;
+  [[nodiscard]] const std::set<ActivityType>& availableActivities()
+      const override;
 
   std::unique_ptr<IActivityProfilerSession> configure(
       const std::set<ActivityType>& activity_types,

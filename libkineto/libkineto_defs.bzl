@@ -12,6 +12,7 @@ def get_libkineto_api_srcs():
 def get_libkineto_cupti_srcs(with_api = True):
     return [
         "src/CuptiActivityApi.cpp",
+        "src/CuptiActivityProfiler.cpp",
         "src/CuptiCallbackApi.cpp",
         "src/CuptiEventApi.cpp",
         "src/CuptiMetricApi.cpp",
@@ -29,6 +30,7 @@ def get_libkineto_cupti_srcs(with_api = True):
 
 def get_libkineto_roctracer_srcs(with_api = True):
     return [
+        "src/RocmActivityProfiler.cpp",
         "src/RoctracerActivityApi.cpp",
         "src/RoctracerLogger.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
@@ -52,13 +54,12 @@ def get_libkineto_cpu_only_srcs(with_api = True):
     return [
         "src/AbstractConfig.cpp",
         "src/ApproximateClock.cpp",
-        "src/CuptiActivityProfiler.cpp",
+        "src/GenericActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",
         "src/ActivityType.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",
-        "src/CuptiActivityApi.cpp",
         "src/DaemonConfigLoader.cpp",
         "src/Demangle.cpp",
         "src/DeviceProperties.cpp",

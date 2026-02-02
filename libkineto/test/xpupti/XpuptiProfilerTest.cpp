@@ -14,6 +14,41 @@
 
 namespace KN = KINETO_NAMESPACE;
 
+TEST(XpuptiProfilerTest, XpuDriverEvents) {
+  KN::Config cfg;
+
+  std::vector<std::string_view> metrics;
+
+  std::set<KN::ActivityType> activities{
+      KN::ActivityType::XPU_RUNTIME,
+      KN::ActivityType::XPU_DRIVER,
+  };
+
+  std::vector<std::string_view> expectedActivities = {
+      "urEnqueueMemBufferWrite",
+      "urEnqueueMemBufferWrite",
+      "urEnqueueMemBufferWrite",
+      "urEnqueueKernelLaunch",
+      "urEnqueueMemBufferRead",
+  };
+
+  std::vector<std::string_view> expectedTypes = {
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime"};
+
+  constexpr unsigned repeatCount = 1;
+  RunProfilerTest(
+      metrics,
+      activities,
+      cfg,
+      repeatCount,
+      std::move(expectedActivities),
+      std::move(expectedTypes));
+}
+
 TEST(XpuptiProfilerTest, TestEvents) {
   KN::Config cfg;
 
@@ -25,19 +60,24 @@ TEST(XpuptiProfilerTest, TestEvents) {
       KN::ActivityType::CONCURRENT_KERNEL,
       KN::ActivityType::EXTERNAL_CORRELATION};
 
-  const std::vector<std::string> expectedActivities = {
+  std::vector<std::string_view> expectedActivities = {
       "Memcpy M2D",
       "Memcpy M2D",
       "Memcpy M2D",
       "Run(sycl::_V1::queue, ...)",
       "Memcpy D2M"};
 
-  const std::vector<std::string> expectedTypes = {
+  std::vector<std::string_view> expectedTypes = {
       "gpu_memcpy", "gpu_memcpy", "gpu_memcpy", "kernel", "gpu_memcpy"};
 
   constexpr unsigned repeatCount = 1;
   auto [pSession, pBuffer] = RunProfilerTest(
-      metrics, activities, cfg, repeatCount, expectedActivities, expectedTypes);
+      metrics,
+      activities,
+      cfg,
+      repeatCount,
+      std::move(expectedActivities),
+      std::move(expectedTypes));
 
   static bool isVerbose = IsEnvVerbose();
 
@@ -76,39 +116,4 @@ TEST(XpuptiProfilerTest, TestEvents) {
         << "resourceInfo for deviceId = " << resourceInfos[i].deviceId
         << ", resourceId=" << resourceInfos[i].id << " never used.";
   }
-}
-
-TEST(XpuptiProfilerTest, XpuDriverEvents) {
-  KN::Config cfg;
-
-  std::vector<std::string_view> metrics;
-
-  std::set<KN::ActivityType> activities{
-      KN::ActivityType::XPU_RUNTIME,
-      KN::ActivityType::XPU_DRIVER,
-  };
-
-  std::vector<std::string_view> expectedActivities = {
-      "urEnqueueMemBufferWrite",
-      "urEnqueueMemBufferWrite",
-      "urEnqueueMemBufferWrite",
-      "urEnqueueKernelLaunch",
-      "urEnqueueMemBufferRead",
-  };
-
-  std::vector<std::string_view> expectedTypes = {
-      "xpu_runtime",
-      "xpu_runtime",
-      "xpu_runtime",
-      "xpu_runtime",
-      "xpu_runtime"};
-
-  constexpr unsigned repeatCount = 1;
-  RunProfilerTest(
-      metrics,
-      activities,
-      cfg,
-      repeatCount,
-      std::move(expectedActivities),
-      std::move(expectedTypes));
 }

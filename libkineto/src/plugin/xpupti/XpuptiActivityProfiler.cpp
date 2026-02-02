@@ -93,9 +93,8 @@ std::string getXpuDeviceProperties() {
     const auto& device_list = platform.get_devices();
     for (size_t i = 0; i < device_list.size(); i++) {
       const auto& device = device_list[i];
-      jsonProps.push_back(
-          fmt::format(
-              R"JSON(
+      jsonProps.push_back(fmt::format(
+          R"JSON(
     {{
       "id": {},
       "name": "{}",
@@ -108,16 +107,16 @@ std::string getXpuDeviceProperties() {
       "vendor": "{}",
       "driverVersion": "{}"
     }})JSON",
-              i,
-              device.get_info<sycl::info::device::name>(),
-              device.get_info<sycl::info::device::global_mem_size>(),
-              device.get_info<sycl::info::device::max_compute_units>(),
-              device.get_info<sycl::info::device::max_work_group_size>(),
-              device.get_info<sycl::info::device::max_clock_frequency>(),
-              device.get_info<sycl::info::device::max_mem_alloc_size>(),
-              device.get_info<sycl::info::device::local_mem_size>(),
-              device.get_info<sycl::info::device::vendor>(),
-              device.get_info<sycl::info::device::driver_version>()));
+          i,
+          device.get_info<sycl::info::device::name>(),
+          device.get_info<sycl::info::device::global_mem_size>(),
+          device.get_info<sycl::info::device::max_compute_units>(),
+          device.get_info<sycl::info::device::max_work_group_size>(),
+          device.get_info<sycl::info::device::max_clock_frequency>(),
+          device.get_info<sycl::info::device::max_mem_alloc_size>(),
+          device.get_info<sycl::info::device::local_mem_size>(),
+          device.get_info<sycl::info::device::vendor>(),
+          device.get_info<sycl::info::device::driver_version>()));
     }
   }
 

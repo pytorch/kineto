@@ -12,6 +12,8 @@
 #include "src/plugin/xpupti/XpuptiProfilerMacros.h"
 #include "src/plugin/xpupti/XpuptiScopeProfilerConfig.h"
 
+#include <libkineto.h>
+
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
@@ -52,7 +54,7 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       KN::ActivityType::XPU_RUNTIME,
       KN::ActivityType::XPU_SCOPE_PROFILER};
 
-  const std::vector<std::string> expectedActivities = {
+  std::vector<std::string_view> expectedActivities = {
       "urEnqueueMemBufferWrite",
       "urEnqueueMemBufferWrite",
       "urEnqueueMemBufferWrite",
@@ -67,7 +69,7 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       "metrics",
       "metrics"};
 
-  const std::vector<std::string> expectedTypes = {
+  std::vector<std::string_view> expectedTypes = {
       "xpu_runtime",
       "xpu_runtime",
       "xpu_runtime",
@@ -91,8 +93,8 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
         activities,
         cfg,
         repeatCount,
-        expectedActivities,
-        expectedTypes);
+        std::move(expectedActivities),
+        std::move(expectedTypes));
   } catch (...) {
     eptr = std::current_exception();
   }

@@ -10,6 +10,8 @@
 
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"
 
+#include <libkineto.h>
+
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
@@ -39,14 +41,14 @@ std::ostream& operator<<(std::ostream& os, KN::ActivityType actType) {
   return os;
 }
 
-std::pair<unsigned, unsigned> CountMetricsInString(
+static std::pair<unsigned, unsigned> CountMetricsInString(
     const std::vector<std::string_view>& metrics,
     const std::string_view sv) {
   unsigned metricsCount = 0;
   unsigned metricsMask = 0;
   for (unsigned i = 0; i < metrics.size(); ++i) {
     const auto metricSv = metrics[i];
-    if (sv.find(metricSv) != std::string::npos) {
+    if (sv.find(metricSv) != std::string_view::npos) {
       ++metricsCount;
       metricsMask |= (1 << i);
     }
@@ -77,9 +79,9 @@ void CheckCountsInMap(
   }
 }
 
-std::pair<std::map<unsigned, unsigned>, size_t> CountsMap(
-    const std::vector<std::string>& names) {
-  std::map<std::string, unsigned> counts;
+static std::pair<std::map<unsigned, unsigned>, size_t> CountsMap(
+    const std::vector<std::string_view>& names) {
+  std::map<std::string_view, unsigned> counts;
   for (const auto& name : names) {
     counts[name]++;
   }
@@ -91,6 +93,26 @@ std::pair<std::map<unsigned, unsigned>, size_t> CountsMap(
 
   return std::pair{countsMap, counts.size()};
 };
+
+constexpr const std::string_view driverActivity = "xpu_driver";
+
+static unsigned acceptDriverActivities(
+    const std::deque<std::unique_ptr<libkineto::GenericTraceActivity>>&
+        pBufferActivities,
+    std::vector<std::string_view>& expectedActivities,
+    std::vector<std::string_view>& expectedTypes,
+    std::set<std::string>& stringStorage) {
+  unsigned count = 0;
+  for (auto&& pActivity : pBufferActivities) {
+    if (pActivity->type() == KN::ActivityType::XPU_DRIVER) {
+      auto insertResult = stringStorage.insert(pActivity->name());
+      expectedActivities.push_back(*insertResult.first);
+      expectedTypes.push_back(driverActivity);
+      ++count;
+    }
+  }
+  return count;
+}
 
 class TestActivityLogger : public KN::ActivityLogger {
   void handleDeviceInfo(const KN::DeviceInfo& info, uint64_t time) override {}
@@ -123,8 +145,8 @@ RunProfilerTest(
     const std::set<KN::ActivityType>& activities,
     const KN::Config& cfg,
     unsigned repeatCount,
-    const std::vector<std::string>& expectedActivities,
-    const std::vector<std::string>& expectedTypes) {
+    std::vector<std::string_view>&& expectedActivities,
+    std::vector<std::string_view>&& expectedTypes) {
   KN::XPUActivityProfiler profiler;
   EXPECT_TRUE(profiler.name() == "__xpu_profiler__");
 
@@ -155,6 +177,14 @@ RunProfilerTest(
 
   auto pBuffer = pSession->getTraceBuffer();
 
+  std::set<std::string> stringStorage;
+  if (activities.find(KN::ActivityType::XPU_DRIVER) != activities.end()) {
+    EXPECT_EQ(repeatCount, 1);
+    auto count = acceptDriverActivities(
+        pBuffer->activities, expectedActivities, expectedTypes, stringStorage);
+    EXPECT_GT(count, 0);
+  }
+
   static bool isVerbose = IsEnvVerbose();
 
   if (isVerbose) {
@@ -170,7 +200,7 @@ RunProfilerTest(
   const unsigned numMetrics = std::count_if(
       expectedActivities.begin(),
       expectedActivities.end(),
-      [](const std::string& name) { return name.find("metrics") == 0; });
+      [](std::string_view name) { return name.find("metrics") == 0; });
 
   auto [expectedTypesCountsMap, numUniqueTypes] = CountsMap(expectedTypes);
 
@@ -179,12 +209,13 @@ RunProfilerTest(
 
   EXPECT_EQ(pBuffer->activities.size(), numActivities * repeatCount);
 
-  std::map<std::string, unsigned> activitiesCount;
+  std::map<std::string_view, unsigned> activitiesCount;
   std::map<KN::ActivityType, unsigned> typesCount;
   unsigned scopeProfilerActCount = 0;
 
   for (auto&& pActivity : pBuffer->activities) {
-    activitiesCount[pActivity->name()]++;
+    auto insertResult = stringStorage.insert(pActivity->name());
+    activitiesCount[*insertResult.first]++;
     typesCount[pActivity->type()]++;
 
     bool isNameMetrics = pActivity->name() == "metrics";

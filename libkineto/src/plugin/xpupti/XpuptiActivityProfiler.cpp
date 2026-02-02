@@ -10,68 +10,10 @@
 #include "XpuptiActivityApiV2.h"
 #include "XpuptiActivityProfilerSession.h"
 
+#include <fmt/ranges.h>
+#include <sycl/sycl.hpp>
+
 namespace KINETO_NAMESPACE {
-
-using namespace std::literals::string_view_literals;
-
-uint32_t XpuptiActivityProfilerSession::iterationCount_ = 0;
-std::vector<DeviceUUIDsT> XpuptiActivityProfilerSession::deviceUUIDs_ = {};
-std::unordered_set<std::string_view>
-    XpuptiActivityProfilerSession::correlateRuntimeOps_ = {
-        "piextUSMEnqueueFill"sv,
-        "urEnqueueUSMFill"sv,
-        "piextUSMEnqueueFill2D"sv,
-        "urEnqueueUSMFill2D"sv,
-        "piextUSMEnqueueMemcpy"sv,
-        "urEnqueueUSMMemcpy"sv,
-        "piextUSMEnqueueMemset"sv,
-        "piextUSMEnqueueMemcpy2D"sv,
-        "urEnqueueUSMMemcpy2D"sv,
-        "piextUSMEnqueueMemset2D"sv,
-        "piEnqueueKernelLaunch"sv,
-        "urEnqueueKernelLaunch"sv,
-        "piextEnqueueKernelLaunchCustom"sv,
-        "urEnqueueKernelLaunchCustomExp"sv,
-        "piextEnqueueCooperativeKernelLaunch"sv,
-        "urEnqueueCooperativeKernelLaunchExp"sv};
-
-// =========== Session Constructor ============= //
-XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
-    XpuptiActivityApi& xpti,
-    const std::string& name,
-    const libkineto::Config& config,
-    const std::set<ActivityType>& activity_types)
-    : xpti_(xpti),
-      name_(name),
-      config_(config.clone()),
-      activity_types_(activity_types) {
-  enumDeviceUUIDs();
-  xpti_.enableXpuptiActivities(activity_types_);
-}
-
-XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
-  xpti_.clearActivities();
-}
-
-// =========== Session Public Methods ============= //
-void XpuptiActivityProfilerSession::start() {
-  profilerStartTs_ =
-      libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
-}
-
-void XpuptiActivityProfilerSession::stop() {
-  xpti_.disablePtiActivities(activity_types_);
-  profilerEndTs_ =
-      libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
-}
-
-void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
-  if (enable) {
-    xpti_.enableXpuptiActivities(activity_types_);
-  } else {
-    xpti_.disablePtiActivities(activity_types_);
-  }
-}
 
 std::string getXpuDeviceProperties() {
   std::vector<std::string> jsonProps;
@@ -83,9 +25,8 @@ std::string getXpuDeviceProperties() {
     const auto& device_list = platform.get_devices();
     for (size_t i = 0; i < device_list.size(); i++) {
       const auto& device = device_list[i];
-      jsonProps.push_back(
-          fmt::format(
-              R"JSON(
+      jsonProps.push_back(fmt::format(
+          R"JSON(
     {{
       "id": {},
       "name": "{}",
@@ -98,117 +39,22 @@ std::string getXpuDeviceProperties() {
       "vendor": "{}",
       "driverVersion": "{}"
     }})JSON",
-              i,
-              device.get_info<sycl::info::device::name>(),
-              device.get_info<sycl::info::device::global_mem_size>(),
-              device.get_info<sycl::info::device::max_compute_units>(),
-              device.get_info<sycl::info::device::max_work_group_size>(),
-              device.get_info<sycl::info::device::max_clock_frequency>(),
-              device.get_info<sycl::info::device::max_mem_alloc_size>(),
-              device.get_info<sycl::info::device::local_mem_size>(),
-              device.get_info<sycl::info::device::vendor>(),
-              device.get_info<sycl::info::device::driver_version>()));
+          i,
+          device.get_info<sycl::info::device::name>(),
+          device.get_info<sycl::info::device::global_mem_size>(),
+          device.get_info<sycl::info::device::max_compute_units>(),
+          device.get_info<sycl::info::device::max_work_group_size>(),
+          device.get_info<sycl::info::device::max_clock_frequency>(),
+          device.get_info<sycl::info::device::max_mem_alloc_size>(),
+          device.get_info<sycl::info::device::local_mem_size>(),
+          device.get_info<sycl::info::device::vendor>(),
+          device.get_info<sycl::info::device::driver_version>()));
     }
   }
 
   return fmt::format("{}", fmt::join(jsonProps, ","));
 }
 
-void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
-  traceBuffer_.span =
-      libkineto::TraceSpan(profilerStartTs_, profilerEndTs_, name_);
-  traceBuffer_.span.iteration = iterationCount_++;
-  auto gpuBuffer = xpti_.activityBuffers();
-  if (gpuBuffer) {
-    xpti_.processActivities(
-        *gpuBuffer,
-        [this, &logger](const pti_view_record_base* record) -> void {
-          handlePtiActivity(record, logger);
-        });
-  }
-}
-
-void XpuptiActivityProfilerSession::processTrace(
-    ActivityLogger& logger,
-    libkineto::getLinkedActivityCallback get_linked_activity,
-    int64_t captureWindowStartTime,
-    int64_t captureWindowEndTime) {
-  captureWindowStartTime_ = captureWindowStartTime;
-  captureWindowEndTime_ = captureWindowEndTime;
-  cpuActivity_ = get_linked_activity;
-  processTrace(logger);
-}
-
-std::unique_ptr<libkineto::CpuTraceBuffer>
-XpuptiActivityProfilerSession::getTraceBuffer() {
-  return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
-}
-
-void XpuptiActivityProfilerSession::pushCorrelationId(uint64_t id) {
-  xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::Default);
-}
-
-void XpuptiActivityProfilerSession::popCorrelationId() {
-  xpti_.popCorrelationID(XpuptiActivityApi::CorrelationFlowType::Default);
-}
-
-void XpuptiActivityProfilerSession::pushUserCorrelationId(uint64_t id) {
-  xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::User);
-}
-
-void XpuptiActivityProfilerSession::popUserCorrelationId() {
-  xpti_.popCorrelationID(XpuptiActivityApi::CorrelationFlowType::User);
-}
-
-void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
-  if (!deviceUUIDs_.empty()) {
-    return;
-  }
-  auto platform_list = sycl::platform::get_platforms();
-  // Enumerated GPU devices from the specific platform.
-  for (const auto& platform : platform_list) {
-    if (platform.get_backend() != sycl::backend::ext_oneapi_level_zero) {
-      continue;
-    }
-    auto device_list = platform.get_devices();
-    for (const auto& device : device_list) {
-      if (device.is_gpu()) {
-        if (device.has(sycl::aspect::ext_intel_device_info_uuid)) {
-          deviceUUIDs_.push_back(
-              device.get_info<sycl::ext::intel::info::device::uuid>());
-        } else {
-          std::cerr
-              << "Warnings: UUID is not supported for this XPU device. The device index of records will be 0."
-              << std::endl;
-          deviceUUIDs_.push_back(DeviceUUIDsT{});
-        }
-      }
-    }
-  }
-}
-
-DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
-    const uint8_t deviceUUID[16]) {
-  auto it = std::find_if(
-      deviceUUIDs_.begin(),
-      deviceUUIDs_.end(),
-      [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {
-        return std::equal(
-            deviceUUIDinVec.begin(),
-            deviceUUIDinVec.end(),
-            deviceUUID,
-            deviceUUID + 16);
-      });
-  if (it == deviceUUIDs_.end()) {
-    std::cerr
-        << "Warnings: Can't find the legal XPU device from the given UUID."
-        << std::endl;
-    return static_cast<DeviceIndex_t>(0);
-  }
-  return static_cast<DeviceIndex_t>(std::distance(deviceUUIDs_.begin(), it));
-}
-
-// =========== ActivityProfiler Public Methods ============= //
 [[noreturn]] const std::set<ActivityType>&
 XPUActivityProfiler::availableActivities() const {
   throw std::runtime_error(

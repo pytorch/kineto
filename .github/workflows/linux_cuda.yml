@@ -18,11 +18,17 @@ jobs:
       # AWS A10G GPU instance
       runner: linux.g5.4xlarge.nvidia.gpu
       timeout: 180
+      # Checkout the Kineto repo at the PR ref with submodules
+      repository: ${{ github.repository }}
+      ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: cuda
       gpu-arch-version: "12.6"
       script: |
         set -eux
+
+        # Upgrade pip
+        python -m pip install --upgrade pip
 
         # Build libkineto (static and shared library)
         pip install cmake

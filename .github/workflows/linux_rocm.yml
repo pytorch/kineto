@@ -106,9 +106,21 @@ jobs:
           docker exec -t -w "/pytorch" "${container_name}" bash -c "
             set -eux
             pip install -r requirements.txt
+
+            # Hipify PyTorch source code for ROCm build
+            python tools/amd_build/build_amd.py
+
             export USE_ROCM=1
             export BUILD_TEST=1
             python setup.py develop
+          "
+
+      - name: Install pytest
+        run: |
+          container_name=$(docker ps -lq)
+          docker exec -t -w "/pytorch" "${container_name}" bash -c "
+            set -eux
+            pip install pytest
           "
 
       - name: Run PyTorch profiler tests
@@ -119,13 +131,29 @@ jobs:
             # TODO: Dynamically add/remove tests to the exclusion list based on their
             # status on trunk instead of maintaining a hardcoded list of known failures.
             # This will prevent the list from becoming stale as tests get fixed upstream.
+            #
+            # TODO: Investigate ROCm memory leak on CI integration tests:
+            #       https://github.com/pytorch/kineto/issues/1241
+            #       Test deselected below: test/profiler/test_profiler.py::TestProfilerCUDA::test_mem_leak
+            #
+            # TODO: Investigate ROCm failure on CI: test_disable_external_correlation
+            #       https://github.com/pytorch/kineto/issues/1242
+            #       Test deselected below: test/profiler/test_profiler.py::TestProfiler::test_disable_external_correlation
+            #
+            # TODO: Investigate ROCm CI failure: test_profiler_cuda_sync_events
+            #       https://github.com/pytorch/kineto/issues/1243
+            #       Test deselected below: test/profiler/test_profiler.py::TestProfiler::test_profiler_cuda_sync_events
+            #
             python -m pytest test/profiler/ -v \
               --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
               --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd \
               --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd \
               --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step \
+              --deselect=test/profiler/test_profiler.py::TestProfiler::test_disable_external_correlation \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
+              --deselect=test/profiler/test_profiler.py::TestProfiler::test_profiler_cuda_sync_events \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
+              --deselect=test/profiler/test_profiler.py::TestProfilerCUDA::test_mem_leak \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
               --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args

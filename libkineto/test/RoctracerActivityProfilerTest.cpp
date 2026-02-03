@@ -26,7 +26,7 @@
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
-#include "src/CuptiActivityProfiler.h"
+#include "src/RocmActivityProfiler.h"
 #include "src/RoctracerActivityApi.h"
 #include "src/RoctracerLogger.h"
 #include "src/output_json.h"
@@ -259,7 +259,7 @@ class MockRoctracerActivities : public RoctracerActivityApi {
 class RoctracerActivityProfilerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    profiler_ = std::make_unique<CuptiActivityProfiler>(
+    profiler_ = std::make_unique<RocmActivityProfiler>(
         roctracerActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
     cfg_->validate(std::chrono::system_clock::now());
@@ -270,7 +270,7 @@ class RoctracerActivityProfilerTest : public ::testing::Test {
 
   std::unique_ptr<Config> cfg_;
   MockRoctracerActivities roctracerActivities_;
-  std::unique_ptr<CuptiActivityProfiler> profiler_;
+  std::unique_ptr<RocmActivityProfiler> profiler_;
   ActivityLoggerFactory loggerFactory;
 };
 
@@ -292,11 +292,11 @@ void checkTracefile(const char* filename) {
 
 TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
@@ -394,11 +394,11 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
 TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Set logging level for debugging purpose
   std::vector<std::string> log_modules(
-      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+      {"RocmActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
@@ -567,11 +567,11 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
 
 TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
   // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
@@ -636,7 +636,7 @@ TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
 
 TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
   // Verbose logging is useful for debugging
-  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Setup example events to test
@@ -665,7 +665,7 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
 
   // Add a child profiler and check that it works
   MockRoctracerActivities activities;
-  CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
+  RocmActivityProfiler profiler(activities, /*cpu only*/ true);
   profiler.addChildActivityProfiler(std::move(mock_activity_profiler));
 
   profiler.configure(*cfg_, start_time);
@@ -710,11 +710,11 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
 TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
   // Set logging level for debugging purpose
   std::vector<std::string> log_modules(
-      {"CuptiActivityProfiler.cpp", "output_json.cpp"});
+      {"RocmActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  CuptiActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;

@@ -27,7 +27,7 @@ thread_local std::unordered_map<int, std::string> correlationToBlock;
 thread_local std::unordered_map<int, size_t> correlationToSize;
 } // namespace
 
-const char* getGpuActivityKindString(uint32_t kind) {
+inline const char* getGpuActivityKindString(uint32_t kind) {
   switch (kind) {
     case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
     case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
@@ -50,7 +50,8 @@ const char* getGpuActivityKindString(uint32_t kind) {
   return "<unknown>";
 }
 
-void getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
+inline void
+getMemcpySrcDstString(uint32_t kind, std::string& src, std::string& dst) {
   switch (kind) {
     case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
     case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
@@ -117,8 +118,8 @@ inline const std::string GpuActivity::metadataJson() const {
       gpuActivity.device, gpuActivity.queue,
       gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
       size, bandwidth_gib);
-  } 
-  
+  }
+
   // if compute kernel, add grid and block
   else if (correlationToGrid.count(gpuActivity.id) > 0) {
     return fmt::format(R"JSON(

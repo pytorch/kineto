@@ -12,6 +12,7 @@
 
 #include "XpuptiScopeProfilerConfig.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 #endif

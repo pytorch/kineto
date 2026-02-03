@@ -64,7 +64,7 @@ jobs:
 
         pushd pytorch
         rm -rf third_party/kineto
-        ln -s "${GITHUB_WORKSPACE}/${GITHUB_REPOSITORY}" third_party/kineto
+        ln -s ../kineto third_party/kineto
         echo "====: Linked PR version of Kineto to PyTorch"
 
         # Build PyTorch from source

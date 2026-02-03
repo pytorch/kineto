@@ -30,8 +30,10 @@ jobs:
         # Upgrade pip
         python -m pip install --upgrade pip
 
+        # Ensure cmake is minimum version Kineto requires
+        pip install cmake>=3.22
+
         # Build libkineto (static and shared library)
-        pip install cmake
         mkdir -p build_static build_shared
 
         pushd build_static

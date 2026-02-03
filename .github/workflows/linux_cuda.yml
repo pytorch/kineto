@@ -29,9 +29,11 @@ jobs:
 
         # Upgrade pip
         python -m pip install --upgrade pip
+        echo "Installed pip version: $(python -m pip --version)"
 
         # Ensure cmake is minimum version Kineto requires
         conda install -y cmake>=3.22
+        echo "Installed cmake version: $(cmake --version)"
 
         # Build libkineto (static and shared library)
         mkdir -p build_static build_shared
@@ -40,30 +42,36 @@ jobs:
         cmake -DKINETO_LIBRARY_TYPE=static ../libkineto/
         make -j
         popd
+        echo "Compiled static libkineto"
 
         pushd build_shared
         cmake -DKINETO_LIBRARY_TYPE=shared ../libkineto/
         make -j
         popd
+        echo "Compiled shared libkineto"
 
         # Run libkineto tests
         pushd build_static
         make test
         popd
+        echo "Ran static libkineto tests"
 
         # Clone PyTorch and replace its Kineto with PR version
         PYTORCH_DIR="${RUNNER_TEMP}/pytorch"
         git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git "${PYTORCH_DIR}"
+        echo "Cloned PyTorch"
 
         pushd "${PYTORCH_DIR}"
         rm -rf third_party/kineto
         ln -s "${GITHUB_WORKSPACE}/${GITHUB_REPOSITORY}" third_party/kineto
+        echo "Linked PR version of Kineto to PyTorch"
 
         # Build PyTorch from source
         pip install -r requirements.txt
         export USE_CUDA=1
         export BUILD_TEST=1
         python setup.py develop
+        echo "Built PyTorch from source"
 
         # Run PyTorch profiler tests
         # TODO: Dynamically add/remove tests to the exclusion list based on their
@@ -80,3 +88,4 @@ jobs:
           --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
           --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
         popd
+        echo "Ran PyTorch profiler tests"

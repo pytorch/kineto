@@ -13,14 +13,12 @@
 #include <algorithm>
 #include <vector>
 
-#if defined(HAS_CUPTI)
+#ifdef HAS_CUPTI
 #include <cuda_occupancy.h>
 #include <cuda_runtime.h>
 #elif defined(HAS_ROCTRACER)
 #include <hip/hip_runtime.h>
-#endif
-
-#if defined(HAS_XPUPTI)
+#elif defined(HAS_XPUPTI)
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
 #endif
 
@@ -28,7 +26,7 @@
 
 namespace KINETO_NAMESPACE {
 
-#if defined(HAS_CUPTI)
+#ifdef HAS_CUPTI
 #define gpuDeviceProp cudaDeviceProp
 #define gpuError_t cudaError_t
 #define gpuSuccess cudaSuccess
@@ -76,7 +74,7 @@ static std::string createDevicePropertiesJson(
     size_t id,
     const gpuDeviceProp& props) {
   std::string gpuSpecific;
-#if defined(HAS_CUPTI)
+#ifdef HAS_CUPTI
   gpuSpecific = fmt::format(
       R"JSON(
     , "regsPerMultiprocessor": {}, "sharedMemPerBlockOptin": {}, "sharedMemPerMultiprocessor": {})JSON",
@@ -121,31 +119,27 @@ static std::string createDevicePropertiesJson() {
   }
   return fmt::format("{}", fmt::join(jsonProps, ","));
 }
+#endif // HAS_CUPTI || HAS_ROCTRACER
 
 const std::string& devicePropertiesJson() {
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   static std::string devicePropsJson = createDevicePropertiesJson();
+#elif defined(HAS_XPUPTI)
+  static std::string devicePropsJson = getXpuDeviceProperties();
+#else
+  static std::string devicePropsJson;
+#endif
   return devicePropsJson;
 }
 
 int smCount(uint32_t deviceId) {
+#if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   const std::vector<gpuDeviceProp>& props = deviceProps();
   return deviceId >= props.size() ? 0 : props[deviceId].multiProcessorCount;
-}
-#elif defined(HAS_XPUPTI)
-const std::string& devicePropertiesJson() {
-  static std::string devicePropsJson = getXpuDeviceProperties();
-  return devicePropsJson;
-}
 #else
-const std::string& devicePropertiesJson() {
-  static std::string devicePropsJson;
-  return devicePropsJson;
-}
-
-int smCount(uint32_t deviceId) {
   return 0;
+#endif
 }
-#endif // HAS_CUPTI || HAS_ROCTRACER
 
 #ifdef HAS_CUPTI
 float blocksPerSm(const CUpti_ActivityKernel4& kernel) {

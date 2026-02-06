@@ -58,14 +58,18 @@ jobs:
         popd
         echo "====: Ran static libkineto tests"
 
+        # Save kineto directory path before cloning PyTorch
+        KINETO_DIR=$(pwd)
+        echo "====: Kineto directory: ${KINETO_DIR}"
+
         # Clone PyTorch and replace its Kineto with PR version
         git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git
         echo "====: Cloned PyTorch"
 
         pushd pytorch
         rm -rf third_party/kineto
-        ln -s ../kineto third_party/kineto
-        echo "====: Linked PR version of Kineto to PyTorch"
+        ln -s "${KINETO_DIR}" third_party/kineto
+        echo "====: Linked PR version of Kineto to PyTorch (${KINETO_DIR} -> third_party/kineto)"
 
         # Build PyTorch from source
         pip install -r requirements.txt

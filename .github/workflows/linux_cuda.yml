@@ -29,13 +29,13 @@ jobs:
 
         echo "====: Working directory: $(pwd)"
 
+        # Ensure cmake is minimum version Kineto requires
+        conda install -y cmake>=3.27
+        echo "====: Installed cmake version: $(cmake --version)"
+
         # Upgrade pip
         python -m pip install --upgrade pip
         echo "====: Installed pip version: $(python -m pip --version)"
-
-        # Ensure cmake is minimum version Kineto requires
-        conda install -y cmake>=3.22
-        echo "====: Installed cmake version: $(cmake --version)"
 
         # Build libkineto (static and shared library)
         mkdir -p build_static build_shared
@@ -82,6 +82,7 @@ jobs:
         # TODO: Dynamically add/remove tests to the exclusion list based on their
         # status on trunk instead of maintaining a hardcoded list of known failures.
         # This will prevent the list from becoming stale as tests get fixed upstream.
+        pip install pytest
         python -m pytest test/profiler/ -v \
           --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
           --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd \

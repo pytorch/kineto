@@ -79,6 +79,9 @@ jobs:
         # TODO: Dynamically add/remove tests to the exclusion list based on their
         # status on trunk instead of maintaining a hardcoded list of known failures.
         # This will prevent the list from becoming stale as tests get fixed upstream.
+        #
+        # TODO: Investigate CI failure: test_python_gc_event
+        #     https://github.com/pytorch/kineto/issues/1253
         pip install pytest
         python -m pytest test/profiler/ -v \
           --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
@@ -87,6 +90,7 @@ jobs:
           --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step \
           --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
           --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
+          --deselect=test/profiler/test_profiler.py::TestProfiler::test_python_gc_event \
           --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
           --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
           --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args

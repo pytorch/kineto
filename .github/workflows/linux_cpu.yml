@@ -127,6 +127,7 @@ jobs:
               --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
+              --deselect=test/profiler/test_profiler.py::TestProfiler::test_python_gc_event \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
               --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args \

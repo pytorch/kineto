@@ -15,9 +15,9 @@ The central component of Kineto is Libkineto, a profiling library with special f
 Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the `libkineto` folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
 
 ## PyTorch TensorBoard Profiler (Deprecated)
-> [!NOTE]
+> [!WARNING]
 > The TensorBoard integration with PyTorch profiler (<code>tb_plugin</code> submodule) is deprecated and scheduled for permanent removal on 03/05/2026. 
-> If you rely on <code>tb_plugin</code>, please comment on the <a href="https://github.com/pytorch/kineto/issues/1248">RFC issue</a> and consider migrating your workflow.  
+> If you rely on <code>tb_plugin</code>, please comment on the <a href="https://github.com/pytorch/kineto/issues/1248">RFC issue</a> and consider migrating your workflow. 
 > The code will be deleted after the feedback period.
 
 The goal of the PyTorch TensorBoard Profiler is to provide a seamless and intuitive end-to-end profiling experience, including straightforward collection from PyTorch and insightful visualizations and recommendations in the TensorBoard UI.

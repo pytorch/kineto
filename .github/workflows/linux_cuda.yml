@@ -29,15 +29,13 @@ jobs:
 
         echo "====: Working directory: $(pwd)"
 
-        # Ensure cmake is minimum version Kineto requires
+        # Ensure cmake is at least the max version needed by PyTorch and Kineto
         conda install -y cmake>=3.27
         echo "====: Installed cmake version: $(cmake --version)"
 
-        # Upgrade pip
         python -m pip install --upgrade pip
         echo "====: Installed pip version: $(python -m pip --version)"
 
-        # Build libkineto (static and shared library)
         mkdir -p build_static build_shared
 
         pushd build_static
@@ -52,7 +50,6 @@ jobs:
         popd
         echo "====: Compiled shared libkineto"
 
-        # Run libkineto tests
         pushd build_static
         make test
         popd

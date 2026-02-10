@@ -1,12 +1,9 @@
 # PyTorch Profiler TensorBoard Plugin
 
-<div style="background-color: #ffe5e5; border-left: 4px solid #ff9999; padding: 10px;">
-  <strong>Warning:</strong> The <code>tb_plugin</code> submodule is officially deprecated and scheduled for permanent removal on 03/05/2026. 
- We are no longer maintaining or supporting this module.  
- If you rely on <code>tb_plugin</code>, please comment on the <a href="https://github.com/pytorch/kineto/issues/1248">RFC issue</a> and consider migrating your workflow.  
- The code will be deleted after the feedback period.
-</div>
-
+> [!NOTE]
+> The TensorBoard integration with PyTorch profiler (<code>tb_plugin</code> submodule) is deprecated and scheduled for permanent removal on 03/05/2026. 
+> If you rely on <code>tb_plugin</code>, please comment on the <a href="https://github.com/pytorch/kineto/issues/1248">RFC issue</a> and consider migrating your workflow.  
+> The code will be deleted after the feedback period.
 
 This is a TensorBoard Plugin that provides visualization of PyTorch profiling.
 It can parse, process and visualize the PyTorch Profiler's dumped profiling result,

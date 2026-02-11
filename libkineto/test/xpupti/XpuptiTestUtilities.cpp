@@ -10,6 +10,8 @@
 
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"
 
+#include <libkineto.h>
+
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 

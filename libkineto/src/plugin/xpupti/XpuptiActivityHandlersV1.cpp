@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiActivityProfiler.h"
+#include "XpuptiActivityProfilerSessionV1.h"
 
 #include <iterator>
 #include <type_traits>
@@ -17,12 +17,12 @@
 namespace KINETO_NAMESPACE {
 
 // =========== Session Private Methods ============= //
-void XpuptiActivityProfilerSession::removeCorrelatedPtiActivities(
+void XpuptiActivityProfilerSessionV1::removeCorrelatedPtiActivities(
     const ITraceActivity* act1) {
   correlatedPtiActivities_.erase(act1->correlationId());
 }
 
-void XpuptiActivityProfilerSession::checkTimestampOrder(
+void XpuptiActivityProfilerSessionV1::checkTimestampOrder(
     const ITraceActivity* act1) {
   auto [it, inserted] =
       correlatedPtiActivities_.insert({act1->correlationId(), act1});
@@ -46,7 +46,7 @@ void XpuptiActivityProfilerSession::checkTimestampOrder(
   }
 }
 
-inline bool XpuptiActivityProfilerSession::outOfRange(
+inline bool XpuptiActivityProfilerSessionV1::outOfRange(
     const ITraceActivity* act) {
   bool outOfRange = act->timestamp() < captureWindowStartTime_ ||
       (act->timestamp() + act->duration()) > captureWindowEndTime_;
@@ -62,7 +62,7 @@ inline bool XpuptiActivityProfilerSession::outOfRange(
   return outOfRange;
 }
 
-const ITraceActivity* XpuptiActivityProfilerSession::linkedActivity(
+const ITraceActivity* XpuptiActivityProfilerSessionV1::linkedActivity(
     int32_t correlationId,
     const std::unordered_map<int64_t, int64_t>& correlationMap) {
   const auto& it = correlationMap.find(correlationId);
@@ -79,14 +79,14 @@ inline std::string handleToHexString(ze_handle_type handle) {
 
 // FIXME: Deprecate this method while activity._sycl_queue_id got correct IDs
 // from PTI
-inline int64_t XpuptiActivityProfilerSession::getMappedQueueId(
+inline int64_t XpuptiActivityProfilerSessionV1::getMappedQueueId(
     uint64_t sycl_queue_id) {
   auto [it, inserted] =
       sycl_queue_pool_.insert({sycl_queue_id, sycl_queue_pool_.size()});
   return it->second;
 }
 
-inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
+inline void XpuptiActivityProfilerSessionV1::handleCorrelationActivity(
     const pti_view_record_external_correlation* correlation) {
   switch (correlation->_external_kind) {
     case PTI_VIEW_EXTERNAL_KIND_CUSTOM_0:
@@ -103,7 +103,7 @@ inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
   }
 }
 
-std::string XpuptiActivityProfilerSession::getApiName(
+std::string XpuptiActivityProfilerSessionV1::getApiName(
     const pti_view_record_api_t* activity) {
 #if PTI_VERSION_AT_LEAST(0, 11)
   const char* api_name = nullptr;
@@ -134,7 +134,7 @@ inline std::string bandwidth(pti_view_memory_record_type* activity) {
 }
 
 template <class pti_view_memory_record_type>
-void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
+void XpuptiActivityProfilerSessionV1::handleRuntimeKernelMemcpyMemsetActivities(
     ActivityType activityType,
     const pti_view_memory_record_type* activity,
     ActivityLogger& logger) {
@@ -229,7 +229,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->log(logger);
 }
 
-void XpuptiActivityProfilerSession::handleOverheadActivity(
+void XpuptiActivityProfilerSessionV1::handleOverheadActivity(
     const pti_view_record_overhead* activity,
     ActivityLogger& logger) {
   traceBuffer_.emplace_activity(
@@ -256,7 +256,7 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
   }
 }
 
-void XpuptiActivityProfilerSession::handlePtiActivity(
+void XpuptiActivityProfilerSessionV1::handlePtiActivity(
     const pti_view_record_base* record,
     ActivityLogger& logger) {
   switch (record->_view_kind) {

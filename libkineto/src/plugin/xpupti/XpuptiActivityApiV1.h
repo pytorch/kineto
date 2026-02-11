@@ -12,29 +12,25 @@
 #include "XpuptiProfilerMacros.h"
 
 #include "ActivityType.h"
-#include "Config.h"
 
 #include <pti/pti_view.h>
 
 #include <functional>
-#include <memory>
 #include <mutex>
-#include <optional>
-#include <set>
 
 namespace KINETO_NAMESPACE {
 
-class XpuptiActivityApi {
+class XpuptiActivityApiV1 {
  public:
   enum CorrelationFlowType { Default, User };
 
-  XpuptiActivityApi() = default;
-  XpuptiActivityApi(const XpuptiActivityApi&) = delete;
-  XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
+  XpuptiActivityApiV1() = default;
+  XpuptiActivityApiV1(const XpuptiActivityApiV1&) = delete;
+  XpuptiActivityApiV1& operator=(const XpuptiActivityApiV1&) = delete;
 
-  virtual ~XpuptiActivityApi() {}
+  virtual ~XpuptiActivityApiV1() {}
 
-  static XpuptiActivityApi& singleton();
+  static XpuptiActivityApiV1& singleton();
 
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);

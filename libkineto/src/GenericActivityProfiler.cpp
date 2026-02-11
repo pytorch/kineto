@@ -833,14 +833,12 @@ time_point<system_clock> GenericActivityProfiler::performRunLoopStep(
     case RunloopState::Warmup:
       VLOG(1) << "State: Warmup";
       warmup_done = derivedConfig_->isWarmupDone(now, currentIter);
-      if (!cpuOnly_ && derivedConfig_->isProfilingByIteration() &&
-          currentIter >= 0) {
-        clearGpuActivities();
-      }
-      // Flushing can take a while so avoid doing it close to the start time
-      if (!cpuOnly_ && currentIter < 0 &&
+      // Flushing can take a while so avoid doing it close to the start time.
+      // For iteration-based profiling, always clear to avoid accumulating
+      // warmup data. For time-based profiling, only clear well before start.
+      if (!cpuOnly_ &&
           (derivedConfig_->isProfilingByIteration() ||
-           nextWakeupTime < derivedConfig_->profileStartTime())) {
+           (currentIter < 0 && nextWakeupTime < derivedConfig_->profileStartTime()))) {
         clearGpuActivities();
       }
 

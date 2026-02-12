@@ -2,7 +2,7 @@
 set -eux
 
 GPU_ARCH="${1:?Usage: pytorch_build_test.sh <cpu|cuda|rocm>}"
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Save kineto directory path before cloning PyTorch
 KINETO_DIR=$(pwd)
@@ -18,7 +18,7 @@ ln -s "${KINETO_DIR}" third_party/kineto
 echo "====: Linked PR version of Kineto to PyTorch (${KINETO_DIR} -> third_party/kineto)"
 
 # Load architecture-specific build env vars and deselected tests
-source "${SCRIPT_DIR}/config_${GPU_ARCH}.sh"
+source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 
 # Build PyTorch from source
 pip install -r requirements.txt

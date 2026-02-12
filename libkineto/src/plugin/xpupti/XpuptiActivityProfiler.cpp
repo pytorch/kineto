@@ -154,6 +154,20 @@ XpuptiActivityProfilerSession::getTraceBuffer() {
   return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
 }
 
+std::vector<libkineto::ResourceInfo>
+XpuptiActivityProfilerSession::getResourceInfos() {
+  std::vector<libkineto::ResourceInfo> result;
+  for (const auto [device_id, sycl_queue_id] : resourceInfo_) {
+    result.emplace_back(
+        device_id,
+        sycl_queue_id,
+        sycl_queue_id,
+        fmt::format("Stream {}", sycl_queue_id));
+  }
+  resourceInfo_.clear();
+  return result;
+}
+
 void XpuptiActivityProfilerSession::pushCorrelationId(uint64_t id) {
   xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::Default);
 }

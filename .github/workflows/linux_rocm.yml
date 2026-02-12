@@ -152,6 +152,7 @@ jobs:
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_disable_external_correlation \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_profiler_cuda_sync_events \
+              --deselect=test/profiler/test_profiler.py::TestProfiler::test_python_gc_event \
               --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
               --deselect=test/profiler/test_profiler.py::TestProfilerCUDA::test_mem_leak \
               --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \

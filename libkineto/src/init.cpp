@@ -6,8 +6,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -16,10 +20,8 @@
 #include "ConfigLoader.h"
 #include "DaemonConfigLoader.h"
 #include "DeviceUtil.h"
-#include "ThreadUtil.h"
 #ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
-#include "CuptiCallbackApi.h"
 #include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
@@ -38,45 +40,40 @@
 
 namespace KINETO_NAMESPACE {
 
-#if __linux__ || defined(HAS_CUPTI)
-static bool initialized = false;
-
-static void initProfilers() {
-  if (!initialized) {
-    // Caution: `initProfilerIfRegistered` spawns the `updateConfigThread`, so
-    // either:
-    // 1. Ensure nothing the main thread does not do anything which could race
-    // with the `updateConfigThread` (current invariant)
-    // 2. Guard the raceable data appropriately
-    libkineto::api().initProfilerIfRegistered();
-    initialized = true;
-    VLOG(0) << "libkineto profilers activated";
+// Uses condition_variable instead of std::async to allow immediate cancellation
+// on shutdown. std::future destructor blocks for the full sleep duration.
+class DelayedInitializer {
+ public:
+  explicit DelayedInitializer(std::chrono::seconds delay) {
+    thread_ = std::thread([this, delay]() {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (!cv_.wait_for(lock, delay, [this] { return stop_.load(); })) {
+        libkineto::api().initProfilerIfRegistered();
+      }
+    });
   }
-}
 
-#endif // __linux__ || defined(HAS_CUPTI)
+  ~DelayedInitializer() {
+    stop_ = true;
+    cv_.notify_one();
+    if (thread_.joinable()) {
+      thread_.join();
+    }
+  }
+
+  DelayedInitializer(const DelayedInitializer&) = delete;
+  DelayedInitializer& operator=(const DelayedInitializer&) = delete;
+
+ private:
+  std::thread thread_;
+  std::atomic<bool> stop_{false};
+  std::mutex mutex_;
+  std::condition_variable cv_;
+};
+
+static std::unique_ptr<DelayedInitializer> delayedInit_;
 
 #ifdef HAS_CUPTI
-bool enableEventProfiler() {
-  if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-static void initProfilersCallback(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* /*cbInfo*/) {
-  VLOG(0) << "CUDA Context created";
-  initProfilers();
-
-  if (enableEventProfiler()) {
-    LOG(WARNING) << "Event Profiler is no longer supported in kineto";
-  }
-}
-
 // Some models suffer from excessive instrumentation code gen
 // on dynamic attach which can hang for more than 5+ seconds.
 // If the workload was meant to be traced, preload the CUPTI
@@ -88,41 +85,6 @@ static bool shouldPreloadCuptiInstrumentation() {
 #else
   return false;
 #endif
-}
-
-bool setupCuptiInitCallback(bool logOnError) {
-  // libcupti will be lazily loaded on this call.
-  // If it is not available (e.g. CUDA is not installed),
-  // then this call will return an error and we just abort init.
-  auto cbapi = CuptiCallbackApi::singleton();
-  cbapi->initCallbackApi();
-
-  bool status = false;
-
-  if (cbapi->initSuccess()) {
-    const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
-    status = cbapi->registerCallback(
-        domain,
-        CuptiCallbackApi::RESOURCE_CONTEXT_CREATED,
-        initProfilersCallback);
-    if (status) {
-      status = cbapi->enableCallback(
-          domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
-    }
-  }
-
-  if (!cbapi->initSuccess() || !status) {
-    if (logOnError) {
-      CUPTI_CALL(cbapi->getCuptiStatus());
-      LOG(WARNING) << "CUPTI initialization failed - "
-                   << "CUDA profiler activities will be missing";
-      LOG(INFO)
-          << "If you see CUPTI_ERROR_INSUFFICIENT_PRIVILEGES, refer to "
-          << "https://developer.nvidia.com/nvidia-development-tools-solutions-err-nvgpuctrperm-cupti";
-    }
-  }
-
-  return status;
 }
 
 static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
@@ -154,10 +116,9 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 #ifdef HAS_CUPTI
   bool initRangeProfiler = true;
 
-  if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
-    bool success = setupCuptiInitCallback(logOnError);
-    cpuOnly = !success;
-    initRangeProfiler = success;
+  if (!cpuOnly) {
+    cpuOnly = !isCUDAGpuAvailable();
+    initRangeProfiler = !cpuOnly;
   }
 
   // Initialize CUPTI Range Profiler API
@@ -208,13 +169,16 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
       });
 #endif // HAS_AIUPTI
 
-#if __linux__
-  // For open source users that would like to connect to a profiling daemon
-  // we should always initialize the profiler at this point.
-  if (libkineto::isDaemonEnvVarSet()) {
-    initProfilers();
+  // Hardware platform profilers (e.g. MTIA, AMD) may use static globals in
+  // separate translation units to register their factories via
+  // registerProfilerFactory(). Since static initialization order across
+  // translation units is undefined in C++, we delay profiler init to give
+  // those registrations time to complete before calling
+  // initProfilerIfRegistered.
+  if (!cpuOnly) {
+    delayedInit_ =
+        std::make_unique<DelayedInitializer>(std::chrono::seconds(2));
   }
-#endif
 }
 
 // The cuda driver calls this function if the CUDA_INJECTION64_PATH environment

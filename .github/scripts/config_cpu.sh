@@ -1,9 +1,33 @@
 #!/usr/bin/env bash
-# Deselected PyTorch profiler tests for CUDA CI.
+# Architecture-specific configuration for CPU CI.
 #
-# Each entry in the array is a pytest node ID that will be passed as a
-# --deselect argument. Use standard bash comments to document why a test
-# is excluded.
+# This file is sourced by kineto_build_test.sh and pytorch_build_test.sh.
+# It defines:
+#   - Extra cmake flags for the libkineto build
+#   - Environment variables for the PyTorch build
+#   - Deselected pytest tests
+#
+
+# --- Kineto cmake flags ---
+# Disable all GPU backends for CPU-only builds.
+
+KINETO_CMAKE_FLAGS=(
+  -DLIBKINETO_NOCUPTI=1
+  -DLIBKINETO_NOROCTRACER=1
+  -DLIBKINETO_NOXPUPTI=1
+  -DLIBKINETO_NOAIUPTI=1
+)
+
+# --- PyTorch build environment variables ---
+
+export USE_CUDA=0
+export USE_CUDNN=0
+export USE_NCCL=0
+export USE_ROCM=0
+export BUILD_TEST=1
+
+# --- Deselected PyTorch profiler tests ---
+# Each entry is a pytest node ID passed as a --deselect argument.
 #
 # TODO: Dynamically add/remove tests to the exclusion list based on their
 # status on trunk instead of maintaining a hardcoded list of known failures.
@@ -16,11 +40,11 @@ DESELECTED_TESTS=(
   test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
   test/profiler/test_profiler.py::TestProfiler::test_kineto
   test/profiler/test_profiler.py::TestProfiler::test_user_annotation
-
-  # https://github.com/pytorch/kineto/issues/1253
   test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
-
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
   test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
   test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+
+  # https://github.com/pytorch/kineto/issues/1230
+  test/profiler/test_profiler_tree.py::TestProfilerTree::test_profiler_experimental_tree_with_stack_and_modules
 )

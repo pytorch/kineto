@@ -6,138 +6,24 @@ on:
       - main
   pull_request:
 
-# Use TorchBench's docker image which has all basic dependencies.
-env:
-  DOCKER_IMAGE: "ghcr.io/pytorch/torchbench:latest"
-
-jobs:
-  pr-test:
-    runs-on: linux.12xlarge
-    timeout-minutes: 180 # 3 hours
-    steps:
-      - name: Checkout Kineto
-        uses: actions/checkout@v5
-        with:
-          path: kineto
-          submodules: recursive
-
-      - name: Pull docker image
-        uses: pytorch/test-infra/.github/actions/pull-docker-image@main
-        with:
-          docker-image: ${{ env.DOCKER_IMAGE }}
-
-      - name: Get env vars
-        run: |
-          echo GITHUB_WORKFLOW   = $GITHUB_WORKFLOW
-          echo HOME              = $HOME
-          echo GITHUB_ACTION     = $GITHUB_ACTION
-          echo GITHUB_ACTIONS    = $GITHUB_ACTIONS
-          echo GITHUB_REPOSITORY = $GITHUB_REPOSITORY
-          echo GITHUB_EVENT_NAME = $GITHUB_EVENT_NAME
-          echo GITHUB_EVENT_PATH = $GITHUB_EVENT_PATH
-          echo GITHUB_WORKSPACE  = $GITHUB_WORKSPACE
-          echo GITHUB_SHA        = $GITHUB_SHA
-          echo GITHUB_REF        = $GITHUB_REF
-
-      - name: Build libkineto (static and shared library)
-        run: |
-          container_name=$(docker run \
-            ${GPU_FLAG:-} \
-            --tty \
-            --detach \
-            --shm-size=32gb \
-            -v "${PWD}/kineto:/kineto" \
-            -w / \
-            "${{ env.DOCKER_IMAGE }}"
-          )
-          echo "Container name: ${container_name}"
-
-          docker exec -t -w "/kineto" "${container_name}" bash -c "
-            set -eux
-            mkdir build_static
-            mkdir build_shared
-            pip install cmake
-          "
-
-          # Note that we are making these CPU-only builds through cmake flags.
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "
-            set -eux
-            cmake -DLIBKINETO_NOCUPTI=1 -DLIBKINETO_NOROCTRACER=1 -DLIBKINETO_NOXPUPTI=1 -DLIBKINETO_NOAIUPTI=1 -DKINETO_LIBRARY_TYPE=static ../libkineto/
-            make -j
-          "
-
-          docker exec -t -w "/kineto/build_shared" "${container_name}" bash -c "
-            set -eux
-            cmake -DLIBKINETO_NOCUPTI=1 -DLIBKINETO_NOROCTRACER=1 -DLIBKINETO_NOXPUPTI=1 -DLIBKINETO_NOAIUPTI=1 -DKINETO_LIBRARY_TYPE=shared ../libkineto/
-            make -j
-          "
-
-      - name:  Run libkineto tests
-        run: |
-          container_name=$(docker ps -lq)
-          docker exec -t -w "/kineto/build_static" "${container_name}" bash -c "make test"
-
-      - name: Clone PyTorch
-        run: |
-          container_name=$(docker ps -lq)
-          docker exec -t -w "/" "${container_name}" bash -c "
-            set -eux
-            git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git
-          "
-
-      - name: Replace PyTorch's Kineto with PR version
-        run: |
-          container_name=$(docker ps -lq)
-          docker exec -t -w "/pytorch" "${container_name}" bash -c "
-            set -eux
-            rm -rf third_party/kineto
-            ln -s /kineto third_party/kineto
-          "
-
-      # Note that we are explicitly turning off all GPU support.
-      - name: Build PyTorch from source
-        run: |
-          container_name=$(docker ps -lq)
-          docker exec -t -w "/pytorch" "${container_name}" bash -c "
-            set -eux
-            pip install -r requirements.txt
-            export USE_CUDA=0
-            export USE_CUDNN=0
-            export USE_NCCL=0
-            export USE_ROCM=0
-            export BUILD_TEST=1
-            python setup.py develop
-          "
-
-      - name: Run PyTorch profiler tests
-        run: |
-          container_name=$(docker ps -lq)
-          docker exec -t -w "/pytorch" "${container_name}" bash -c "
-            set -eux
-            # TODO: Dynamically add/remove tests to the exclusion list based on their
-            # status on trunk instead of maintaining a hardcoded list of known failures.
-            # This will prevent the list from becoming stale as tests get fixed upstream.
-            #
-            # TODO: Investigate test_profiler_experimental_tree_with_stack_and_modules:
-            #     https://github.com/pytorch/kineto/issues/1230
-            python -m pytest test/profiler/ -v \
-              --deselect=test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated \
-              --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd \
-              --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd \
-              --deselect=test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step \
-              --deselect=test/profiler/test_profiler.py::TestProfiler::test_kineto \
-              --deselect=test/profiler/test_profiler.py::TestProfiler::test_user_annotation \
-              --deselect=test/profiler/test_profiler.py::TestProfiler::test_python_gc_event \
-              --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize \
-              --deselect=test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner \
-              --deselect=test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args \
-              --deselect=test/profiler/test_profiler_tree.py::TestProfilerTree::test_profiler_experimental_tree_with_stack_and_modules
-          "
-
-      - name: Teardown Linux
-        uses: pytorch/test-infra/.github/actions/teardown-linux@main
-        if: always()
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}-${{ github.event_name == 'workflow_dispatch' }}
   cancel-in-progress: true
+
+jobs:
+  pr-test:
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    with:
+      job-name: linux-cpu-build-and-test
+      runner: linux.12xlarge
+      timeout: 180
+      # Checkout the Kineto repo at the PR ref with submodules
+      repository: ${{ github.repository }}
+      ref: ${{ github.ref }}
+      submodules: recursive
+      gpu-arch-type: cpu
+      script: |
+        set -eux
+        .github/scripts/setup.sh
+        .github/scripts/kineto_build_test.sh cpu
+        .github/scripts/pytorch_build_test.sh cpu

@@ -17,16 +17,15 @@ rm -rf third_party/kineto
 ln -s "${KINETO_DIR}" third_party/kineto
 echo "====: Linked PR version of Kineto to PyTorch (${KINETO_DIR} -> third_party/kineto)"
 
+# Load architecture-specific build env vars and deselected tests
+source "${SCRIPT_DIR}/config_${GPU_ARCH}.sh"
+
 # Build PyTorch from source
 pip install -r requirements.txt
-export USE_CUDA=1
-export BUILD_TEST=1
 python setup.py develop
 echo "====: Built PyTorch from source"
 
-# Load architecture-specific deselected tests
-source "${SCRIPT_DIR}/deselected_tests_${GPU_ARCH}.sh"
-
+# The deselected tests array is sourced from the architecture config above.
 DESELECT_ARGS=()
 for t in "${DESELECTED_TESTS[@]}"; do
   DESELECT_ARGS+=(--deselect="$t")

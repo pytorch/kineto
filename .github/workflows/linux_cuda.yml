@@ -27,5 +27,5 @@ jobs:
       script: |
         set -eux
         .github/scripts/setup.sh
-        .github/scripts/kineto_build_test.sh
+        .github/scripts/kineto_build_test.sh cuda
         .github/scripts/pytorch_build_test.sh cuda

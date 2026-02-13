@@ -24,6 +24,7 @@ ln -s "${KINETO_DIR}" third_party/kineto
 echo "====: Linked PR version of Kineto to PyTorch (${KINETO_DIR} -> third_party/kineto)"
 
 # Load architecture-specific build env vars and deselected tests
+# shellcheck source=/dev/null
 source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 
 # Build PyTorch from source

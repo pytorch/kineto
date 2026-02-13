@@ -16,6 +16,7 @@
 
 # --- Kineto cmake flags ---
 
+# shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=()
 
 # --- PyTorch build environment variables ---
@@ -30,6 +31,7 @@ export BUILD_TEST=1
 # status on trunk instead of maintaining a hardcoded list of known failures.
 # This will prevent the list from becoming stale as tests get fixed upstream.
 
+# shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
   test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd

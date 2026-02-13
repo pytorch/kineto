@@ -11,6 +11,7 @@ GPU_ARCH="${1:?Usage: kineto_build_test.sh <cpu|cuda|rocm>}"
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Load architecture-specific cmake flags
+# shellcheck source=/dev/null
 source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 
 mkdir -p build_static build_shared

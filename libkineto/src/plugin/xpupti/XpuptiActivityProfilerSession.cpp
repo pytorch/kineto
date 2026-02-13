@@ -6,8 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiActivityProfilerSessionV1.h"
-#include "XpuptiActivityApiV1.h"
+#include "XpuptiActivityProfilerSession.h"
+#include "XpuptiActivityApi.h"
 
 #include "time_since_epoch.h"
 
@@ -21,10 +21,10 @@ namespace KINETO_NAMESPACE {
 
 using namespace std::literals::string_view_literals;
 
-uint32_t XpuptiActivityProfilerSessionV1::iterationCount_ = 0;
-std::vector<DeviceUUIDsT> XpuptiActivityProfilerSessionV1::deviceUUIDs_ = {};
+uint32_t XpuptiActivityProfilerSession::iterationCount_ = 0;
+std::vector<DeviceUUIDsT> XpuptiActivityProfilerSession::deviceUUIDs_ = {};
 std::unordered_set<std::string_view>
-    XpuptiActivityProfilerSessionV1::correlateRuntimeOps_ = {
+    XpuptiActivityProfilerSession::correlateRuntimeOps_ = {
         "piextUSMEnqueueFill"sv,
         "urEnqueueUSMFill"sv,
         "piextUSMEnqueueFill2D"sv,
@@ -43,8 +43,8 @@ std::unordered_set<std::string_view>
         "urEnqueueCooperativeKernelLaunchExp"sv};
 
 // =========== Session Constructor ============= //
-XpuptiActivityProfilerSessionV1::XpuptiActivityProfilerSessionV1(
-    XpuptiActivityApiV1& xpti,
+XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
+    XpuptiActivityApi& xpti,
     const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
@@ -56,24 +56,23 @@ XpuptiActivityProfilerSessionV1::XpuptiActivityProfilerSessionV1(
   xpti_.enableXpuptiActivities(activity_types_);
 }
 
-XpuptiActivityProfilerSessionV1::~XpuptiActivityProfilerSessionV1() {
+XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
   xpti_.clearActivities();
 }
 
 // =========== Session Public Methods ============= //
-void XpuptiActivityProfilerSessionV1::start() {
+void XpuptiActivityProfilerSession::start() {
   profilerStartTs_ =
       libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
 }
 
-void XpuptiActivityProfilerSessionV1::stop() {
+void XpuptiActivityProfilerSession::stop() {
   xpti_.disablePtiActivities(activity_types_);
   profilerEndTs_ =
       libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
 }
 
-void XpuptiActivityProfilerSessionV1::toggleCollectionDynamic(
-    const bool enable) {
+void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   if (enable) {
     xpti_.enableXpuptiActivities(activity_types_);
   } else {
@@ -81,7 +80,7 @@ void XpuptiActivityProfilerSessionV1::toggleCollectionDynamic(
   }
 }
 
-void XpuptiActivityProfilerSessionV1::processTrace(ActivityLogger& logger) {
+void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
   traceBuffer_.span =
       libkineto::TraceSpan(profilerStartTs_, profilerEndTs_, name_);
   traceBuffer_.span.iteration = iterationCount_++;
@@ -95,7 +94,7 @@ void XpuptiActivityProfilerSessionV1::processTrace(ActivityLogger& logger) {
   }
 }
 
-void XpuptiActivityProfilerSessionV1::processTrace(
+void XpuptiActivityProfilerSession::processTrace(
     ActivityLogger& logger,
     libkineto::getLinkedActivityCallback get_linked_activity,
     int64_t captureWindowStartTime,
@@ -107,28 +106,41 @@ void XpuptiActivityProfilerSessionV1::processTrace(
 }
 
 std::unique_ptr<libkineto::CpuTraceBuffer>
-XpuptiActivityProfilerSessionV1::getTraceBuffer() {
+XpuptiActivityProfilerSession::getTraceBuffer() {
   return std::make_unique<libkineto::CpuTraceBuffer>(std::move(traceBuffer_));
 }
 
-void XpuptiActivityProfilerSessionV1::pushCorrelationId(uint64_t id) {
-  xpti_.pushCorrelationID(
-      id, XpuptiActivityApiV1::CorrelationFlowType::Default);
+std::vector<libkineto::ResourceInfo>
+XpuptiActivityProfilerSession::getResourceInfos() {
+  std::vector<libkineto::ResourceInfo> result;
+  for (const auto [device_id, sycl_queue_id] : resourceInfo_) {
+    result.emplace_back(
+        device_id,
+        sycl_queue_id,
+        sycl_queue_id,
+        fmt::format("Stream {}", sycl_queue_id));
+  }
+  resourceInfo_.clear();
+  return result;
 }
 
-void XpuptiActivityProfilerSessionV1::popCorrelationId() {
-  xpti_.popCorrelationID(XpuptiActivityApiV1::CorrelationFlowType::Default);
+void XpuptiActivityProfilerSession::pushCorrelationId(uint64_t id) {
+  xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::Default);
 }
 
-void XpuptiActivityProfilerSessionV1::pushUserCorrelationId(uint64_t id) {
-  xpti_.pushCorrelationID(id, XpuptiActivityApiV1::CorrelationFlowType::User);
+void XpuptiActivityProfilerSession::popCorrelationId() {
+  xpti_.popCorrelationID(XpuptiActivityApi::CorrelationFlowType::Default);
 }
 
-void XpuptiActivityProfilerSessionV1::popUserCorrelationId() {
-  xpti_.popCorrelationID(XpuptiActivityApiV1::CorrelationFlowType::User);
+void XpuptiActivityProfilerSession::pushUserCorrelationId(uint64_t id) {
+  xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::User);
 }
 
-void XpuptiActivityProfilerSessionV1::enumDeviceUUIDs() {
+void XpuptiActivityProfilerSession::popUserCorrelationId() {
+  xpti_.popCorrelationID(XpuptiActivityApi::CorrelationFlowType::User);
+}
+
+void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
   if (!deviceUUIDs_.empty()) {
     return;
   }
@@ -155,7 +167,7 @@ void XpuptiActivityProfilerSessionV1::enumDeviceUUIDs() {
   }
 }
 
-DeviceIndex_t XpuptiActivityProfilerSessionV1::getDeviceIdxFromUUID(
+DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
     const uint8_t deviceUUID[16]) {
   auto it = std::find_if(
       deviceUUIDs_.begin(),

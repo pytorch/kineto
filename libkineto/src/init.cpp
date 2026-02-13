@@ -24,7 +24,7 @@
 #include "EventProfilerController.h"
 #endif
 #ifdef HAS_XPUPTI
-#include "plugin/xpupti/XpuptiActivityApiV2.h"
+#include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
 #include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif

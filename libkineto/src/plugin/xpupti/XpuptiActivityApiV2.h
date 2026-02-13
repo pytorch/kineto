@@ -20,20 +20,19 @@ namespace KINETO_NAMESPACE {
 
 class Config;
 
-class XpuptiActivityApi : public XpuptiActivityApiV1 {
+class XpuptiActivityApiV2 : public XpuptiActivityApi {
  public:
-  XpuptiActivityApi() = default;
-  XpuptiActivityApi(const XpuptiActivityApi&) = delete;
-  XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
+  XpuptiActivityApiV2() = default;
+  XpuptiActivityApiV2(const XpuptiActivityApiV2&) = delete;
+  XpuptiActivityApiV2& operator=(const XpuptiActivityApiV2&) = delete;
 
-  virtual ~XpuptiActivityApi() {}
+  virtual ~XpuptiActivityApiV2() {}
 
-  static XpuptiActivityApi& singleton();
+  static XpuptiActivityApiV2& singleton();
 
   void enableXpuptiActivities(
       const std::set<ActivityType>& selected_activities) {
-    return XpuptiActivityApiV1::enableXpuptiActivities(
-        selected_activities, true);
+    return XpuptiActivityApi::enableXpuptiActivities(selected_activities, true);
   }
 
   void enableScopeProfiler(const Config&);
@@ -62,18 +61,6 @@ class XpuptiActivityApi : public XpuptiActivityApiV1 {
 
   std::optional<safe_pti_scope_collection_handle_t> scopeHandleOpt_;
   std::exception_ptr exceptFromScopeHandleDestructor_;
-};
-
-} // namespace KINETO_NAMESPACE
-
-#else
-
-namespace KINETO_NAMESPACE {
-
-struct XpuptiActivityApi : public XpuptiActivityApiV1 {
-  using XpuptiActivityApiV1::XpuptiActivityApiV1;
-
-  static XpuptiActivityApi& singleton();
 };
 
 } // namespace KINETO_NAMESPACE

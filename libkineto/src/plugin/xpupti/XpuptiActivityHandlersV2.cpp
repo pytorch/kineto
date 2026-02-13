@@ -10,7 +10,7 @@
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
-#include "XpuptiActivityProfilerSession.h"
+#include "XpuptiActivityProfilerSessionV2.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -41,7 +41,7 @@ static void AddPtiValueToMetadata(
   }
 }
 
-void XpuptiActivityProfilerSession::handleScopeRecord(
+void XpuptiActivityProfilerSessionV2::handleScopeRecord(
     const pti_metrics_scope_record_t* record,
     const pti_metrics_scope_record_metadata_t& metadata,
     ActivityLogger& logger) {

@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiActivityProfiler.h"
+#include "XpuptiActivityProfilerSession.h"
 
 #include <iterator>
 #include <type_traits>
@@ -204,6 +204,14 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
     trace_activity->resource = getMappedQueueId(activity->_sycl_queue_id);
     trace_activity->flow.start = 0;
+
+    if constexpr (handleKernelActivities) {
+      kernelActivities_[activity->_kernel_id].emplace(
+          trace_activity->startTime,
+          trace_activity->endTime,
+          trace_activity->device,
+          trace_activity->resource);
+    }
 
     addResouceInfo(trace_activity->device, trace_activity->resource);
   }

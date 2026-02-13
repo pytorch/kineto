@@ -20,17 +20,17 @@
 
 namespace KINETO_NAMESPACE {
 
-class XpuptiActivityApiV1 {
+class XpuptiActivityApi {
  public:
   enum CorrelationFlowType { Default, User };
 
-  XpuptiActivityApiV1() = default;
-  XpuptiActivityApiV1(const XpuptiActivityApiV1&) = delete;
-  XpuptiActivityApiV1& operator=(const XpuptiActivityApiV1&) = delete;
+  XpuptiActivityApi() = default;
+  XpuptiActivityApi(const XpuptiActivityApi&) = delete;
+  XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
 
-  virtual ~XpuptiActivityApiV1() {}
+  virtual ~XpuptiActivityApi() {}
 
-  static XpuptiActivityApiV1& singleton();
+  static XpuptiActivityApi& singleton();
 
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);

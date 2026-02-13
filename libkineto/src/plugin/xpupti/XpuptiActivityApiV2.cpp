@@ -7,6 +7,7 @@
  */
 
 #include "XpuptiActivityApiV2.h"
+#include "XpuptiActivityApiAndSessionVersionSelector.h"
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
@@ -20,28 +21,24 @@
 
 namespace KINETO_NAMESPACE {
 
-XpuptiActivityApi& XpuptiActivityApi::singleton() {
-  static XpuptiActivityApi instance;
+XPUPTI_ACTIVITY_API& XPUPTI_ACTIVITY_API::singleton() {
+  static XPUPTI_ACTIVITY_API instance;
   return instance;
 }
 
-XpuptiActivityApiV1& XpuptiActivityApiV1::singleton() {
-  return XpuptiActivityApi::singleton();
-}
-
-} // namespace KINETO_NAMESPACE
-
 #if PTI_VERSION_AT_LEAST(0, 15)
 
-namespace KINETO_NAMESPACE {
+XpuptiActivityApi& XpuptiActivityApi::singleton() {
+  return XpuptiActivityApiV2::singleton();
+}
 
-XpuptiActivityApi::safe_pti_scope_collection_handle_t::
+XpuptiActivityApiV2::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
     : exceptFromDestructor_(exceptFromDestructor) {
   XPUPTI_CALL(ptiMetricsScopeEnable(&handle_));
 }
 
-XpuptiActivityApi::safe_pti_scope_collection_handle_t::
+XpuptiActivityApiV2::safe_pti_scope_collection_handle_t::
     ~safe_pti_scope_collection_handle_t() noexcept {
   try {
     XPUPTI_CALL(ptiMetricsScopeDisable(handle_));
@@ -50,7 +47,7 @@ XpuptiActivityApi::safe_pti_scope_collection_handle_t::
   }
 }
 
-void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
+void XpuptiActivityApiV2::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
   uint32_t deviceCount = 0;
   XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount));
@@ -106,7 +103,7 @@ void XpuptiActivityApi::enableScopeProfiler(const Config& cfg) {
 #endif
 }
 
-void XpuptiActivityApi::disableScopeProfiler() {
+void XpuptiActivityApiV2::disableScopeProfiler() {
 #ifdef HAS_XPUPTI
   scopeHandleOpt_.reset();
   if (exceptFromScopeHandleDestructor_) {
@@ -115,7 +112,7 @@ void XpuptiActivityApi::disableScopeProfiler() {
 #endif
 }
 
-void XpuptiActivityApi::startScopeActivity() {
+void XpuptiActivityApiV2::startScopeActivity() {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStartCollection(*scopeHandleOpt_));
@@ -123,7 +120,7 @@ void XpuptiActivityApi::startScopeActivity() {
 #endif
 }
 
-void XpuptiActivityApi::stopScopeActivity() {
+void XpuptiActivityApiV2::stopScopeActivity() {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStopCollection(*scopeHandleOpt_));
@@ -135,7 +132,7 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
 
-void XpuptiActivityApi::processScopeTrace(
+void XpuptiActivityApiV2::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
         const pti_metrics_scope_record_metadata_t& metadata)> handler) {
@@ -196,6 +193,6 @@ void XpuptiActivityApi::processScopeTrace(
 #endif
 }
 
-} // namespace KINETO_NAMESPACE
-
 #endif
+
+} // namespace KINETO_NAMESPACE

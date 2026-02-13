@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "XpuptiActivityProfilerSessionV1.h"
+#include "XpuptiActivityProfilerSession.h"
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
@@ -16,19 +16,22 @@
 
 namespace KINETO_NAMESPACE {
 
-class XpuptiActivityProfilerSession : public XpuptiActivityProfilerSessionV1 {
+class XpuptiActivityApiV2;
+
+class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
  public:
-  XpuptiActivityProfilerSession(
-      XpuptiActivityApi& xpti,
+  XpuptiActivityProfilerSessionV2(
+      XpuptiActivityApiV2& xpti,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
 
-  XpuptiActivityProfilerSession(const XpuptiActivityProfilerSession&) = delete;
-  XpuptiActivityProfilerSession& operator=(
-      const XpuptiActivityProfilerSession&) = delete;
+  XpuptiActivityProfilerSessionV2(const XpuptiActivityProfilerSessionV2&) =
+      delete;
+  XpuptiActivityProfilerSessionV2& operator=(
+      const XpuptiActivityProfilerSessionV2&) = delete;
 
-  ~XpuptiActivityProfilerSession();
+  ~XpuptiActivityProfilerSessionV2();
   void start();
   void stop();
   void toggleCollectionDynamic(const bool enable);
@@ -44,12 +47,6 @@ class XpuptiActivityProfilerSession : public XpuptiActivityProfilerSessionV1 {
   bool scopeProfilerEnabled_{false};
 };
 
-} // namespace KINETO_NAMESPACE
-
-#else
-
-namespace KINETO_NAMESPACE {
-using XpuptiActivityProfilerSession = XpuptiActivityProfilerSessionV1;
 } // namespace KINETO_NAMESPACE
 
 #endif

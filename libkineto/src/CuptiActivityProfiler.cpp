@@ -24,9 +24,6 @@
 #include "DeviceUtil.h"
 #include "KernelRegistry.h"
 #include "Logger.h"
-#ifdef HAS_XPUPTI
-#include "plugin/xpupti/XpuptiActivityProfilerSession.h"
-#endif
 
 using namespace std::chrono;
 using std::string;

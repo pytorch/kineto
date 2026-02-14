@@ -29,6 +29,13 @@ source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 
 # Build PyTorch from source
 pip install -r requirements.txt
+
+# Hipify PyTorch source code for ROCm build
+if [[ "${GPU_ARCH}" == "rocm" ]]; then
+  python tools/amd_build/build_amd.py
+  echo "====: Hipified PyTorch source for ROCm"
+fi
+
 python setup.py develop
 echo "====: Built PyTorch from source"
 

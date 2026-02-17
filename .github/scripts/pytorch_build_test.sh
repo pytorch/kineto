@@ -29,7 +29,7 @@ source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 
 # Build PyTorch from source
 pip install -r requirements.txt
-python setup.py develop
+python -m pip install --no-build-isolation -v -e .
 echo "====: Built PyTorch from source"
 
 # The deselected tests array is sourced from the architecture config above.

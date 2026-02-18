@@ -10,6 +10,7 @@
 
 #include <fmt/format.h>
 
+#include "CuptiCbidRegistry.h"
 #include "Demangle.h"
 #include "DeviceProperties.h"
 #include "Logger.h"
@@ -278,24 +279,8 @@ inline const std::string OverheadActivity::metadataJson() const {
 }
 
 inline bool RuntimeActivity::flowStart() const {
-  bool should_correlate =
-      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000 ||
-      (activity_.cbid >= CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020 &&
-       activity_.cbid <= CUPTI_RUNTIME_TRACE_CBID_cudaMemset2DAsync_v3020) ||
-      activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000 ||
-      activity_.cbid ==
-          CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000 ||
-      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000 ||
-      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020 ||
-      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020 ||
-      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaStreamWaitEvent_v3020;
-
-#if defined(CUPTI_API_VERSION) && CUPTI_API_VERSION >= 18
-  should_correlate |=
-      activity_.cbid == CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060;
-#endif
-  return should_correlate;
+  return CuptiCbidRegistry::instance().requiresFlowCorrelation(
+      CallbackDomain::RUNTIME, activity_.cbid);
 }
 
 inline const std::string RuntimeActivity::metadataJson() const {
@@ -306,6 +291,7 @@ inline const std::string RuntimeActivity::metadataJson() const {
       activity_.correlationId);
 }
 
+// TODO: remove isKernelLaunchApi after updating CuptiActivityProfiler.cpp
 inline bool isKernelLaunchApi(const CUpti_ActivityAPI& activity_) {
   return activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
@@ -315,7 +301,8 @@ inline bool isKernelLaunchApi(const CUpti_ActivityAPI& activity_) {
 }
 
 inline bool DriverActivity::flowStart() const {
-  return isKernelLaunchApi(activity_);
+  return CuptiCbidRegistry::instance().requiresFlowCorrelation(
+      CallbackDomain::DRIVER, activity_.cbid);
 }
 
 inline const std::string DriverActivity::metadataJson() const {

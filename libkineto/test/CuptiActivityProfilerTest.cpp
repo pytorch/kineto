@@ -61,6 +61,12 @@ static constexpr int32_t kTruncatLength = 30;
 
 #define CU_LAUNCH_KERNEL CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
 #define CU_LAUNCH_KERNEL_EX CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx
+#define CU_MEM_CREATE CUPTI_DRIVER_TRACE_CBID_cuMemCreate
+#define CU_MEM_MAP CUPTI_DRIVER_TRACE_CBID_cuMemMap
+#define CU_MEM_UNMAP CUPTI_DRIVER_TRACE_CBID_cuMemUnmap
+#define CU_MEM_RELEASE CUPTI_DRIVER_TRACE_CBID_cuMemRelease
+#define CU_MEM_EXPORT CUPTI_DRIVER_TRACE_CBID_cuMemExportToShareableHandle
+#define CU_MEM_IMPORT CUPTI_DRIVER_TRACE_CBID_cuMemImportFromShareableHandle
 
 namespace {
 const TraceSpan& defaultTraceSpan() {
@@ -506,10 +512,22 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
       CU_LAUNCH_KERNEL, start_time_ns + 165, start_time_ns + 175, 4);
   gpuOps->addDriverActivity(
       CU_LAUNCH_KERNEL_EX, start_time_ns + 195, start_time_ns + 205, 5);
+  gpuOps->addDriverActivity(
+      CU_MEM_CREATE, start_time_ns + 220, start_time_ns + 230, 6);
+  gpuOps->addDriverActivity(
+      CU_MEM_MAP, start_time_ns + 235, start_time_ns + 245, 7);
+  gpuOps->addDriverActivity(
+      CU_MEM_UNMAP, start_time_ns + 250, start_time_ns + 260, 8);
+  gpuOps->addDriverActivity(
+      CU_MEM_RELEASE, start_time_ns + 265, start_time_ns + 275, 9);
+  gpuOps->addDriverActivity(
+      CU_MEM_EXPORT, start_time_ns + 278, start_time_ns + 285, 10);
+  gpuOps->addDriverActivity(
+      CU_MEM_IMPORT, start_time_ns + 287, start_time_ns + 293, 11);
   gpuOps->addRuntimeActivity(
-      CUDA_STREAM_SYNC, start_time_ns + 146, start_time_ns + 240, 6);
+      CUDA_STREAM_SYNC, start_time_ns + 146, start_time_ns + 240, 12);
   gpuOps->addRuntimeActivity(
-      CUDA_EVENT_SYNC, start_time_ns + 241, start_time_ns + 250, 7);
+      CUDA_EVENT_SYNC, start_time_ns + 241, start_time_ns + 250, 13);
   gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
   gpuOps->addMemcpyActivity(start_time_ns + 140, start_time_ns + 150, 2);
   gpuOps->addKernelActivity(start_time_ns + 160, start_time_ns + 220, 3);
@@ -518,13 +536,13 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addSyncActivity(
       start_time_ns + 221,
       start_time_ns + 223,
-      6,
+      12,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_SYNCHRONIZE);
   // Add wait event on kernel stream 1
   gpuOps->addSyncActivity(
       start_time_ns + 224,
       start_time_ns + 226,
-      7,
+      13,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       1 /*stream*/);
   // This event should be ignored because it is not on a stream that has no GPU
@@ -532,14 +550,14 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   gpuOps->addSyncActivity(
       start_time_ns + 226,
       start_time_ns + 230,
-      8,
+      14,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
       4 /*stream*/);
   // Comes from CudaEventSynchronize call on CPU
   gpuOps->addSyncActivity(
       start_time_ns + 227,
       start_time_ns + 226,
-      7,
+      13,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
       -1 /*stream*/);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
@@ -553,7 +571,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
   // Wrapper that allows iterating over the activities
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(trace.activities()->size(), 20);
+  EXPECT_EQ(trace.activities()->size(), 26);
   std::map<std::string, int> activityCounts;
   std::map<int64_t, int> resourceIds;
   for (auto& activity : *trace.activities()) {
@@ -570,6 +588,12 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(activityCounts["op4"], 1);
   EXPECT_EQ(activityCounts["cudaLaunchKernel"], 2);
   EXPECT_EQ(activityCounts["cuLaunchKernelEx"], 1);
+  EXPECT_EQ(activityCounts["cuMemCreate"], 1);
+  EXPECT_EQ(activityCounts["cuMemMap"], 1);
+  EXPECT_EQ(activityCounts["cuMemUnmap"], 1);
+  EXPECT_EQ(activityCounts["cuMemRelease"], 1);
+  EXPECT_EQ(activityCounts["cuMemExportToShareableHandle"], 1);
+  EXPECT_EQ(activityCounts["cuMemImportFromShareableHandle"], 1);
   EXPECT_EQ(activityCounts["cudaMemcpy"], 1);
   EXPECT_EQ(activityCounts["cudaStreamSynchronize"], 1);
   EXPECT_EQ(activityCounts["cudaEventSynchronize"], 1);
@@ -581,7 +605,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   auto sysTid = systemThreadId();
   // Ops and runtime events are on thread sysTid along with the flow start
   // events
-  EXPECT_EQ(resourceIds[sysTid], 12);
+  EXPECT_EQ(resourceIds[sysTid], 18);
   // Kernels and sync events are on stream 1, memcpy on stream 2
   EXPECT_EQ(resourceIds[1], 6);
   EXPECT_EQ(resourceIds[2], 1);

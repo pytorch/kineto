@@ -35,7 +35,17 @@ void CuptiCbidRegistry::registerCallback(
     bool requiresFlowCorrelation,
     bool isBlocklisted) {
   getMapForDomain(domain)[cbid] =
-      CbidProperties{requiresFlowCorrelation, isBlocklisted};
+      CbidProperties{requiresFlowCorrelation, isBlocklisted, {}};
+}
+
+void CuptiCbidRegistry::registerCallback(
+    CallbackDomain domain,
+    uint32_t cbid,
+    bool requiresFlowCorrelation,
+    bool isBlocklisted,
+    const std::string& name) {
+  getMapForDomain(domain)[cbid] =
+      CbidProperties{requiresFlowCorrelation, isBlocklisted, name};
 }
 
 void CuptiCbidRegistry::registerCallbackRange(
@@ -166,15 +176,52 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel,
       /*requiresFlowCorrelation=*/true,
-      /*isBlocklisted=*/false);
-
+      /*isBlocklisted=*/false,
+      /*name=*/"cuLaunchKernel");
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
   registerCallback(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx,
       /*requiresFlowCorrelation=*/true,
-      /*isBlocklisted=*/false);
+      /*isBlocklisted=*/false,
+      /*name=*/"cuLaunchKernelEx");
 #endif
+  registerCallback(
+      /*domain=*/CallbackDomain::DRIVER,
+      /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemCreate,
+      /*requiresFlowCorrelation=*/false,
+      /*isBlocklisted=*/false,
+      /*name=*/"cuMemCreate");
+  registerCallback(
+      /*domain=*/CallbackDomain::DRIVER,
+      /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemMap,
+      /*requiresFlowCorrelation=*/false,
+      /*isBlocklisted=*/false,
+      /*name=*/"cuMemMap");
+  registerCallback(
+      /*domain=*/CallbackDomain::DRIVER,
+      /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemUnmap,
+      /*requiresFlowCorrelation=*/false,
+      /*isBlocklisted=*/false,
+      /*name=*/"cuMemUnmap");
+  registerCallback(
+      /*domain=*/CallbackDomain::DRIVER,
+      /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemRelease,
+      /*requiresFlowCorrelation=*/false,
+      /*isBlocklisted=*/false,
+      /*name=*/"cuMemRelease");
+  registerCallback(
+      /*domain=*/CallbackDomain::DRIVER,
+      /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemExportToShareableHandle,
+      /*requiresFlowCorrelation=*/false,
+      /*isBlocklisted=*/false,
+      /*name=*/"cuMemExportToShareableHandle");
+  registerCallback(
+      /*domain=*/CallbackDomain::DRIVER,
+      /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemImportFromShareableHandle,
+      /*requiresFlowCorrelation=*/false,
+      /*isBlocklisted=*/false,
+      /*name=*/"cuMemImportFromShareableHandle");
 }
 
 bool CuptiCbidRegistry::requiresFlowCorrelation(
@@ -211,6 +258,31 @@ bool CuptiCbidRegistry::isBlocklisted(CallbackDomain domain, uint32_t cbid) {
     }
   }
   return false;
+}
+
+bool CuptiCbidRegistry::isRegistered(CallbackDomain domain, uint32_t cbid) {
+  const auto& map = getMapForDomain(domain);
+  if (map.find(cbid) != map.end()) {
+    return true;
+  }
+  for (const auto& [rangeDomain, range] : cbidRanges_) {
+    if (rangeDomain == domain && cbid >= range.startCbid &&
+        cbid <= range.endCbid) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const std::string& CuptiCbidRegistry::getName(
+    CallbackDomain domain,
+    uint32_t cbid) {
+  static const std::string unknown = "unknown";
+  const auto& map = getMapForDomain(domain);
+  if (auto it = map.find(cbid); it != map.end() && !it->second.name.empty()) {
+    return it->second.name;
+  }
+  return unknown;
 }
 
 } // namespace KINETO_NAMESPACE

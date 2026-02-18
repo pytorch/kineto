@@ -291,13 +291,9 @@ inline const std::string RuntimeActivity::metadataJson() const {
       activity_.correlationId);
 }
 
-// TODO: remove isKernelLaunchApi after updating CuptiActivityProfiler.cpp
-inline bool isKernelLaunchApi(const CUpti_ActivityAPI& activity_) {
-  return activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
-      || activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx
-#endif
-      ;
+inline bool isTrackedDriverCbid(const CUpti_ActivityAPI& activity_) {
+  return CuptiCbidRegistry::instance().isRegistered(
+      CallbackDomain::DRIVER, activity_.cbid);
 }
 
 inline bool DriverActivity::flowStart() const {
@@ -314,18 +310,8 @@ inline const std::string DriverActivity::metadataJson() const {
 }
 
 inline const std::string DriverActivity::name() const {
-  // currently only cuLaunchKernel/cuLaunchKernelEx is expected
-  assert(isKernelLaunchApi(activity_));
-  // not yet implementing full name matching
-  if (activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel) {
-    return "cuLaunchKernel";
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
-  } else if (activity_.cbid == CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx) {
-    return "cuLaunchKernelEx";
-#endif
-  } else {
-    return "Unknown"; // should not reach here
-  }
+  return CuptiCbidRegistry::instance().getName(
+      CallbackDomain::DRIVER, activity_.cbid);
 }
 
 template <class T>

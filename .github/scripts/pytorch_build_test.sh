@@ -36,7 +36,7 @@ if [[ "${GPU_ARCH}" == "rocm" ]]; then
   echo "====: Hipified PyTorch source for ROCm"
 fi
 
-python setup.py develop
+python -m pip install --no-build-isolation -v -e .
 echo "====: Built PyTorch from source"
 
 # The deselected tests array is sourced from the architecture config above.

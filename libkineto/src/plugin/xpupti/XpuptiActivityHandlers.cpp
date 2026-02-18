@@ -133,6 +133,19 @@ inline std::string bandwidth(pti_view_memory_record_type* activity) {
   return duration == 0 ? "\"N/A\"" : fmt::format("{}", bytes * 1.0 / duration);
 }
 
+void XpuptiActivityProfilerSession::addResouceInfo(
+    int32_t device_id,
+    int32_t sycl_queue_id) {
+  if (std::find_if(
+          resourceInfo_.begin(),
+          resourceInfo_.end(),
+          [device_id, sycl_queue_id](std::pair<int32_t, int32_t> pair) {
+            return (pair.first == device_id) && (pair.second == sycl_queue_id);
+          }) == resourceInfo_.end()) {
+    resourceInfo_.emplace_back(device_id, sycl_queue_id);
+  }
+}
+
 template <class pti_view_memory_record_type>
 void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     ActivityType activityType,
@@ -191,6 +204,8 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
     trace_activity->resource = getMappedQueueId(activity->_sycl_queue_id);
     trace_activity->flow.start = 0;
+
+    addResouceInfo(trace_activity->device, trace_activity->resource);
   }
 
   if constexpr (handleMemcpyActivities || handleMemsetActivities) {

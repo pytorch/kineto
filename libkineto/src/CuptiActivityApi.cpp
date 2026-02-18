@@ -29,7 +29,15 @@ constexpr size_t kBufSize(4 * 1024 * 1024);
 #ifdef HAS_CUPTI
 inline bool cuptiTearDown_() {
   auto teardown_env = getenv("TEARDOWN_CUPTI");
-  return teardown_env != nullptr && strcmp(teardown_env, "1") == 0;
+  if (teardown_env != nullptr) {
+    return strcmp(teardown_env, "1") == 0;
+  }
+  // Default: enable teardown for CUDA 12.6+, disable for older versions
+#if defined(CUDART_VERSION) && CUDART_VERSION >= 12060
+  return true;
+#else
+  return false;
+#endif
 }
 
 inline bool cuptiLazyInit_() {

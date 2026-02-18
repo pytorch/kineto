@@ -60,15 +60,12 @@ target_link_libraries(CuptiCallbackApiTest PRIVATE
 gtest_discover_tests(CuptiCallbackApiTest)
 
 # CuptiRangeProfilerApiTest
-# add_executable(CuptiRangeProfilerApiTest CuptiRangeProfilerApiTest.cpp)
-# target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
-#     gtest_main
-#     kineto
-#     CUDA::cupti
-#     $<BUILD_INTERFACE:fmt::fmt-header-only>)
-# Skipping due to SEGFault in 12.4
-# Tracked here: https://github.com/pytorch/kineto/issues/949
-# gtest_discover_tests(CuptiRangeProfilerApiTest)
+add_executable(CuptiRangeProfilerApiTest CuptiRangeProfilerApiTest.cpp)
+target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    $<BUILD_INTERFACE:fmt::fmt-header-only>)
+gtest_discover_tests(CuptiRangeProfilerApiTest)
 
 # CuptiRangeProfilerConfigTest
 add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
@@ -79,15 +76,12 @@ target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
 gtest_discover_tests(CuptiRangeProfilerConfigTest)
 
 # CuptiRangeProfilerTest
-# add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
-# target_link_libraries(CuptiRangeProfilerTest PRIVATE
-#     gtest_main
-#     kineto
-#     CUDA::cupti
-#     $<BUILD_INTERFACE:fmt::fmt-header-only>)
-# Skipping due to SEGFault in 12.4
-# Tracked here: https://github.com/pytorch/kineto/issues/949
-# gtest_discover_tests(CuptiRangeProfilerTest)
+add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
+target_link_libraries(CuptiRangeProfilerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    $<BUILD_INTERFACE:fmt::fmt-header-only>)
+gtest_discover_tests(CuptiRangeProfilerTest)
 
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
@@ -122,9 +116,11 @@ target_link_libraries(PidInfoTest PRIVATE
 gtest_discover_tests(PidInfoTest)
 
 # CuptiProfilerApiTest
+# TODO: Re-enable once runtime crash in cuptiDeviceGetChipName is fixed.
 # enable_language(CUDA)
 # add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
 # target_link_libraries(CuptiProfilerApiTest PRIVATE
-#     kineto
+#     kineto_base kineto_api
+#     CUDA::cuda_driver
 #     gtest_main)
-#add_test(NAME CuptiProfilerApiTest_ COMMAND CuptiProfilerApiTest)
+# add_test(NAME CuptiProfilerApiTest COMMAND CuptiProfilerApiTest)

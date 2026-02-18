@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "RoctracerActivityApi.h"
+#include "RocprofActivityApi.h"
 
 #include <time.h>
 #include <chrono>
@@ -22,19 +22,18 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
-RoctracerActivityApi& RoctracerActivityApi::singleton() {
-  static RoctracerActivityApi instance;
+RocprofActivityApi& RocprofActivityApi::singleton() {
+  static RocprofActivityApi instance;
   return instance;
 }
 
-RoctracerActivityApi::RoctracerActivityApi()
-    : d(&RoctracerLogger::singleton()) {}
+RocprofActivityApi::RocprofActivityApi() : d(&RocprofLogger::singleton()) {}
 
-RoctracerActivityApi::~RoctracerActivityApi() {
+RocprofActivityApi::~RocprofActivityApi() {
   disableActivities(std::set<ActivityType>());
 }
 
-void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
+void RocprofActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
   if (!singleton().d->externalCorrelationEnabled_) {
     return;
@@ -44,7 +43,7 @@ void RoctracerActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #endif
 }
 
-void RoctracerActivityApi::popCorrelationID(CorrelationFlowType type) {
+void RocprofActivityApi::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_ROCTRACER
   if (!singleton().d->externalCorrelationEnabled_) {
     return;
@@ -54,7 +53,11 @@ void RoctracerActivityApi::popCorrelationID(CorrelationFlowType type) {
 #endif
 }
 
-void RoctracerActivityApi::setMaxBufferSize(int size) {
+void RocprofActivityApi::setMaxEvents(uint32_t maxEvents) {
+  d->setMaxEvents(maxEvents);
+}
+
+void RocprofActivityApi::setMaxBufferSize(int size) {
   // FIXME: implement?
   // maxGpuBufferCount_ = 1 + size / kBufSize;
 }
@@ -63,8 +66,7 @@ inline bool inRange(int64_t start, int64_t end, int64_t stamp) {
   return ((stamp > start) && (stamp < end));
 }
 
-inline bool RoctracerActivityApi::isLogged(
-    libkineto::ActivityType atype) const {
+inline bool RocprofActivityApi::isLogged(libkineto::ActivityType atype) const {
   return activityMaskSnapshot_ & (1 << static_cast<uint32_t>(atype));
 }
 
@@ -84,7 +86,7 @@ timestamp_t getTimeOffset() {
   return (t0 >> 1) + (t00 >> 1) - timespec_to_ns(t1);
 }
 
-int RoctracerActivityApi::processActivities(
+int RocprofActivityApi::processActivities(
     std::function<void(const rocprofBase*)> handler,
     std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
         correlationHandler) {
@@ -122,27 +124,14 @@ int RoctracerActivityApi::processActivities(
         !isLogged(ActivityType::CUDA_RUNTIME)) {
       filtered = true;
     } else {
-      switch (reinterpret_cast<rocprofAsyncRow*>(item)->kind) {
-        case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
-        case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
-        case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
-        case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
-        case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
-        case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      switch (reinterpret_cast<rocprofAsyncRow*>(item)->domain) {
+        case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
           if (!isLogged(ActivityType::GPU_MEMCPY))
             filtered = true;
           break;
-        case HIP_OP_COPY_KIND_FILL_BUFFER_:
-          if (!isLogged(ActivityType::GPU_MEMSET))
-            filtered = true;
-          break;
-        case HIP_OP_DISPATCH_KIND_KERNEL_:
-        case HIP_OP_DISPATCH_KIND_TASK_:
+        case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
         default:
           if (!isLogged(ActivityType::CONCURRENT_KERNEL))
-            filtered = true;
-          // Don't record barriers/markers
-          if (reinterpret_cast<rocprofAsyncRow*>(item)->op == HIP_OP_ID_BARRIER)
             filtered = true;
           break;
       }
@@ -168,19 +157,13 @@ int RoctracerActivityApi::processActivities(
 }
 
 // TODO: implement the actual flush with roctracer_flush_activity
-void RoctracerActivityApi::flushActivities() {}
+void RocprofActivityApi::flushActivities() {}
 
-void RoctracerActivityApi::clearActivities() {
+void RocprofActivityApi::clearActivities() {
   d->clearLogs();
 }
 
-void RoctracerActivityApi::setMaxEvents(uint32_t maxEvents) {
-#ifdef HAS_ROCTRACER
-  d->setMaxEvents(maxEvents);
-#endif
-}
-
-void RoctracerActivityApi::enableActivities(
+void RocprofActivityApi::enableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   d->startLogging();
@@ -194,7 +177,7 @@ void RoctracerActivityApi::enableActivities(
 #endif
 }
 
-void RoctracerActivityApi::disableActivities(
+void RocprofActivityApi::disableActivities(
     const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_ROCTRACER
   d->stopLogging();

@@ -80,6 +80,51 @@ else()
   set(LIBKINETO_NOXPUPTI ON)
 endif()
 
+# Detect ROCM Version
+if(NOT LIBKINETO_NOROCTRACER)
+  if(NOT ROCM_INCLUDE_DIRS)
+    set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
+  endif()
+
+  find_file(ROCM_VERSION_HEADER_PATH
+    NAMES rocm-core/rocm_version.h
+    NO_DEFAULT_PATH
+    PATHS ${ROCM_INCLUDE_DIRS}
+  )
+
+  if(EXISTS ${ROCM_VERSION_HEADER_PATH})
+    set(ROCM_HEADER_FILE ${ROCM_VERSION_HEADER_PATH})
+  endif()
+
+  # Read the ROCM headerfile into a variable
+  message(STATUS "Reading ROCM version from: ${ROCM_HEADER_FILE}")
+  file(READ "${ROCM_HEADER_FILE}" ROCM_HEADER_CONTENT)
+
+  string(REGEX MATCH "ROCM_VERSION_MAJOR[ ]+[0-9]+" TEMP1 ${ROCM_HEADER_CONTENT})
+  string(REPLACE "ROCM_VERSION_MAJOR" "" TEMP2 ${TEMP1})
+  string(STRIP ${TEMP2} ROCM_VERSION_DEV_MAJOR)
+  string(REGEX MATCH "ROCM_VERSION_MINOR[ ]+[0-9]+" TEMP1 ${ROCM_HEADER_CONTENT})
+  string(REPLACE "ROCM_VERSION_MINOR" "" TEMP2 ${TEMP1})
+  string(STRIP ${TEMP2} ROCM_VERSION_DEV_MINOR)
+  string(REGEX MATCH "ROCM_VERSION_PATCH[ ]+[0-9]+" TEMP1 ${ROCM_HEADER_CONTENT})
+  string(REPLACE "ROCM_VERSION_PATCH" "" TEMP2 ${TEMP1})
+  string(STRIP ${TEMP2} ROCM_VERSION_DEV_PATCH)
+
+  message(STATUS "ROCM major: ${ROCM_VERSION_DEV_MAJOR}")
+  message(STATUS "ROCM minor: ${ROCM_VERSION_DEV_MINOR}")
+  message(STATUS "ROCM patch: ${ROCM_VERSION_DEV_PATCH}")
+
+# Use rocprofiler-sdk for rocm version 6.4 forward
+  if ((${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 7) OR (${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 6 AND ${ROCM_VERSION_DEV_MINOR} GREATER_EQUAL 4))
+    set(USE_ROCPROFILER_SDK ON)
+  endif()
+  if (${USE_ROCPROFILER_SDK})
+    message(STATUS "Building with: rocprofiler-sdk")
+  else()
+    message(STATUS "Building with: libroctracer")
+  endif()
+endif()
+
 if(DEFINED LIBKINETO_NOAIUPTI AND NOT LIBKINETO_NOAIUPTI)
   add_subdirectory(src/plugin/aiupti)
 else()
@@ -93,8 +138,14 @@ if(LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI AND LIBKIN
   message(STATUS " No GPU backend available - building CPU-only profilers")
 else()
   if(NOT LIBKINETO_NOROCTRACER)
-    get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " Building with roctracer")
+    if (${USE_ROCPROFILER_SDK})
+      get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_SRCS)
+      message(STATUS " Building with rocprofiler-sdk")
+    else()
+      get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
+      add_compile_options(-DROCTRACER_FALLBACK)
+      message(STATUS " Building with roctracer")
+    endif()
   elseif(NOT LIBKINETO_NOCUPTI)
     get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
     message(STATUS " Building with cupti")
@@ -234,9 +285,14 @@ target_include_directories(kineto PUBLIC
 
 # Link backend libraries - mutually exclusive (only one backend active)
 if(NOT LIBKINETO_NOROCTRACER)
-  find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS
+if (${USE_ROCPROFILER_SDK})
+  find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
-  target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
+else()
+  find_library(ROCPROF_LIBRARY NAMES libroctracer64.so HINTS
+    ${ROCM_SOURCE_DIR}/lib)
+endif()
+  target_link_libraries(kineto "${ROCPROF_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")

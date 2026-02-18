@@ -217,8 +217,8 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
       correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1) {
     userCorrelationMap_[correlation->correlationId] = correlation->externalId;
   } else {
-    LOG(WARNING)
-        << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
+    LOG(WARNING) << "Invalid CUpti_ActivityExternalCorrelation sent to "
+                    "handleCuptiActivity";
     ecs_.invalid_external_correlation_events++;
   }
 }

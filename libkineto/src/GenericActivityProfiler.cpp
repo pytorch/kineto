@@ -833,11 +833,27 @@ time_point<system_clock> GenericActivityProfiler::performRunLoopStep(
     case RunloopState::Warmup:
       VLOG(1) << "State: Warmup";
       warmup_done = derivedConfig_->isWarmupDone(now, currentIter);
-      // Flushing can take a while so avoid doing it close to the start time
-      if (!cpuOnly_ && currentIter < 0 &&
-          (derivedConfig_->isProfilingByIteration() ||
-           nextWakeupTime < derivedConfig_->profileStartTime())) {
-        clearGpuActivities();
+      {
+        // Flushing GPU activities can take a while so avoid doing it close to
+        // the start time. Clear during warmup in the following cases:
+        // 1. Iteration-based flow: called from application step() API
+        //    (currentIter >= 0) with iteration profiling enabled
+        // 2. Timestamp-based flow: called from periodic runloop
+        //    (currentIter < 0) when not close to profile start time
+        // 3. Iteration config with periodic runloop: always safe to clear
+        const bool isIterationBasedFlow =
+            derivedConfig_->isProfilingByIteration() && currentIter >= 0;
+        const bool isTimestampBasedFlowSafeToFlush =
+            !derivedConfig_->isProfilingByIteration() && currentIter < 0 &&
+            nextWakeupTime < derivedConfig_->profileStartTime();
+        const bool isIterationConfigWithPeriodicRunloop =
+            derivedConfig_->isProfilingByIteration() && currentIter < 0;
+
+        if (!cpuOnly_ &&
+            (isIterationBasedFlow || isTimestampBasedFlowSafeToFlush ||
+             isIterationConfigWithPeriodicRunloop)) {
+          clearGpuActivities();
+        }
       }
 
       if (isGpuCollectionStopped()) {

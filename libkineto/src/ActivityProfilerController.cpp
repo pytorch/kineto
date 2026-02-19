@@ -407,7 +407,7 @@ bool ActivityProfilerController::isActive() {
 
 void ActivityProfilerController::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
-  return profiler_->transferCpuTrace(std::move(cpuTrace));
+  profiler_->transferCpuTrace(std::move(cpuTrace));
 }
 
 void ActivityProfilerController::recordThreadInfo() {

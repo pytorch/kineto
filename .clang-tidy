@@ -13,10 +13,10 @@ Checks: >
   -google-readability-todo,
   -google-runtime-references,
   misc-*,
-  -misc-const-correctness
+  -misc-const-correctness,
   -misc-non-private-member-variables-in-classes,
   -misc-no-recursion,
-  -misc-include-cleaner
+  -misc-include-cleaner,
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-avoid-c-arrays,

@@ -34,7 +34,8 @@ void trace_collection_thread(
     uint32_t cupti_buffer_mb) {
   if (cupti_buffer_mb > 0) {
     // Configure CUPTI buffer sizes
-    size_t attrValue = 0, attrValueSize = sizeof(size_t);
+    size_t attrValue = 0;
+    size_t attrValueSize = sizeof(size_t);
     attrValue = (size_t)(cupti_buffer_mb * 1024 * 1024);
     cuptiActivitySetAttribute(
         CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &attrValueSize, &attrValue);
@@ -353,7 +354,8 @@ int main(int argc, char* argv[]) {
   }
 
   double t_no_trace = 0.0;
-  clock_t t_start, t_stop;
+  clock_t t_start;
+  clock_t t_stop;
 
   if (test_args.do_warmup) {
     // Run without kineto tracing

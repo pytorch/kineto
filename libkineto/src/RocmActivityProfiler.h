@@ -12,17 +12,27 @@
 //                       need this guard in the header file.
 #ifdef HAS_ROCTRACER
 
-#include <roctracer.h>
 #include "GenericActivityProfiler.h"
+#include "RocLogger.h"
+#ifndef ROCTRACER_FALLBACK
+#include <rocprofiler-sdk/version.h>
+#include "RocprofActivity.h"
+#include "RocprofActivityApi.h"
+#else
+#include <roctracer.h>
 #include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
-#include "RoctracerLogger.h"
+#endif
 
 namespace KINETO_NAMESPACE {
 
 class RocmActivityProfiler : public GenericActivityProfiler {
  public:
+#ifndef ROCTRACER_FALLBACK
+  RocmActivityProfiler(RocprofActivityApi& rocprof, bool cpuOnly);
+#else
   RocmActivityProfiler(RoctracerActivityApi& roctracer, bool cpuOnly);
+#endif
   RocmActivityProfiler(const RocmActivityProfiler&) = delete;
   RocmActivityProfiler& operator=(const RocmActivityProfiler&) = delete;
   ~RocmActivityProfiler() override = default;
@@ -42,6 +52,21 @@ class RocmActivityProfiler : public GenericActivityProfiler {
   void onFinalizeTrace(const Config& config, ActivityLogger& logger) override;
 
  private:
+#ifndef ROCTRACER_FALLBACK
+  // Process generic RocProf activity
+  void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
+  void handleCorrelationActivity(
+      uint64_t correlationId,
+      uint64_t externalId,
+      RocLogger::CorrelationDomain externalKind);
+  // Process specific GPU activity types
+  template <class T>
+  void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
+  void handleGpuActivity(const rocprofAsyncRow* record, ActivityLogger* logger);
+
+  // Calls to rocprofiler-sdk is encapsulated behind this interface
+  RocprofActivityApi& roc_;
+#else
   // Process generic RocTracer activity
   void handleRoctracerActivity(
       const roctracerBase* record,
@@ -49,7 +74,7 @@ class RocmActivityProfiler : public GenericActivityProfiler {
   void handleCorrelationActivity(
       uint64_t correlationId,
       uint64_t externalId,
-      RoctracerLogger::CorrelationDomain externalKind);
+      RocLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
@@ -58,7 +83,8 @@ class RocmActivityProfiler : public GenericActivityProfiler {
       ActivityLogger* logger);
 
   // Calls to ROCtracer is encapsulated behind this interface
-  RoctracerActivityApi& roctracer_;
+  RoctracerActivityApi& roc_;
+#endif
 };
 
 } // namespace KINETO_NAMESPACE

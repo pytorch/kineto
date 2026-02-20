@@ -10,9 +10,14 @@
 
 #include "RocmActivityProfiler.h"
 #include <fmt/format.h>
-#include <roctracer.h>
 #include <string>
 #include "DeviceUtil.h"
+
+#ifndef ROCTRACER_FALLBACK
+#include <rocprofiler-sdk/version.h>
+#else
+#include <roctracer.h>
+#endif
 
 #include "ActivityBuffers.h"
 #include "Config.h"
@@ -24,16 +29,48 @@ using std::string;
 
 namespace KINETO_NAMESPACE {
 
+#ifndef ROCTRACER_FALLBACK
 RocmActivityProfiler::RocmActivityProfiler(
-    RoctracerActivityApi& roctracer,
+    RocprofActivityApi& rocprof,
     bool cpuOnly)
-    : GenericActivityProfiler(cpuOnly), roctracer_(roctracer) {
+    : GenericActivityProfiler(cpuOnly), roc_(rocprof) {
   if (isGpuAvailable()) {
     logGpuVersions();
   }
 }
+#else
+RocmActivityProfiler::RocmActivityProfiler(
+    RoctracerActivityApi& roctracer,
+    bool cpuOnly)
+    : GenericActivityProfiler(cpuOnly), roc_(roctracer) {
+  if (isGpuAvailable()) {
+    logGpuVersions();
+  }
+}
+#endif
 
 void RocmActivityProfiler::logGpuVersions() {
+#ifndef ROCTRACER_FALLBACK
+  uint32_t majorVersion = ROCPROFILER_VERSION_MAJOR;
+  uint32_t minorVersion = ROCPROFILER_VERSION_MINOR;
+  std::string rocprofVersion =
+      std::to_string(majorVersion) + "." + std::to_string(minorVersion);
+  int hipRuntimeVersion = 0, hipDriverVersion = 0;
+  CUDA_CALL(hipRuntimeGetVersion(&hipRuntimeVersion));
+  CUDA_CALL(hipDriverGetVersion(&hipDriverVersion));
+  LOG(INFO) << "HIP versions. Rocprofiler-sdk: " << rocprofVersion
+            << "; Runtime: " << hipRuntimeVersion
+            << "; Driver: " << hipDriverVersion;
+
+  LOGGER_OBSERVER_ADD_METADATA("rocprofiler-sdk_version", rocprofVersion);
+  LOGGER_OBSERVER_ADD_METADATA(
+      "hip_runtime_version", std::to_string(hipRuntimeVersion));
+  LOGGER_OBSERVER_ADD_METADATA(
+      "hip_driver_version", std::to_string(hipDriverVersion));
+  addVersionMetadata("rocprofiler-sdk_version", rocprofVersion);
+  addVersionMetadata("hip_runtime_version", std::to_string(hipRuntimeVersion));
+  addVersionMetadata("hip_driver_version", std::to_string(hipDriverVersion));
+#else
   uint32_t majorVersion = roctracer_version_major();
   uint32_t minorVersion = roctracer_version_minor();
   std::string roctracerVersion =
@@ -53,54 +90,71 @@ void RocmActivityProfiler::logGpuVersions() {
   addVersionMetadata("roctracer_version", roctracerVersion);
   addVersionMetadata("hip_runtime_version", std::to_string(hipRuntimeVersion));
   addVersionMetadata("hip_driver_version", std::to_string(hipDriverVersion));
+#endif
 }
 
 void RocmActivityProfiler::setMaxGpuBufferSize(int size) {
-  roctracer_.setMaxBufferSize(size);
+  roc_.setMaxBufferSize(size);
 }
 
 void RocmActivityProfiler::enableGpuTracing() {
-  roctracer_.setMaxEvents(config().maxEvents());
-  roctracer_.enableActivities(derivedConfig_->profileActivityTypes());
+  roc_.setMaxEvents(config().maxEvents());
+  roc_.enableActivities(derivedConfig_->profileActivityTypes());
 }
 
 void RocmActivityProfiler::disableGpuTracing() {
-  roctracer_.disableActivities(derivedConfig_->profileActivityTypes());
+  roc_.disableActivities(derivedConfig_->profileActivityTypes());
 }
 
 void RocmActivityProfiler::clearGpuActivities() {
-  roctracer_.clearActivities();
+  roc_.clearActivities();
 }
 
 bool RocmActivityProfiler::isGpuCollectionStopped() const {
-  return roctracer_.stopCollection;
+  return roc_.stopCollection;
 }
 
 void RocmActivityProfiler::synchronizeGpuDevice() {
   CUDA_CALL(hipDeviceSynchronize());
-  roctracer_.flushActivities();
+  roc_.flushActivities();
 }
 
 void RocmActivityProfiler::pushCorrelationIdImpl(
     uint64_t id,
     CorrelationFlowType type) {
+#ifndef ROCTRACER_FALLBACK
+  RocprofActivityApi::CorrelationFlowType rocprofType =
+      (type == CorrelationFlowType::User)
+      ? RocprofActivityApi::CorrelationFlowType::User
+      : RocprofActivityApi::CorrelationFlowType::Default;
+  RocprofActivityApi::pushCorrelationID(id, rocprofType);
+#else
   RoctracerActivityApi::CorrelationFlowType roctracerType =
       (type == CorrelationFlowType::User)
       ? RoctracerActivityApi::CorrelationFlowType::User
       : RoctracerActivityApi::CorrelationFlowType::Default;
   RoctracerActivityApi::pushCorrelationID(id, roctracerType);
+#endif
 }
 
 void RocmActivityProfiler::popCorrelationIdImpl(CorrelationFlowType type) {
+#ifndef ROCTRACER_FALLBACK
+  RocprofActivityApi::CorrelationFlowType rocprofType =
+      (type == CorrelationFlowType::User)
+      ? RocprofActivityApi::CorrelationFlowType::User
+      : RocprofActivityApi::CorrelationFlowType::Default;
+  RocprofActivityApi::popCorrelationID(rocprofType);
+#else
   RoctracerActivityApi::CorrelationFlowType roctracerType =
       (type == CorrelationFlowType::User)
       ? RoctracerActivityApi::CorrelationFlowType::User
       : RoctracerActivityApi::CorrelationFlowType::Default;
   RoctracerActivityApi::popCorrelationID(roctracerType);
+#endif
 }
 
 void RocmActivityProfiler::onResetTraceData() {
-  roctracer_.teardownContext();
+  roc_.teardownContext();
 }
 
 void RocmActivityProfiler::onFinalizeTrace(
@@ -111,7 +165,21 @@ void RocmActivityProfiler::onFinalizeTrace(
 
 void RocmActivityProfiler::processGpuActivities(ActivityLogger& logger) {
   VLOG(0) << "Retrieving GPU activity buffers";
-  const int count = roctracer_.processActivities(
+#ifndef ROCTRACER_FALLBACK
+  const int count = roc_.processActivities(
+      std::bind(
+          &RocmActivityProfiler::handleRocprofActivity,
+          this,
+          std::placeholders::_1,
+          &logger),
+      std::bind(
+          &RocmActivityProfiler::handleCorrelationActivity,
+          this,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3));
+#else
+  const int count = roc_.processActivities(
       std::bind(
           &RocmActivityProfiler::handleRoctracerActivity,
           this,
@@ -123,6 +191,7 @@ void RocmActivityProfiler::processGpuActivities(ActivityLogger& logger) {
           std::placeholders::_1,
           std::placeholders::_2,
           std::placeholders::_3));
+#endif
   LOG(INFO) << "Processed " << count << " GPU records";
   LOGGER_OBSERVER_ADD_EVENT_COUNT(count);
 }
@@ -130,14 +199,14 @@ void RocmActivityProfiler::processGpuActivities(ActivityLogger& logger) {
 inline void RocmActivityProfiler::handleCorrelationActivity(
     uint64_t correlationId,
     uint64_t externalId,
-    RoctracerLogger::CorrelationDomain externalKind) {
-  if (externalKind == RoctracerLogger::CorrelationDomain::Domain0) {
+    RocLogger::CorrelationDomain externalKind) {
+  if (externalKind == RocLogger::CorrelationDomain::Domain0) {
     cpuCorrelationMap_[correlationId] = externalId;
-  } else if (externalKind == RoctracerLogger::CorrelationDomain::Domain1) {
+  } else if (externalKind == RocLogger::CorrelationDomain::Domain1) {
     userCorrelationMap_[correlationId] = externalId;
   } else {
     LOG(WARNING)
-        << "Invalid RoctracerLogger::CorrelationDomain sent to handleCorrelationActivity";
+        << "Invalid RocLogger::CorrelationDomain sent to handleCorrelationActivity";
     ecs_.invalid_external_correlation_events++;
   }
 }
@@ -163,6 +232,48 @@ void RocmActivityProfiler::handleRuntimeActivity(
   setGpuActivityPresent(true);
 }
 
+#ifndef ROCTRACER_FALLBACK
+inline void RocmActivityProfiler::handleGpuActivity(
+    const rocprofAsyncRow* act,
+    ActivityLogger* logger) {
+  const ITraceActivity* linked = linkedActivity(act->id, cpuCorrelationMap_);
+  const auto& gpu_activity =
+      traceBuffers_->addActivityWrapper(GpuActivity(act, linked));
+  GenericActivityProfiler::handleGpuActivity(gpu_activity, logger);
+}
+
+void RocmActivityProfiler::handleRocprofActivity(
+    const rocprofBase* record,
+    ActivityLogger* logger) {
+  switch (record->type) {
+    case ROCTRACER_ACTIVITY_DEFAULT:
+      handleRuntimeActivity(
+          reinterpret_cast<const rocprofRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_KERNEL:
+      handleRuntimeActivity(
+          reinterpret_cast<const rocprofKernelRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_COPY:
+      handleRuntimeActivity(
+          reinterpret_cast<const rocprofCopyRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_MALLOC:
+      handleRuntimeActivity(
+          reinterpret_cast<const rocprofMallocRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_ASYNC:
+      handleGpuActivity(
+          reinterpret_cast<const rocprofAsyncRow*>(record), logger);
+      break;
+    case ROCTRACER_ACTIVITY_NONE:
+    default:
+      LOG(WARNING) << "Unexpected activity type: " << record->type;
+      ecs_.unexepected_cuda_events++;
+      break;
+  }
+}
+#else
 inline void RocmActivityProfiler::handleGpuActivity(
     const roctracerAsyncRow* act,
     ActivityLogger* logger) {
@@ -203,6 +314,7 @@ void RocmActivityProfiler::handleRoctracerActivity(
       break;
   }
 }
+#endif
 
 } // namespace KINETO_NAMESPACE
 

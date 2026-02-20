@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiActivityProfiler.h"
+#include "XpuptiActivityProfilerSession.h"
 
 #include <iterator>
 #include <type_traits>

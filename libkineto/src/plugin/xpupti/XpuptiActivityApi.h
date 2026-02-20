@@ -12,15 +12,11 @@
 #include "XpuptiProfilerMacros.h"
 
 #include "ActivityType.h"
-#include "Config.h"
 
 #include <pti/pti_view.h>
 
 #include <functional>
-#include <memory>
 #include <mutex>
-#include <optional>
-#include <set>
 
 namespace KINETO_NAMESPACE {
 

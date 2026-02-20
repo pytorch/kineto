@@ -39,8 +39,10 @@ def get_libkineto_roctracer_srcs(with_api = True):
 def get_libkineto_xpupti_srcs(with_api = True):
     return [
         "src/plugin/xpupti/XpuptiActivityApi.cpp",
-        "src/plugin/xpupti/XpuptiActivityProfiler.cpp",
         "src/plugin/xpupti/XpuptiActivityHandlers.cpp",
+        "src/plugin/xpupti/XpuptiActivityProfiler.cpp",
+        "src/plugin/xpupti/XpuptiActivityProfilerSession.cpp",
+        "src/plugin/xpupti/XpuptiProfilerMacros.cpp",
         "src/plugin/xpupti/XpuptiScopeProfilerConfig.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 

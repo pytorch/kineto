@@ -15,25 +15,17 @@
 #include <mutex>
 #include <set>
 
-#ifdef HAS_CUPTI
 #include <cupti.h>
-#endif
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityType.h"
 #include "CuptiActivityBuffer.h"
-#ifdef HAS_CUPTI
 #include "CuptiCallbackApi.h"
-#endif
 
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
-
-#ifndef HAS_CUPTI
-using CUpti_Activity = void;
-#endif
 
 class CuptiActivityApi {
  public:
@@ -90,7 +82,6 @@ class CuptiActivityApi {
   std::atomic<uint32_t> tearingDown_{0};
   bool externalCorrelationEnabled_{false};
 
-#ifdef HAS_CUPTI
   int processActivitiesForBuffer(
       uint8_t* buf,
       size_t validSize,
@@ -105,10 +96,8 @@ class CuptiActivityApi {
       uint8_t* buffer,
       size_t /* unused */,
       size_t validSize);
-#endif // HAS_CUPTI
 
  protected:
-#ifdef HAS_CUPTI
   void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
   void bufferCompleted(
       CUcontext ctx,
@@ -116,7 +105,6 @@ class CuptiActivityApi {
       uint8_t* buffer,
       size_t /* unused */,
       size_t validSize);
-#endif
 };
 
 } // namespace KINETO_NAMESPACE

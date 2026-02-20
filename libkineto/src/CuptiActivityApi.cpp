@@ -26,7 +26,6 @@ namespace KINETO_NAMESPACE {
 // case, there will be 32 buffers contending for the mutex.
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
-#ifdef HAS_CUPTI
 inline bool cuptiTearDown_() {
   auto teardown_env = getenv("TEARDOWN_CUPTI");
   return teardown_env != nullptr && strcmp(teardown_env, "1") == 0;
@@ -57,7 +56,6 @@ inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
         << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
   }
 }
-#endif
 
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static CuptiActivityApi instance;
@@ -65,7 +63,6 @@ CuptiActivityApi& CuptiActivityApi::singleton() {
 }
 
 void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
-#ifdef HAS_CUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
@@ -79,11 +76,9 @@ void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
       CUPTI_CALL(cuptiActivityPushExternalCorrelationId(
           CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, id));
   }
-#endif
 }
 
 void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
-#ifdef HAS_CUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
@@ -96,14 +91,12 @@ void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
       CUPTI_CALL(cuptiActivityPopExternalCorrelationId(
           CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1, nullptr));
   }
-#endif
 }
 
 static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,
     CUpti_Activity*& record) {
-#ifdef HAS_CUPTI
   CUptiResult status = CUPTI_CALL_NOWARN(
       cuptiActivityGetNextRecord(buffer, valid_size, &record));
   if (status != CUPTI_SUCCESS) {
@@ -112,7 +105,6 @@ static bool nextActivityRecord(
     }
     record = nullptr;
   }
-#endif
   return record != nullptr;
 }
 
@@ -121,36 +113,27 @@ void CuptiActivityApi::setMaxBufferSize(int size) {
 }
 
 void CuptiActivityApi::setDeviceBufferSize(size_t size) {
-#ifdef HAS_CUPTI
   size_t valueSize = sizeof(size_t);
   CUPTI_CALL(cuptiActivitySetAttribute(
       CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE, &valueSize, &size));
-#endif
 }
 
 void CuptiActivityApi::setDeviceBufferPoolLimit(size_t limit) {
-#ifdef HAS_CUPTI
   size_t valueSize = sizeof(size_t);
   CUPTI_CALL(cuptiActivitySetAttribute(
       CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_POOL_LIMIT, &valueSize, &limit));
-#endif
 }
 
 void CuptiActivityApi::forceLoadCupti() {
-#ifdef HAS_CUPTI
   CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-#endif
 }
 
 void CuptiActivityApi::preConfigureCUPTI() {
-#ifdef HAS_CUPTI
   if (!isGpuAvailable()) {
     return;
   }
-#endif
 }
 
-#ifdef HAS_CUPTI
 void CUPTIAPI CuptiActivityApi::bufferRequestedTrampoline(
     uint8_t** buffer,
     size_t* size,
@@ -179,7 +162,6 @@ void CuptiActivityApi::bufferRequested(
 
   *maxNumRecords = 0;
 }
-#endif
 
 std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
   {
@@ -189,7 +171,6 @@ std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
     }
   }
 
-#ifdef HAS_CUPTI
   VLOG(1) << "Flushing GPU activity buffers";
   time_point<system_clock> t1;
   if (VLOG_IS_ON(1)) {
@@ -211,13 +192,11 @@ std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
   CUPTI_CALL(cuptiActivitySetAttribute(
       CUPTI_ACTIVITY_ATTR_PER_THREAD_ACTIVITY_BUFFER, &sizeof_value, &value));
 #endif // (CUDART_VERSION >= 12030)
-#endif
   std::lock_guard<std::mutex> guard(mutex_);
   // Transfer ownership of buffers to caller. A new map is created on-demand.
   return std::move(readyGpuTraceBuffers_);
 }
 
-#ifdef HAS_CUPTI
 int CuptiActivityApi::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
@@ -232,27 +211,22 @@ int CuptiActivityApi::processActivitiesForBuffer(
   }
   return count;
 }
-#endif
 
 const std::pair<int, size_t> CuptiActivityApi::processActivities(
     CuptiActivityBufferMap& buffers,
     const std::function<void(const CUpti_Activity*)>& handler) {
   std::pair<int, size_t> res{0, 0};
-#ifdef HAS_CUPTI
   for (auto& pair : buffers) {
     // No lock needed - only accessed from this thread
     auto& buf = pair.second;
     res.first += processActivitiesForBuffer(buf->data(), buf->size(), handler);
     res.second += buf->size();
   }
-#endif
   return res;
 }
 
 void CuptiActivityApi::flushActivities() {
-#ifdef HAS_CUPTI
   CUPTI_CALL(cuptiActivityFlushAll(0));
-#endif
 }
 
 void CuptiActivityApi::clearActivities() {
@@ -264,9 +238,7 @@ void CuptiActivityApi::clearActivities() {
   }
   // Can't hold mutex_ during this call, since bufferCompleted
   // will be called by libcupti and mutex_ is acquired there.
-#ifdef HAS_CUPTI
   CUPTI_CALL(cuptiActivityFlushAll(0));
-#endif
   // FIXME: We might want to make sure we reuse
   // the same memory during warmup and tracing.
   // Also, try to use the amount of memory required
@@ -276,7 +248,6 @@ void CuptiActivityApi::clearActivities() {
   readyGpuTraceBuffers_ = nullptr;
 }
 
-#ifdef HAS_CUPTI
 void CUPTIAPI CuptiActivityApi::bufferCompletedTrampoline(
     CUcontext ctx,
     uint32_t streamId,
@@ -319,12 +290,10 @@ void CuptiActivityApi::bufferCompleted(
     }
   }
 }
-#endif
 
 void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities,
     bool enablePerThreadBuffers) {
-#ifdef HAS_CUPTI
   // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
   auto cbapi_ = CuptiCallbackApi::singleton();
   if (!tracingEnabled_ && !cbapi_->initSuccess() && cuptiLazyInit_()) {
@@ -394,7 +363,6 @@ void CuptiActivityApi::enableCuptiActivities(
   }
 
   tracingEnabled_ = 1;
-#endif
 
   // Explicitly enabled, so reset this flag if set
   stopCollection = false;
@@ -402,7 +370,6 @@ void CuptiActivityApi::enableCuptiActivities(
 
 void CuptiActivityApi::disableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
-#ifdef HAS_CUPTI
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
@@ -431,11 +398,9 @@ void CuptiActivityApi::disableCuptiActivities(
     }
   }
   externalCorrelationEnabled_ = false;
-#endif // HAS_CUPTI
 }
 
 void CuptiActivityApi::teardownContext() {
-#ifdef HAS_CUPTI
   if (!tracingEnabled_) {
     return;
   }
@@ -497,7 +462,6 @@ void CuptiActivityApi::teardownContext() {
     });
     teardownThread.detach();
   }
-#endif
 }
 
 } // namespace KINETO_NAMESPACE

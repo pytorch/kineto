@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#ifdef HAS_CUPTI
 #include <cuda_runtime_api.h>
 #if defined(USE_CUPTI_RANGE_PROFILER) && defined(CUDART_VERSION) && \
     CUDART_VERSION > 10000 && CUDART_VERSION < 12060
@@ -14,7 +13,6 @@
 #include <nvperf_host.h>
 #include <nvperf_target.h>
 #endif // cuda version > 10.00 and < 11.04
-#endif // HAS_CUPTI
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude

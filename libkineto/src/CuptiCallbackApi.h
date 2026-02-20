@@ -8,11 +8,9 @@
 
 #pragma once
 
-#include <atomic>
-#ifdef HAS_CUPTI
 #include <cupti.h>
-#endif
 #include <array>
+#include <atomic>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -74,7 +72,6 @@ class CuptiCallbackApi {
     return initSuccess_;
   }
 
-#ifdef HAS_CUPTI
   CUptiResult getCuptiStatus() const {
     return lastCuptiStatus_;
   }
@@ -82,7 +79,6 @@ class CuptiCallbackApi {
   CUpti_SubscriberHandle getCuptiSubscriber() const {
     return subscriber_;
   }
-#endif
 
   bool registerCallback(
       CUpti_CallbackDomain domain,
@@ -144,10 +140,8 @@ class CuptiCallbackApi {
   using ReaderLockGuard = std::shared_lock<ReaderWriterLock>;
   using WriteLockGuard = std::unique_lock<ReaderWriterLock>;
   ReaderWriterLock callbackLock_;
-#ifdef HAS_CUPTI
   CUptiResult lastCuptiStatus_;
   CUpti_SubscriberHandle subscriber_{nullptr};
-#endif
 };
 
 } // namespace KINETO_NAMESPACE

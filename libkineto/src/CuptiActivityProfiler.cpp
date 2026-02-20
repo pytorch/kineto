@@ -15,7 +15,6 @@
 
 #include "ActivityBuffers.h"
 #include "Config.h"
-#include "CuptiActivity.cpp"
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
 #include "Demangle.h"

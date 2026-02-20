@@ -8,7 +8,6 @@
 
 #pragma once
 
-#ifdef HAS_CUPTI
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 // Using CUDA 11 and above due to usage of API:
@@ -21,7 +20,6 @@
 #define HAS_CUPTI_RANGE_PROFILER 1
 #endif // CUDART_VERSION > 10.00 and CUDA_VERSION >= 11.00 and CUDA_VERSION
        // <= 12.06
-#endif // HAS_CUPTI
 
 #if HAS_CUPTI_RANGE_PROFILER
 #include <cupti.h>

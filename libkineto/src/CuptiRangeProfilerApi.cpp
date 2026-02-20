@@ -6,15 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include "ILoggerObserver.h"
-#ifdef HAS_CUPTI
 #include <cupti.h>
 #include <nvperf_host.h>
-#endif // HAS_CUPTI
+#include <cstdio>
+#include <cstdlib>
 #include <mutex>
 #include <unordered_map>
+#include "ILoggerObserver.h"
 
 #include "Demangle.h"
 #include "DeviceUtil.h"

@@ -310,9 +310,7 @@ CuptiRangeProfilerInit::CuptiRangeProfilerInit() {
   // register config
   CuptiRangeProfilerConfig::registerFactory();
 
-#ifdef HAS_CUPTI
   success = CuptiRBProfilerSession::staticInit();
-#endif
 
   if (!success) {
     return;

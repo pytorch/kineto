@@ -6,8 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#ifdef HAS_CUPTI
-
 #include "CuptiActivityProfiler.h"
 #include <cupti.h>
 #include <fmt/format.h>
@@ -526,5 +524,3 @@ void CuptiActivityProfiler::handleCuptiActivity(
 }
 
 } // namespace KINETO_NAMESPACE
-
-#endif // HAS_CUPTI

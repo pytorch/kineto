@@ -8,10 +8,6 @@
 
 #pragma once
 
-// TODO DEVICE_AGNOSTIC: The build system should be strict enough that we don't
-//                       need this guard in the header file.
-#ifdef HAS_CUPTI
-
 #include <cupti.h>
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
@@ -75,5 +71,3 @@ class CuptiActivityProfiler : public GenericActivityProfiler {
 uint32_t contextIdtoDeviceId(uint32_t contextId);
 
 } // namespace KINETO_NAMESPACE
-
-#endif // HAS_CUPTI

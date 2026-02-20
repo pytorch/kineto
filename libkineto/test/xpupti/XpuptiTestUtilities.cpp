@@ -10,6 +10,8 @@
 
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"
 
+#include <libkineto.h>
+
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
@@ -215,6 +217,33 @@ RunProfilerTest(
     auto insertResult = stringStorage.insert(pActivity->name());
     activitiesCount[*insertResult.first]++;
     typesCount[pActivity->type()]++;
+
+    bool isNameMetrics = pActivity->name() == "metrics";
+    bool nameStartsWithMetrics = pActivity->name().find("metrics:") == 0;
+    auto [metricsCount, metricsMask] =
+        CountMetricsInString(metrics, pActivity->metadataJson());
+
+    switch (pActivity->type()) {
+      case KN::ActivityType::CONCURRENT_KERNEL:
+        if (nameStartsWithMetrics)
+          goto label_scope;
+        else
+          goto label_default;
+
+      case KN::ActivityType::XPU_SCOPE_PROFILER:
+        EXPECT_TRUE(isNameMetrics);
+      label_scope:
+        EXPECT_EQ(metricsCount, metrics.size());
+        EXPECT_EQ(metricsMask, (1u << metrics.size()) - 1);
+        ++scopeProfilerActCount;
+        break;
+
+      default:
+      label_default:
+        EXPECT_FALSE(isNameMetrics);
+        EXPECT_EQ(metricsCount, 0);
+        EXPECT_EQ(metricsMask, 0);
+    }
 
     if (isVerbose) {
 #define PRINT(A) std::cout << #A " = " << pActivity->A() << std::endl;

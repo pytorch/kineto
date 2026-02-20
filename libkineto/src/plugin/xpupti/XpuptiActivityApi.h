@@ -12,15 +12,11 @@
 #include "XpuptiProfilerMacros.h"
 
 #include "ActivityType.h"
-#include "Config.h"
 
 #include <pti/pti_view.h>
 
 #include <functional>
-#include <memory>
 #include <mutex>
-#include <optional>
-#include <set>
 
 namespace KINETO_NAMESPACE {
 
@@ -40,7 +36,8 @@ class XpuptiActivityApi {
   static void popCorrelationID(CorrelationFlowType type);
 
   void enableXpuptiActivities(
-      const std::set<ActivityType>& selected_activities);
+      const std::set<ActivityType>& selected_activities,
+      bool scopeProfilerActivityAccepted = false);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();

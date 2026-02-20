@@ -468,19 +468,18 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
-      arg_values.append(
-          fmt::format(
-              R"( "{}": {}, "{}": {}, "{}": {}, "{}": {}, "{}": {})",
-              kCollectiveName,
-              collectiveName,
-              kInMsgNelems,
-              inMsgSize,
-              kOutMsgNelems,
-              outMsgSize,
-              kGroupSize,
-              groupSize,
-              kDtype,
-              dtype));
+      arg_values.append(fmt::format(
+          R"( "{}": {}, "{}": {}, "{}": {}, "{}": {}, "{}": {})",
+          kCollectiveName,
+          collectiveName,
+          kInMsgNelems,
+          inMsgSize,
+          kOutMsgNelems,
+          outMsgSize,
+          kGroupSize,
+          groupSize,
+          kDtype,
+          dtype));
     }
     const auto& input_tensor_starts =
         collectiveRecord->getMetadataValue(std::string(kInTensorsStart));
@@ -509,13 +508,12 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       if (!arg_values.empty()) {
         arg_values.append(",");
       }
-      arg_values.append(
-          fmt::format(
-              R"( "{}": {}, "{}": {})",
-              kInSplit,
-              inSplitSize,
-              kOutSplit,
-              outSplitSize));
+      arg_values.append(fmt::format(
+          R"( "{}": {}, "{}": {})",
+          kInSplit,
+          inSplitSize,
+          kOutSplit,
+          outSplitSize));
     }
     const auto& processGroupName =
         collectiveRecord->getMetadataValue(std::string(kProcessGroupName));
@@ -591,16 +589,51 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   sanitizeStrForJSON(op_name);
   sanitizeForNonReadableChars(op_name);
 
-  // clang-format off
   ts = transToRelativeTime(ts);
-  fmt::print(traceOf_, R"JSON(
+
+  if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
+    std::string metricsStr = op.metadataJson();
+    std::string activityName = toString(op.type());
+    fmt::print(
+        traceOf_,
+        // clang-format off
+  R"JSON(
+  {{
+    "name": "{}",
+    "ph": "C",
+    "ts": {}.{:03},
+    "pid": {},
+    "tid": {},
+    "args": {{ {} }}
+  }},)JSON",
+        // clang-format on
+        activityName.substr(0, activityName.find('_')),
+        ts / 1000,
+        ts % 1000,
+        device,
+        sanitizeTid(resource),
+        metricsStr);
+  } else {
+    fmt::print(
+        traceOf_,
+        // clang-format off
+  R"JSON(
   {{
     "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
     "ts": {}.{:03}, "dur": {}.{:03}{}
   }},)JSON",
-          toString(op.type()), op_name, device, sanitizeTid(resource),
-          ts/1000, ts %1000, duration/1000, duration %1000, args);
-  // clang-format on
+        // clang-format on
+        toString(op.type()),
+        op_name,
+        device,
+        sanitizeTid(resource),
+        ts / 1000,
+        ts % 1000,
+        duration / 1000,
+        duration % 1000,
+        args);
+  }
+
   if (op.flowId() > 0) {
     handleGenericLink(op);
   }

@@ -8,18 +8,11 @@
 
 #include "XpuptiActivityApi.h"
 
-#include <algorithm>
-#include <chrono>
-#include <vector>
+#include <stdexcept>
 
 namespace KINETO_NAMESPACE {
 
 constexpr size_t kBufSize(4 * 1024 * 1024);
-
-XpuptiActivityApi& XpuptiActivityApi::singleton() {
-  static XpuptiActivityApi instance;
-  return instance;
-}
 
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
@@ -203,7 +196,8 @@ static void enableSpecifcRuntimeAPIsTracing() {
 #endif
 
 void XpuptiActivityApi::enableXpuptiActivities(
-    const std::set<ActivityType>& selected_activities) {
+    const std::set<ActivityType>& selected_activities,
+    bool scopeProfilerActivityAccepted) {
 #ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
@@ -243,6 +237,14 @@ void XpuptiActivityApi::enableXpuptiActivities(
 
       case ActivityType::XPU_DRIVER:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DRIVER_API));
+        break;
+
+      case ActivityType::XPU_SCOPE_PROFILER:
+        if (!scopeProfilerActivityAccepted) {
+          throw std::runtime_error(
+              "Intel® PTI version required to use scope profiler is at least 0.15 "
+              "(available with Intel® oneAPI in version at least 2025.3.1).");
+        }
         break;
 
       case ActivityType::OVERHEAD:

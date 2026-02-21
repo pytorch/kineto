@@ -11,11 +11,28 @@
 #include <string>
 namespace libkineto {
 
+// Experimental fields that are passed to PyTorch Profiler
+struct ProfilerExperimentalConfig {
+  bool captureOverloadNames = false;
+  bool recordPythonGCInfo = false;
+};
+
 class ClientInterface {
  public:
   virtual ~ClientInterface() = default;
   virtual void init() = 0;
+#ifdef EXPERIMENTAL_PROFILER_OPTIONS
+  virtual void prepare(
+      bool,
+      bool,
+      bool,
+      bool,
+      bool,
+      const ProfilerExperimentalConfig& /*config*/) = 0;
+#else
   virtual void prepare(bool, bool, bool, bool, bool) = 0;
+#endif
+
   virtual void start() = 0;
   virtual void stop() = 0;
   virtual void start_memory_profile() = 0;

@@ -265,9 +265,16 @@ if(KINETO_BUILD_TESTS)
     endif()
   endif()
   if(NOT TARGET nlohmann_json)
+    # nlohmann/json v3.10.5 declares cmake_minimum_required(VERSION 3.1),
+    # which CMake 4.x rejects. Allow it via CMAKE_POLICY_VERSION_MINIMUM.
+    # TODO: should we just take a direct third-party dependency on
+    #       nlohmann/json?
+    set(_saved_cmake_policy_version_minimum "${CMAKE_POLICY_VERSION_MINIMUM}")
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
     add_subdirectory(
       "${LIBKINETO_THIRDPARTY_DIR}/dynolog/third_party/json"
       "${LIBKINETO_BINARY_DIR}/json")
+    set(CMAKE_POLICY_VERSION_MINIMUM "${_saved_cmake_policy_version_minimum}")
   endif()
   enable_testing()
   add_subdirectory(test)

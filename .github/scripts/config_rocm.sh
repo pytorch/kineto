@@ -15,9 +15,14 @@
 #
 
 # --- Kineto cmake flags ---
+# Enable ROCm (roctracer) and disable CUPTI. ROCM_SOURCE_DIR is required by
+# CMakeLists.txt to locate roctracer headers and libraries.
 
 # shellcheck disable=SC2034
-KINETO_CMAKE_FLAGS=()
+KINETO_CMAKE_FLAGS=(
+  -DLIBKINETO_NOCUPTI=1
+  -DROCM_SOURCE_DIR=/opt/rocm
+)
 
 # --- PyTorch build environment variables ---
 

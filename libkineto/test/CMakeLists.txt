@@ -36,14 +36,14 @@ gtest_discover_tests(ConfigTest)
 
 if(NOT LIBKINETO_NOCUPTI)
 # CuptiActivityProfilerTest
-#[[
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
     MockActivitySubProfiler.cpp)
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
     gmock
-    kineto_base kineto_api)
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json)
 target_include_directories(CuptiActivityProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
@@ -51,7 +51,6 @@ target_include_directories(CuptiActivityProfilerTest PRIVATE
     "${CUDA_SOURCE_DIR}/include"
     "${CUPTI_INCLUDE_DIR}")
 gtest_discover_tests(CuptiActivityProfilerTest)
-]]
 # CuptiCallbackApiTest
 add_executable(CuptiCallbackApiTest CuptiCallbackApiTest.cpp)
 target_link_libraries(CuptiCallbackApiTest PRIVATE
@@ -97,6 +96,19 @@ target_link_libraries(EventProfilerTest PRIVATE
     gmock
     kineto_base kineto_api)
 gtest_discover_tests(EventProfilerTest)
+endif()
+
+if(NOT LIBKINETO_NOROCTRACER)
+# RoctracerActivityProfilerTest
+add_executable(RoctracerActivityProfilerTest
+    RoctracerActivityProfilerTest.cpp
+    MockActivitySubProfiler.cpp)
+target_link_libraries(RoctracerActivityProfilerTest PRIVATE
+    gtest_main
+    gmock
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json)
+gtest_discover_tests(RoctracerActivityProfilerTest)
 endif()
 
 # LoggerObserverTest

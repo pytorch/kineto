@@ -8,7 +8,7 @@
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <folly/json/json.h>
+#include <nlohmann/json.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <stdlib.h> // NOLINT(modernize-deprecated-headers) required for setenv unsetenv
@@ -765,11 +765,11 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  folly::dynamic jsonData = folly::parseJson(jsonStr);
+  nlohmann::json jsonData = nlohmann::json::parse(jsonStr);
 
-  // Convert the folly::dynamic object to a string and check
+  // Convert the JSON object to a string and check
   // if the substring exists
-  std::string jsonString = folly::toJson(jsonData);
+  std::string jsonString = jsonData.dump();
   auto countSubstrings = [](const std::string& source,
                             const std::string& substring) {
     size_t count = 0;
@@ -1052,7 +1052,7 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  folly::dynamic jsonData = folly::parseJson(jsonStr);
+  nlohmann::json jsonData = nlohmann::json::parse(jsonStr);
 
   auto countSubstrings = [](const std::string& source,
                             const std::string& substring) {
@@ -1071,9 +1071,9 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   EXPECT_EQ(1, countSubstrings(jsonStr, "/test/metadata/path"));
 
   // Verify injected env vars are in trace metadata with correct values
-  EXPECT_EQ(jsonData["PT_PROFILER_JOB_NAME"].asString(), "test_training_job");
-  EXPECT_EQ(jsonData["PT_PROFILER_JOB_VERSION"].asString(), "2");
-  EXPECT_EQ(jsonData["PT_PROFILER_JOB_ATTEMPT_INDEX"].asString(), "5");
+  EXPECT_EQ(jsonData["PT_PROFILER_JOB_NAME"].get<std::string>(), "test_training_job");
+  EXPECT_EQ(jsonData["PT_PROFILER_JOB_VERSION"].get<std::string>(), "2");
+  EXPECT_EQ(jsonData["PT_PROFILER_JOB_ATTEMPT_INDEX"].get<std::string>(), "5");
 #endif
 
   // Clean up environment variables
@@ -1138,18 +1138,18 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  folly::dynamic jsonData = folly::parseJson(jsonStr);
+  nlohmann::json jsonData = nlohmann::json::parse(jsonStr);
 
   std::unordered_map<int64_t, std::string> sortLabel;
   std::unordered_map<int64_t, int64_t> sortIdx;
   for (auto& event : jsonData["traceEvents"]) {
     if (event["name"] == "process_labels" && event["tid"] == 0 &&
-        event["pid"].isInt()) {
-      sortLabel[event["pid"].asInt()] = event["args"]["labels"].asString();
+        event["pid"].is_number_integer()) {
+      sortLabel[event["pid"].get<int64_t>()] = event["args"]["labels"].get<std::string>();
     }
     if (event["name"] == "process_sort_index" && event["tid"] == 0 &&
-        event["pid"].isInt()) {
-      sortIdx[event["pid"].asInt()] = event["args"]["sort_index"].asInt();
+        event["pid"].is_number_integer()) {
+      sortIdx[event["pid"].get<int64_t>()] = event["args"]["sort_index"].get<int64_t>();
     }
   }
 

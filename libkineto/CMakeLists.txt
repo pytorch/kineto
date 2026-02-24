@@ -264,6 +264,11 @@ if(KINETO_BUILD_TESTS)
       set_property(TARGET gtest PROPERTY POSITION_INDEPENDENT_CODE ON)
     endif()
   endif()
+  if(NOT TARGET nlohmann_json)
+    add_subdirectory(
+      "${LIBKINETO_THIRDPARTY_DIR}/dynolog/third_party/json"
+      "${LIBKINETO_BINARY_DIR}/json")
+  endif()
   enable_testing()
   add_subdirectory(test)
 endif()

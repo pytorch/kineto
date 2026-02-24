@@ -7,7 +7,7 @@
  */
 
 #include <fmt/format.h>
-#include <folly/json/json.h>
+#include <nlohmann/json.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <strings.h>
@@ -528,11 +528,11 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  folly::dynamic jsonData = folly::parseJson(jsonStr);
+  nlohmann::json jsonData = nlohmann::json::parse(jsonStr);
 
-  // Convert the folly::dynamic object to a string and check
+  // Convert the JSON object to a string and check
   // if the substring exists
-  std::string jsonString = folly::toJson(jsonData);
+  std::string jsonString = jsonData.dump();
   auto countSubstrings = [](const std::string& source,
                             const std::string& substring) {
     size_t count = 0;
@@ -763,20 +763,20 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  folly::dynamic jsonData = folly::parseJson(jsonStr);
+  nlohmann::json jsonData = nlohmann::json::parse(jsonStr);
 
   std::unordered_map<int64_t, std::string> sortLabel;
   std::unordered_map<int64_t, int64_t> sortIdx;
   for (auto& event : jsonData["traceEvents"]) {
     if (event["name"] == "process_labels" && event["tid"] == 0 &&
-        event["pid"].isInt()) {
-      sortLabel[event["pid"].asInt()] = event["args"]["labels"].asString();
-      LOG(INFO) << sortLabel[event["pid"].asInt()];
+        event["pid"].is_number_integer()) {
+      sortLabel[event["pid"].get<int64_t>()] = event["args"]["labels"].get<std::string>();
+      LOG(INFO) << sortLabel[event["pid"].get<int64_t>()];
     }
     if (event["name"] == "process_sort_index" && event["tid"] == 0 &&
-        event["pid"].isInt()) {
-      sortIdx[event["pid"].asInt()] = event["args"]["sort_index"].asInt();
-      LOG(INFO) << sortIdx[event["pid"].asInt()];
+        event["pid"].is_number_integer()) {
+      sortIdx[event["pid"].get<int64_t>()] = event["args"]["sort_index"].get<int64_t>();
+      LOG(INFO) << sortIdx[event["pid"].get<int64_t>()];
     }
   }
 

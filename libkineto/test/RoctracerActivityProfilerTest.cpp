@@ -8,9 +8,9 @@
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <nlohmann/json.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <strings.h>
 #include <time.h>
 #include <chrono>
@@ -771,12 +771,14 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
   for (auto& event : jsonData["traceEvents"]) {
     if (event["name"] == "process_labels" && event["tid"] == 0 &&
         event["pid"].is_number_integer()) {
-      sortLabel[event["pid"].get<int64_t>()] = event["args"]["labels"].get<std::string>();
+      sortLabel[event["pid"].get<int64_t>()] =
+          event["args"]["labels"].get<std::string>();
       LOG(INFO) << sortLabel[event["pid"].get<int64_t>()];
     }
     if (event["name"] == "process_sort_index" && event["tid"] == 0 &&
         event["pid"].is_number_integer()) {
-      sortIdx[event["pid"].get<int64_t>()] = event["args"]["sort_index"].get<int64_t>();
+      sortIdx[event["pid"].get<int64_t>()] =
+          event["args"]["sort_index"].get<int64_t>();
       LOG(INFO) << sortIdx[event["pid"].get<int64_t>()];
     }
   }

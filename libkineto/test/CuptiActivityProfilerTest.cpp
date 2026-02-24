@@ -8,9 +8,9 @@
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <nlohmann/json.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <stdlib.h> // NOLINT(modernize-deprecated-headers) required for setenv unsetenv
 
 #include <strings.h>
@@ -1071,7 +1071,8 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   EXPECT_EQ(1, countSubstrings(jsonStr, "/test/metadata/path"));
 
   // Verify injected env vars are in trace metadata with correct values
-  EXPECT_EQ(jsonData["PT_PROFILER_JOB_NAME"].get<std::string>(), "test_training_job");
+  EXPECT_EQ(
+      jsonData["PT_PROFILER_JOB_NAME"].get<std::string>(), "test_training_job");
   EXPECT_EQ(jsonData["PT_PROFILER_JOB_VERSION"].get<std::string>(), "2");
   EXPECT_EQ(jsonData["PT_PROFILER_JOB_ATTEMPT_INDEX"].get<std::string>(), "5");
 #endif
@@ -1145,11 +1146,13 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
   for (auto& event : jsonData["traceEvents"]) {
     if (event["name"] == "process_labels" && event["tid"] == 0 &&
         event["pid"].is_number_integer()) {
-      sortLabel[event["pid"].get<int64_t>()] = event["args"]["labels"].get<std::string>();
+      sortLabel[event["pid"].get<int64_t>()] =
+          event["args"]["labels"].get<std::string>();
     }
     if (event["name"] == "process_sort_index" && event["tid"] == 0 &&
         event["pid"].is_number_integer()) {
-      sortIdx[event["pid"].get<int64_t>()] = event["args"]["sort_index"].get<int64_t>();
+      sortIdx[event["pid"].get<int64_t>()] =
+          event["args"]["sort_index"].get<int64_t>();
     }
   }
 

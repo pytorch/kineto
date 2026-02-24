@@ -103,11 +103,20 @@ if(NOT LIBKINETO_NOROCTRACER)
 add_executable(RoctracerActivityProfilerTest
     RoctracerActivityProfilerTest.cpp
     MockActivitySubProfiler.cpp)
+target_compile_definitions(RoctracerActivityProfilerTest PRIVATE
+    "__HIP_PLATFORM_HCC__"
+    "__HIP_PLATFORM_AMD__")
 target_link_libraries(RoctracerActivityProfilerTest PRIVATE
     gtest_main
     gmock
     kineto_base kineto_api
     nlohmann_json::nlohmann_json)
+target_include_directories(RoctracerActivityProfilerTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src"
+    "${ROCM_INCLUDE_DIRS}"
+    "${ROCTRACER_INCLUDE_DIR}")
 gtest_discover_tests(RoctracerActivityProfilerTest)
 endif()
 

@@ -237,9 +237,11 @@ if(NOT LIBKINETO_NOROCTRACER)
   find_library(ROCTRACER_LIBRARY NAMES libroctracer64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${ROCTRACER_LIBRARY}")
+  target_link_libraries(kineto_base PUBLIC "${ROCTRACER_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
+  target_link_libraries(kineto_base PUBLIC "${KINETO_HIP_LIBRARY}")
 elseif(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart)

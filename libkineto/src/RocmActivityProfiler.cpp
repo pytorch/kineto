@@ -17,6 +17,9 @@
 #include "ActivityBuffers.h"
 #include "Config.h"
 #include "Logger.h"
+// RoctracerActivity.h must stay in this .cpp only — RoctracerActivity_inl.h
+// has inline functions referencing thread_local anonymous-namespace maps
+#include "RoctracerActivity.h"
 #include "ThreadUtil.h"
 
 using namespace std::chrono;

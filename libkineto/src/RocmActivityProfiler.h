@@ -14,7 +14,6 @@
 
 #include <roctracer.h>
 #include "GenericActivityProfiler.h"
-#include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
 #include "RoctracerLogger.h"
 
@@ -43,19 +42,14 @@ class RocmActivityProfiler : public GenericActivityProfiler {
 
  private:
   // Process generic RocTracer activity
-  void handleRoctracerActivity(
-      const roctracerBase* record,
-      ActivityLogger* logger);
-  void handleCorrelationActivity(
-      uint64_t correlationId,
-      uint64_t externalId,
-      RoctracerLogger::CorrelationDomain externalKind);
+  void handleRoctracerActivity(const roctracerBase* record, ActivityLogger* logger);
+  void handleCorrelationActivity(uint64_t correlationId,
+                                 uint64_t externalId,
+                                 RoctracerLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);
-  void handleGpuActivity(
-      const roctracerAsyncRow* record,
-      ActivityLogger* logger);
+  void handleGpuActivity(const roctracerAsyncRow* record, ActivityLogger* logger);
 
   // Calls to ROCtracer is encapsulated behind this interface
   RoctracerActivityApi& roctracer_;

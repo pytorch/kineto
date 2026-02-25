@@ -8,29 +8,23 @@
 
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <mutex>
-#include <thread>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ActivityLoggerFactory.h"
 #include "ActivityProfilerInterface.h"
 #include "ActivityTraceInterface.h"
+#include "AsyncActivityProfilerHandler.h"
 #include "ConfigLoader.h"
 #include "GenericActivityProfiler.h"
 #include "InvariantViolations.h"
 #include "LoggerCollector.h"
+#include "SyncActivityProfilerHandler.h"
 
 namespace KINETO_NAMESPACE {
-enum ThreadType {
-  KINETO = 0,
-  MEMORY_SNAPSHOT,
-  THREAD_MAX_COUNT // Number of enum entries (used for array sizing)
-};
 
 class Config;
 
@@ -93,24 +87,17 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   void popUserCorrelationId();
 
+  static std::unique_ptr<ActivityLogger> makeLogger(const Config& config);
+
+  static ActivityLoggerFactory& loggerFactory();
+
  private:
-  bool shouldActivateIterationConfig(int64_t currentIter);
-  bool shouldActivateTimestampConfig(
-      const std::chrono::time_point<std::chrono::system_clock>& now);
-  void profilerLoop();
-  void memoryProfilerLoop();
-  void activateConfig(std::chrono::time_point<std::chrono::system_clock> now);
-
-  std::unique_ptr<Config> asyncRequestConfig_;
-  std::mutex asyncConfigLock_;
-
   std::unique_ptr<GenericActivityProfiler> profiler_;
-  std::unique_ptr<ActivityLogger> logger_;
   std::shared_ptr<LoggerCollector> loggerCollectorFactory_;
-  std::thread* profilerThreads_[ThreadType::THREAD_MAX_COUNT] = {nullptr};
-  std::atomic_bool stopRunloop_{false};
-  std::atomic<std::int64_t> iterationCount_{-1};
   ConfigLoader& configLoader_;
+
+  std::unique_ptr<SyncActivityProfilerHandler> syncHandler_;
+  std::unique_ptr<AsyncActivityProfilerHandler> asyncHandler_;
 };
 
 } // namespace KINETO_NAMESPACE

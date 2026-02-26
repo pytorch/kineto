@@ -150,7 +150,7 @@ struct MockCuptiActivityBuffer {
       int64_t end_ns,
       int64_t correlation) {
     auto& act =
-        createActivity<CUpti_ActivityKernel4>(start_ns, end_ns, correlation);
+        createActivity<CUpti_ActivityKernelType>(start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
     act.deviceId = 0;
     act.contextId = 0;
@@ -196,7 +196,7 @@ struct MockCuptiActivityBuffer {
       int64_t end_ns,
       int64_t correlation) {
     auto& act =
-        createActivity<CUpti_ActivityKernel4>(start_ns, end_ns, correlation);
+        createActivity<CUpti_ActivityKernelType>(start_ns, end_ns, correlation);
     act.name = "collective_gpu";
     act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
     act.queued = 0;

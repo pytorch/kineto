@@ -143,18 +143,18 @@ int smCount(uint32_t deviceId) {
 }
 
 #ifdef HAS_CUPTI
-float blocksPerSm(const CUpti_ActivityKernel4& kernel) {
+float blocksPerSm(const CUpti_ActivityKernelType& kernel) {
   return (kernel.gridX * kernel.gridY * kernel.gridZ) /
       (float)smCount(kernel.deviceId);
 }
 
-float warpsPerSm(const CUpti_ActivityKernel4& kernel) {
+float warpsPerSm(const CUpti_ActivityKernelType& kernel) {
   constexpr int threads_per_warp = 32;
   return blocksPerSm(kernel) * (kernel.blockX * kernel.blockY * kernel.blockZ) /
       threads_per_warp;
 }
 
-float kernelOccupancy(const CUpti_ActivityKernel4& kernel) {
+float kernelOccupancy(const CUpti_ActivityKernelType& kernel) {
   float blocks_per_sm = -1.0;
   int sm_count = smCount(kernel.deviceId);
   if (sm_count) {

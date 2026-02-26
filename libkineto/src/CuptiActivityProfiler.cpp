@@ -477,7 +477,7 @@ void CuptiActivityProfiler::handleCuptiActivity(
           reinterpret_cast<const CUpti_ActivityAPI*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL: {
-      auto kernel = reinterpret_cast<const CUpti_ActivityKernel4*>(record);
+      auto kernel = reinterpret_cast<const CUpti_ActivityKernelType*>(record);
       // Register all kernels launches so we could correlate them with other
       // events.
       KernelRegistry::singleton()->recordKernel(

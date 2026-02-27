@@ -318,12 +318,12 @@ struct GpuActivity : public CuptiActivity<T> {
 uint32_t contextIdtoDeviceId(uint32_t contextId);
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityKernel4>::name() const {
+inline const std::string GpuActivity<CUpti_ActivityKernelType>::name() const {
   return demangle(raw().name);
 }
 
 template <>
-inline ActivityType GpuActivity<CUpti_ActivityKernel4>::type() const {
+inline ActivityType GpuActivity<CUpti_ActivityKernelType>::type() const {
   return ActivityType::CONCURRENT_KERNEL;
 }
 
@@ -426,9 +426,21 @@ constexpr int64_t us(int64_t timestamp) {
   return timestamp / 1000;
 }
 
+inline std::string getGraphNodeMetadata(const CUpti_ActivityKernelType& kernel) {
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
+  return fmt::format(
+      R"JSON(,
+      "graph id": {}, "graph node id": {})JSON",
+      kernel.graphId,
+      kernel.graphNodeId);
+#else
+  return "";
+#endif
+}
+
 template <>
-inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() const {
-  const CUpti_ActivityKernel4& kernel = raw();
+inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() const {
+  const CUpti_ActivityKernelType& kernel = raw();
   float blocksPerSmVal = blocksPerSm(kernel);
   float warpsPerSmVal = warpsPerSm(kernel);
 
@@ -443,7 +455,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() cons
       "warps per SM": {},
       "grid": [{}, {}, {}],
       "block": [{}, {}, {}],
-      "est. achieved occupancy %": {})JSON",
+      "est. achieved occupancy %": {}{})JSON",
       kernel.queued, kernel.deviceId, kernel.contextId,
       kernel.streamId, kernel.correlationId,
       kernel.registersPerThread,
@@ -452,7 +464,9 @@ inline const std::string GpuActivity<CUpti_ActivityKernel4>::metadataJson() cons
       std::isinf(warpsPerSmVal) ? "\"inf\"" : std::to_string(warpsPerSmVal),
       kernel.gridX, kernel.gridY, kernel.gridZ,
       kernel.blockX, kernel.blockY, kernel.blockZ,
-      (int) (0.5 + (kernelOccupancy(kernel) * 100.0)));
+      (int) (0.5 + (kernelOccupancy(kernel) * 100.0)),
+      getGraphNodeMetadata(kernel)
+      );
   // clang-format on
 }
 

@@ -24,11 +24,19 @@ int smCount(uint32_t deviceId);
 
 // TODO: Implement the below for HAS_ROCTRACER
 #ifdef HAS_CUPTI
-float blocksPerSm(const CUpti_ActivityKernel4& kernel);
-float warpsPerSm(const CUpti_ActivityKernel4& kernel);
+
+// Use CUpti_ActivityKernel9 in CUDA 12.0+ for extended kernel fields
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
+using CUpti_ActivityKernelType = CUpti_ActivityKernel9;
+#else
+using CUpti_ActivityKernelType = CUpti_ActivityKernel4;
+#endif
+
+float blocksPerSm(const CUpti_ActivityKernelType& kernel);
+float warpsPerSm(const CUpti_ActivityKernelType& kernel);
 
 // Return estimated achieved occupancy for a kernel
-float kernelOccupancy(const CUpti_ActivityKernel4& kernel);
+float kernelOccupancy(const CUpti_ActivityKernelType& kernel);
 float kernelOccupancy(uint32_t deviceId,
                       uint16_t registersPerThread,
                       int32_t staticSharedMemory,

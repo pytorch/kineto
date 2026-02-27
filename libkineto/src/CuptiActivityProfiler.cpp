@@ -497,15 +497,16 @@ void CuptiActivityProfiler::handleCuptiActivity(
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY:
       handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityMemcpy*>(record), logger);
+          reinterpret_cast<const CUpti_ActivityMemcpyType*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY2:
       handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityMemcpy2*>(record), logger);
+          reinterpret_cast<const CUpti_ActivityMemcpyPtoPType*>(record),
+          logger);
       break;
     case CUPTI_ACTIVITY_KIND_MEMSET:
       handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityMemset*>(record), logger);
+          reinterpret_cast<const CUpti_ActivityMemsetType*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_OVERHEAD:
       handleOverheadActivity(

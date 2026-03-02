@@ -133,8 +133,8 @@ void run_parallel_stress_test(stress_test_args test_args) {
   if (test_args.num_workers > 1) {
     v_workers.reserve(test_args.num_workers);
     for (int i = 0; i < test_args.num_workers; ++i) {
-      v_workers.push_back(
-          std::thread(run_stress_test, i, test_args.num_workers, test_args));
+      v_workers.emplace_back(
+          run_stress_test, i, test_args.num_workers, test_args);
     }
     for (auto& t : v_workers) {
       t.join();

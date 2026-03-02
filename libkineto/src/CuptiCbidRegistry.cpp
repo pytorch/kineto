@@ -58,13 +58,13 @@ void CuptiCbidRegistry::registerCallbackRange(
     uint32_t endCbid,
     bool requiresFlowCorrelation,
     bool isBlocklisted) {
-  cbidRanges_.push_back(
-      {domain,
-       CbidRange{
-           .startCbid = startCbid,
-           .endCbid = endCbid,
-           .requiresFlowCorrelation = requiresFlowCorrelation,
-           .isBlocklisted = isBlocklisted}});
+  cbidRanges_.emplace_back(
+      domain,
+      CbidRange{
+          .startCbid = startCbid,
+          .endCbid = endCbid,
+          .requiresFlowCorrelation = requiresFlowCorrelation,
+          .isBlocklisted = isBlocklisted});
 }
 
 CuptiCbidRegistry::CuptiCbidRegistry() {

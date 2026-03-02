@@ -19,14 +19,19 @@
 // TODO DEVICE_AGNOSTIC: Move the device decision out of C++ files to be
 //                       determined entirely by the build process. For the
 //                       controller, we'll need some registration mechanism.
-#ifdef HAS_CUPTI
+#if defined(HAS_CUPTI)
 #include "CuptiActivityApi.h"
 #include "CuptiActivityProfiler.h"
+
+#elif defined(HAS_ROCTRACER)
+#include "RocmActivityProfiler.h"
+
+#if defined(ROCTRACER_FALLBACK)
+#include "RoctracerActivityApi.h"
+#elif defined(HAS_ROCTRACER)
+#include "RocprofActivityApi.h"
 #endif
 
-#ifdef HAS_ROCTRACER
-#include "RocmActivityProfiler.h"
-#include "RoctracerActivityApi.h"
 #endif
 
 #include "ThreadUtil.h"
@@ -74,12 +79,15 @@ ActivityProfilerController::ActivityProfilerController(
   }
 #endif // !USE_GOOGLE_LOG
 
-#ifdef HAS_ROCTRACER
-  profiler_ = std::make_unique<RocmActivityProfiler>(
-      RoctracerActivityApi::singleton(), cpuOnly);
-#elif defined(HAS_CUPTI)
+#if defined(HAS_CUPTI)
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityApi::singleton(), cpuOnly);
+#elif defined(HAS_ROCTRACER) && defined(ROCTRACER_FALLBACK)
+  profiler_ = std::make_unique<RocmActivityProfiler>(
+      RoctracerActivityApi::singleton(), cpuOnly);
+#elif defined(HAS_ROCTRACER)
+  profiler_ = std::make_unique<RocmActivityProfiler>(
+      RocprofActivityApi::singleton(), cpuOnly);
 #else
   // CPU-only profiling without any GPU backends is handled
   // directly by the GenericActivityProfiler.

@@ -28,8 +28,15 @@
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
 #include "src/RocmActivityProfiler.h"
+
+#ifdef ROCTRACER_FALLBACK
 #include "src/RoctracerActivityApi.h"
 #include "src/RoctracerLogger.h"
+#else
+#include "src/RocprofActivityApi.h"
+#include "src/RocprofLogger.h"
+#endif
+
 #include "src/output_json.h"
 #include "src/output_membuf.h"
 
@@ -52,10 +59,20 @@ static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
 static constexpr int32_t kTruncatLength = 30;
 
+// API ID macros - map to the correct SDK constants
+#ifdef ROCTRACER_FALLBACK
 #define HIP_LAUNCH_KERNEL HIP_API_ID_hipLaunchKernel
 #define HIP_MEMCPY HIP_API_ID_hipMemcpy
 #define HIP_MALLOC HIP_API_ID_hipMalloc
 #define HIP_FREE HIP_API_ID_hipFree
+#define RUNTIME_DOMAIN ACTIVITY_DOMAIN_HIP_API
+#else
+#define HIP_LAUNCH_KERNEL ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchKernel
+#define HIP_MEMCPY ROCPROFILER_HIP_RUNTIME_API_ID_hipMemcpy
+#define HIP_MALLOC ROCPROFILER_HIP_RUNTIME_API_ID_hipMalloc
+#define HIP_FREE ROCPROFILER_HIP_RUNTIME_API_ID_hipFree
+#define RUNTIME_DOMAIN ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API
+#endif
 
 namespace {
 const TraceSpan& defaultTraceSpan() {
@@ -93,11 +110,12 @@ struct MockCpuActivityBuffer : public CpuTraceBuffer {
   }
 };
 
-// Provides ability to easily create a test Roctracer ops
-struct MockRoctracerLogger {
+// Provides ability to easily create test ROCm ops using the shared types
+// from RocLogger.h (rocprofKernelRow, rocprofAsyncRow, etc.)
+struct MockRocLogger {
   void addCorrelationActivity(
       uint64_t correlation,
-      RoctracerLogger::CorrelationDomain domain,
+      RocLogger::CorrelationDomain domain,
       uint64_t externalId) {
     externalCorrelations_[domain].emplace_back(correlation, externalId);
   }
@@ -107,9 +125,9 @@ struct MockRoctracerLogger {
       int64_t start_ns,
       int64_t end_ns,
       int64_t correlation) {
-    roctracerKernelRow* row = new roctracerKernelRow(
+    rocprofKernelRow* row = new rocprofKernelRow(
         correlation,
-        ACTIVITY_DOMAIN_HIP_API,
+        RUNTIME_DOMAIN,
         cid,
         processId(),
         systemThreadId(),
@@ -133,9 +151,9 @@ struct MockRoctracerLogger {
       int64_t start_ns,
       int64_t end_ns,
       int64_t correlation) {
-    roctracerMallocRow* row = new roctracerMallocRow(
+    rocprofMallocRow* row = new rocprofMallocRow(
         correlation,
-        ACTIVITY_DOMAIN_HIP_API,
+        RUNTIME_DOMAIN,
         cid,
         processId(),
         systemThreadId(),
@@ -151,9 +169,9 @@ struct MockRoctracerLogger {
       int64_t start_ns,
       int64_t end_ns,
       int64_t correlation) {
-    roctracerCopyRow* row = new roctracerCopyRow(
+    rocprofCopyRow* row = new rocprofCopyRow(
         correlation,
-        ACTIVITY_DOMAIN_HIP_API,
+        RUNTIME_DOMAIN,
         cid,
         processId(),
         systemThreadId(),
@@ -171,7 +189,8 @@ struct MockRoctracerLogger {
       int64_t start_ns,
       int64_t end_ns,
       int64_t correlation) {
-    roctracerAsyncRow* row = new roctracerAsyncRow(
+#ifdef ROCTRACER_FALLBACK
+    rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
         ACTIVITY_DOMAIN_HIP_API,
         HIP_OP_DISPATCH_KIND_KERNEL_,
@@ -181,6 +200,18 @@ struct MockRoctracerLogger {
         start_ns,
         end_ns,
         std::string("kernel"));
+#else
+    rocprofAsyncRow* row = new rocprofAsyncRow(
+        correlation,
+        ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH,
+        0,
+        0,
+        0,
+        1,
+        start_ns,
+        end_ns,
+        std::string("kernel"));
+#endif
     activities_.push_back(row);
   }
 
@@ -188,7 +219,8 @@ struct MockRoctracerLogger {
       int64_t start_ns,
       int64_t end_ns,
       int64_t correlation) {
-    roctracerAsyncRow* row = new roctracerAsyncRow(
+#ifdef ROCTRACER_FALLBACK
+    rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
         ACTIVITY_DOMAIN_HIP_API,
         HIP_OP_COPY_KIND_HOST_TO_DEVICE_,
@@ -198,6 +230,18 @@ struct MockRoctracerLogger {
         start_ns,
         end_ns,
         std::string());
+#else
+    rocprofAsyncRow* row = new rocprofAsyncRow(
+        correlation,
+        ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY,
+        0,
+        ROCPROFILER_MEMORY_COPY_HOST_TO_DEVICE,
+        0,
+        2,
+        start_ns,
+        end_ns,
+        std::string());
+#endif
     activities_.push_back(row);
   }
 
@@ -205,7 +249,8 @@ struct MockRoctracerLogger {
       int64_t start_ns,
       int64_t end_ns,
       int64_t correlation) {
-    roctracerAsyncRow* row = new roctracerAsyncRow(
+#ifdef ROCTRACER_FALLBACK
+    rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
         ACTIVITY_DOMAIN_HIP_API,
         HIP_OP_COPY_KIND_DEVICE_TO_HOST_,
@@ -215,10 +260,22 @@ struct MockRoctracerLogger {
         start_ns,
         end_ns,
         std::string());
+#else
+    rocprofAsyncRow* row = new rocprofAsyncRow(
+        correlation,
+        ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY,
+        0,
+        ROCPROFILER_MEMORY_COPY_DEVICE_TO_HOST,
+        0,
+        2,
+        start_ns,
+        end_ns,
+        std::string());
+#endif
     activities_.push_back(row);
   }
 
-  ~MockRoctracerLogger() {
+  ~MockRocLogger() {
     while (!activities_.empty()) {
       auto act = activities_.back();
       activities_.pop_back();
@@ -226,29 +283,32 @@ struct MockRoctracerLogger {
     }
   }
 
-  std::vector<roctracerBase*> activities_;
+  std::vector<rocprofBase*> activities_;
   std::vector<std::pair<uint64_t, uint64_t>>
-      externalCorrelations_[RoctracerLogger::CorrelationDomain::size];
+      externalCorrelations_[RocLogger::CorrelationDomain::size];
 };
 
-// Mock parts of the RoctracerActivityApi
-class MockRoctracerActivities : public RoctracerActivityApi {
+// Mock parts of the ActivityApi - select the correct base class
+#ifdef ROCTRACER_FALLBACK
+class MockRocActivities : public RoctracerActivityApi {
+#else
+class MockRocActivities : public RocprofActivityApi {
+#endif
  public:
   virtual int processActivities(
-      std::function<void(const roctracerBase*)> handler,
-      std::function<
-          void(uint64_t, uint64_t, RoctracerLogger::CorrelationDomain)>
+      std::function<void(const rocprofBase*)> handler,
+      std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
           correlationHandler) override {
     int count = 0;
-    for (int it = RoctracerLogger::CorrelationDomain::begin;
-         it < RoctracerLogger::CorrelationDomain::end;
+    for (int it = RocLogger::CorrelationDomain::begin;
+         it < RocLogger::CorrelationDomain::end;
          ++it) {
       auto& externalCorrelations = activityLogger->externalCorrelations_[it];
       for (auto& item : externalCorrelations) {
         correlationHandler(
             item.first,
             item.second,
-            static_cast<RoctracerLogger::CorrelationDomain>(it));
+            static_cast<RocLogger::CorrelationDomain>(it));
       }
       externalCorrelations.clear();
     }
@@ -259,15 +319,15 @@ class MockRoctracerActivities : public RoctracerActivityApi {
     return count;
   }
 
-  std::unique_ptr<MockRoctracerLogger> activityLogger;
+  std::unique_ptr<MockRocLogger> activityLogger;
 };
 
 // Common setup / teardown and helper functions
-class RoctracerActivityProfilerTest : public ::testing::Test {
+class RocmActivityProfilerTest : public ::testing::Test {
  protected:
   void SetUp() override {
     profiler_ = std::make_unique<RocmActivityProfiler>(
-        roctracerActivities_, /*cpu only*/ false);
+        rocActivities_, /*cpu only*/ false);
     cfg_ = std::make_unique<Config>();
     cfg_->validate(std::chrono::system_clock::now());
     loggerFactory.addProtocol("file", [](const std::string& url) {
@@ -276,7 +336,7 @@ class RoctracerActivityProfilerTest : public ::testing::Test {
   }
 
   std::unique_ptr<Config> cfg_;
-  MockRoctracerActivities roctracerActivities_;
+  MockRocActivities rocActivities_;
   std::unique_ptr<RocmActivityProfiler> profiler_;
   ActivityLoggerFactory loggerFactory;
 };
@@ -297,13 +357,13 @@ void checkTracefile(const char* filename) {
 #endif
 }
 
-TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
+TEST_F(RocmActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
@@ -325,7 +385,7 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
   profiler.transferCpuTrace(std::move(cpuOps));
 
   // And some CPU runtime ops, and GPU ops
-  auto gpuOps = std::make_unique<MockRoctracerLogger>();
+  auto gpuOps = std::make_unique<MockRocLogger>();
   gpuOps->addRuntimeKernelActivity(
       HIP_LAUNCH_KERNEL, start_time_ns + 33, start_time_ns + 38, 1);
   gpuOps->addRuntimeCopyActivity(
@@ -341,7 +401,7 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
   gpuOps->addKernelActivity(start_time_ns + 160, start_time_ns + 220, 3);
   gpuOps->addMemcpyD2HActivity(start_time_ns + 230, start_time_ns + 250, 4);
   gpuOps->addKernelActivity(start_time_ns + 260, start_time_ns + 280, 5);
-  roctracerActivities_.activityLogger = std::move(gpuOps);
+  rocActivities_.activityLogger = std::move(gpuOps);
 
   // Have the profiler process them
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
@@ -398,14 +458,14 @@ TEST_F(RoctracerActivityProfilerTest, SyncTrace) {
 #endif
 }
 
-TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
+TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Set logging level for debugging purpose
   std::vector<std::string> log_modules(
       {"RocmActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
@@ -488,11 +548,10 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
 
   // Set up corresponding GPU events and connect with CPU events
   // via correlationId
-  auto gpuOps = std::make_unique<MockRoctracerLogger>();
-  gpuOps->addCorrelationActivity(
-      1, RoctracerLogger::CorrelationDomain::Domain0, 1);
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addCorrelationActivity(1, RocLogger::CorrelationDomain::Domain0, 1);
   gpuOps->addKernelActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
-  roctracerActivities_.activityLogger = std::move(gpuOps);
+  rocActivities_.activityLogger = std::move(gpuOps);
 
   // Process trace
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
@@ -572,13 +631,13 @@ TEST_F(RoctracerActivityProfilerTest, GpuNCCLCollectiveTest) {
 #endif
 }
 
-TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
+TEST_F(RocmActivityProfilerTest, GpuUserAnnotationTest) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
@@ -597,15 +656,13 @@ TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
   profiler.transferCpuTrace(std::move(cpuOps));
 
   // set up a couple of GPU events and correlate with above CPU event.
-  // RoctracerLogger::CorrelationDomain::Domain1 is used for user annotations.
-  auto gpuOps = std::make_unique<MockRoctracerLogger>();
-  gpuOps->addCorrelationActivity(
-      1, RoctracerLogger::CorrelationDomain::Domain1, 1);
+  // RocLogger::CorrelationDomain::Domain1 is used for user annotations.
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addCorrelationActivity(1, RocLogger::CorrelationDomain::Domain1, 1);
   gpuOps->addKernelActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
-  gpuOps->addCorrelationActivity(
-      1, RoctracerLogger::CorrelationDomain::Domain1, 1);
+  gpuOps->addCorrelationActivity(1, RocLogger::CorrelationDomain::Domain1, 1);
   gpuOps->addKernelActivity(kernelLaunchTime + 15, kernelLaunchTime + 25, 1);
-  roctracerActivities_.activityLogger = std::move(gpuOps);
+  rocActivities_.activityLogger = std::move(gpuOps);
 
   // process trace
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
@@ -641,7 +698,7 @@ TEST_F(RoctracerActivityProfilerTest, GpuUserAnnotationTest) {
   EXPECT_EQ(gpu_annotation->name(), annotation->name());
 }
 
-TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
+TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
@@ -671,7 +728,7 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
       std::make_unique<MockActivityProfiler>(test_activities);
 
   // Add a child profiler and check that it works
-  MockRoctracerActivities activities;
+  MockRocActivities activities;
   RocmActivityProfiler profiler(activities, /*cpu only*/ true);
   profiler.addChildActivityProfiler(std::move(mock_activity_profiler));
 
@@ -714,14 +771,14 @@ TEST_F(RoctracerActivityProfilerTest, SubActivityProfilers) {
   EXPECT_GT(buf.st_size, 100);
 }
 
-TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
+TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {
   // Set logging level for debugging purpose
   std::vector<std::string> log_modules(
       {"RocmActivityProfiler.cpp", "output_json.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
   // Start and stop profiling
-  RocmActivityProfiler profiler(roctracerActivities_, /*cpu only*/ false);
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;
@@ -738,11 +795,11 @@ TEST_F(RoctracerActivityProfilerTest, JsonGPUIDSortTest) {
   profiler.transferCpuTrace(std::move(cpuOps));
 
   // Set up GPU events
-  auto gpuOps = std::make_unique<MockRoctracerLogger>();
+  auto gpuOps = std::make_unique<MockRocLogger>();
   gpuOps->addRuntimeKernelActivity(
       HIP_LAUNCH_KERNEL, start_time_ns + 23, start_time_ns + 28, 1);
   gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
-  roctracerActivities_.activityLogger = std::move(gpuOps);
+  rocActivities_.activityLogger = std::move(gpuOps);
 
   // Process trace
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);

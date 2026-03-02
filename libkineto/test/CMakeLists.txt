@@ -99,25 +99,25 @@ gtest_discover_tests(EventProfilerTest)
 endif()
 
 if(NOT LIBKINETO_NOROCTRACER)
-# RoctracerActivityProfilerTest
-add_executable(RoctracerActivityProfilerTest
-    RoctracerActivityProfilerTest.cpp
+# RocmActivityProfilerTest
+add_executable(RocmActivityProfilerTest
+    RocmActivityProfilerTest.cpp
     MockActivitySubProfiler.cpp)
-target_compile_definitions(RoctracerActivityProfilerTest PRIVATE
+target_compile_definitions(RocmActivityProfilerTest PRIVATE
     "__HIP_PLATFORM_HCC__"
     "__HIP_PLATFORM_AMD__")
-target_link_libraries(RoctracerActivityProfilerTest PRIVATE
+target_link_libraries(RocmActivityProfilerTest PRIVATE
     gtest_main
     gmock
     kineto_base kineto_api
     nlohmann_json::nlohmann_json)
-target_include_directories(RoctracerActivityProfilerTest PRIVATE
+target_include_directories(RocmActivityProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
     "${LIBKINETO_DIR}/src"
     "${ROCM_INCLUDE_DIRS}"
     "${ROCTRACER_INCLUDE_DIR}")
-gtest_discover_tests(RoctracerActivityProfilerTest)
+gtest_discover_tests(RocmActivityProfilerTest)
 endif()
 
 # LoggerObserverTest

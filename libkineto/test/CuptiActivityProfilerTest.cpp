@@ -166,7 +166,7 @@ struct MockCuptiActivityBuffer {
       int64_t end_ns,
       int64_t correlation) {
     auto& act =
-        createActivity<CUpti_ActivityMemcpy>(start_ns, end_ns, correlation);
+        createActivity<CUpti_ActivityMemcpyType>(start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_MEMCPY;
     act.deviceId = 0;
     act.streamId = 2;

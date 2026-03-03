@@ -25,11 +25,17 @@ int smCount(uint32_t deviceId);
 // TODO: Implement the below for HAS_ROCTRACER
 #ifdef HAS_CUPTI
 
-// Use CUpti_ActivityKernel9 in CUDA 12.0+ for extended kernel fields
+// Use newer CUPTI activity structs in CUDA 12.0+ for extended fields
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
 using CUpti_ActivityKernelType = CUpti_ActivityKernel9;
+using CUpti_ActivityMemcpyType = CUpti_ActivityMemcpy5;
+using CUpti_ActivityMemcpyPtoPType = CUpti_ActivityMemcpyPtoP4;
+using CUpti_ActivityMemsetType = CUpti_ActivityMemset4;
 #else
 using CUpti_ActivityKernelType = CUpti_ActivityKernel4;
+using CUpti_ActivityMemcpyType = CUpti_ActivityMemcpy;
+using CUpti_ActivityMemcpyPtoPType = CUpti_ActivityMemcpy2;
+using CUpti_ActivityMemsetType = CUpti_ActivityMemset;
 #endif
 
 float blocksPerSm(const CUpti_ActivityKernelType& kernel);

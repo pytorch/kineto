@@ -34,8 +34,10 @@ void CuptiCbidRegistry::registerCallback(
     uint32_t cbid,
     bool requiresFlowCorrelation,
     bool isBlocklisted) {
-  getMapForDomain(domain)[cbid] =
-      CbidProperties{requiresFlowCorrelation, isBlocklisted, {}};
+  getMapForDomain(domain)[cbid] = CbidProperties{
+      .requiresFlowCorrelation = requiresFlowCorrelation,
+      .isBlocklisted = isBlocklisted,
+      .name = {}};
 }
 
 void CuptiCbidRegistry::registerCallback(
@@ -44,8 +46,10 @@ void CuptiCbidRegistry::registerCallback(
     bool requiresFlowCorrelation,
     bool isBlocklisted,
     const std::string& name) {
-  getMapForDomain(domain)[cbid] =
-      CbidProperties{requiresFlowCorrelation, isBlocklisted, name};
+  getMapForDomain(domain)[cbid] = CbidProperties{
+      .requiresFlowCorrelation = requiresFlowCorrelation,
+      .isBlocklisted = isBlocklisted,
+      .name = name};
 }
 
 void CuptiCbidRegistry::registerCallbackRange(
@@ -54,9 +58,13 @@ void CuptiCbidRegistry::registerCallbackRange(
     uint32_t endCbid,
     bool requiresFlowCorrelation,
     bool isBlocklisted) {
-  cbidRanges_.push_back(
-      {domain,
-       CbidRange{startCbid, endCbid, requiresFlowCorrelation, isBlocklisted}});
+  cbidRanges_.emplace_back(
+      domain,
+      CbidRange{
+          .startCbid = startCbid,
+          .endCbid = endCbid,
+          .requiresFlowCorrelation = requiresFlowCorrelation,
+          .isBlocklisted = isBlocklisted});
 }
 
 CuptiCbidRegistry::CuptiCbidRegistry() {

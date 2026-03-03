@@ -26,7 +26,7 @@ ApproximateClockToUnixTimeConverter::measurePair() {
       wall.time_since_epoch());
 
   // `x + (y - x) / 2` is a more numerically stable average than `(x + y) / 2`.
-  return {t.count(), fast_0 + ((fast_1 - fast_0) / 2)};
+  return {.t_ = t.count(), .approx_t_ = fast_0 + ((fast_1 - fast_0) / 2)};
 }
 
 ApproximateClockToUnixTimeConverter::time_pairs

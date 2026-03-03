@@ -87,14 +87,14 @@ class MemoryTraceLogger : public ActivityLogger {
 
   void log(ActivityLogger& logger) {
     logger.handleTraceStart(metadata_, device_properties_);
-    for (auto& activity : activities_) {
-      activity->log(logger);
-    }
     for (auto& p : deviceInfoList_) {
       logger.handleDeviceInfo(p.first, p.second);
     }
     for (auto& p : resourceInfoList_) {
       logger.handleResourceInfo(p.first, p.second);
+    }
+    for (auto& activity : activities_) {
+      activity->log(logger);
     }
     for (auto& cpu_trace_buffer : buffers_->cpu) {
       logger.handleTraceSpan(cpu_trace_buffer->span);

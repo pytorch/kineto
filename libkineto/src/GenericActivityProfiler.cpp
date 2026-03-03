@@ -102,8 +102,8 @@ std::ostream& operator<<(
 }
 
 GenericActivityProfiler::GenericActivityProfiler(bool cpuOnly)
-    : flushOverhead_{0, 0},
-      setupOverhead_{0, 0},
+    : flushOverhead_{.overhead = 0, .cntr = 0},
+      setupOverhead_{.overhead = 0, .cntr = 0},
       cpuOnly_{cpuOnly},
       currentRunloopState_{RunloopState::WaitForRequest} {}
 

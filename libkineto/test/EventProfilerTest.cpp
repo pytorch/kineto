@@ -104,12 +104,12 @@ TEST(EventTest, Percentiles) {
   PercentileList pct = {
       {10, SampleValue(0)}, {50, SampleValue(0)}, {90, SampleValue(0)}};
 
-  ev.percentiles(pct, {0, 0, 3});
+  ev.percentiles(pct, {.offset = 0, .index = 0, .count = 3});
   EXPECT_EQ(pct[0].second.getInt(), 1);
   EXPECT_EQ(pct[1].second.getInt(), 3);
   EXPECT_EQ(pct[2].second.getInt(), 4);
 
-  ev.percentiles(pct, {0, 0, 1});
+  ev.percentiles(pct, {.offset = 0, .index = 0, .count = 1});
   EXPECT_EQ(pct[0].second.getInt(), 111);
   EXPECT_EQ(pct[1].second.getInt(), 333);
   EXPECT_EQ(pct[2].second.getInt(), 444);
@@ -185,7 +185,8 @@ TEST(MetricTest, Calculate) {
       metrics, calculate(1, CUPTI_METRIC_VALUE_KIND_DOUBLE, ids, vals, 1000))
       .Times(1)
       .WillOnce(Return(SampleValue(0.14)));
-  auto v = m.calculate(events, nanoseconds(1000), {0, 0, 2});
+  auto v = m.calculate(
+      events, nanoseconds(1000), {.offset = 0, .index = 0, .count = 2});
 
   EXPECT_EQ(v.perInstance.size(), 2);
   EXPECT_EQ(v.perInstance[0].getDouble(), 0.1);
@@ -204,7 +205,8 @@ TEST(MetricTest, Calculate) {
       metrics, calculate(1, CUPTI_METRIC_VALUE_KIND_DOUBLE, ids, vals, 1000))
       .Times(1)
       .WillOnce(Return(SampleValue(0.27)));
-  v = m2.calculate(events, nanoseconds(1000), {0, 1, 2});
+  v = m2.calculate(
+      events, nanoseconds(1000), {.offset = 0, .index = 1, .count = 2});
 
   EXPECT_EQ(v.perInstance.size(), 1);
   EXPECT_EQ(v.perInstance[0].getDouble(), 0.27);

@@ -49,7 +49,13 @@ std::string DaemonConfigLoader::readOnDemandConfig(
   if (activities) {
     config_type |= int(LibkinetoConfigType::ACTIVITIES);
   }
-  return configClient->getLibkinetoOndemandConfig(config_type);
+  std::string config = configClient->getLibkinetoOndemandConfig(config_type);
+  if (!config.empty()) {
+    LOG(INFO)
+        << "Received on-demand config from DaemonConfigLoader (IPC Fabric):\n"
+        << config;
+  }
+  return config;
 }
 
 int DaemonConfigLoader::gpuContextCount(uint32_t device) {
@@ -75,11 +81,14 @@ void DaemonConfigLoader::setCommunicationFabric(bool enabled) {
 }
 
 void DaemonConfigLoader::registerFactory() {
-  ConfigLoader::setDaemonConfigLoaderFactory([]() {
-    auto loader = std::make_unique<DaemonConfigLoader>();
-    loader->setCommunicationFabric(true);
-    return loader;
-  });
+  // Use the new addConfigLoaderFactory API which allows multiple config loaders
+  // to coexist (e.g., DaemonConfigLoader + PortConfigLoader)
+  ConfigLoader::addConfigLoaderFactory(
+      []() -> std::unique_ptr<IDaemonConfigLoader> {
+        auto loader = std::make_unique<DaemonConfigLoader>();
+        loader->setCommunicationFabric(true);
+        return loader;
+      });
 }
 
 } // namespace KINETO_NAMESPACE

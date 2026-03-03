@@ -19,6 +19,7 @@
 
 #include <utility>
 
+#include "ConfigLoader.h"
 #include "ILoggerObserver.h"
 #include "Logger.h"
 #include "TraceProtocol.h"
@@ -259,6 +260,15 @@ std::string PortConfigLoader::handleTrace(std::string_view jsonPayload) {
   return R"({"type":"TRACE_ACK","status":"ACCEPTED","trace_id":")" + traceId +
       R"("})"
       "\n";
+}
+
+void PortConfigLoader::registerFactory() {
+  // Use the new addConfigLoaderFactory API which allows multiple config loaders
+  // to coexist (e.g., DaemonConfigLoader + PortConfigLoader)
+  ConfigLoader::addConfigLoaderFactory(
+      []() -> std::unique_ptr<IDaemonConfigLoader> {
+        return std::make_unique<PortConfigLoader>();
+      });
 }
 
 } // namespace KINETO_NAMESPACE

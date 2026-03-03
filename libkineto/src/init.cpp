@@ -7,7 +7,6 @@
  */
 
 #include <memory>
-#include <mutex>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -16,7 +15,9 @@
 #include "ConfigLoader.h"
 #include "DaemonConfigLoader.h"
 #include "DeviceUtil.h"
-#include "ThreadUtil.h"
+#if defined(__linux__) && !defined(__ANDROID__)
+#include "PortConfigLoader.h"
+#endif
 #ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
 #include "CuptiCallbackApi.h"
@@ -145,10 +146,23 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 
   // Factory to connect to open source daemon if present
 #if __linux__
+  // Both DaemonConfigLoader and PortConfigLoader can co-exist.
+  // DaemonConfigLoader: IPC Fabric-based communication with Dynolog daemon
+  // PortConfigLoader: TCP-based communication for Kubernetes environments
   if (libkineto::isDaemonEnvVarSet()) {
     LOG(INFO) << "Registering daemon config loader, cpuOnly =  " << cpuOnly;
     DaemonConfigLoader::registerFactory();
   }
+#if !defined(__ANDROID__)
+  // PortConfigLoader was designed for server environments, not mobile.
+  if (getenv("KINETO_TRACE_PORT") != nullptr) {
+    // For Kubernetes environments: use PortConfigLoader for TCP-based tracing.
+    // This can work alongside DaemonConfigLoader for hybrid environments.
+    LOG(INFO) << "Registering port config loader on port "
+              << getenv("KINETO_TRACE_PORT");
+    PortConfigLoader::registerFactory();
+  }
+#endif
 #endif
 
 #ifdef HAS_CUPTI

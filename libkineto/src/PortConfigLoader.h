@@ -66,6 +66,10 @@ class PortConfigLoader : public IDaemonConfigLoader {
   // Test hook: handle one connection manually (for unit tests).
   void testHandleOneConnection();
 
+  // Factory registration (like DaemonConfigLoader::registerFactory).
+  // Call this during libkineto_init when KINETO_TRACE_PORT is set.
+  static void registerFactory();
+
  private:
   // Start the TCP server thread.
   void startServer();

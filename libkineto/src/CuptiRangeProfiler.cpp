@@ -148,7 +148,7 @@ void CuptiRangeProfilerSession::addRangeEvents(
   auto& activities = traceBuffer_.activities;
   bool use_kernel_names = false;
   auto device_id = profiler->deviceId();
-  int num_kernels = KernelRegistry::singleton()->getNumKernels(device_id);
+  size_t num_kernels = KernelRegistry::singleton()->getNumKernels(device_id);
   KernelRegistry* KR = KernelRegistry::singleton();
 
   if (rangeType_ == CUPTI_AutoRange) {
@@ -167,7 +167,7 @@ void CuptiRangeProfilerSession::addRangeEvents(
           duration = traceBuffer_.span.endTime - startTime,
           interval = duration / result.rangeVals.size();
 
-  int ridx = 0;
+  size_t ridx = 0;
   for (const auto& measurement : result.rangeVals) {
     bool use_kernel_as_range = use_kernel_names && (ridx < num_kernels);
 
@@ -190,7 +190,7 @@ void CuptiRangeProfilerSession::addRangeEvents(
     event->addMetadata("correlation", correlationId);
 
     // add metadata per counter
-    for (int i = 0; i < metricNames.size(); i++) {
+    for (size_t i = 0; i < metricNames.size(); i++) {
       event->addMetadata(metricNames[i], measurement.values[i]);
     }
     ridx++;

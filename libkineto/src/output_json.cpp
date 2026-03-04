@@ -622,8 +622,8 @@ void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
     int type;
     char name[16];
   } flow_names[] = {
-      {.type = kLinkFwdBwd, .name = "fwdbwd"},
-      {.type = kLinkAsyncCpuGpu, .name = "ac2g"}};
+      {kLinkFwdBwd, "fwdbwd"},
+      {kLinkAsyncCpuGpu, "ac2g"}};
   for (auto& flow : flow_names) {
     if (act.flowType() == flow.type) {
       // Link the activities via flow ID in source and destination.

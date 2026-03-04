@@ -964,7 +964,7 @@ TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
   profiler.configure(*cfg_, now);
   EXPECT_TRUE(profiler.isActive());
 
-  for (size_t i = 0; i < maxBufferSizeMB; i++) {
+  for (int i = 0; i < maxBufferSizeMB; i++) {
     uint8_t* buf;
     size_t gpuBufferSize;
     size_t maxNumRecords;

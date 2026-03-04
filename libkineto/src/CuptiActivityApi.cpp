@@ -147,7 +147,7 @@ void CuptiActivityApi::bufferRequested(
     size_t* maxNumRecords) {
   std::lock_guard<std::mutex> guard(mutex_);
   LOG(VERBOSE) << "CUPTI buffer requested";
-  if (allocatedGpuTraceBuffers_.size() >= maxGpuBufferCount_) {
+  if (static_cast<int>(allocatedGpuTraceBuffers_.size()) >= maxGpuBufferCount_) {
     stopCollection = true;
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << allocatedGpuTraceBuffers_.size()
@@ -267,7 +267,7 @@ void CuptiActivityApi::bufferCompleted(
   auto it = allocatedGpuTraceBuffers_.find(buffer);
   if (it == allocatedGpuTraceBuffers_.end()) {
     LOG(ERROR) << "bufferCompleted called with unknown buffer: "
-               << (void*)buffer;
+               << static_cast<void*>(buffer);
     return;
   }
 

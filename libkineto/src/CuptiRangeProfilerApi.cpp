@@ -24,6 +24,11 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiRangeProfilerApi.h"
 
+// CUPTI API structs use partial aggregate initialization (structSize + pPriv),
+// relying on zero-initialization for remaining fields. Suppress the warning.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 #define STRINGIFY(x) #x
 
 #if HAS_CUPTI_RANGE_PROFILER
@@ -420,7 +425,7 @@ void CuptiRBProfilerSession::startInternal(
 
   if (cuContext_ == nullptr) {
     for (const auto& it : ctx_to_dev) {
-      if (it.second == deviceId_) {
+      if (static_cast<uint32_t>(it.second) == deviceId_) {
         cuContext_ = it.first;
         break;
       }
@@ -810,3 +815,5 @@ void trackCudaKernelLaunch(
 
 } // namespace testing
 } // namespace KINETO_NAMESPACE
+
+#pragma GCC diagnostic pop

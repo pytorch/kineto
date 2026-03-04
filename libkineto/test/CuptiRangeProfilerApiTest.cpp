@@ -38,7 +38,7 @@ TEST(CuptiRangeProfilerApiTest, contextTracking) {
 
   std::array<int64_t, 3> data;
   std::array<CUcontext, 3> contexts;
-  for (int i = 0; i < data.size(); i++) {
+  for (size_t i = 0; i < data.size(); i++) {
     contexts[i] = reinterpret_cast<CUcontext>(&data[i]);
   }
 
@@ -73,11 +73,11 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchUserRange) {
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
   CuptiRangeProfilerOptions opts{
-      .metricNames = {"metricNames"},
-      .deviceId = 0,
-      .maxRanges = 1,
-      .numNestingLevels = 1,
-      .cuContext = ctx0};
+      {"metricNames"},
+      0,
+      1,
+      1,
+      ctx0};
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());
@@ -109,12 +109,12 @@ TEST(CuptiRangeProfilerApiTest, asyncLaunchAutoRange) {
   simulateCudaContextCreate(ctx0, 0 /*device_id*/);
 
   CuptiRangeProfilerOptions opts{
-      .metricNames = {"metricNames"},
-      .deviceId = 0,
-      .maxRanges = 1,
-      .numNestingLevels = 1,
-      .cuContext = ctx0,
-      .has_gpu_activities_enabled_ = true};
+      {"metricNames"},
+      0,
+      1,
+      1,
+      ctx0,
+      true};
 
   std::unique_ptr<CuptiRBProfilerSession> session_ = mfactory.make(opts);
   auto session = mfactory.asDerived(session_.get());

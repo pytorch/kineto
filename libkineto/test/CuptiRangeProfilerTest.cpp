@@ -105,7 +105,7 @@ class CuptiRangeProfilerTest : public ::testing::Test {
     // setup profiler results
     results_[0].metricNames = metrics;
     results_[1].metricNames = metrics;
-    for (int i = 0; i < metrics.size(); i++) {
+    for (size_t i = 0; i < metrics.size(); i++) {
       measurements_.push_back(0.1 * i);
     }
   }
@@ -266,13 +266,13 @@ TEST_F(CuptiRangeProfilerTest, AutoRangeTest) {
   }
 
   // check if kernel names are captured
-  for (int i = 0; i < kCtx0Kernels.size(); i++) {
+  for (size_t i = 0; i < kCtx0Kernels.size(); i++) {
     EXPECT_EQ(activities[i]->deviceId(), 0);
     EXPECT_EQ(activities[i]->name(), kCtx0Kernels[i]);
   }
 
   const size_t offset = kCtx0Kernels.size();
-  for (int i = 0; i < kCtx1Kernels.size(); i++) {
+  for (size_t i = 0; i < kCtx1Kernels.size(); i++) {
     EXPECT_EQ(activities[i + offset]->deviceId(), 1);
     EXPECT_EQ(activities[i + offset]->name(), kCtx1Kernels[i]);
   }

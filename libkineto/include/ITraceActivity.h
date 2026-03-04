@@ -50,7 +50,7 @@ struct ITraceActivity {
   [[nodiscard]] virtual const std::string metadataJson() const = 0;
   // Return the metadata value in string format with key
   // @lint-ignore CLANGTIDY: clang-diagnostic-unused-parameter
-  [[nodiscard]] virtual const std::string getMetadataValue(const std::string& key) const {
+  [[nodiscard]] virtual const std::string getMetadataValue([[maybe_unused]] const std::string& key) const {
     return "";
   }
 

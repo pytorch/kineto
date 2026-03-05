@@ -24,8 +24,25 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "CuptiRangeProfilerApi.h"
 
-// CUPTI API structs use partial aggregate initialization (structSize + pPriv),
-// relying on zero-initialization for remaining fields. Suppress the warning.
+// CUPTI Profiler API uses a versioned struct pattern: each API function takes a
+// params struct (e.g. CUpti_Profiler_BeginPass_Params) whose first two fields
+// are always structSize (so CUPTI knows which version of the struct the caller
+// compiled against) and pPriv (an internal pointer, always nullptr from the
+// caller's side). The remaining 5-15+ fields are the actual parameters.
+//
+// NVIDIA's recommended init pattern (used in their samples) provides only these
+// first two values in the initializer list and relies on C++ aggregate
+// zero-initialization for the rest, then sets specific fields afterward:
+//
+//   CUpti_Profiler_BeginPass_Params params = {
+//       CUpti_Profiler_BeginPass_Params_STRUCT_SIZE, nullptr};
+//   params.ctx = cuContext;
+//
+// -Wmissing-field-initializers (enabled by -Wextra) warns when a struct
+// initializer doesn't provide values for every field, which fires at all ~22
+// call sites in this file. We suppress it rather than enumerating every field,
+// since the struct definitions change between CUPTI SDK versions and explicit
+// listing would break whenever NVIDIA adds or removes fields.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 

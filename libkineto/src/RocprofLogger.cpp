@@ -55,13 +55,13 @@ struct copy_args {
 };
 auto extract_copy_args = [](rocprofiler_callback_tracing_kind_t,
                             rocprofiler_tracing_operation_t,
-                            uint32_t arg_num,
+                            uint32_t,
                             const void* const arg_value_addr,
-                            int32_t indirection_count,
-                            const char* arg_type,
+                            int32_t,
+                            const char*,
                             const char* arg_name,
                             const char* arg_value_str,
-                            int32_t dereference_count,
+                            int32_t,
                             void* cb_data) -> int {
   auto& args = *(static_cast<copy_args*>(cb_data));
   if (strcmp("dst", arg_name) == 0) {
@@ -85,50 +85,50 @@ struct kernel_args {
   hipStream_t stream{nullptr};
   uint32_t privateSize{0};
   uint32_t groupSize{0};
-  rocprofiler_dim3_t workgroupSize{0};
-  rocprofiler_dim3_t gridSize{0};
+  rocprofiler_dim3_t workgroupSize{0, 0, 0};
+  rocprofiler_dim3_t gridSize{0, 0, 0};
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
 auto extract_kernel_args = [](rocprofiler_callback_tracing_kind_t,
                               rocprofiler_tracing_operation_t,
-                              uint32_t arg_num,
+                              uint32_t,
                               const void* const arg_value_addr,
-                              int32_t indirection_count,
-                              const char* arg_type,
+                              int32_t,
+                              const char*,
                               const char* arg_name,
-                              const char* arg_value_str,
-                              int32_t dereference_count,
+                              const char*,
+                              int32_t,
                               void* cb_data) -> int {
   auto& args = *(static_cast<kernel_args*>(cb_data));
   if (strcmp("stream", arg_name) == 0)
     args.stream = *(reinterpret_cast<const hipStream_t*>(arg_value_addr));
   else if (strcmp("numBlocks", arg_name) == 0)
     args.workgroupSize =
-        *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
+        *(reinterpret_cast<const rocprofiler_dim3_t*>(arg_value_addr));
   else if (strcmp("dimBlocks", arg_name) == 0)
     args.gridSize =
-        *(reinterpret_cast<const rocprofiler_dim3_t* const>(arg_value_addr));
+        *(reinterpret_cast<const rocprofiler_dim3_t*>(arg_value_addr));
   else if (strcmp("sharedMemBytes", arg_name) == 0)
-    args.groupSize = *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+    args.groupSize = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeX", arg_name) == 0)
     args.workgroupSize.x =
-        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeY", arg_name) == 0)
     args.workgroupSize.y =
-        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeZ", arg_name) == 0)
     args.workgroupSize.z =
-        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("localWorkSizeX", arg_name) == 0)
     args.gridSize.x =
-        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("localWorkSizeY", arg_name) == 0)
     args.gridSize.y =
-        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("localWorkSizeZ", arg_name) == 0)
     args.gridSize.z =
-        *(reinterpret_cast<const uint32_t* const>(arg_value_addr));
+        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   return 0;
 };
 
@@ -139,13 +139,13 @@ struct malloc_args {
 };
 auto extract_malloc_args = [](rocprofiler_callback_tracing_kind_t,
                               rocprofiler_tracing_operation_t,
-                              uint32_t arg_num,
+                              uint32_t,
                               const void* const arg_value_addr,
-                              int32_t indirection_count,
-                              const char* arg_type,
+                              int32_t,
+                              const char*,
                               const char* arg_name,
                               const char* arg_value_str,
-                              int32_t dereference_count,
+                              int32_t,
                               void* cb_data) -> int {
   auto& args = *(static_cast<malloc_args*>(cb_data));
   if (strcmp("ptr", arg_name) == 0) {
@@ -321,9 +321,9 @@ std::vector<rocprofiler_agent_v0_t> get_gpu_device_agents() {
 // Static setup
 //
 extern "C" rocprofiler_tool_configure_result_t* rocprofiler_configure(
-    uint32_t version,
-    const char* runtime_version,
-    uint32_t priority,
+    [[maybe_unused]] uint32_t version,
+    [[maybe_unused]] const char* runtime_version,
+    [[maybe_unused]] uint32_t priority,
     rocprofiler_client_id_t* id) {
   auto& globalContext = getGlobalContext();
 
@@ -335,8 +335,8 @@ extern "C" rocprofiler_tool_configure_result_t* rocprofiler_configure(
 }
 
 int RocprofLogger::toolInit(
-    rocprofiler_client_finalize_t finialize_func,
-    void* tool_data) {
+    [[maybe_unused]] rocprofiler_client_finalize_t finialize_func,
+    [[maybe_unused]] void* tool_data) {
   // Gather api names
   auto& globalContext = getGlobalContext();
   globalContext.name_info = rocprofiler::sdk::get_callback_tracing_names();
@@ -450,7 +450,7 @@ int RocprofLogger::toolInit(
   return 0;
 }
 
-void RocprofLogger::toolFinalize(void* tool_data) {
+void RocprofLogger::toolFinalize([[maybe_unused]] void* tool_data) {
   auto& globalContext = getGlobalContext();
   rocprofiler_stop_context(globalContext.utilityContext);
   globalContext.utilityContext.handle = 0;
@@ -530,8 +530,8 @@ void RocprofLogger::insert_row_to_buffer(rocprofBase* row) {
 
 void RocprofLogger::code_object_callback(
     rocprofiler_callback_tracing_record_t record,
-    rocprofiler_user_data_t* user_data,
-    void* callback_data) {
+    [[maybe_unused]] rocprofiler_user_data_t* user_data,
+    [[maybe_unused]] void* callback_data) {
   if (record.kind == ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT &&
       record.operation == ROCPROFILER_CODE_OBJECT_LOAD) {
     if (record.phase == ROCPROFILER_CALLBACK_PHASE_UNLOAD) {
@@ -560,8 +560,8 @@ void RocprofLogger::code_object_callback(
 
 void RocprofLogger::api_callback(
     rocprofiler_callback_tracing_record_t record,
-    rocprofiler_user_data_t* user_data,
-    void* callback_data) {
+    [[maybe_unused]] rocprofiler_user_data_t* user_data,
+    [[maybe_unused]] void* callback_data) {
   thread_local std::unordered_map<uint64_t, uint64_t> timestamps;
 
   if (record.kind == ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API) {
@@ -679,12 +679,12 @@ void RocprofLogger::api_callback(
 }
 
 void RocprofLogger::buffer_callback(
-    rocprofiler_context_id_t context,
-    rocprofiler_buffer_id_t buffer_id,
+    [[maybe_unused]] rocprofiler_context_id_t context,
+    [[maybe_unused]] rocprofiler_buffer_id_t buffer_id,
     rocprofiler_record_header_t** headers,
     size_t num_headers,
-    void* user_data,
-    uint64_t drop_count) {
+    [[maybe_unused]] void* user_data,
+    [[maybe_unused]] uint64_t drop_count) {
   for (size_t i = 0; i < num_headers; ++i) {
     auto* header = headers[i];
 
@@ -753,7 +753,7 @@ std::string RocprofLogger::opString(
     rocprofiler_tracing_operation_t op) {
   auto& globalContext = getGlobalContext();
   auto& ops = globalContext.name_info[kind].operations;
-  if (op < ops.size()) {
+  if (op >= 0 && static_cast<size_t>(op) < ops.size()) {
     return std::string(ops[op]);
   }
   return "<unknown operation:" + std::to_string(op) + ">";
@@ -764,7 +764,7 @@ std::string RocprofLogger::opString(
     rocprofiler_tracing_operation_t op) {
   auto& globalContext = getGlobalContext();
   auto& ops = globalContext.buff_name_info[kind].operations;
-  if (op < ops.size()) {
+  if (op >= 0 && static_cast<size_t>(op) < ops.size()) {
     return std::string(ops[op]);
   }
   return "<unknown operation:" + std::to_string(op) + ">";

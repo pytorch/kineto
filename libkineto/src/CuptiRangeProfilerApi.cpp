@@ -762,10 +762,11 @@ void CuptiRBProfilerSession::asyncStartAndEnable(
     CUpti_ProfilerRange /*profilerRange*/,
     CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
 void CuptiRBProfilerSession::asyncDisableAndStop() {}
-CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
+CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(
+    [[maybe_unused]] bool verbose) {
   static CuptiProfilerResult res;
   return res;
-};
+}
 void CuptiRBProfilerSession::saveCounterData(
     const std::string& /*CounterDataFileName*/,
     const std::string& /*CounterDataSBFileName*/) {}
@@ -798,16 +799,19 @@ std::unique_ptr<CuptiRBProfilerSession> CuptiRBProfilerSessionFactory::make(
 
 namespace testing {
 
-void trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
+void trackCudaCtx(
+    [[maybe_unused]] CUcontext ctx,
+    [[maybe_unused]] uint32_t device_id,
+    [[maybe_unused]] CUpti_CallbackId cbid) {
 #if HAS_CUPTI_RANGE_PROFILER
   __trackCudaCtx(ctx, device_id, cbid);
 #endif // HAS_CUPTI_RANGE_PROFILER
 }
 
 void trackCudaKernelLaunch(
-    CUcontext ctx,
-    const char* kernelName,
-    uint64_t correlation_id) {
+    [[maybe_unused]] CUcontext ctx,
+    [[maybe_unused]] const char* kernelName,
+    [[maybe_unused]] uint64_t correlation_id) {
 #if HAS_CUPTI_RANGE_PROFILER
   __trackCudaKernelLaunch(ctx, kernelName, correlation_id);
 #endif // HAS_CUPTI_RANGE_PROFILER

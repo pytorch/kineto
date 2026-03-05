@@ -161,7 +161,7 @@ void checkMetrics(
   }
 }
 
-void saveTrace(ActivityTrace& /*trace*/) {
+void saveTrace([[maybe_unused]] ActivityTrace& trace) {
   // TODO seems to be hitting a memory bug run with ASAN
 #if 0
 //#ifdef __linux__

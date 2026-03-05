@@ -293,8 +293,8 @@ std::unique_ptr<IActivityProfilerSession> CuptiRangeProfiler::configure(
 }
 
 std::unique_ptr<IActivityProfilerSession> CuptiRangeProfiler::configure(
-    int64_t /*ts_ms*/,
-    int64_t /*duration_ms*/,
+    [[maybe_unused]] int64_t ts_ms,
+    [[maybe_unused]] int64_t duration_ms,
     const std::set<ActivityType>& activity_types,
     const Config& config) {
   return configure(activity_types, config);

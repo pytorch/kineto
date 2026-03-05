@@ -50,9 +50,9 @@ void simple_cudaLaunchKernelExC_cb(
 }
 
 void atomic_cb(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* /*cbInfo)*/) {
+    [[maybe_unused]] CUpti_CallbackDomain domain,
+    [[maybe_unused]] CUpti_CallbackId cbid,
+    [[maybe_unused]] const CUpti_CallbackData* cbInfo) {
   // do some atomics in a loop
   for (int i = 0; i < 1000; i++) {
     // would have used release consistency but this is fine
@@ -61,9 +61,9 @@ void atomic_cb(
 }
 
 void empty_cb(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* /*cbInfo*/) {}
+    [[maybe_unused]] CUpti_CallbackDomain domain,
+    [[maybe_unused]] CUpti_CallbackId cbid,
+    [[maybe_unused]] const CUpti_CallbackData* cbInfo) {}
 
 TEST(CuptiCallbackApiTest, SimpleTest) {
   auto api = CuptiCallbackApi::singleton();

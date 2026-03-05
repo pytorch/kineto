@@ -197,8 +197,8 @@ void ChromeTraceLogger::openTraceFile() {
 }
 
 void ChromeTraceLogger::finalizeMemoryTrace(
-    const std::string& /*unused*/,
-    const Config& /*unused*/) {
+    [[maybe_unused]] const std::string& url,
+    [[maybe_unused]] const Config& config) {
   LOG(INFO) << "finalizeMemoryTrace not implemented for ChromeTraceLogger";
 }
 
@@ -665,8 +665,8 @@ void ChromeTraceLogger::handleLink(
 }
 
 void ChromeTraceLogger::finalizeTrace(
-    const Config& /*unused*/,
-    std::unique_ptr<ActivityBuffers> /*unused*/,
+    [[maybe_unused]] const Config& config,
+    [[maybe_unused]] std::unique_ptr<ActivityBuffers> buffers,
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   finalizeTrace(endTime, metadata);

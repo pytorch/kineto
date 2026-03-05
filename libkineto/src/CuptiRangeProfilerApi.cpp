@@ -143,7 +143,7 @@ inline uint32_t getDevID(CUcontext ctx) {
 bool disableKernelCallbacks();
 
 void trackCudaCtx(
-    CUpti_CallbackDomain /*domain*/,
+    [[maybe_unused]] CUpti_CallbackDomain domain,
     CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo) {
   auto* d = reinterpret_cast<const CUpti_ResourceData*>(cbInfo);
@@ -177,8 +177,8 @@ void __trackCudaCtx(CUcontext ctx, uint32_t device_id, CUpti_CallbackId cbid) {
 }
 
 void trackCudaKernelLaunch(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
+    [[maybe_unused]] CUpti_CallbackDomain domain,
+    [[maybe_unused]] CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo) {
   VLOG(1) << " Trace : Callback name = "
           << (cbInfo->symbolName ? cbInfo->symbolName : "")
@@ -669,8 +669,8 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(bool verbose) {
 }
 
 void CuptiRBProfilerSession::saveCounterData(
-    const std::string& /*CounterDataFileName*/,
-    const std::string& /*CounterDataSBFileName*/) {
+    [[maybe_unused]] const std::string& CounterDataFileName,
+    [[maybe_unused]] const std::string& CounterDataSBFileName) {
   /* TBD write binary files for counter data and counter scratch buffer */
 }
 
@@ -771,13 +771,13 @@ bool CuptiRBProfilerSession::endPass() {
   return true;
 }
 void CuptiRBProfilerSession::flushCounterData() {}
-void CuptiRBProfilerSession::pushRange(const std::string& /*rangeName*/) {}
+void CuptiRBProfilerSession::pushRange([[maybe_unused]] const std::string& rangeName) {}
 void CuptiRBProfilerSession::popRange() {}
 void CuptiRBProfilerSession::startAndEnable() {}
 void CuptiRBProfilerSession::disableAndStop() {}
 void CuptiRBProfilerSession::asyncStartAndEnable(
-    CUpti_ProfilerRange /*profilerRange*/,
-    CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
+    [[maybe_unused]] CUpti_ProfilerRange profilerRange,
+    [[maybe_unused]] CUpti_ProfilerReplayMode profilerReplayMode) {}
 void CuptiRBProfilerSession::asyncDisableAndStop() {}
 CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(
     [[maybe_unused]] bool verbose) {
@@ -785,8 +785,8 @@ CuptiProfilerResult CuptiRBProfilerSession::evaluateMetrics(
   return res;
 }
 void CuptiRBProfilerSession::saveCounterData(
-    const std::string& /*CounterDataFileName*/,
-    const std::string& /*CounterDataSBFileName*/) {}
+    [[maybe_unused]] const std::string& CounterDataFileName,
+    [[maybe_unused]] const std::string& CounterDataSBFileName) {}
 bool CuptiRBProfilerSession::initCupti() {
   return false;
 }
@@ -801,8 +801,8 @@ bool CuptiRBProfilerSession::createCounterDataImage() {
   return true;
 }
 void CuptiRBProfilerSession::startInternal(
-    CUpti_ProfilerRange /*profilerRange*/,
-    CUpti_ProfilerReplayMode /*profilerReplayMode*/) {}
+    [[maybe_unused]] CUpti_ProfilerRange profilerRange,
+    [[maybe_unused]] CUpti_ProfilerReplayMode profilerReplayMode) {}
 std::vector<uint8_t>& CuptiRBProfilerSession::counterAvailabilityImage() {
   static std::vector<uint8_t> _vec;
   return _vec;

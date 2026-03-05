@@ -66,9 +66,9 @@ bool enableEventProfiler() {
 }
 
 static void initProfilersCallback(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* /*cbInfo*/) {
+    [[maybe_unused]] CUpti_CallbackDomain domain,
+    [[maybe_unused]] CUpti_CallbackId cbid,
+    [[maybe_unused]] const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context created";
   initProfilers();
 

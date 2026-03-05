@@ -53,15 +53,15 @@ struct copy_args {
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
-auto extract_copy_args = [](rocprofiler_callback_tracing_kind_t,
-                            rocprofiler_tracing_operation_t,
-                            uint32_t,
+auto extract_copy_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
+                            [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+                            [[maybe_unused]] uint32_t arg_num,
                             const void* const arg_value_addr,
-                            int32_t,
-                            const char*,
+                            [[maybe_unused]] int32_t indirection_count,
+                            [[maybe_unused]] const char* arg_type,
                             const char* arg_name,
                             const char* arg_value_str,
-                            int32_t,
+                            [[maybe_unused]] int32_t dereference_count,
                             void* cb_data) -> int {
   auto& args = *(static_cast<copy_args*>(cb_data));
   if (strcmp("dst", arg_name) == 0) {
@@ -90,15 +90,15 @@ struct kernel_args {
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
-auto extract_kernel_args = [](rocprofiler_callback_tracing_kind_t,
-                              rocprofiler_tracing_operation_t,
-                              uint32_t,
+auto extract_kernel_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
+                              [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+                              [[maybe_unused]] uint32_t arg_num,
                               const void* const arg_value_addr,
-                              int32_t,
-                              const char*,
+                              [[maybe_unused]] int32_t indirection_count,
+                              [[maybe_unused]] const char* arg_type,
                               const char* arg_name,
-                              const char*,
-                              int32_t,
+                              [[maybe_unused]] const char* arg_value_str,
+                              [[maybe_unused]] int32_t dereference_count,
                               void* cb_data) -> int {
   auto& args = *(static_cast<kernel_args*>(cb_data));
   if (strcmp("stream", arg_name) == 0)
@@ -137,15 +137,15 @@ struct malloc_args {
   const char* ptr;
   size_t size;
 };
-auto extract_malloc_args = [](rocprofiler_callback_tracing_kind_t,
-                              rocprofiler_tracing_operation_t,
-                              uint32_t,
+auto extract_malloc_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
+                              [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+                              [[maybe_unused]] uint32_t arg_num,
                               const void* const arg_value_addr,
-                              int32_t,
-                              const char*,
+                              [[maybe_unused]] int32_t indirection_count,
+                              [[maybe_unused]] const char* arg_type,
                               const char* arg_name,
                               const char* arg_value_str,
-                              int32_t,
+                              [[maybe_unused]] int32_t dereference_count,
                               void* cb_data) -> int {
   auto& args = *(static_cast<malloc_args*>(cb_data));
   if (strcmp("ptr", arg_name) == 0) {

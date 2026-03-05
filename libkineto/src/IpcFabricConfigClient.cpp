@@ -201,7 +201,7 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
 
 #else // ENABLE_IPC_FABRIC
 
-int32_t IpcFabricConfigClient::registerInstance(int32_t /*gpu*/) {
+int32_t IpcFabricConfigClient::registerInstance([[maybe_unused]] int32_t gpu) {
   return -1;
 }
 
@@ -209,7 +209,7 @@ std::string IpcFabricConfigClient::getLibkinetoBaseConfig() {
   return "";
 }
 std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(
-    int32_t /*type*/) {
+    [[maybe_unused]] int32_t type) {
   return "";
 }
 

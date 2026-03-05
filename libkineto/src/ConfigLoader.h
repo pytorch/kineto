@@ -83,15 +83,46 @@ class ConfigLoader {
 
   void handleOnDemandSignal();
 
-  static void setDaemonConfigLoaderFactory(std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
+  // Add a config loader factory. Multiple loaders can coexist (e.g.,
+  // DaemonConfigLoader for IPC-based Dynolog + PortConfigLoader for TCP).
+  // Each factory will be invoked once to create a loader instance.
+  static void addConfigLoaderFactory(std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
 
   std::string getConfString();
+
+  // ============================================================================
+  // Test-only APIs
+  // ============================================================================
+  // These methods exist solely to enable unit testing of the multi-loader
+  // infrastructure. The ConfigLoader is a singleton with static factory
+  // storage, which makes isolated testing impossible without reset
+  // capabilities.
+  //
+  // Why these are needed:
+  // 1. configLoaderFactories() is a static vector that persists across tests.
+  //    Without clearConfigLoaderFactories(), factories registered in one test
+  //    would leak into subsequent tests, causing non-deterministic behavior.
+  //
+  // 2. configLoaders_ is populated lazily via initConfigLoaders(). Without
+  //    clearConfigLoaders(), loaders created in one test would persist,
+  //    preventing tests from verifying fresh loader creation.
+  //
+  // 3. These APIs allow testing:
+  //    - Multiple factories registered → multiple loaders created
+  //    - First successful loader's config is returned
+  //    - Empty config when no loader has data
+  //
+  // Production code should NEVER call these methods.
+  // ============================================================================
+  static void clearConfigLoaderFactories();
+  void clearConfigLoaders();
 
  private:
   ConfigLoader();
   ~ConfigLoader();
 
-  IDaemonConfigLoader* daemonConfigLoader();
+  // Initialize all config loaders from registered factories
+  void initConfigLoaders();
 
   void startThread();
   void stopThread();
@@ -101,7 +132,8 @@ class ConfigLoader {
   // Create configuration when receiving SIGUSR2
   void configureFromSignal(std::chrono::time_point<std::chrono::system_clock> now, Config& config);
 
-  // Create configuration when receiving request from a daemon
+  // Create configuration when receiving request from a daemon or port-based
+  // loader
   void configureFromDaemon(std::chrono::time_point<std::chrono::system_clock> now, Config& config);
 
   std::string readOnDemandConfigFromDaemon(std::chrono::time_point<std::chrono::system_clock> now);
@@ -110,7 +142,11 @@ class ConfigLoader {
 
   std::mutex configLock_;
   std::unique_ptr<Config> config_;
-  std::unique_ptr<IDaemonConfigLoader> daemonConfigLoader_;
+
+  // Support multiple config loaders (e.g., DaemonConfigLoader +
+  // PortConfigLoader)
+  std::vector<std::unique_ptr<IDaemonConfigLoader>> configLoaders_;
+
   std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;
 
   std::chrono::seconds configUpdateIntervalSecs_;

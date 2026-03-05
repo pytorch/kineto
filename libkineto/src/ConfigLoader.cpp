@@ -109,16 +109,50 @@ static std::string readConfigFromConfigFile(
   return conf;
 }
 
-static std::function<std::unique_ptr<IDaemonConfigLoader>()>&
-daemonConfigLoaderFactory() {
-  static std::function<std::unique_ptr<IDaemonConfigLoader>()> factory =
-      nullptr;
-  return factory;
+// Vector of factories to support multiple config loaders
+static std::vector<std::function<std::unique_ptr<IDaemonConfigLoader>()>>&
+configLoaderFactories() {
+  static std::vector<std::function<std::unique_ptr<IDaemonConfigLoader>()>>
+      factories;
+  return factories;
 }
 
-void ConfigLoader::setDaemonConfigLoaderFactory(
+void ConfigLoader::addConfigLoaderFactory(
     std::function<std::unique_ptr<IDaemonConfigLoader>()> factory) {
-  daemonConfigLoaderFactory() = std::move(factory);
+  configLoaderFactories().push_back(std::move(factory));
+}
+
+// ============================================================================
+// Test-only implementations
+// ============================================================================
+// These methods reset the static and instance state of the config loader
+// infrastructure to enable isolated unit testing. See ConfigLoader.h for
+// detailed rationale on why these are necessary.
+//
+// Usage pattern in tests:
+//   TEST(ConfigLoaderTest, MultipleLoadersCoexist) {
+//     // Clean slate for this test
+//     ConfigLoader::clearConfigLoaderFactories();
+//     ConfigLoader::instance().clearConfigLoaders();
+//
+//     // Register test factories
+//     ConfigLoader::addConfigLoaderFactory([]() { return mock1; });
+//     ConfigLoader::addConfigLoaderFactory([]() { return mock2; });
+//
+//     // ... test logic ...
+//
+//     // Cleanup (or use test fixture TearDown)
+//     ConfigLoader::clearConfigLoaderFactories();
+//     ConfigLoader::instance().clearConfigLoaders();
+//   }
+// ============================================================================
+
+void ConfigLoader::clearConfigLoaderFactories() {
+  configLoaderFactories().clear();
+}
+
+void ConfigLoader::clearConfigLoaders() {
+  configLoaders_.clear();
 }
 
 ConfigLoader& ConfigLoader::instance() {
@@ -129,20 +163,33 @@ ConfigLoader& ConfigLoader::instance() {
 // return an empty string if polling gets any errors. Otherwise a config string.
 std::string ConfigLoader::readOnDemandConfigFromDaemon(
     time_point<system_clock> now) {
-  if (!daemonConfigLoader_) {
-    return "";
-  }
   bool events = canHandlerAcceptConfig(ConfigKind::EventProfiler);
   bool activities = canHandlerAcceptConfig(ConfigKind::ActivityProfiler);
-  return daemonConfigLoader_->readOnDemandConfig(events, activities);
+
+  // Check all config loaders (supports multiple sources, e.g., Dynolog IPC +
+  // TCP port)
+  for (auto& loader : configLoaders_) {
+    std::string config_str = loader->readOnDemandConfig(events, activities);
+    if (!config_str.empty()) {
+      return config_str;
+    }
+  }
+
+  return "";
 }
 
 int ConfigLoader::contextCountForGpu(uint32_t device) {
-  if (!daemonConfigLoader_) {
-    // FIXME: Throw error?
-    return 0;
+  // Initialize config loaders if not already done
+  initConfigLoaders();
+
+  for (auto& loader : configLoaders_) {
+    int count = loader->gpuContextCount(device);
+    if (count > 0) {
+      return count;
+    }
   }
-  return daemonConfigLoader_->gpuContextCount(device);
+  // FIXME: Throw error?
+  return 0;
 }
 
 ConfigLoader::ConfigLoader()
@@ -210,12 +257,22 @@ const char* configFileName() {
 
 } // namespace
 
-IDaemonConfigLoader* ConfigLoader::daemonConfigLoader() {
-  if (!daemonConfigLoader_ && daemonConfigLoaderFactory()) {
-    daemonConfigLoader_ = daemonConfigLoaderFactory()();
-    daemonConfigLoader_->setCommunicationFabric(config_->ipcFabricEnabled());
+void ConfigLoader::initConfigLoaders() {
+  if (!configLoaders_.empty()) {
+    return;
   }
-  return daemonConfigLoader_.get();
+  for (auto& factory : configLoaderFactories()) {
+    if (factory) {
+      auto loader = factory();
+      if (loader) {
+        // config_ may be null in tests, default to false for ipcFabricEnabled
+        if (config_) {
+          loader->setCommunicationFabric(config_->ipcFabricEnabled());
+        }
+        configLoaders_.push_back(std::move(loader));
+      }
+    }
+  }
 }
 
 const char* ConfigLoader::customConfigFileName() {
@@ -231,18 +288,29 @@ void ConfigLoader::updateBaseConfig() {
   // If that fails, read from daemon
   // TODO: Invert these once daemon path fully rolled out
   std::string config_str = readConfigFromConfigFile(configFileName());
-  if (config_str.empty() && daemonConfigLoader()) {
-    // If local config file was not successfully loaded (e.g. not found)
-    // then try the daemon
-    config_str = daemonConfigLoader()->readBaseConfig();
+
+  // Initialize config loaders if not already done
+  initConfigLoaders();
+
+  if (config_str.empty()) {
+    // Try all config loaders for base config
+    for (auto& loader : configLoaders_) {
+      config_str = loader->readBaseConfig();
+      if (!config_str.empty()) {
+        break;
+      }
+    }
   }
   if (config_str != config_->source()) {
     std::lock_guard<std::mutex> lock(configLock_);
     config_ = std::make_unique<Config>();
     config_->parse(config_str);
-    if (daemonConfigLoader()) {
-      daemonConfigLoader()->setCommunicationFabric(config_->ipcFabricEnabled());
+
+    // Update all config loaders with new IPC fabric setting
+    for (auto& loader : configLoaders_) {
+      loader->setCommunicationFabric(config_->ipcFabricEnabled());
     }
+
     setupSignalHandler(config_->sigUsr2Enabled());
     SET_LOG_VERBOSITY_LEVEL(
         config_->verboseLogLevel(), config_->verboseLogModules());
@@ -271,7 +339,6 @@ void ConfigLoader::configureFromDaemon(
     return;
   }
 
-  LOG(INFO) << "Received config from dyno:\n" << config_str;
   config.parse(config_str);
   notifyHandlers(config);
 }

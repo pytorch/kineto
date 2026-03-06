@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "XpuptiActivityApiAndSessionVersionSelector.h"
 #include "XpuptiProfilerMacros.h"
 
 #include "IActivityProfiler.h"
@@ -31,7 +30,7 @@ class XpuptiActivityProfilerSession
  public:
   XpuptiActivityProfilerSession() = delete;
   XpuptiActivityProfilerSession(
-      XPUPTI_ACTIVITY_API& xpti,
+      SELECT_VERSION(XpuptiActivityApi) & xpti,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
@@ -121,7 +120,7 @@ class XpuptiActivityProfilerSession
 
   libkineto::getLinkedActivityCallback cpuActivity_;
 
-  XPUPTI_ACTIVITY_API& xpti_;
+  SELECT_VERSION(XpuptiActivityApi) & xpti_;
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<uint32_t, uint32_t>> resourceInfo_;
   std::unordered_map<uint64_t, uint64_t> sycl_queue_pool_;

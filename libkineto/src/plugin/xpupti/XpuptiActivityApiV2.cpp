@@ -7,7 +7,6 @@
  */
 
 #include "XpuptiActivityApiV2.h"
-#include "XpuptiActivityApiAndSessionVersionSelector.h"
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
@@ -21,8 +20,9 @@
 
 namespace KINETO_NAMESPACE {
 
-XPUPTI_ACTIVITY_API& XPUPTI_ACTIVITY_API::singleton() {
-  static XPUPTI_ACTIVITY_API instance;
+SELECT_VERSION(XpuptiActivityApi) &
+    SELECT_VERSION(XpuptiActivityApi)::singleton() {
+  static SELECT_VERSION(XpuptiActivityApi) instance;
   return instance;
 }
 

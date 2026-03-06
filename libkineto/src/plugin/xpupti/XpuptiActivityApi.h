@@ -44,9 +44,8 @@ class XpuptiActivityApi {
 
   virtual std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
 
-  virtual const std::pair<int, int> processActivities(
-      XpuptiActivityBufferMap&,
-      std::function<void(const pti_view_record_base*)> handler);
+  virtual const std::pair<int, int> processActivities(XpuptiActivityBufferMap&,
+                                                      std::function<void(const pti_view_record_base*)> handler);
 
  private:
   XpuptiActivityBufferMap allocatedGpuTraceBuffers_;
@@ -54,15 +53,11 @@ class XpuptiActivityApi {
   std::mutex mutex_;
   bool externalCorrelationEnabled_{false};
 
-  int processActivitiesForBuffer(
-      uint8_t* buf,
-      size_t validSize,
-      std::function<void(const pti_view_record_base*)> handler);
+  int processActivitiesForBuffer(uint8_t* buf,
+                                 size_t validSize,
+                                 std::function<void(const pti_view_record_base*)> handler);
   static void bufferRequestedTrampoline(uint8_t** buffer, size_t* size);
-  static void bufferCompletedTrampoline(
-      uint8_t* buffer,
-      size_t size,
-      size_t validSize);
+  static void bufferCompletedTrampoline(uint8_t* buffer, size_t size, size_t validSize);
 
  protected:
   void bufferRequested(uint8_t** buffer, size_t* size);

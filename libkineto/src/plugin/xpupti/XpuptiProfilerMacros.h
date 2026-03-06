@@ -17,17 +17,11 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 
 #define PTI_VERSION_AT_LEAST(MAJOR, MINOR) \
-  (PTI_VERSION_MAJOR > MAJOR ||            \
-   (PTI_VERSION_MAJOR == MAJOR && PTI_VERSION_MINOR >= MINOR))
+  (PTI_VERSION_MAJOR > MAJOR || (PTI_VERSION_MAJOR == MAJOR && PTI_VERSION_MINOR >= MINOR))
 
-[[noreturn]] void throwXpuRuntimeError(
-    std::string_view errMsg,
-    pti_result errCode);
+[[noreturn]] void throwXpuRuntimeError(std::string_view errMsg, pti_result errCode);
 
-[[noreturn]] void throwXpuRuntimeError(
-    const char* func,
-    int line,
-    pti_result errCode);
+[[noreturn]] void throwXpuRuntimeError(const char* func, int line, pti_result errCode);
 
 #define XPUPTI_CALL(returnCode)                             \
   {                                                         \

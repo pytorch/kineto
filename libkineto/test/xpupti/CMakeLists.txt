@@ -50,3 +50,4 @@ function(make_test test_file)
 endfunction()
 
 make_test(XpuptiProfilerTest.cpp)
+make_test(XpuptiScopeProfilerTest.cpp)

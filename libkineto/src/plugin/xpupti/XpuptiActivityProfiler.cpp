@@ -7,8 +7,8 @@
  */
 
 #include "XpuptiActivityProfiler.h"
-#include "XpuptiActivityApi.h"
-#include "XpuptiActivityProfilerSession.h"
+#include "XpuptiActivityApiV2.h"
+#include "XpuptiActivityProfilerSessionV2.h"
 
 #include <fmt/ranges.h>
 #include <sycl/sycl.hpp>
@@ -66,8 +66,11 @@ std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
     configure(
         const std::set<ActivityType>& activity_types,
         const libkineto::Config& config) {
-  return std::make_unique<XpuptiActivityProfilerSession>(
-      XpuptiActivityApi::singleton(), name(), config, activity_types);
+  return std::make_unique<SELECT_VERSION(XpuptiActivityProfilerSession)>(
+      SELECT_VERSION(XpuptiActivityApi)::singleton(),
+      name(),
+      config,
+      activity_types);
 }
 
 std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::

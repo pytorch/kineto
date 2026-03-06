@@ -35,7 +35,9 @@ class XpuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableXpuptiActivities(const std::set<ActivityType>& selected_activities);
+  void enableXpuptiActivities(
+      const std::set<ActivityType>& selected_activities,
+      bool scopeProfilerActivityAccepted = false);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();

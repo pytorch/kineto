@@ -41,6 +41,7 @@ static constexpr std::array<ActivityTypeName, activityTypeCount + 1> map{
      {.name = "hpu_op", .type = ActivityType::HPU_OP},
      {.name = "xpu_runtime", .type = ActivityType::XPU_RUNTIME},
      {.name = "xpu_driver", .type = ActivityType::XPU_DRIVER},
+     {.name = "xpu_scope_profiler", .type = ActivityType::XPU_SCOPE_PROFILER},
      {.name = "collective_comm", .type = ActivityType::COLLECTIVE_COMM},
      {.name = "privateuse1_runtime", .type = ActivityType::PRIVATEUSE1_RUNTIME},
      {.name = "privateuse1_driver", .type = ActivityType::PRIVATEUSE1_DRIVER},

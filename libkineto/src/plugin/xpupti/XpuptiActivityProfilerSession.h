@@ -23,17 +23,16 @@
 
 namespace KINETO_NAMESPACE {
 
-class XpuptiActivityApi;
-
 using DeviceUUIDsT = std::array<unsigned char, 16>;
 
 class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession {
  public:
   XpuptiActivityProfilerSession() = delete;
-  XpuptiActivityProfilerSession(XpuptiActivityApi& xpti,
-                                const std::string& name,
-                                const libkineto::Config& config,
-                                const std::set<ActivityType>& activity_types);
+  XpuptiActivityProfilerSession(
+      SELECT_VERSION(XpuptiActivityApi) & xpti,
+      const std::string& name,
+      const libkineto::Config& config,
+      const std::set<ActivityType>& activity_types);
   XpuptiActivityProfilerSession(const XpuptiActivityProfilerSession&) = delete;
   XpuptiActivityProfilerSession& operator=(const XpuptiActivityProfilerSession&) = delete;
 
@@ -95,7 +94,7 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
 
   void addResouceInfo(int32_t device_id, int32_t sycl_queue_id);
 
- private:
+ protected:
   static uint32_t iterationCount_;
   static std::vector<DeviceUUIDsT> deviceUUIDs_;
   static std::unordered_set<std::string_view> correlateRuntimeOps_;
@@ -111,13 +110,34 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
 
   libkineto::getLinkedActivityCallback cpuActivity_;
 
-  XpuptiActivityApi& xpti_;
+  SELECT_VERSION(XpuptiActivityApi) & xpti_;
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<uint32_t, uint32_t>> resourceInfo_;
   std::unordered_map<uint64_t, uint64_t> sycl_queue_pool_;
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;
   std::string name_;
+
+  struct KernelActivity {
+    void emplace(
+        int64_t startTime,
+        int64_t endTime,
+        int32_t device,
+        int32_t resource) {
+      startTime_ = startTime;
+      endTime_ = endTime;
+      device_ = device;
+      resource_ = resource;
+    }
+
+    int64_t startTime_{0};
+    int64_t endTime_{0};
+    int32_t device_{0};
+    int32_t resource_{0};
+  };
+
+  std::unordered_map<uint64_t, KernelActivity> kernelActivities_;
+  uint64_t lastKernelActivityEndTime_{0};
 };
 
 } // namespace KINETO_NAMESPACE

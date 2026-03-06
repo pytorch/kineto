@@ -214,8 +214,8 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
       correlation->externalKind == CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM1) {
     userCorrelationMap_[correlation->correlationId] = correlation->externalId;
   } else {
-    LOG(WARNING)
-        << "Invalid CUpti_ActivityExternalCorrelation sent to handleCuptiActivity";
+    LOG(WARNING) << "Invalid CUpti_ActivityExternalCorrelation sent to "
+                    "handleCuptiActivity";
     ecs_.invalid_external_correlation_events++;
   }
 }
@@ -314,7 +314,7 @@ void CuptiActivityProfiler::handleOverheadActivity(
 static std::optional<WaitEventInfo> getWaitEventInfo(
     uint32_t ctx,
     uint32_t eventId) {
-  auto key = CtxEventPair{ctx, eventId};
+  auto key = CtxEventPair{.ctx = ctx, .eventId = eventId};
   auto it = waitEventMap().find(key);
   if (it != waitEventMap().end()) {
     return it->second;
@@ -332,9 +332,10 @@ void CuptiActivityProfiler::handleCudaEventActivity(
           << " contextId=" << activity->contextId;
 
   // Update the stream, corrID the cudaEvent was last recorded on
-  auto key = CtxEventPair{activity->contextId, activity->eventId};
-  waitEventMap()[key] =
-      WaitEventInfo{activity->streamId, activity->correlationId};
+  auto key =
+      CtxEventPair{.ctx = activity->contextId, .eventId = activity->eventId};
+  waitEventMap()[key] = WaitEventInfo{
+      .stream = activity->streamId, .correlationId = activity->correlationId};
 
   // Create and log the CUDA event activity
   const ITraceActivity* linked =
@@ -497,15 +498,16 @@ void CuptiActivityProfiler::handleCuptiActivity(
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY:
       handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityMemcpy*>(record), logger);
+          reinterpret_cast<const CUpti_ActivityMemcpyType*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_MEMCPY2:
       handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityMemcpy2*>(record), logger);
+          reinterpret_cast<const CUpti_ActivityMemcpyPtoPType*>(record),
+          logger);
       break;
     case CUPTI_ACTIVITY_KIND_MEMSET:
       handleGpuActivity(
-          reinterpret_cast<const CUpti_ActivityMemset*>(record), logger);
+          reinterpret_cast<const CUpti_ActivityMemsetType*>(record), logger);
       break;
     case CUPTI_ACTIVITY_KIND_OVERHEAD:
       handleOverheadActivity(

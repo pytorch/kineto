@@ -426,13 +426,14 @@ constexpr int64_t us(int64_t timestamp) {
   return timestamp / 1000;
 }
 
-inline std::string getGraphNodeMetadata(const CUpti_ActivityKernelType& kernel) {
+template <class T>
+inline std::string getGraphNodeMetadata(const T& activity) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
   return fmt::format(
       R"JSON(,
       "graph id": {}, "graph node id": {})JSON",
-      kernel.graphId,
-      kernel.graphNodeId);
+      activity.graphId,
+      activity.graphNodeId);
 #else
   return "";
 #endif
@@ -478,12 +479,12 @@ inline std::string memcpyName(uint8_t kind, uint8_t src, uint8_t dst) {
 }
 
 template <>
-inline ActivityType GpuActivity<CUpti_ActivityMemcpy>::type() const {
+inline ActivityType GpuActivity<CUpti_ActivityMemcpyType>::type() const {
   return ActivityType::GPU_MEMCPY;
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityMemcpy>::name() const {
+inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::name() const {
   return memcpyName(raw().copyKind, raw().srcKind, raw().dstKind);
 }
 
@@ -492,67 +493,70 @@ inline std::string bandwidth(uint64_t bytes, uint64_t duration) {
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityMemcpy>::metadataJson() const {
-  const CUpti_ActivityMemcpy& memcpy = raw();
+inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::metadataJson() const {
+  const CUpti_ActivityMemcpyType& memcpy = raw();
   // clang-format off
   return fmt::format(R"JSON(
       "device": {}, "context": {},
       "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
+      "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId,
-      memcpy.bytes, bandwidth(memcpy.bytes, duration()));
+      memcpy.bytes, bandwidth(memcpy.bytes, duration()),
+      getGraphNodeMetadata(memcpy));
   // clang-format on
 }
 
 template <>
-inline ActivityType GpuActivity<CUpti_ActivityMemcpy2>::type() const {
+inline ActivityType GpuActivity<CUpti_ActivityMemcpyPtoPType>::type() const {
   return ActivityType::GPU_MEMCPY;
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityMemcpy2>::name() const {
+inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::name() const {
   return memcpyName(raw().copyKind, raw().srcKind, raw().dstKind);
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityMemcpy2>::metadataJson() const {
-  const CUpti_ActivityMemcpy2& memcpy = raw();
+inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::metadataJson() const {
+  const CUpti_ActivityMemcpyPtoPType& memcpy = raw();
   // clang-format off
   return fmt::format(R"JSON(
       "fromDevice": {}, "inDevice": {}, "toDevice": {},
       "fromContext": {}, "inContext": {}, "toContext": {},
       "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
+      "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
       memcpy.streamId, memcpy.correlationId,
-      memcpy.bytes, bandwidth(memcpy.bytes, duration()));
+      memcpy.bytes, bandwidth(memcpy.bytes, duration()),
+      getGraphNodeMetadata(memcpy));
   // clang-format on
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityMemset>::name() const {
+inline const std::string GpuActivity<CUpti_ActivityMemsetType>::name() const {
   const char* memory_kind = memoryKindString((CUpti_ActivityMemoryKind)raw().memoryKind);
   return fmt::format("Memset ({})", memory_kind);
 }
 
 template <>
-inline ActivityType GpuActivity<CUpti_ActivityMemset>::type() const {
+inline ActivityType GpuActivity<CUpti_ActivityMemsetType>::type() const {
   return ActivityType::GPU_MEMSET;
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityMemset>::metadataJson() const {
-  const CUpti_ActivityMemset& memset = raw();
+inline const std::string GpuActivity<CUpti_ActivityMemsetType>::metadataJson() const {
+  const CUpti_ActivityMemsetType& memset = raw();
   // clang-format off
   return fmt::format(R"JSON(
       "device": {}, "context": {},
       "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
+      "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId,
-      memset.bytes, bandwidth(memset.bytes, duration()));
+      memset.bytes, bandwidth(memset.bytes, duration()),
+      getGraphNodeMetadata(memset));
   // clang-format on
 }
 

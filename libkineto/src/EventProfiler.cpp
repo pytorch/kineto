@@ -142,7 +142,7 @@ struct Metric::CalculatedValues Metric::calculate(
   if (evalMode_ & CUPTI_METRIC_EVALUATION_MODE_AGGREGATE) {
     metric_values.push_back(total);
   }
-  return {metric_values, std::move(total)};
+  return {.perInstance = metric_values, .total = std::move(total)};
 }
 
 void Metric::printDescription(ostream& s) const {
@@ -559,7 +559,10 @@ void EventProfiler::dispatchSamples(
   for (int i = 0; i < config.samplesPerReport(); i++) {
     sample.stats.clear();
     sample.deltaMsec = (delta * i).count();
-    SampleSlice slice = {sample_offset, i, config.samplesPerReport()};
+    SampleSlice slice = {
+        .offset = sample_offset,
+        .index = i,
+        .count = config.samplesPerReport()};
     VLOG(1) << "Slice: " << sample_offset << ", " << i << ", "
             << config.samplesPerReport();
     for (const auto& pair : events_) {

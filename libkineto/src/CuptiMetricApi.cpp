@@ -102,7 +102,8 @@ SampleValue CuptiMetricApi::calculate(
     case CUPTI_METRIC_VALUE_KIND_THROUGHPUT:
       return SampleValue(metric_value.metricValueUint64);
     case CUPTI_METRIC_VALUE_KIND_UTILIZATION_LEVEL:
-      return SampleValue((int)metric_value.metricValueUtilizationLevel);
+      return SampleValue(
+          static_cast<int>(metric_value.metricValueUtilizationLevel));
     default:
       assert(false);
   }

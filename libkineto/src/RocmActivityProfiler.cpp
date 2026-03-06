@@ -165,8 +165,8 @@ void RocmActivityProfiler::onResetTraceData() {
 }
 
 void RocmActivityProfiler::onFinalizeTrace(
-    const Config& /*config*/,
-    ActivityLogger& /*logger*/) {
+    [[maybe_unused]] const Config& config,
+    [[maybe_unused]] ActivityLogger& logger) {
   // No additional overhead info for ROCm currently
 }
 

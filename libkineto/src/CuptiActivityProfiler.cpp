@@ -170,7 +170,7 @@ void CuptiActivityProfiler::onResetTraceData() {
 }
 
 void CuptiActivityProfiler::onFinalizeTrace(
-    const Config& config,
+    [[maybe_unused]] const Config& config,
     ActivityLogger& logger) {
   // Overhead info
   overheadInfo_.emplace_back("CUPTI Overhead");
@@ -314,7 +314,7 @@ void CuptiActivityProfiler::handleOverheadActivity(
 static std::optional<WaitEventInfo> getWaitEventInfo(
     uint32_t ctx,
     uint32_t eventId) {
-  auto key = CtxEventPair{.ctx = ctx, .eventId = eventId};
+  auto key = CtxEventPair{ctx, eventId};
   auto it = waitEventMap().find(key);
   if (it != waitEventMap().end()) {
     return it->second;
@@ -332,10 +332,9 @@ void CuptiActivityProfiler::handleCudaEventActivity(
           << " contextId=" << activity->contextId;
 
   // Update the stream, corrID the cudaEvent was last recorded on
-  auto key =
-      CtxEventPair{.ctx = activity->contextId, .eventId = activity->eventId};
-  waitEventMap()[key] = WaitEventInfo{
-      .stream = activity->streamId, .correlationId = activity->correlationId};
+  auto key = CtxEventPair{activity->contextId, activity->eventId};
+  waitEventMap()[key] =
+      WaitEventInfo{activity->streamId, activity->correlationId};
 
   // Create and log the CUDA event activity
   const ITraceActivity* linked =
@@ -348,7 +347,7 @@ void CuptiActivityProfiler::handleCudaEventActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  if (int32_t(activity->streamId) != -1) {
+  if (static_cast<int32_t>(activity->streamId) != -1) {
     recordStream(device_id, activity->streamId, "");
   } else {
     recordDevice(device_id);
@@ -401,7 +400,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
           return;
         }
 
-        if (int32_t(activity->streamId) != -1) {
+        if (static_cast<int32_t>(activity->streamId) != -1) {
           recordStream(device_id, activity->streamId, "");
         } else {
           recordDevice(device_id);

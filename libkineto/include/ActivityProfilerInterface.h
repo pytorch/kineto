@@ -39,7 +39,7 @@ class ActivityProfilerInterface {
   // Instead of starting and stopping the trace manually, provide a start time
   // and duration and / or iteration stop criterion.
   // Tracing terminates when either condition is met.
-  virtual void scheduleTrace(const std::string& configStr) {}
+  virtual void scheduleTrace([[maybe_unused]] const std::string& configStr) {}
 
   // *** Synchronous API ***
   // These must be called in order:
@@ -50,10 +50,11 @@ class ActivityProfilerInterface {
   // Call prepareTrace to enable tracing, then run the region to trace
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
-  virtual void prepareTrace(const std::set<ActivityType>& activityTypes, const std::string& configStr = "") {}
+  virtual void prepareTrace([[maybe_unused]] const std::set<ActivityType>& activityTypes,
+                            [[maybe_unused]] const std::string& configStr = "") {}
 
   // Toggle GPU tracing as a trace is running to omit certain parts of a graph
-  virtual void toggleCollectionDynamic(const bool enable) {}
+  virtual void toggleCollectionDynamic([[maybe_unused]] const bool enable) {}
 
   // Start recording, potentially reusing any buffers allocated since
   // prepareTrace was called.
@@ -71,12 +72,12 @@ class ActivityProfilerInterface {
 
   // *** TraceActivity API ***
   // FIXME: Pass activityProfiler interface into clientInterface?
-  virtual void pushCorrelationId(uint64_t id) {}
+  virtual void pushCorrelationId([[maybe_unused]] uint64_t id) {}
   virtual void popCorrelationId() {}
-  virtual void transferCpuTrace(std::unique_ptr<CpuTraceBuffer> traceBuffer) {}
+  virtual void transferCpuTrace([[maybe_unused]] std::unique_ptr<CpuTraceBuffer> traceBuffer) {}
 
   // Correlation ids for user defined spans
-  virtual void pushUserCorrelationId(uint64_t /*unused*/) {}
+  virtual void pushUserCorrelationId([[maybe_unused]] uint64_t id) {}
   virtual void popUserCorrelationId() {}
 
   // Saves information for the current thread to be used in profiler output
@@ -89,14 +90,14 @@ class ActivityProfilerInterface {
 
   // Add a child activity profiler, this enables frameworks in the application
   // to enable custom framework events.
-  virtual void addChildActivityProfiler(std::unique_ptr<IActivityProfiler> profiler) {}
+  virtual void addChildActivityProfiler([[maybe_unused]] std::unique_ptr<IActivityProfiler> profiler) {}
 
   // Log Invariant Violation to factories enabled. This helps record
   // instances when the profiler behaves unexpectedly.
-  virtual void logInvariantViolation(const std::string& /*unused*/,
-                                     const std::string& /*unused*/,
-                                     const std::string& /*unused*/,
-                                     const std::string& /*unused*/ = "") {}
+  virtual void logInvariantViolation([[maybe_unused]] const std::string& profile_id,
+                                     [[maybe_unused]] const std::string& assertion,
+                                     [[maybe_unused]] const std::string& error,
+                                     [[maybe_unused]] const std::string& group_profile_id = "") {}
 };
 
 } // namespace libkineto

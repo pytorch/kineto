@@ -134,10 +134,10 @@ void CuptiCallbackApi::__callback_switchboard(
   // make a copy of the callback list so we avoid holding lock
   // in common case this should be just one func pointer copy
   std::array<CuptiCallbackFn, MAX_CB_FNS_PER_CB> callbacks;
-  int num_cbs = 0;
+  size_t num_cbs = 0;
   {
     ReaderLockGuard rl(callbackLock_);
-    int i = 0;
+    size_t i = 0;
     for (auto it = cblist->begin();
          it != cblist->end() && i < MAX_CB_FNS_PER_CB;
          it++, i++) {
@@ -146,7 +146,7 @@ void CuptiCallbackApi::__callback_switchboard(
     num_cbs = i;
   }
 
-  for (int i = 0; i < num_cbs; i++) {
+  for (size_t i = 0; i < num_cbs; i++) {
     auto fn = callbacks[i];
     fn(domain, cbid, cbInfo);
   }
@@ -164,7 +164,9 @@ std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
 void CuptiCallbackApi::initCallbackApi() {
   lastCuptiStatus_ = CUPTI_ERROR_UNKNOWN;
   lastCuptiStatus_ = CUPTI_CALL_NOWARN(cuptiSubscribe(
-      &subscriber_, (CUpti_CallbackFunc)callback_switchboard, nullptr));
+      &subscriber_,
+      reinterpret_cast<CUpti_CallbackFunc>(callback_switchboard),
+      nullptr));
 
   // TODO: Remove temporarily to work around static initialization order issue
   // betweent this and GLOG.
@@ -303,7 +305,7 @@ bool CuptiCallbackApi::disableCallbackDomain(CUpti_CallbackDomain domain) {
 bool CuptiCallbackApi::reenableCallbacks() {
   if (initSuccess_) {
     for (auto& cbpair : enabledCallbacks_) {
-      if ((uint32_t)cbpair.second == MAX_CUPTI_CALLBACK_ID_ALL) {
+      if (static_cast<uint32_t>(cbpair.second) == MAX_CUPTI_CALLBACK_ID_ALL) {
         lastCuptiStatus_ =
             CUPTI_CALL_NOWARN(cuptiEnableDomain(1, subscriber_, cbpair.first));
       } else {

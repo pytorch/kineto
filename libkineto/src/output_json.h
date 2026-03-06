@@ -70,16 +70,13 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleActivity(const ITraceActivity& activity) override;
   void handleGenericActivity(const GenericTraceActivity& activity) override;
 
-  void handleTraceStart(
-      const std::unordered_map<std::string, std::string>& metadata,
-      const std::string& device_properties) override;
+  void handleTraceStart(const std::unordered_map<std::string, std::string>& metadata,
+                        const std::string& device_properties) override;
 
-  void finalizeTrace(
-      const Config& config,
-      std::unique_ptr<ActivityBuffers> buffers,
-      int64_t endTime,
-      std::unordered_map<std::string, std::vector<std::string>>& metadata)
-      override;
+  void finalizeTrace(const Config& config,
+                     std::unique_ptr<ActivityBuffers> buffers,
+                     int64_t endTime,
+                     std::unordered_map<std::string, std::vector<std::string>>& metadata) override;
 
   void finalizeMemoryTrace(const std::string&, const Config&) override;
 
@@ -88,17 +85,11 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   }
 
  protected:
-  void finalizeTrace(
-      int64_t endTime,
-      std::unordered_map<std::string, std::vector<std::string>>& metadata);
+  void finalizeTrace(int64_t endTime, std::unordered_map<std::string, std::vector<std::string>>& metadata);
 
  private:
   // Create a flow event (arrow)
-  void handleLink(
-      char type,
-      const ITraceActivity& e,
-      int64_t id,
-      const std::string& name);
+  void handleLink(char type, const ITraceActivity& e, int64_t id, const std::string& name);
 
   void addIterationMarker(const TraceSpan& span);
 
@@ -108,8 +99,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleGenericLink(const ITraceActivity& activity);
 
-  void metadataToJSON(
-      const std::unordered_map<std::string, std::string>& metadata);
+  void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
 
   std::unordered_map<std::string, std::string> addEnvVarsToMetadata(
       const std::unordered_map<std::string, std::string>& metadata);
@@ -145,8 +135,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 // 3 months intervals, so we can still collect traces across ranks relative
 // to each other.
 // A month is 2629746, so 3 months is 7889238.
-using _trimonths =
-    std::chrono::duration<_KINETO_GLIBCXX_CHRONO_INT64_T, std::ratio<7889238>>;
+using _trimonths = std::chrono::duration<_KINETO_GLIBCXX_CHRONO_INT64_T, std::ratio<7889238>>;
 #undef _GLIBCXX_CHRONO_INT64_T
 
 class ChromeTraceBaseTime {
@@ -158,9 +147,8 @@ class ChromeTraceBaseTime {
   }
   int64_t get() {
     // Make all timestamps relative to 3 month intervals.
-    static int64_t base_time = libkineto::timeSinceEpoch(
-        std::chrono::time_point<std::chrono::system_clock>(
-            std::chrono::floor<_trimonths>(std::chrono::system_clock::now())));
+    static int64_t base_time = libkineto::timeSinceEpoch(std::chrono::time_point<std::chrono::system_clock>(
+        std::chrono::floor<_trimonths>(std::chrono::system_clock::now())));
     return base_time;
   }
 };

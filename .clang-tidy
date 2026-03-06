@@ -18,6 +18,7 @@ Checks: >
   -misc-no-recursion,
   -misc-include-cleaner,
   modernize-*,
+  -modernize-use-designated-initializers,
   -modernize-use-trailing-return-type,
   -modernize-avoid-c-arrays,
   performance-*,

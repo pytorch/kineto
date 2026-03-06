@@ -559,10 +559,7 @@ void EventProfiler::dispatchSamples(
   for (int i = 0; i < config.samplesPerReport(); i++) {
     sample.stats.clear();
     sample.deltaMsec = (delta * i).count();
-    SampleSlice slice = {
-        sample_offset,
-        i,
-        config.samplesPerReport()};
+    SampleSlice slice = {sample_offset, i, config.samplesPerReport()};
     VLOG(1) << "Slice: " << sample_offset << ", " << i << ", "
             << config.samplesPerReport();
     for (const auto& pair : events_) {

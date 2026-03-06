@@ -23,7 +23,8 @@ class CuptiRangeProfilerConfig : public AbstractConfig {
  public:
   bool handleOption(const std::string& name, std::string& val) override;
 
-  void validate([[maybe_unused]] const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override {}
+  void validate(
+      [[maybe_unused]] const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override {}
 
   static CuptiRangeProfilerConfig& get(const Config& cfg) {
     return dynamic_cast<CuptiRangeProfilerConfig&>(cfg.feature(kCuptiProfilerConfigName));

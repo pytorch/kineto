@@ -53,16 +53,17 @@ struct copy_args {
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
-auto extract_copy_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
-                            [[maybe_unused]] rocprofiler_tracing_operation_t operation,
-                            [[maybe_unused]] uint32_t arg_num,
-                            const void* const arg_value_addr,
-                            [[maybe_unused]] int32_t indirection_count,
-                            [[maybe_unused]] const char* arg_type,
-                            const char* arg_name,
-                            const char* arg_value_str,
-                            [[maybe_unused]] int32_t dereference_count,
-                            void* cb_data) -> int {
+auto extract_copy_args =
+    []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
+       [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+       [[maybe_unused]] uint32_t arg_num,
+       const void* const arg_value_addr,
+       [[maybe_unused]] int32_t indirection_count,
+       [[maybe_unused]] const char* arg_type,
+       const char* arg_name,
+       const char* arg_value_str,
+       [[maybe_unused]] int32_t dereference_count,
+       void* cb_data) -> int {
   auto& args = *(static_cast<copy_args*>(cb_data));
   if (strcmp("dst", arg_name) == 0) {
     args.dst = arg_value_str;
@@ -90,16 +91,17 @@ struct kernel_args {
   rocprofiler_callback_tracing_kind_t kind;
   rocprofiler_tracing_operation_t operation;
 };
-auto extract_kernel_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
-                              [[maybe_unused]] rocprofiler_tracing_operation_t operation,
-                              [[maybe_unused]] uint32_t arg_num,
-                              const void* const arg_value_addr,
-                              [[maybe_unused]] int32_t indirection_count,
-                              [[maybe_unused]] const char* arg_type,
-                              const char* arg_name,
-                              [[maybe_unused]] const char* arg_value_str,
-                              [[maybe_unused]] int32_t dereference_count,
-                              void* cb_data) -> int {
+auto extract_kernel_args =
+    []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
+       [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+       [[maybe_unused]] uint32_t arg_num,
+       const void* const arg_value_addr,
+       [[maybe_unused]] int32_t indirection_count,
+       [[maybe_unused]] const char* arg_type,
+       const char* arg_name,
+       [[maybe_unused]] const char* arg_value_str,
+       [[maybe_unused]] int32_t dereference_count,
+       void* cb_data) -> int {
   auto& args = *(static_cast<kernel_args*>(cb_data));
   if (strcmp("stream", arg_name) == 0)
     args.stream = *(reinterpret_cast<const hipStream_t*>(arg_value_addr));
@@ -112,23 +114,17 @@ auto extract_kernel_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind
   else if (strcmp("sharedMemBytes", arg_name) == 0)
     args.groupSize = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeX", arg_name) == 0)
-    args.workgroupSize.x =
-        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+    args.workgroupSize.x = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeY", arg_name) == 0)
-    args.workgroupSize.y =
-        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+    args.workgroupSize.y = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeZ", arg_name) == 0)
-    args.workgroupSize.z =
-        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+    args.workgroupSize.z = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("localWorkSizeX", arg_name) == 0)
-    args.gridSize.x =
-        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+    args.gridSize.x = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("localWorkSizeY", arg_name) == 0)
-    args.gridSize.y =
-        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+    args.gridSize.y = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("localWorkSizeZ", arg_name) == 0)
-    args.gridSize.z =
-        *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+    args.gridSize.z = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   return 0;
 };
 
@@ -137,16 +133,17 @@ struct malloc_args {
   const char* ptr;
   size_t size;
 };
-auto extract_malloc_args = []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
-                              [[maybe_unused]] rocprofiler_tracing_operation_t operation,
-                              [[maybe_unused]] uint32_t arg_num,
-                              const void* const arg_value_addr,
-                              [[maybe_unused]] int32_t indirection_count,
-                              [[maybe_unused]] const char* arg_type,
-                              const char* arg_name,
-                              const char* arg_value_str,
-                              [[maybe_unused]] int32_t dereference_count,
-                              void* cb_data) -> int {
+auto extract_malloc_args =
+    []([[maybe_unused]] rocprofiler_callback_tracing_kind_t kind,
+       [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+       [[maybe_unused]] uint32_t arg_num,
+       const void* const arg_value_addr,
+       [[maybe_unused]] int32_t indirection_count,
+       [[maybe_unused]] const char* arg_type,
+       const char* arg_name,
+       const char* arg_value_str,
+       [[maybe_unused]] int32_t dereference_count,
+       void* cb_data) -> int {
   auto& args = *(static_cast<malloc_args*>(cb_data));
   if (strcmp("ptr", arg_name) == 0) {
     args.ptr = arg_value_str;

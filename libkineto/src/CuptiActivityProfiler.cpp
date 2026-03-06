@@ -332,10 +332,9 @@ void CuptiActivityProfiler::handleCudaEventActivity(
           << " contextId=" << activity->contextId;
 
   // Update the stream, corrID the cudaEvent was last recorded on
-  auto key =
-      CtxEventPair{activity->contextId, activity->eventId};
-  waitEventMap()[key] = WaitEventInfo{
-      activity->streamId, activity->correlationId};
+  auto key = CtxEventPair{activity->contextId, activity->eventId};
+  waitEventMap()[key] =
+      WaitEventInfo{activity->streamId, activity->correlationId};
 
   // Create and log the CUDA event activity
   const ITraceActivity* linked =

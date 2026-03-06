@@ -109,8 +109,7 @@ int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {
   }
 
   // Setup message
-  ::dynolog::ipcfabric::LibkinetoContext ctxt{
-      gpu, getpid(), jobId_};
+  ::dynolog::ipcfabric::LibkinetoContext ctxt{gpu, getpid(), jobId_};
 
   std::unique_ptr<::dynolog::ipcfabric::Message> msg =
       ::dynolog::ipcfabric::Message::constructMessage<decltype(ctxt)>(

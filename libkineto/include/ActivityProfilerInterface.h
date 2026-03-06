@@ -50,7 +50,8 @@ class ActivityProfilerInterface {
   // Call prepareTrace to enable tracing, then run the region to trace
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
-  virtual void prepareTrace([[maybe_unused]] const std::set<ActivityType>& activityTypes, [[maybe_unused]] const std::string& configStr = "") {}
+  virtual void prepareTrace([[maybe_unused]] const std::set<ActivityType>& activityTypes,
+                            [[maybe_unused]] const std::string& configStr = "") {}
 
   // Toggle GPU tracing as a trace is running to omit certain parts of a graph
   virtual void toggleCollectionDynamic([[maybe_unused]] const bool enable) {}

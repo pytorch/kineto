@@ -771,7 +771,8 @@ bool CuptiRBProfilerSession::endPass() {
   return true;
 }
 void CuptiRBProfilerSession::flushCounterData() {}
-void CuptiRBProfilerSession::pushRange([[maybe_unused]] const std::string& rangeName) {}
+void CuptiRBProfilerSession::pushRange(
+    [[maybe_unused]] const std::string& rangeName) {}
 void CuptiRBProfilerSession::popRange() {}
 void CuptiRBProfilerSession::startAndEnable() {}
 void CuptiRBProfilerSession::disableAndStop() {}

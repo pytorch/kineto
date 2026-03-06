@@ -185,8 +185,7 @@ TEST(MetricTest, Calculate) {
       metrics, calculate(1, CUPTI_METRIC_VALUE_KIND_DOUBLE, ids, vals, 1000))
       .Times(1)
       .WillOnce(Return(SampleValue(0.14)));
-  auto v = m.calculate(
-      events, nanoseconds(1000), {0, 0, 2});
+  auto v = m.calculate(events, nanoseconds(1000), {0, 0, 2});
 
   EXPECT_EQ(v.perInstance.size(), 2);
   EXPECT_EQ(v.perInstance[0].getDouble(), 0.1);
@@ -205,8 +204,7 @@ TEST(MetricTest, Calculate) {
       metrics, calculate(1, CUPTI_METRIC_VALUE_KIND_DOUBLE, ids, vals, 1000))
       .Times(1)
       .WillOnce(Return(SampleValue(0.27)));
-  v = m2.calculate(
-      events, nanoseconds(1000), {0, 1, 2});
+  v = m2.calculate(events, nanoseconds(1000), {0, 1, 2});
 
   EXPECT_EQ(v.perInstance.size(), 1);
   EXPECT_EQ(v.perInstance[0].getDouble(), 0.27);
@@ -540,10 +538,10 @@ TEST_F(EventProfilerTest, ReportSample) {
 
   EXPECT_CALL(*cuptiEvents_, readEvent(_, _, _))
       .Times(6)
-      .WillRepeatedly(Invoke(
-          []([[maybe_unused]] CUpti_EventGroup g, [[maybe_unused]] CUpti_EventID id, std::vector<int64_t>& vals) {
-            vals = {1, 2, 3, 4};
-          }));
+      .WillRepeatedly(
+          Invoke([]([[maybe_unused]] CUpti_EventGroup g,
+                    [[maybe_unused]] CUpti_EventID id,
+                    std::vector<int64_t>& vals) { vals = {1, 2, 3, 4}; }));
 
   // Need to collect four times - twice for each group set
   profiler_->collectSample();

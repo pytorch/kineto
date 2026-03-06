@@ -164,7 +164,9 @@ std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
 void CuptiCallbackApi::initCallbackApi() {
   lastCuptiStatus_ = CUPTI_ERROR_UNKNOWN;
   lastCuptiStatus_ = CUPTI_CALL_NOWARN(cuptiSubscribe(
-      &subscriber_, reinterpret_cast<CUpti_CallbackFunc>(callback_switchboard), nullptr));
+      &subscriber_,
+      reinterpret_cast<CUpti_CallbackFunc>(callback_switchboard),
+      nullptr));
 
   // TODO: Remove temporarily to work around static initialization order issue
   // betweent this and GLOG.

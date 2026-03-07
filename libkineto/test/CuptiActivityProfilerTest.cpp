@@ -52,6 +52,7 @@ static constexpr auto kGroupSize = "Group size";
 static constexpr const char* kProcessGroupName = "Process Group Name";
 static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
+static constexpr const char* kCommsId = "Comms Id";
 static constexpr int32_t kTruncatLength = 30;
 
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
@@ -663,6 +664,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   metadataMap.emplace(kGroupSize, "2");
   metadataMap.emplace(kProcessGroupName, fmt::format("\"{}\"", "12341234"));
   metadataMap.emplace(kProcessGroupDesc, fmt::format("\"{}\"", "test_purpose"));
+  metadataMap.emplace(kCommsId, "12345678");
 
   std::vector<int64_t> inSplitSizes(50, 0);
   std::string inSplitSizesStr;
@@ -804,6 +806,8 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   EXPECT_EQ(2, countSubstrings(jsonString, "test_purpose"));
   EXPECT_EQ(2, countSubstrings(jsonString, kGroupRanks));
   EXPECT_EQ(2, countSubstrings(jsonString, expectedGroupRanksStr));
+  EXPECT_EQ(2, countSubstrings(jsonString, kCommsId));
+  EXPECT_EQ(2, countSubstrings(jsonString, "12345678"));
 #endif
 }
 

@@ -33,7 +33,7 @@ constexpr char kEmptyTrace[] = "No Valid Trace Events (CPU/GPU) found. Outputtin
 
 namespace libkineto {
 
-enum LoggerOutputType { VERBOSE = 0, INFO = 1, WARNING = 2, STAGE = 3, ERROR = 4, ENUM_COUNT = 5 };
+enum LoggerOutputType { VERBOSE = 0, INFO = 1, WARNING = 2, STAGE = 3, ERROR = 4, USDT = 5, ENUM_COUNT = 6 };
 
 const char* toString(LoggerOutputType t);
 LoggerOutputType toLoggerOutputType(const std::string& str);

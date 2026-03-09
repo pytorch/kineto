@@ -65,11 +65,14 @@ std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
     configure(
         const std::set<ActivityType>& activity_types,
         const libkineto::Config& config) {
-  return std::make_unique<SELECT_VERSION(XpuptiActivityProfilerSession)>(
-      SELECT_VERSION(XpuptiActivityApi)::singleton(),
-      name(),
-      config,
-      activity_types);
+#if PTI_VERSION_AT_LEAST(0, 15)
+  using XpuptiActivityProfilerSessionT = XpuptiActivityProfilerSessionV2;
+#else
+  using XpuptiActivityProfilerSessionT = XpuptiActivityProfilerSession;
+#endif
+
+  return std::make_unique<XpuptiActivityProfilerSessionT>(
+      XpuptiActivityApiT::singleton(), name(), config, activity_types);
 }
 
 std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::

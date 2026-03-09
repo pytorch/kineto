@@ -20,9 +20,8 @@
 
 namespace KINETO_NAMESPACE {
 
-SELECT_VERSION(XpuptiActivityApi) &
-    SELECT_VERSION(XpuptiActivityApi)::singleton() {
-  static SELECT_VERSION(XpuptiActivityApi) instance;
+XpuptiActivityApiT& XpuptiActivityApiT::singleton() {
+  static XpuptiActivityApiT instance;
   return instance;
 }
 

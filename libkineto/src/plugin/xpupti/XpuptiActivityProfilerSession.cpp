@@ -44,7 +44,7 @@ std::unordered_set<std::string_view>
 
 // =========== Session Constructor ============= //
 XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
-    SELECT_VERSION(XpuptiActivityApi) & xpti,
+    XpuptiActivityApiT& xpti,
     const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
@@ -125,23 +125,19 @@ std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
 }
 
 void XpuptiActivityProfilerSession::pushCorrelationId(uint64_t id) {
-  xpti_.pushCorrelationID(
-      id, SELECT_VERSION(XpuptiActivityApi)::CorrelationFlowType::Default);
+  xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::Default);
 }
 
 void XpuptiActivityProfilerSession::popCorrelationId() {
-  xpti_.popCorrelationID(
-      SELECT_VERSION(XpuptiActivityApi)::CorrelationFlowType::Default);
+  xpti_.popCorrelationID(XpuptiActivityApi::CorrelationFlowType::Default);
 }
 
 void XpuptiActivityProfilerSession::pushUserCorrelationId(uint64_t id) {
-  xpti_.pushCorrelationID(
-      id, SELECT_VERSION(XpuptiActivityApi)::CorrelationFlowType::User);
+  xpti_.pushCorrelationID(id, XpuptiActivityApi::CorrelationFlowType::User);
 }
 
 void XpuptiActivityProfilerSession::popUserCorrelationId() {
-  xpti_.popCorrelationID(
-      SELECT_VERSION(XpuptiActivityApi)::CorrelationFlowType::User);
+  xpti_.popCorrelationID(XpuptiActivityApi::CorrelationFlowType::User);
 }
 
 void XpuptiActivityProfilerSession::enumDeviceUUIDs() {

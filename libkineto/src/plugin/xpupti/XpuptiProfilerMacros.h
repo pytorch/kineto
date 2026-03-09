@@ -39,11 +39,11 @@ using namespace libkineto;
 using DeviceIndex_t = int8_t;
 
 #if PTI_VERSION_AT_LEAST(0, 15)
-#define SELECT_VERSION(obj) obj##V2
+class XpuptiActivityApiV2;
+using XpuptiActivityApiT = XpuptiActivityApiV2;
 #else
-#define SELECT_VERSION(obj) obj
+class XpuptiActivityApi;
+using XpuptiActivityApiT = XpuptiActivityApi;
 #endif
-
-class SELECT_VERSION(XpuptiActivityApi);
 
 } // namespace KINETO_NAMESPACE

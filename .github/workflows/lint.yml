@@ -11,6 +11,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Set up Python
@@ -32,7 +33,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           set +e
-          lintrunner --take CLANGFORMAT,NEWLINE,SPACES,TABS
+          lintrunner --take CLANGFORMAT,NEWLINE,SPACES,TABS --merge-base-with origin/${{ github.base_ref }}
           status=$?
           if [ $status -ne 0 ]; then
             echo ""

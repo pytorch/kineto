@@ -545,7 +545,7 @@ static const char* runtimeCbidNames[] = {
 const char* runtimeCbidName(CUpti_CallbackId cbid) {
   constexpr int names_size =
       sizeof(runtimeCbidNames) / sizeof(runtimeCbidNames[0]);
-  if (cbid < 0 || cbid >= names_size) {
+  if (cbid >= names_size) {
     return runtimeCbidNames[CUPTI_RUNTIME_TRACE_CBID_INVALID];
   }
   return runtimeCbidNames[cbid];

@@ -42,12 +42,12 @@ std::string DaemonConfigLoader::readOnDemandConfig(
     LOG_EVERY_N(WARNING, 10) << "Failed to read config: No dyno config client";
     return "";
   }
-  int config_type = int(LibkinetoConfigType::NONE);
+  int config_type = static_cast<int>(LibkinetoConfigType::NONE);
   if (events) {
-    config_type |= int(LibkinetoConfigType::EVENTS);
+    config_type |= static_cast<int>(LibkinetoConfigType::EVENTS);
   }
   if (activities) {
-    config_type |= int(LibkinetoConfigType::ACTIVITIES);
+    config_type |= static_cast<int>(LibkinetoConfigType::ACTIVITIES);
   }
   return configClient->getLibkinetoOndemandConfig(config_type);
 }

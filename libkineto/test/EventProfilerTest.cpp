@@ -104,12 +104,12 @@ TEST(EventTest, Percentiles) {
   PercentileList pct = {
       {10, SampleValue(0)}, {50, SampleValue(0)}, {90, SampleValue(0)}};
 
-  ev.percentiles(pct, {.offset = 0, .index = 0, .count = 3});
+  ev.percentiles(pct, {0, 0, 3});
   EXPECT_EQ(pct[0].second.getInt(), 1);
   EXPECT_EQ(pct[1].second.getInt(), 3);
   EXPECT_EQ(pct[2].second.getInt(), 4);
 
-  ev.percentiles(pct, {.offset = 0, .index = 0, .count = 1});
+  ev.percentiles(pct, {0, 0, 1});
   EXPECT_EQ(pct[0].second.getInt(), 111);
   EXPECT_EQ(pct[1].second.getInt(), 333);
   EXPECT_EQ(pct[2].second.getInt(), 444);
@@ -185,8 +185,7 @@ TEST(MetricTest, Calculate) {
       metrics, calculate(1, CUPTI_METRIC_VALUE_KIND_DOUBLE, ids, vals, 1000))
       .Times(1)
       .WillOnce(Return(SampleValue(0.14)));
-  auto v = m.calculate(
-      events, nanoseconds(1000), {.offset = 0, .index = 0, .count = 2});
+  auto v = m.calculate(events, nanoseconds(1000), {0, 0, 2});
 
   EXPECT_EQ(v.perInstance.size(), 2);
   EXPECT_EQ(v.perInstance[0].getDouble(), 0.1);
@@ -205,8 +204,7 @@ TEST(MetricTest, Calculate) {
       metrics, calculate(1, CUPTI_METRIC_VALUE_KIND_DOUBLE, ids, vals, 1000))
       .Times(1)
       .WillOnce(Return(SampleValue(0.27)));
-  v = m2.calculate(
-      events, nanoseconds(1000), {.offset = 0, .index = 1, .count = 2});
+  v = m2.calculate(events, nanoseconds(1000), {0, 1, 2});
 
   EXPECT_EQ(v.perInstance.size(), 1);
   EXPECT_EQ(v.perInstance[0].getDouble(), 0.27);
@@ -540,10 +538,10 @@ TEST_F(EventProfilerTest, ReportSample) {
 
   EXPECT_CALL(*cuptiEvents_, readEvent(_, _, _))
       .Times(6)
-      .WillRepeatedly(Invoke(
-          [](CUpti_EventGroup g, CUpti_EventID id, std::vector<int64_t>& vals) {
-            vals = {1, 2, 3, 4};
-          }));
+      .WillRepeatedly(
+          Invoke([]([[maybe_unused]] CUpti_EventGroup g,
+                    [[maybe_unused]] CUpti_EventID id,
+                    std::vector<int64_t>& vals) { vals = {1, 2, 3, 4}; }));
 
   // Need to collect four times - twice for each group set
   profiler_->collectSample();
@@ -565,9 +563,9 @@ TEST_F(EventProfilerTest, ReportSample) {
   auto& logger = dynamic_cast<MockLogger&>(*loggers_[0]);
   EXPECT_CALL(logger, handleSample(0, _, _))
       .Times(1)
-      .WillOnce(Invoke([](int device,
+      .WillOnce(Invoke([]([[maybe_unused]] int device,
                           const Sample& sample,
-                          bool from_new_version) {
+                          [[maybe_unused]] bool from_new_version) {
         // Sample will include all stats - logger must pick the
         // ones it wants.
         EXPECT_EQ(sample.stats.size(), 4);

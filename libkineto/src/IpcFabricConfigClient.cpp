@@ -109,8 +109,7 @@ int32_t IpcFabricConfigClient::registerInstance(int32_t gpu) {
   }
 
   // Setup message
-  ::dynolog::ipcfabric::LibkinetoContext ctxt{
-      .gpu = gpu, .pid = getpid(), .jobid = jobId_};
+  ::dynolog::ipcfabric::LibkinetoContext ctxt{gpu, getpid(), jobId_};
 
   std::unique_ptr<::dynolog::ipcfabric::Message> msg =
       ::dynolog::ipcfabric::Message::constructMessage<decltype(ctxt)>(
@@ -201,7 +200,7 @@ std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(int32_t type) {
 
 #else // ENABLE_IPC_FABRIC
 
-int32_t IpcFabricConfigClient::registerInstance(int32_t /*gpu*/) {
+int32_t IpcFabricConfigClient::registerInstance([[maybe_unused]] int32_t gpu) {
   return -1;
 }
 
@@ -209,7 +208,7 @@ std::string IpcFabricConfigClient::getLibkinetoBaseConfig() {
   return "";
 }
 std::string IpcFabricConfigClient::getLibkinetoOndemandConfig(
-    int32_t /*type*/) {
+    [[maybe_unused]] int32_t type) {
   return "";
 }
 

@@ -22,7 +22,7 @@ class ActivityTraceInterface {
   virtual const std::vector<const ITraceActivity*>* activities() {
     return nullptr;
   }
-  virtual void save(const std::string& path) {}
+  virtual void save([[maybe_unused]] const std::string& path) {}
 };
 
 } // namespace libkineto

@@ -18,7 +18,7 @@ using std::vector;
 namespace KINETO_NAMESPACE {
 
 CuptiEventApi::CuptiEventApi(CUcontext context) : context_(context) {
-  CUPTI_CALL(cuptiGetDeviceId(context_, (uint32_t*)&device_));
+  CUPTI_CALL(cuptiGetDeviceId(context_, reinterpret_cast<uint32_t*>(&device_)));
 }
 
 CUpti_EventGroupSets* CuptiEventApi::createGroupSets(

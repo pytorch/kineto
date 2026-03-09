@@ -243,19 +243,19 @@ class GenericActivityProfiler {
   // these virtual member functions. We provide empty defaults because
   // GenericActivityProfiler can also be in cpuOnly mode.
   virtual void logGpuVersions() {}
-  virtual void setMaxGpuBufferSize(int size) {}
+  virtual void setMaxGpuBufferSize([[maybe_unused]] int size) {}
   virtual void enableGpuTracing() {}
   virtual void disableGpuTracing() {}
   virtual void clearGpuActivities() {}
   virtual bool isGpuCollectionStopped() const {
     return false;
   }
-  virtual void processGpuActivities(ActivityLogger& logger) {}
+  virtual void processGpuActivities([[maybe_unused]] ActivityLogger& logger) {}
   virtual void synchronizeGpuDevice() {}
-  virtual void pushCorrelationIdImpl(uint64_t id, CorrelationFlowType type) {}
-  virtual void popCorrelationIdImpl(CorrelationFlowType type) {}
+  virtual void pushCorrelationIdImpl([[maybe_unused]] uint64_t id, [[maybe_unused]] CorrelationFlowType type) {}
+  virtual void popCorrelationIdImpl([[maybe_unused]] CorrelationFlowType type) {}
   virtual void onResetTraceData() {}
-  virtual void onFinalizeTrace(const Config& config, ActivityLogger& logger) {}
+  virtual void onFinalizeTrace([[maybe_unused]] const Config& config, [[maybe_unused]] ActivityLogger& logger) {}
 
   using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
   static const CpuGpuSpanPair& defaultTraceSpan();

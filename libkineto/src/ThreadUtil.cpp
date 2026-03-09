@@ -80,7 +80,8 @@ int32_t processId(bool cache) {
   return _pid;
 }
 
-int32_t systemThreadId(bool cache) {
+int32_t systemThreadId(
+    bool cache) {
   int32_t sysTid = 0;
   if (!_sysTid) {
 #ifdef __APPLE__

@@ -546,12 +546,22 @@ void GenericActivityProfiler::configure(
                               ActivityType::CUDA_PROFILER_RANGE) > 0;
 
   if (libkineto::api().client()) {
+#ifdef EXPERIMENTAL_PROFILER_OPTIONS
+    libkineto::api().client()->prepare(
+        config_->isReportInputShapesEnabled(),
+        config_->isProfileMemoryEnabled(),
+        config_->isWithStackEnabled(),
+        config_->isWithFlopsEnabled(),
+        config_->isWithModulesEnabled(),
+        config_->profilerExperimentalConfig());
+#else
     libkineto::api().client()->prepare(
         config_->isReportInputShapesEnabled(),
         config_->isProfileMemoryEnabled(),
         config_->isWithStackEnabled(),
         config_->isWithFlopsEnabled(),
         config_->isWithModulesEnabled());
+#endif
   }
 
   if (derivedConfig_->isProfilingByIteration()) {

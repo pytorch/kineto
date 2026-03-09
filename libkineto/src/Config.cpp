@@ -80,6 +80,8 @@ constexpr char kActivitiesMaxGpuBufferSizeKey[] =
     "ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB";
 constexpr char kActivitiesDisplayCudaSyncWaitEvents[] =
     "ACTIVITIES_DISPLAY_CUDA_SYNC_WAIT_EVENTS";
+constexpr char kActivitiesDisableExternalCorrelation[] =
+    "ACTIVITIES_DISABLE_EXTERNAL_CORRELATION";
 
 // Client Interface
 // TODO: keep supporting these older config options, deprecate in the future
@@ -245,6 +247,7 @@ Config::Config()
       activitiesWarmupDuration_(kDefaultActivitiesWarmupDurationSecs),
       activitiesWarmupIterations_(0),
       activitiesCudaSyncWaitEvents_(true),
+      activitiesDisableExternalCorrelation_(false),
       activitiesDuration_(kDefaultActivitiesProfileDurationMSecs),
       activitiesRunIterations_(0),
       activitiesOnDemandTimestamp_(milliseconds(0)),
@@ -440,6 +443,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activitiesWarmupIterations_ = toInt32(val);
   } else if (!name.compare(kActivitiesDisplayCudaSyncWaitEvents)) {
     activitiesCudaSyncWaitEvents_ = toBool(val);
+  } else if (!name.compare(kActivitiesDisableExternalCorrelation)) {
+    activitiesDisableExternalCorrelation_ = toBool(val);
   } else if (!name.compare(kRequestTraceID)) {
     requestTraceID_ = val;
   } else if (!name.compare(kRequestGroupTraceID)) {
@@ -576,6 +581,10 @@ void Config::validate(
     selectDefaultActivityTypes();
   }
   setActivityDependentConfig();
+
+  if (activitiesDisableExternalCorrelation()) {
+    selectedActivityTypes_.erase(ActivityType::EXTERNAL_CORRELATION);
+  }
 }
 
 void Config::setReportPeriod(milliseconds msecs) {

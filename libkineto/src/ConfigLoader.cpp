@@ -55,7 +55,7 @@ static bool hasOriginalSignalHandler() {
 #endif
 }
 
-static void handle_signal(int signal) {
+static void handle_signal([[maybe_unused]] int signal) {
 #ifdef __linux__
   if (signal == SIGUSR2) {
     ConfigLoader::instance().handleOnDemandSignal();
@@ -70,7 +70,7 @@ static void handle_signal(int signal) {
 #endif
 }
 
-static void setupSignalHandler(bool enableSigUsr2) {
+static void setupSignalHandler([[maybe_unused]] bool enableSigUsr2) {
 #ifdef __linux__
   if (enableSigUsr2) {
     struct sigaction act = {};

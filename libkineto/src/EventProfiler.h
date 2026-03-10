@@ -71,7 +71,7 @@ class Event {
   Event& operator=(Event&&) = default;
 
   void addSample(std::chrono::time_point<std::chrono::system_clock> timestamp, const std::vector<int64_t>& values) {
-    assert(values.size() == instanceCount);
+    assert(values.size() == static_cast<size_t>(instanceCount));
     samples_.emplace_back(timestamp, values);
   }
 

@@ -54,7 +54,7 @@ class SampleValue {
     if (isDouble()) {
       dbl_ *= x;
     } else {
-      int_ = std::round(int_ * x);
+      int_ = static_cast<int64_t>(std::round(int_ * x));
     }
   }
 

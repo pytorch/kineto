@@ -30,6 +30,7 @@ static constexpr std::array<LoggerTypeName, LoggerTypeCount + 1> LoggerMap{
      {"WARNING", LoggerOutputType::WARNING},
      {"STAGE", LoggerOutputType::STAGE},
      {"ERROR", LoggerOutputType::ERROR},
+     {"USDT", LoggerOutputType::USDT},
      {"???", LoggerOutputType::ENUM_COUNT}}};
 
 static constexpr bool matchingOrder(int idx = 0) {

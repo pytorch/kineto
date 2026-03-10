@@ -23,6 +23,8 @@
 
 namespace KINETO_NAMESPACE {
 
+class XpuptiActivityApi;
+
 using DeviceUUIDsT = std::array<unsigned char, 16>;
 
 class XpuptiActivityProfilerSession
@@ -30,7 +32,7 @@ class XpuptiActivityProfilerSession
  public:
   XpuptiActivityProfilerSession() = delete;
   XpuptiActivityProfilerSession(
-      XpuptiActivityApiT& xpti,
+      XpuptiActivityApi& xpti,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
@@ -120,7 +122,7 @@ class XpuptiActivityProfilerSession
 
   libkineto::getLinkedActivityCallback cpuActivity_;
 
-  XpuptiActivityApiT& xpti_;
+  XpuptiActivityApi& xpti_;
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<uint32_t, uint32_t>> resourceInfo_;
   std::unordered_map<uint64_t, uint64_t> sycl_queue_pool_;

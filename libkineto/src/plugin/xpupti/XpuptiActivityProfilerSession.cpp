@@ -7,7 +7,7 @@
  */
 
 #include "XpuptiActivityProfilerSession.h"
-#include "XpuptiActivityApiV2.h"
+#include "XpuptiActivityApi.h"
 
 #include "time_since_epoch.h"
 
@@ -44,14 +44,14 @@ std::unordered_set<std::string_view>
 
 // =========== Session Constructor ============= //
 XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
-    XpuptiActivityApiT& xpti,
+    XpuptiActivityApi& xpti,
     const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
     : xpti_(xpti),
-      name_(name),
       config_(config.clone()),
-      activity_types_(activity_types) {
+      activity_types_(activity_types),
+      name_(name) {
   enumDeviceUUIDs();
   xpti_.enableXpuptiActivities(activity_types_);
 }
@@ -113,7 +113,7 @@ std::unique_ptr<libkineto::CpuTraceBuffer> XpuptiActivityProfilerSession::
 std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
     getResourceInfos() {
   std::vector<libkineto::ResourceInfo> result;
-  for (const auto [device_id, sycl_queue_id] : resourceInfo_) {
+  for (const auto& [device_id, sycl_queue_id] : resourceInfo_) {
     result.emplace_back(
         device_id,
         sycl_queue_id,

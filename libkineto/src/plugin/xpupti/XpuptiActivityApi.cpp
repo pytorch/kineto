@@ -155,7 +155,7 @@ void XpuptiActivityApi::bufferCompletedTrampoline(
 
 void XpuptiActivityApi::bufferCompleted(
     uint8_t* buffer,
-    size_t size,
+    [[maybe_unused]] size_t size,
     size_t validSize) {
   std::lock_guard<std::mutex> guard(mutex_);
   auto it = allocatedGpuTraceBuffers_.find(buffer);
@@ -169,7 +169,8 @@ void XpuptiActivityApi::bufferCompleted(
 }
 #endif
 
-#if PTI_VERSION_AT_LEAST(0, 11)
+#if PTI_VERSION_AT_LEAST(0, 12)
+#elif PTI_VERSION_AT_LEAST(0, 11)
 static void enableSpecifcRuntimeAPIsTracing() {
   constexpr const std::array<pti_api_id_runtime_sycl, 14>
       specifcRuntimeAPIsTracing = {
@@ -196,8 +197,7 @@ static void enableSpecifcRuntimeAPIsTracing() {
 #endif
 
 void XpuptiActivityApi::enableXpuptiActivities(
-    const std::set<ActivityType>& selected_activities,
-    bool scopeProfilerActivityAccepted) {
+    const std::set<ActivityType>& selected_activities) {
 #ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
@@ -240,7 +240,7 @@ void XpuptiActivityApi::enableXpuptiActivities(
         break;
 
       case ActivityType::XPU_SCOPE_PROFILER:
-        if (!scopeProfilerActivityAccepted) {
+        if (!scopeProfilerActivityAccepted_) {
           throw std::runtime_error(
               "Intel® PTI version required to use scope profiler is at least 0.15 "
               "(available with Intel® oneAPI in version at least 2025.3.1).");
@@ -249,6 +249,9 @@ void XpuptiActivityApi::enableXpuptiActivities(
 
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+      default:
         break;
     }
   }
@@ -290,6 +293,9 @@ void XpuptiActivityApi::disablePtiActivities(
 
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+      default:
         break;
     }
   }

@@ -44,6 +44,7 @@ class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
       ActivityLogger& logger);
 
  private:
+  XpuptiActivityApiV2& xptiV2_;
   bool scopeProfilerEnabled_{false};
 };
 

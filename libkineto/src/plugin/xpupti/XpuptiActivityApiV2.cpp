@@ -20,10 +20,21 @@
 
 namespace KINETO_NAMESPACE {
 
-XpuptiActivityApiT& XpuptiActivityApiT::singleton() {
-  static XpuptiActivityApiT instance;
+#if PTI_VERSION_AT_LEAST(0, 15)
+
+XpuptiActivityApiV2& XpuptiActivityApiV2::singleton() {
+  static XpuptiActivityApiV2 instance;
   return instance;
 }
+
+#else
+
+XpuptiActivityApi& XpuptiActivityApi::singleton() {
+  static XpuptiActivityApi instance(false);
+  return instance;
+}
+
+#endif
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
@@ -88,7 +99,7 @@ void XpuptiActivityApiV2::enableScopeProfiler(const Config& cfg) {
       *scopeHandleOpt_,
       collectionMode,
       devicesHandles.get(),
-      (deviceCount, 1), // Only 1 device is currently supported
+      ((void)deviceCount, 1), // Only 1 device is currently supported
       metricNames.data(),
       metricNames.size()));
 

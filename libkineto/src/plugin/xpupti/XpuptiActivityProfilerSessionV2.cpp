@@ -15,34 +15,35 @@
 namespace KINETO_NAMESPACE {
 
 XpuptiActivityProfilerSessionV2::XpuptiActivityProfilerSessionV2(
-    XpuptiActivityApiV2& xpti,
+    XpuptiActivityApiV2& xptiV2,
     const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
-    : XpuptiActivityProfilerSession(xpti, name, config, activity_types) {
+    : XpuptiActivityProfilerSession(xptiV2, name, config, activity_types),
+      xptiV2_(xptiV2) {
   scopeProfilerEnabled_ =
       activity_types.count(ActivityType::XPU_SCOPE_PROFILER) > 0;
   if (scopeProfilerEnabled_) {
-    xpti_.enableScopeProfiler(*config_);
+    xptiV2_.enableScopeProfiler(*config_);
   }
 }
 
 XpuptiActivityProfilerSessionV2::~XpuptiActivityProfilerSessionV2() {
   if (scopeProfilerEnabled_) {
-    xpti_.disableScopeProfiler();
+    xptiV2_.disableScopeProfiler();
   }
 }
 
 void XpuptiActivityProfilerSessionV2::start() {
   XpuptiActivityProfilerSession::start();
   if (scopeProfilerEnabled_) {
-    xpti_.startScopeActivity();
+    xptiV2_.startScopeActivity();
   }
 }
 
 void XpuptiActivityProfilerSessionV2::stop() {
   if (scopeProfilerEnabled_) {
-    xpti_.stopScopeActivity();
+    xptiV2_.stopScopeActivity();
   }
   XpuptiActivityProfilerSession::stop();
 }
@@ -52,9 +53,9 @@ void XpuptiActivityProfilerSessionV2::toggleCollectionDynamic(
   XpuptiActivityProfilerSession::toggleCollectionDynamic(enable);
   if (scopeProfilerEnabled_) {
     if (enable) {
-      xpti_.startScopeActivity();
+      xptiV2_.startScopeActivity();
     } else {
-      xpti_.stopScopeActivity();
+      xptiV2_.stopScopeActivity();
     }
   }
 }
@@ -62,7 +63,7 @@ void XpuptiActivityProfilerSessionV2::toggleCollectionDynamic(
 void XpuptiActivityProfilerSessionV2::processTrace(ActivityLogger& logger) {
   XpuptiActivityProfilerSession::processTrace(logger);
   if (scopeProfilerEnabled_) {
-    xpti_.processScopeTrace(
+    xptiV2_.processScopeTrace(
         [this, &logger](
             const pti_metrics_scope_record_t* record,
             const pti_metrics_scope_record_metadata_t& metadata) -> void {

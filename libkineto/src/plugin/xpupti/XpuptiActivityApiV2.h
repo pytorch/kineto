@@ -22,18 +22,13 @@ class Config;
 
 class XpuptiActivityApiV2 : public XpuptiActivityApi {
  public:
-  XpuptiActivityApiV2() = default;
+  XpuptiActivityApiV2() : XpuptiActivityApi(true) {}
   XpuptiActivityApiV2(const XpuptiActivityApiV2&) = delete;
   XpuptiActivityApiV2& operator=(const XpuptiActivityApiV2&) = delete;
 
   virtual ~XpuptiActivityApiV2() {}
 
   static XpuptiActivityApiV2& singleton();
-
-  void enableXpuptiActivities(
-      const std::set<ActivityType>& selected_activities) {
-    return XpuptiActivityApi::enableXpuptiActivities(selected_activities, true);
-  }
 
   void enableScopeProfiler(const Config&);
   void disableScopeProfiler();

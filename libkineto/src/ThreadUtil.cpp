@@ -84,11 +84,7 @@ int32_t systemThreadId(bool cache) {
   int32_t sysTid = 0;
   if (!_sysTid) {
 #ifdef __APPLE__
-    {
-      uint64_t tid;
-      pthread_threadid_np(nullptr, &tid);
-      sysTid = static_cast<int32_t>(tid);
-    }
+    sysTid = static_cast<int32_t>(syscall(SYS_thread_selfid));
 #elif defined _WIN32
     sysTid = static_cast<int32_t>(GetCurrentThreadId());
 #elif defined __FreeBSD__
@@ -237,7 +233,8 @@ std::string processName([[maybe_unused]] int32_t pid) {
 constexpr int kMaxParentPids = 10;
 
 // Return a pair of <parent_pid, command_of_current_pid>
-static std::pair<int32_t, std::string> parentPidAndCommand([[maybe_unused]] int32_t pid) {
+static std::pair<int32_t, std::string> parentPidAndCommand(
+    [[maybe_unused]] int32_t pid) {
 #ifdef __linux__
   FILE* statfile = fopen(fmt::format("/proc/{}/stat", pid).c_str(), "r");
   if (statfile == nullptr) {

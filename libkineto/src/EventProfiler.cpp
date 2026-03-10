@@ -142,7 +142,7 @@ struct Metric::CalculatedValues Metric::calculate(
   if (evalMode_ & CUPTI_METRIC_EVALUATION_MODE_AGGREGATE) {
     metric_values.push_back(total);
   }
-  return {.perInstance = metric_values, .total = std::move(total)};
+  return {metric_values, std::move(total)};
 }
 
 void Metric::printDescription(ostream& s) const {
@@ -163,7 +163,7 @@ EventGroupSet::EventGroupSet(
     map<CUpti_EventID, Event>& events,
     CuptiEventApi& cupti)
     : set_(set), events_(events), cuptiEvents_(cupti), enabled_(false) {
-  for (int g = 0; g < set.numEventGroups; g++) {
+  for (uint32_t g = 0; g < set.numEventGroups; g++) {
     CUpti_EventGroup grp = set.eventGroups[g];
     // Profile all domain instances
     cuptiEvents_.enablePerInstance(grp);
@@ -195,7 +195,7 @@ void EventGroupSet::setEnabled(bool enabled) {
 // Collect counter values for each counter in group set
 void EventGroupSet::collectSample() {
   auto timestamp = system_clock::now();
-  for (int g = 0; g < set_.numEventGroups; g++) {
+  for (uint32_t g = 0; g < set_.numEventGroups; g++) {
     CUpti_EventGroup grp = set_.eventGroups[g];
     for (const auto& id : cuptiEvents_.eventsInGroup(grp)) {
       Event& ev = events_[id];
@@ -205,7 +205,7 @@ void EventGroupSet::collectSample() {
 
       if (VLOG_IS_ON(0)) {
         for (int64_t v : vals) {
-          if (v == CUPTI_EVENT_OVERFLOW) {
+          if (static_cast<uint64_t>(v) == CUPTI_EVENT_OVERFLOW) {
             LOG(WARNING) << "Counter overflow detected "
                          << "- decrease sample period!" << endl;
           }
@@ -225,7 +225,7 @@ void EventGroupSet::collectSample() {
 
 // Print names of events in this group set, ordered by group
 void EventGroupSet::printDescription(ostream& s) const {
-  for (int g = 0; g < set_.numEventGroups; g++) {
+  for (uint32_t g = 0; g < set_.numEventGroups; g++) {
     s << "  Events in group " << g << ": ";
     for (const auto& id : cuptiEvents_.eventsInGroup(set_.eventGroups[g])) {
       s << id << " (" << events_[id].name << ") ";
@@ -264,7 +264,7 @@ void EventProfiler::initMetrics(const std::set<std::string>& metricNames) {
   metrics_.reserve(metricNames.size());
   for (const auto& metric_name : metricNames) {
     CUpti_MetricID metric_id = cuptiMetrics_->idFromName(metric_name);
-    if (metric_id == ~0) {
+    if (metric_id == ~0u) {
       continue;
     }
 
@@ -311,7 +311,7 @@ bool EventProfiler::initEventGroups() {
   }
   eventGroupSets_ = cuptiEvents_->createGroupSets(ids);
   VLOG(0) << "Number of group sets: " << eventGroupSets_->numSets;
-  for (int i = 0; i < eventGroupSets_->numSets; i++) {
+  for (uint32_t i = 0; i < eventGroupSets_->numSets; i++) {
     sets_.emplace_back(eventGroupSets_->sets[i], events_, *cuptiEvents_);
   }
   return !sets_.empty();
@@ -509,7 +509,7 @@ bool EventProfiler::initEventsAndMetrics(const Config& config) {
 }
 
 void EventProfiler::printSets(ostream& s) const {
-  for (int i = 0; i < sets_.size(); i++) {
+  for (size_t i = 0; i < sets_.size(); i++) {
     s << "Set " << i << endl;
     sets_[i].printDescription(s);
   }
@@ -559,10 +559,7 @@ void EventProfiler::dispatchSamples(
   for (int i = 0; i < config.samplesPerReport(); i++) {
     sample.stats.clear();
     sample.deltaMsec = (delta * i).count();
-    SampleSlice slice = {
-        .offset = sample_offset,
-        .index = i,
-        .count = config.samplesPerReport()};
+    SampleSlice slice = {sample_offset, i, config.samplesPerReport()};
     VLOG(1) << "Slice: " << sample_offset << ", " << i << ", "
             << config.samplesPerReport();
     for (const auto& pair : events_) {

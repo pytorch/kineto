@@ -28,8 +28,8 @@ class RocprofActivityApi;
 
 typedef uint64_t timestamp_t;
 
-static timestamp_t timespec_to_ns(const timespec& time) {
-  return ((timestamp_t)time.tv_sec * 1000000000) + time.tv_nsec;
+[[maybe_unused]] static timestamp_t timespec_to_ns(const timespec& time) {
+  return (static_cast<timestamp_t>(time.tv_sec) * 1000000000) + time.tv_nsec;
 }
 
 namespace RocLogger {

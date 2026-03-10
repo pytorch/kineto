@@ -390,7 +390,7 @@ class Config : public AbstractConfig {
  private:
   explicit Config(const Config& other) = default;
 
-  AbstractConfig* cloneDerived(AbstractConfig& parent) const override {
+  AbstractConfig* cloneDerived([[maybe_unused]] AbstractConfig& parent) const override {
     // Clone from AbstractConfig not supported
     assert(false);
     return nullptr;

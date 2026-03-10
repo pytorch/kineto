@@ -211,7 +211,12 @@ std::string processName(int32_t pid) {
   FILE* cmdfile = fopen(fmt::format("/proc/{}/cmdline", pid).c_str(), "r");
   if (cmdfile != nullptr) {
     char* command = nullptr;
+    // %m is a POSIX extension that makes fscanf allocate the buffer, avoiding
+    // fixed-size buffer risks. Suppress -Wformat since it's not ISO C++.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
     int scanned = fscanf(cmdfile, "%ms", &command);
+#pragma GCC diagnostic pop
     fclose(cmdfile);
     if (scanned > 0 && command) {
       std::string ret(basename(command));
@@ -236,7 +241,12 @@ static std::pair<int32_t, std::string> parentPidAndCommand(int32_t pid) {
   }
   int32_t parent_pid = 0;
   char* command = nullptr;
+  // %m is a POSIX extension that makes fscanf allocate the buffer, avoiding
+  // fixed-size buffer risks. Suppress -Wformat since it's not ISO C++.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
   int scanned = fscanf(statfile, "%*d (%m[^)]) %*c %d", &command, &parent_pid);
+#pragma GCC diagnostic pop
   fclose(statfile);
   std::pair<int32_t, std::string> ret;
   if (scanned == 2) {
@@ -246,8 +256,6 @@ static std::pair<int32_t, std::string> parentPidAndCommand(int32_t pid) {
     ret = std::make_pair(0, "");
   }
 
-  // The 'm' character in the format tells fscanf to allocate memory
-  // for the parsed string, which we need to free here.
   free(command);
   return ret;
 #else

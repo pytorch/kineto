@@ -115,34 +115,26 @@ static unsigned acceptDriverActivities(
 }
 
 class TestActivityLogger : public KN::ActivityLogger {
-  void handleDeviceInfo(
-      [[maybe_unused]] const KN::DeviceInfo& info,
-      [[maybe_unused]] uint64_t time) override {}
-  void handleResourceInfo(
-      [[maybe_unused]] const KN::ResourceInfo& info,
-      [[maybe_unused]] int64_t time) override {}
+  void handleDeviceInfo(const KN::DeviceInfo& info, uint64_t time) override {}
+  void handleResourceInfo(const KN::ResourceInfo& info, int64_t time) override {
+  }
   void handleOverheadInfo(
-      [[maybe_unused]] const KN::ActivityLogger::OverheadInfo& info,
-      [[maybe_unused]] int64_t time) override {}
-  void handleTraceSpan([[maybe_unused]] const KN::TraceSpan& span) override {}
-  void handleActivity(
-      [[maybe_unused]] const KN::ITraceActivity& activity) override {}
+      const KN::ActivityLogger::OverheadInfo& info,
+      int64_t time) override {}
+  void handleTraceSpan(const KN::TraceSpan& span) override {}
+  void handleActivity(const KN::ITraceActivity& activity) override {}
   void handleGenericActivity(
-      [[maybe_unused]] const KN::GenericTraceActivity& activity) override {}
+      const KN::GenericTraceActivity& activity) override {}
   void handleTraceStart(
-      [[maybe_unused]] const std::unordered_map<std::string, std::string>&
-          metadata,
-      [[maybe_unused]] const std::string& device_properties) override {}
-  void finalizeMemoryTrace(
-      [[maybe_unused]] const std::string&,
-      [[maybe_unused]] const KN::Config&) override {}
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) override {}
+  void finalizeMemoryTrace(const std::string&, const KN::Config&) override {}
   void finalizeTrace(
-      [[maybe_unused]] const KN::Config& config,
-      [[maybe_unused]] std::unique_ptr<KN::ActivityBuffers> buffers,
-      [[maybe_unused]] int64_t endTime,
-      [[maybe_unused]] std::unordered_map<
-          std::string,
-          std::vector<std::string>>& metadata) override {}
+      const KN::Config& config,
+      std::unique_ptr<KN::ActivityBuffers> buffers,
+      int64_t endTime,
+      std::unordered_map<std::string, std::vector<std::string>>& metadata)
+      override {}
 };
 
 std::pair<

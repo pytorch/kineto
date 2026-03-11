@@ -110,7 +110,8 @@ int64_t AbstractConfig::toIntRange(const string& val, int64_t min, int64_t max)
 }
 
 int32_t AbstractConfig::toInt32(const string& val) const {
-  return toIntRange(val, 0, std::numeric_limits<int32_t>::max());
+  return static_cast<int32_t>(
+      toIntRange(val, 0, std::numeric_limits<int32_t>::max()));
 }
 
 int64_t AbstractConfig::toInt64(const string& val) const {

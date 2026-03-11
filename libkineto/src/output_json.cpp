@@ -49,6 +49,7 @@ static constexpr const std::string_view kOutTensorsStart =
 static constexpr const std::string_view kRank = "Rank";
 static constexpr const std::string_view kP2pSrc = "Src Rank";
 static constexpr const std::string_view kP2pDst = "Dst Rank";
+static constexpr const std::string_view kCommsId = "Comms Id";
 
 #ifdef __linux__
 static constexpr std::string_view kDefaultLogFileFmt =
@@ -553,6 +554,15 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     }
     if (!srcRank.empty()) {
       arg_values.append(fmt::format(", \"{}\": {}", kP2pSrc, srcRank));
+    }
+
+    const auto& commsId =
+        collectiveRecord->getMetadataValue(std::string(kCommsId));
+    if (!commsId.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(" \"{}\": {}", kCommsId, commsId));
     }
 
     if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {

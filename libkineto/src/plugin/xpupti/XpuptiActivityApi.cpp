@@ -14,6 +14,14 @@ namespace KINETO_NAMESPACE {
 
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
+#if PTI_VERSION_AT_LEAST(0, 15)
+#else
+XpuptiActivityApi& XpuptiActivityApi::singleton() {
+  static XpuptiActivityApi instance;
+  return instance;
+}
+#endif
+
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
@@ -240,11 +248,12 @@ void XpuptiActivityApi::enableXpuptiActivities(
         break;
 
       case ActivityType::XPU_SCOPE_PROFILER:
-        if (!scopeProfilerActivityAccepted_) {
-          throw std::runtime_error(
-              "Intel® PTI version required to use scope profiler is at least 0.15 "
-              "(available with Intel® oneAPI in version at least 2025.3.1).");
-        }
+#if PTI_VERSION_AT_LEAST(0, 15)
+#else
+        throw std::runtime_error(
+            "Intel® PTI version required to use scope profiler is at least 0.15 "
+            "(available with Intel® oneAPI in version at least 2025.3.1).");
+#endif
         break;
 
       case ActivityType::OVERHEAD:

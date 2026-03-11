@@ -27,17 +27,6 @@ XpuptiActivityApiV2& XpuptiActivityApiV2::singleton() {
   return instance;
 }
 
-#else
-
-XpuptiActivityApi& XpuptiActivityApi::singleton() {
-  static XpuptiActivityApi instance(false);
-  return instance;
-}
-
-#endif
-
-#if PTI_VERSION_AT_LEAST(0, 15)
-
 XpuptiActivityApi& XpuptiActivityApi::singleton() {
   return XpuptiActivityApiV2::singleton();
 }

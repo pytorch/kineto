@@ -24,8 +24,7 @@ class XpuptiActivityApi {
  public:
   enum CorrelationFlowType { Default, User };
 
-  XpuptiActivityApi(bool scopeProfilerActivityAccepted)
-      : scopeProfilerActivityAccepted_(scopeProfilerActivityAccepted) {}
+  XpuptiActivityApi() = default;
   XpuptiActivityApi(const XpuptiActivityApi&) = delete;
   XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
 
@@ -53,7 +52,6 @@ class XpuptiActivityApi {
   std::unique_ptr<XpuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
   bool externalCorrelationEnabled_{false};
-  bool scopeProfilerActivityAccepted_;
 
   int processActivitiesForBuffer(
       uint8_t* buf,

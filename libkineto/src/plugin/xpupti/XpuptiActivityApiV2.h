@@ -22,7 +22,7 @@ class Config;
 
 class XpuptiActivityApiV2 : public XpuptiActivityApi {
  public:
-  XpuptiActivityApiV2() : XpuptiActivityApi(true) {}
+  XpuptiActivityApiV2() = default;
   XpuptiActivityApiV2(const XpuptiActivityApiV2&) = delete;
   XpuptiActivityApiV2& operator=(const XpuptiActivityApiV2&) = delete;
 

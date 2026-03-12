@@ -45,6 +45,8 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 #if !USE_GOOGLE_LOG
   static std::shared_ptr<LoggerCollector> getLoggerCollector();
   static void setLoggerCollectorFactory(const std::function<std::shared_ptr<LoggerCollector>()>& factory);
+  static void addAdditionalLoggerCollector(const std::function<std::shared_ptr<LoggerCollector>()>& factory);
+  static std::vector<std::shared_ptr<LoggerCollector>> getAdditionalLoggerCollectors();
 #endif // !USE_GOOGLE_LOG
 
   static void addLoggerFactory(const std::string& protocol, ActivityLoggerFactory::FactoryFunc factory);
@@ -100,6 +102,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<GenericActivityProfiler> profiler_;
   std::unique_ptr<ActivityLogger> logger_;
   std::shared_ptr<LoggerCollector> loggerCollectorFactory_;
+  std::vector<std::shared_ptr<LoggerCollector>> additionalLoggerCollectors_;
   std::thread* profilerThreads_[ThreadType::THREAD_MAX_COUNT] = {nullptr};
   std::atomic_bool stopRunloop_{false};
   std::atomic<std::int64_t> iterationCount_{-1};

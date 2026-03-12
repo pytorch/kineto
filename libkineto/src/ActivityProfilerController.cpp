@@ -50,14 +50,31 @@ static std::shared_ptr<LoggerCollector>& loggerCollectorFactory() {
   return factory;
 }
 
+static std::vector<std::shared_ptr<LoggerCollector>>&
+additionalLoggerCollectors() {
+  static std::vector<std::shared_ptr<LoggerCollector>> factories;
+  return factories;
+}
+
 void ActivityProfilerController::setLoggerCollectorFactory(
     const std::function<std::shared_ptr<LoggerCollector>()>& factory) {
   loggerCollectorFactory() = factory();
 }
 
+void ActivityProfilerController::addAdditionalLoggerCollector(
+    const std::function<std::shared_ptr<LoggerCollector>()>& factory) {
+  auto& factories = additionalLoggerCollectors();
+  factories.push_back(factory());
+}
+
 std::shared_ptr<LoggerCollector> ActivityProfilerController::
     getLoggerCollector() {
   return loggerCollectorFactory();
+}
+
+std::vector<std::shared_ptr<LoggerCollector>> ActivityProfilerController::
+    getAdditionalLoggerCollectors() {
+  return additionalLoggerCollectors();
 }
 #endif // !USE_GOOGLE_LOG
 
@@ -76,6 +93,13 @@ ActivityProfilerController::ActivityProfilerController(
     // static de-initialization.
     loggerCollectorFactory_ = loggerCollectorFactory();
     Logger::addLoggerObserver(loggerCollectorFactory_.get());
+  }
+
+  if (additionalLoggerCollectors().size() > 0) {
+    additionalLoggerCollectors_ = additionalLoggerCollectors();
+    for (auto& factory : additionalLoggerCollectors_) {
+      Logger::addLoggerObserver(factory.get());
+    }
   }
 #endif // !USE_GOOGLE_LOG
 
@@ -111,6 +135,11 @@ ActivityProfilerController::~ActivityProfilerController() {
 #if !USE_GOOGLE_LOG
   if (loggerCollectorFactory()) {
     Logger::removeLoggerObserver(loggerCollectorFactory_.get());
+  }
+  if (additionalLoggerCollectors_.size() > 0) {
+    for (auto& factory : additionalLoggerCollectors_) {
+      Logger::removeLoggerObserver(factory.get());
+    }
   }
 #endif // !USE_GOOGLE_LOG
 }

@@ -83,10 +83,10 @@ struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
   explicit GpuActivity(const rocprofAsyncRow* activity, const ITraceActivity* linked)
       : RocprofActivity(activity, linked) {
     switch (activity_.domain) {
-      case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
+      case ROCPROFILER_BUFFER_TRACING_MEMORY_COPY:
         type_ = ActivityType::GPU_MEMCPY;
         break;
-      case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
+      case ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH:
       default:
         type_ = ActivityType::CONCURRENT_KERNEL;
         break;

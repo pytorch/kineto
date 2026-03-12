@@ -203,7 +203,7 @@ struct MockRocLogger {
 #else
     rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
-        ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH,
+        ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
         0,
         0,
         0,
@@ -233,7 +233,7 @@ struct MockRocLogger {
 #else
     rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
-        ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY,
+        ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
         0,
         ROCPROFILER_MEMORY_COPY_HOST_TO_DEVICE,
         0,
@@ -263,7 +263,7 @@ struct MockRocLogger {
 #else
     rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
-        ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY,
+        ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
         0,
         ROCPROFILER_MEMORY_COPY_DEVICE_TO_HOST,
         0,

@@ -28,9 +28,9 @@ thread_local std::unordered_map<int, size_t> correlationToSize;
 } // namespace
 
 inline const char* getGpuActivityKindString(uint32_t domain, uint32_t op) {
-  if (domain == ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH)
+  if (domain == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH)
     return "Dispatch Kernel";
-  else if (domain == ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY) {
+  else if (domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
     switch (op) {
       case ROCPROFILER_MEMORY_COPY_HOST_TO_HOST:
         return "HtoH";
@@ -115,8 +115,8 @@ inline const std::string GpuActivity::metadataJson() const {
       gpuActivity.device, gpuActivity.queue,
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       size, bandwidth_gib);
-  } 
-  
+  }
+
   // if compute kernel, add grid and block
   else if (correlationToGrid.count(gpuActivity.id) > 0) {
     return fmt::format(R"JSON(

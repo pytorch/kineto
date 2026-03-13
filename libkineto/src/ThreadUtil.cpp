@@ -68,9 +68,9 @@ int32_t processId(bool cache) {
   int32_t pid = 0;
   if (!_pid) {
 #ifndef _WIN32
-    pid = (int32_t)getpid();
+    pid = static_cast<int32_t>(getpid());
 #else
-    pid = (int32_t)GetCurrentProcessId();
+    pid = static_cast<int32_t>(GetCurrentProcessId());
 #endif
     if (cache) {
       _pid = pid;
@@ -84,15 +84,15 @@ int32_t systemThreadId(bool cache) {
   int32_t sysTid = 0;
   if (!_sysTid) {
 #ifdef __APPLE__
-    sysTid = (int32_t)syscall(SYS_thread_selfid);
+    sysTid = static_cast<int32_t>(syscall(SYS_thread_selfid));
 #elif defined _WIN32
-    sysTid = (int32_t)GetCurrentThreadId();
+    sysTid = static_cast<int32_t>(GetCurrentThreadId());
 #elif defined __FreeBSD__
     syscall(SYS_thr_self, &sysTid);
 #elif defined _AIX
     sysTid = pthread_self();
 #else
-    sysTid = (int32_t)syscall(SYS_gettid);
+    sysTid = static_cast<int32_t>(syscall(SYS_gettid));
 #endif
     if (cache) {
       _sysTid = sysTid;
@@ -109,7 +109,7 @@ int32_t threadId() {
     pthread_threadid_np(nullptr, &tid);
     _tid = tid;
 #elif defined _WIN32
-    _tid = (int32_t)GetCurrentThreadId();
+    _tid = static_cast<int32_t>(GetCurrentThreadId());
 #else
     pthread_t pth = pthread_self();
     auto* ptr = reinterpret_cast<int32_t*>(&pth);
@@ -206,7 +206,7 @@ std::string getThreadName() {
 // Linux:
 // Extract process name from /proc/pid/cmdline. This does not have
 // the 16 character limit that /proc/pid/status and /prod/pid/comm has.
-std::string processName(int32_t pid) {
+std::string processName([[maybe_unused]] int32_t pid) {
 #ifdef __linux__
   FILE* cmdfile = fopen(fmt::format("/proc/{}/cmdline", pid).c_str(), "r");
   if (cmdfile != nullptr) {
@@ -233,7 +233,8 @@ std::string processName(int32_t pid) {
 constexpr int kMaxParentPids = 10;
 
 // Return a pair of <parent_pid, command_of_current_pid>
-static std::pair<int32_t, std::string> parentPidAndCommand(int32_t pid) {
+static std::pair<int32_t, std::string> parentPidAndCommand(
+    [[maybe_unused]] int32_t pid) {
 #ifdef __linux__
   FILE* statfile = fopen(fmt::format("/proc/{}/stat", pid).c_str(), "r");
   if (statfile == nullptr) {

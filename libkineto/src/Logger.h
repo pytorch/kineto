@@ -27,6 +27,8 @@
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND()
 #define LOGGER_OBSERVER_ADD_METADATA(key, value)
 #define UST_LOGGER_MARK_COMPLETED(stage)
+#define USDT_LOGGER_EMIT_MESSAGE(usdt_type)
+#define USDT_EMIT_START_TRACE()
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
@@ -250,5 +252,8 @@ struct __to_constant__ {
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) LOG(libkineto::LoggerOutputType::STAGE) << "Completed Stage: " << stage
+
+#define USDT_LOGGER_EMIT_MESSAGE(usdt_type) LOG(libkineto::LoggerOutputType::USDT) << usdt_type
+#define USDT_EMIT_START_TRACE() USDT_LOGGER_EMIT_MESSAGE("StartTrace")
 
 #endif // USE_GOOGLE_LOG

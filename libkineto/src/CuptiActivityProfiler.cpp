@@ -17,6 +17,7 @@
 #include "Config.h"
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
+#include "CuptiCbidRegistry.h"
 #include "Demangle.h"
 #include "DeviceUtil.h"
 #include "KernelRegistry.h"
@@ -220,27 +221,11 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
   }
 }
 
-inline static bool isBlockListedRuntimeCbid(CUpti_CallbackId cbid) {
-  // Some CUDA calls that are very frequent and also not very interesting.
-  // Filter these out to reduce trace size.
-  if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020 ||
-      // Support cudaEventRecord and cudaEventSynchronize, revisit if others
-      // are needed
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreate_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreateWithFlags_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020) {
-    return true;
-  }
-
-  return false;
-}
-
 void CuptiActivityProfiler::handleRuntimeActivity(
     const CUpti_ActivityAPI* activity,
     ActivityLogger* logger) {
-  if (isBlockListedRuntimeCbid(activity->cbid)) {
+  if (CuptiCbidRegistry::instance().isBlocklisted(
+          CallbackDomain::RUNTIME, activity->cbid)) {
     ecs_.blocklisted_runtime_events++;
     return;
   }

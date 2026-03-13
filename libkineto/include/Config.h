@@ -435,7 +435,7 @@ class Config : public AbstractConfig {
   // These settings can not be changed on-demand
   std::string eventLogFile_;
   std::vector<int> eventReportPercentiles_ = {5, 25, 50, 75, 95};
-  uint8_t eventProfilerDeviceMask_ = ~0;
+  uint8_t eventProfilerDeviceMask_ = static_cast<uint8_t>(~0);
   std::chrono::milliseconds multiplexPeriod_;
 
   // Activity profiler

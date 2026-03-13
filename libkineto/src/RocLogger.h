@@ -82,6 +82,10 @@ struct rocprofBase {
   uint64_t id; // correlation_id
   uint64_t begin;
   uint64_t end;
+  // Tracing domain/kind. Actual type depends on the code path:
+  // - rocprofiler-sdk callbacks: rocprofiler_callback_tracing_kind_t
+  // - rocprofiler-sdk buffer tracing (rocprofAsyncRow): rocprofiler_buffer_tracing_kind_t
+  // - roctracer fallback: activity_domain_t
   uint32_t domain;
   rocprof_activity_types type;
 };

@@ -74,9 +74,11 @@ std::function<time_t(approx_time_t)> ApproximateClockToUnixTimeConverter::
     auto dt_approx =
         static_cast<double>(start_times_[i].approx_t_ - t0_approx) *
         scale_factor;
-    t0_correction[i] = dt - static_cast<time_t>(dt_approx); // NOLINT
+    t0_correction[i] =
+        static_cast<double>(dt - static_cast<time_t>(dt_approx)); // NOLINT
   }
-  t0 += t0_correction[t0_correction.size() / 2 + 1]; // NOLINT
+  t0 += static_cast<time_t>(
+      t0_correction[t0_correction.size() / 2 + 1]); // NOLINT
 
   return [=](approx_time_t t_approx) {
     // See above for why this is more stable than `A * t_approx + B`.

@@ -24,6 +24,12 @@
 
 namespace KINETO_NAMESPACE {
 
+#if defined(HAS_CUPTI_RANGE_PROFILER)
+constexpr bool kHasCuptiRangeProfiler = true;
+#else
+constexpr bool kHasCuptiRangeProfiler = false;
+#endif
+
 using CuptiProfilerPrePostCallback = std::function<void(void)>;
 
 /* Activity Profiler session encapsulates the CUPTI Range based Profiler

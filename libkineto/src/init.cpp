@@ -152,19 +152,15 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
 #endif
 
 #ifdef HAS_CUPTI
-  bool initRangeProfiler = true;
-
   if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
     bool success = setupCuptiInitCallback(logOnError);
     cpuOnly = !success;
-    initRangeProfiler = success;
-  }
-
-  // Initialize CUPTI Range Profiler API
-  // Note: the following is a no-op if Range Profiler is not supported
-  // currently it is only enabled in fbcode.
-  if (!cpuOnly && initRangeProfiler) {
-    rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
+    // Initialize CUPTI Range Profiler API
+    if constexpr (kHasCuptiRangeProfiler) {
+      if (success) {
+        rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
+      }
+    }
   }
 
   if (!cpuOnly && shouldPreloadCuptiInstrumentation()) {

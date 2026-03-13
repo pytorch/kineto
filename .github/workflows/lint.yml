@@ -6,6 +6,7 @@ on:
 # Linting is separate from tests - this only checks code formatting
 jobs:
   lint:
+    if: false # TODO: Temporarily disabled until lintrunner issues are resolved
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

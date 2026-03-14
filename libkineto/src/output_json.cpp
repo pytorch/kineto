@@ -81,7 +81,7 @@ inline int64_t transToRelativeTime(int64_t time) {
 }
 
 void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
-  // Replace all backslashes with forward slash because Windows paths causing
+  // Replace all backslashes with forward slash because Windows paths cause
   // JSONDecodeError.
   std::replace(value.begin(), value.end(), '\\', '/');
   // Remove all new line characters
@@ -122,7 +122,7 @@ void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (const auto& [k, v] : metadata) {
     std::string sanitizedValue = v;
-    // There is a seperate mechanism for recording distributedInfo in on-demand
+    // There is a separate mechanism for recording distributedInfo in on-demand
     // so add a guard to prevent "double counting" in auto-trace.
     if (k == "distributedInfo") {
       distInfo_.distInfo_present_ = true;
@@ -287,7 +287,7 @@ void ChromeTraceLogger::handleOverheadInfo(
     return;
   }
 
-  // TOOD: reserve pid = -1 for overhead but we need to rethink how to scale
+  // TODO: reserve pid = -1 for overhead but we need to rethink how to scale
   // this for other metadata
   // clang-format off
   time = transToRelativeTime(time);
@@ -666,7 +666,7 @@ void ChromeTraceLogger::handleLink(
     return;
   }
 
-  // Flow events much bind to specific slices in order to exist.
+  // Flow events must bind to specific slices in order to exist.
   // Only Flow end needs to specify a binding point to enclosing slice.
   // Flow start automatically sets binding point to enclosing slice.
   const auto binding = (type == kFlowEnd) ? R"(, "bp": "e")" : "";

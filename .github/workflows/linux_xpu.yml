@@ -20,7 +20,8 @@ jobs:
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
       job-name: linux-xpu-build-and-test
-      runner: linux.idc.xpu
+      #runner: linux.idc.xpu
+      runner: dut7360_pvc_card_0
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules
       repository: ${{ github.repository }}

@@ -7,6 +7,7 @@
  */
 
 #include "XpuptiActivityProfilerSession.h"
+#include "output_json.h"
 
 #include <iterator>
 #include <type_traits>
@@ -77,15 +78,6 @@ inline std::string handleToHexString(ze_handle_type handle) {
   return fmt::format("0x{:016x}", reinterpret_cast<uintptr_t>(handle));
 }
 
-// FIXME: Deprecate this method while activity._sycl_queue_id got correct IDs
-// from PTI
-inline int64_t XpuptiActivityProfilerSession::getMappedQueueId(
-    uint64_t sycl_queue_id) {
-  auto [it, inserted] =
-      sycl_queue_pool_.insert({sycl_queue_id, sycl_queue_pool_.size()});
-  return it->second;
-}
-
 inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
     const pti_view_record_external_correlation* correlation) {
   switch (correlation->_external_kind) {
@@ -126,6 +118,10 @@ inline std::string memcpyName(
       ptiViewMemoryTypeToString(dst));
 }
 
+inline std::string memsetName(pti_view_memory_type type, uint64_t val) {
+  return fmt::format("Memset ({} -> {})", val, ptiViewMemoryTypeToString(type));
+}
+
 template <class pti_view_memory_record_type>
 inline std::string bandwidth(pti_view_memory_record_type* activity) {
   auto duration = activity->_end_timestamp - activity->_start_timestamp;
@@ -144,6 +140,31 @@ void XpuptiActivityProfilerSession::addResouceInfo(
           }) == resourceInfo_.end()) {
     resourceInfo_.emplace_back(device_id, sycl_queue_id);
   }
+}
+
+template <class T>
+inline std::string formatTimeLikeOutputJson(T time) {
+  return fmt::format("{}.{:03}", time / 1000, abs(time) % 1000);
+}
+
+inline int64_t signedFromUnsignedDiff(uint64_t time, uint64_t time_ref) {
+  if (time >= time_ref) {
+    return static_cast<int64_t>(time - time_ref);
+  } else {
+    return -static_cast<int64_t>(time_ref - time);
+  }
+}
+
+static void addTimestampMetadata(
+    GenericTraceActivity* trace_activity,
+    std::string&& label,
+    uint64_t time,
+    uint64_t time_ref) {
+  trace_activity->addMetadataQuoted(
+      label, formatTimeLikeOutputJson(transToRelativeTime(time)));
+  label += "_rel_to_start";
+  trace_activity->addMetadataQuoted(
+      label, formatTimeLikeOutputJson(signedFromUnsignedDiff(time, time_ref)));
 }
 
 template <class pti_view_memory_record_type>
@@ -181,8 +202,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     traceBuffer_.emplace_activity(
         traceBuffer_.span,
         activityType,
-        fmt::format(
-            "Memset ({})", ptiViewMemoryTypeToString(activity->_mem_type)));
+        memsetName(activity->_mem_type, activity->_value_for_set));
   }
 
   auto& trace_activity = traceBuffer_.activities.back();
@@ -202,7 +222,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
         (correlateRuntimeOps_.count(trace_activity->name()) > 0);
   } else {
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
-    trace_activity->resource = getMappedQueueId(activity->_sycl_queue_id);
+    trace_activity->resource = activity->_sycl_queue_id;
     trace_activity->flow.start = 0;
 
     addResouceInfo(trace_activity->device, trace_activity->resource);
@@ -213,8 +233,28 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   }
 
   if constexpr (!handleRuntimeActivities) {
-    trace_activity->addMetadata("appended", activity->_append_timestamp);
-    trace_activity->addMetadata("submitted", activity->_submit_timestamp);
+    addTimestampMetadata(
+        trace_activity.get(),
+        "appended",
+        activity->_append_timestamp,
+        activity->_start_timestamp);
+    addTimestampMetadata(
+        trace_activity.get(),
+        "submitted",
+        activity->_submit_timestamp,
+        activity->_start_timestamp);
+    if constexpr (handleKernelActivities) {
+      addTimestampMetadata(
+          trace_activity.get(),
+          "sycl_task_begin",
+          activity->_sycl_task_begin_timestamp,
+          activity->_start_timestamp);
+      addTimestampMetadata(
+          trace_activity.get(),
+          "sycl_enqk_begin",
+          activity->_sycl_enqk_begin_timestamp,
+          activity->_start_timestamp);
+    }
     trace_activity->addMetadata("device", trace_activity->deviceId());
     trace_activity->addMetadataQuoted(
         "context", handleToHexString(activity->_context_handle));
@@ -226,7 +266,16 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->addMetadata("correlation", activity->_correlation_id);
 
   if constexpr (handleKernelActivities) {
+    if (activity->_source_file_name) {
+      trace_activity->addMetadataQuoted(
+          "source_file_name", activity->_source_file_name);
+      trace_activity->addMetadata(
+          "source_line_number", activity->_source_line_number);
+    }
     trace_activity->addMetadata("kernel_id", activity->_kernel_id);
+    trace_activity->addMetadata("sycl_node_id", activity->_sycl_node_id);
+    trace_activity->addMetadata(
+        "sycl_invocation_id", activity->_sycl_invocation_id);
   } else if constexpr (handleMemcpyActivities || handleMemsetActivities) {
     trace_activity->addMetadata("memory opration id", activity->_mem_op_id);
     trace_activity->addMetadata("bytes", activity->_bytes);

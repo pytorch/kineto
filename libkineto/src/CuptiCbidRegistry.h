@@ -80,21 +80,21 @@ class CuptiCbidRegistry {
   };
 
   // Register a callback ID
-  void registerCallback(CallbackDomain domain, uint32_t cbid, bool requiresFlowCorrelation, bool isBlocklisted);
+  void registerCbid(CallbackDomain domain, uint32_t cbid, bool requiresFlowCorrelation, bool isBlocklisted);
 
   // Register a callback ID with a name
-  void registerCallback(CallbackDomain domain,
-                        uint32_t cbid,
-                        bool requiresFlowCorrelation,
-                        bool isBlocklisted,
-                        const std::string& name);
+  void registerCbid(CallbackDomain domain,
+                    uint32_t cbid,
+                    bool requiresFlowCorrelation,
+                    bool isBlocklisted,
+                    const std::string& name);
 
   // Register a range of callback IDs
-  void registerCallbackRange(CallbackDomain domain,
-                             uint32_t startCbid,
-                             uint32_t endCbid,
-                             bool requiresFlowCorrelation,
-                             bool isBlocklisted);
+  void registerCbidRange(CallbackDomain domain,
+                         uint32_t startCbid,
+                         uint32_t endCbid,
+                         bool requiresFlowCorrelation,
+                         bool isBlocklisted);
 
   // Storage per domain
   std::unordered_map<uint32_t, CbidProperties> runtimeCallbacks_;

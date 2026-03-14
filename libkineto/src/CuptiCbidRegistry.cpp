@@ -29,7 +29,7 @@ CuptiCbidRegistry::getMapForDomain(CallbackDomain domain) {
   }
 }
 
-void CuptiCbidRegistry::registerCallback(
+void CuptiCbidRegistry::registerCbid(
     CallbackDomain domain,
     uint32_t cbid,
     bool requiresFlowCorrelation,
@@ -38,7 +38,7 @@ void CuptiCbidRegistry::registerCallback(
       CbidProperties{requiresFlowCorrelation, isBlocklisted, {}};
 }
 
-void CuptiCbidRegistry::registerCallback(
+void CuptiCbidRegistry::registerCbid(
     CallbackDomain domain,
     uint32_t cbid,
     bool requiresFlowCorrelation,
@@ -48,7 +48,7 @@ void CuptiCbidRegistry::registerCallback(
       CbidProperties{requiresFlowCorrelation, isBlocklisted, name};
 }
 
-void CuptiCbidRegistry::registerCallbackRange(
+void CuptiCbidRegistry::registerCbidRange(
     CallbackDomain domain,
     uint32_t startCbid,
     uint32_t endCbid,
@@ -63,19 +63,19 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
   // =========================================================================
   // RUNTIME API - Kernel Launches
   // =========================================================================
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
       /*requiresFlowCorrelation=*/true,
       /*isBlocklisted=*/false);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
       /*requiresFlowCorrelation=*/true,
       /*isBlocklisted=*/false);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000,
@@ -83,7 +83,7 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
       /*isBlocklisted=*/false);
 
 #if defined(CUPTI_API_VERSION) && CUPTI_API_VERSION >= 18
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060,
       /*requiresFlowCorrelation=*/true,
@@ -93,7 +93,7 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
   // =========================================================================
   // RUNTIME API - CUDA Graph Operations
   // =========================================================================
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaGraphLaunch_v10000,
       /*requiresFlowCorrelation=*/true,
@@ -102,19 +102,19 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
   // =========================================================================
   // RUNTIME API - Synchronization Operations
   // =========================================================================
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaStreamSynchronize_v3020,
       /*requiresFlowCorrelation=*/true,
       /*isBlocklisted=*/false);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaDeviceSynchronize_v3020,
       /*requiresFlowCorrelation=*/true,
       /*isBlocklisted=*/false);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaStreamWaitEvent_v3020,
       /*requiresFlowCorrelation=*/true,
@@ -123,7 +123,7 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
   // =========================================================================
   // RUNTIME API - Memory Operations (range-based)
   // =========================================================================
-  registerCallbackRange(
+  registerCbidRange(
       /*domain=*/CallbackDomain::RUNTIME,
       /*startCbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
       /*endCbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaMemset2DAsync_v3020,
@@ -133,37 +133,37 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
   // =========================================================================
   // RUNTIME API - Blocklisted (noisy) Callbacks
   // =========================================================================
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/true);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/true);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/true);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaEventCreate_v3020,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/true);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaEventCreateWithFlags_v3020,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/true);
 
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::RUNTIME,
       /*cbid=*/CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020,
       /*requiresFlowCorrelation=*/false,
@@ -172,51 +172,51 @@ CuptiCbidRegistry::CuptiCbidRegistry() {
   // =========================================================================
   // DRIVER API - Kernel Launches
   // =========================================================================
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel,
       /*requiresFlowCorrelation=*/true,
       /*isBlocklisted=*/false,
       /*name=*/"cuLaunchKernel");
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 11060
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuLaunchKernelEx,
       /*requiresFlowCorrelation=*/true,
       /*isBlocklisted=*/false,
       /*name=*/"cuLaunchKernelEx");
 #endif
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemCreate,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/false,
       /*name=*/"cuMemCreate");
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemMap,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/false,
       /*name=*/"cuMemMap");
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemUnmap,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/false,
       /*name=*/"cuMemUnmap");
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemRelease,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/false,
       /*name=*/"cuMemRelease");
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemExportToShareableHandle,
       /*requiresFlowCorrelation=*/false,
       /*isBlocklisted=*/false,
       /*name=*/"cuMemExportToShareableHandle");
-  registerCallback(
+  registerCbid(
       /*domain=*/CallbackDomain::DRIVER,
       /*cbid=*/CUPTI_DRIVER_TRACE_CBID_cuMemImportFromShareableHandle,
       /*requiresFlowCorrelation=*/false,

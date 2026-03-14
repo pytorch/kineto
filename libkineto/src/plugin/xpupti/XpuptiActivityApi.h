@@ -32,8 +32,8 @@ class XpuptiActivityApi {
 
   static XpuptiActivityApi& singleton();
 
-  static void pushCorrelationID(int id, CorrelationFlowType type);
-  static void popCorrelationID(CorrelationFlowType type);
+  void pushCorrelationID(int id, CorrelationFlowType type);
+  void popCorrelationID(CorrelationFlowType type);
 
   void enableXpuptiActivities(const std::set<ActivityType>& selected_activities);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);

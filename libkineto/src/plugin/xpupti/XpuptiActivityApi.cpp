@@ -160,7 +160,7 @@ void XpuptiActivityApi::bufferCompletedTrampoline(
 
 void XpuptiActivityApi::bufferCompleted(
     uint8_t* buffer,
-    [[maybe_unused]] size_t size,
+    size_t size,
     size_t validSize) {
   std::lock_guard<std::mutex> guard(mutex_);
   auto it = allocatedGpuTraceBuffers_.find(buffer);
@@ -174,8 +174,7 @@ void XpuptiActivityApi::bufferCompleted(
 }
 #endif
 
-#if PTI_VERSION_AT_LEAST(0, 12)
-#elif PTI_VERSION_AT_LEAST(0, 11)
+#if PTI_VERSION_AT_LEAST(0, 11)
 static void enableSpecifcRuntimeAPIsTracing() {
   constexpr const std::array<pti_api_id_runtime_sycl, 14>
       specifcRuntimeAPIsTracing = {
@@ -256,9 +255,6 @@ void XpuptiActivityApi::enableXpuptiActivities(
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
-
-      default:
-        break;
     }
   }
 #endif
@@ -299,9 +295,6 @@ void XpuptiActivityApi::disablePtiActivities(
 
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
-        break;
-
-      default:
         break;
     }
   }

@@ -270,7 +270,7 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
   overhead_activity->addMetadataQuoted(
       "overhead occupancy",
       fmt::format(
-          "{}%",
+          "{}\%",
           activity->_overhead_duration_ns / overhead_activity->duration()));
   overhead_activity->addMetadata("overhead count", activity->_overhead_count);
 

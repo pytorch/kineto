@@ -21,7 +21,8 @@ class XpuptiActivityApiV2;
 class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
  public:
   XpuptiActivityProfilerSessionV2(
-      XpuptiActivityApiV2& xpti,
+      XpuptiActivityApi& xpti,
+      XpuptiActivityApiV2& xptiV2,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);

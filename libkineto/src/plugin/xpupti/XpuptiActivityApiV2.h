@@ -20,7 +20,7 @@ namespace KINETO_NAMESPACE {
 
 class Config;
 
-class XpuptiActivityApiV2 : public XpuptiActivityApi {
+class XpuptiActivityApiV2 {
  public:
   XpuptiActivityApiV2() = default;
   XpuptiActivityApiV2(const XpuptiActivityApiV2&) = delete;

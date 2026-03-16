@@ -15,11 +15,12 @@
 namespace KINETO_NAMESPACE {
 
 XpuptiActivityProfilerSessionV2::XpuptiActivityProfilerSessionV2(
+    XpuptiActivityApi& xpti,
     XpuptiActivityApiV2& xptiV2,
     const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
-    : XpuptiActivityProfilerSession(xptiV2, name, config, activity_types),
+    : XpuptiActivityProfilerSession(xpti, name, config, activity_types),
       xptiV2_(xptiV2) {
   scopeProfilerEnabled_ =
       activity_types.count(ActivityType::XPU_SCOPE_PROFILER) > 0;

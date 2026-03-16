@@ -27,10 +27,6 @@ XpuptiActivityApiV2& XpuptiActivityApiV2::singleton() {
   return instance;
 }
 
-XpuptiActivityApi& XpuptiActivityApi::singleton() {
-  return XpuptiActivityApiV2::singleton();
-}
-
 XpuptiActivityApiV2::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
     : exceptFromDestructor_(exceptFromDestructor) {

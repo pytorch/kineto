@@ -14,13 +14,10 @@ namespace KINETO_NAMESPACE {
 
 constexpr size_t kBufSize(4 * 1024 * 1024);
 
-#if PTI_VERSION_AT_LEAST(0, 15)
-#else
 XpuptiActivityApi& XpuptiActivityApi::singleton() {
   static XpuptiActivityApi instance;
   return instance;
 }
-#endif
 
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI

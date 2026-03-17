@@ -43,6 +43,9 @@ DESELECTED_TESTS=(
   # https://github.com/pytorch/kineto/issues/1253
   test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
 
+  # https://github.com/pytorch/kineto/issues/1308
+  test/profiler/test_profiler.py::TestProfiler::test_record_function_fast
+
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
   test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
   test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args

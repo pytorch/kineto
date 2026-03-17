@@ -27,9 +27,9 @@ export BUILD_TEST=1
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #
-# TODO: Dynamically add/remove tests to the exclusion list based on their
-# status on trunk instead of maintaining a hardcoded list of known failures.
-# This will prevent the list from becoming stale as tests get fixed upstream.
+# Dynamic skipping of known-broken/flaky upstream tests is handled via
+# DISABLED_TESTS_FILE in pytorch_build_test.sh. The hardcoded list below
+# supplements it for tests not yet tracked upstream.
 
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(

@@ -45,19 +45,21 @@ using namespace std::chrono;
 namespace KINETO_NAMESPACE {
 
 #if !USE_GOOGLE_LOG
-static std::shared_ptr<LoggerCollector>& loggerCollectorFactory() {
-  static std::shared_ptr<LoggerCollector> factory = nullptr;
-  return factory;
+namespace {
+std::vector<std::shared_ptr<LoggerCollector>>& loggerCollectors() {
+  static std::vector<std::shared_ptr<LoggerCollector>> collectors;
+  return collectors;
 }
+} // namespace
 
-void ActivityProfilerController::setLoggerCollectorFactory(
+void ActivityProfilerController::addLoggerCollectorFactory(
     const std::function<std::shared_ptr<LoggerCollector>()>& factory) {
-  loggerCollectorFactory() = factory();
+  loggerCollectors().push_back(factory());
 }
 
-std::shared_ptr<LoggerCollector> ActivityProfilerController::
-    getLoggerCollector() {
-  return loggerCollectorFactory();
+std::vector<std::shared_ptr<LoggerCollector>> ActivityProfilerController::
+    getLoggerCollectors() {
+  return loggerCollectors();
 }
 #endif // !USE_GOOGLE_LOG
 
@@ -69,13 +71,12 @@ ActivityProfilerController::ActivityProfilerController(
   ChromeTraceBaseTime::singleton().init();
 
 #if !USE_GOOGLE_LOG
-  // Initialize LoggerCollector before ActivityProfiler to log
+  // Initialize LoggerCollectors before ActivityProfiler to log
   // CUPTI and CUDA driver versions.
-  if (loggerCollectorFactory()) {
-    // Keep a reference to the logger collector factory to handle safe
-    // static de-initialization.
-    loggerCollectorFactory_ = loggerCollectorFactory();
-    Logger::addLoggerObserver(loggerCollectorFactory_.get());
+  // Keep a reference to handle safe static de-initialization.
+  loggerCollectors_ = loggerCollectors();
+  for (auto& collector : loggerCollectors_) {
+    Logger::addLoggerObserver(collector.get());
   }
 #endif // !USE_GOOGLE_LOG
 
@@ -109,8 +110,8 @@ ActivityProfilerController::~ActivityProfilerController() {
   }
 
 #if !USE_GOOGLE_LOG
-  if (loggerCollectorFactory()) {
-    Logger::removeLoggerObserver(loggerCollectorFactory_.get());
+  for (auto& collector : loggerCollectors_) {
+    Logger::removeLoggerObserver(collector.get());
   }
 #endif // !USE_GOOGLE_LOG
 }

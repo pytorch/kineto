@@ -239,7 +239,8 @@ target_link_libraries(kineto_base PRIVATE dynolog_ipcfabric_lib)
 
 target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>
+      $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>)
+target_include_directories(kineto_base SYSTEM PUBLIC
       $<BUILD_INTERFACE:${DYNOLOG_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
@@ -272,6 +273,13 @@ if(BUILD_SHARED_LIBS)
   set_property(TARGET kineto_base PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_property(TARGET kineto_api PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_target_properties(kineto PROPERTIES CXX_VISIBILITY_PRESET hidden)
+endif()
+
+# Strict, pedantic compilation with warnings-as-errors.
+# Only enabled for platforms covered by Kineto's CI (CPU-only, CUDA, ROCm on
+# Linux). Disabled for Windows, macOS, and XPU builds which lack CI coverage.
+if(NOT WIN32 AND NOT APPLE AND NOT (DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI))
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Werror")
 endif()
 
 set_target_properties(kineto kineto_base kineto_api PROPERTIES

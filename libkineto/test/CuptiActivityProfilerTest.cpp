@@ -52,6 +52,8 @@ static constexpr auto kGroupSize = "Group size";
 static constexpr const char* kProcessGroupName = "Process Group Name";
 static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
+static constexpr auto kSeqNum = "Seq";
+static constexpr const char* kCommsId = "Comms Id";
 static constexpr int32_t kTruncatLength = 30;
 
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
@@ -234,7 +236,7 @@ struct MockCuptiActivityBuffer {
 class MockCuptiActivities : public CuptiActivityApi {
  public:
   const std::pair<int, size_t> processActivities(
-      CuptiActivityBufferMap& /*unused*/, /*unused*/
+      [[maybe_unused]] CuptiActivityBufferMap& bufferMap,
       const std::function<void(const CUpti_Activity*)>& handler) override {
     for (CUpti_Activity* act : activityBuffer->activities) {
       handler(act);
@@ -663,6 +665,8 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   metadataMap.emplace(kGroupSize, "2");
   metadataMap.emplace(kProcessGroupName, fmt::format("\"{}\"", "12341234"));
   metadataMap.emplace(kProcessGroupDesc, fmt::format("\"{}\"", "test_purpose"));
+  metadataMap.emplace(kSeqNum, "4242424242");
+  metadataMap.emplace(kCommsId, "12345678");
 
   std::vector<int64_t> inSplitSizes(50, 0);
   std::string inSplitSizesStr;
@@ -804,6 +808,10 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   EXPECT_EQ(2, countSubstrings(jsonString, "test_purpose"));
   EXPECT_EQ(2, countSubstrings(jsonString, kGroupRanks));
   EXPECT_EQ(2, countSubstrings(jsonString, expectedGroupRanksStr));
+  EXPECT_EQ(2, countSubstrings(jsonString, kSeqNum));
+  EXPECT_EQ(2, countSubstrings(jsonString, "4242424242"));
+  EXPECT_EQ(2, countSubstrings(jsonString, kCommsId));
+  EXPECT_EQ(2, countSubstrings(jsonString, "12345678"));
 #endif
 }
 
@@ -964,7 +972,7 @@ TEST_F(CuptiActivityProfilerTest, BufferSizeLimitTestWarmup) {
   profiler.configure(*cfg_, now);
   EXPECT_TRUE(profiler.isActive());
 
-  for (size_t i = 0; i < maxBufferSizeMB; i++) {
+  for (int i = 0; i < maxBufferSizeMB; i++) {
     uint8_t* buf;
     size_t gpuBufferSize;
     size_t maxNumRecords;

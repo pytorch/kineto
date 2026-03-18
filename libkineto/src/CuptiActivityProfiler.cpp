@@ -17,6 +17,7 @@
 #include "Config.h"
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
+#include "CuptiCbidRegistry.h"
 #include "Demangle.h"
 #include "DeviceUtil.h"
 #include "KernelRegistry.h"
@@ -170,7 +171,7 @@ void CuptiActivityProfiler::onResetTraceData() {
 }
 
 void CuptiActivityProfiler::onFinalizeTrace(
-    const Config& config,
+    [[maybe_unused]] const Config& config,
     ActivityLogger& logger) {
   // Overhead info
   overheadInfo_.emplace_back("CUPTI Overhead");
@@ -220,27 +221,11 @@ inline void CuptiActivityProfiler::handleCorrelationActivity(
   }
 }
 
-inline static bool isBlockListedRuntimeCbid(CUpti_CallbackId cbid) {
-  // Some CUDA calls that are very frequent and also not very interesting.
-  // Filter these out to reduce trace size.
-  if (cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaSetDevice_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaGetLastError_v3020 ||
-      // Support cudaEventRecord and cudaEventSynchronize, revisit if others
-      // are needed
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreate_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventCreateWithFlags_v3020 ||
-      cbid == CUPTI_RUNTIME_TRACE_CBID_cudaEventDestroy_v3020) {
-    return true;
-  }
-
-  return false;
-}
-
 void CuptiActivityProfiler::handleRuntimeActivity(
     const CUpti_ActivityAPI* activity,
     ActivityLogger* logger) {
-  if (isBlockListedRuntimeCbid(activity->cbid)) {
+  if (CuptiCbidRegistry::instance().isBlocklisted(
+          CallbackDomain::RUNTIME, activity->cbid)) {
     ecs_.blocklisted_runtime_events++;
     return;
   }
@@ -314,7 +299,7 @@ void CuptiActivityProfiler::handleOverheadActivity(
 static std::optional<WaitEventInfo> getWaitEventInfo(
     uint32_t ctx,
     uint32_t eventId) {
-  auto key = CtxEventPair{.ctx = ctx, .eventId = eventId};
+  auto key = CtxEventPair{ctx, eventId};
   auto it = waitEventMap().find(key);
   if (it != waitEventMap().end()) {
     return it->second;
@@ -332,10 +317,9 @@ void CuptiActivityProfiler::handleCudaEventActivity(
           << " contextId=" << activity->contextId;
 
   // Update the stream, corrID the cudaEvent was last recorded on
-  auto key =
-      CtxEventPair{.ctx = activity->contextId, .eventId = activity->eventId};
-  waitEventMap()[key] = WaitEventInfo{
-      .stream = activity->streamId, .correlationId = activity->correlationId};
+  auto key = CtxEventPair{activity->contextId, activity->eventId};
+  waitEventMap()[key] =
+      WaitEventInfo{activity->streamId, activity->correlationId};
 
   // Create and log the CUDA event activity
   const ITraceActivity* linked =
@@ -348,7 +332,7 @@ void CuptiActivityProfiler::handleCudaEventActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  if (int32_t(activity->streamId) != -1) {
+  if (static_cast<int32_t>(activity->streamId) != -1) {
     recordStream(device_id, activity->streamId, "");
   } else {
     recordDevice(device_id);
@@ -401,7 +385,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
           return;
         }
 
-        if (int32_t(activity->streamId) != -1) {
+        if (static_cast<int32_t>(activity->streamId) != -1) {
           recordStream(device_id, activity->streamId, "");
         } else {
           recordDevice(device_id);

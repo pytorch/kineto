@@ -33,7 +33,7 @@ constexpr char kEmptyTrace[] = "No Valid Trace Events (CPU/GPU) found. Outputtin
 
 namespace libkineto {
 
-enum LoggerOutputType { VERBOSE = 0, INFO = 1, WARNING = 2, STAGE = 3, ERROR = 4, ENUM_COUNT = 5 };
+enum LoggerOutputType { VERBOSE = 0, INFO = 1, WARNING = 2, STAGE = 3, ERROR = 4, USDT = 5, ENUM_COUNT = 6 };
 
 const char* toString(LoggerOutputType t);
 LoggerOutputType toLoggerOutputType(const std::string& str);
@@ -49,8 +49,8 @@ class ILoggerObserver {
   virtual void addDevice(const int64_t device) = 0;
   virtual void setTraceDurationMS(const int64_t duration) = 0;
   virtual void addEventCount(const int64_t count) = 0;
-  virtual void setTraceID(const std::string& /*unused*/) {}
-  virtual void setGroupTraceID(const std::string& /*unused*/) {}
+  virtual void setTraceID([[maybe_unused]] const std::string& traceID) {}
+  virtual void setGroupTraceID([[maybe_unused]] const std::string& groupTraceID) {}
   virtual void addDestination(const std::string& dest) = 0;
   virtual void setTriggerOnDemand() {}
   virtual void addMetadata(const std::string& key, const std::string& value) = 0;

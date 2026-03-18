@@ -28,8 +28,8 @@ class RocprofActivityApi;
 
 typedef uint64_t timestamp_t;
 
-static timestamp_t timespec_to_ns(const timespec& time) {
-  return ((timestamp_t)time.tv_sec * 1000000000) + time.tv_nsec;
+[[maybe_unused]] static timestamp_t timespec_to_ns(const timespec& time) {
+  return (static_cast<timestamp_t>(time.tv_sec) * 1000000000) + time.tv_nsec;
 }
 
 namespace RocLogger {
@@ -82,6 +82,10 @@ struct rocprofBase {
   uint64_t id; // correlation_id
   uint64_t begin;
   uint64_t end;
+  // Tracing domain/kind. Actual type depends on the code path:
+  // - rocprofiler-sdk callbacks: rocprofiler_callback_tracing_kind_t
+  // - rocprofiler-sdk buffer tracing (rocprofAsyncRow): rocprofiler_buffer_tracing_kind_t
+  // - roctracer fallback: activity_domain_t
   uint32_t domain;
   rocprof_activity_types type;
 };

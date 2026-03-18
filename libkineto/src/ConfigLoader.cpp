@@ -55,7 +55,7 @@ static bool hasOriginalSignalHandler() {
 #endif
 }
 
-static void handle_signal(int signal) {
+static void handle_signal([[maybe_unused]] int signal) {
 #ifdef __linux__
   if (signal == SIGUSR2) {
     ConfigLoader::instance().handleOnDemandSignal();
@@ -70,7 +70,7 @@ static void handle_signal(int signal) {
 #endif
 }
 
-static void setupSignalHandler(bool enableSigUsr2) {
+static void setupSignalHandler([[maybe_unused]] bool enableSigUsr2) {
 #ifdef __linux__
   if (enableSigUsr2) {
     struct sigaction act = {};
@@ -128,7 +128,7 @@ ConfigLoader& ConfigLoader::instance() {
 
 // return an empty string if polling gets any errors. Otherwise a config string.
 std::string ConfigLoader::readOnDemandConfigFromDaemon(
-    time_point<system_clock> now) {
+    [[maybe_unused]] time_point<system_clock> now) {
   if (!daemonConfigLoader_) {
     return "";
   }
@@ -251,7 +251,7 @@ void ConfigLoader::updateBaseConfig() {
 }
 
 void ConfigLoader::configureFromSignal(
-    time_point<system_clock> now,
+    [[maybe_unused]] time_point<system_clock> now,
     Config& config) {
   LOG(INFO) << "Received on-demand profiling signal, " << "reading config from "
             << kOnDemandConfigFile;

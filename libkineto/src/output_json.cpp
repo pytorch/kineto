@@ -49,6 +49,8 @@ static constexpr const std::string_view kOutTensorsStart =
 static constexpr const std::string_view kRank = "Rank";
 static constexpr const std::string_view kP2pSrc = "Src Rank";
 static constexpr const std::string_view kP2pDst = "Dst Rank";
+static constexpr const std::string_view kSeqNum = "Seq";
+static constexpr const std::string_view kCommsId = "Comms Id";
 
 #ifdef __linux__
 static constexpr std::string_view kDefaultLogFileFmt =
@@ -67,7 +69,7 @@ ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
 // while a double can only represent 15-16 digits. By using relative time,
 // other applications can accurately read the 'ts' field as a double.
 // Use the program loading time as the baseline time.
-inline int64_t transToRelativeTime(int64_t time) {
+int64_t transToRelativeTime(int64_t time) {
   // Sometimes after converting to relative time, it can be a few nanoseconds
   // negative. Since Chrome trace and json processing will throw a parser error,
   // guard this.
@@ -197,8 +199,8 @@ void ChromeTraceLogger::openTraceFile() {
 }
 
 void ChromeTraceLogger::finalizeMemoryTrace(
-    const std::string& /*unused*/,
-    const Config& /*unused*/) {
+    [[maybe_unused]] const std::string& url,
+    [[maybe_unused]] const Config& config) {
   LOG(INFO) << "finalizeMemoryTrace not implemented for ChromeTraceLogger";
 }
 
@@ -554,6 +556,23 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     if (!srcRank.empty()) {
       arg_values.append(fmt::format(", \"{}\": {}", kP2pSrc, srcRank));
     }
+    const auto& seqNum =
+        collectiveRecord->getMetadataValue(std::string(kSeqNum));
+    if (!seqNum.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(" \"{}\": {}", kSeqNum, seqNum));
+    }
+
+    const auto& commsId =
+        collectiveRecord->getMetadataValue(std::string(kCommsId));
+    if (!commsId.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(" \"{}\": {}", kCommsId, commsId));
+    }
 
     if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
       distInfo_.backend = "nccl";
@@ -621,9 +640,7 @@ void ChromeTraceLogger::handleGenericLink(const ITraceActivity& act) {
   static struct {
     int type;
     char name[16];
-  } flow_names[] = {
-      {.type = kLinkFwdBwd, .name = "fwdbwd"},
-      {.type = kLinkAsyncCpuGpu, .name = "ac2g"}};
+  } flow_names[] = {{kLinkFwdBwd, "fwdbwd"}, {kLinkAsyncCpuGpu, "ac2g"}};
   for (auto& flow : flow_names) {
     if (act.flowType() == flow.type) {
       // Link the activities via flow ID in source and destination.
@@ -665,8 +682,8 @@ void ChromeTraceLogger::handleLink(
 }
 
 void ChromeTraceLogger::finalizeTrace(
-    const Config& /*unused*/,
-    std::unique_ptr<ActivityBuffers> /*unused*/,
+    [[maybe_unused]] const Config& config,
+    [[maybe_unused]] std::unique_ptr<ActivityBuffers> buffers,
     int64_t endTime,
     std::unordered_map<std::string, std::vector<std::string>>& metadata) {
   finalizeTrace(endTime, metadata);

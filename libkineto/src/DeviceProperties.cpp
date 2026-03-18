@@ -51,7 +51,7 @@ static std::vector<gpuDeviceProp> createDeviceProps() {
     return {};
   }
   VLOG(0) << "Device count is " << device_count;
-  for (size_t i = 0; i < device_count; ++i) {
+  for (int i = 0; i < device_count; ++i) {
     gpuDeviceProp prop;
     error_id = gpuGetDeviceProperties(&prop, i);
     // Return empty vector if any device property fail to get.
@@ -133,7 +133,7 @@ const std::string& devicePropertiesJson() {
   return devicePropsJson;
 }
 
-int smCount(uint32_t deviceId) {
+int smCount([[maybe_unused]] uint32_t deviceId) {
 #if defined(HAS_CUPTI) || defined(HAS_ROCTRACER)
   const std::vector<gpuDeviceProp>& props = deviceProps();
   return deviceId >= props.size() ? 0 : props[deviceId].multiProcessorCount;
@@ -145,7 +145,7 @@ int smCount(uint32_t deviceId) {
 #ifdef HAS_CUPTI
 float blocksPerSm(const CUpti_ActivityKernelType& kernel) {
   return (kernel.gridX * kernel.gridY * kernel.gridZ) /
-      (float)smCount(kernel.deviceId);
+      static_cast<float>(smCount(kernel.deviceId));
 }
 
 float warpsPerSm(const CUpti_ActivityKernelType& kernel) {

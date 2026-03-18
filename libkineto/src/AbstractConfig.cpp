@@ -72,7 +72,7 @@ static inline string stripComment(const string& s) {
 
 string AbstractConfig::toLower(string& s) const {
   string res = s;
-  for (int i = 0; i < res.size(); i++) {
+  for (size_t i = 0; i < res.size(); i++) {
     if (res[i] >= 'A' && res[i] <= 'Z') {
       res[i] += ('a' - 'A');
     }
@@ -110,7 +110,8 @@ int64_t AbstractConfig::toIntRange(const string& val, int64_t min, int64_t max)
 }
 
 int32_t AbstractConfig::toInt32(const string& val) const {
-  return toIntRange(val, 0, std::numeric_limits<int32_t>::max());
+  return static_cast<int32_t>(
+      toIntRange(val, 0, std::numeric_limits<int32_t>::max()));
 }
 
 int64_t AbstractConfig::toInt64(const string& val) const {
@@ -121,7 +122,7 @@ bool AbstractConfig::toBool(string& val) const {
   const std::array<string, 10> bool_vals{
       "n", "y", "no", "yes", "f", "t", "false", "true", "0", "1"};
   const string lower_val = toLower(val);
-  for (int i = 0; i < bool_vals.size(); i++) {
+  for (size_t i = 0; i < bool_vals.size(); i++) {
     if (lower_val == bool_vals[i]) {
       return i % 2;
     }

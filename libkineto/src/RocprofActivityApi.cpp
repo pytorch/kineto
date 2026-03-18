@@ -57,7 +57,7 @@ void RocprofActivityApi::setMaxEvents(uint32_t maxEvents) {
   d->setMaxEvents(maxEvents);
 }
 
-void RocprofActivityApi::setMaxBufferSize(int size) {
+void RocprofActivityApi::setMaxBufferSize([[maybe_unused]] int size) {
   // FIXME: implement?
   // maxGpuBufferCount_ = 1 + size / kBufSize;
 }
@@ -125,11 +125,11 @@ int RocprofActivityApi::processActivities(
       filtered = true;
     } else {
       switch (reinterpret_cast<rocprofAsyncRow*>(item)->domain) {
-        case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
+        case ROCPROFILER_BUFFER_TRACING_MEMORY_COPY:
           if (!isLogged(ActivityType::GPU_MEMCPY))
             filtered = true;
           break;
-        case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
+        case ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH:
         default:
           if (!isLogged(ActivityType::CONCURRENT_KERNEL))
             filtered = true;

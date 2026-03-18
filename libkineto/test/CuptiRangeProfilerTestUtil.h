@@ -54,7 +54,7 @@ class MockCuptiRBProfilerSession : public CuptiRBProfilerSession {
   }
   void disable() override {}
 
-  CuptiProfilerResult evaluateMetrics(bool /*verbose*/) override {
+  CuptiProfilerResult evaluateMetrics([[maybe_unused]] bool verbose) override {
     return getResults()[deviceId()];
   }
 

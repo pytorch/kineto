@@ -521,25 +521,25 @@ CuptiProfilerResult evalMetricValues(
 #else
 
 bool getProfilerConfigImage(
-    const std::string& /*chipName*/,
-    const std::vector<std::string>& /*metricNames*/,
-    std::vector<uint8_t>& /*configImage*/,
-    const uint8_t* /*counterAvailabilityImage*/) {
+    [[maybe_unused]] const std::string& chipName,
+    [[maybe_unused]] const std::vector<std::string>& metricNames,
+    [[maybe_unused]] std::vector<uint8_t>& configImage,
+    [[maybe_unused]] const uint8_t* counterAvailabilityImage) {
   return false;
 }
 
 bool getCounterDataPrefixImage(
-    const std::string& /*chipName*/,
-    const std::vector<std::string>& /*metricNames*/,
-    std::vector<uint8_t>& /*counterDataImagePrefix*/) {
+    [[maybe_unused]] const std::string& chipName,
+    [[maybe_unused]] const std::vector<std::string>& metricNames,
+    [[maybe_unused]] std::vector<uint8_t>& counterDataImagePrefix) {
   return false;
 }
 
 CuptiProfilerResult evalMetricValues(
-    const std::string& /*chipName*/,
-    const std::vector<uint8_t>& /*counterDataImage*/,
-    const std::vector<std::string>& /*metricNames*/,
-    bool /*verbose*/) {
+    [[maybe_unused]] const std::string& chipName,
+    [[maybe_unused]] const std::vector<uint8_t>& counterDataImage,
+    [[maybe_unused]] const std::vector<std::string>& metricNames,
+    [[maybe_unused]] bool verbose) {
   return {};
 }
 

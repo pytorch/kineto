@@ -41,16 +41,16 @@ MockActivityProfiler::MockActivityProfiler(
     : test_activities_(activities) {}
 
 std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
-    const std::set<ActivityType>& /*activity_types*/,
-    const Config& /*config*/) {
+    [[maybe_unused]] const std::set<ActivityType>& activity_types,
+    [[maybe_unused]] const Config& config) {
   auto session = std::make_unique<MockProfilerSession>();
   session->set_test_activities(std::move(test_activities_));
   return session;
 }
 
 std::unique_ptr<IActivityProfilerSession> MockActivityProfiler::configure(
-    int64_t /*ts_ms*/,
-    int64_t /*duration_ms*/,
+    [[maybe_unused]] int64_t ts_ms,
+    [[maybe_unused]] int64_t duration_ms,
     const std::set<ActivityType>& activity_types,
     const Config& config) {
   return configure(activity_types, config);

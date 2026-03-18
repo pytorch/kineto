@@ -47,7 +47,7 @@ using steady_clock_t = std::conditional_t<std::chrono::high_resolution_clock::is
                                           std::chrono::high_resolution_clock,
                                           std::chrono::steady_clock>;
 
-inline time_t getTime(bool allow_monotonic = false) {
+inline time_t getTime([[maybe_unused]] bool allow_monotonic = false) {
 #if defined(_WIN32) || defined(__MACH__)
   return std::chrono::duration_cast<std::chrono::nanoseconds>(steady_clock_t::now().time_since_epoch()).count();
 #else

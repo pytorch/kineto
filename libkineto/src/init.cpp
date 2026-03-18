@@ -66,9 +66,9 @@ bool enableEventProfiler() {
 }
 
 static void initProfilersCallback(
-    CUpti_CallbackDomain /*domain*/,
-    CUpti_CallbackId /*cbid*/,
-    const CUpti_CallbackData* /*cbInfo*/) {
+    [[maybe_unused]] CUpti_CallbackDomain domain,
+    [[maybe_unused]] CUpti_CallbackId cbid,
+    [[maybe_unused]] const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context created";
   initProfilers();
 
@@ -134,7 +134,7 @@ static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
 using namespace KINETO_NAMESPACE;
 extern "C" {
 
-void libkineto_init(bool cpuOnly, bool logOnError) {
+void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
   // Start with initializing the log level
   const char* logLevelEnv = getenv("KINETO_LOG_LEVEL");
   if (logLevelEnv) {
@@ -152,19 +152,15 @@ void libkineto_init(bool cpuOnly, bool logOnError) {
 #endif
 
 #ifdef HAS_CUPTI
-  bool initRangeProfiler = true;
-
   if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
     bool success = setupCuptiInitCallback(logOnError);
     cpuOnly = !success;
-    initRangeProfiler = success;
-  }
-
-  // Initialize CUPTI Range Profiler API
-  // Note: the following is a no-op if Range Profiler is not supported
-  // currently it is only enabled in fbcode.
-  if (!cpuOnly && initRangeProfiler) {
-    rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
+    // Initialize CUPTI Range Profiler API
+    if constexpr (kHasCuptiRangeProfiler) {
+      if (success) {
+        rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
+      }
+    }
   }
 
   if (!cpuOnly && shouldPreloadCuptiInstrumentation()) {

@@ -94,9 +94,9 @@ class IActivityProfilerSession {
   virtual void processTrace(ActivityLogger& logger) = 0;
 
   virtual void processTrace(ActivityLogger& logger,
-                            getLinkedActivityCallback /*getLinkedActivity*/,
-                            int64_t /*startTime*/,
-                            int64_t /*endTime*/) {
+                            [[maybe_unused]] getLinkedActivityCallback getLinkedActivity,
+                            [[maybe_unused]] int64_t startTime,
+                            [[maybe_unused]] int64_t endTime) {
     processTrace(logger);
   }
 
@@ -112,10 +112,10 @@ class IActivityProfilerSession {
   // XXX define trace formats
   // virtual save(string name, TraceFormat format)
 
-  virtual void pushCorrelationId(uint64_t /*id*/) {}
+  virtual void pushCorrelationId([[maybe_unused]] uint64_t id) {}
   virtual void popCorrelationId() {}
 
-  virtual void pushUserCorrelationId(uint64_t /*id*/) {}
+  virtual void pushUserCorrelationId([[maybe_unused]] uint64_t id) {}
   virtual void popUserCorrelationId() {}
 
   virtual std::string getDeviceProperties() {

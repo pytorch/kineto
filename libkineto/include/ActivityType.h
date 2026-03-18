@@ -50,7 +50,8 @@ enum class ActivityType {
   PRIVATEUSE1_RUNTIME = 24, // host side privateUse1 runtime events
   PRIVATEUSE1_DRIVER = 25, // host side privateUse1 driver events
 
-  ENUM_COUNT = 26, // This is to add buffer and not used for any profiling logic. Add
+  ENUM_COUNT =
+      26, // This is to add buffer and not used for any profiling logic. Add
   // your new type before it.
   OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
 };
@@ -60,7 +61,8 @@ ActivityType toActivityType(const std::string& str);
 
 // Return an array of all activity types except COUNT
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;
-constexpr int defaultActivityTypeCount = (int)ActivityType::OPTIONAL_ACTIVITY_TYPE_START;
+constexpr int defaultActivityTypeCount =
+    (int)ActivityType::OPTIONAL_ACTIVITY_TYPE_START;
 std::array<ActivityType, activityTypeCount> activityTypes();
 std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
 

@@ -153,4 +153,6 @@ class ChromeTraceBaseTime {
   }
 };
 
+int64_t transToRelativeTime(int64_t time);
+
 } // namespace KINETO_NAMESPACE

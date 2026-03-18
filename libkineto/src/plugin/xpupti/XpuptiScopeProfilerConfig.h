@@ -26,8 +26,7 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
           fallbackProfileStartTime) override {}
 
   static XpuptiScopeProfilerConfig& get(const Config& cfg) {
-    return dynamic_cast<XpuptiScopeProfilerConfig&>(
-        cfg.feature(kXpuptiProfilerConfigName));
+    return dynamic_cast<XpuptiScopeProfilerConfig&>(cfg.feature(kXpuptiProfilerConfigName));
   }
 
   Config& parent() const {
@@ -68,8 +67,7 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
  private:
   XpuptiScopeProfilerConfig() = delete;
   explicit XpuptiScopeProfilerConfig(Config& parent) : parent_(&parent) {}
-  explicit XpuptiScopeProfilerConfig(const XpuptiScopeProfilerConfig& other) =
-      default;
+  explicit XpuptiScopeProfilerConfig(const XpuptiScopeProfilerConfig& other) = default;
 
   // some defaults will depend on other configuration
   void setDefaults();

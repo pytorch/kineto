@@ -39,6 +39,15 @@ fi
 python -m pip install --no-build-isolation -v -e .
 echo "====: Built PyTorch from source"
 
+# Download PyTorch's dynamic disabled tests list from S3. This is generated every
+# 15 minutes from DISABLED GitHub Issues in pytorch/pytorch, enabling automatic
+# skipping of known-broken/flaky tests without hardcoded deselections.
+# The function downloads, processes (converts format and filters re-enabled issues),
+# and caches the result to .pytorch-disabled-tests.json.
+python -c "from tools.stats.import_test_stats import get_disabled_tests; get_disabled_tests('.')"
+export DISABLED_TESTS_FILE=.pytorch-disabled-tests.json
+echo "====: Downloaded disabled tests list"
+
 # The deselected tests array is sourced from the architecture config above.
 DESELECT_ARGS=()
 for t in "${DESELECTED_TESTS[@]}"; do

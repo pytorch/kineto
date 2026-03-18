@@ -35,6 +35,7 @@ enum class ActivityType {
   MTIA_INSIGHT = 14, // MTIA Insight Events
   CUDA_SYNC = 15, // synchronization events between runtime and kernels
   CUDA_EVENT = 16, // CUDA event activities (cudaEventRecord, etc.)
+  MTIA_COUNTERS = 17, // MTIA hardware counter events (HBM, cache, DPE, SFU)
 
   // Optional Activity types
   GLOW_RUNTIME = 17, // host side glow runtime events

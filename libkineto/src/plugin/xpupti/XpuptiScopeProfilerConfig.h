@@ -22,12 +22,10 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
   bool handleOption(const std::string& name, std::string& val) override;
 
   void validate(
-      [[maybe_unused]] const std::chrono::time_point<std::chrono::system_clock>&
-          fallbackProfileStartTime) override {}
+      [[maybe_unused]] const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override {}
 
   static XpuptiScopeProfilerConfig& get(const Config& cfg) {
-    return dynamic_cast<XpuptiScopeProfilerConfig&>(
-        cfg.feature(kXpuptiProfilerConfigName));
+    return dynamic_cast<XpuptiScopeProfilerConfig&>(cfg.feature(kXpuptiProfilerConfigName));
   }
 
   Config& parent() const {
@@ -68,8 +66,7 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
  private:
   XpuptiScopeProfilerConfig() = delete;
   explicit XpuptiScopeProfilerConfig(Config& parent) : parent_(&parent) {}
-  explicit XpuptiScopeProfilerConfig(const XpuptiScopeProfilerConfig& other) =
-      default;
+  explicit XpuptiScopeProfilerConfig(const XpuptiScopeProfilerConfig& other) = default;
 
   // some defaults will depend on other configuration
   void setDefaults();

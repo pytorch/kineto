@@ -16,13 +16,13 @@
 
 namespace KINETO_NAMESPACE {
 
-class XpuptiActivityApiV2;
+class XpuptiScopeProfilerApi;
 
 class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
  public:
   XpuptiActivityProfilerSessionV2(
       XpuptiActivityApi& xpti,
-      XpuptiActivityApiV2& xptiV2,
+      XpuptiScopeProfilerApi& xptiScopeProf,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
@@ -45,7 +45,7 @@ class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
       ActivityLogger& logger);
 
  private:
-  XpuptiActivityApiV2& xptiV2_;
+  XpuptiScopeProfilerApi& xptiScopeProf_;
   bool scopeProfilerEnabled_{false};
 };
 

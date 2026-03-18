@@ -20,15 +20,15 @@ namespace KINETO_NAMESPACE {
 
 class Config;
 
-class XpuptiActivityApiV2 {
+class XpuptiScopeProfilerApi {
  public:
-  XpuptiActivityApiV2() = default;
-  XpuptiActivityApiV2(const XpuptiActivityApiV2&) = delete;
-  XpuptiActivityApiV2& operator=(const XpuptiActivityApiV2&) = delete;
+  XpuptiScopeProfilerApi() = default;
+  XpuptiScopeProfilerApi(const XpuptiScopeProfilerApi&) = delete;
+  XpuptiScopeProfilerApi& operator=(const XpuptiScopeProfilerApi&) = delete;
 
-  virtual ~XpuptiActivityApiV2() {}
+  virtual ~XpuptiScopeProfilerApi() {}
 
-  static XpuptiActivityApiV2& singleton();
+  static XpuptiScopeProfilerApi& singleton();
 
   void enableScopeProfiler(const Config&);
   void disableScopeProfiler();

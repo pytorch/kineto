@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiActivityApiV2.h"
+#include "XpuptiScopeProfilerApi.h"
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
@@ -22,18 +22,18 @@ namespace KINETO_NAMESPACE {
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
-XpuptiActivityApiV2& XpuptiActivityApiV2::singleton() {
-  static XpuptiActivityApiV2 instance;
+XpuptiScopeProfilerApi& XpuptiScopeProfilerApi::singleton() {
+  static XpuptiScopeProfilerApi instance;
   return instance;
 }
 
-XpuptiActivityApiV2::safe_pti_scope_collection_handle_t::
+XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
     : exceptFromDestructor_(exceptFromDestructor) {
   XPUPTI_CALL(ptiMetricsScopeEnable(&handle_));
 }
 
-XpuptiActivityApiV2::safe_pti_scope_collection_handle_t::
+XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
     ~safe_pti_scope_collection_handle_t() noexcept {
   try {
     XPUPTI_CALL(ptiMetricsScopeDisable(handle_));
@@ -42,7 +42,7 @@ XpuptiActivityApiV2::safe_pti_scope_collection_handle_t::
   }
 }
 
-void XpuptiActivityApiV2::enableScopeProfiler(const Config& cfg) {
+void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
 #ifdef HAS_XPUPTI
   uint32_t deviceCount = 0;
   XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount));
@@ -98,7 +98,7 @@ void XpuptiActivityApiV2::enableScopeProfiler(const Config& cfg) {
 #endif
 }
 
-void XpuptiActivityApiV2::disableScopeProfiler() {
+void XpuptiScopeProfilerApi::disableScopeProfiler() {
 #ifdef HAS_XPUPTI
   scopeHandleOpt_.reset();
   if (exceptFromScopeHandleDestructor_) {
@@ -107,7 +107,7 @@ void XpuptiActivityApiV2::disableScopeProfiler() {
 #endif
 }
 
-void XpuptiActivityApiV2::startScopeActivity() {
+void XpuptiScopeProfilerApi::startScopeActivity() {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStartCollection(*scopeHandleOpt_));
@@ -115,7 +115,7 @@ void XpuptiActivityApiV2::startScopeActivity() {
 #endif
 }
 
-void XpuptiActivityApiV2::stopScopeActivity() {
+void XpuptiScopeProfilerApi::stopScopeActivity() {
 #ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStopCollection(*scopeHandleOpt_));
@@ -127,7 +127,7 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
 
-void XpuptiActivityApiV2::processScopeTrace(
+void XpuptiScopeProfilerApi::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
         const pti_metrics_scope_record_metadata_t& metadata)> handler) {

@@ -7,8 +7,8 @@
  */
 
 #include "XpuptiActivityProfiler.h"
-#include "XpuptiActivityApiV2.h"
 #include "XpuptiActivityProfilerSessionV2.h"
+#include "XpuptiScopeProfilerApi.h"
 
 #include <fmt/ranges.h>
 #include <sycl/sycl.hpp>
@@ -68,7 +68,7 @@ std::unique_ptr<libkineto::IActivityProfilerSession> XPUActivityProfiler::
 #if PTI_VERSION_AT_LEAST(0, 15)
   return std::make_unique<XpuptiActivityProfilerSessionV2>(
       XpuptiActivityApi::singleton(),
-      XpuptiActivityApiV2::singleton(),
+      XpuptiScopeProfilerApi::singleton(),
       name(),
       config,
       activity_types);

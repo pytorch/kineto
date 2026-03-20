@@ -17,11 +17,11 @@ set(LINK_LIBRARIES
 
 add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
 target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE ${LINK_LIBRARIES})
-gtest_discover_tests(XpuptiScopeProfilerConfigTest)
+gtest_add_tests(TARGET XpuptiScopeProfilerConfigTest)
 
 add_executable(XpuptiActivityHandlersTest XpuptiActivityHandlersTest.cpp)
 target_link_libraries(XpuptiActivityHandlersTest PRIVATE ${LINK_LIBRARIES})
-gtest_discover_tests(XpuptiActivityHandlersTest)
+gtest_add_tests(TARGET XpuptiActivityHandlersTest)
 
 include(ExternalProject)
 

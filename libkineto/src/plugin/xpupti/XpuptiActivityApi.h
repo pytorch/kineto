@@ -28,7 +28,7 @@ class XpuptiActivityApi {
   XpuptiActivityApi(const XpuptiActivityApi&) = delete;
   XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
 
-  virtual ~XpuptiActivityApi() {}
+  ~XpuptiActivityApi() = default;
 
   static XpuptiActivityApi& singleton();
 
@@ -41,9 +41,9 @@ class XpuptiActivityApi {
   void clearActivities();
   void flushActivities();
 
-  virtual std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
+  std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
 
-  virtual const std::pair<int, int> processActivities(
+  const std::pair<int, int> processActivities(
       XpuptiActivityBufferMap&,
       std::function<void(const pti_view_record_base*)> handler);
 

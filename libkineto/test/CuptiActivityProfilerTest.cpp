@@ -182,14 +182,32 @@ struct MockCuptiActivityBuffer {
       int64_t end_ns,
       int64_t correlation,
       CUpti_ActivitySynchronizationType type,
-      int64_t stream = 1) {
+      int64_t stream = 1,
+      uint32_t cudaEventId = 0) {
     auto& act = createActivity<CUpti_ActivitySynchronization>(
         start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_SYNCHRONIZATION;
     act.type = type;
     act.contextId = 0;
     act.streamId = stream;
+    act.cudaEventId = cudaEventId;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
+  void addCudaEventActivity(
+      int64_t correlation,
+      uint32_t eventId,
+      uint32_t streamId = 1,
+      uint32_t contextId = 0) {
+    auto* act = static_cast<CUpti_ActivityCudaEventType*>(
+        malloc(sizeof(CUpti_ActivityCudaEventType)));
+    bzero(act, sizeof(CUpti_ActivityCudaEventType));
+    act->kind = CUPTI_ACTIVITY_KIND_CUDA_EVENT;
+    act->correlationId = correlation;
+    act->eventId = eventId;
+    act->streamId = streamId;
+    act->contextId = contextId;
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(act));
   }
 
   void addCollectiveActivity(
@@ -632,6 +650,101 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 #endif
+}
+
+// Test that wait_on_cuda_event_record_corr_id is populated even when
+// SYNCHRONIZATION records appear before their corresponding CUDA_EVENT records
+// in the CUPTI activity buffer (no ordering guarantee from CUPTI).
+TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
+  profiler.recordThreadInfo();
+
+  // CPU ops to provide correlation linkage
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_ns, start_time_ns + duration_ns);
+  cpuOps->addOp("op1", start_time_ns + 10, start_time_ns + 50, 1);
+  cpuOps->addOp("op_record", start_time_ns + 60, start_time_ns + 80, 100);
+  cpuOps->addOp("op_wait", start_time_ns + 90, start_time_ns + 110, 200);
+  cpuOps->addOp("op_evt_sync", start_time_ns + 120, start_time_ns + 140, 300);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  constexpr uint32_t kEventId = 7777;
+  constexpr uint32_t kRecordCorrId = 100;
+  constexpr uint32_t kWaitCorrId = 200;
+  constexpr uint32_t kEvtSyncCorrId = 300;
+
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  // A kernel on stream 1 so the stream is "seen" (needed for wait event logging)
+  gpuOps->addRuntimeActivity(
+      CUDA_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 20, 1);
+  gpuOps->addKernelActivity(start_time_ns + 30, start_time_ns + 50, 1);
+
+  // KEY: Place SYNCHRONIZATION records BEFORE the CUDA_EVENT record.
+  // This simulates the out-of-order delivery from CUPTI that caused the bug.
+
+  // Stream Wait Event (appears before CUDA_EVENT)
+  gpuOps->addSyncActivity(
+      start_time_ns + 100, start_time_ns + 110, kWaitCorrId,
+      CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      1 /*stream*/, kEventId);
+
+  // Event Synchronize (appears before CUDA_EVENT)
+  gpuOps->addSyncActivity(
+      start_time_ns + 120, start_time_ns + 140, kEvtSyncCorrId,
+      CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
+      -1 /*stream*/, kEventId);
+
+  // CUDA_EVENT record comes AFTER the sync records
+  gpuOps->addCudaEventActivity(
+      kRecordCorrId, kEventId, /*streamId=*/1, /*contextId=*/0);
+
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+
+  // Find the sync activities and check their metadata
+  int streamWaitFound = 0;
+  int eventSyncFound = 0;
+  for (auto& activity : *trace.activities()) {
+    std::string metadata = activity->metadataJson();
+    if (metadata.find("Stream Wait Event") != std::string::npos) {
+      auto json = nlohmann::json::parse("{" + metadata + "}");
+      EXPECT_EQ(json["wait_on_cuda_event_id"], kEventId)
+          << "Stream Wait Event should reference the correct event ID";
+      EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], kRecordCorrId)
+          << "Stream Wait Event corr_id should be populated despite out-of-order records";
+      EXPECT_EQ(json["wait_on_stream"], 1)
+          << "Stream Wait Event should reference stream the event was recorded on";
+      streamWaitFound++;
+    }
+    if (metadata.find("Event Sync") != std::string::npos) {
+      auto json = nlohmann::json::parse("{" + metadata + "}");
+      EXPECT_EQ(json["wait_on_cuda_event_id"], kEventId)
+          << "Event Sync should reference the correct event ID";
+      EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], kRecordCorrId)
+          << "Event Sync corr_id should be populated despite out-of-order records";
+      EXPECT_EQ(json["wait_on_stream"], 1)
+          << "Event Sync should reference stream the event was recorded on";
+      eventSyncFound++;
+    }
+  }
+  EXPECT_EQ(streamWaitFound, 1) << "Expected exactly one Stream Wait Event";
+  EXPECT_EQ(eventSyncFound, 1) << "Expected exactly one Event Sync";
 }
 
 TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {

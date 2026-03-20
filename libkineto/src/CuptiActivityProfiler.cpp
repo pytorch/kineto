@@ -360,21 +360,26 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  int32_t src_stream = -1;
-  int32_t src_corrid = -1;
-
-  if (isEventSync(activity->type)) {
-    auto maybe_wait_event_info =
-        getWaitEventInfo(activity->contextId, activity->cudaEventId);
-    if (maybe_wait_event_info) {
-      src_stream = maybe_wait_event_info->stream;
-      src_corrid = maybe_wait_event_info->correlationId;
-    }
-  }
+  auto ctx_id = activity->contextId;
+  auto event_id = activity->cudaEventId;
+  auto sync_type = activity->type;
 
   // Marshal the logging to a functor so we can defer it if needed.
+  // The waitEventMap() lookup is done inside the lambda so that for deferred
+  // events (Stream Wait Event, Event Synchronize) the lookup happens after all
+  // CUDA_EVENT records have been processed, fixing the ordering issue where
+  // SYNCHRONIZATION records could appear before their CUDA_EVENT counterparts.
   auto log_event =
-      [activity, src_stream, src_corrid, device_id, logger, this]() {
+      [activity, ctx_id, event_id, sync_type, device_id, logger, this]() {
+        int32_t src_stream = -1;
+        int32_t src_corrid = -1;
+        if (isEventSync(sync_type)) {
+          auto maybe_wait_event_info = getWaitEventInfo(ctx_id, event_id);
+          if (maybe_wait_event_info) {
+            src_stream = maybe_wait_event_info->stream;
+            src_corrid = maybe_wait_event_info->correlationId;
+          }
+        }
         const ITraceActivity* linked =
             linkedActivity(activity->correlationId, this->cpuCorrelationMap_);
         const auto& cuda_sync_activity =
@@ -397,12 +402,15 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
         setGpuActivityPresent(true);
       };
 
-  if (isWaitEventSync(activity->type)) {
-    // Defer logging wait event syncs till the end so we only
-    // log these events if a stream has some GPU kernels on it.
+  if (isEventSync(activity->type)) {
+    // Defer logging event syncs till the end so that:
+    // 1. The waitEventMap() lookup runs after all CUDA_EVENT records are
+    //    processed, ensuring wait_on_cuda_event_record_corr_id is populated.
+    // 2. Stream Wait Events are only logged if the stream has GPU activity.
     DeferredLogEntry entry;
     entry.device = device_id;
     entry.stream = activity->streamId;
+    entry.isWaitEvent = isWaitEventSync(activity->type);
     entry.logMe = log_event;
 
     logQueue_.push_back(entry);
@@ -414,11 +422,12 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
 void CuptiActivityProfiler::logDeferredEvents() {
   // Stream Wait Events tend to be noisy, only pass these events if
   // there was some GPU kernel/memcopy/memset observed on it in the trace
-  // window.
+  // window. Event Synchronize events are always logged.
   for (const auto& entry : logQueue_) {
-    if (seenDeviceStreams_.find({entry.device, entry.stream}) ==
-        seenDeviceStreams_.end()) {
-      VLOG(2) << "Skipping Event Sync as no kernels have run yet on stream = "
+    if (entry.isWaitEvent &&
+        seenDeviceStreams_.find({entry.device, entry.stream}) ==
+            seenDeviceStreams_.end()) {
+      VLOG(2) << "Skipping Stream Wait Event on unseen stream = "
               << entry.stream;
     } else {
       entry.logMe();

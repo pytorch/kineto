@@ -14,6 +14,7 @@
 #include <ctime>
 #include <fstream>
 #include <iterator>
+#include <sstream>
 #include "Config.h"
 #include "EnvMetadata.h"
 #include "TraceSpan.h"
@@ -395,6 +396,43 @@ void ChromeTraceLogger::handleGenericInstantEvent(
       op.metadataJson());
 }
 
+void ChromeTraceLogger::handleCounterEvent(
+    const libkineto::ITraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
+
+  std::stringstream args;
+  bool first = true;
+  for (const auto& [name, value] : op.counterValues()) {
+    if (!first) {
+      args << ", ";
+    }
+    args << fmt::format("\"{}\": {}", name, value);
+    first = false;
+  }
+
+  uint64_t ts = transToRelativeTime(op.timestamp());
+  fmt::print(
+      traceOf_,
+      R"JSON(
+  {{
+    "ph": "C", "cat": "{}", "name": "{}",
+    "pid": {}, "tid": {},
+    "ts": {}.{:03},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+      toString(op.type()),
+      op.name(),
+      op.deviceId(),
+      sanitizeTid(static_cast<int32_t>(op.resourceId())),
+      ts / 1000,
+      ts % 1000,
+      args.str());
+}
+
 void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
@@ -402,6 +440,11 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
   if (op.type() == ActivityType::CPU_INSTANT_EVENT) {
     handleGenericInstantEvent(op);
+    return;
+  }
+
+  if (op.type() == ActivityType::MTIA_COUNTERS) {
+    handleCounterEvent(op);
     return;
   }
 

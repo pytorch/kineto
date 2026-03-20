@@ -9,6 +9,8 @@
 #pragma once
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "ActivityType.h"
 
@@ -52,6 +54,12 @@ struct ITraceActivity {
   // @lint-ignore CLANGTIDY: clang-diagnostic-unused-parameter
   [[nodiscard]] virtual const std::string getMetadataValue([[maybe_unused]] const std::string& key) const {
     return "";
+  }
+  // Return typed counter values (name, value) for activities with
+  // floating-point metadata that should not be round-tripped through strings.
+  [[nodiscard]] virtual const std::vector<std::pair<std::string, double>>& counterValues() const {
+    static const std::vector<std::pair<std::string, double>> kEmpty;
+    return kEmpty;
   }
 
   static int64_t nsToUs(int64_t ns) {

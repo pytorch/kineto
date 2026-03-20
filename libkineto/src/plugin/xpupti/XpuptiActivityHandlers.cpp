@@ -316,7 +316,7 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   const auto record_name = getApiName(activity);
 
   traceBuffer_.span.opCount += 1;
-  traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::COLLECTIVE_COMM, record_name);
+  traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::XPU_SYNC, record_name);
   auto& synchronization_activity = *(traceBuffer_.activities.back());
 
   synchronization_activity.startTime = activity_record._start_timestamp;

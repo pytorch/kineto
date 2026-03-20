@@ -257,9 +257,11 @@ void XpuptiActivityApi::enableXpuptiActivities(
           LOG(WARNING) << "Failed to enable PTI_VIEW_COMMUNICATION: "
                        << ptiResultTypeToString(rc);
         }
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
         break;
       }
+      case ActivityType::XPU_SYNC:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+        break;
 #endif
 
       default:
@@ -313,9 +315,11 @@ void XpuptiActivityApi::disablePtiActivities(
           LOG(WARNING) << "Failed to disable PTI_VIEW_COMMUNICATION: "
                        << ptiResultTypeToString(rc);
         }
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
         break;
       }
+      case ActivityType::XPU_SYNC:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+        break;
 #endif
 
       default:

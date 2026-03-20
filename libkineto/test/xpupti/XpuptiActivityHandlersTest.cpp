@@ -77,7 +77,7 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
       int64_t windowStart = 0,
       int64_t windowEnd = 1000) {
     Config config;
-    std::set<ActivityType> activity_types = {ActivityType::COLLECTIVE_COMM};
+    std::set<ActivityType> activity_types = {ActivityType::COLLECTIVE_COMM, ActivityType::XPU_SYNC};
     auto session = std::make_unique<KN::XpuptiActivityProfilerSession>(
         mockApi_, "__test_profiler__", config, activity_types);
     session->processTrace(
@@ -175,7 +175,7 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityDeviceIsNegativeOne) {
 
   auto& activity = *traceBuffer->activities[0];
   EXPECT_EQ(activity.deviceId(), -1);
-  EXPECT_EQ(activity.type(), ActivityType::COLLECTIVE_COMM);
+  EXPECT_EQ(activity.type(), ActivityType::XPU_SYNC);
 }
 
 TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityMetadata) {
@@ -308,7 +308,7 @@ TEST_F(XpuptiActivityHandlersTest, MixedCommunicationAndSynchronization) {
 
   auto& sync_activity = *traceBuffer->activities[1];
   EXPECT_EQ(sync_activity.deviceId(), -1);
-  EXPECT_EQ(sync_activity.type(), ActivityType::COLLECTIVE_COMM);
+  EXPECT_EQ(sync_activity.type(), ActivityType::XPU_SYNC);
   EXPECT_EQ(
       sync_activity.getMetadataValue("Type"), "GPU_BARRIER_EXECUTION");
 }

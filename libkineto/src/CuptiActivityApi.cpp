@@ -108,7 +108,7 @@ static bool nextActivityRecord(
   return record != nullptr;
 }
 
-void CuptiActivityApi::setMaxBufferSize(int size) {
+void CuptiActivityApi::setMaxBufferSize(int64_t size) {
   maxGpuBufferCount_ = 1 + size / kBufSize;
 }
 

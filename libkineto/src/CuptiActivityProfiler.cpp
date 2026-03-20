@@ -105,7 +105,7 @@ void CuptiActivityProfiler::logGpuVersions() {
   addVersionMetadata("cuda_driver_version", std::to_string(cudaDriverVersion));
 }
 
-void CuptiActivityProfiler::setMaxGpuBufferSize(int size) {
+void CuptiActivityProfiler::setMaxGpuBufferSize(int64_t size) {
   cupti_.setMaxBufferSize(size);
 }
 

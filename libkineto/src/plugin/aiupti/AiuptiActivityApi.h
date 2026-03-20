@@ -36,7 +36,7 @@ class AiuptiActivityApi {
   virtual const std::pair<int, int> processActivities(AiuptiActivityBufferDeque&,
                                                       std::function<void(const Pti_Activity*)> handler);
 
-  void setMaxBufferSize(int size);
+  void setMaxBufferSize(int64_t size);
   // void setDeviceBufferSize(size_t size);
   // void setDeviceBufferPoolLimit(size_t limit);
 

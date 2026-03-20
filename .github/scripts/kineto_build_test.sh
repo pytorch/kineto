@@ -29,6 +29,6 @@ popd
 echo "====: Compiled shared libkineto"
 
 pushd build_static
-make test
+CTEST_OUTPUT_ON_FAILURE=1 make test
 popd
 echo "====: Ran static libkineto tests"

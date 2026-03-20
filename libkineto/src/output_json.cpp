@@ -14,6 +14,7 @@
 #include <ctime>
 #include <fstream>
 #include <iterator>
+#include <sstream>
 #include "Config.h"
 #include "EnvMetadata.h"
 #include "TraceSpan.h"
@@ -50,6 +51,7 @@ static constexpr const std::string_view kRank = "Rank";
 static constexpr const std::string_view kP2pSrc = "Src Rank";
 static constexpr const std::string_view kP2pDst = "Dst Rank";
 static constexpr const std::string_view kSeqNum = "Seq";
+static constexpr const std::string_view kCommsId = "Comms Id";
 
 #ifdef __linux__
 static constexpr std::string_view kDefaultLogFileFmt =
@@ -68,7 +70,7 @@ ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
 // while a double can only represent 15-16 digits. By using relative time,
 // other applications can accurately read the 'ts' field as a double.
 // Use the program loading time as the baseline time.
-inline int64_t transToRelativeTime(int64_t time) {
+int64_t transToRelativeTime(int64_t time) {
   // Sometimes after converting to relative time, it can be a few nanoseconds
   // negative. Since Chrome trace and json processing will throw a parser error,
   // guard this.
@@ -394,6 +396,43 @@ void ChromeTraceLogger::handleGenericInstantEvent(
       op.metadataJson());
 }
 
+void ChromeTraceLogger::handleCounterEvent(
+    const libkineto::ITraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
+
+  std::stringstream args;
+  bool first = true;
+  for (const auto& [name, value] : op.counterValues()) {
+    if (!first) {
+      args << ", ";
+    }
+    args << fmt::format("\"{}\": {}", name, value);
+    first = false;
+  }
+
+  uint64_t ts = transToRelativeTime(op.timestamp());
+  fmt::print(
+      traceOf_,
+      R"JSON(
+  {{
+    "ph": "C", "cat": "{}", "name": "{}",
+    "pid": {}, "tid": {},
+    "ts": {}.{:03},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+      toString(op.type()),
+      op.name(),
+      op.deviceId(),
+      sanitizeTid(static_cast<int32_t>(op.resourceId())),
+      ts / 1000,
+      ts % 1000,
+      args.str());
+}
+
 void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   if (!traceOf_) {
     return;
@@ -401,6 +440,11 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
   if (op.type() == ActivityType::CPU_INSTANT_EVENT) {
     handleGenericInstantEvent(op);
+    return;
+  }
+
+  if (op.type() == ActivityType::MTIA_COUNTERS) {
+    handleCounterEvent(op);
     return;
   }
 
@@ -562,6 +606,15 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         arg_values.append(",");
       }
       arg_values.append(fmt::format(" \"{}\": {}", kSeqNum, seqNum));
+    }
+
+    const auto& commsId =
+        collectiveRecord->getMetadataValue(std::string(kCommsId));
+    if (!commsId.empty()) {
+      if (!arg_values.empty()) {
+        arg_values.append(",");
+      }
+      arg_values.append(fmt::format(" \"{}\": {}", kCommsId, commsId));
     }
 
     if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {

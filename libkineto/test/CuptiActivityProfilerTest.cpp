@@ -652,10 +652,11 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 #endif
 }
 
-// Test that wait_on_cuda_event_record_corr_id is populated even when
-// SYNCHRONIZATION records appear before their corresponding CUDA_EVENT records
-// in the CUPTI activity buffer (no ordering guarantee from CUPTI).
+
 TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
+  // Test that wait_on_cuda_event_record_corr_id is populated even when
+  // SYNCHRONIZATION records appear before their corresponding CUDA_EVENT records
+  // in the CUPTI activity buffer (no ordering guarantee from CUPTI).
   std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 

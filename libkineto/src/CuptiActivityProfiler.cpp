@@ -365,10 +365,6 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   auto sync_type = activity->type;
 
   // Marshal the logging to a functor so we can defer it if needed.
-  // The waitEventMap() lookup is done inside the lambda so that for deferred
-  // events (Stream Wait Event, Event Synchronize) the lookup happens after all
-  // CUDA_EVENT records have been processed, fixing the ordering issue where
-  // SYNCHRONIZATION records could appear before their CUDA_EVENT counterparts.
   auto log_event =
       [activity, ctx_id, event_id, sync_type, device_id, logger, this]() {
         int32_t src_stream = -1;

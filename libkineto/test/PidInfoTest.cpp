@@ -25,8 +25,9 @@ TEST(ThreadNameTest, setAndGet) {
   setThreadName("Name w/ spaces");
   EXPECT_EQ(getThreadName(), "Name w/ spaces");
 
-  // More than 16 chars is not OK
-#ifndef _WIN32
+  // More than 16 chars is not OK on Linux (pthread_setname_np enforces limit).
+  // macOS and Windows do not enforce a 16-char limit.
+#ifdef __linux__
   GTEST_EXPECT_FALSE(setThreadName("More than 16 characters"));
   EXPECT_EQ(getThreadName(), "Name w/ spaces");
 #endif

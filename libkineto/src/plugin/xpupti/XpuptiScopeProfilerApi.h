@@ -26,9 +26,7 @@ class XpuptiScopeProfilerApi {
   XpuptiScopeProfilerApi(const XpuptiScopeProfilerApi&) = delete;
   XpuptiScopeProfilerApi& operator=(const XpuptiScopeProfilerApi&) = delete;
 
-  virtual ~XpuptiScopeProfilerApi() {}
-
-  static XpuptiScopeProfilerApi& singleton();
+  ~XpuptiScopeProfilerApi() = default;
 
   void enableScopeProfiler(const Config&);
   void disableScopeProfiler();

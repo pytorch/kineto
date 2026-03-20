@@ -22,11 +22,6 @@ namespace KINETO_NAMESPACE {
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
-XpuptiScopeProfilerApi& XpuptiScopeProfilerApi::singleton() {
-  static XpuptiScopeProfilerApi instance;
-  return instance;
-}
-
 XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
     : exceptFromDestructor_(exceptFromDestructor) {

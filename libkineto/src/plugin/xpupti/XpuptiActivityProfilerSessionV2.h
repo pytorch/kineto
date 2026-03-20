@@ -9,6 +9,7 @@
 #pragma once
 
 #include "XpuptiActivityProfilerSession.h"
+#include "XpuptiScopeProfilerApi.h"
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
@@ -22,7 +23,6 @@ class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
  public:
   XpuptiActivityProfilerSessionV2(
       XpuptiActivityApi& xpti,
-      XpuptiScopeProfilerApi& xptiScopeProf,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
@@ -45,7 +45,7 @@ class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
       ActivityLogger& logger);
 
  private:
-  XpuptiScopeProfilerApi& xptiScopeProf_;
+  XpuptiScopeProfilerApi xptiScopeProf_;
   bool scopeProfilerEnabled_{false};
 };
 

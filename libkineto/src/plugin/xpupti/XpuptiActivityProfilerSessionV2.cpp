@@ -10,18 +10,14 @@
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
-#include "XpuptiScopeProfilerApi.h"
-
 namespace KINETO_NAMESPACE {
 
 XpuptiActivityProfilerSessionV2::XpuptiActivityProfilerSessionV2(
     XpuptiActivityApi& xpti,
-    XpuptiScopeProfilerApi& xptiScopeProf,
     const std::string& name,
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
-    : XpuptiActivityProfilerSession(xpti, name, config, activity_types),
-      xptiScopeProf_(xptiScopeProf) {
+    : XpuptiActivityProfilerSession(xpti, name, config, activity_types) {
   scopeProfilerEnabled_ =
       activity_types.count(ActivityType::XPU_SCOPE_PROFILER) > 0;
   if (scopeProfilerEnabled_) {

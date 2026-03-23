@@ -33,10 +33,10 @@ export BUILD_TEST=1
 
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
-  #test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
-  #test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
-  #test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
-  #test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
+  test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
+  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
+  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
+  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
   #test/profiler/test_profiler.py::TestProfiler::test_kineto
   #test/profiler/test_profiler.py::TestProfiler::test_user_annotation
 
@@ -52,7 +52,7 @@ DESELECTED_TESTS=(
   # https://github.com/pytorch/kineto/issues/1319
   test/profiler/test_profiler.py::TestProfiler::test_schedule_function_count
 
-  #test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
+  test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
   #test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
-  #test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+  test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
 )

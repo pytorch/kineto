@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <cuda_occupancy.h>
 #include <cupti.h>
 
 #include <fmt/format.h>
@@ -439,11 +440,38 @@ inline std::string getGraphNodeMetadata(const T& activity) {
 #endif
 }
 
+// Convert limitingFactors bitmask to human-readable string
+// Based on cudaOccLimitingFactor enum from cuda_occupancy.h
+// This can be found in the CUDA toolkit typically /usr/local/cuda/targets/x86_64-linux/include/cuda_occupancy.h
+inline std::string limitingFactorsToString(unsigned int factors) {
+  if (factors == 0) {
+    return "none";
+  }
+  constexpr std::pair<unsigned int, const char*> kFactors[] = {
+      {OCC_LIMIT_WARPS, "WARPS"},
+      {OCC_LIMIT_REGISTERS, "REGS"},
+      {OCC_LIMIT_SHARED_MEMORY, "SMEM"},
+      {OCC_LIMIT_BLOCKS, "BLOCKS"},
+      {OCC_LIMIT_BARRIERS, "BARRIERS"},
+  };
+  std::string result;
+  for (const auto& [mask, name] : kFactors) {
+    if (factors & mask) {
+      if (!result.empty()) {
+        result += "|";
+      }
+      result += name;
+    }
+  }
+  return result;
+}
+
 template <>
 inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() const {
   const CUpti_ActivityKernelType& kernel = raw();
   float blocksPerSmVal = blocksPerSm(kernel);
   float warpsPerSmVal = warpsPerSm(kernel);
+  OccupancyMetrics occMetrics = computeOccupancyMetrics(kernel);
 
   // clang-format off
 
@@ -456,7 +484,18 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
       "warps per SM": {},
       "grid": [{}, {}, {}],
       "block": [{}, {}, {}],
-      "est. achieved occupancy %": {}{})JSON",
+      "est. achieved occupancy %": {},
+      "occupancy": {{
+        "activeBlocksPerMultiprocessor": {},
+        "limitingFactors": "{}",
+        "blockLimitRegs": {},
+        "blockLimitSharedMem": {},
+        "blockLimitWarps": {},
+        "blockLimitBlocks": {},
+        "blockLimitBarriers": {},
+        "allocatedRegistersPerBlock": {},
+        "allocatedSharedMemPerBlock": {}
+      }}{})JSON",
       kernel.queued, kernel.deviceId, kernel.contextId,
       kernel.streamId, kernel.correlationId,
       kernel.registersPerThread,
@@ -465,7 +504,16 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
       std::isinf(warpsPerSmVal) ? "\"inf\"" : std::to_string(warpsPerSmVal),
       kernel.gridX, kernel.gridY, kernel.gridZ,
       kernel.blockX, kernel.blockY, kernel.blockZ,
-      (int) (0.5 + (kernelOccupancy(kernel) * 100.0)),
+      static_cast<int>(std::lround(occMetrics.occupancy * 100.0)),
+      occMetrics.result.activeBlocksPerMultiprocessor,
+      limitingFactorsToString(occMetrics.result.limitingFactors),
+      occMetrics.result.blockLimitRegs,
+      occMetrics.result.blockLimitSharedMem,
+      occMetrics.result.blockLimitWarps,
+      occMetrics.result.blockLimitBlocks,
+      occMetrics.result.blockLimitBarriers,
+      occMetrics.result.allocatedRegistersPerBlock,
+      occMetrics.result.allocatedSharedMemPerBlock,
       getGraphNodeMetadata(kernel)
       );
   // clang-format on

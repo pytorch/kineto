@@ -28,6 +28,7 @@ KINETO_CMAKE_FLAGS=(
 
 export USE_ROCM=1
 export BUILD_TEST=1
+export PYTORCH_TEST_WITH_ROCM=1
 
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
@@ -48,9 +49,6 @@ DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
   test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
   test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
-
-  # https://github.com/pytorch/kineto/issues/1242
-  test/profiler/test_profiler.py::TestProfiler::test_disable_external_correlation
 
   # https://github.com/pytorch/kineto/issues/1243
   test/profiler/test_profiler.py::TestProfiler::test_profiler_cuda_sync_events

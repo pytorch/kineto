@@ -55,12 +55,54 @@ enum class ActivityType {
   OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
 };
 
-const char* toString(ActivityType t);
-ActivityType toActivityType(const std::string& str);
-
 // Return an array of all activity types except COUNT
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;
 constexpr int defaultActivityTypeCount = (int)ActivityType::OPTIONAL_ACTIVITY_TYPE_START;
+
+// These definitions are not part of the public Kineto API. They are inlined
+// here because some build configurations include this header
+// without linking libkineto, and toString() must resolve at compile time.
+struct _ActivityTypeName {
+  const char* name;
+  ActivityType type;
+};
+
+inline constexpr std::array<_ActivityTypeName, activityTypeCount + 1> _activityTypeNames{{
+    {"cpu_op", ActivityType::CPU_OP},
+    {"user_annotation", ActivityType::USER_ANNOTATION},
+    {"gpu_user_annotation", ActivityType::GPU_USER_ANNOTATION},
+    {"gpu_memcpy", ActivityType::GPU_MEMCPY},
+    {"gpu_memset", ActivityType::GPU_MEMSET},
+    {"kernel", ActivityType::CONCURRENT_KERNEL},
+    {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
+    {"cuda_runtime", ActivityType::CUDA_RUNTIME},
+    {"cuda_driver", ActivityType::CUDA_DRIVER},
+    {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
+    {"python_function", ActivityType::PYTHON_FUNCTION},
+    {"overhead", ActivityType::OVERHEAD},
+    {"mtia_runtime", ActivityType::MTIA_RUNTIME},
+    {"mtia_ccp_events", ActivityType::MTIA_CCP_EVENTS},
+    {"mtia_insight", ActivityType::MTIA_INSIGHT},
+    {"cuda_sync", ActivityType::CUDA_SYNC},
+    {"cuda_event", ActivityType::CUDA_EVENT},
+    {"mtia_counters", ActivityType::MTIA_COUNTERS},
+    {"glow_runtime", ActivityType::GLOW_RUNTIME},
+    {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
+    {"hpu_op", ActivityType::HPU_OP},
+    {"xpu_runtime", ActivityType::XPU_RUNTIME},
+    {"xpu_driver", ActivityType::XPU_DRIVER},
+    {"collective_comm", ActivityType::COLLECTIVE_COMM},
+    {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
+    {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
+    {"ENUM_COUNT", ActivityType::ENUM_COUNT},
+}};
+
+inline const char* toString(ActivityType t) {
+  return _activityTypeNames[static_cast<int>(t)].name;
+}
+
+ActivityType toActivityType(const std::string& str);
+
 std::array<ActivityType, activityTypeCount> activityTypes();
 std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
 

@@ -200,15 +200,14 @@ struct MockCuptiActivityBuffer {
       uint32_t eventId,
       uint32_t streamId = 1,
       uint32_t contextId = 0) {
-    auto* act = static_cast<CUpti_ActivityCudaEventType*>(
-        malloc(sizeof(CUpti_ActivityCudaEventType)));
-    bzero(act, sizeof(CUpti_ActivityCudaEventType));
-    act->kind = CUPTI_ACTIVITY_KIND_CUDA_EVENT;
-    act->correlationId = correlation;
-    act->eventId = eventId;
-    act->streamId = streamId;
-    act->contextId = contextId;
-    activities.push_back(reinterpret_cast<CUpti_Activity*>(act));
+    auto& act = *(CUpti_ActivityCudaEventType*)malloc(
+        sizeof(CUpti_ActivityCudaEventType));
+    act.kind = CUPTI_ACTIVITY_KIND_CUDA_EVENT;
+    act.correlationId = correlation;
+    act.eventId = eventId;
+    act.streamId = streamId;
+    act.contextId = contextId;
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
   void addCollectiveActivity(
@@ -670,6 +669,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
+
   profiler.recordThreadInfo();
 
   // CPU ops to provide correlation linkage
@@ -687,30 +687,22 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   constexpr uint32_t kEvtSyncCorrId = 300;
 
   auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
-  // A kernel on stream 1 so the stream is "seen" (needed for wait event logging)
   gpuOps->addRuntimeActivity(
       CUDA_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 20, 1);
   gpuOps->addKernelActivity(start_time_ns + 30, start_time_ns + 50, 1);
-
-  // KEY: Place SYNCHRONIZATION records BEFORE the CUDA_EVENT record.
-  // This simulates the out-of-order delivery from CUPTI that caused the bug.
-
-  // Stream Wait Event (appears before CUDA_EVENT)
   gpuOps->addSyncActivity(
       start_time_ns + 100, start_time_ns + 110, kWaitCorrId,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
-      1 /*stream*/, kEventId);
-
-  // Event Synchronize (appears before CUDA_EVENT)
+      1, kEventId);
   gpuOps->addSyncActivity(
-      start_time_ns + 120, start_time_ns + 140, kEvtSyncCorrId,
+      start_time_ns + 120, 
+      start_time_ns + 140, 
+      kEvtSyncCorrId,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
-      -1 /*stream*/, kEventId);
-
+      -1, kEventId);
   // CUDA_EVENT record comes AFTER the sync records
   gpuOps->addCudaEventActivity(
-      kRecordCorrId, kEventId, /*streamId=*/1, /*contextId=*/0);
-
+      kRecordCorrId, kEventId, 1, 0);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);

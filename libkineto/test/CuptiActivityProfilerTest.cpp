@@ -652,11 +652,10 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 #endif
 }
 
-
 TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   // Test that wait_on_cuda_event_record_corr_id is populated even when
-  // SYNCHRONIZATION records appear before their corresponding CUDA_EVENT records
-  // in the CUPTI activity buffer (no ordering guarantee from CUPTI).
+  // SYNCHRONIZATION records appear before their corresponding CUDA_EVENT
+  // records in the CUPTI activity buffer (no ordering guarantee from CUPTI).
   std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
@@ -691,18 +690,21 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
       CUDA_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 20, 1);
   gpuOps->addKernelActivity(start_time_ns + 30, start_time_ns + 50, 1);
   gpuOps->addSyncActivity(
-      start_time_ns + 100, start_time_ns + 110, kWaitCorrId,
+      start_time_ns + 100,
+      start_time_ns + 110,
+      kWaitCorrId,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
-      1, kEventId);
+      1,
+      kEventId);
   gpuOps->addSyncActivity(
-      start_time_ns + 120, 
-      start_time_ns + 140, 
+      start_time_ns + 120,
+      start_time_ns + 140,
       kEvtSyncCorrId,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
-      -1, kEventId);
+      -1,
+      kEventId);
   // CUDA_EVENT record comes AFTER the sync records
-  gpuOps->addCudaEventActivity(
-      kRecordCorrId, kEventId, 1, 0);
+  gpuOps->addCudaEventActivity(kRecordCorrId, kEventId, 1, 0);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);

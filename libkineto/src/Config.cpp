@@ -39,7 +39,7 @@ constexpr std::chrono::milliseconds Config::kControllerIntervalMsecs;
 constexpr milliseconds kDefaultSamplePeriodMsecs(1000);
 constexpr milliseconds kDefaultMultiplexPeriodMsecs(1000);
 constexpr milliseconds kDefaultActivitiesProfileDurationMSecs(500);
-constexpr int kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
+constexpr int64_t kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
 constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
 constexpr seconds kDefaultReportPeriodSecs(1);
 constexpr int kDefaultSamplesPerReport(1);
@@ -433,7 +433,8 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     }
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivitiesMaxGpuBufferSizeKey)) {
-    activitiesMaxGpuBufferSize_ = toInt32(val) * 1024 * 1024;
+    activitiesMaxGpuBufferSize_ =
+        static_cast<int64_t>(toInt32(val)) * 1024 * 1024;
   } else if (!name.compare(kActivitiesWarmupDurationSecsKey)) {
     activitiesWarmupDuration_ = seconds(toInt32(val));
   } else if (!name.compare(kActivitiesWarmupIterationsKey)) {
@@ -615,7 +616,7 @@ void Config::printActivityProfilerConfig(std::ostream& s) const {
   fmt::print(
       s,
       "  Max GPU buffer size: {:.0f}MB\n",
-      activitiesMaxGpuBufferSize() / 1024.0 / 1024.0);
+      static_cast<double>(activitiesMaxGpuBufferSize()) / 1024.0 / 1024.0);
 
   std::vector<std::string> activities;
   activities.reserve(selectedActivityTypes_.size());

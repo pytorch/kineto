@@ -36,7 +36,7 @@ class AiuptiActivityApi {
   virtual const std::pair<int, int> processActivities(AiuptiActivityBufferDeque&,
                                                       std::function<void(const Pti_Activity*)> handler);
 
-  void setMaxBufferSize(int size);
+  void setMaxBufferSize(int64_t size);
   // void setDeviceBufferSize(size_t size);
   // void setDeviceBufferPoolLimit(size_t limit);
 
@@ -44,7 +44,7 @@ class AiuptiActivityApi {
   int64_t flushOverhead{0};
 
  private:
-  int maxAiuBufferCount_{0};
+  int64_t maxAiuBufferCount_{0};
   AiuptiActivityBufferDeque allocatedAiuTraceBuffers_;
   std::unique_ptr<AiuptiActivityBufferDeque> readyAiuTraceBuffers_;
   std::mutex mutex_;

@@ -263,7 +263,10 @@ void ActivityProfilerController::profilerLoop() {
       next_wakeup_time += Config::kControllerIntervalMsecs;
     }
 
-    if (profiler_->isActive() && !profiler_->isCollectingMemorySnapshot()) {
+    // Use syncTraceActive_ so we don't step into the loop while sync trace is
+    // running
+    if (profiler_->isActive() && !profiler_->isCollectingMemorySnapshot() &&
+        !syncTraceActive_) {
       next_wakeup_time = profiler_->performRunLoopStep(now, next_wakeup_time);
       VLOG(1) << "Profiler loop: "
               << duration_cast<milliseconds>(system_clock::now() - now).count()
@@ -389,6 +392,7 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
   // requests from other sources (signal, daemon).
   // Cancel any ongoing request and refuse new ones.
   auto now = system_clock::now();
+  syncTraceActive_ = true;
   if (profiler_->isActive()) {
     LOG(WARNING) << "Cancelling current trace request in order to start "
                  << "higher priority synchronous request";
@@ -462,6 +466,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::
   logger->setLoggerMetadata(std::move(loggerMD));
 
   profiler_->reset();
+  syncTraceActive_ = false;
   return std::make_unique<ActivityTrace>(std::move(logger), loggerFactory());
 }
 

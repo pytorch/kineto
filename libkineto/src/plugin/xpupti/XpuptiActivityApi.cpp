@@ -259,10 +259,10 @@ void XpuptiActivityApi::enableXpuptiActivities(
         }
         break;
       }
+#endif
       case ActivityType::XPU_SYNC:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
         break;
-#endif
 
       default:
         break;
@@ -317,10 +317,10 @@ void XpuptiActivityApi::disablePtiActivities(
         }
         break;
       }
+#endif
       case ActivityType::XPU_SYNC:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
         break;
-#endif
 
       default:
         break;

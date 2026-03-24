@@ -68,20 +68,38 @@ function(make_test test_file)
     )
   endif()
 
-  # Use a custom CONFIGURE_COMMAND so we can pass $<CONFIG> as the build type.
-  # CMAKE_ARGS doesn't support generator expressions, but CONFIGURE_COMMAND does.
-  # This ensures the inner Ninja build matches the outer multi-config selection
-  # (e.g. Debug vs Release) when using Visual Studio generators.
-  ExternalProject_Add(${test_name}
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-    CONFIGURE_COMMAND ${CMAKE_COMMAND}
-      -G Ninja
-      -S <SOURCE_DIR>
-      -B <BINARY_DIR>
-      -DCMAKE_BUILD_TYPE=$<CONFIG>
-      ${_ep_cmake_args}
-    BUILD_ALWAYS TRUE
-  )
+  # - Multi-config (Visual Studio, Ninja Multi-Config): uses CONFIGURE_COMMAND
+  #   with $<CONFIG> since CMAKE_ARGS doesn't support generator expressions.
+  #   Ninja is forced as a single-config inner generator.
+  # - Single-config on Windows: forces Ninja for SYCL/ICX compatibility.
+  # - Single-config on Linux: forwards the outer generator (Ninja, Makefiles, etc.)
+  #   via CMAKE_GENERATOR.
+  get_property(_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+  if(_is_multi_config)
+    ExternalProject_Add(${test_name}
+      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
+      CONFIGURE_COMMAND ${CMAKE_COMMAND}
+        -G Ninja
+        -S <SOURCE_DIR>
+        -B <BINARY_DIR>
+        -DCMAKE_BUILD_TYPE=$<CONFIG>
+        ${_ep_cmake_args}
+      BUILD_ALWAYS TRUE
+    )
+  else()
+    set(_ep_generator_args ${CMAKE_GENERATOR})
+    if(WIN32)
+      set(_ep_generator_args CMAKE_GENERATOR Ninja)
+    endif()
+    ExternalProject_Add(${test_name}
+      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
+      ${_ep_generator_args}
+      CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        ${_ep_cmake_args}
+      BUILD_ALWAYS TRUE
+    )
+  endif()
 
   add_dependencies(${test_name} ${lib_name})
   add_dependencies(${test_name} gtest)

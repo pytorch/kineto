@@ -195,11 +195,11 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
 
   trace_activity->startTime = activity->_start_timestamp;
   trace_activity->endTime = activity->_end_timestamp;
-  trace_activity->id = activity->_correlation_id;
   trace_activity->threadId = activity->_thread_id;
   trace_activity->flow.id = activity->_correlation_id;
   trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
 
+  trace_activity->id = activity->_correlation_id;
   trace_activity->linked =
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
   trace_activity->addMetadata("correlation", activity->_correlation_id);
@@ -315,7 +315,14 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   const auto& activity_record = *activity;
   const auto record_name = getApiName(activity);
 
+  const bool isGpuSync =
+      activity_record._synch_type == PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION ||
+      activity_record._synch_type == PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY;
+
   traceBuffer_.span.opCount += 1;
+  if (isGpuSync) {
+    traceBuffer_.gpuOpCount += 1;
+  }
   traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::XPU_SYNC, record_name);
   auto& synchronization_activity = *(traceBuffer_.activities.back());
 
@@ -325,21 +332,25 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   synchronization_activity.resource = activity_record._thread_id;
   synchronization_activity.threadId = activity_record._thread_id;
 
+  synchronization_activity.id = activity->_correlation_id;
   synchronization_activity.linked =
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
   synchronization_activity.addMetadata(
       "correlation", activity_record._correlation_id);
 
-  synchronization_activity.addMetadata(
+  synchronization_activity.addMetadataQuoted(
       "Type", getStringFromSynchronizationType(activity_record._synch_type));
-  synchronization_activity.addMetadata("Context_handle", activity_record._context_handle);
-  synchronization_activity.addMetadata("Queue_handle", activity_record._queue_handle);
-  synchronization_activity.addMetadata("Event_handle", activity_record._event_handle);
+  synchronization_activity.addMetadataQuoted("Context_handle", handleToHexString(activity_record._context_handle));
+  synchronization_activity.addMetadataQuoted("Queue_handle", handleToHexString(activity_record._queue_handle));
+  synchronization_activity.addMetadataQuoted("Event_handle", handleToHexString(activity_record._event_handle));
   synchronization_activity.addMetadata("Number_wait_events", activity_record._number_wait_events);
   synchronization_activity.addMetadata("Return_code", activity_record._return_code);
 
   if (outOfRange(&synchronization_activity)) {
     traceBuffer_.span.opCount -= 1;
+    if (isGpuSync) {
+      traceBuffer_.gpuOpCount -= 1;
+    }
     removeCorrelatedPtiActivities(&synchronization_activity);
     traceBuffer_.activities.pop_back();
     return;
@@ -348,6 +359,7 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   synchronization_activity.log(logger);
 }
 
+#if PTI_VERSION_AT_LEAST(0, 17)
 void XpuptiActivityProfilerSession::handleCommunicationActivity(
     const pti_view_record_comms* activity,
     ActivityLogger& logger) {
@@ -370,13 +382,13 @@ void XpuptiActivityProfilerSession::handleCommunicationActivity(
 
   if (outOfRange(&comms_activity)) {
     traceBuffer_.span.opCount -= 1;
-    removeCorrelatedPtiActivities(&comms_activity);
     traceBuffer_.activities.pop_back();
     return;
   }
 
   comms_activity.log(logger);
 }
+#endif
 
 void XpuptiActivityProfilerSession::handleOverheadActivity(
     const pti_view_record_overhead* activity,

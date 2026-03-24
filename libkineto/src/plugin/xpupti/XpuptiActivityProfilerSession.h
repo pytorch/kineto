@@ -94,7 +94,9 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
                                                  ActivityLogger& logger);
 
   void handleSynchronizationActivity(const pti_view_record_synchronization* activity, ActivityLogger& logger);
+#if PTI_VERSION_AT_LEAST(0, 17)
   void handleCommunicationActivity(const pti_view_record_comms* activity, ActivityLogger& logger);
+#endif
   void handleOverheadActivity(const pti_view_record_overhead* activity, ActivityLogger& logger);
   void handlePtiActivity(const pti_view_record_base* record, ActivityLogger& logger);
 

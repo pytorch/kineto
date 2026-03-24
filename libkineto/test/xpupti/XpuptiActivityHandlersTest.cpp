@@ -11,6 +11,8 @@
 #include "src/ActivityBuffers.h"
 #include "include/output_base.h"
 
+#include "src/plugin/xpupti/XpuptiProfilerMacros.h"
+
 #include <gtest/gtest.h>
 
 namespace KN = KINETO_NAMESPACE;
@@ -91,6 +93,7 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
 
 // --- Communication Activity Tests ---
 
+#if PTI_VERSION_AT_LEAST(0, 17)
 TEST_F(XpuptiActivityHandlersTest, CommunicationActivityHasXcclPrefix) {
   pti_view_record_comms comms_record{};
   comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
@@ -153,6 +156,7 @@ TEST_F(XpuptiActivityHandlersTest, CommunicationActivityOutOfRange) {
   auto traceBuffer = processAndGetTrace(100, 500);
   EXPECT_EQ(traceBuffer->activities.size(), 0);
 }
+#endif // PTI_VERSION_AT_LEAST(0, 17)
 
 // --- Synchronization Activity Tests ---
 
@@ -274,6 +278,7 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityOutOfRange) {
 
 // --- Mixed dispatch test ---
 
+#if PTI_VERSION_AT_LEAST(0, 17)
 TEST_F(XpuptiActivityHandlersTest, MixedCommunicationAndSynchronization) {
   pti_view_record_comms comms_record{};
   comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
@@ -312,3 +317,4 @@ TEST_F(XpuptiActivityHandlersTest, MixedCommunicationAndSynchronization) {
   EXPECT_EQ(
       sync_activity.getMetadataValue("Type"), "GPU_BARRIER_EXECUTION");
 }
+#endif // PTI_VERSION_AT_LEAST(0, 17)

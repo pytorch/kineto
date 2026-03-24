@@ -144,8 +144,12 @@ int smCount([[maybe_unused]] uint32_t deviceId) {
 
 #ifdef HAS_CUPTI
 float blocksPerSm(const CUpti_ActivityKernelType& kernel) {
+  int sm_count = smCount(kernel.deviceId);
+  if (sm_count == 0) {
+    return std::numeric_limits<float>::infinity();
+  }
   return (kernel.gridX * kernel.gridY * kernel.gridZ) /
-      static_cast<float>(smCount(kernel.deviceId));
+      static_cast<float>(sm_count);
 }
 
 float warpsPerSm(const CUpti_ActivityKernelType& kernel) {
@@ -154,67 +158,52 @@ float warpsPerSm(const CUpti_ActivityKernelType& kernel) {
       threads_per_warp;
 }
 
-float kernelOccupancy(const CUpti_ActivityKernelType& kernel) {
-  float blocks_per_sm = -1.0;
-  int sm_count = smCount(kernel.deviceId);
-  if (sm_count) {
-    blocks_per_sm =
-        (kernel.gridX * kernel.gridY * kernel.gridZ) / (float)sm_count;
-  }
-  return kernelOccupancy(
-      kernel.deviceId,
-      kernel.registersPerThread,
-      kernel.staticSharedMemory,
-      kernel.dynamicSharedMemory,
-      kernel.blockX,
-      kernel.blockY,
-      kernel.blockZ,
-      blocks_per_sm);
-}
-
-float kernelOccupancy(
-    uint32_t deviceId,
-    uint16_t registersPerThread,
-    int32_t staticSharedMemory,
-    int32_t dynamicSharedMemory,
-    int32_t blockX,
-    int32_t blockY,
-    int32_t blockZ,
-    float blocksPerSm) {
-  // Calculate occupancy
-  float occupancy = -1.0;
+OccupancyMetrics computeOccupancyMetrics(
+    const CUpti_ActivityKernelType& kernel) {
+  OccupancyMetrics metrics;
   const std::vector<cudaDeviceProp>& props = deviceProps();
-  if (deviceId < props.size()) {
-    cudaOccFuncAttributes occFuncAttr;
-    occFuncAttr.maxThreadsPerBlock = INT_MAX;
-    occFuncAttr.numRegs = registersPerThread;
-    occFuncAttr.sharedSizeBytes = staticSharedMemory;
-    occFuncAttr.partitionedGCConfig = PARTITIONED_GC_OFF;
-    occFuncAttr.shmemLimitConfig = FUNC_SHMEM_LIMIT_DEFAULT;
-    occFuncAttr.maxDynamicSharedSizeBytes = 0;
-    const cudaOccDeviceState occDeviceState = {};
-    int blockSize = blockX * blockY * blockZ;
-    size_t dynamicSmemSize = dynamicSharedMemory;
-    cudaOccResult occ_result;
-    cudaOccDeviceProp prop(props[deviceId]);
-    cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
-        &occ_result,
-        &prop,
-        &occFuncAttr,
-        &occDeviceState,
-        blockSize,
-        dynamicSmemSize);
-    if (status == CUDA_OCC_SUCCESS) {
-      blocksPerSm = std::min<float>(
-          occ_result.activeBlocksPerMultiprocessor, blocksPerSm);
-      occupancy = blocksPerSm * blockSize /
-          (float)props[deviceId].maxThreadsPerMultiProcessor;
-    } else {
-      LOG_EVERY_N(ERROR, 1000)
-          << "Failed to calculate occupancy, status = " << status;
-    }
+  if (kernel.deviceId >= props.size()) {
+    LOG(ERROR) << "Invalid deviceId " << kernel.deviceId
+               << " exceeds available devices (" << props.size()
+               << "), skipping occupancy calculation";
+    return metrics;
   }
-  return occupancy;
+
+  float blocksPerSm = -1.0;
+  int sm_count = smCount(kernel.deviceId);
+  if (sm_count != 0) {
+    blocksPerSm = (kernel.gridX * kernel.gridY * kernel.gridZ) /
+        static_cast<float>(sm_count);
+  }
+
+  cudaOccFuncAttributes occFuncAttr;
+  occFuncAttr.maxThreadsPerBlock = INT_MAX;
+  occFuncAttr.numRegs = kernel.registersPerThread;
+  occFuncAttr.sharedSizeBytes = kernel.staticSharedMemory;
+  occFuncAttr.partitionedGCConfig = PARTITIONED_GC_OFF;
+  occFuncAttr.shmemLimitConfig = FUNC_SHMEM_LIMIT_DEFAULT;
+  occFuncAttr.maxDynamicSharedSizeBytes = 0;
+  const cudaOccDeviceState occDeviceState = {};
+  int blockSize = kernel.blockX * kernel.blockY * kernel.blockZ;
+  size_t dynamicSmemSize = kernel.dynamicSharedMemory;
+  cudaOccDeviceProp prop(props[kernel.deviceId]);
+  cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
+      &metrics.result,
+      &prop,
+      &occFuncAttr,
+      &occDeviceState,
+      blockSize,
+      dynamicSmemSize);
+  if (status == CUDA_OCC_SUCCESS) {
+    float effectiveBlocksPerSm = std::min<float>(
+        metrics.result.activeBlocksPerMultiprocessor, blocksPerSm);
+    metrics.occupancy = effectiveBlocksPerSm * blockSize /
+        static_cast<float>(props[kernel.deviceId].maxThreadsPerMultiProcessor);
+  } else {
+    LOG_EVERY_N(ERROR, 1000)
+        << "Failed to calculate occupancy, status = " << status;
+  }
+  return metrics;
 }
 #endif // HAS_CUPTI
 

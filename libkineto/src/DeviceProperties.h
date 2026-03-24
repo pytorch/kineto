@@ -12,6 +12,7 @@
 #include <string>
 
 #ifdef HAS_CUPTI
+#include <cuda_occupancy.h>
 #include <cupti.h>
 #endif
 
@@ -41,16 +42,15 @@ using CUpti_ActivityMemsetType = CUpti_ActivityMemset;
 float blocksPerSm(const CUpti_ActivityKernelType& kernel);
 float warpsPerSm(const CUpti_ActivityKernelType& kernel);
 
-// Return estimated achieved occupancy for a kernel
-float kernelOccupancy(const CUpti_ActivityKernelType& kernel);
-float kernelOccupancy(uint32_t deviceId,
-                      uint16_t registersPerThread,
-                      int32_t staticSharedMemory,
-                      int32_t dynamicSharedMemory,
-                      int32_t blockX,
-                      int32_t blockY,
-                      int32_t blockZ,
-                      float blocks_per_sm);
+// Occupancy results from CUDA occupancy calculator
+// Returns cudaOccResult from cuda_occupancy.h plus a computed occupancy metric
+struct OccupancyMetrics {
+  float occupancy = -1.0f; // Computed effective occupancy in number of threads
+  cudaOccResult result = {}; // Raw results from cudaOccMaxActiveBlocksPerMultiprocessor
+};
+
+// Return detailed occupancy metrics including limiting factors
+OccupancyMetrics computeOccupancyMetrics(const CUpti_ActivityKernelType& kernel);
 #endif
 
 } // namespace KINETO_NAMESPACE

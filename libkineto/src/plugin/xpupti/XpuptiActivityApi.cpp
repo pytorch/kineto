@@ -8,6 +8,7 @@
 
 #include "XpuptiActivityApi.h"
 
+#include <chrono>
 #include <stdexcept>
 
 namespace KINETO_NAMESPACE {

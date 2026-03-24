@@ -1,5 +1,10 @@
 # ignore common items
 .idea
 .vscode
+.claude
 .data
 __pycache__
+*.pyc
+
+# CMake build output
+libkineto/build/

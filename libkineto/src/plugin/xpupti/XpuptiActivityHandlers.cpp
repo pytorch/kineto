@@ -457,10 +457,12 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
           reinterpret_cast<const pti_view_record_synchronization*>(record),
           logger);
       break;
+#if PTI_VERSION_AT_LEAST(0, 17)
     case PTI_VIEW_COMMUNICATION:
       handleCommunicationActivity(
-        reinterpret_cast<const pti_view_record_comms*>(record), logger);
+          reinterpret_cast<const pti_view_record_comms*>(record), logger);
       break;
+#endif
     default:
       errors_.push_back(
           "Unexpected activity type: " + std::to_string(record->_view_kind));

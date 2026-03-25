@@ -27,6 +27,7 @@ jobs:
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: xpu
+      docker-image: pytorch/manylinux2_28-builder:xpu
       script: |
         set -eux
         .github/scripts/setup.sh

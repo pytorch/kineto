@@ -87,13 +87,13 @@ function(make_test test_file)
       BUILD_ALWAYS TRUE
     )
   else()
-    set(_ep_generator_args ${CMAKE_GENERATOR})
+    set(_selected_generator ${CMAKE_GENERATOR})
     if(WIN32)
-      set(_ep_generator_args CMAKE_GENERATOR Ninja)
+      set(_selected_generator Ninja)
     endif()
     ExternalProject_Add(${test_name}
       SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-      ${_ep_generator_args}
+      CMAKE_GENERATOR ${_selected_generator}
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         ${_ep_cmake_args}

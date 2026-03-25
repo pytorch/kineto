@@ -47,9 +47,6 @@ DESELECTED_TESTS=(
   # https://github.com/pytorch/kineto/issues/1319
   test/profiler/test_profiler.py::TestProfiler::test_schedule_function_count
 
-  # https://github.com/pytorch/kineto/issues/1319
-  test/profiler/test_profiler.py::TestProfiler::test_schedule_function_count
-
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
   test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
 )

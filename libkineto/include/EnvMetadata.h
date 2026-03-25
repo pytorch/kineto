@@ -9,10 +9,18 @@
 #pragma once
 
 #include <fmt/core.h>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <unordered_map>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#pragma comment(lib, "ws2_32.lib")
+#else
+#include <unistd.h>
+#endif
 
 namespace libkineto {
 
@@ -29,7 +37,7 @@ inline const std::unordered_map<EnvVar, const char*> K_ENV_VAR_MAP = {
 };
 
 // Returns a map of (env_var_name, env_value) for all environment variables
-// that are currently set. Only includes entries where the env var exists.
+// that are currently set. Also captures the hostname of the current machine.
 inline std::unordered_map<std::string, std::string> getEnvMetadata() {
   std::unordered_map<std::string, std::string> result;
   for (const auto& [key, name] : K_ENV_VAR_MAP) {
@@ -37,6 +45,18 @@ inline std::unordered_map<std::string, std::string> getEnvMetadata() {
       result[name] = fmt::format("\"{}\"", val);
     }
   }
+
+  // Capture hostname for per-rank host identification in distributed training.
+  // $HOSTNAME is not guaranteed in non-interactive or containerized environments,
+  // so we use gethostname() which reads the kernel hostname directly.
+  std::array<char, 256> hostname{};
+  if (gethostname(hostname.data(), hostname.size()) == 0) {
+    hostname.back() = '\0';
+    if (hostname[0] != '\0') {
+      result["host_name"] = fmt::format("\"{}\"", hostname.data());
+    }
+  }
+
   return result;
 }
 

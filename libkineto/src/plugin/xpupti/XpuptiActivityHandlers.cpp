@@ -304,8 +304,8 @@ std::string getStringFromSynchronizationType(
         "404: Not found string literal for this synchronization type: " +
         std::to_string(synchronization_type);
     return error_message;
-  } else
-    return name_string->second;
+  }
+  return name_string->second;
 }
 } // namespace
 

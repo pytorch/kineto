@@ -26,7 +26,17 @@ KINETO_CMAKE_FLAGS=(
 
 # --- PyTorch build environment variables ---
 
+set +u
+source /opt/intel/oneapi/compiler/latest/env/vars.sh
+source /opt/intel/oneapi/pti/latest/env/vars.sh
+source /opt/intel/oneapi/umf/latest/env/vars.sh
+source /opt/intel/oneapi/ccl/latest/env/vars.sh
+source /opt/intel/oneapi/mpi/latest/env/vars.sh
+export USE_STATIC_MKL=1
+export USE_XCCL=1
+export USE_MPI=0
 export USE_XPU=1
+set -eux
 export USE_CUDA=0
 export USE_CUDNN=0
 export USE_NCCL=0

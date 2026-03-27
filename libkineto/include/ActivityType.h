@@ -43,13 +43,14 @@ enum class ActivityType {
   HPU_OP = 20, // HPU host side runtime event
   XPU_RUNTIME = 21, // host side xpu runtime events
   XPU_DRIVER = 22, // host side xpu driver events
-  XPU_SCOPE_PROFILER = 23, // XPUPTI Profiler scope for performance metrics
-  COLLECTIVE_COMM = 24, // collective communication
+  COLLECTIVE_COMM = 23, // collective communication
 
   // PRIVATEUSE1 Activity types are used for custom backends.
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
-  PRIVATEUSE1_RUNTIME = 25, // host side privateUse1 runtime events
-  PRIVATEUSE1_DRIVER = 26, // host side privateUse1 driver events
+  PRIVATEUSE1_RUNTIME = 24, // host side privateUse1 runtime events
+  PRIVATEUSE1_DRIVER = 25, // host side privateUse1 driver events
+
+  XPU_SCOPE_PROFILER = 26, // XPUPTI Profiler scope for performance metrics
 
   ENUM_COUNT =
       27, // This is to add buffer and not used for any profiling logic. Add
@@ -95,10 +96,10 @@ inline constexpr std::array<_ActivityTypeName, activityTypeCount + 1>
         {"hpu_op", ActivityType::HPU_OP},
         {"xpu_runtime", ActivityType::XPU_RUNTIME},
         {"xpu_driver", ActivityType::XPU_DRIVER},
-        {"xpu_scope_profiler", ActivityType::XPU_SCOPE_PROFILER},
         {"collective_comm", ActivityType::COLLECTIVE_COMM},
         {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
         {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
+        {"xpu_scope_profiler", ActivityType::XPU_SCOPE_PROFILER},
         {"ENUM_COUNT", ActivityType::ENUM_COUNT},
     }};
 

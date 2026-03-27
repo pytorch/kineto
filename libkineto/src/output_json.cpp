@@ -655,13 +655,13 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
   if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
     std::string metricsStr = op.metadataJson();
-    std::string activityName = toString(op.type());
+    sanitizeStrForJSON(metricsStr);
     fmt::print(
         traceOf_,
         // clang-format off
   R"JSON(
   {{
-    "name": "{}",
+    "name": "xpu",
     "ph": "C",
     "ts": {}.{:03},
     "pid": {},
@@ -669,7 +669,6 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     "args": {{ {} }}
   }},)JSON",
         // clang-format on
-        activityName.substr(0, activityName.find('_')),
         ts / 1000,
         ts % 1000,
         device,

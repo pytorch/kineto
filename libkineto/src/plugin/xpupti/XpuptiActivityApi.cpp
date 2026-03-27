@@ -247,6 +247,8 @@ void XpuptiActivityApi::enableXpuptiActivities(
 
       case ActivityType::XPU_SCOPE_PROFILER:
 #if PTI_VERSION_AT_LEAST(0, 15)
+        // This case is handled in constructor of
+        // XpuptiActivityProfilerSessionV2
 #else
         throw std::runtime_error(
             "Intel® PTI version required to use scope profiler is at least 0.15 "

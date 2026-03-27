@@ -231,23 +231,41 @@ RunProfilerTest(
     auto [metricsCount, metricsMask] =
         CountMetricsInString(metrics, pActivity->metadataJson());
 
+    enum class TestScenario {
+      defaultScenario,
+      scopeProfiler,
+      nameStartsWithMetrics
+    };
+    TestScenario testScenario = TestScenario::defaultScenario;
+
     switch (pActivity->type()) {
       case KN::ActivityType::CONCURRENT_KERNEL:
-        if (nameStartsWithMetrics)
-          goto label_scope;
-        else
-          goto label_default;
+        if (nameStartsWithMetrics) {
+          testScenario = TestScenario::nameStartsWithMetrics;
+        } else {
+          testScenario = TestScenario::defaultScenario;
+        }
+        break;
 
       case KN::ActivityType::XPU_SCOPE_PROFILER:
+        testScenario = TestScenario::scopeProfiler;
+        break;
+
+      default:
+        testScenario = TestScenario::defaultScenario;
+    }
+
+    switch (testScenario) {
+      case TestScenario::scopeProfiler:
         EXPECT_TRUE(isNameMetrics);
-      label_scope:
+        [[fallthrough]];
+      case TestScenario::nameStartsWithMetrics:
         EXPECT_EQ(metricsCount, metrics.size());
         EXPECT_EQ(metricsMask, (1u << metrics.size()) - 1);
         ++scopeProfilerActCount;
         break;
 
-      default:
-      label_default:
+      case TestScenario::defaultScenario:
         EXPECT_FALSE(isNameMetrics);
         EXPECT_EQ(metricsCount, 0);
         EXPECT_EQ(metricsMask, 0);

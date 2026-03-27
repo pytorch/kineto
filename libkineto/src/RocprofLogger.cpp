@@ -271,13 +271,6 @@ GlobalContext& getGlobalContext() {
   return instance;
 }
 
-// FIXME: This is a hack to skip rocprofiler-sdk's atexit cleanup. It sometimes
-// crashes due to accessing unmapped library memory. This is likely a bug in
-// rocprofiler-sdk.
-static void earlyExit() {
-  _exit(0);
-}
-
 std::vector<rocprofiler_agent_v0_t> get_gpu_device_agents() {
   std::vector<rocprofiler_agent_v0_t> agents;
 
@@ -439,10 +432,6 @@ int RocprofLogger::toolInit(
     }
   }
   rocprofiler_stop_context(globalContext.context);
-
-  // Register a special callback that forces an early exit to avoid
-  // calling rocprofiler-sdk's exit handler as it sometimes segfaults.
-  std::atexit(earlyExit);
 
   return 0;
 }

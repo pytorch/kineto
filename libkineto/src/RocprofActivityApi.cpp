@@ -57,7 +57,7 @@ void RocprofActivityApi::setMaxEvents(uint32_t maxEvents) {
   d->setMaxEvents(maxEvents);
 }
 
-void RocprofActivityApi::setMaxBufferSize([[maybe_unused]] int size) {
+void RocprofActivityApi::setMaxBufferSize([[maybe_unused]] int64_t size) {
   // FIXME: implement?
   // maxGpuBufferCount_ = 1 + size / kBufSize;
 }

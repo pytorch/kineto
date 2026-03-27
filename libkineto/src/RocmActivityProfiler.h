@@ -39,7 +39,7 @@ class RocmActivityProfiler : public GenericActivityProfiler {
 
  protected:
   void logGpuVersions() override;
-  void setMaxGpuBufferSize(int size) override;
+  void setMaxGpuBufferSize(int64_t size) override;
   void enableGpuTracing() override;
   void disableGpuTracing() override;
   void clearGpuActivities() override;

@@ -103,6 +103,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::vector<std::shared_ptr<LoggerCollector>> loggerCollectors_;
   std::thread* profilerThreads_[ThreadType::THREAD_MAX_COUNT] = {nullptr};
   std::atomic_bool stopRunloop_{false};
+  std::atomic_bool syncTraceActive_{false};
   std::atomic<std::int64_t> iterationCount_{-1};
   ConfigLoader& configLoader_;
 };

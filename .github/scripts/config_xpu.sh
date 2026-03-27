@@ -26,7 +26,10 @@ KINETO_CMAKE_FLAGS=(
 
 # --- PyTorch build environment variables ---
 
+# We're following the pattern established in pytorch/pytorch XPU builds:
+#   https://github.com/pytorch/pytorch/blob/39565a7dcf8f93ea22cedeaa20088b24ff6d2634/.ci/manywheel/build_xpu.sh#L20-L28
 set +u
+set -eux
 source /opt/intel/oneapi/compiler/latest/env/vars.sh
 source /opt/intel/oneapi/pti/latest/env/vars.sh
 source /opt/intel/oneapi/umf/latest/env/vars.sh
@@ -34,14 +37,13 @@ source /opt/intel/oneapi/ccl/latest/env/vars.sh
 source /opt/intel/oneapi/mpi/latest/env/vars.sh
 export USE_STATIC_MKL=1
 export USE_XCCL=1
-export USE_MPI=0
 export USE_XPU=1
-set -eux
+export BUILD_TEST=1
 export USE_CUDA=0
 export USE_CUDNN=0
 export USE_NCCL=0
 export USE_ROCM=0
-export BUILD_TEST=1
+export USE_MPI=0
 
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.

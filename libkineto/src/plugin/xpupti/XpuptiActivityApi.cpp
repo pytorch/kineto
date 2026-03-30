@@ -249,6 +249,13 @@ void XpuptiActivityApi::enableXpuptiActivities(
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
 
+#if PTI_VERSION_AT_LEAST(0, 17)
+      case ActivityType::COLLECTIVE_COMM:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COMMUNICATION));
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+        break;
+#endif
+
       default:
         break;
     }
@@ -292,6 +299,13 @@ void XpuptiActivityApi::disablePtiActivities(
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
+
+#if PTI_VERSION_AT_LEAST(0, 17)
+      case ActivityType::COLLECTIVE_COMM:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COMMUNICATION));
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+        break;
+#endif
 
       default:
         break;

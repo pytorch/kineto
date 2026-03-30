@@ -6,13 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiActivityProfilerSessionV2.h"
+#include "XpuptiScopeProfilerSession.h"
 
 #if PTI_VERSION_AT_LEAST(0, 15)
 
 namespace KINETO_NAMESPACE {
 
-XpuptiActivityProfilerSessionV2::XpuptiActivityProfilerSessionV2(
+XpuptiScopeProfilerSession::XpuptiScopeProfilerSession(
     XpuptiActivityApi& xpti,
     const std::string& name,
     const libkineto::Config& config,
@@ -25,28 +25,27 @@ XpuptiActivityProfilerSessionV2::XpuptiActivityProfilerSessionV2(
   }
 }
 
-XpuptiActivityProfilerSessionV2::~XpuptiActivityProfilerSessionV2() {
+XpuptiScopeProfilerSession::~XpuptiScopeProfilerSession() {
   if (scopeProfilerEnabled_) {
     xptiScopeProf_.disableScopeProfiler();
   }
 }
 
-void XpuptiActivityProfilerSessionV2::start() {
+void XpuptiScopeProfilerSession::start() {
   XpuptiActivityProfilerSession::start();
   if (scopeProfilerEnabled_) {
     xptiScopeProf_.startScopeActivity();
   }
 }
 
-void XpuptiActivityProfilerSessionV2::stop() {
+void XpuptiScopeProfilerSession::stop() {
   if (scopeProfilerEnabled_) {
     xptiScopeProf_.stopScopeActivity();
   }
   XpuptiActivityProfilerSession::stop();
 }
 
-void XpuptiActivityProfilerSessionV2::toggleCollectionDynamic(
-    const bool enable) {
+void XpuptiScopeProfilerSession::toggleCollectionDynamic(const bool enable) {
   XpuptiActivityProfilerSession::toggleCollectionDynamic(enable);
   if (scopeProfilerEnabled_) {
     if (enable) {
@@ -57,7 +56,7 @@ void XpuptiActivityProfilerSessionV2::toggleCollectionDynamic(
   }
 }
 
-void XpuptiActivityProfilerSessionV2::processTrace(ActivityLogger& logger) {
+void XpuptiScopeProfilerSession::processTrace(ActivityLogger& logger) {
   XpuptiActivityProfilerSession::processTrace(logger);
   if (scopeProfilerEnabled_) {
     xptiScopeProf_.processScopeTrace(

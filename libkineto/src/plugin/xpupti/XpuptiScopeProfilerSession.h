@@ -19,20 +19,19 @@ namespace KINETO_NAMESPACE {
 
 class XpuptiScopeProfilerApi;
 
-class XpuptiActivityProfilerSessionV2 : public XpuptiActivityProfilerSession {
+class XpuptiScopeProfilerSession : public XpuptiActivityProfilerSession {
  public:
-  XpuptiActivityProfilerSessionV2(
+  XpuptiScopeProfilerSession(
       XpuptiActivityApi& xpti,
       const std::string& name,
       const libkineto::Config& config,
       const std::set<ActivityType>& activity_types);
 
-  XpuptiActivityProfilerSessionV2(const XpuptiActivityProfilerSessionV2&) =
+  XpuptiScopeProfilerSession(const XpuptiScopeProfilerSession&) = delete;
+  XpuptiScopeProfilerSession& operator=(const XpuptiScopeProfilerSession&) =
       delete;
-  XpuptiActivityProfilerSessionV2& operator=(
-      const XpuptiActivityProfilerSessionV2&) = delete;
 
-  ~XpuptiActivityProfilerSessionV2();
+  ~XpuptiScopeProfilerSession();
   void start();
   void stop();
   void toggleCollectionDynamic(const bool enable);

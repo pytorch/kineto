@@ -23,7 +23,7 @@ function(find_libraries)
     find_library(_FIND_LIB
       NAMES ${lib}
       PATHS ${CMAKE_PARENT_BINARY_DIR}
-      PATH_SUFFIXES lib
+      PATH_SUFFIXES lib/${CMAKE_BUILD_TYPE} lib
       NO_DEFAULT_PATH
     )
 
@@ -38,6 +38,16 @@ endfunction()
 
 find_libraries(gtest gtest_main)
 
+find_library(_LINK_LIB
+  NAMES ${LINK_LIBRARY_NAME}
+  PATHS ${LINK_LIBRARY_DIR}
+  PATH_SUFFIXES ${CMAKE_BUILD_TYPE} ""
+  NO_DEFAULT_PATH
+)
+if(NOT _LINK_LIB)
+  message(FATAL_ERROR "Library ${LINK_LIBRARY_NAME} not found in ${LINK_LIBRARY_DIR}")
+endif()
+
 add_executable(${PROJECT_NAME} XpuptiScopeProfilerCompute.cpp)
 target_compile_options(${PROJECT_NAME} PRIVATE -fsycl)
 target_link_options(${PROJECT_NAME} PRIVATE -fsycl)
@@ -45,7 +55,7 @@ target_link_options(${PROJECT_NAME} PRIVATE -fsycl)
 target_link_libraries(${PROJECT_NAME} PRIVATE
   ${gtest_main_FOR_XPU_PATH}
   ${gtest_FOR_XPU_PATH}
-  ${LINK_LIBRARY}
+  ${_LINK_LIB}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN")

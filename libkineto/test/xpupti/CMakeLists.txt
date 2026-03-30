@@ -30,7 +30,18 @@ function(make_test test_file)
   set(lib_name "${test_name}Lib")
   add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
   target_link_libraries(${lib_name} PRIVATE ${LINK_LIBRARIES})
-  set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(${lib_name} PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+  )
+  # On Windows, DLLs must resolve all symbols at link time (unlike Linux .so).
+  # ComputeOnXpu is defined in the compute executable (ExternalProject) which
+  # links back to this DLL. /FORCE:UNRESOLVED allows the DLL to build with
+  # this symbol unresolved. The linker will still report LNK2019 as an error
+  # but /FORCE overrides it (followed by LNK4088 warning) — this is expected.
+  if(WIN32)
+    target_link_options(${lib_name} PRIVATE "LINKER:/FORCE:UNRESOLVED")
+  endif()
 
   set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
   install(TARGETS ${lib_name}
@@ -38,13 +49,37 @@ function(make_test test_file)
     RUNTIME DESTINATION bin
   )
 
+  set(_link_lib_search_dir ${CMAKE_CURRENT_BINARY_DIR})
+
+  # Build the common cmake args for the inner ExternalProject (single-config Ninja).
+  set(_ep_cmake_args
+    -DPROJECT_NAME=${test_name}
+    -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
+    -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
+    -DLINK_LIBRARY_NAME=${lib_name}
+    -DLINK_LIBRARY_DIR=${_link_lib_search_dir}
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+  )
+  if(WIN32)
+    get_filename_component(_sycl_compiler_dir "${SYCL_COMPILER}" DIRECTORY)
+    get_filename_component(_sycl_root "${_sycl_compiler_dir}" DIRECTORY)
+    list(APPEND _ep_cmake_args
+      "-DCMAKE_EXE_LINKER_FLAGS=/Qoption,link,/LIBPATH:\"${_sycl_root}/lib\""
+    )
+  endif()
+
+  # Use a custom CONFIGURE_COMMAND so we can pass $<CONFIG> as the build type.
+  # CMAKE_ARGS doesn't support generator expressions, but CONFIGURE_COMMAND does.
+  # This ensures the inner Ninja build matches the outer multi-config selection
+  # (e.g. Debug vs Release) when using Visual Studio generators.
   ExternalProject_Add(${test_name}
     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-    CMAKE_ARGS -DPROJECT_NAME=${test_name}
-    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
-    CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
-    CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+    CONFIGURE_COMMAND ${CMAKE_COMMAND}
+      -G Ninja
+      -S <SOURCE_DIR>
+      -B <BINARY_DIR>
+      -DCMAKE_BUILD_TYPE=$<CONFIG>
+      ${_ep_cmake_args}
     BUILD_ALWAYS TRUE
   )
 

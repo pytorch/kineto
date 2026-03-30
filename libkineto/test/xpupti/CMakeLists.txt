@@ -19,6 +19,10 @@ add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
 target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiScopeProfilerConfigTest)
 
+add_executable(XpuptiActivityHandlersTest XpuptiActivityHandlersTest.cpp)
+target_link_libraries(XpuptiActivityHandlersTest PRIVATE ${LINK_LIBRARIES})
+gtest_discover_tests(XpuptiActivityHandlersTest)
+
 include(ExternalProject)
 
 function(make_test test_file)
@@ -50,3 +54,4 @@ function(make_test test_file)
 endfunction()
 
 make_test(XpuptiProfilerTest.cpp)
+

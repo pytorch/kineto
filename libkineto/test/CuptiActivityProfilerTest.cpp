@@ -112,8 +112,7 @@ struct MockCuptiActivityBuffer {
       int64_t correlation,
       CUpti_ExternalCorrelationKind externalKind,
       int64_t externalId) {
-    auto& act =
-        createActivity<CUpti_ActivityExternalCorrelation>(correlation);
+    auto& act = createActivity<CUpti_ActivityExternalCorrelation>(correlation);
     act.kind = CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION;
     act.externalId = externalId;
     act.externalKind = externalKind;

@@ -465,7 +465,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
       std::isinf(warpsPerSmVal) ? "\"inf\"" : std::to_string(warpsPerSmVal),
       kernel.gridX, kernel.gridY, kernel.gridZ,
       kernel.blockX, kernel.blockY, kernel.blockZ,
-      (int) (0.5 + (kernelOccupancy(kernel) * 100.0)),
+      static_cast<int>(std::lround(kernelOccupancy(kernel) * 100.0)),
       getGraphNodeMetadata(kernel)
       );
   // clang-format on

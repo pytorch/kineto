@@ -10,7 +10,10 @@ set -eux
 echo "====: Working directory: $(pwd)"
 
 # Ensure cmake is at least the max version needed by PyTorch and Kineto
-conda install -y 'cmake>=3.27' -c conda-forge
+conda config --show channels
+conda config --remove channels defaults
+conda config --add channels conda-forge
+conda install -y 'cmake>=3.27'
 echo "====: Installed cmake version: $(cmake --version)"
 
 python -m pip install --upgrade pip

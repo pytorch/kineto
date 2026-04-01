@@ -360,17 +360,15 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  uint32_t ctx_id = activity->contextId;
-  uint32_t event_id = activity->cudaEventId;
-  CUpti_ActivitySynchronizationType sync_type = activity->type;
 
   // Marshal the logging to a functor so we can defer it if needed.
   auto log_event =
-      [activity, ctx_id, event_id, sync_type, device_id, logger, this]() {
+      [activity, device_id, logger, this]() {
         int32_t src_stream = -1;
         int32_t src_corrid = -1;
-        if (isEventSync(sync_type)) {
-          auto maybe_wait_event_info = getWaitEventInfo(ctx_id, event_id);
+        if (isEventSync(activity->type)) {
+          auto maybe_wait_event_info =
+              getWaitEventInfo(activity->contextId, activity->cudaEventId);
           if (maybe_wait_event_info) {
             src_stream = maybe_wait_event_info->stream;
             src_corrid = maybe_wait_event_info->correlationId;
@@ -393,12 +391,12 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
         }
         VLOG(2) << "Logging sync event device = " << device_id
                 << " stream = " << activity->streamId
-                << " sync type = " << syncTypeString(sync_type);
+                << " sync type = " << syncTypeString(activity->type);
         cuda_sync_activity.log(*logger);
         setGpuActivityPresent(true);
       };
 
-  if (isEventSync(sync_type)) {
+  if (isEventSync(activity->type)) {
     // Defer logging event syncs till the end so that:
     // 1. The waitEventMap() lookup runs after all CUDA_EVENT records are
     //    processed, ensuring wait_on_cuda_event_record_corr_id is populated.
@@ -406,7 +404,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
     DeferredLogEntry entry;
     entry.device = device_id;
     entry.stream = activity->streamId;
-    entry.isWaitEvent = isWaitEventSync(sync_type);
+    entry.isWaitEvent = isWaitEventSync(activity->type);
     entry.logMe = log_event;
 
     logQueue_.push_back(entry);

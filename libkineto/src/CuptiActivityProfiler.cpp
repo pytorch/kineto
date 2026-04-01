@@ -360,9 +360,9 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  auto ctx_id = activity->contextId;
-  auto event_id = activity->cudaEventId;
-  auto sync_type = activity->type;
+  uint32_t ctx_id = activity->contextId;
+  uint32_t event_id = activity->cudaEventId;
+  CUpti_ActivitySynchronizationType sync_type = activity->type;
 
   // Marshal the logging to a functor so we can defer it if needed.
   auto log_event =

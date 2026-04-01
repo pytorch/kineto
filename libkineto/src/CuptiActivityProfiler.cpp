@@ -362,39 +362,37 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   auto device_id = contextIdtoDeviceId(activity->contextId);
 
   // Marshal the logging to a functor so we can defer it if needed.
-  auto log_event =
-      [activity, device_id, logger, this]() {
-        int32_t src_stream = -1;
-        int32_t src_corrid = -1;
-        if (isEventSync(activity->type)) {
-          auto maybe_wait_event_info =
-              getWaitEventInfo(activity->contextId, activity->cudaEventId);
-          if (maybe_wait_event_info) {
-            src_stream = maybe_wait_event_info->stream;
-            src_corrid = maybe_wait_event_info->correlationId;
-          }
-        }
-        const ITraceActivity* linked =
-            linkedActivity(activity->correlationId, this->cpuCorrelationMap_);
-        const auto& cuda_sync_activity =
-            this->traceBuffers_->addActivityWrapper(
-                CudaSyncActivity(activity, linked, src_stream, src_corrid));
+  auto log_event = [activity, device_id, logger, this]() {
+    int32_t src_stream = -1;
+    int32_t src_corrid = -1;
+    if (isEventSync(activity->type)) {
+      auto maybe_wait_event_info =
+          getWaitEventInfo(activity->contextId, activity->cudaEventId);
+      if (maybe_wait_event_info) {
+        src_stream = maybe_wait_event_info->stream;
+        src_corrid = maybe_wait_event_info->correlationId;
+      }
+    }
+    const ITraceActivity* linked =
+        linkedActivity(activity->correlationId, this->cpuCorrelationMap_);
+    const auto& cuda_sync_activity = this->traceBuffers_->addActivityWrapper(
+        CudaSyncActivity(activity, linked, src_stream, src_corrid));
 
-        if (outOfRange(cuda_sync_activity)) {
-          return;
-        }
+    if (outOfRange(cuda_sync_activity)) {
+      return;
+    }
 
-        if (static_cast<int32_t>(activity->streamId) != -1) {
-          recordStream(device_id, activity->streamId, "");
-        } else {
-          recordDevice(device_id);
-        }
-        VLOG(2) << "Logging sync event device = " << device_id
-                << " stream = " << activity->streamId
-                << " sync type = " << syncTypeString(activity->type);
-        cuda_sync_activity.log(*logger);
-        setGpuActivityPresent(true);
-      };
+    if (static_cast<int32_t>(activity->streamId) != -1) {
+      recordStream(device_id, activity->streamId, "");
+    } else {
+      recordDevice(device_id);
+    }
+    VLOG(2) << "Logging sync event device = " << device_id
+            << " stream = " << activity->streamId
+            << " sync type = " << syncTypeString(activity->type);
+    cuda_sync_activity.log(*logger);
+    setGpuActivityPresent(true);
+  };
 
   if (isEventSync(activity->type)) {
     // Defer logging event syncs till the end so that:

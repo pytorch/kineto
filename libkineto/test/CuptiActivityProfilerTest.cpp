@@ -112,12 +112,11 @@ struct MockCuptiActivityBuffer {
       int64_t correlation,
       CUpti_ExternalCorrelationKind externalKind,
       int64_t externalId) {
-    auto& act = *(CUpti_ActivityExternalCorrelation*)malloc(
-        sizeof(CUpti_ActivityExternalCorrelation));
+    auto& act =
+        createActivity<CUpti_ActivityExternalCorrelation>(correlation);
     act.kind = CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION;
     act.externalId = externalId;
     act.externalKind = externalKind;
-    act.correlationId = correlation;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -200,10 +199,8 @@ struct MockCuptiActivityBuffer {
       uint32_t eventId,
       uint32_t streamId = 1,
       uint32_t contextId = 0) {
-    auto& act = *(CUpti_ActivityCudaEventType*)malloc(
-        sizeof(CUpti_ActivityCudaEventType));
+    auto& act = createActivity<CUpti_ActivityCudaEventType>(correlation);
     act.kind = CUPTI_ACTIVITY_KIND_CUDA_EVENT;
-    act.correlationId = correlation;
     act.eventId = eventId;
     act.streamId = streamId;
     act.contextId = contextId;
@@ -236,6 +233,16 @@ struct MockCuptiActivityBuffer {
     bzero(&act, sizeof(act));
     act.start = start_ns;
     act.end = end_ns;
+    act.correlationId = correlation;
+    return act;
+  }
+
+  // For activities that have no start/end timestamps (e.g. external
+  // correlation records, CUDA event records).
+  template <class T>
+  T& createActivity(int64_t correlation) {
+    T& act = *static_cast<T*>(malloc(sizeof(T)));
+    bzero(&act, sizeof(act));
     act.correlationId = correlation;
     return act;
   }

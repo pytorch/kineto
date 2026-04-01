@@ -762,8 +762,28 @@ void RocprofLogger::setMaxEvents(uint32_t maxBufferSize) {
   maxBufferSize_ = maxBufferSize;
 }
 
+void RocprofLogger::ensureRegistered() {
+  int status = 0;
+  rocprofiler_is_initialized(&status);
+  VLOG(0) << "rocprofiler_is_initialized returned " << status;
+  if (status == 0) {
+    VLOG(0) << "Forcing rocprofiler-sdk tool registration";
+    auto result = rocprofiler_force_configure(&rocprofiler_configure);
+    if (result == ROCPROFILER_STATUS_SUCCESS) {
+      VLOG(0) << "rocprofiler-sdk tool registration completed successfully";
+      singleton().registered_ = true;
+    } else {
+      LOG(WARNING) << "rocprofiler_force_configure failed with status "
+                   << result;
+    }
+  } else if (status == 1) {
+    singleton().registered_ = true;
+  }
+}
+
 void RocprofLogger::startLogging() {
   if (!registered_) {
+    ensureRegistered();
   }
 
   externalCorrelationEnabled_ = true;

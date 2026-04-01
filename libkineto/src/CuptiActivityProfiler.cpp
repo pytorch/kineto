@@ -393,12 +393,12 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
         }
         VLOG(2) << "Logging sync event device = " << device_id
                 << " stream = " << activity->streamId
-                << " sync type = " << syncTypeString(activity->type);
+                << " sync type = " << syncTypeString(sync_type);
         cuda_sync_activity.log(*logger);
         setGpuActivityPresent(true);
       };
 
-  if (isEventSync(activity->type)) {
+  if (isEventSync(sync_type)) {
     // Defer logging event syncs till the end so that:
     // 1. The waitEventMap() lookup runs after all CUDA_EVENT records are
     //    processed, ensuring wait_on_cuda_event_record_corr_id is populated.
@@ -406,7 +406,7 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
     DeferredLogEntry entry;
     entry.device = device_id;
     entry.stream = activity->streamId;
-    entry.isWaitEvent = isWaitEventSync(activity->type);
+    entry.isWaitEvent = isWaitEventSync(sync_type);
     entry.logMe = log_event;
 
     logQueue_.push_back(entry);

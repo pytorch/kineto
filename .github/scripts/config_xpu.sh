@@ -29,12 +29,13 @@ KINETO_CMAKE_FLAGS=(
 # We're following the pattern established in pytorch/pytorch XPU builds:
 #   https://github.com/pytorch/pytorch/blob/39565a7dcf8f93ea22cedeaa20088b24ff6d2634/.ci/manywheel/build_xpu.sh#L20-L28
 set +u
-set -eux
 source /opt/intel/oneapi/compiler/latest/env/vars.sh
 source /opt/intel/oneapi/pti/latest/env/vars.sh
 source /opt/intel/oneapi/umf/latest/env/vars.sh
 source /opt/intel/oneapi/ccl/latest/env/vars.sh
 source /opt/intel/oneapi/mpi/latest/env/vars.sh
+set -u
+
 export USE_STATIC_MKL=1
 export USE_XCCL=1
 export USE_XPU=1

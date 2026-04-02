@@ -691,6 +691,9 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   constexpr uint32_t kWaitCorrId = 200;
   constexpr uint32_t kEvtSyncCorrId = 300;
 
+  // Wait events and synchronization records are added
+  // before the CUDA_EVENT record they reference, as CUPTI
+  // provides no ordering guarantee for activity buffer entries.
   auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
   gpuOps->addRuntimeActivity(
       CUDA_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 20, 1);

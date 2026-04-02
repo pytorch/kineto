@@ -236,8 +236,6 @@ struct MockCuptiActivityBuffer {
     return act;
   }
 
-  // For activities that have no start/end timestamps (e.g. external
-  // correlation records, CUDA event records).
   template <class T>
   T& createActivity(int64_t correlation) {
     T& act = *static_cast<T*>(malloc(sizeof(T)));
@@ -677,7 +675,6 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
 
   profiler.recordThreadInfo();
 
-  // CPU ops to provide correlation linkage
   auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
       start_time_ns, start_time_ns + duration_ns);
   cpuOps->addOp("op1", start_time_ns + 10, start_time_ns + 50, 1);
@@ -712,7 +709,6 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
       -1,
       kEventId);
-  // CUDA_EVENT record comes AFTER the sync records
   gpuOps->addCudaEventActivity(kRecordCorrId, kEventId, 1, 0);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
@@ -750,6 +746,13 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   }
   EXPECT_EQ(streamWaitFound, 1) << "Expected exactly one Stream Wait Event";
   EXPECT_EQ(eventSyncFound, 1) << "Expected exactly one Event Sync";
+
+#ifdef __linux__
+  char filename[] = "/tmp/libkineto_out_of_order_XXXXXX.json";
+  mkstemps(filename, 5);
+  trace.save(filename);
+  LOG(INFO) << "Trace exported to: " << filename;
+#endif
 }
 
 TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {

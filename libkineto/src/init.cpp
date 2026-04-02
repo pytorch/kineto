@@ -23,6 +23,9 @@
 #include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
+#ifdef HAS_ROCTRACER
+#include "RocprofLogger.h"
+#endif
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
@@ -167,6 +170,12 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
     CuptiActivityApi::forceLoadCupti();
   }
 #endif // HAS_CUPTI
+
+#ifdef HAS_ROCTRACER
+  if (!cpuOnly) {
+    RocprofLogger::ensureRegistered();
+  }
+#endif
 
   ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(

@@ -100,7 +100,7 @@ void RocmActivityProfiler::logGpuVersions() {
 #endif
 }
 
-void RocmActivityProfiler::setMaxGpuBufferSize(int size) {
+void RocmActivityProfiler::setMaxGpuBufferSize(int64_t size) {
   roc_.setMaxBufferSize(size);
 }
 

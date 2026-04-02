@@ -1089,6 +1089,13 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
       jsonData["PT_PROFILER_JOB_NAME"].get<std::string>(), "test_training_job");
   EXPECT_EQ(jsonData["PT_PROFILER_JOB_VERSION"].get<std::string>(), "2");
   EXPECT_EQ(jsonData["PT_PROFILER_JOB_ATTEMPT_INDEX"].get<std::string>(), "5");
+
+  // Verify hostname is non-empty when present (gethostname may not be
+  // available in all environments, but when it succeeds the value must
+  // not be empty).
+  if (jsonData.contains("host_name")) {
+    EXPECT_FALSE(jsonData["host_name"].get<std::string>().empty());
+  }
 #endif
 
   // Clean up environment variables

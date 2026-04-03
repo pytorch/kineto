@@ -264,25 +264,32 @@ void CuptiActivityApi::bufferCompleted(
     uint8_t* buffer,
     size_t /* unused */,
     size_t validSize) {
-  std::lock_guard<std::mutex> guard(mutex_);
-  auto it = allocatedGpuTraceBuffers_.find(buffer);
-  if (it == allocatedGpuTraceBuffers_.end()) {
-    LOG(ERROR) << "bufferCompleted called with unknown buffer: "
-               << static_cast<void*>(buffer);
-    return;
-  }
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    auto it = allocatedGpuTraceBuffers_.find(buffer);
+    if (it == allocatedGpuTraceBuffers_.end()) {
+      LOG(ERROR) << "bufferCompleted called with unknown buffer: "
+                 << static_cast<void*>(buffer);
+      return;
+    }
 
-  if (!readyGpuTraceBuffers_) {
-    readyGpuTraceBuffers_ = std::make_unique<CuptiActivityBufferMap>();
+    if (!readyGpuTraceBuffers_) {
+      readyGpuTraceBuffers_ = std::make_unique<CuptiActivityBufferMap>();
+    }
+    // Set valid size of buffer before moving to ready map
+    it->second->setSize(validSize);
+    (*readyGpuTraceBuffers_)[it->first] = std::move(it->second);
+    allocatedGpuTraceBuffers_.erase(it);
   }
-  // Set valid size of buffer before moving to ready map
-  it->second->setSize(validSize);
-  (*readyGpuTraceBuffers_)[it->first] = std::move(it->second);
-  allocatedGpuTraceBuffers_.erase(it);
 
   // report any records dropped from the queue; to avoid unnecessary cupti
   // API calls, we make it report only in verbose mode (it doesn't happen
   // often in our testing anyways)
+  // Can't hold mutex_ during this call, since cuptiActivityGetNumDroppedRecords
+  // re-enters CUPTI and can acquire CUPTI's internal lock, while CUPTI
+  // callbacks (e.g. bufferRequested) acquire mutex_ under that same lock -
+  // causing an ABBA deadlock in multi-threaded environments (e.g. free-threaded
+  // Python).
   if (VLOG_IS_ON(1)) {
     size_t dropped = 0;
     CUPTI_CALL(cuptiActivityGetNumDroppedRecords(ctx, streamId, &dropped));

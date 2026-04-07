@@ -748,7 +748,10 @@ GenericActivityProfiler::getLoggerMetadata() {
   // Save logs from LoggerCollector objects into Trace metadata.
   auto LoggerMDMap = loggerCollectorMetadata_->extractCollectorMetadata();
   for (auto& md : LoggerMDMap) {
-    loggerMD[toString(md.first)] = md.second;
+    // Only WARNING and ERROR are included in trace metadata.
+    if (md.first == WARNING || md.first == ERROR) {
+      loggerMD[toString(md.first)] = md.second;
+    }
   }
 #endif // !USE_GOOGLE_LOG
   return loggerMD;

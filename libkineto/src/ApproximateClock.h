@@ -32,6 +32,8 @@
 #else
 #undef KINETO_RDTSC
 #endif
+#elif defined(__aarch64__) && !defined(__CUDACC__) && !defined(__HIPCC__)
+#define KINETO_ARMTSC
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -62,6 +64,14 @@ inline time_t getTime([[maybe_unused]] bool allow_monotonic = false) {
 #endif
 }
 
+#if defined(KINETO_ARMTSC)
+inline uint64_t getArmApproximateTime() {
+  uint64_t val;
+  __asm__ __volatile__("mrs %0, cntvct_el0" : "=r"(val));
+  return val;
+}
+#endif
+
 // We often do not need to capture true wall times. If a fast mechanism such
 // as TSC is available we can use that instead and convert back to epoch time
 // during post processing. This greatly reduce the clock's contribution to
@@ -73,6 +83,8 @@ inline time_t getTime([[maybe_unused]] bool allow_monotonic = false) {
 inline auto getApproximateTime() {
 #if defined(KINETO_RDTSC)
   return static_cast<uint64_t>(__rdtsc());
+#elif defined(KINETO_ARMTSC)
+  return getArmApproximateTime();
 #else
   return getTime();
 #endif

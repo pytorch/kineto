@@ -146,7 +146,7 @@ void ActivityProfilerController::setInvariantViolationsLoggerFactory(
 }
 
 bool ActivityProfilerController::isActive() {
-  return profiler_->isActive();
+  return syncHandler_->isSyncActive() || asyncHandler_->isAsyncActive();
 }
 
 void ActivityProfilerController::transferCpuTrace(
@@ -198,12 +198,20 @@ void ActivityProfilerController::logInvariantViolation(
 
 // Async-only functions
 bool ActivityProfilerController::canAcceptConfig() {
-  return asyncHandler_->canAcceptConfig();
+  return !isActive();
 }
 void ActivityProfilerController::acceptConfig(const Config& config) {
+  if (isActive()) {
+    LOG(WARNING) << "Ignored request - profiler busy";
+    return;
+  }
   asyncHandler_->acceptConfig(config);
 }
 void ActivityProfilerController::scheduleTrace(const Config& config) {
+  if (isActive()) {
+    LOG(WARNING) << "Ignored request - profiler busy";
+    return;
+  }
   asyncHandler_->scheduleTrace(config);
 }
 void ActivityProfilerController::step() {
@@ -212,6 +220,12 @@ void ActivityProfilerController::step() {
 
 // Sync-only functions
 void ActivityProfilerController::prepareTrace(const Config& config) {
+  // Sync-trace requests preempt any active trace.
+  asyncHandler_->cancel();
+  if (syncHandler_->isSyncActive()) {
+    syncHandler_->cancel();
+  }
+
   syncHandler_->prepareTrace(config);
 }
 void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {

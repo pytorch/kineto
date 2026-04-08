@@ -57,9 +57,9 @@ static void CUPTIAPI callback_switchboard(
     CUpti_CallbackDomain domain,
     CUpti_CallbackId cbid,
     const CUpti_CallbackData* cbInfo) {
-  // below statement is likey going to call a mutex
-  // on the singleton access
-  CuptiCallbackApi::singleton()->__callback_switchboard(domain, cbid, cbInfo);
+  // __callback_switchboard acquires a reader lock
+  // on the callback list
+  CuptiCallbackApi::singleton().__callback_switchboard(domain, cbid, cbInfo);
 }
 
 void CuptiCallbackApi::__callback_switchboard(
@@ -152,13 +152,9 @@ void CuptiCallbackApi::__callback_switchboard(
   }
 }
 
-std::shared_ptr<CuptiCallbackApi> CuptiCallbackApi::singleton() {
-  static const std::shared_ptr<CuptiCallbackApi> instance = [] {
-    std::shared_ptr<CuptiCallbackApi> inst =
-        std::make_shared<CuptiCallbackApi>();
-    return inst;
-  }();
-  return instance;
+CuptiCallbackApi& CuptiCallbackApi::singleton() {
+  static auto* instance = new CuptiCallbackApi();
+  return *instance;
 }
 
 void CuptiCallbackApi::initCallbackApi() {

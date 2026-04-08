@@ -35,16 +35,14 @@ inline bool cuptiLazyInit_() {
   return cuptiTearDown_() && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
 }
 
-inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
+inline void reenableCuptiCallbacks_(CuptiCallbackApi& cbapi) {
   // Re-enable callbacks from the past if they exist.
   LOG(INFO) << "Re-enable previous CUPTI callbacks - Starting";
-  VLOG(1) << "  CUPTI subscriber before reinit:"
-          << cbapi_->getCuptiSubscriber();
-  cbapi_->initCallbackApi();
-  if (cbapi_->initSuccess()) {
-    VLOG(1) << "  CUPTI subscriber after reinit:"
-            << cbapi_->getCuptiSubscriber();
-    bool status = cbapi_->reenableCallbacks();
+  VLOG(1) << "  CUPTI subscriber before reinit:" << cbapi.getCuptiSubscriber();
+  cbapi.initCallbackApi();
+  if (cbapi.initSuccess()) {
+    VLOG(1) << "  CUPTI subscriber after reinit:" << cbapi.getCuptiSubscriber();
+    bool status = cbapi.reenableCallbacks();
     if (!status) {
       LOG(WARNING)
           << "Re-enable previous CUPTI callbacks - Failed to reenableCallbacks";
@@ -58,8 +56,8 @@ inline void reenableCuptiCallbacks_(std::shared_ptr<CuptiCallbackApi>& cbapi_) {
 }
 
 CuptiActivityApi& CuptiActivityApi::singleton() {
-  static CuptiActivityApi instance;
-  return instance;
+  static auto* instance = new CuptiActivityApi();
+  return *instance;
 }
 
 void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
@@ -303,11 +301,10 @@ void CuptiActivityApi::enableCuptiActivities(
     const std::set<ActivityType>& selected_activities,
     bool enablePerThreadBuffers) {
   // Lazily support re-init of CUPTI Callbacks, if they were finalized before.
-  auto cbapi_ = CuptiCallbackApi::singleton();
-  if (!tracingEnabled_ && !cbapi_->initSuccess() && cuptiLazyInit_()) {
-    reenableCuptiCallbacks_(cbapi_);
+  auto& cbapi = CuptiCallbackApi::singleton();
+  if ((tracingEnabled_ == 0u) && !cbapi.initSuccess() && cuptiLazyInit_()) {
+    reenableCuptiCallbacks_(cbapi);
   }
-  cbapi_.reset();
 
   if (enablePerThreadBuffers) {
 #if (CUDART_VERSION >= 12030)
@@ -422,10 +419,10 @@ void CuptiActivityApi::teardownContext() {
     // PyTorch Profiler is synchronous, so teardown needs to be run async in
     // this thread.
     std::thread teardownThread([&] {
-      auto cbapi_ = CuptiCallbackApi::singleton();
-      if (!cbapi_->initSuccess()) {
-        cbapi_->initCallbackApi();
-        if (!cbapi_->initSuccess()) {
+      auto& cbapi = CuptiCallbackApi::singleton();
+      if (!cbapi.initSuccess()) {
+        cbapi.initCallbackApi();
+        if (!cbapi.initSuccess()) {
           LOG(WARNING) << "CUPTI Callback failed to init, skipping teardown";
           tearingDown_ = 0;
           return;
@@ -433,9 +430,8 @@ void CuptiActivityApi::teardownContext() {
       }
       // Subscribe callbacks to call cuptiFinalize in the exit callback of these
       // APIs
-      bool status = cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
-      status =
-          status && cbapi_->enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      bool status = cbapi.enableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      status = status && cbapi.enableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
       if (!status) {
         LOG(WARNING)
             << "CUPTI Callback failed to enable for domain, skipping teardown";
@@ -447,7 +443,7 @@ void CuptiActivityApi::teardownContext() {
       CUPTI_CALL(cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 
       LOG(INFO) << "  CUPTI subscriber before finalize:"
-                << cbapi_->getCuptiSubscriber();
+                << cbapi.getCuptiSubscriber();
       teardownCupti_ = 1;
       std::unique_lock<std::mutex> lck(finalizeMutex_);
       finalizeCond_.wait(lck, [&] { return teardownCupti_ == 0; });
@@ -458,14 +454,13 @@ void CuptiActivityApi::teardownContext() {
       tracingEnabled_ = 0;
 
       // Remove the callbacks used specifically for cuptiFinalize
-      cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
-      cbapi_->disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
+      cbapi.disableCallbackDomain(CUPTI_CB_DOMAIN_RUNTIME_API);
+      cbapi.disableCallbackDomain(CUPTI_CB_DOMAIN_DRIVER_API);
 
       // Re-init CUPTI Callbacks if Lazy Re-init is not enabled.
       if (!cuptiLazyInit_()) {
-        reenableCuptiCallbacks_(cbapi_);
+        reenableCuptiCallbacks_(cbapi);
       }
-      cbapi_.reset();
       tearingDown_ = 0;
     });
     teardownThread.detach();

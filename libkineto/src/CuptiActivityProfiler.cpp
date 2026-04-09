@@ -134,11 +134,11 @@ void CuptiActivityProfiler::disableGpuTracing() {
   cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
 }
 
-void CuptiActivityProfiler::clearGpuActivities() {
+void CuptiActivityProfiler::clearGpuActivitiesImpl() {
   cupti_.clearActivities();
 }
 
-bool CuptiActivityProfiler::isGpuCollectionStopped() const {
+bool CuptiActivityProfiler::isGpuCollectionStoppedImpl() const {
   return cupti_.stopCollection;
 }
 

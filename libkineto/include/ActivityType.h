@@ -44,12 +44,13 @@ enum class ActivityType {
   XPU_RUNTIME = 21, // host side xpu runtime events
   XPU_DRIVER = 22, // host side xpu driver events
   COLLECTIVE_COMM = 23, // collective communication
-  XPU_SYNC = 24, // XPU synchronization events
 
   // PRIVATEUSE1 Activity types are used for custom backends.
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
-  PRIVATEUSE1_RUNTIME = 25, // host side privateUse1 runtime events
-  PRIVATEUSE1_DRIVER = 26, // host side privateUse1 driver events
+  PRIVATEUSE1_RUNTIME = 24, // host side privateUse1 runtime events
+  PRIVATEUSE1_DRIVER = 25, // host side privateUse1 driver events
+
+  XPU_SYNC = 26, // XPU synchronization events
 
   ENUM_COUNT = 27, // This is to add buffer and not used for any profiling logic. Add
   // your new type before it.

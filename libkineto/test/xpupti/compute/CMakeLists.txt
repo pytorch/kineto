@@ -38,14 +38,19 @@ endfunction()
 
 find_libraries(gtest gtest_main)
 
+find_package(Threads REQUIRED)
+
 add_executable(${PROJECT_NAME} XpuptiScopeProfilerCompute.cpp)
 target_compile_options(${PROJECT_NAME} PRIVATE -fsycl)
 target_link_options(${PROJECT_NAME} PRIVATE -fsycl)
+# Export gtest symbols so the shared library can resolve them at runtime
+target_link_options(${PROJECT_NAME} PRIVATE -Wl,--export-dynamic)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   ${gtest_main_FOR_XPU_PATH}
   ${gtest_FOR_XPU_PATH}
   ${LINK_LIBRARY}
+  Threads::Threads
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN")

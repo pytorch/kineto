@@ -21,6 +21,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         if not storage:
             raise ImportError('google-cloud-storage must be installed for Google Cloud Blob support.')
 
+    # pyrefly: ignore [bad-param-name-override]
     def exists(self, dirname):
         """Returns whether the path is a directory or not."""
         bucket_name, path = self.bucket_and_path(dirname)
@@ -28,6 +29,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         bucket = client.bucket(bucket_name)
         return bucket.blob(path).exists()
 
+    # pyrefly: ignore [bad-param-name-override]
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         raise NotImplementedError
 
@@ -67,6 +69,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
                 items.append(item)
         return items
 
+    # pyrefly: ignore [bad-param-name-override]
     def makedirs(self, dirname):
         """No need create directory since the upload blob will automatically create"""
         pass
@@ -87,6 +90,7 @@ class GoogleBlobSystem(RemotePath, BaseFileSystem):
         for blob in blobs:
             dirname, basename = self.split(blob.name)
             dirname = 'gs://{}/{}'.format(bucket_name, dirname)
+            # pyrefly: ignore [missing-attribute]
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value

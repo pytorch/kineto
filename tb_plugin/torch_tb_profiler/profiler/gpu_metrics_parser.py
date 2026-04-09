@@ -83,18 +83,23 @@ class GPUMetricsParser:
                 current_bucket = buckets_ranges[0]
                 while (current_range_index < len(self.kernel_ranges_per_device[gpu_id])
                        and current_bucket_index < buckets):
+                    # pyrefly: ignore [unsupported-operation]
                     if current_bucket[1] <= current_range[0]:
                         current_bucket_index += 1
                         current_bucket = buckets_ranges[current_bucket_index] if current_bucket_index < buckets \
                             else None
+                    # pyrefly: ignore [unsupported-operation]
                     elif current_bucket[0] >= current_range[1]:
                         current_range_index += 1
                         if current_range_index < len(self.kernel_ranges_per_device[gpu_id]):
                             current_range = self.kernel_ranges_per_device[gpu_id][current_range_index]
                     else:
+                        # pyrefly: ignore [unsupported-operation]
                         left_bound = max(current_range[0], current_bucket[0])
+                        # pyrefly: ignore [unsupported-operation]
                         right_bound = min(current_range[1], current_bucket[1])
                         gpu_utilization_timeline[gpu_id][current_bucket_index] += (right_bound - left_bound)
+                        # pyrefly: ignore [unsupported-operation]
                         if current_bucket[1] < current_range[1]:
                             current_bucket_index += 1
                             current_bucket = buckets_ranges[current_bucket_index] if current_bucket_index < buckets \
@@ -111,6 +116,7 @@ class GPUMetricsParser:
                 start_time = buckets_ranges[-1][1]
                 self.gpu_util_buckets[gpu_id].append((start_time, 0))
 
+        # pyrefly: ignore [bad-assignment]
         self.kernel_ranges_per_device = None  # Release memory.
 
     def calculate_approximated_sm_efficiency(self, steps_start_time, steps_end_time):
@@ -138,6 +144,7 @@ class GPUMetricsParser:
             if len(approximated_sm_efficiency_ranges) > 0:
                 self.approximated_sm_efficiency_ranges[gpu_id] = approximated_sm_efficiency_ranges
 
+        # pyrefly: ignore [bad-assignment]
         self.blocks_per_sm_per_device = None  # Release memory.
 
     # Weighted average. Weighted by kernel's time duration.
@@ -154,6 +161,7 @@ class GPUMetricsParser:
                     total_occupancy += r[2] * dur
                     total_time += dur
             if total_time > 0:
+                # pyrefly: ignore [unsupported-operation]
                 self.avg_occupancy_per_device[gpu_id] = total_occupancy / total_time
 
     @classmethod
@@ -285,13 +293,16 @@ class GPUMetricsParser:
                 # the legacy chrome tracing file would not have gpu info.
                 pass
             gpu_metrics_data.append({'title': 'GPU Utilization', 'value': '{} %'.format(
+                # pyrefly: ignore [unsupported-operation]
                 round(self.gpu_utilization[gpu_id] * 100, 2))})
             if self.avg_approximated_sm_efficiency_per_device[gpu_id] is not None:
                 gpu_metrics_data.append({'title': 'Est. SM Efficiency', 'value': '{} %'.format(
+                    # pyrefly: ignore [unsupported-operation]
                     round(self.avg_approximated_sm_efficiency_per_device[gpu_id] * 100, 2))})
                 has_sm_efficiency = True
             if self.avg_occupancy_per_device[gpu_id] is not None:
                 gpu_metrics_data.append({'title': 'Est. Achieved Occupancy', 'value': '{} %'.format(
+                    # pyrefly: ignore [no-matching-overload]
                     round(self.avg_occupancy_per_device[gpu_id], 2))})
                 has_occupancy = True
             if tc_ratio[gpu_id] is not None:

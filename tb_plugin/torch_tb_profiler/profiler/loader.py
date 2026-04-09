@@ -28,7 +28,6 @@ class RunLoader:
         self.run_name = name
         self.run_dir = run_dir
         self.caches = caches
-        # pyre-fixme[16]: Module `multiprocessing` has no attribute `Queue`.
         self.queue = Queue()
 
     def load(self):
@@ -74,6 +73,7 @@ class RunLoader:
             if r is not None:
                 run.add_profile(r)
             if d is not None:
+                # pyrefly: ignore [bad-argument-type]
                 distributed_run.add_profile(d)
 
         distributed_profiles = self._process_spans(distributed_run)

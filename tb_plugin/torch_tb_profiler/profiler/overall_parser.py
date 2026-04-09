@@ -107,6 +107,7 @@ class OverallParser:
                     intersection_ranges_lists([step], role_ranges[ProfileRole.CpuOp]))
             comm_costs.communication = get_ranges_sum(
                 intersection_ranges_lists([step], role_ranges[ProfileRole.Communication]))
+            # pyrefly: ignore [bad-assignment]
             comm_costs.other = self.steps_costs[i].costs[ProfileRole.Total] +\
                 comm_costs.overlap - comm_costs.computation - comm_costs.communication
             self.communication_overlap.append(comm_costs)

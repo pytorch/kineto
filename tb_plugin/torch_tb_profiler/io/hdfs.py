@@ -16,13 +16,13 @@ class HadoopFileSystem(RemotePath, BaseFileSystem):
     def __init__(self) -> None:
         super().__init__()
     
-    # pyre-fixme[11]: Annotation `HadoopFileSystem` is not defined as a type.
     def get_fs(self) -> arrow.HadoopFileSystem:
         return fsspec.filesystem("hdfs")
 
     def exists(self, filename):
         return self.get_fs().exists(filename)
     
+    # pyrefly: ignore [bad-param-name-override]
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         fs = self.get_fs()
         mode = "rb" if binary_mode else "r"

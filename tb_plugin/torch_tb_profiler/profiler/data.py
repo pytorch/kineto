@@ -113,7 +113,6 @@ class RunProfileData:
     @staticmethod
     def from_json(worker, span, trace_json: Dict):
         profile = RunProfileData(worker, span, trace_json)
-        # pyre-fixme[16]: `None` has no attribute `__enter__`.
         with utils.timing('Data processing'):
             profile.process()
         profile.analyze()
@@ -175,6 +174,7 @@ class RunProfileData:
     def process(self):
         with utils.timing('EventParser.parse'):
             parser = EventParser()
+            # pyrefly: ignore [bad-assignment]
             self.tid2tree, self.pl_tid2tree = parser.parse(self.events, self.forward_backward_events)
 
         self.has_runtime = parser.has_runtime
@@ -194,6 +194,7 @@ class RunProfileData:
         logger.debug('ModuleAggregator')
         with utils.timing('ModuleAggregator aggegation'):
             module_aggregator = ModuleAggregator()
+            # pyrefly: ignore [bad-argument-type]
             module_aggregator.aggregate(self.tid2tree)
         self.op_list_groupby_name = module_aggregator.op_list_groupby_name
         self.op_list_groupby_name_input = module_aggregator.op_list_groupby_name_input
@@ -215,6 +216,7 @@ class RunProfileData:
 
         logger.debug('TensorCoresParser')
         tensorcores_parser = TensorCoresParser.parse_events(
+            # pyrefly: ignore [bad-argument-type]
             self.tid2tree, module_aggregator.ops, self.gpu_metrics_parser.gpu_ids)
         self.tc_eligible_ops_kernel_ratio = tensorcores_parser.tc_eligible_ops_kernel_ratio
         self.tc_ratio = tensorcores_parser.tc_ratio
@@ -230,11 +232,13 @@ class RunProfileData:
         memory_events = self._memory_events()
         if memory_events:
             memory_parser = MemoryParser(memory_events)
+            # pyrefly: ignore [bad-argument-type]
             self.memory_snapshot = memory_parser.find_memory_nodes(self.tid2tree)
 
     def analyze(self):
         self.recommendations = []
 
+        # pyrefly: ignore [missing-attribute]
         dataloader_ratio = self.avg_costs.costs[ProfileRole.DataLoader] / self.avg_costs.costs[ProfileRole.Total]
         if dataloader_ratio > 0.05:
             percentage = dataloader_ratio * 100
@@ -255,9 +259,11 @@ class RunProfileData:
             # If it's a pure CPU run, then self.tc_used_ratio is None, this rule will not be triggered.
             if (major is not None and major >= 7 and
                     self.tc_used_ratio == 0.0 and
+                    # pyrefly: ignore [unsupported-operation]
                     self.tc_eligible_ops_kernel_ratio > 0.0):
                 url = 'https://pytorch.org/docs/stable/amp.html'
                 self.recommendations.append(
+                    # pyrefly: ignore [unsupported-operation]
                     f'Kernels with {round(self.tc_eligible_ops_kernel_ratio * 100)}%'
                     ' time are launched by Tensor Cores eligible operators. '
                     f"You could enable {href('Automatic Mixed Precision', url)} to speedup by using FP16.")
@@ -287,6 +293,7 @@ class RunProfileData:
                 f"It is recommended to {href('use DistributedDataParallel instead of DataParallel', url)}"
                 ' to do multi-GPU training.')
 
+        # pyrefly: ignore [not-iterable]
         if self.use_ddp and CommLibTypes.Nccl not in self.comm_lib and self.device_props:
             for device_prop in self.device_props:
                 major = device_prop.get('computeMajor')
@@ -301,6 +308,7 @@ class RunProfileData:
                     self.recommendations.append(text)
                     break
 
+        # pyrefly: ignore [missing-attribute]
         communication_ratio = self.avg_costs.costs[ProfileRole.Communication] / self.avg_costs.costs[ProfileRole.Total]
         if communication_ratio > 0.1:
             percentage = communication_ratio * 100
@@ -361,4 +369,5 @@ class DistributedRunProfileData:
         self.step_comm_stats = None
 
     def communication_parse(self):
+        # pyrefly: ignore [bad-argument-type]
         self.step_comm_stats, self.total_comm_stats = analyze_communication_nodes(self.comm_node_list)

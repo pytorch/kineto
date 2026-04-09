@@ -119,11 +119,17 @@ def aggregate_kernels(kernel_list: List[DeviceNode]) -> List[KernelAggByNameOp]:
 class ModuleAggregator:
 
     def __init__(self):
+        # pyrefly: ignore [bad-assignment]
         self.op_list_groupby_name: List[OperatorAgg] = None  # For Operator-view.
+        # pyrefly: ignore [bad-assignment]
         self.op_list_groupby_name_input: List[OperatorAgg] = None  # For Operator-view.
+        # pyrefly: ignore [bad-assignment]
         self.kernel_list_groupby_name_op: List[KernelAggByNameOp] = None  # For Kernel-view.
+        # pyrefly: ignore [bad-assignment]
         self.stack_lists_group_by_name: Dict[str, List[OperatorAgg]] = None
+        # pyrefly: ignore [bad-assignment]
         self.stack_lists_group_by_name_input: Dict[str, List[OperatorAgg]] = None
+        # pyrefly: ignore [bad-assignment]
         self.ops: List[OperatorNode] = None
 
     def aggregate(self, tid2tree: Dict[int, OperatorNode]):

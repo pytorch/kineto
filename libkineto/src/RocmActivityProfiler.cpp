@@ -113,11 +113,11 @@ void RocmActivityProfiler::disableGpuTracing() {
   roc_.disableActivities(derivedConfig_->profileActivityTypes());
 }
 
-void RocmActivityProfiler::clearGpuActivities() {
+void RocmActivityProfiler::clearGpuActivitiesImpl() {
   roc_.clearActivities();
 }
 
-bool RocmActivityProfiler::isGpuCollectionStopped() const {
+bool RocmActivityProfiler::isGpuCollectionStoppedImpl() const {
   return roc_.stopCollection;
 }
 

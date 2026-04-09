@@ -102,23 +102,14 @@ std::ostream& operator<<(
 }
 
 GenericActivityProfiler::GenericActivityProfiler(bool cpuOnly)
-    : flushOverhead_{0, 0},
-      setupOverhead_{0, 0},
-      cpuOnly_{cpuOnly},
-      currentRunloopState_{RunloopState::WaitForRequest} {}
-
-GenericActivityProfiler::~GenericActivityProfiler() {
-  if (collectTraceThread_ && collectTraceThread_->joinable()) {
-    collectTraceThread_->join();
-  }
-}
+    : flushOverhead_{0, 0}, setupOverhead_{0, 0}, cpuOnly_{cpuOnly} {}
+GenericActivityProfiler::~GenericActivityProfiler() {}
 
 void GenericActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
   const string& trace_name = cpuTrace->span.name;
-  if (currentRunloopState_ != RunloopState::CollectTrace &&
-      currentRunloopState_ != RunloopState::ProcessTrace) {
+  if (!acceptCpuTraces_) {
     VLOG(0) << "Trace collection not in progress - discarding span "
             << trace_name;
     return;
@@ -470,10 +461,6 @@ void GenericActivityProfiler::configure(
     const Config& config,
     const time_point<system_clock>& now) {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
-  if (isActive()) {
-    LOG(WARNING) << "GenericActivityProfiler already busy, terminating";
-    return;
-  }
   ApproximateClockToUnixTimeConverter clockConverter;
   get_time_converter() = clockConverter.makeConverter();
 
@@ -490,11 +477,6 @@ void GenericActivityProfiler::configure(
 
   derivedConfig_.reset();
   derivedConfig_ = std::make_unique<ConfigDerivedState>(*config_);
-
-  // Check if now is a valid time to start.
-  if (!derivedConfig_->canStart(now)) {
-    return;
-  }
 
   if (LOG_IS_ON(INFO)) {
     config_->printActivityProfilerConfig(LIBKINETO_DBG_STREAM);
@@ -573,18 +555,33 @@ void GenericActivityProfiler::configure(
 
   traceBuffers_ = std::make_unique<ActivityBuffers>();
   captureWindowStartTime_ = captureWindowEndTime_ = 0;
-  currentRunloopState_ = RunloopState::Warmup;
+  acceptCpuTraces_ = false;
 }
 
-bool GenericActivityProfiler::getCollectTraceState() {
-  std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
-  return isCollectingTrace;
-}
+void GenericActivityProfiler::flushWarmupBuffers(
+    int64_t currentIter,
+    const time_point<system_clock>& nextWakeupTime) {
+  if (cpuOnly_) {
+    return;
+  }
+  // Flushing GPU activities can take a while so avoid doing it close to
+  // the start time. Clear during warmup in the following cases:
+  // 1. Iteration-based flow: called from application step() API
+  //    (currentIter >= 0) with iteration profiling enabled
+  // 2. Timestamp-based flow: called from periodic runloop
+  //    (currentIter < 0) when not close to profile start time
+  // 3. Iteration config with periodic runloop: always safe to clear
+  const bool isIterationBasedFlow =
+      derivedConfig_->isProfilingByIteration() && currentIter >= 0;
+  const bool isTimestampBasedFlowSafeToFlush =
+      !derivedConfig_->isProfilingByIteration() && currentIter < 0 &&
+      nextWakeupTime < derivedConfig_->profileStartTime();
+  const bool isIterationConfigWithPeriodicRunloop =
+      derivedConfig_->isProfilingByIteration() && currentIter < 0;
 
-void GenericActivityProfiler::ensureCollectTraceDone() {
-  if (collectTraceThread_ && collectTraceThread_->joinable()) {
-    collectTraceThread_->join();
-    collectTraceThread_.reset(nullptr);
+  if (isIterationBasedFlow || isTimestampBasedFlowSafeToFlush ||
+      isIterationConfigWithPeriodicRunloop) {
+    clearGpuActivitiesImpl();
   }
 }
 
@@ -604,12 +601,12 @@ void GenericActivityProfiler::toggleCollectionDynamic(const bool enable) {
 void GenericActivityProfiler::startTraceInternal(
     const time_point<system_clock>& now) {
   captureWindowStartTime_ = libkineto::timeSinceEpoch(now);
+  acceptCpuTraces_ = true;
   VLOG(0) << "Warmup -> CollectTrace";
   for (auto& session : sessions_) {
     LOG(INFO) << "Starting child profiler session";
     session->start();
   }
-  currentRunloopState_ = RunloopState::CollectTrace;
 }
 
 void GenericActivityProfiler::stopTraceInternal(
@@ -629,23 +626,15 @@ void GenericActivityProfiler::stopTraceInternal(
     }
   }
 
-  if (currentRunloopState_ == RunloopState::CollectTrace) {
-    VLOG(0) << "CollectTrace -> ProcessTrace";
-  } else {
-    LOG(WARNING) << "Called stopTrace with state == "
-                 << static_cast<std::underlying_type_t<RunloopState>>(
-                        currentRunloopState_.load());
-  }
   for (auto& session : sessions_) {
     LOG(INFO) << "Stopping child profiler session";
     session->stop();
   }
-  currentRunloopState_ = RunloopState::ProcessTrace;
 }
 
 void GenericActivityProfiler::resetInternal() {
+  acceptCpuTraces_ = false;
   resetTraceData();
-  currentRunloopState_ = RunloopState::WaitForRequest;
 }
 
 void GenericActivityProfiler::finalizeTrace(
@@ -787,7 +776,7 @@ void GenericActivityProfiler::popUserCorrelationId() {
 
 void GenericActivityProfiler::resetTraceData() {
   if (!cpuOnly_) {
-    clearGpuActivities();
+    clearGpuActivitiesImpl();
     onResetTraceData();
   }
   activityMap_.clear();
@@ -808,191 +797,6 @@ void GenericActivityProfiler::resetTraceData() {
 #endif // !USE_GOOGLE_LOG
 }
 
-// On-demand only code follows.
-//
-// TODO: Decide if we should refactor this into either the controller
-//       or its own class.
-time_point<system_clock> GenericActivityProfiler::performRunLoopStep(
-    const time_point<system_clock>& now,
-    const time_point<system_clock>& nextWakeupTime,
-    int64_t currentIter) {
-  auto new_wakeup_time = nextWakeupTime;
-  bool warmup_done = false;
-  bool collection_done = false;
-
-  VLOG_IF(1, currentIter >= 0)
-      << "Run loop on application step(), iteration = " << currentIter;
-
-  switch (currentRunloopState_) {
-    case RunloopState::CollectMemorySnapshot:
-      LOG(WARNING)
-          << "Entered CollectMemorySnapshot in Kineto Loop Step, skipping loop";
-      break;
-    case RunloopState::WaitForRequest:
-      VLOG(1) << "State: WaitForRequest";
-      // Nothing to do
-      break;
-
-    case RunloopState::Warmup:
-      VLOG(1) << "State: Warmup";
-      warmup_done = derivedConfig_->isWarmupDone(now, currentIter);
-      {
-        // Flushing GPU activities can take a while so avoid doing it close to
-        // the start time. Clear during warmup in the following cases:
-        // 1. Iteration-based flow: called from application step() API
-        //    (currentIter >= 0) with iteration profiling enabled
-        // 2. Timestamp-based flow: called from periodic runloop
-        //    (currentIter < 0) when not close to profile start time
-        // 3. Iteration config with periodic runloop: always safe to clear
-        const bool isIterationBasedFlow =
-            derivedConfig_->isProfilingByIteration() && currentIter >= 0;
-        const bool isTimestampBasedFlowSafeToFlush =
-            !derivedConfig_->isProfilingByIteration() && currentIter < 0 &&
-            nextWakeupTime < derivedConfig_->profileStartTime();
-        const bool isIterationConfigWithPeriodicRunloop =
-            derivedConfig_->isProfilingByIteration() && currentIter < 0;
-
-        if (!cpuOnly_ &&
-            (isIterationBasedFlow || isTimestampBasedFlowSafeToFlush ||
-             isIterationConfigWithPeriodicRunloop)) {
-          clearGpuActivities();
-        }
-      }
-
-      if (isGpuCollectionStopped()) {
-        // Go to process trace to clear any outstanding buffers etc
-        std::lock_guard<std::recursive_mutex> guard(mutex_);
-        stopTraceInternal(now);
-        resetInternal();
-        LOG(ERROR)
-            << "State: Warmup stopped by GPU profiler. (Buffer size configured is "
-            << config_->activitiesMaxGpuBufferSize() / 1024 / 1024 << "MB)";
-        UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
-        VLOG(0) << "Warmup -> WaitForRequest";
-        break;
-      }
-
-      if (warmup_done) {
-        UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
-        if (!derivedConfig_->isProfilingByIteration() &&
-            (now > derivedConfig_->profileStartTime() + milliseconds(10))) {
-          LOG(INFO) << "Tracing started "
-                    << duration_cast<milliseconds>(
-                           now - derivedConfig_->profileStartTime())
-                           .count()
-                    << "ms late!";
-        } else {
-          LOG(INFO) << "Tracing started";
-        }
-        startTrace(now);
-        if (libkineto::api().client()) {
-          libkineto::api().client()->start();
-        }
-        if (nextWakeupTime > derivedConfig_->profileEndTime()) {
-          new_wakeup_time = derivedConfig_->profileEndTime();
-        }
-      } else if (nextWakeupTime > derivedConfig_->profileStartTime()) {
-        new_wakeup_time = derivedConfig_->profileStartTime();
-      }
-
-      break;
-
-    case RunloopState::CollectTrace:
-      VLOG(1) << "State: CollectTrace";
-      collection_done = derivedConfig_->isCollectionDone(now, currentIter);
-
-      if (collection_done || isGpuCollectionStopped()) {
-        // Update runloop state first to prevent further updates to shared
-        // state
-        LOG(INFO) << "Tracing complete.";
-        VLOG_IF(1, currentIter >= 0)
-            << "This state change was invoked by application's step() call";
-
-        // currentIter >= 0 means this is called from the step() api of
-        // the profile in pytorch main thread, it should be executed in
-        // another thread in case pytorch main thread is blocked
-        if (currentIter >= 0) {
-          // if collectTraceThread_ is already running, there's no need to
-          // execute collectTrace twice.
-          // Do not call collectTrace when profilerThread_ is collecting
-          // Trace. Otherwise, libkineto::api().client()->stop will be called
-          // twice, which leads to an unrecoverable ::c10:Error at
-          // disableProfiler
-          if (!collectTraceThread_ && !getCollectTraceState()) {
-            std::lock_guard<std::recursive_mutex> guard(mutex_);
-            collectTraceThread_ = std::make_unique<std::thread>(
-                &GenericActivityProfiler::collectTrace,
-                this,
-                collection_done,
-                now);
-          }
-          break;
-        }
-        // this is executed in profilerThread_
-        {
-          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
-          isCollectingTrace = true;
-        }
-        collectTrace(collection_done, now);
-        {
-          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
-          isCollectingTrace = false;
-        }
-      } else if (derivedConfig_->isProfilingByIteration()) {
-        // nothing to do here
-      } else if (
-          now < derivedConfig_->profileEndTime() &&
-          derivedConfig_->profileEndTime() < nextWakeupTime) {
-        new_wakeup_time = derivedConfig_->profileEndTime();
-      }
-
-      break;
-
-    case RunloopState::ProcessTrace:
-      VLOG(1) << "State: ProcessTrace";
-      // skip this state transition if it called from the step() api
-      // of the profiler.
-      // else it could lead to a race between the profiler thread and an
-      // application thread calling step()
-      if (currentIter >= 0) {
-        return new_wakeup_time;
-      }
-
-      // Before processing, we should wait for collectTrace thread to be done.
-      ensureCollectTraceDone();
-
-      // FIXME: Probably want to allow interruption here
-      // for quickly handling trace request via synchronous API
-      std::lock_guard<std::recursive_mutex> guard(mutex_);
-      processTraceInternal(*logger_);
-      UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
-      resetInternal();
-      VLOG(0) << "ProcessTrace -> WaitForRequest";
-      break;
-  }
-
-  return new_wakeup_time;
-}
-
-void GenericActivityProfiler::performMemoryLoop(
-    const string& path,
-    uint32_t profile_time,
-    ActivityLogger* logger,
-    Config& config) {
-  currentRunloopState_ = RunloopState::CollectMemorySnapshot;
-  if (libkineto::api().client()) {
-    libkineto::api().client()->start_memory_profile();
-    LOG(INFO) << "Running memory profiling for " << profile_time << " ms";
-    std::this_thread::sleep_for(std::chrono::milliseconds(profile_time));
-    LOG(INFO) << "Exporting memory profiling results to " << path;
-    libkineto::api().client()->export_memory_profile(path);
-    libkineto::api().client()->stop_memory_profile();
-    LOG(INFO) << "Finalizing trace";
-    logger->finalizeMemoryTrace(path, config);
-  }
-  currentRunloopState_ = RunloopState::WaitForRequest;
-}
-
 void GenericActivityProfiler::collectTrace(
     bool collection_done,
     const std::chrono::time_point<std::chrono::system_clock>& now) {
@@ -1000,7 +804,7 @@ void GenericActivityProfiler::collectTrace(
     libkineto::api().client()->stop();
   }
 
-  if (isGpuCollectionStopped()) {
+  if (isGpuCollectionStoppedImpl()) {
     ecs_.gpu_stopped_early = true;
     LOG(ERROR)
         << "State: CollectTrace stopped by GPU profiler. (Buffer size configured is "

@@ -25,11 +25,25 @@ gtest_add_tests(TARGET XpuptiActivityHandlersTest)
 
 include(ExternalProject)
 
-function(make_test test_file)
+function(make_sycl_test test_file)
   get_filename_component(test_name "${test_file}" NAME_WE)
   set(lib_name "${test_name}Lib")
   add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
-  target_link_libraries(${lib_name} PRIVATE ${LINK_LIBRARIES})
+
+  # Do not link gtest into the shared library to avoid duplicate gtest globals
+  # (gtest is statically linked into the executable; the shared library resolves
+  #  gtest symbols from the executable at runtime via --export-dynamic).
+  set(LIB_LINK_LIBRARIES
+    kineto_base
+    kineto_api
+    $<BUILD_INTERFACE:fmt::fmt-header-only>
+    ${SYCL_LIBRARY}
+    ${PTI_LIBRARY}
+  )
+  target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
+  target_include_directories(${lib_name} PRIVATE
+    $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
+
   set_target_properties(${lib_name} PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     WINDOWS_EXPORT_ALL_SYMBOLS ON
@@ -106,5 +120,5 @@ function(make_test test_file)
   add_dependencies(${test_name} gtest_main)
 endfunction()
 
-make_test(XpuptiProfilerTest.cpp)
+make_sycl_test(XpuptiProfilerTest.cpp)
 

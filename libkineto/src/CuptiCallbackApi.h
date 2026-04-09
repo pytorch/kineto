@@ -12,7 +12,6 @@
 #include <array>
 #include <atomic>
 #include <list>
-#include <memory>
 #include <mutex>
 #include <set>
 #include <shared_mutex>
@@ -61,7 +60,7 @@ class CuptiCallbackApi {
   CuptiCallbackApi(const CuptiCallbackApi&) = delete;
   CuptiCallbackApi& operator=(const CuptiCallbackApi&) = delete;
 
-  static std::shared_ptr<CuptiCallbackApi> singleton();
+  static CuptiCallbackApi& singleton();
 
   void initCallbackApi();
 
@@ -96,8 +95,6 @@ class CuptiCallbackApi {
   void __callback_switchboard(CUpti_CallbackDomain domain, CUpti_CallbackId cbid, const CUpti_CallbackData* cbInfo);
 
  private:
-  friend class std::shared_ptr<CuptiCallbackApi>;
-
   // For callback table design overview see the .cpp file
   using CallbackList = std::list<CuptiCallbackFn>;
 

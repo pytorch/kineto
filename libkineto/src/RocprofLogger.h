@@ -37,6 +37,7 @@ class RocprofLogger {
   static void pushCorrelationID(uint64_t id, RocLogger::CorrelationDomain type);
   static void popCorrelationID(RocLogger::CorrelationDomain type);
 
+  static void ensureRegistered();
   void startLogging();
   void stopLogging();
   void clearLogs();

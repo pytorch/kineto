@@ -734,10 +734,7 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
 
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  EXPECT_TRUE(profiler.isActive());
-
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
-  EXPECT_TRUE(profiler.isActive());
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);

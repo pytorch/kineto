@@ -28,23 +28,13 @@ SyncActivityProfilerHandler::SyncActivityProfilerHandler(
     : profiler_(profiler), syncTraceActive_(syncTraceActive) {}
 
 void SyncActivityProfilerHandler::prepareTrace(const Config& config) {
-  // Requests from ActivityProfilerApi have higher priority than
-  // requests from other sources (signal, daemon).
-  // Cancel any ongoing request and refuse new ones.
-  auto now = system_clock::now();
-  syncTraceActive_ = true;
-  if (profiler_.isActive()) {
-    LOG(WARNING) << "Cancelling current trace request in order to start "
-                 << "higher priority synchronous request";
-    if (libkineto::api().client()) {
-      libkineto::api().client()->stop();
-    }
-
-    profiler_.stopTrace(now);
-    profiler_.reset();
+  auto now = std::chrono::system_clock::now();
+  if (!profiler_.canStart(config, now)) {
+    return;
   }
-
   profiler_.configure(config, now);
+  syncTraceActive_ = true;
+  active_ = true;
 }
 
 void SyncActivityProfilerHandler::startTrace() {
@@ -71,8 +61,21 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
 
   profiler_.reset();
   syncTraceActive_ = false;
+  active_ = false;
   return std::make_unique<ActivityTrace>(
       std::move(logger), ActivityProfilerController::loggerFactory());
+}
+
+void SyncActivityProfilerHandler::cancel() {
+  if (!active_) {
+    return;
+  }
+  if (libkineto::api().client()) {
+    libkineto::api().client()->stop();
+  }
+  profiler_.stopTraceAndReset(std::chrono::system_clock::now());
+  syncTraceActive_ = false;
+  active_ = false;
 }
 
 void SyncActivityProfilerHandler::toggleCollectionDynamic(const bool enable) {

@@ -42,8 +42,8 @@ class RocmActivityProfiler : public GenericActivityProfiler {
   void setMaxGpuBufferSize(int64_t size) override;
   void enableGpuTracing() override;
   void disableGpuTracing() override;
-  void clearGpuActivities() override;
-  bool isGpuCollectionStopped() const override;
+  void clearGpuActivitiesImpl() override;
+  bool isGpuCollectionStoppedImpl() const override;
   void processGpuActivities(ActivityLogger& logger) override;
   void synchronizeGpuDevice() override;
   void pushCorrelationIdImpl(uint64_t id, CorrelationFlowType type) override;

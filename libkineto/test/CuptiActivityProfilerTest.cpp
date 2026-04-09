@@ -846,11 +846,15 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
       metadataMap);
   profiler.transferCpuTrace(std::move(cpuOps));
 
-  // Set up corresponding GPU events and connect with CPU events
-  // via correlationId
+  // Set up GPU events with two collectives: one after its correlation
+  // record (in-order) and one before (out-of-order), to verify metadata
+  // propagation works regardless of CUPTI buffer ordering.
   auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
   gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, 1);
   gpuOps->addCollectiveActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
+  gpuOps->addCollectiveActivity(
+      kernelLaunchTime + 15, kernelLaunchTime + 20, 2);
+  gpuOps->addCorrelationActivity(2, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, 1);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Process trace
@@ -864,11 +868,13 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Check the content of GPU event and we should see extra
   // collective fields get populated from CPU event.
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(2, trace.activities()->size());
+  EXPECT_EQ(3, trace.activities()->size());
   auto& cpu_annotation = trace.activities()->at(0);
-  auto& gpu_annotation = trace.activities()->at(1);
+  auto& gpu_annotation1 = trace.activities()->at(1);
+  auto& gpu_annotation2 = trace.activities()->at(2);
   EXPECT_EQ(cpu_annotation->name(), kParamCommsCallName);
-  EXPECT_EQ(gpu_annotation->name(), "collective_gpu");
+  EXPECT_EQ(gpu_annotation1->name(), "collective_gpu");
+  EXPECT_EQ(gpu_annotation2->name(), "collective_gpu");
 
   // Check vector with length > 30 get truncated successfully
   std::vector<int64_t> expectedInSplit(kTruncatLength, 0);
@@ -911,27 +917,27 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
     return count;
   };
 
-  EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kInMsgNelems));
-  EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kOutMsgNelems));
-  EXPECT_EQ(2, countSubstrings(jsonString, "131328"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kInSplit));
-  EXPECT_EQ(2, countSubstrings(jsonString, expectedInSplitStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kOutSplit));
-  EXPECT_EQ(2, countSubstrings(jsonString, outSplitSizesStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kCollectiveName));
-  EXPECT_EQ(2, countSubstrings(jsonString, "_allgather_base"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupName));
-  EXPECT_EQ(2, countSubstrings(jsonString, "12341234"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupDesc));
-  EXPECT_EQ(2, countSubstrings(jsonString, "test_purpose"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kGroupRanks));
-  EXPECT_EQ(2, countSubstrings(jsonString, expectedGroupRanksStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kSeqNum));
-  EXPECT_EQ(2, countSubstrings(jsonString, "4242424242"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kCommsId));
-  EXPECT_EQ(2, countSubstrings(jsonString, "12345678"));
+  EXPECT_EQ(3, countSubstrings(jsonString, "65664"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kInMsgNelems));
+  EXPECT_EQ(3, countSubstrings(jsonString, "65664"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kOutMsgNelems));
+  EXPECT_EQ(3, countSubstrings(jsonString, "131328"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kInSplit));
+  EXPECT_EQ(3, countSubstrings(jsonString, expectedInSplitStr));
+  EXPECT_EQ(3, countSubstrings(jsonString, kOutSplit));
+  EXPECT_EQ(3, countSubstrings(jsonString, outSplitSizesStr));
+  EXPECT_EQ(3, countSubstrings(jsonString, kCollectiveName));
+  EXPECT_EQ(3, countSubstrings(jsonString, "_allgather_base"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kProcessGroupName));
+  EXPECT_EQ(3, countSubstrings(jsonString, "12341234"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kProcessGroupDesc));
+  EXPECT_EQ(3, countSubstrings(jsonString, "test_purpose"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kGroupRanks));
+  EXPECT_EQ(3, countSubstrings(jsonString, expectedGroupRanksStr));
+  EXPECT_EQ(3, countSubstrings(jsonString, kSeqNum));
+  EXPECT_EQ(3, countSubstrings(jsonString, "4242424242"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kCommsId));
+  EXPECT_EQ(3, countSubstrings(jsonString, "12345678"));
 #endif
 }
 

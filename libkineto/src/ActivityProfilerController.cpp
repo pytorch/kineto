@@ -90,10 +90,8 @@ ActivityProfilerController::ActivityProfilerController(
   profiler_ = std::make_unique<GenericActivityProfiler>(cpuOnly);
 #endif
 
-  syncHandler_ = std::make_unique<SyncActivityProfilerHandler>(
-      *profiler_, syncTraceActive_);
-  asyncHandler_ = std::make_unique<AsyncActivityProfilerHandler>(
-      *profiler_, syncTraceActive_);
+  syncHandler_ = std::make_unique<SyncActivityProfilerHandler>(*profiler_);
+  asyncHandler_ = std::make_unique<AsyncActivityProfilerHandler>(*profiler_);
   configLoader_.addHandler(ConfigLoader::ConfigKind::ActivityProfiler, this);
 }
 

@@ -90,7 +90,6 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
  private:
   std::unique_ptr<GenericActivityProfiler> profiler_;
   std::vector<std::shared_ptr<LoggerCollector>> loggerCollectors_;
-  std::atomic_bool syncTraceActive_{false};
   ConfigLoader& configLoader_;
 
   std::unique_ptr<SyncActivityProfilerHandler> syncHandler_;

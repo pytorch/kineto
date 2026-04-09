@@ -23,9 +23,8 @@ using namespace std::chrono;
 namespace KINETO_NAMESPACE {
 
 AsyncActivityProfilerHandler::AsyncActivityProfilerHandler(
-    GenericActivityProfiler& profiler,
-    std::atomic_bool& syncTraceActive)
-    : profiler_(profiler), syncTraceActive_(syncTraceActive) {}
+    GenericActivityProfiler& profiler)
+    : profiler_(profiler) {}
 
 AsyncActivityProfilerHandler::~AsyncActivityProfilerHandler() {
   ensureCollectTraceDone();
@@ -222,9 +221,7 @@ void AsyncActivityProfilerHandler::profilerLoop() {
       next_wakeup_time += Config::kControllerIntervalMsecs;
     }
 
-    // Use syncTraceActive_ so we don't step into the loop while sync trace is
-    // running
-    if (isAsyncActive() && !isCollectingMemorySnapshot() && !syncTraceActive_) {
+    if (isAsyncActive() && !isCollectingMemorySnapshot()) {
       next_wakeup_time = performRunLoopStep(now, next_wakeup_time);
       VLOG(1) << "Profiler loop: "
               << duration_cast<milliseconds>(system_clock::now() - now).count()
@@ -289,7 +286,11 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
       break;
     case RunloopState::WaitForRequest:
       VLOG(1) << "State: WaitForRequest";
-      // Nothing to do
+      break;
+    case RunloopState::Cancelling:
+      // cancel() is tearing down the profiler on another thread.
+      // Do nothing — we must not drive the profiler concurrently.
+      VLOG(1) << "State: Cancelling";
       break;
 
     case RunloopState::Warmup: {
@@ -454,6 +455,7 @@ void AsyncActivityProfilerHandler::cancel() {
   if (!isAsyncActive()) {
     return;
   }
+  currentRunloopState_ = RunloopState::Cancelling;
   ensureCollectTraceDone();
   if (libkineto::api().client()) {
     libkineto::api().client()->stop();

@@ -76,8 +76,7 @@ TEST(AsyncActivityProfilerHandler, AsyncTrace) {
   SET_LOG_VERBOSITY_LEVEL(1, log_modules);
 
   GenericActivityProfiler profiler(/*cpu only*/ true);
-  std::atomic_bool syncTraceActive{false};
-  AsyncActivityProfilerHandler handler(profiler, syncTraceActive);
+  AsyncActivityProfilerHandler handler(profiler);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);
@@ -154,8 +153,7 @@ TEST(AsyncActivityProfilerHandler, AsyncTraceUsingIter) {
               << " trace iterations = " << trace_iters;
 
     GenericActivityProfiler profiler(/*cpu only*/ true);
-    std::atomic_bool syncTraceActive{false};
-    AsyncActivityProfilerHandler handler(profiler, syncTraceActive);
+    AsyncActivityProfilerHandler handler(profiler);
 
     char filename[] = "/tmp/libkineto_testXXXXXX.json";
     mkstemps(filename, 5);
@@ -234,8 +232,7 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   setenv("PT_PROFILER_JOB_ATTEMPT_INDEX", "5", 1);
 
   GenericActivityProfiler profiler(/*cpu only*/ true);
-  std::atomic_bool syncTraceActive{false};
-  AsyncActivityProfilerHandler handler(profiler, syncTraceActive);
+  AsyncActivityProfilerHandler handler(profiler);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);
@@ -317,8 +314,7 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
 
 TEST(AsyncActivityProfilerHandler, Cancel) {
   GenericActivityProfiler profiler(/*cpu only*/ true);
-  std::atomic_bool syncTraceActive{false};
-  AsyncActivityProfilerHandler handler(profiler, syncTraceActive);
+  AsyncActivityProfilerHandler handler(profiler);
 
   // Cancel when inactive is a no-op
   EXPECT_FALSE(handler.isAsyncActive());
@@ -366,8 +362,7 @@ TEST(AsyncActivityProfilerHandler, Cancel) {
 
 TEST(AsyncActivityProfilerHandler, BufferSizeLimitDuringWarmup) {
   MockGpuProfiler profiler;
-  std::atomic_bool syncTraceActive{false};
-  AsyncActivityProfilerHandler handler(profiler, syncTraceActive);
+  AsyncActivityProfilerHandler handler(profiler);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
   mkstemps(filename, 5);
@@ -404,8 +399,7 @@ TEST(AsyncActivityProfilerHandler, BufferSizeLimitDuringWarmup) {
 
 TEST(SyncActivityProfilerHandler, Cancel) {
   GenericActivityProfiler profiler(/*cpu only*/ true);
-  std::atomic_bool syncTraceActive{false};
-  SyncActivityProfilerHandler handler(profiler, syncTraceActive);
+  SyncActivityProfilerHandler handler(profiler);
 
   // Cancel when inactive is a no-op
   EXPECT_FALSE(handler.isSyncActive());

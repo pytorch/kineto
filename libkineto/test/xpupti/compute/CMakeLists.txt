@@ -54,7 +54,9 @@ add_executable(${PROJECT_NAME} XpuptiScopeProfilerCompute.cpp)
 target_compile_options(${PROJECT_NAME} PRIVATE -fsycl)
 target_link_options(${PROJECT_NAME} PRIVATE -fsycl)
 # Export gtest symbols so the shared library can resolve them at runtime
-target_link_options(${PROJECT_NAME} PRIVATE -Wl,--export-dynamic)
+if(NOT WIN32)
+  target_link_options(${PROJECT_NAME} PRIVATE -Wl,--export-dynamic)
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   ${gtest_main_FOR_XPU_PATH}

@@ -6,14 +6,18 @@
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(LINK_LIBRARIES
-  gtest_main
+# Do not link gtest into the shared library to avoid duplicate gtest globals
+# (gtest is statically linked into the executable; the shared library resolves
+#  gtest symbols from the executable at runtime via --export-dynamic).
+set(COMMON_LINK_LIBRARIES
   kineto_base
   kineto_api
   $<BUILD_INTERFACE:fmt::fmt-header-only>
   ${SYCL_LIBRARY}
   ${PTI_LIBRARY}
 )
+
+set(LINK_LIBRARIES gtest_main ${COMMON_LINK_LIBRARIES})
 
 add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
 target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE ${LINK_LIBRARIES})
@@ -30,17 +34,7 @@ function(make_sycl_test test_file)
   set(lib_name "${test_name}Lib")
   add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
 
-  # Do not link gtest into the shared library to avoid duplicate gtest globals
-  # (gtest is statically linked into the executable; the shared library resolves
-  #  gtest symbols from the executable at runtime via --export-dynamic).
-  set(LIB_LINK_LIBRARIES
-    kineto_base
-    kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>
-    ${SYCL_LIBRARY}
-    ${PTI_LIBRARY}
-  )
-  target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
+  target_link_libraries(${lib_name} PRIVATE ${COMMON_LINK_LIBRARIES})
   target_include_directories(${lib_name} PRIVATE
     $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
 

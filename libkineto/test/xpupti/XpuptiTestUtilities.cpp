@@ -41,6 +41,24 @@ std::ostream& operator<<(std::ostream& os, KN::ActivityType actType) {
   return os;
 }
 
+static std::pair<unsigned, unsigned> CountMetricsInVector(
+    const std::vector<std::string_view>& metrics,
+    const decltype(std::declval<KN::GenericTraceActivity>()
+                       .counterValues())& vec) {
+  unsigned metricsCount = 0;
+  unsigned metricsMask = 0;
+  for (unsigned i = 0; i < metrics.size(); ++i) {
+    const auto metricSv = metrics[i];
+    if (std::find_if(vec.begin(), vec.end(), [metricSv](const auto& pair) {
+          return pair.first == metricSv;
+        }) != vec.end()) {
+      ++metricsCount;
+      metricsMask |= (1 << i);
+    }
+  }
+  return std::pair{metricsCount, metricsMask};
+}
+
 static std::pair<unsigned, unsigned> CountMetricsInString(
     const std::vector<std::string_view>& metrics,
     const std::string_view sv) {
@@ -226,10 +244,18 @@ RunProfilerTest(
     activitiesCount[*insertResult.first]++;
     typesCount[pActivity->type()]++;
 
-    bool isNameMetrics = pActivity->name() == "metrics";
+    bool isNameXpu = pActivity->name() == "xpu";
     bool nameStartsWithMetrics = pActivity->name().find("metrics:") == 0;
-    auto [metricsCount, metricsMask] =
-        CountMetricsInString(metrics, pActivity->metadataJson());
+
+    unsigned metricsCount = 0;
+    unsigned metricsMask = 0;
+    if (isNameXpu) {
+      std::tie(metricsCount, metricsMask) =
+          CountMetricsInVector(metrics, pActivity->counterValues());
+    } else if (nameStartsWithMetrics) {
+      std::tie(metricsCount, metricsMask) =
+          CountMetricsInString(metrics, pActivity->metadataJson());
+    }
 
     enum class TestScenario {
       defaultScenario,
@@ -257,7 +283,7 @@ RunProfilerTest(
 
     switch (testScenario) {
       case TestScenario::scopeProfiler:
-        EXPECT_TRUE(isNameMetrics);
+        EXPECT_TRUE(isNameXpu);
         [[fallthrough]];
       case TestScenario::nameStartsWithMetrics:
         EXPECT_EQ(metricsCount, metrics.size());
@@ -266,7 +292,7 @@ RunProfilerTest(
         break;
 
       case TestScenario::defaultScenario:
-        EXPECT_FALSE(isNameMetrics);
+        EXPECT_FALSE(isNameXpu);
         EXPECT_EQ(metricsCount, 0);
         EXPECT_EQ(metricsMask, 0);
     }

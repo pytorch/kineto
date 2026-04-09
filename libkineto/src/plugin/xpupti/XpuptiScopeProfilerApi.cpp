@@ -38,7 +38,6 @@ XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
 }
 
 void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
-#ifdef HAS_XPUPTI
   uint32_t deviceCount = 0;
   XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount));
 
@@ -90,32 +89,25 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
 
   XPUPTI_CALL(ptiMetricsScopeSetCollectionBufferSize(
       *scopeHandleOpt_, estimatedCollectionBufferSize));
-#endif
 }
 
 void XpuptiScopeProfilerApi::disableScopeProfiler() {
-#ifdef HAS_XPUPTI
   scopeHandleOpt_.reset();
   if (exceptFromScopeHandleDestructor_) {
     std::rethrow_exception(exceptFromScopeHandleDestructor_);
   }
-#endif
 }
 
 void XpuptiScopeProfilerApi::startScopeActivity() {
-#ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStartCollection(*scopeHandleOpt_));
   }
-#endif
 }
 
 void XpuptiScopeProfilerApi::stopScopeActivity() {
-#ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     XPUPTI_CALL(ptiMetricsScopeStopCollection(*scopeHandleOpt_));
   }
-#endif
 }
 
 static size_t IntDivRoundUp(size_t a, size_t b) {
@@ -126,7 +118,6 @@ void XpuptiScopeProfilerApi::processScopeTrace(
     std::function<void(
         const pti_metrics_scope_record_t*,
         const pti_metrics_scope_record_metadata_t& metadata)> handler) {
-#ifdef HAS_XPUPTI
   if (scopeHandleOpt_) {
     pti_metrics_scope_record_metadata_t metadata;
     metadata._struct_size = sizeof(pti_metrics_scope_record_metadata_t);
@@ -180,7 +171,6 @@ void XpuptiScopeProfilerApi::processScopeTrace(
       }
     }
   }
-#endif
 }
 
 #endif

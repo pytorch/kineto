@@ -760,9 +760,13 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     return;
   }
 
-  if (op.type() == ActivityType::MTIA_COUNTERS) {
-    handleCounterEvent(op);
-    return;
+  switch (op.type()) {
+    case ActivityType::MTIA_COUNTERS:
+    case ActivityType::XPU_SCOPE_PROFILER:
+      handleCounterEvent(op);
+      return;
+    default:
+      break;
   }
 
   int64_t ts = op.timestamp();
@@ -820,30 +824,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   sanitizeForNonReadableChars(op_name);
 
   ts = transToRelativeTime(ts);
-
-  if (op.type() == ActivityType::XPU_SCOPE_PROFILER) {
-    std::string metricsStr = op.metadataJson();
-    sanitizeStrForJSON(metricsStr);
-    fmt::print(
-        traceOf_,
-        // clang-format off
-  R"JSON(
-  {{
-    "name": "xpu",
-    "ph": "C",
-    "ts": {}.{:03},
-    "pid": {},
-    "tid": {},
-    "args": {{ {} }}
-  }},)JSON",
-        // clang-format on
-        ts / 1000,
-        ts % 1000,
-        device,
-        sanitizeTid(resource),
-        metricsStr);
-  } else {
-    writeCompleteEvent(
+  writeCompleteEvent(
       /*cat=*/toString(op.type()),
       /*name=*/op_name,
       /*pid=*/device,
@@ -851,8 +832,6 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       /*ts=*/ts,
       /*dur=*/duration,
       /*args=*/args);
-  }
-
   if (op.flowId() > 0) {
     handleGenericLink(op);
   }

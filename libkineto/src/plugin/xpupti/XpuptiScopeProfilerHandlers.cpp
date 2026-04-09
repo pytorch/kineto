@@ -14,15 +14,25 @@
 
 namespace KINETO_NAMESPACE {
 
-static void AddPtiValueToMetadata(
+enum class MetadataOrCounterValue {
+  Metadata = 0,
+  CounterValue = 1,
+};
+
+static void AddPtiValueToMetadataOrCounterValue(
     GenericTraceActivity* scopeActivity,
+    MetadataOrCounterValue metadataOrCounterValue,
     const std::string& metricName,
     pti_metric_value_type valueType,
     const pti_value_t& value) {
   switch (valueType) {
-#define CASE(T, FIELD)                                   \
-  case PTI_METRIC_VALUE_TYPE_##T:                        \
-    scopeActivity->addMetadata(metricName, value.FIELD); \
+#define CASE(T, FIELD)                                                \
+  case PTI_METRIC_VALUE_TYPE_##T:                                     \
+    if (metadataOrCounterValue == MetadataOrCounterValue::Metadata) { \
+      scopeActivity->addMetadata(metricName, value.FIELD);            \
+    } else {                                                          \
+      scopeActivity->addCounterValue(metricName, value.FIELD);        \
+    }                                                                 \
     return;
 
     CASE(UINT32, ui32);
@@ -33,7 +43,11 @@ static void AddPtiValueToMetadata(
 #undef CASE
 
     case PTI_METRIC_VALUE_TYPE_BOOL8:
-      scopeActivity->addMetadata(metricName, value.b8 ? "true" : "false");
+      if (metadataOrCounterValue == MetadataOrCounterValue::Metadata) {
+        scopeActivity->addMetadata(metricName, value.b8 ? "true" : "false ");
+      } else {
+        scopeActivity->addCounterValue(metricName, value.b8);
+      }
       return;
 
     default:
@@ -59,7 +73,7 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
   for (auto itSa = scopeActivities.begin() + 1; itSa != scopeActivities.end();
        ++itSa) {
     traceBuffer_.emplace_activity(
-        traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "metrics");
+        traceBuffer_.span, ActivityType::XPU_SCOPE_PROFILER, "xpu");
 
     *itSa = traceBuffer_.activities.back().get();
   }
@@ -97,20 +111,25 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
 
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
     const auto& unit = metadata._metric_units[m];
-    std::string unitSuffix = unit ? fmt::format(" [{}]", unit) : "";
-    std::string metricName =
+    std::string unitSuffix = unit ? fmt::format("::{}", unit) : "";
+    std::string metricNameWithUnit =
         fmt::format("{}{}", metadata._metric_names[m], unitSuffix);
 
-    for (auto itSa = scopeActivities.begin(); itSa != scopeActivities.end() - 1;
-         ++itSa) {
-      AddPtiValueToMetadata(
-          *itSa,
-          metricName,
-          metadata._value_types[m],
-          record->_metrics_values[m]);
-    }
+    AddPtiValueToMetadataOrCounterValue(
+        scopeActivities[0],
+        MetadataOrCounterValue::Metadata,
+        metricNameWithUnit,
+        metadata._value_types[m],
+        record->_metrics_values[m]);
 
-    scopeActivities[2]->addMetadata(metricName, 0);
+    AddPtiValueToMetadataOrCounterValue(
+        scopeActivities[1],
+        MetadataOrCounterValue::CounterValue,
+        metadata._metric_names[m],
+        metadata._value_types[m],
+        record->_metrics_values[m]);
+
+    scopeActivities[2]->addCounterValue(metadata._metric_names[m], 0);
   }
 
   for (auto sa : scopeActivities) {

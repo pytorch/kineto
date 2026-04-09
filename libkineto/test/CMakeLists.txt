@@ -26,6 +26,14 @@ endif()
 
 include_directories(${LIBKINETO_DIR})
 link_libraries(fmt::fmt-header-only)
+# ApproximateClockTest
+add_executable(ApproximateClockTest ApproximateClockTest.cpp)
+target_link_libraries(ApproximateClockTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(ApproximateClockTest)
+
 # ConfigTest
 add_executable(ConfigTest ConfigTest.cpp)
 target_link_libraries(ConfigTest PRIVATE

@@ -264,6 +264,7 @@ class GenericActivityProfiler {
   struct DeferredLogEntry {
     uint32_t device;
     uint32_t stream;
+    bool isWaitEvent = false;
     std::function<void()> logMe;
   };
 

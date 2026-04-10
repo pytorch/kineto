@@ -29,6 +29,7 @@
 #define UST_LOGGER_MARK_COMPLETED(stage)
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type)
 #define USDT_EMIT_START_TRACE()
+#define USDT_EMIT_STOP_TRACE()
 
 #else // !USE_GOOGLE_LOG
 #include <stdio.h>
@@ -254,6 +255,7 @@ struct __to_constant__ {
 #define UST_LOGGER_MARK_COMPLETED(stage) LOG(libkineto::LoggerOutputType::STAGE) << "Completed Stage: " << stage
 
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type) LOG(libkineto::LoggerOutputType::USDT) << usdt_type
-#define USDT_EMIT_START_TRACE() USDT_LOGGER_EMIT_MESSAGE("StartTrace")
+#define USDT_EMIT_START_TRACE() USDT_LOGGER_EMIT_MESSAGE("profiler_start")
+#define USDT_EMIT_STOP_TRACE() USDT_LOGGER_EMIT_MESSAGE("profiler_stop")
 
 #endif // USE_GOOGLE_LOG

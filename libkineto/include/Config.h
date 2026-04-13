@@ -235,6 +235,10 @@ class Config : public AbstractConfig {
     activitiesCudaSyncWaitEvents_ = enable;
   }
 
+  [[nodiscard]] bool activitiesDisableExternalCorrelation() const {
+    return activitiesDisableExternalCorrelation_;
+  }
+
   // Timestamp at which the profiling to start, requested by the user.
   [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> requestTimestamp() const {
     if (profileStartTime_.time_since_epoch().count()) {
@@ -458,6 +462,7 @@ class Config : public AbstractConfig {
   std::chrono::seconds activitiesWarmupDuration_;
   int activitiesWarmupIterations_;
   bool activitiesCudaSyncWaitEvents_;
+  bool activitiesDisableExternalCorrelation_;
 
   // Enable Profiler Config Options
   // Temporarily disable shape collection until we re-roll out the feature for

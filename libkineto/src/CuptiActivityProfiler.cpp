@@ -187,10 +187,25 @@ void CuptiActivityProfiler::processGpuActivities(ActivityLogger& logger) {
     addOverheadSample(flushOverhead_, cupti_.flushOverhead);
   }
   if (traceBuffers_->gpu) {
+    // Pass 1: Process only external correlation records first.
+    // This ensures cpuCorrelationMap_ and userCorrelationMap_ are fully
+    // populated before processing GPU activities.
+    cupti_.processActivities(
+        *traceBuffers_->gpu, [this](const CUpti_Activity* record) {
+          if (record->kind == CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION) {
+            handleCorrelationActivity(
+                reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(
+                    record));
+          }
+        });
+
+    // Pass 2: Process all non-correlation activities. Correlation records
+    // are skipped since they were already handled in pass 1.
     const auto count_and_size = cupti_.processActivities(
-        *traceBuffers_->gpu, [this, &logger](auto&& activity) {
-          handleCuptiActivity(
-              std::forward<decltype(activity)>(activity), &logger);
+        *traceBuffers_->gpu, [this, &logger](const CUpti_Activity* record) {
+          if (record->kind != CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION) {
+            handleCuptiActivity(record, &logger);
+          }
         });
     logDeferredEvents();
     LOG(INFO) << "Processed " << count_and_size.first << " GPU records ("
@@ -455,8 +470,8 @@ void CuptiActivityProfiler::handleCuptiActivity(
     ActivityLogger* logger) {
   switch (record->kind) {
     case CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION:
-      handleCorrelationActivity(
-          reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(record));
+      // Handled in the first pass of processGpuActivities() to ensure
+      // correlation maps are fully populated before other activities.
       break;
     case CUPTI_ACTIVITY_KIND_RUNTIME:
       handleRuntimeActivity(

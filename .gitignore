@@ -1,7 +1,7 @@
 # ignore common items
 .idea
 .vscode
-.claude
+.claude/settings.local.json
 .data
 __pycache__
 *.pyc

@@ -47,6 +47,8 @@ class MemoryRecord:
             return 'CPU'
         elif self.device_type == DeviceType.CUDA:
             return 'GPU{}'.format(self.device_id)
+        elif self.device_type is not None:
+            return self.device_type.name
         else:
             return None
 

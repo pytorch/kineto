@@ -427,13 +427,25 @@ constexpr int64_t us(int64_t timestamp) {
 }
 
 template <class T>
-inline std::string getGraphNodeMetadata(const T& activity) {
+inline std::string getGraphNodeMetadata([[maybe_unused]] const T& activity) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
   return fmt::format(
       R"JSON(,
       "graph id": {}, "graph node id": {})JSON",
       activity.graphId,
       activity.graphNodeId);
+#else
+  return "";
+#endif
+}
+
+template <class T>
+inline std::string getPriorityMetadata([[maybe_unused]] const T& kernel) {
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13010
+  return fmt::format(
+      R"JSON(,
+      "priority": {})JSON",
+      kernel.priority);
 #else
   return "";
 #endif
@@ -494,7 +506,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
         "blockLimitBarriers": {},
         "allocatedRegistersPerBlock": {},
         "allocatedSharedMemPerBlock": {}
-      }}{})JSON",
+      }}{}{})JSON",
       kernel.queued, kernel.deviceId, kernel.contextId,
       kernel.streamId, kernel.correlationId,
       kernel.registersPerThread,
@@ -513,7 +525,8 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
       occMetrics.result.blockLimitBarriers,
       occMetrics.result.allocatedRegistersPerBlock,
       occMetrics.result.allocatedSharedMemPerBlock,
-      getGraphNodeMetadata(kernel)
+      getGraphNodeMetadata(kernel),
+      getPriorityMetadata(kernel)
       );
   // clang-format on
 }

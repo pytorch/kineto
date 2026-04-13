@@ -412,6 +412,7 @@ void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {
 
 void ActivityProfilerController::startTrace() {
   UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
+  USDT_EMIT_START_TRACE();
   profiler_->startTrace(std::chrono::system_clock::now());
 }
 bool ActivityProfilerController::isActive() {
@@ -451,6 +452,7 @@ void ActivityProfilerController::popUserCorrelationId() {
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::
     stopTrace() {
   profiler_->stopTrace(std::chrono::system_clock::now());
+  USDT_EMIT_STOP_TRACE();
   UST_LOGGER_MARK_COMPLETED(kCollectionStage);
   auto logger = std::make_unique<MemoryTraceLogger>(profiler_->config());
   profiler_->processTrace(*logger);

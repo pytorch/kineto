@@ -46,6 +46,12 @@ export USE_NCCL=0
 export USE_ROCM=0
 export USE_MPI=0
 
+# If we don't set this, the logs get flooded with:
+#   Double arithmetic operation is not supported on this platform with FP64
+#   conversion emulation mode (poison FP64 kernels is enabled)
+# TODO: better explanation
+export TORCH_XPU_ARCH_LIST=pvc
+
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #

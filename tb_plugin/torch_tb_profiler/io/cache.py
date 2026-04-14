@@ -15,7 +15,9 @@ logger = utils.get_logger()
 
 class Cache:
     def __init__(self, cache_dir=None):
+        # pyrefly: ignore [missing-attribute]
         self._lock = mp.Lock()
+        # pyrefly: ignore [missing-attribute]
         self._manager = mp.Manager()
         self._cache_dict = self._manager.dict()
         self._cache_dir = cache_dir

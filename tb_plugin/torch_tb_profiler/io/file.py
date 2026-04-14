@@ -25,9 +25,7 @@ from .utils import as_bytes, as_text, parse_blob_url
 logger = utils.get_logger()
 
 try:
-    # pyre-fixme[21]: Could not find module `boto3`.
     import boto3
-    # pyre-fixme[21]: Could not find module `botocore.exceptions`.
     import botocore.exceptions
 
     S3_ENABLED = True
@@ -101,6 +99,7 @@ class LocalFileSystem(LocalPath, BaseFileSystem):
     def exists(self, filename):
         return os.path.exists(filename)
 
+    # pyrefly: ignore [bad-param-name-override]
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         mode = "rb" if binary_mode else "r"
         encoding = None if binary_mode else "utf8"
@@ -113,6 +112,7 @@ class LocalFileSystem(LocalPath, BaseFileSystem):
         with open(filename, mode, encoding=encoding) as f:
             if offset is not None:
                 f.seek(offset)
+            # pyrefly: ignore [bad-argument-type]
             data = f.read(size)
             # The new offset may not be `offset + len(data)`, due to decoding
             # and newline translation.
@@ -210,6 +210,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
             return True
         return False
 
+    # pyrefly: ignore [bad-param-name-override]
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         """Reads contents of a file to a string."""
         s3 = boto3.resource("s3", endpoint_url=self._s3_endpoint)
@@ -333,6 +334,7 @@ class S3FileSystem(RemotePath, BaseFileSystem):
                     keys.append(key)
         return keys
 
+    # pyrefly: ignore [bad-param-name-override]
     def makedirs(self, dirname):
         """Creates a directory and all parent/intermediate directories."""
         if not self.exists(dirname):
@@ -400,8 +402,10 @@ class File:
 
     def _read_buffer_to_offset(self, new_buff_offset):
         old_buff_offset = self.buff_offset
+        # pyrefly: ignore [bad-argument-type]
         read_size = min(len(self.buff), new_buff_offset) - old_buff_offset
         self.buff_offset += read_size
+        # pyrefly: ignore [unsupported-operation]
         return self.buff[old_buff_offset: old_buff_offset + read_size]
 
     def read(self, n=None):

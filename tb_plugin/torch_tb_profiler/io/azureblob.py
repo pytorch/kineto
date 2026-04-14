@@ -23,6 +23,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
             raise ImportError('azure-storage-blob must be installed for Azure Blob support.')
         self.connection_string = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', None)
 
+    # pyrefly: ignore [bad-param-name-override]
     def exists(self, dirname):
         """Returns whether the path is a directory or not."""
         basename, parts = self.split_blob_path(dirname)
@@ -34,6 +35,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         else:
             return basename == parts[0]
 
+    # pyrefly: ignore [bad-param-name-override]
     def read(self, filename, binary_mode=False, size=None, continue_from=None):
         """Reads contents of a file to a string."""
         logger.info('azure blob: starting reading file %s' % filename)
@@ -125,6 +127,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
                 items.append(item)
         return items
 
+    # pyrefly: ignore [bad-param-name-override]
     def makedirs(self, dirname):
         """No need create directory since the upload blob will automatically create"""
         pass
@@ -145,6 +148,7 @@ class AzureBlobSystem(RemotePath, BaseFileSystem):
         for blob in blobs:
             dirname, basename = self.split(blob.name)
             dirname = 'https://{}/{}/{}'.format(account, container, dirname)
+            # pyrefly: ignore [missing-attribute]
             results.setdefault(dirname, []).append(basename)
         for key, value in results.items():
             yield key, None, value

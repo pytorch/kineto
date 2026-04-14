@@ -38,7 +38,6 @@ def decorate_headers(func):
 exceptions.HTTPException.get_headers = decorate_headers(exceptions.HTTPException.get_headers)
 
 
-# pyre-fixme[11]: Annotation `TBPlugin` is not defined as a type.
 class TorchProfilerPlugin(base_plugin.TBPlugin):
     """TensorBoard plugin for Torch Profiler."""
 
@@ -52,7 +51,6 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         Args:
           context: A base_plugin.TBContext instance.
         """
-        # pyre-fixme[19]: Expected 0 positional arguments.
         super(TorchProfilerPlugin, self).__init__(context)
         if not context.logdir and context.flags.logdir_spec:
             dirs = context.flags.logdir_spec.split(',')
@@ -133,6 +131,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
     def frontend_metadata(self):
         return base_plugin.FrontendMetadata(es_module_path='/index.js', disable_reload=True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def runs_route(self, request: werkzeug.Request):
         with self._runs_lock:
@@ -144,6 +143,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         }
         return self.respond_as_json(data)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def views_route(self, request: werkzeug.Request):
         name = request.args.get('run')
@@ -152,6 +152,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         views_list = [view.display_name for view in run.views]
         return self.respond_as_json(views_list)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def workers_route(self, request: werkzeug.Request):
         name = request.args.get('run')
@@ -160,6 +161,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         return self.respond_as_json(run.get_workers(view))
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def spans_route(self, request: werkzeug.Request):
         name = request.args.get('run')
@@ -168,6 +170,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         run = self._get_run(name)
         return self.respond_as_json(run.get_spans(worker))
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def overview_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -176,15 +179,18 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         data = profile.overview
         is_gpu_used = profile.has_runtime or profile.has_kernel or profile.has_memcpy_or_memset
         normal_workers = [worker for worker in run.workers if worker != 'All']
+        # pyrefly: ignore [unsupported-operation]
         data['environments'] = [{'title': 'Number of Worker(s)', 'value': str(len(normal_workers))},
                                 {'title': 'Device Type', 'value': 'GPU' if is_gpu_used else 'CPU'}]
         if profile.gpu_summary and profile.gpu_tooltip:
+            # pyrefly: ignore [unsupported-operation]
             data['gpu_metrics'] = {'title': 'GPU Summary',
                                    'data': profile.gpu_summary,
                                    'tooltip': profile.gpu_tooltip}
 
         return self.respond_as_json(data)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def operation_pie_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -195,6 +201,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         else:
             return self.respond_as_json(profile.operation_pie_by_name)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def operation_table_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -205,6 +212,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         else:
             return self.respond_as_json(profile.operation_table_by_name)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def operation_stack_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -218,12 +226,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         else:
             return self.respond_as_json(profile.operation_stack_by_name[str(op_name)])
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def kernel_pie_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         return self.respond_as_json(profile.kernel_pie)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def kernel_table_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -234,12 +244,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         else:
             return self.respond_as_json(profile.kernel_op_table)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def kernel_tc_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
 
         return self.respond_as_json(profile.tc_pie)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def trace_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -270,26 +282,31 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         headers.extend(TorchProfilerPlugin.headers)
         return werkzeug.Response(raw_data, content_type=TorchProfilerPlugin.CONTENT_TYPE, headers=headers)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def dist_gpu_info_route(self, request: werkzeug.Request):
         profile = self._get_distributed_profile_for_request(request)
         return self.respond_as_json(profile.gpu_info)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def comm_overlap_route(self, request: werkzeug.Request):
         profile = self._get_distributed_profile_for_request(request)
         return self.respond_as_json(profile.steps_to_overlap)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def comm_wait_route(self, request: werkzeug.Request):
         profile = self._get_distributed_profile_for_request(request)
         return self.respond_as_json(profile.steps_to_wait)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def comm_ops_route(self, request: werkzeug.Request):
         profile = self._get_distributed_profile_for_request(request)
         return self.respond_as_json(profile.comm_ops)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def memory_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -304,6 +321,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(
             profile.get_memory_stats(start_ts=start_ts, end_ts=end_ts, memory_metric=memory_metric), True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def memory_curve_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -312,6 +330,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         return self.respond_as_json(
             profile.get_memory_curve(time_metric=time_metric, memory_metric=memory_metric), True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def memory_events_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -328,6 +347,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             profile.get_memory_events(start_ts, end_ts, time_metric=time_metric,
                                       memory_metric=memory_metric), True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def module_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
@@ -340,12 +360,14 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             span = request.args.get('span')
             raise exceptions.NotFound('could not find the run for %s/%s/%s' % (name, worker, span))
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def op_tree_route(self, request: werkzeug.Request):
         profile = self._get_profile_for_request(request)
         content = profile.get_operator_tree()
         return self.respond_as_json(content, True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def diff_run_route(self, request: werkzeug.Request):
         base, exp = self.get_diff_runs(request)
@@ -353,6 +375,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         content = diff_stats.get_diff_tree_summary()
         return self.respond_as_json(content, True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def diff_run_node_route(self, request: werkzeug.Request):
         base, exp = self.get_diff_runs(request)
@@ -364,6 +387,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
         content = diff_stat.get_diff_node_summary(path)
         return self.respond_as_json(content, True)
 
+    # pyrefly: ignore [bad-argument-type]
     @wrappers.Request.application
     def static_file_route(self, request: werkzeug.Request):
         filename = os.path.basename(request.path)
@@ -511,6 +535,7 @@ class TorchProfilerPlugin(base_plugin.TBPlugin):
             logger.info('Run %s loaded', name)
             self._queue.put(run)
         except Exception as ex:
+            # pyrefly: ignore [unbound-name]
             logger.warning('Failed to load run %s. Exception=%s', ex, name, exc_info=True)
 
         t = threading.current_thread()

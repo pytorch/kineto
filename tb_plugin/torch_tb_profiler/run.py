@@ -119,14 +119,17 @@ class RunProfile:
         self.overview = None
         self.operation_pie_by_name = None
         self.operation_table_by_name = None
+        # pyrefly: ignore [bad-assignment]
         self.operation_stack_by_name: Dict = None
         self.operation_pie_by_name_input = None
         self.operation_table_by_name_input = None
+        # pyrefly: ignore [bad-assignment]
         self.operation_stack_by_name_input: Dict = None
         self.kernel_op_table = None
         self.kernel_pie = None
         self.kernel_table = None
         self.tc_pie = None
+        # pyrefly: ignore [bad-assignment]
         self.trace_file_path: str = None
 
         self.gpu_metrics = None
@@ -136,13 +139,18 @@ class RunProfile:
 
         # for memory stats and curve
         self.memory_snapshot: Optional[MemorySnapshot] = None
+        # pyrefly: ignore [bad-assignment]
         self.tid2tree: Dict[int, OperatorNode] = None
+        # pyrefly: ignore [bad-assignment]
         self.pl_tid2tree: Dict[int, OperatorNode] = None
 
+        # pyrefly: ignore [no-matching-overload, not-a-type]
         self.module_stats: Optional[List(Stats)] = None
+        # pyrefly: ignore [no-matching-overload, not-a-type]
         self.pl_module_stats: Optional[List(Stats)] = None
 
     def append_gpu_metrics(self, raw_data: bytes):
+        # pyrefly: ignore [no-matching-overload]
         counter_json_str = '{}'.format(', '.join(self.gpu_metrics))
         counter_json_bytes = bytes(counter_json_str, 'utf-8')
 
@@ -182,6 +190,7 @@ class RunProfile:
         cano = Canonicalizer(memory_metric=memory_metric)
         round = DisplayRounder(ndigits=2)
 
+        # pyrefly: ignore [missing-attribute]
         stats = self.memory_snapshot.get_memory_statistics(self.tid2tree, start_ts=start_ts, end_ts=end_ts)
 
         result = {
@@ -489,7 +498,6 @@ class RunProfile:
             }
             parent.append(d)
             for child in node.children:
-                # pyre-fixme[6]: For 1st argument expected `List[typing.Any]` but
                 #  got `Union[List[typing.Any], int, str]`.
                 traverse_node(d['children'], child)
         traverse_node(result, root)

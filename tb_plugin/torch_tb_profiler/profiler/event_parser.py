@@ -18,7 +18,6 @@ from .trace import BaseEvent, DurationEvent, EventTypes, KernelEvent, NcclOpName
 
 logger = utils.get_logger()
 
-# pyre-fixme[19]: Expected 1 positional argument.
 CommLibTypes = IntEnum('CommLibTypes', ['Nccl', 'Gloo'], start=0)
 
 
@@ -120,6 +119,7 @@ class NodeParserMixin:
     def _update_communication_node(self, event: KernelEvent):
         """Update the communication node by using the TraceEvent instance"""
         external_id = event.external_id
+        # pyrefly: ignore [no-matching-overload]
         comm_node = self.communication_data.get(external_id)
         if comm_node:
             ts = event.ts
@@ -209,10 +209,8 @@ class NodeParserMixin:
                 #  `DurationEvent`.
                 comm_node = CommunicationNode.create(event)
                 if event.name in NcclOpNameSet:
-                    # pyre-fixme[16]: `IntEnum` has no attribute `Nccl`.
                     self.comm_lib.add(CommLibTypes.Nccl)
                 if event.name in GlooOpNameSet:
-                    # pyre-fixme[16]: `IntEnum` has no attribute `Gloo`.
                     self.comm_lib.add(CommLibTypes.Gloo)
                 ts = event.ts
                 dur = event.duration
@@ -405,7 +403,6 @@ class StepParser:
         is_use_gpu = prev_step_end_time is not None
         if is_use_gpu:
             for i_step in range(len(self.steps)):
-                # pyre-fixme[6]: For 1st argument expected `SupportsRichComparisonT`
                 #  but got `Optional[int]`.
                 step_start_time = max(prev_step_end_time, self.steps[i_step][0])
                 step_end_time = self.steps[i_step][1]
@@ -446,10 +443,10 @@ class StepParser:
 class EventParser(NodeParserMixin, StepParser):
     def __init__(self):
         super().__init__()
+        # pyrefly: ignore [bad-assignment, bad-specialization]
         self.comm_node_list: Dict[CommunicationNode] = None
 
     def parse(self, events: Iterable[BaseEvent], fwd_bwd_map: Dict[int, int]) -> Dict[int, List[OperatorNode]]:
-        # pyre-fixme[16]: `None` has no attribute `__enter__`.
         with utils.timing('EventParser: parse nodes'):
             tid2list, tid2zero_rt_list, staled_device_nodes, pl_tid2list = self.parse_nodes(events)
 

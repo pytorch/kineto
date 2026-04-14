@@ -87,6 +87,7 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
                 total_size = 1
                 for size in comm_node.input_shape[i]:
                     total_size *= size
+                # pyrefly: ignore [unsupported-operation]
                 total_comm_stats[comm_node.name][1] += total_size * bytes_one_value
         total_comm_stats[comm_node.name][2].extend(comm_node.kernel_ranges)
         total_comm_stats[comm_node.name][3].extend(comm_node.real_time_ranges)
@@ -100,7 +101,9 @@ def analyze_communication_nodes(comm_node_list: List[CommunicationNode])\
         ]
 
     for _, stats in total_comm_stats.items():
+        # pyrefly: ignore [unsupported-operation]
         stats[2] = get_ranges_sum(merge_ranges(stats[2]))
+        # pyrefly: ignore [unsupported-operation]
         stats[3] = get_ranges_sum(merge_ranges(stats[3]))
 
     # pyre-fixme[7]: Expected `Tuple[Dict[str, Tuple[int, int]], Dict[str,

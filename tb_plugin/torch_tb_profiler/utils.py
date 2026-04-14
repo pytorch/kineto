@@ -114,17 +114,18 @@ class DisplayRounder:
             return round(v, ndigit)
 
 
+# pyrefly: ignore [no-matching-overload]
 @contextmanager
+# pyrefly: ignore [bad-return]
 def timing(description: str, force: bool = False) -> None:
     if force or os.environ.get('TORCH_PROFILER_BENCHMARK', '0') == '1':
         start = time.time()
-        # pyre-fixme[7]: Expected `None` but got `Generator[None, typing.Any,
         #  typing.Any]`.
         yield
         elapsed_time = time.time() - start
+        # pyrefly: ignore [missing-attribute]
         logger.info(f'{description}: {elapsed_time}')
     else:
-        # pyre-fixme[7]: Expected `None` but got `Generator[None, typing.Any,
         #  typing.Any]`.
         yield
 

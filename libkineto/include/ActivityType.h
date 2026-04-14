@@ -94,9 +94,9 @@ inline constexpr std::array<_ActivityTypeName, activityTypeCount + 1> _activityT
     {"xpu_runtime", ActivityType::XPU_RUNTIME},
     {"xpu_driver", ActivityType::XPU_DRIVER},
     {"collective_comm", ActivityType::COLLECTIVE_COMM},
-    {"xpu_sync", ActivityType::XPU_SYNC},
     {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
     {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
+    {"xpu_sync", ActivityType::XPU_SYNC},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT},
 }};
 

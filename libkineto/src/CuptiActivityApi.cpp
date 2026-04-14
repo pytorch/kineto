@@ -151,6 +151,14 @@ void CuptiActivityApi::bufferRequested(
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << allocatedGpuTraceBuffers_.size()
                  << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
+    // Return null buffer to CUPTI. Per the CUPTI documentation for
+    // CUpti_BuffersCallbackRequestFunc: "If set to NULL then no buffer is
+    // returned." CUPTI will drop activity records, which are counted by
+    // cuptiActivityGetNumDroppedRecords.
+    *buffer = nullptr;
+    *size = 0;
+    *maxNumRecords = 0;
+    return;
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);
@@ -166,6 +174,9 @@ std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
+      if (readyGpuTraceBuffers_) {
+        return std::move(readyGpuTraceBuffers_);
+      }
       return nullptr;
     }
   }

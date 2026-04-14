@@ -6,17 +6,9 @@
 # LICENSE file in the root directory of this source tree.
 
 # Architecture-specific configuration for XPU CI.
-#
-# This file is sourced by kineto_build_test.sh and pytorch_build_test.sh.
-# It defines:
-#   - Extra cmake flags for the libkineto build
-#   - Environment variables for the PyTorch build
-#   - Deselected pytest tests
-#
 
 # --- Kineto cmake flags ---
 # Enable XPU (XPUPTI) and disable CUPTI/ROCm backends.
-
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
   -DLIBKINETO_NOCUPTI=1
@@ -25,7 +17,6 @@ KINETO_CMAKE_FLAGS=(
 )
 
 # --- PyTorch build environment variables ---
-
 # We're following the pattern established in pytorch/pytorch XPU builds:
 #   https://github.com/pytorch/pytorch/blob/39565a7dcf8f93ea22cedeaa20088b24ff6d2634/.ci/manywheel/build_xpu.sh#L20-L28
 set +u
@@ -55,10 +46,6 @@ export TORCH_XPU_ARCH_LIST=pvc
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #
-# TODO: Dynamically add/remove tests to the exclusion list based on their
-# status on trunk instead of maintaining a hardcoded list of known failures.
-# This will prevent the list from becoming stale as tests get fixed upstream.
-
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated

@@ -16,11 +16,9 @@
 #include "RocLogger.h"
 #ifndef ROCTRACER_FALLBACK
 #include <rocprofiler-sdk/version.h>
-#include "RocprofActivity.h"
 #include "RocprofActivityApi.h"
 #else
 #include <roctracer.h>
-#include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
 #endif
 

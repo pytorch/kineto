@@ -19,6 +19,9 @@ KINETO_CMAKE_FLAGS=(
 # --- PyTorch build environment variables ---
 # We're following the pattern established in pytorch/pytorch XPU builds:
 #   https://github.com/pytorch/pytorch/blob/39565a7dcf8f93ea22cedeaa20088b24ff6d2634/.ci/manywheel/build_xpu.sh#L20-L28
+
+# We cannot follow through to these files because they only exist on the runners
+# shellcheck disable=SC1091
 set +u
 source /opt/intel/oneapi/compiler/latest/env/vars.sh
 source /opt/intel/oneapi/pti/latest/env/vars.sh

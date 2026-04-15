@@ -158,6 +158,7 @@ def _build_module_hierarchy(events: List[PythonFunctionEvent]) -> List[Module]:
     # will produce a unique and unambiguous hierarchy.
     def append_hierarchy(e_id) -> Module:
         e = id_to_event[e_id]
+        # pyrefly: ignore [missing-attribute]
         module = Module(e.name, e.module_id)
         for id in module_child_map[e_id]:
             child = append_hierarchy(id)

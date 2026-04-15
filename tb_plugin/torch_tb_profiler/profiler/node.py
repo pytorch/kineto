@@ -31,9 +31,12 @@ class BaseNode(ABC):
     def get_node_argument(event: DurationEvent):
         kwargs = {}
         kwargs['name'] = event.name
+        # pyrefly: ignore [unsupported-operation]
         kwargs['start_time'] = event.ts
+        # pyrefly: ignore [unsupported-operation]
         kwargs['end_time'] = event.ts + event.duration
         kwargs['type'] = event.type
+        # pyrefly: ignore [unsupported-operation]
         kwargs['tid'] = event.tid
 
         external_id = getattr(event, 'external_id', None)
@@ -65,6 +68,7 @@ class CommunicationNode(BaseNode):
     @classmethod
     def create(cls, event: OperatorEvent):
         kwargs = BaseNode.get_node_argument(event)
+        # pyrefly: ignore [bad-argument-type]
         return cls(input_shape=event.input_shape, input_type=event.input_type, **kwargs)
 
 

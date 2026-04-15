@@ -158,7 +158,6 @@ class MemorySnapshot:
         for op_name, op_agg in agg_result[0].items():
             op_calls[op_name] += op_agg.calls
 
-        # pyre-fixme[9]: result has type `Dict[str, Dict[str, List[int]]]`; used as
         #  `DefaultDict[Variable[_KT], DefaultDict[Variable[_KT], Variable[_VT]]]`.
         result: Dict[str, Dict[str, List[int]]] = defaultdict(defaultdict)
         for device, node_metrics in memory_metrics_keyed_by_nodename.items():

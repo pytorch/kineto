@@ -119,6 +119,7 @@ class MemoryEvent(BaseEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
         self.scope: str = data.get('s', '')
+        # pyrefly: ignore [bad-assignment]
         self.device_id: int = self.args.get('Device Id')
         dtype = self.args.get('Device Type')
         if dtype is not None:
@@ -127,6 +128,7 @@ class MemoryEvent(BaseEvent):
             except ValueError:
                 dtype = None
 
+        # pyrefly: ignore [bad-assignment]
         self.device_type: DeviceType = dtype
 
     @property
@@ -149,13 +151,16 @@ class MemoryEvent(BaseEvent):
 class PythonFunctionEvent(DurationEvent):
     def __init__(self, type, data):
         super().__init__(type, data)
+        # pyrefly: ignore [bad-assignment]
         self.python_id: int = self.args.get('Python id')
+        # pyrefly: ignore [bad-assignment]
         self.python_parent_id: int = self.args.get('Python parent id')
 
 
 class ModuleEvent(PythonFunctionEvent):
     def __init__(self, data):
         super().__init__(EventTypes.MODULE, data)
+        # pyrefly: ignore [bad-assignment]
         self.module_id: int = self.args.get('Python module id')
 
 

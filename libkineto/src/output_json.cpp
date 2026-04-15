@@ -814,6 +814,37 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
   int64_t device = op.deviceId();
   int64_t resource = op.resourceId();
+
+  // Move Stream Sync events to a dedicated row so they don't overlap with
+  // kernel events on the same stream in the trace viewer.
+  if (op.type() == ActivityType::CUDA_SYNC && op.name() == "Stream Sync") {
+    int64_t syncTid = resource + kSyncStreamTidOffset;
+    int64_t key = (device << 32) | syncTid;
+    if (syncStreamMetadataEmitted_.insert(key).second) {
+      int64_t metaTime = transToRelativeTime(ts);
+      // clang-format off
+      fmt::print(traceOf_, R"JSON(
+  {{
+    "name": "thread_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
+    "args": {{
+      "name": "stream {} (sync)"
+    }}
+  }},
+  {{
+    "name": "thread_sort_index", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
+    "args": {{
+      "sort_index": {}
+    }}
+  }},)JSON",
+          metaTime/1000, metaTime%1000, device, syncTid,
+          resource,
+          metaTime/1000, metaTime%1000, device, syncTid,
+          resource);
+      // clang-format on
+    }
+    resource = syncTid;
+  }
+
   // TODO: Remove this once legacy tools are updated.
   std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
   sanitizeStrForJSON(op_name);
@@ -875,11 +906,17 @@ void ChromeTraceLogger::handleLink(
   }
 
   int64_t ts = transToRelativeTime(e.timestamp());
+  int64_t tid = e.resourceId();
+  // Use the virtual tid for Stream Sync events to match the row
+  // they were placed on in handleActivity().
+  if (e.type() == ActivityType::CUDA_SYNC && e.name() == "Stream Sync") {
+    tid = tid + kSyncStreamTidOffset;
+  }
   writeFlowEvent(
       /*type=*/type,
       /*id=*/id,
       /*pid=*/e.deviceId(),
-      /*tid=*/sanitizeTid(e.resourceId()),
+      /*tid=*/sanitizeTid(tid),
       /*ts=*/ts,
       /*cat=*/name,
       /*name=*/name);

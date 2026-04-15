@@ -149,6 +149,10 @@ bool ActivityProfilerController::isActive() {
   return profiler_->isActive();
 }
 
+bool ActivityProfilerController::isStopped() const {
+  return profiler_->isStopped();
+}
+
 void ActivityProfilerController::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   profiler_->transferCpuTrace(std::move(cpuTrace));

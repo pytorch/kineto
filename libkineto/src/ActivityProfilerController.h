@@ -61,6 +61,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   std::unique_ptr<ActivityTraceInterface> stopTrace();
 
   bool isActive();
+  bool isStopped() const;
 
   void transferCpuTrace(std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace);
 

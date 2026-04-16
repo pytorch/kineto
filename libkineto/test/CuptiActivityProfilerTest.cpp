@@ -653,6 +653,40 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
+
+  // Verify Stream Sync events are on a separate row from kernel events
+  // in the JSON trace output (tid offset by kSyncStreamTidOffset).
+  {
+    std::ifstream traceFile(filename);
+    std::string traceStr(
+        (std::istreambuf_iterator<char>(traceFile)),
+        std::istreambuf_iterator<char>());
+    auto traceJson = nlohmann::json::parse(traceStr);
+    int64_t kernelTid = -1;
+    int64_t streamSyncTid = -1;
+    bool foundSyncRowMeta = false;
+    for (const auto& event : traceJson["traceEvents"]) {
+      if (event.value("name", "") == "Kernel") {
+        kernelTid = event.value("tid", (int64_t)-1);
+      }
+      if (event.value("name", "") == "Stream Sync") {
+        streamSyncTid = event.value("tid", (int64_t)-1);
+      }
+      if (event.value("name", "") == "thread_name") {
+        auto args = event.value("args", nlohmann::json::object());
+        std::string threadName = args.value("name", "");
+        if (threadName.find("sync") != std::string::npos) {
+          foundSyncRowMeta = true;
+        }
+      }
+    }
+    EXPECT_NE(kernelTid, -1) << "Expected kernel events in trace";
+    EXPECT_NE(streamSyncTid, -1) << "Expected Stream Sync event in trace";
+    EXPECT_NE(kernelTid, streamSyncTid)
+        << "Stream Sync should be on a different tid than kernels";
+    EXPECT_TRUE(foundSyncRowMeta)
+        << "Expected thread_name metadata for sync row";
+  }
 #endif
 }
 

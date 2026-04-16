@@ -5,51 +5,60 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-# Architecture-specific configuration for CPU CI.
-#
-# This file is sourced by kineto_build_test.sh and pytorch_build_test.sh.
-# It defines:
-#   - Extra cmake flags for the libkineto build
-#   - Environment variables for the PyTorch build
-#   - Deselected pytest tests
-#
+# Architecture-specific configuration for XPU CI.
 
 # --- Kineto cmake flags ---
-# Disable all GPU backends for CPU-only builds.
-
+# Enable XPU (XPUPTI) and disable CUPTI/ROCm backends.
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
   -DLIBKINETO_NOCUPTI=1
   -DLIBKINETO_NOROCTRACER=1
-  -DLIBKINETO_NOXPUPTI=1
-  -DLIBKINETO_NOAIUPTI=1
+  -DLIBKINETO_NOXPUPTI=OFF
 )
 
 # --- PyTorch build environment variables ---
+# We're following the pattern established in pytorch/pytorch XPU builds:
+#   https://github.com/pytorch/pytorch/blob/39565a7dcf8f93ea22cedeaa20088b24ff6d2634/.ci/manywheel/build_xpu.sh#L20-L28
 
+# We cannot follow through to these files because they only exist on the runners
+# shellcheck disable=SC1091
+set +u
+source /opt/intel/oneapi/compiler/latest/env/vars.sh
+source /opt/intel/oneapi/pti/latest/env/vars.sh
+source /opt/intel/oneapi/umf/latest/env/vars.sh
+source /opt/intel/oneapi/ccl/latest/env/vars.sh
+source /opt/intel/oneapi/mpi/latest/env/vars.sh
+set -u
+
+export USE_STATIC_MKL=1
+export USE_XCCL=1
+export USE_XPU=1
+export BUILD_TEST=1
 export USE_CUDA=0
 export USE_CUDNN=0
 export USE_NCCL=0
 export USE_ROCM=0
-export BUILD_TEST=1
+export USE_MPI=0
+
+# If we don't set this, the logs get flooded with:
+#   Double arithmetic operation is not supported on this platform with FP64
+#   conversion emulation mode (poison FP64 kernels is enabled)
+# TODO: better explanation
+export TORCH_XPU_ARCH_LIST=pvc
 
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #
-# Dynamic skipping of known-broken/flaky upstream tests is handled via
-# DISABLED_TESTS_FILE in pytorch_build_test.sh. The hardcoded list below
-# supplements it for tests not yet tracked upstream.
-
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
   test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
   test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
   test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
+  test/profiler/test_profiler.py::TestProfiler::test_kineto
+  test/profiler/test_profiler.py::TestProfiler::test_user_annotation
   test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
+  test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
   test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
-
-  # https://github.com/pytorch/kineto/issues/1230
-  test/profiler/test_profiler_tree.py::TestProfilerTree::test_profiler_experimental_tree_with_stack_and_modules
 )

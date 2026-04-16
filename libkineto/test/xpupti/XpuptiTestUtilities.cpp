@@ -117,7 +117,7 @@ static unsigned acceptDriverActivities(
 class TestActivityLogger : public KN::ActivityLogger {
   void handleDeviceInfo(
       [[maybe_unused]] const KN::DeviceInfo& info,
-      [[maybe_unused]] uint64_t time) override {}
+      [[maybe_unused]] int64_t time) override {}
   void handleResourceInfo(
       [[maybe_unused]] const KN::ResourceInfo& info,
       [[maybe_unused]] int64_t time) override {}

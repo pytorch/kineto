@@ -105,7 +105,7 @@ void CuptiActivityProfiler::logGpuVersions() {
   addVersionMetadata("cuda_driver_version", std::to_string(cudaDriverVersion));
 }
 
-void CuptiActivityProfiler::setMaxGpuBufferSize(int size) {
+void CuptiActivityProfiler::setMaxGpuBufferSize(int64_t size) {
   cupti_.setMaxBufferSize(size);
 }
 
@@ -187,10 +187,25 @@ void CuptiActivityProfiler::processGpuActivities(ActivityLogger& logger) {
     addOverheadSample(flushOverhead_, cupti_.flushOverhead);
   }
   if (traceBuffers_->gpu) {
+    // Pass 1: Process only external correlation records first.
+    // This ensures cpuCorrelationMap_ and userCorrelationMap_ are fully
+    // populated before processing GPU activities.
+    cupti_.processActivities(
+        *traceBuffers_->gpu, [this](const CUpti_Activity* record) {
+          if (record->kind == CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION) {
+            handleCorrelationActivity(
+                reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(
+                    record));
+          }
+        });
+
+    // Pass 2: Process all non-correlation activities. Correlation records
+    // are skipped since they were already handled in pass 1.
     const auto count_and_size = cupti_.processActivities(
-        *traceBuffers_->gpu, [this, &logger](auto&& activity) {
-          handleCuptiActivity(
-              std::forward<decltype(activity)>(activity), &logger);
+        *traceBuffers_->gpu, [this, &logger](const CUpti_Activity* record) {
+          if (record->kind != CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION) {
+            handleCuptiActivity(record, &logger);
+          }
         });
     logDeferredEvents();
     LOG(INFO) << "Processed " << count_and_size.first << " GPU records ("
@@ -360,49 +375,49 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
   }
 
   auto device_id = contextIdtoDeviceId(activity->contextId);
-  int32_t src_stream = -1;
-  int32_t src_corrid = -1;
-
-  if (isEventSync(activity->type)) {
-    auto maybe_wait_event_info =
-        getWaitEventInfo(activity->contextId, activity->cudaEventId);
-    if (maybe_wait_event_info) {
-      src_stream = maybe_wait_event_info->stream;
-      src_corrid = maybe_wait_event_info->correlationId;
-    }
-  }
 
   // Marshal the logging to a functor so we can defer it if needed.
-  auto log_event =
-      [activity, src_stream, src_corrid, device_id, logger, this]() {
-        const ITraceActivity* linked =
-            linkedActivity(activity->correlationId, this->cpuCorrelationMap_);
-        const auto& cuda_sync_activity =
-            this->traceBuffers_->addActivityWrapper(
-                CudaSyncActivity(activity, linked, src_stream, src_corrid));
+  auto log_event = [activity, device_id, logger, this]() {
+    int32_t src_stream = -1;
+    int32_t src_corrid = -1;
+    if (isEventSync(activity->type)) {
+      auto maybe_wait_event_info =
+          getWaitEventInfo(activity->contextId, activity->cudaEventId);
+      if (maybe_wait_event_info) {
+        src_stream = maybe_wait_event_info->stream;
+        src_corrid = maybe_wait_event_info->correlationId;
+      }
+    }
+    const ITraceActivity* linked =
+        linkedActivity(activity->correlationId, this->cpuCorrelationMap_);
+    const auto& cuda_sync_activity = this->traceBuffers_->addActivityWrapper(
+        CudaSyncActivity(activity, linked, src_stream, src_corrid));
 
-        if (outOfRange(cuda_sync_activity)) {
-          return;
-        }
+    if (outOfRange(cuda_sync_activity)) {
+      return;
+    }
 
-        if (static_cast<int32_t>(activity->streamId) != -1) {
-          recordStream(device_id, activity->streamId, "");
-        } else {
-          recordDevice(device_id);
-        }
-        VLOG(2) << "Logging sync event device = " << device_id
-                << " stream = " << activity->streamId
-                << " sync type = " << syncTypeString(activity->type);
-        cuda_sync_activity.log(*logger);
-        setGpuActivityPresent(true);
-      };
+    if (static_cast<int32_t>(activity->streamId) != -1) {
+      recordStream(device_id, activity->streamId, "");
+    } else {
+      recordDevice(device_id);
+    }
+    VLOG(2) << "Logging sync event device = " << device_id
+            << " stream = " << activity->streamId
+            << " sync type = " << syncTypeString(activity->type);
+    cuda_sync_activity.log(*logger);
+    setGpuActivityPresent(true);
+  };
 
-  if (isWaitEventSync(activity->type)) {
-    // Defer logging wait event syncs till the end so we only
-    // log these events if a stream has some GPU kernels on it.
+  if (isEventSync(activity->type)) {
+    // Defer logging event syncs till the end so that:
+    // 1. The waitEventMap() lookup runs after all CUDA_EVENT records are
+    //    processed, ensuring wait_on_cuda_event_record_corr_id is populated.
+    // 2. Stream Wait Events are only logged if the stream has GPU activity.
     DeferredLogEntry entry;
     entry.device = device_id;
     entry.stream = activity->streamId;
+    entry.isWaitEvent = isWaitEventSync(activity->type);
     entry.logMe = log_event;
 
     logQueue_.push_back(entry);
@@ -414,11 +429,12 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
 void CuptiActivityProfiler::logDeferredEvents() {
   // Stream Wait Events tend to be noisy, only pass these events if
   // there was some GPU kernel/memcopy/memset observed on it in the trace
-  // window.
+  // window. Event Synchronize events are always logged.
   for (const auto& entry : logQueue_) {
-    if (seenDeviceStreams_.find({entry.device, entry.stream}) ==
-        seenDeviceStreams_.end()) {
-      VLOG(2) << "Skipping Event Sync as no kernels have run yet on stream = "
+    if (entry.isWaitEvent &&
+        seenDeviceStreams_.find({entry.device, entry.stream}) ==
+            seenDeviceStreams_.end()) {
+      VLOG(2) << "Skipping Stream Wait Event on unseen stream = "
               << entry.stream;
     } else {
       entry.logMe();
@@ -454,8 +470,8 @@ void CuptiActivityProfiler::handleCuptiActivity(
     ActivityLogger* logger) {
   switch (record->kind) {
     case CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION:
-      handleCorrelationActivity(
-          reinterpret_cast<const CUpti_ActivityExternalCorrelation*>(record));
+      // Handled in the first pass of processGpuActivities() to ensure
+      // correlation maps are fully populated before other activities.
       break;
     case CUPTI_ACTIVITY_KIND_RUNTIME:
       handleRuntimeActivity(

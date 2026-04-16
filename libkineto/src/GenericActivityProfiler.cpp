@@ -593,6 +593,14 @@ void GenericActivityProfiler::toggleCollectionDynamic(const bool enable) {
     return;
   }
   toggleState_.store(enable);
+
+  // The ordering of conditions and synchronization is deliberate. We
+  // intentionally synchronize:
+  //
+  //   - AFTER we disable
+  //   - BEFORE we enable
+  //
+  // Both to prevent the synchronization event from showing up in traces.
   if (!enable) {
     disableGpuTracing();
   }

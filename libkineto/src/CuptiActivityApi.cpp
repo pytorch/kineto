@@ -61,7 +61,8 @@ CuptiActivityApi& CuptiActivityApi::singleton() {
 }
 
 void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
-  if (!singleton().externalCorrelationEnabled_) {
+  if (!singleton().externalCorrelationEnabled_.load(
+          std::memory_order_relaxed)) {
     return;
   }
   VLOG(2) << "pushCorrelationID(" << id << ")";
@@ -77,7 +78,8 @@ void CuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 }
 
 void CuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
-  if (!singleton().externalCorrelationEnabled_) {
+  if (!singleton().externalCorrelationEnabled_.load(
+          std::memory_order_relaxed)) {
     return;
   }
   switch (type) {
@@ -151,6 +153,14 @@ void CuptiActivityApi::bufferRequested(
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << allocatedGpuTraceBuffers_.size()
                  << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
+    // Return null buffer to CUPTI. Per the CUPTI documentation for
+    // CUpti_BuffersCallbackRequestFunc: "If set to NULL then no buffer is
+    // returned." CUPTI will drop activity records, which are counted by
+    // cuptiActivityGetNumDroppedRecords.
+    *buffer = nullptr;
+    *size = 0;
+    *maxNumRecords = 0;
+    return;
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);
@@ -166,6 +176,9 @@ std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
+      if (readyGpuTraceBuffers_) {
+        return std::move(readyGpuTraceBuffers_);
+      }
       return nullptr;
     }
   }
@@ -323,7 +336,7 @@ void CuptiActivityApi::enableCuptiActivities(
   CUPTI_CALL(cuptiActivityRegisterCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
 
-  externalCorrelationEnabled_ = false;
+  externalCorrelationEnabled_.store(false, std::memory_order_relaxed);
   for (const auto& activity : selected_activities) {
     if (activity == ActivityType::GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
@@ -336,7 +349,7 @@ void CuptiActivityApi::enableCuptiActivities(
     }
     if (activity == ActivityType::EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
-      externalCorrelationEnabled_ = true;
+      externalCorrelationEnabled_.store(true, std::memory_order_relaxed);
     }
     if (activity == ActivityType::CUDA_SYNC) {
 #if CUDA_VERSION >= 13000
@@ -402,7 +415,7 @@ void CuptiActivityApi::disableCuptiActivities(
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
     }
   }
-  externalCorrelationEnabled_ = false;
+  externalCorrelationEnabled_.store(false, std::memory_order_relaxed);
 }
 
 void CuptiActivityApi::teardownContext() {

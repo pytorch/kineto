@@ -76,7 +76,7 @@ class CuptiActivityApi {
   std::mutex mutex_;
   std::atomic<uint32_t> tracingEnabled_{0};
   std::atomic<uint32_t> tearingDown_{0};
-  bool externalCorrelationEnabled_{false};
+  std::atomic<bool> externalCorrelationEnabled_{false};
 
   int processActivitiesForBuffer(uint8_t* buf,
                                  size_t validSize,

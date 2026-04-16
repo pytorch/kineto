@@ -72,6 +72,8 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         "src/GenericActivityProfiler.cpp",
         "src/ActivityProfilerController.cpp",
         "src/ActivityProfilerProxy.cpp",
+        "src/AsyncActivityProfilerHandler.cpp",
+        "src/SyncActivityProfilerHandler.cpp",
         "src/ActivityType.cpp",
         "src/Config.cpp",
         "src/ConfigLoader.cpp",

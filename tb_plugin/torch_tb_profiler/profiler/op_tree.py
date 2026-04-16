@@ -20,7 +20,9 @@ class OpTreeBuilder:
     BACKWARD_ACCUMULATE_GRAD = 'autograd::engine::evaluate_function: torch::autograd::AccumulateGrad'
 
     def __init__(self):
+        # pyrefly: ignore [bad-assignment]
         self.main_tid: int = None
+        # pyrefly: ignore [bad-assignment]
         self.tid2tree: Dict[int, OperatorNode] = None
 
     def build_tree(self,
@@ -87,6 +89,7 @@ class OpTreeBuilder:
                     if tid != backward_tid or backward_tid is None
                 }
                 # get the maximum length as the main thread
+                # pyrefly: ignore [no-matching-overload]
                 self.main_tid = max(tid2len, key=tid2len.get)
 
     def _find_backward_tid(self):

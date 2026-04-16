@@ -103,7 +103,6 @@ class Operators(Operator):
 
     def __str__(self) -> str:
         if isinstance(self.op_nodes, list):
-            # pyre-fixme[16]: Item `OperatorNode` of `Union[List[OperatorNode],
             #  OperatorNode]` has no attribute `__getitem__`.
             return f'{self.name}: {len(self.op_nodes)}: {self.op_nodes[0].name}: {self.total_duration}'
         else:
@@ -118,7 +117,6 @@ class Operators(Operator):
         ops: List[OperatorNode] = []
         kernels: List[DeviceNode] = []
         for n in nodes:
-            # pyre-fixme[16]: Item `List` of `Union[List[OperatorNode],
             #  OperatorNode]` has no attribute `get_operator_and_kernels`.
             o, k = n.get_operator_and_kernels()
             ops.extend(o)

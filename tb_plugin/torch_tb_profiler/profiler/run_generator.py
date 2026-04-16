@@ -35,10 +35,12 @@ class RunGenerator:
 
         profile_run.views.append(consts.OP_VIEW)
         profile_run.operation_pie_by_name = self._generate_op_pie()
+        # pyrefly: ignore [bad-argument-type]
         profile_run.operation_table_by_name = self._generate_op_table(self.profile_data.op_list_groupby_name)
         profile_run.operation_stack_by_name = self._generate_op_table_for_stack(False)
         profile_run.operation_pie_by_name_input = self._generate_op_pie(True)
         profile_run.operation_table_by_name_input = self._generate_op_table(
+            # pyrefly: ignore [bad-argument-type]
             self.profile_data.op_list_groupby_name_input, True)
         profile_run.operation_stack_by_name_input = self._generate_op_table_for_stack(True)
 
@@ -97,6 +99,7 @@ class RunGenerator:
             cost_dict = {'name': part_name,
                          'description': '',
                          'value': round(part_cost),
+                         # pyrefly: ignore [missing-attribute]
                          'extra': round(100 * part_cost / self.profile_data.avg_costs.costs[ProfileRole.Total], 2)}
             return cost_dict
 
@@ -108,6 +111,7 @@ class RunGenerator:
         data['steps'] = {}
         data['steps']['columns'] = [{'type': 'string', 'name': 'Step'}]
         if show_gpu:
+            # pyrefly: ignore [bad-argument-type]
             data['steps']['columns'].extend([{'type': 'number', 'name': 'Kernel'},
                                              column_tootip,
                                              {'type': 'number', 'name': 'Memcpy'},
@@ -115,11 +119,14 @@ class RunGenerator:
                                              {'type': 'number', 'name': 'Memset'},
                                              column_tootip])
         if self.profile_data.has_communication:
+            # pyrefly: ignore [bad-argument-type]
             data['steps']['columns'].extend([{'type': 'number', 'name': 'Communication'},
                                              column_tootip])
         if show_gpu:
+            # pyrefly: ignore [bad-argument-type]
             data['steps']['columns'].extend([{'type': 'number', 'name': 'Runtime'},
                                              column_tootip])
+        # pyrefly: ignore [bad-argument-type]
         data['steps']['columns'].extend([{'type': 'number', 'name': 'DataLoader'},
                                          column_tootip,
                                          {'type': 'number', 'name': 'CPU Exec'},
@@ -128,8 +135,11 @@ class RunGenerator:
                                          column_tootip])
 
         data['steps']['rows'] = []
+        # pyrefly: ignore [bad-argument-type]
         for i in range(len(self.profile_data.steps_costs)):
+            # pyrefly: ignore [unsupported-operation]
             costs = self.profile_data.steps_costs[i]
+            # pyrefly: ignore [unsupported-operation]
             step_name = self.profile_data.steps_names[i]
             row = [step_name]
             if show_gpu:
@@ -156,25 +166,35 @@ class RunGenerator:
         avg_costs = []
         if show_gpu:
             avg_costs.extend([
+                # pyrefly: ignore [missing-attribute]
                 build_avg_cost_dict('Kernel', self.profile_data.avg_costs.costs[ProfileRole.Kernel]),
+                # pyrefly: ignore [missing-attribute]
                 build_avg_cost_dict('Memcpy', self.profile_data.avg_costs.costs[ProfileRole.Memcpy]),
+                # pyrefly: ignore [missing-attribute]
                 build_avg_cost_dict('Memset', self.profile_data.avg_costs.costs[ProfileRole.Memset])
             ])
         if self.profile_data.has_communication:
             avg_costs.extend([
+                # pyrefly: ignore [missing-attribute]
                 build_avg_cost_dict('Communication', self.profile_data.avg_costs.costs[ProfileRole.Communication])
             ])
         if show_gpu:
             avg_costs.extend([
+                # pyrefly: ignore [missing-attribute]
                 build_avg_cost_dict('Runtime', self.profile_data.avg_costs.costs[ProfileRole.Runtime])
             ])
         avg_costs.extend([
+            # pyrefly: ignore [missing-attribute]
             build_avg_cost_dict('DataLoader', self.profile_data.avg_costs.costs[ProfileRole.DataLoader]),
+            # pyrefly: ignore [missing-attribute]
             build_avg_cost_dict('CPU Exec', self.profile_data.avg_costs.costs[ProfileRole.CpuOp]),
+            # pyrefly: ignore [missing-attribute]
             build_avg_cost_dict('Other', self.profile_data.avg_costs.costs[ProfileRole.Other])
         ])
 
+        # pyrefly: ignore [unsupported-operation]
         data['performance'] = [{'name': 'Average Step Time', 'description': '',
+                                # pyrefly: ignore [missing-attribute]
                                 'value': round(self.profile_data.avg_costs.costs[ProfileRole.Total]),
                                 'extra': 100, 'children': avg_costs}]
 
@@ -199,6 +219,7 @@ class RunGenerator:
         else:
             op_list = self.profile_data.op_list_groupby_name
 
+        # pyrefly: ignore [not-iterable]
         for op_agg in op_list:
             # Whether device_duration & self_device_duration are accurate or not depends on the input tracing data.
             if op_agg.device_duration > 0:
@@ -223,28 +244,36 @@ class RunGenerator:
 
         if len(op_device_total_time) > 0:
             device_total_time['title'] = 'Device Total Time (us)'
+            # pyrefly: ignore [unsupported-operation]
             device_total_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            # pyrefly: ignore [unsupported-operation]
             device_total_time['rows'] = op_device_total_time
         else:
             device_total_time = None
 
         if len(op_device_self_time) > 0:
             device_self_time['title'] = 'Device Self Time (us)'
+            # pyrefly: ignore [unsupported-operation]
             device_self_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            # pyrefly: ignore [unsupported-operation]
             device_self_time['rows'] = op_device_self_time
         else:
             device_self_time = None
 
         if len(op_host_total_time) > 0:
             host_total_time['title'] = 'Host Total Time (us)'
+            # pyrefly: ignore [unsupported-operation]
             host_total_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            # pyrefly: ignore [unsupported-operation]
             host_total_time['rows'] = op_host_total_time
         else:
             host_total_time = None
 
         if len(op_host_self_time) > 0:
             host_self_time['title'] = 'Host Self Time (us)'
+            # pyrefly: ignore [unsupported-operation]
             host_self_time['columns'] = [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}]
+            # pyrefly: ignore [unsupported-operation]
             host_self_time['rows'] = op_host_self_time
         else:
             host_self_time = None
@@ -286,14 +315,21 @@ class RunGenerator:
             row['name'] = op.name
             if group_by_input_shape:
                 row['input_shape'] = op.input_shape
+            # pyrefly: ignore [unsupported-operation]
             row['calls'] = op.calls
             if show_gpu:
+                # pyrefly: ignore [unsupported-operation]
                 row['device_self_duration'] = round(op.self_device_duration)
+                # pyrefly: ignore [unsupported-operation]
                 row['device_total_duration'] = round(op.device_duration)
+            # pyrefly: ignore [unsupported-operation]
             row['host_self_duration'] = round(op.self_host_duration)
+            # pyrefly: ignore [unsupported-operation]
             row['host_total_duration'] = round(op.host_duration)
             row['tc_eligible'] = 'Yes' if op.tc_eligible else 'No'
+            # pyrefly: ignore [unsupported-operation]
             row['tc_self_ratio'] = round(100 * op.tc_self_ratio, 2)
+            # pyrefly: ignore [unsupported-operation]
             row['tc_total_ratio'] = round(100 * op.tc_total_ratio, 2)
             if call_stack:
                 row['call_stack'] = op.callstacks.pop()
@@ -302,6 +338,7 @@ class RunGenerator:
                     key = op.name + '###' + str(op.input_shape)
                 else:
                     key = op.name
+                # pyrefly: ignore [not-iterable, unsupported-operation]
                 row['has_call_stack'] = key in stack_list_dict
             data.append(row)
 
@@ -314,6 +351,7 @@ class RunGenerator:
             stack_list_dict = self.profile_data.stack_lists_group_by_name
 
         result = dict()
+        # pyrefly: ignore [missing-attribute]
         for k, v in stack_list_dict.items():
             result[k] = self._generate_op_table(v, group_by_input_shape, True)
         return result
@@ -343,6 +381,7 @@ class RunGenerator:
         table['columns'].extend(gpu_metrics_columns)
 
         table['rows'] = []
+        # pyrefly: ignore [no-matching-overload]
         kernel_list: List[KernelAggByNameOp] = sorted(
             self.profile_data.kernel_list_groupby_name_op, key=lambda x: x.total_duration, reverse=True)
         for agg_by_name_op in kernel_list:
@@ -363,6 +402,7 @@ class RunGenerator:
 
     def _generate_kernel_pie(self):
         pie = {'columns': [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}], 'rows': []}
+        # pyrefly: ignore [missing-attribute]
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
             pie['rows'].append([name, row['sum']])
         data = {'total': pie}
@@ -394,6 +434,7 @@ class RunGenerator:
         table['columns'].extend(gpu_metrics_columns)
 
         table['rows'] = []
+        # pyrefly: ignore [missing-attribute]
         for _id, (name, row) in enumerate(self.profile_data.kernel_stat.iterrows()):
             kernel_row = [name, 'Yes' if row['tc_used'] else 'No']
             for i, column in enumerate(columns):
@@ -405,6 +446,7 @@ class RunGenerator:
     def _generate_tc_pie(self):
         pie = {'columns': [{'type': 'string', 'name': 'name'}, {'type': 'number', 'name': 'value'}], 'rows': []}
         pie['rows'].append(['Using Tensor Cores', self.profile_data.tc_used_ratio])
+        # pyrefly: ignore [unsupported-operation]
         pie['rows'].append(['Not Using Tensor Cores', 1.0 - self.profile_data.tc_used_ratio])
         data = {'total': pie}
         return data
@@ -496,9 +538,12 @@ class DistributedRunGenerator:
         steps_to_overlap['all'] = OrderedDict()
         for data in self.all_profile_data:
             steps_to_overlap['all'][data.worker] = [0, 0, 0, 0]
+            # pyrefly: ignore [bad-argument-type]
             step_number = len(data.steps_names)
+            # pyrefly: ignore [bad-argument-type]
             for i, step_name in enumerate(data.steps_names):
                 steps_to_overlap.setdefault(step_name, OrderedDict())
+                # pyrefly: ignore [unsupported-operation]
                 costs = data.comm_overlap_costs[i]
                 steps_to_overlap[step_name][data.worker] = [
                     costs.computation - costs.overlap,
@@ -512,6 +557,7 @@ class DistributedRunGenerator:
                                                     steps_to_overlap['all'][data.worker]]
         for k, v in steps_to_overlap.items():
             steps_to_overlap[k] = OrderedDict(sorted(v.items()))
+        # pyrefly: ignore [unsupported-operation]
         result['data'] = steps_to_overlap
         return result
 
@@ -527,7 +573,9 @@ class DistributedRunGenerator:
         steps_to_wait['all'] = OrderedDict()
         for data in self.all_profile_data:
             steps_to_wait['all'][data.worker] = [0, 0]
+            # pyrefly: ignore [missing-attribute]
             step_number = len(data.step_comm_stats.values())
+            # pyrefly: ignore [missing-attribute]
             for step, comm_stats in data.step_comm_stats.items():
                 steps_to_wait.setdefault(step, OrderedDict())[data.worker] = [
                     comm_stats[1],
@@ -540,6 +588,7 @@ class DistributedRunGenerator:
 
         for k, v in steps_to_wait.items():
             steps_to_wait[k] = OrderedDict(sorted(v.items()))
+        # pyrefly: ignore [unsupported-operation]
         result['data'] = steps_to_wait
         return result
 
@@ -563,6 +612,7 @@ class DistributedRunGenerator:
             for column in col_names:
                 table['columns'].append({'type': 'number', 'name': column})
             table['rows'] = []
+            # pyrefly: ignore [missing-attribute]
             for op, stats in data.total_comm_stats.items():
                 row = [
                     op,
@@ -576,5 +626,6 @@ class DistributedRunGenerator:
                 ]
                 table['rows'].append(row)
             workers_to_comm_ops[data.worker] = table
+        # pyrefly: ignore [no-matching-overload]
         result['data'] = OrderedDict(sorted(workers_to_comm_ops.items()))
         return result

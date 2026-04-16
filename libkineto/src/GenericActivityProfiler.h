@@ -116,6 +116,9 @@ class GenericActivityProfiler {
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;
   }
+  bool isStopped() const {
+    return isGpuCollectionStopped();
+  }
   bool isCollectingMemorySnapshot() const {
     return currentRunloopState_ == RunloopState::CollectMemorySnapshot;
   }

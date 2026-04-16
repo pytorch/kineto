@@ -593,11 +593,12 @@ void GenericActivityProfiler::toggleCollectionDynamic(const bool enable) {
     return;
   }
   toggleState_.store(enable);
+  if (!enable) {
+    disableGpuTracing();
+  }
   synchronizeGpuDevice();
   if (enable) {
     enableGpuTracing();
-  } else {
-    disableGpuTracing();
   }
 }
 

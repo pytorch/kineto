@@ -49,9 +49,9 @@ XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
     const libkineto::Config& config,
     const std::set<ActivityType>& activity_types)
     : xpti_(xpti),
-      name_(name),
       config_(config.clone()),
-      activity_types_(activity_types) {
+      activity_types_(activity_types),
+      name_(name) {
   enumDeviceUUIDs();
   xpti_.enableXpuptiActivities(activity_types_);
 }
@@ -113,7 +113,7 @@ std::unique_ptr<libkineto::CpuTraceBuffer> XpuptiActivityProfilerSession::
 std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
     getResourceInfos() {
   std::vector<libkineto::ResourceInfo> result;
-  for (const auto [device_id, sycl_queue_id] : resourceInfo_) {
+  for (const auto& [device_id, sycl_queue_id] : resourceInfo_) {
     result.emplace_back(
         device_id,
         sycl_queue_id,

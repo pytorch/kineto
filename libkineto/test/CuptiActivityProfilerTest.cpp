@@ -53,6 +53,7 @@ static constexpr const char* kProcessGroupName = "Process Group Name";
 static constexpr const char* kProcessGroupDesc = "Process Group Description";
 static constexpr const char* kGroupRanks = "Process Group Ranks";
 static constexpr auto kSeqNum = "Seq";
+static constexpr const char* kCommsId = "Comms Id";
 static constexpr int32_t kTruncatLength = 30;
 
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
@@ -111,12 +112,10 @@ struct MockCuptiActivityBuffer {
       int64_t correlation,
       CUpti_ExternalCorrelationKind externalKind,
       int64_t externalId) {
-    auto& act = *(CUpti_ActivityExternalCorrelation*)malloc(
-        sizeof(CUpti_ActivityExternalCorrelation));
+    auto& act = createActivity<CUpti_ActivityExternalCorrelation>(correlation);
     act.kind = CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION;
     act.externalId = externalId;
     act.externalKind = externalKind;
-    act.correlationId = correlation;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -182,13 +181,28 @@ struct MockCuptiActivityBuffer {
       int64_t end_ns,
       int64_t correlation,
       CUpti_ActivitySynchronizationType type,
-      int64_t stream = 1) {
+      int64_t stream = 1,
+      uint32_t cudaEventId = 0) {
     auto& act = createActivity<CUpti_ActivitySynchronization>(
         start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_SYNCHRONIZATION;
     act.type = type;
     act.contextId = 0;
     act.streamId = stream;
+    act.cudaEventId = cudaEventId;
+    activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
+  }
+
+  void addCudaEventActivity(
+      int64_t correlation,
+      uint32_t eventId,
+      uint32_t streamId = 1,
+      uint32_t contextId = 0) {
+    auto& act = createActivity<CUpti_ActivityCudaEventType>(correlation);
+    act.kind = CUPTI_ACTIVITY_KIND_CUDA_EVENT;
+    act.eventId = eventId;
+    act.streamId = streamId;
+    act.contextId = contextId;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
   }
 
@@ -218,6 +232,14 @@ struct MockCuptiActivityBuffer {
     bzero(&act, sizeof(act));
     act.start = start_ns;
     act.end = end_ns;
+    act.correlationId = correlation;
+    return act;
+  }
+
+  template <class T>
+  T& createActivity(int64_t correlation) {
+    T& act = *static_cast<T*>(malloc(sizeof(T)));
+    bzero(&act, sizeof(act));
     act.correlationId = correlation;
     return act;
   }
@@ -631,6 +653,139 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   struct stat buf{};
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
+
+  // Verify Stream Sync events are on a separate row from kernel events
+  // in the JSON trace output (tid offset by kSyncStreamTidOffset).
+  {
+    std::ifstream traceFile(filename);
+    std::string traceStr(
+        (std::istreambuf_iterator<char>(traceFile)),
+        std::istreambuf_iterator<char>());
+    auto traceJson = nlohmann::json::parse(traceStr);
+    int64_t kernelTid = -1;
+    int64_t streamSyncTid = -1;
+    bool foundSyncRowMeta = false;
+    for (const auto& event : traceJson["traceEvents"]) {
+      if (event.value("name", "") == "Kernel") {
+        kernelTid = event.value("tid", (int64_t)-1);
+      }
+      if (event.value("name", "") == "Stream Sync") {
+        streamSyncTid = event.value("tid", (int64_t)-1);
+      }
+      if (event.value("name", "") == "thread_name") {
+        auto args = event.value("args", nlohmann::json::object());
+        std::string threadName = args.value("name", "");
+        if (threadName.find("sync") != std::string::npos) {
+          foundSyncRowMeta = true;
+        }
+      }
+    }
+    EXPECT_NE(kernelTid, -1) << "Expected kernel events in trace";
+    EXPECT_NE(streamSyncTid, -1) << "Expected Stream Sync event in trace";
+    EXPECT_NE(kernelTid, streamSyncTid)
+        << "Stream Sync should be on a different tid than kernels";
+    EXPECT_TRUE(foundSyncRowMeta)
+        << "Expected thread_name metadata for sync row";
+  }
+#endif
+}
+
+TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
+  // Test that wait_on_cuda_event_record_corr_id is populated even when
+  // SYNCHRONIZATION records appear before their corresponding CUDA_EVENT
+  // records in the CUPTI activity buffer (no ordering guarantee from CUPTI).
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
+
+  profiler.recordThreadInfo();
+
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_ns, start_time_ns + duration_ns);
+  cpuOps->addOp("op1", start_time_ns + 10, start_time_ns + 50, 1);
+  cpuOps->addOp("op_record", start_time_ns + 60, start_time_ns + 80, 100);
+  cpuOps->addOp("op_wait", start_time_ns + 90, start_time_ns + 110, 200);
+  cpuOps->addOp("op_evt_sync", start_time_ns + 120, start_time_ns + 140, 300);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  constexpr uint32_t kEventId = 7777;
+  constexpr uint32_t kRecordCorrId = 100;
+  constexpr uint32_t kWaitCorrId = 200;
+  constexpr uint32_t kEvtSyncCorrId = 300;
+
+  // Wait events and synchronization records are added
+  // before the CUDA_EVENT record they reference, as CUPTI
+  // provides no ordering guarantee for activity buffer entries.
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addRuntimeActivity(
+      CUDA_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 20, 1);
+  gpuOps->addKernelActivity(start_time_ns + 30, start_time_ns + 50, 1);
+  gpuOps->addSyncActivity(
+      start_time_ns + 100,
+      start_time_ns + 110,
+      kWaitCorrId,
+      CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      1,
+      kEventId);
+  gpuOps->addSyncActivity(
+      start_time_ns + 120,
+      start_time_ns + 140,
+      kEvtSyncCorrId,
+      CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
+      -1,
+      kEventId);
+  gpuOps->addCudaEventActivity(kRecordCorrId, kEventId, 1, 0);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+
+  // Find the sync activities and check their metadata
+  int streamWaitFound = 0;
+  int eventSyncFound = 0;
+  for (auto& activity : *trace.activities()) {
+    std::string metadata = activity->metadataJson();
+    if (metadata.find("Stream Wait Event") != std::string::npos) {
+      auto json = nlohmann::json::parse("{" + metadata + "}");
+      EXPECT_EQ(json["wait_on_cuda_event_id"], kEventId)
+          << "Stream Wait Event should reference the correct event ID";
+      EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], kRecordCorrId)
+          << "Stream Wait Event corr_id should be populated despite out-of-order records";
+      EXPECT_EQ(json["wait_on_stream"], 1)
+          << "Stream Wait Event should reference stream the event was recorded on";
+      streamWaitFound++;
+    }
+    if (metadata.find("Event Sync") != std::string::npos) {
+      auto json = nlohmann::json::parse("{" + metadata + "}");
+      EXPECT_EQ(json["wait_on_cuda_event_id"], kEventId)
+          << "Event Sync should reference the correct event ID";
+      EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], kRecordCorrId)
+          << "Event Sync corr_id should be populated despite out-of-order records";
+      EXPECT_EQ(json["wait_on_stream"], 1)
+          << "Event Sync should reference stream the event was recorded on";
+      eventSyncFound++;
+    }
+  }
+  EXPECT_EQ(streamWaitFound, 1) << "Expected exactly one Stream Wait Event";
+  EXPECT_EQ(eventSyncFound, 1) << "Expected exactly one Event Sync";
+
+#ifdef __linux__
+  char filename[] = "/tmp/libkineto_out_of_order_XXXXXX.json";
+  mkstemps(filename, 5);
+  trace.save(filename);
+  LOG(INFO) << "Trace exported to: " << filename;
 #endif
 }
 
@@ -664,7 +819,8 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   metadataMap.emplace(kGroupSize, "2");
   metadataMap.emplace(kProcessGroupName, fmt::format("\"{}\"", "12341234"));
   metadataMap.emplace(kProcessGroupDesc, fmt::format("\"{}\"", "test_purpose"));
-  metadataMap.emplace(kSeqNum, "42");
+  metadataMap.emplace(kSeqNum, "4242424242");
+  metadataMap.emplace(kCommsId, "12345678");
 
   std::vector<int64_t> inSplitSizes(50, 0);
   std::string inSplitSizesStr;
@@ -724,11 +880,15 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
       metadataMap);
   profiler.transferCpuTrace(std::move(cpuOps));
 
-  // Set up corresponding GPU events and connect with CPU events
-  // via correlationId
+  // Set up GPU events with two collectives: one after its correlation
+  // record (in-order) and one before (out-of-order), to verify metadata
+  // propagation works regardless of CUPTI buffer ordering.
   auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
   gpuOps->addCorrelationActivity(1, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, 1);
   gpuOps->addCollectiveActivity(kernelLaunchTime + 5, kernelLaunchTime + 10, 1);
+  gpuOps->addCollectiveActivity(
+      kernelLaunchTime + 15, kernelLaunchTime + 20, 2);
+  gpuOps->addCorrelationActivity(2, CUPTI_EXTERNAL_CORRELATION_KIND_CUSTOM0, 1);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   // Process trace
@@ -742,11 +902,13 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Check the content of GPU event and we should see extra
   // collective fields get populated from CPU event.
   ActivityTrace trace(std::move(logger), loggerFactory);
-  EXPECT_EQ(2, trace.activities()->size());
+  EXPECT_EQ(3, trace.activities()->size());
   auto& cpu_annotation = trace.activities()->at(0);
-  auto& gpu_annotation = trace.activities()->at(1);
+  auto& gpu_annotation1 = trace.activities()->at(1);
+  auto& gpu_annotation2 = trace.activities()->at(2);
   EXPECT_EQ(cpu_annotation->name(), kParamCommsCallName);
-  EXPECT_EQ(gpu_annotation->name(), "collective_gpu");
+  EXPECT_EQ(gpu_annotation1->name(), "collective_gpu");
+  EXPECT_EQ(gpu_annotation2->name(), "collective_gpu");
 
   // Check vector with length > 30 get truncated successfully
   std::vector<int64_t> expectedInSplit(kTruncatLength, 0);
@@ -789,25 +951,27 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
     return count;
   };
 
-  EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kInMsgNelems));
-  EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kOutMsgNelems));
-  EXPECT_EQ(2, countSubstrings(jsonString, "131328"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kInSplit));
-  EXPECT_EQ(2, countSubstrings(jsonString, expectedInSplitStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kOutSplit));
-  EXPECT_EQ(2, countSubstrings(jsonString, outSplitSizesStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kCollectiveName));
-  EXPECT_EQ(2, countSubstrings(jsonString, "_allgather_base"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupName));
-  EXPECT_EQ(2, countSubstrings(jsonString, "12341234"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kProcessGroupDesc));
-  EXPECT_EQ(2, countSubstrings(jsonString, "test_purpose"));
-  EXPECT_EQ(2, countSubstrings(jsonString, kGroupRanks));
-  EXPECT_EQ(2, countSubstrings(jsonString, expectedGroupRanksStr));
-  EXPECT_EQ(2, countSubstrings(jsonString, kSeqNum));
-  EXPECT_EQ(2, countSubstrings(jsonString, "42"));
+  EXPECT_EQ(3, countSubstrings(jsonString, "65664"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kInMsgNelems));
+  EXPECT_EQ(3, countSubstrings(jsonString, "65664"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kOutMsgNelems));
+  EXPECT_EQ(3, countSubstrings(jsonString, "131328"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kInSplit));
+  EXPECT_EQ(3, countSubstrings(jsonString, expectedInSplitStr));
+  EXPECT_EQ(3, countSubstrings(jsonString, kOutSplit));
+  EXPECT_EQ(3, countSubstrings(jsonString, outSplitSizesStr));
+  EXPECT_EQ(3, countSubstrings(jsonString, kCollectiveName));
+  EXPECT_EQ(3, countSubstrings(jsonString, "_allgather_base"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kProcessGroupName));
+  EXPECT_EQ(3, countSubstrings(jsonString, "12341234"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kProcessGroupDesc));
+  EXPECT_EQ(3, countSubstrings(jsonString, "test_purpose"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kGroupRanks));
+  EXPECT_EQ(3, countSubstrings(jsonString, expectedGroupRanksStr));
+  EXPECT_EQ(3, countSubstrings(jsonString, kSeqNum));
+  EXPECT_EQ(3, countSubstrings(jsonString, "4242424242"));
+  EXPECT_EQ(3, countSubstrings(jsonString, kCommsId));
+  EXPECT_EQ(3, countSubstrings(jsonString, "12345678"));
 #endif
 }
 
@@ -1085,6 +1249,13 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
       jsonData["PT_PROFILER_JOB_NAME"].get<std::string>(), "test_training_job");
   EXPECT_EQ(jsonData["PT_PROFILER_JOB_VERSION"].get<std::string>(), "2");
   EXPECT_EQ(jsonData["PT_PROFILER_JOB_ATTEMPT_INDEX"].get<std::string>(), "5");
+
+  // Verify hostname is non-empty when present (gethostname may not be
+  // available in all environments, but when it succeeds the value must
+  // not be empty).
+  if (jsonData.contains("host_name")) {
+    EXPECT_FALSE(jsonData["host_name"].get<std::string>().empty());
+  }
 #endif
 
   // Clean up environment variables
@@ -1176,4 +1347,155 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
     EXPECT_EQ(i + kExceedMaxPid, sortIdx[i]);
   }
 #endif
+}
+
+TEST_F(CuptiActivityProfilerTest, StreamWaitEventFutureCorrelation) {
+  // When a CUDA event is re-recorded (same eventId, new correlationId), CUPTI
+  // may deliver the later record before the wait. Verify the wait links to the
+  // most recent record that precedes it, not the future re-record.
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 500;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  libkineto::get_time_converter() = [](approx_time_t t) { return t; };
+  profiler.recordThreadInfo();
+
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      start_time_ns, start_time_ns + duration_ns);
+  cpuOps->addOp("op1", start_time_ns + 10, start_time_ns + 30, 1);
+  profiler.transferCpuTrace(std::move(cpuOps));
+
+  // Chronological order: record(corrId=100), wait(corrId=101),
+  // re-record(corrId=200). Delivery order: record(100), re-record(200),
+  // wait(101).
+  auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+  gpuOps->addRuntimeActivity(
+      CUDA_LAUNCH_KERNEL, start_time_ns + 13, start_time_ns + 18, 1);
+  gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
+  gpuOps->addCudaEventActivity(100, 42, 1, 0);
+  gpuOps->addCudaEventActivity(200, 42, 1, 0);
+  gpuOps->addSyncActivity(
+      start_time_ns + 200,
+      start_time_ns + 202,
+      101,
+      CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+      1,
+      42);
+  cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+
+  bool foundWaitEvent = false;
+  for (auto& activity : *trace.activities()) {
+    if (activity->name() == "Stream Wait Event") {
+      foundWaitEvent = true;
+      auto metadata = activity->metadataJson();
+      auto json = nlohmann::json::parse("{" + metadata + "}");
+      EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], 100)
+          << "Should reference corrId 100 (the record before the wait), got: "
+          << metadata;
+      EXPECT_EQ(json["wait_on_cuda_event_id"], 42)
+          << "Should reference eventId 42, got: " << metadata;
+    }
+  }
+  EXPECT_TRUE(foundWaitEvent) << "Stream Wait Event activity not found";
+}
+
+TEST_F(CuptiActivityProfilerTest, WaitEventMapClearedOnReset) {
+  // Verify waitEventMap is cleared between profiling sessions so that a wait
+  // event in session 2 does not pick up a stale record from session 1.
+  std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
+  SET_LOG_VERBOSITY_LEVEL(2, log_modules);
+
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 500;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+
+  // Session 1: record eventId=42 with corrId=100, then reset.
+  {
+    CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
+    profiler.configure(*cfg_, start_time);
+    profiler.startTrace(start_time);
+    profiler.stopTrace(start_time + nanoseconds(duration_ns));
+    libkineto::get_time_converter() = [](approx_time_t t) { return t; };
+    profiler.recordThreadInfo();
+
+    auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+        start_time_ns, start_time_ns + duration_ns);
+    cpuOps->addOp("op1", start_time_ns + 10, start_time_ns + 30, 1);
+    profiler.transferCpuTrace(std::move(cpuOps));
+
+    auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
+    gpuOps->addRuntimeActivity(
+        CUDA_LAUNCH_KERNEL, start_time_ns + 13, start_time_ns + 18, 1);
+    gpuOps->addKernelActivity(start_time_ns + 50, start_time_ns + 70, 1);
+    gpuOps->addCudaEventActivity(100, 42, 1, 0);
+    cuptiActivities_.activityBuffer = std::move(gpuOps);
+
+    auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+    profiler.processTrace(*logger);
+    profiler.reset();
+  }
+
+  // Session 2: no cudaEventRecord for eventId=42, but a wait references it.
+  {
+    CuptiActivityProfiler profiler2(cuptiActivities_, /*cpu only*/ false);
+    int64_t start_time_ns2 = start_time_ns + 10000;
+    auto start_time2 = time_point<system_clock>(nanoseconds(start_time_ns2));
+
+    auto cfg2 = std::make_unique<Config>();
+    cfg2->validate(std::chrono::system_clock::now());
+
+    profiler2.configure(*cfg2, start_time2);
+    profiler2.startTrace(start_time2);
+    profiler2.stopTrace(start_time2 + nanoseconds(duration_ns));
+    libkineto::get_time_converter() = [](approx_time_t t) { return t; };
+    profiler2.recordThreadInfo();
+
+    auto cpuOps2 = std::make_unique<MockCpuActivityBuffer>(
+        start_time_ns2, start_time_ns2 + duration_ns);
+    cpuOps2->addOp("op1", start_time_ns2 + 10, start_time_ns2 + 30, 1);
+    profiler2.transferCpuTrace(std::move(cpuOps2));
+
+    auto gpuOps2 = std::make_unique<MockCuptiActivityBuffer>();
+    gpuOps2->addRuntimeActivity(
+        CUDA_LAUNCH_KERNEL, start_time_ns2 + 13, start_time_ns2 + 18, 1);
+    gpuOps2->addKernelActivity(start_time_ns2 + 50, start_time_ns2 + 70, 1);
+    gpuOps2->addSyncActivity(
+        start_time_ns2 + 200,
+        start_time_ns2 + 202,
+        501,
+        CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
+        1,
+        42);
+    cuptiActivities_.activityBuffer = std::move(gpuOps2);
+
+    auto logger2 = std::make_unique<MemoryTraceLogger>(*cfg2);
+    profiler2.processTrace(*logger2);
+    profiler2.reset();
+
+    ActivityTrace trace2(std::move(logger2), loggerFactory);
+
+    for (auto& activity : *trace2.activities()) {
+      if (activity->name() == "Stream Wait Event") {
+        auto metadata = activity->metadataJson();
+        auto json = nlohmann::json::parse("{" + metadata + "}");
+        EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], -1)
+            << "Expected default corrId -1 (no record in session 2), got: "
+            << metadata;
+      }
+    }
+  }
 }

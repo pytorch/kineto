@@ -76,7 +76,7 @@ static bool nextActivityRecord(
   return record != nullptr;
 }
 
-void AiuptiActivityApi::setMaxBufferSize(int size) {
+void AiuptiActivityApi::setMaxBufferSize(int64_t size) {
   maxAiuBufferCount_ = 1 + size / kBufSize;
 }
 

@@ -16,11 +16,9 @@
 #include "RocLogger.h"
 #ifndef ROCTRACER_FALLBACK
 #include <rocprofiler-sdk/version.h>
-#include "RocprofActivity.h"
 #include "RocprofActivityApi.h"
 #else
 #include <roctracer.h>
-#include "RoctracerActivity.h"
 #include "RoctracerActivityApi.h"
 #endif
 
@@ -39,7 +37,7 @@ class RocmActivityProfiler : public GenericActivityProfiler {
 
  protected:
   void logGpuVersions() override;
-  void setMaxGpuBufferSize(int size) override;
+  void setMaxGpuBufferSize(int64_t size) override;
   void enableGpuTracing() override;
   void disableGpuTracing() override;
   void clearGpuActivities() override;

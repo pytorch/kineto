@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -31,6 +32,7 @@ struct TraceSpan;
 
 namespace KINETO_NAMESPACE {
 
+class ArgsBuilder;
 class Config;
 
 struct pgConfig {
@@ -59,7 +61,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   // Note: the caller of these functions should handle concurrency
   // i.e., we these functions are not thread-safe
-  void handleDeviceInfo(const DeviceInfo& info, uint64_t time) override;
+  void handleDeviceInfo(const DeviceInfo& info, int64_t time) override;
 
   void handleOverheadInfo(const OverheadInfo& info, int64_t time) override;
 
@@ -97,6 +99,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleGenericInstantEvent(const ITraceActivity& op);
 
+  void handleCounterEvent(const ITraceActivity& op);
+
   void handleGenericLink(const ITraceActivity& activity);
 
   void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
@@ -104,9 +108,93 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   std::unordered_map<std::string, std::string> addEnvVarsToMetadata(
       const std::unordered_map<std::string, std::string>& metadata);
 
-  void sanitizeStrForJSON(std::string& value);
-
   void addOnDemandDistMetadata();
+
+  // Chrome Trace event writer helpers.
+  // The string_view pid/tid variants are the canonical implementations.
+  // Integer overloads are provided for convenience at call sites with
+  // numeric process/thread IDs.
+  void writeMetadataEvent(std::string_view name,
+                          int64_t ts,
+                          std::string_view pid,
+                          std::string_view tid,
+                          std::string_view arg_key,
+                          std::string_view arg_value);
+
+  void writeMetadataEvent(std::string_view name,
+                          int64_t ts,
+                          int64_t pid,
+                          int64_t tid,
+                          std::string_view arg_key,
+                          std::string_view arg_value);
+
+  void writeCompleteEvent(std::string_view cat,
+                          std::string_view name,
+                          std::string_view pid,
+                          std::string_view tid,
+                          int64_t ts,
+                          int64_t dur,
+                          const ArgsBuilder& args);
+
+  void writeCompleteEvent(std::string_view cat,
+                          std::string_view name,
+                          int64_t pid,
+                          int64_t tid,
+                          int64_t ts,
+                          int64_t dur,
+                          const ArgsBuilder& args);
+
+  void writeInstantEvent(std::string_view cat,
+                         std::string_view name,
+                         std::string_view scope,
+                         std::string_view pid,
+                         std::string_view tid,
+                         int64_t ts,
+                         const ArgsBuilder& args,
+                         bool finalEvent = false);
+
+  void writeInstantEvent(std::string_view cat,
+                         std::string_view name,
+                         std::string_view scope,
+                         int64_t pid,
+                         int64_t tid,
+                         int64_t ts,
+                         const ArgsBuilder& args,
+                         bool finalEvent = false);
+
+  void writeCounterEvent(std::string_view cat,
+                         std::string_view name,
+                         std::string_view pid,
+                         std::string_view tid,
+                         int64_t ts,
+                         const ArgsBuilder& args);
+
+  void writeCounterEvent(std::string_view cat,
+                         std::string_view name,
+                         int64_t pid,
+                         int64_t tid,
+                         int64_t ts,
+                         const ArgsBuilder& args);
+
+  void writeFlowEvent(char type,
+                      int64_t id,
+                      std::string_view pid,
+                      std::string_view tid,
+                      int64_t ts,
+                      std::string_view cat,
+                      std::string_view name);
+
+  void writeFlowEvent(char type,
+                      int64_t id,
+                      int64_t pid,
+                      int64_t tid,
+                      int64_t ts,
+                      std::string_view cat,
+                      std::string_view name);
+
+  void appendNcclCollectiveMetadata(ArgsBuilder& args,
+                                    const ITraceActivity& gpuOp,
+                                    const ITraceActivity& collectiveRecord);
 
   std::string fileName_;
   std::string tempFileName_;
@@ -115,7 +203,15 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // Map of all observed process groups to their configs in trace. Key is
   // pg_name, value is pgConfig that will be used to populate pg_config in
   // distributedInfo of trace
-  std::unordered_map<std::string, pgConfig> pgMap = {};
+  std::unordered_map<std::string, pgConfig> pgMap_ = {};
+
+  // Offset added to stream ID for CUDA_SYNC events to place them on a
+  // separate row from kernel events in the Chrome Trace JSON output.
+  static constexpr int64_t kSyncStreamTidOffset = 1000000;
+
+  // Tracks which (device, virtualTid) pairs have had thread_name metadata
+  // emitted, to avoid duplicates.
+  std::unordered_set<int64_t> syncStreamMetadataEmitted_;
 };
 
 // std::chrono header start
@@ -152,5 +248,7 @@ class ChromeTraceBaseTime {
     return base_time;
   }
 };
+
+int64_t transToRelativeTime(int64_t time);
 
 } // namespace KINETO_NAMESPACE

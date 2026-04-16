@@ -14,6 +14,7 @@
 #include <ctime>
 #include <fstream>
 #include <iterator>
+#include <string_view>
 #include "Config.h"
 #include "EnvMetadata.h"
 #include "TraceSpan.h"
@@ -21,65 +22,42 @@
 #include "Logger.h"
 
 namespace KINETO_NAMESPACE {
+namespace {
 
-static constexpr int kSchemaVersion = 1;
-static constexpr char kFlowStart = 's';
-static constexpr char kFlowEnd = 'f';
+constexpr int kSchemaVersion = 1;
+constexpr char kFlowStart = 's';
+constexpr char kFlowEnd = 'f';
 
 // CPU op name that is used to store collectives metadata
 // TODO: share the same string across c10d, profiler and libkineto
-static constexpr const std::string_view kParamCommsCallName =
-    "record_param_comms";
+constexpr std::string_view kParamCommsCallName = "record_param_comms";
 // Collective function metadata populated from CPU op to GPU kernel
-static constexpr const std::string_view kCollectiveName = "Collective name";
-static constexpr const std::string_view kDtype = "dtype";
-static constexpr const std::string_view kInMsgNelems = "In msg nelems";
-static constexpr const std::string_view kOutMsgNelems = "Out msg nelems";
-static constexpr const std::string_view kGroupSize = "Group size";
-static constexpr const std::string_view kInSplit = "In split size";
-static constexpr const std::string_view kOutSplit = "Out split size";
-static constexpr const std::string_view kProcessGroupName =
-    "Process Group Name";
-static constexpr const std::string_view kProcessGroupDesc =
-    "Process Group Description";
-static constexpr const std::string_view kGroupRanks = "Process Group Ranks";
-static constexpr const std::string_view kInTensorsStart = "Input Tensors start";
-static constexpr const std::string_view kOutTensorsStart =
-    "Output Tensors start";
-static constexpr const std::string_view kRank = "Rank";
-static constexpr const std::string_view kP2pSrc = "Src Rank";
-static constexpr const std::string_view kP2pDst = "Dst Rank";
-static constexpr const std::string_view kSeqNum = "Seq";
+constexpr std::string_view kCollectiveName = "Collective name";
+constexpr std::string_view kDtype = "dtype";
+constexpr std::string_view kInMsgNelems = "In msg nelems";
+constexpr std::string_view kOutMsgNelems = "Out msg nelems";
+constexpr std::string_view kGroupSize = "Group size";
+constexpr std::string_view kInSplit = "In split size";
+constexpr std::string_view kOutSplit = "Out split size";
+constexpr std::string_view kProcessGroupName = "Process Group Name";
+constexpr std::string_view kProcessGroupDesc = "Process Group Description";
+constexpr std::string_view kGroupRanks = "Process Group Ranks";
+constexpr std::string_view kInTensorsStart = "Input Tensors start";
+constexpr std::string_view kOutTensorsStart = "Output Tensors start";
+constexpr std::string_view kRank = "Rank";
+constexpr std::string_view kP2pSrc = "Src Rank";
+constexpr std::string_view kP2pDst = "Dst Rank";
+constexpr std::string_view kSeqNum = "Seq";
+constexpr std::string_view kCommsId = "Comms Id";
 
 #ifdef __linux__
-static constexpr std::string_view kDefaultLogFileFmt =
+constexpr std::string_view kDefaultLogFileFmt =
     "/tmp/libkineto_activities_{}.json";
 #else
-static constexpr std::string_view kDefaultLogFileFmt =
-    "libkineto_activities_{}.json";
+constexpr std::string_view kDefaultLogFileFmt = "libkineto_activities_{}.json";
 #endif
 
-ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
-  static ChromeTraceBaseTime instance;
-  return instance;
-}
-
-// The 'ts' field written into the json file has 19 significant digits,
-// while a double can only represent 15-16 digits. By using relative time,
-// other applications can accurately read the 'ts' field as a double.
-// Use the program loading time as the baseline time.
-inline int64_t transToRelativeTime(int64_t time) {
-  // Sometimes after converting to relative time, it can be a few nanoseconds
-  // negative. Since Chrome trace and json processing will throw a parser error,
-  // guard this.
-  int64_t res = time - ChromeTraceBaseTime::singleton().get();
-  if (res < 0) {
-    return 0;
-  }
-  return res;
-}
-
-void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
+void sanitizeStrForJSON(std::string& value) {
   // Replace all backslashes with forward slash because Windows paths causing
   // JSONDecodeError.
   std::replace(value.begin(), value.end(), '\\', '/');
@@ -87,7 +65,7 @@ void ChromeTraceLogger::sanitizeStrForJSON(std::string& value) {
   value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
 }
 
-static std::string string2hex(const std::string& str) {
+std::string string2hex(const std::string& str) {
   std::string out;
   out.reserve(str.size() * 2);
   for (uint8_t c : str) {
@@ -97,7 +75,7 @@ static std::string string2hex(const std::string& str) {
   return out;
 }
 
-static void sanitizeForNonReadableChars(std::string& value) {
+void sanitizeForNonReadableChars(std::string& value) {
   for (auto& c : value) {
     if (!std::isprint(c)) {
       LOG(WARNING) << "Non JSON compliant character found in string: 0x"
@@ -108,20 +86,313 @@ static void sanitizeForNonReadableChars(std::string& value) {
   }
 }
 
-static inline int32_t sanitizeTid(int32_t tid) {
+inline int64_t sanitizeTid(int64_t tid) {
   // Convert all negative tids to its positive value. Create a specific case
-  // for INT_MIN so it is obvious how it is being handled.
-  if (tid == INT_MIN) {
+  // for INT64_MIN so it is obvious how it is being handled.
+  if (tid == INT64_MIN) {
     return 0;
   }
   return std::abs(tid);
+}
+
+// Format nanosecond timestamp as "us.fractional" for Chrome Trace JSON.
+std::string fmtTs(int64_t time_ns) {
+  return fmt::format("{}.{:03}", time_ns / 1000, time_ns % 1000);
+}
+
+bool isWhitespace(std::string_view s) {
+  return std::all_of(
+      s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); });
+}
+
+} // namespace
+
+ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
+  static ChromeTraceBaseTime instance;
+  return instance;
+}
+
+// The 'ts' field written into the json file has 19 significant digits,
+// while a double can only represent 15-16 digits. By using relative time,
+// other applications can accurately read the 'ts' field as a double.
+// Use the program loading time as the baseline time.
+int64_t transToRelativeTime(int64_t time) {
+  // Sometimes after converting to relative time, it can be a few nanoseconds
+  // negative. Since Chrome trace and json processing will throw a parser error,
+  // guard this.
+  int64_t res = time - ChromeTraceBaseTime::singleton().get();
+  if (res < 0) {
+    return 0;
+  }
+  return res;
+}
+
+// Internal helper for building the "args" JSON object content.
+// Handles comma separation automatically.
+class ArgsBuilder {
+ public:
+  // Add a key with a pre-formatted value (number, boolean, already-quoted
+  // string, JSON array/object).
+  void addRaw(std::string_view key, std::string_view value) {
+    appendComma();
+    fmt::format_to(std::back_inserter(buf_), R"("{}": {})", key, value);
+  }
+
+  // Add a key with a string value (will be JSON-quoted).
+  // Note: this member function does not have any callers yet. We define it
+  // so that if it is needed, we don't accidentally call `addRaw()`.
+  void addQuoted(std::string_view key, std::string_view value) {
+    appendComma();
+    fmt::format_to(std::back_inserter(buf_), R"("{}": "{}")", key, value);
+  }
+
+  // Append a pre-formatted JSON fragment (e.g., from metadataJson()).
+  void appendFragment(std::string_view json_fragment) {
+    // Skip empty or whitespace-only fragments: appending them after a comma
+    // from appendComma() would produce invalid JSON (e.g., "key": value, }).
+    if (json_fragment.empty() || isWhitespace(json_fragment)) {
+      return;
+    }
+    appendComma();
+    buf_.append(json_fragment);
+  }
+
+  [[nodiscard]] std::string_view str() const {
+    return buf_;
+  }
+
+  [[nodiscard]] bool empty() const {
+    return buf_.empty();
+  }
+
+  // Return the full "args" JSON field (e.g., ', "args": { ... }'), or an
+  // empty string if no args were added.
+  [[nodiscard]] std::string renderField() const {
+    if (buf_.empty()) {
+      return {};
+    }
+    return fmt::format(
+        R"JSON(,
+    "args": {{
+      {}
+    }})JSON",
+        buf_);
+  }
+
+ private:
+  void appendComma() {
+    if (!buf_.empty()) {
+      buf_.append(",");
+    }
+  }
+  std::string buf_;
+};
+
+void ChromeTraceLogger::writeMetadataEvent(
+    std::string_view name,
+    int64_t ts,
+    std::string_view pid,
+    std::string_view tid,
+    std::string_view arg_key,
+    std::string_view arg_value) {
+  // clang-format off
+  fmt::print(traceOf_, R"JSON(
+  {{
+    "ph": "M",
+    "name": "{}",
+    "ts": {},
+    "pid": {},
+    "tid": {},
+    "args": {{
+      "{}": {}
+    }}
+  }},)JSON",
+      name, fmtTs(ts), pid, tid, arg_key, arg_value);
+  // clang-format on
+}
+
+void ChromeTraceLogger::writeCompleteEvent(
+    std::string_view cat,
+    std::string_view name,
+    std::string_view pid,
+    std::string_view tid,
+    int64_t ts,
+    int64_t dur,
+    const ArgsBuilder& args) {
+  // clang-format off
+  fmt::print(traceOf_, R"JSON(
+  {{
+    "ph": "X",
+    "cat": "{}",
+    "name": "{}",
+    "pid": {},
+    "tid": {},
+    "ts": {},
+    "dur": {}
+    {}
+  }},)JSON",
+      cat, name, pid, tid, fmtTs(ts), fmtTs(dur), args.renderField());
+  // clang-format on
+}
+
+void ChromeTraceLogger::writeInstantEvent(
+    std::string_view cat,
+    std::string_view name,
+    std::string_view scope,
+    std::string_view pid,
+    std::string_view tid,
+    int64_t ts,
+    const ArgsBuilder& args,
+    bool finalEvent) {
+  std::string cat_str;
+  if (!cat.empty()) {
+    cat_str = fmt::format(
+        R"JSON(
+    "cat": "{}",)JSON",
+        cat);
+  }
+  const char* trailing = finalEvent ? "" : ",";
+  // clang-format off
+  fmt::print(traceOf_, R"JSON(
+  {{
+    "ph": "i",
+    {}
+    "s": "{}",
+    "name": "{}",
+    "pid": {},
+    "tid": {},
+    "ts": {}
+    {}
+  }}{})JSON",
+      cat_str, scope, name, pid, tid, fmtTs(ts), args.renderField(), trailing);
+  // clang-format on
+}
+
+void ChromeTraceLogger::writeCounterEvent(
+    std::string_view cat,
+    std::string_view name,
+    std::string_view pid,
+    std::string_view tid,
+    int64_t ts,
+    const ArgsBuilder& args) {
+  // clang-format off
+  fmt::print(traceOf_, R"JSON(
+  {{
+    "ph": "C",
+    "cat": "{}",
+    "name": "{}",
+    "pid": {},
+    "tid": {},
+    "ts": {},
+    "args": {{
+      {}
+    }}
+  }},)JSON",
+      cat, name, pid, tid, fmtTs(ts), args.str());
+  // clang-format on
+}
+
+void ChromeTraceLogger::writeFlowEvent(
+    char type,
+    int64_t id,
+    std::string_view pid,
+    std::string_view tid,
+    int64_t ts,
+    std::string_view cat,
+    std::string_view name) {
+  // Flow events must bind to specific slices in order to exist.
+  // Only Flow end needs to specify a binding point to enclosing slice.
+  // Flow start automatically sets binding point to enclosing slice.
+  const auto* const binding = (type == kFlowEnd) ? R"(, "bp": "e")" : "";
+
+  // clang-format off
+  fmt::print(traceOf_, R"JSON(
+  {{
+    "ph": "{}",
+    "id": {},
+    "pid": {},
+    "tid": {},
+    "ts": {},
+    "cat": "{}",
+    "name": "{}"
+    {}
+  }},)JSON",
+      type, id, pid, tid, fmtTs(ts), cat, name, binding);
+  // clang-format on
+}
+
+// Integer overloads — delegate to the string_view versions.
+void ChromeTraceLogger::writeMetadataEvent(
+    std::string_view name,
+    int64_t ts,
+    int64_t pid,
+    int64_t tid,
+    std::string_view arg_key,
+    std::string_view arg_value) {
+  writeMetadataEvent(
+      name, ts, std::to_string(pid), std::to_string(tid), arg_key, arg_value);
+}
+
+void ChromeTraceLogger::writeCompleteEvent(
+    std::string_view cat,
+    std::string_view name,
+    int64_t pid,
+    int64_t tid,
+    int64_t ts,
+    int64_t dur,
+    const ArgsBuilder& args) {
+  writeCompleteEvent(
+      cat, name, std::to_string(pid), std::to_string(tid), ts, dur, args);
+}
+
+void ChromeTraceLogger::writeInstantEvent(
+    std::string_view cat,
+    std::string_view name,
+    std::string_view scope,
+    int64_t pid,
+    int64_t tid,
+    int64_t ts,
+    const ArgsBuilder& args,
+    bool finalEvent) {
+  writeInstantEvent(
+      cat,
+      name,
+      scope,
+      std::to_string(pid),
+      std::to_string(tid),
+      ts,
+      args,
+      finalEvent);
+}
+
+void ChromeTraceLogger::writeCounterEvent(
+    std::string_view cat,
+    std::string_view name,
+    int64_t pid,
+    int64_t tid,
+    int64_t ts,
+    const ArgsBuilder& args) {
+  writeCounterEvent(
+      cat, name, std::to_string(pid), std::to_string(tid), ts, args);
+}
+
+void ChromeTraceLogger::writeFlowEvent(
+    char type,
+    int64_t id,
+    int64_t pid,
+    int64_t tid,
+    int64_t ts,
+    std::string_view cat,
+    std::string_view name) {
+  writeFlowEvent(
+      type, id, std::to_string(pid), std::to_string(tid), ts, cat, name);
 }
 
 void ChromeTraceLogger::metadataToJSON(
     const std::unordered_map<std::string, std::string>& metadata) {
   for (const auto& [k, v] : metadata) {
     std::string sanitizedValue = v;
-    // There is a seperate mechanism for recording distributedInfo in on-demand
+    // There is a separate mechanism for recording distributedInfo in on-demand
     // so add a guard to prevent "double counting" in auto-trace.
     if (k == "distributedInfo") {
       distInfo_.distInfo_present_ = true;
@@ -158,29 +429,30 @@ void ChromeTraceLogger::handleTraceStart(
 #ifdef DISPLAY_TRACE_IN_NS
   display_unit = "ns";
 #endif
-  fmt::print(
-      traceOf_,
-      R"JSON(
-  {{
-    "schemaVersion": {},)JSON",
-      kSchemaVersion);
-  fmt::print(
-      traceOf_,
-      R"JSON(
-    "deviceProperties": [{}
-    ],)JSON",
-      device_properties);
+  // clang-format off
+  fmt::print(traceOf_, R"JSON( {{
+    "schemaVersion": {},
+    "deviceProperties": [{}],
+    )JSON",
+      kSchemaVersion, device_properties);
+  // clang-format on
 
+  // Note that metadataToJSON writes to the trace file.
   auto combinedMetadata = addEnvVarsToMetadata(metadata);
   metadataToJSON(combinedMetadata);
-  fmt::print(
-      traceOf_,
-      R"JSON(
-  "displayTimeUnit": "{}",
-  "baseTimeNanoseconds": {},
-  "traceEvents": [)JSON",
+
+  // Note that we open the `traceEvents` array, but we do not close it. Most
+  // of the rest of the writing are writing new trace events to the array. We
+  // close the array in `finalizeTrace`.
+  // clang-format off
+  fmt::print(traceOf_, R"JSON(
+    "displayTimeUnit": "{}",
+    "baseTimeNanoseconds": {},
+    "traceEvents": [
+    )JSON",
       display_unit,
       ChromeTraceBaseTime::singleton().get());
+  // clang-format on
 }
 
 static std::string defaultFileName() {
@@ -209,43 +481,33 @@ ChromeTraceLogger::ChromeTraceLogger(const std::string& traceFileName) {
   openTraceFile();
 }
 
-void ChromeTraceLogger::handleDeviceInfo(
-    const DeviceInfo& info,
-    uint64_t time) {
+void ChromeTraceLogger::handleDeviceInfo(const DeviceInfo& info, int64_t time) {
   if (!traceOf_) {
     return;
   }
 
-  // M is for metadata
-  // process_name needs a pid and a name arg
-  // clang-format off
   time = transToRelativeTime(time);
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "name": "process_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
-    "args": {{
-      "name": "{}"
-    }}
-  }},
-  {{
-    "name": "process_labels", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
-    "args": {{
-      "labels": "{}"
-    }}
-  }},
-  {{
-    "name": "process_sort_index", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": 0,
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      time/1000, time%1000, info.id,
-      info.name,
-      time/1000, time%1000, info.id,
-      info.label,
-      time/1000, time%1000, info.id,
-      info.sortIndex);
-  // clang-format on
+  writeMetadataEvent(
+      /*name=*/"process_name",
+      /*ts=*/time,
+      /*pid=*/info.id,
+      /*tid=*/0,
+      /*arg_key=*/"name",
+      /*arg_value=*/fmt::format("\"{}\"", info.name));
+  writeMetadataEvent(
+      /*name=*/"process_labels",
+      /*ts=*/time,
+      /*pid=*/info.id,
+      /*tid=*/0,
+      /*arg_key=*/"labels",
+      /*arg_value=*/fmt::format("\"{}\"", info.label));
+  writeMetadataEvent(
+      /*name=*/"process_sort_index",
+      /*ts=*/time,
+      /*pid=*/info.id,
+      /*tid=*/0,
+      /*arg_key=*/"sort_index",
+      /*arg_value=*/fmt::format("{}", info.sortIndex));
 }
 
 void ChromeTraceLogger::handleResourceInfo(
@@ -255,28 +517,22 @@ void ChromeTraceLogger::handleResourceInfo(
     return;
   }
 
-  // M is for metadata
-  // thread_name needs a pid and a name arg
-  // clang-format off
   time = transToRelativeTime(time);
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "name": "thread_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
-    "args": {{
-      "name": "{}"
-    }}
-  }},
-  {{
-    "name": "thread_sort_index", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      time/1000, time%1000, info.deviceId, sanitizeTid(info.id),
-      info.name,
-      time/1000, time%1000, info.deviceId, sanitizeTid(info.id),
-      info.sortIndex);
-  // clang-format on
+  int64_t tid = sanitizeTid(info.id);
+  writeMetadataEvent(
+      /*name=*/"thread_name",
+      /*ts=*/time,
+      /*pid=*/info.deviceId,
+      /*tid=*/tid,
+      /*arg_key=*/"name",
+      /*arg_value=*/fmt::format("\"{}\"", info.name));
+  writeMetadataEvent(
+      /*name=*/"thread_sort_index",
+      /*ts=*/time,
+      /*pid=*/info.deviceId,
+      /*tid=*/tid,
+      /*arg_key=*/"sort_index",
+      /*arg_value=*/fmt::format("{}", info.sortIndex));
 }
 
 void ChromeTraceLogger::handleOverheadInfo(
@@ -288,26 +544,21 @@ void ChromeTraceLogger::handleOverheadInfo(
 
   // TOOD: reserve pid = -1 for overhead but we need to rethink how to scale
   // this for other metadata
-  // clang-format off
   time = transToRelativeTime(time);
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "name": "process_name", "ph": "M", "ts": {}.{:03}, "pid": -1, "tid": 0,
-    "args": {{
-      "name": "{}"
-    }}
-  }},
-  {{
-    "name": "process_sort_index", "ph": "M", "ts": {}.{:03}, "pid": -1, "tid": 0,
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      time/1000, time%1000,
-      info.name,
-      time/1000, time%1000,
-      0x100000All);
-  // clang-format on
+  writeMetadataEvent(
+      /*name=*/"process_name",
+      /*ts=*/time,
+      /*pid=*/-1,
+      /*tid=*/0,
+      /*arg_key=*/"name",
+      /*arg_value=*/fmt::format("\"{}\"", info.name));
+  writeMetadataEvent(
+      /*name=*/"process_sort_index",
+      /*ts=*/time,
+      /*pid=*/-1,
+      /*tid=*/0,
+      /*arg_key=*/"sort_index",
+      /*arg_value=*/fmt::format("{}", 0x100000All));
 }
 
 void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
@@ -315,36 +566,30 @@ void ChromeTraceLogger::handleTraceSpan(const TraceSpan& span) {
     return;
   }
 
-  uint64_t start = transToRelativeTime(span.startTime);
+  int64_t start = transToRelativeTime(span.startTime);
 
   // If endTime is 0 and start time is non-zero, dur can overflow. Add
   // a guard to prevent this.
-  uint64_t dur = (span.endTime == 0) ? 0 : span.endTime - span.startTime;
-  // clang-format off
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "ph": "X", "cat": "Trace", "ts": {}.{:03}, "dur": {}.{:03},
-    "pid": "Spans", "tid": "{}",
-    "name": "{}{} ({})",
-    "args": {{
-      "Op count": {}
-    }}
-  }},
-  {{
-    "name": "process_sort_index", "ph": "M", "ts": {}.{:03},
-    "pid": "Spans", "tid": 0,
-    "args": {{
-      "sort_index": {}
-    }}
-  }},)JSON",
-      start/1000, start%1000, dur/1000, dur%1000,
-      span.name,
-      span.prefix, span.name, span.iteration,
-      span.opCount,
-      start/1000, start%1000,
+  int64_t dur = (span.endTime == 0) ? 0 : span.endTime - span.startTime;
+
+  ArgsBuilder args;
+  args.addRaw("Op count", fmt::format("{}", span.opCount));
+  writeCompleteEvent(
+      /*cat=*/"Trace",
+      /*name=*/fmt::format("{}{} ({})", span.prefix, span.name, span.iteration),
+      /*pid=*/R"("Spans")",
+      /*tid=*/fmt::format("\"{}\"", span.name),
+      /*ts=*/start,
+      /*dur=*/dur,
+      /*args=*/args);
+  writeMetadataEvent(
+      /*name=*/"process_sort_index",
+      /*ts=*/start,
+      /*pid=*/R"("Spans")",
+      /*tid=*/"0",
+      /*arg_key=*/"sort_index",
       // Large sort index to appear at the bottom
-      0x20000000ll);
-  // clang-format on
+      /*arg_value=*/fmt::format("{}", 0x20000000ll));
 
   addIterationMarker(span);
 }
@@ -354,17 +599,17 @@ void ChromeTraceLogger::addIterationMarker(const TraceSpan& span) {
     return;
   }
 
-  // clang-format off
-  uint64_t start = transToRelativeTime(span.startTime);
+  int64_t start = transToRelativeTime(span.startTime);
 
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "name": "Iteration Start: {}", "ph": "i", "s": "g",
-    "pid": "Traces", "tid": "Trace {}", "ts": {}.{:03}
-  }},)JSON",
-      span.name,
-      span.name, start/1000, start%1000);
-  // clang-format on
+  ArgsBuilder args;
+  writeInstantEvent(
+      /*cat=*/"",
+      /*name=*/fmt::format("Iteration Start: {}", span.name),
+      /*scope=*/"g",
+      /*pid=*/R"("Traces")",
+      /*tid=*/fmt::format("\"Trace {}\"", span.name),
+      /*ts=*/start,
+      /*args=*/args);
 }
 
 void ChromeTraceLogger::handleGenericInstantEvent(
@@ -373,25 +618,136 @@ void ChromeTraceLogger::handleGenericInstantEvent(
     return;
   }
 
-  uint64_t ts = transToRelativeTime(op.timestamp());
-  fmt::print(
-      traceOf_,
-      R"JSON(
-  {{
-    "ph": "i", "cat": "{}", "s": "t", "name": "{}",
-    "pid": {}, "tid": {},
-    "ts": {}.{:03},
-    "args": {{
-      {}
-    }}
-  }},)JSON",
-      toString(op.type()),
-      op.name(),
-      op.deviceId(),
-      sanitizeTid(op.resourceId()),
-      ts / 1000,
-      ts % 1000,
-      op.metadataJson());
+  int64_t ts = transToRelativeTime(op.timestamp());
+  ArgsBuilder args;
+  args.appendFragment(op.metadataJson());
+  writeInstantEvent(
+      /*cat=*/toString(op.type()),
+      /*name=*/op.name(),
+      /*scope=*/"t",
+      /*pid=*/op.deviceId(),
+      /*tid=*/sanitizeTid(op.resourceId()),
+      /*ts=*/ts,
+      /*args=*/args);
+}
+
+void ChromeTraceLogger::handleCounterEvent(
+    const libkineto::ITraceActivity& op) {
+  if (!traceOf_) {
+    return;
+  }
+
+  ArgsBuilder args;
+  for (const auto& [name, value] : op.counterValues()) {
+    args.addRaw(name, fmt::format("{}", value));
+  }
+
+  int64_t ts = transToRelativeTime(op.timestamp());
+  writeCounterEvent(
+      /*cat=*/toString(op.type()),
+      /*name=*/op.name(),
+      /*pid=*/op.deviceId(),
+      /*tid=*/sanitizeTid(op.resourceId()),
+      /*ts=*/ts,
+      /*args=*/args);
+}
+
+void ChromeTraceLogger::appendNcclCollectiveMetadata(
+    ArgsBuilder& args,
+    [[maybe_unused]] const ITraceActivity& gpuOp,
+    const ITraceActivity& collectiveRecord) {
+  const auto& collectiveName =
+      collectiveRecord.getMetadataValue(std::string(kCollectiveName));
+  const auto& inMsgSize =
+      collectiveRecord.getMetadataValue(std::string(kInMsgNelems));
+  const auto& outMsgSize =
+      collectiveRecord.getMetadataValue(std::string(kOutMsgNelems));
+  const auto& groupSize =
+      collectiveRecord.getMetadataValue(std::string(kGroupSize));
+  const auto& dtype = collectiveRecord.getMetadataValue(std::string(kDtype));
+  if (!collectiveName.empty() && !inMsgSize.empty() && !outMsgSize.empty() &&
+      !groupSize.empty() && !dtype.empty()) {
+    args.addRaw(kCollectiveName, collectiveName);
+    args.addRaw(kInMsgNelems, inMsgSize);
+    args.addRaw(kOutMsgNelems, outMsgSize);
+    args.addRaw(kGroupSize, groupSize);
+    args.addRaw(kDtype, dtype);
+  }
+
+  const auto& input_tensor_starts =
+      collectiveRecord.getMetadataValue(std::string(kInTensorsStart));
+  const auto& output_tensor_starts =
+      collectiveRecord.getMetadataValue(std::string(kOutTensorsStart));
+  if (!input_tensor_starts.empty()) {
+    args.addRaw(kInTensorsStart, input_tensor_starts);
+  }
+  if (!output_tensor_starts.empty()) {
+    args.addRaw(kOutTensorsStart, output_tensor_starts);
+  }
+
+  // In/out split size are valid for all_to_all
+  const auto& inSplitSize =
+      collectiveRecord.getMetadataValue(std::string(kInSplit));
+  const auto& outSplitSize =
+      collectiveRecord.getMetadataValue(std::string(kOutSplit));
+  if (!inSplitSize.empty() && !outSplitSize.empty()) {
+    args.addRaw(kInSplit, inSplitSize);
+    args.addRaw(kOutSplit, outSplitSize);
+  }
+
+  const auto& processGroupName =
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupName));
+  if (!processGroupName.empty()) {
+    args.addRaw(kProcessGroupName, processGroupName);
+  }
+
+  const auto& processGroupDesc =
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupDesc));
+  if (processGroupDesc.size() >= 2 && processGroupDesc.front() == '"' &&
+      processGroupDesc.back() == '"') {
+    args.addRaw(kProcessGroupDesc, processGroupDesc);
+  }
+
+  const auto& groupRanks =
+      collectiveRecord.getMetadataValue(std::string(kGroupRanks));
+  if (!groupRanks.empty()) {
+    args.addRaw(kGroupRanks, groupRanks);
+  }
+
+  const auto& dstRank = collectiveRecord.getMetadataValue(std::string(kP2pDst));
+  const auto& srcRank = collectiveRecord.getMetadataValue(std::string(kP2pSrc));
+  if (!dstRank.empty()) {
+    args.addRaw(kP2pDst, dstRank);
+  }
+  if (!srcRank.empty()) {
+    args.addRaw(kP2pSrc, srcRank);
+  }
+
+  const auto& seqNum = collectiveRecord.getMetadataValue(std::string(kSeqNum));
+  if (!seqNum.empty()) {
+    args.addRaw(kSeqNum, seqNum);
+  }
+
+  const auto& commsId =
+      collectiveRecord.getMetadataValue(std::string(kCommsId));
+  if (!commsId.empty()) {
+    args.addRaw(kCommsId, commsId);
+  }
+
+  if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
+    distInfo_.backend = "nccl";
+    distInfo_.rank = collectiveRecord.getMetadataValue(std::string(kRank));
+    distInfo_.world_size = groupSize;
+    distInfo_.nccl_version = "unknown";
+  }
+
+  auto pg_config = pgConfig();
+  pg_config.pg_name = processGroupName;
+  pg_config.pg_desc = processGroupDesc;
+  pg_config.backend_config = "cuda:nccl";
+  pg_config.pg_size = groupSize;
+  pg_config.ranks = groupRanks;
+  pgMap_.insert({processGroupName, pg_config});
 }
 
 void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
@@ -401,6 +757,11 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
 
   if (op.type() == ActivityType::CPU_INSTANT_EVENT) {
     handleGenericInstantEvent(op);
+    return;
+  }
+
+  if (op.type() == ActivityType::MTIA_COUNTERS) {
+    handleCounterEvent(op);
     return;
   }
 
@@ -437,179 +798,67 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
       external_id = op.correlationId();
     }
   }
-  std::string arg_values;
+  ArgsBuilder args;
   if (external_id != 0) {
-    arg_values.append(fmt::format("\"External id\": {}", external_id));
+    args.addRaw("External id", fmt::format("{}", external_id));
   }
   std::string op_metadata = op.metadataJson();
   sanitizeStrForJSON(op_metadata);
-  if (op_metadata.find_first_not_of(" \t\n") != std::string::npos) {
-    if (!arg_values.empty()) {
-      arg_values.append(",");
-    }
-    arg_values.append(op_metadata);
-  }
+  args.appendFragment(op_metadata);
 
   // Populate NCCL collective metadata from CPU to GPU
   if (op.type() == ActivityType::CONCURRENT_KERNEL && op.linkedActivity() &&
       op.linkedActivity()->name() == kParamCommsCallName) {
-    const auto* collectiveRecord = op.linkedActivity();
-    // Get the value out of the collective record
-    const auto& collectiveName =
-        collectiveRecord->getMetadataValue(std::string(kCollectiveName));
-    const auto& inMsgSize =
-        collectiveRecord->getMetadataValue(std::string(kInMsgNelems));
-    const auto& outMsgSize =
-        collectiveRecord->getMetadataValue(std::string(kOutMsgNelems));
-    const auto& groupSize =
-        collectiveRecord->getMetadataValue(std::string(kGroupSize));
-    const auto& dtype = collectiveRecord->getMetadataValue(std::string(kDtype));
-    if (!collectiveName.empty() && !inMsgSize.empty() && !outMsgSize.empty() &&
-        !groupSize.empty() && !dtype.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(
-              R"( "{}": {}, "{}": {}, "{}": {}, "{}": {}, "{}": {})",
-              kCollectiveName,
-              collectiveName,
-              kInMsgNelems,
-              inMsgSize,
-              kOutMsgNelems,
-              outMsgSize,
-              kGroupSize,
-              groupSize,
-              kDtype,
-              dtype));
-    }
-    const auto& input_tensor_starts =
-        collectiveRecord->getMetadataValue(std::string(kInTensorsStart));
-    const auto output_tensor_starts =
-        collectiveRecord->getMetadataValue(std::string(kOutTensorsStart));
-    if (!input_tensor_starts.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(" \"{}\": {}", kInTensorsStart, input_tensor_starts));
-    }
-    if (!output_tensor_starts.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(" \"{}\": {}", kOutTensorsStart, output_tensor_starts));
-    }
-    // In/out split size are valid for all_to_all
-    const auto& inSplitSize =
-        collectiveRecord->getMetadataValue(std::string(kInSplit));
-    const auto& outSplitSize =
-        collectiveRecord->getMetadataValue(std::string(kOutSplit));
-    if (!inSplitSize.empty() && !outSplitSize.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(
-              R"( "{}": {}, "{}": {})",
-              kInSplit,
-              inSplitSize,
-              kOutSplit,
-              outSplitSize));
-    }
-    const auto& processGroupName =
-        collectiveRecord->getMetadataValue(std::string(kProcessGroupName));
-    if (!processGroupName.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(" \"{}\": {}", kProcessGroupName, processGroupName));
-    }
-    const auto& processGroupDesc =
-        collectiveRecord->getMetadataValue(std::string(kProcessGroupDesc));
-    if (processGroupDesc.size() >= 2 && processGroupDesc.front() == '"' &&
-        processGroupDesc.back() == '"') {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(
-          fmt::format(" \"{}\": {}", kProcessGroupDesc, processGroupDesc));
-    }
-    const auto& groupRanks =
-        collectiveRecord->getMetadataValue(std::string(kGroupRanks));
-    if (!groupRanks.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(fmt::format(" \"{}\": {}", kGroupRanks, groupRanks));
-    }
-    const auto& dstRank =
-        collectiveRecord->getMetadataValue(std::string(kP2pDst));
-    const auto& srcRank =
-        collectiveRecord->getMetadataValue(std::string(kP2pSrc));
-    if (!dstRank.empty()) {
-      arg_values.append(fmt::format(", \"{}\": {}", kP2pDst, dstRank));
-    }
-    if (!srcRank.empty()) {
-      arg_values.append(fmt::format(", \"{}\": {}", kP2pSrc, srcRank));
-    }
-    const auto& seqNum =
-        collectiveRecord->getMetadataValue(std::string(kSeqNum));
-    if (!seqNum.empty()) {
-      if (!arg_values.empty()) {
-        arg_values.append(",");
-      }
-      arg_values.append(fmt::format(" \"{}\": {}", kSeqNum, seqNum));
-    }
-
-    if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
-      distInfo_.backend = "nccl";
-      distInfo_.rank = collectiveRecord->getMetadataValue(std::string(kRank));
-      distInfo_.world_size = groupSize;
-      // Not sure if we want to have output.json depend on nccl at compilation
-      // so set nccl_version to "unknown" for now until we can determine if we
-      // can pass it at runtime or use ifdefs. Should not be necessary to enable
-      // HTA
-      distInfo_.nccl_version = "unknown";
-    }
-    auto pg_config = pgConfig();
-    pg_config.pg_name = processGroupName;
-    pg_config.pg_desc = processGroupDesc;
-    pg_config.backend_config = "cuda:nccl";
-    pg_config.pg_size = groupSize;
-    pg_config.ranks = groupRanks;
-    pgMap.insert({processGroupName, pg_config});
+    appendNcclCollectiveMetadata(args, op, *op.linkedActivity());
   }
 
-  std::string args;
-  if (!arg_values.empty()) {
-    args = fmt::format(
-        R"JSON(,
+  int64_t device = op.deviceId();
+  int64_t resource = op.resourceId();
+
+  // Move Stream Sync events to a dedicated row so they don't overlap with
+  // kernel events on the same stream in the trace viewer.
+  if (op.type() == ActivityType::CUDA_SYNC && op.name() == "Stream Sync") {
+    int64_t syncTid = resource + kSyncStreamTidOffset;
+    int64_t key = (device << 32) | syncTid;
+    if (syncStreamMetadataEmitted_.insert(key).second) {
+      int64_t metaTime = transToRelativeTime(ts);
+      // clang-format off
+      fmt::print(traceOf_, R"JSON(
+  {{
+    "name": "thread_name", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
     "args": {{
-      {}
-    }})JSON",
-        arg_values);
+      "name": "stream {} (sync)"
+    }}
+  }},
+  {{
+    "name": "thread_sort_index", "ph": "M", "ts": {}.{:03}, "pid": {}, "tid": {},
+    "args": {{
+      "sort_index": {}
+    }}
+  }},)JSON",
+          metaTime/1000, metaTime%1000, device, syncTid,
+          resource,
+          metaTime/1000, metaTime%1000, device, syncTid,
+          resource);
+      // clang-format on
+    }
+    resource = syncTid;
   }
 
-  int device = op.deviceId();
-  int resource = op.resourceId();
   // TODO: Remove this once legacy tools are updated.
   std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
   sanitizeStrForJSON(op_name);
   sanitizeForNonReadableChars(op_name);
 
-  // clang-format off
   ts = transToRelativeTime(ts);
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "ph": "X", "cat": "{}", "name": "{}", "pid": {}, "tid": {},
-    "ts": {}.{:03}, "dur": {}.{:03}{}
-  }},)JSON",
-          toString(op.type()), op_name, device, sanitizeTid(resource),
-          ts/1000, ts %1000, duration/1000, duration %1000, args);
-  // clang-format on
+  writeCompleteEvent(
+      /*cat=*/toString(op.type()),
+      /*name=*/op_name,
+      /*pid=*/device,
+      /*tid=*/sanitizeTid(resource),
+      /*ts=*/ts,
+      /*dur=*/duration,
+      /*args=*/args);
   if (op.flowId() > 0) {
     handleGenericLink(op);
   }
@@ -656,19 +905,21 @@ void ChromeTraceLogger::handleLink(
     return;
   }
 
-  // Flow events much bind to specific slices in order to exist.
-  // Only Flow end needs to specify a binding point to enclosing slice.
-  // Flow start automatically sets binding point to enclosing slice.
-  const auto binding = (type == kFlowEnd) ? R"(, "bp": "e")" : "";
-  // clang-format off
-  uint64_t ts = transToRelativeTime(e.timestamp());
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "ph": "{}", "id": {}, "pid": {}, "tid": {}, "ts": {}.{:03},
-    "cat": "{}", "name": "{}"{}
-  }},)JSON",
-      type, id, e.deviceId(), sanitizeTid(e.resourceId()), ts/1000, ts%1000, name, name, binding);
-  // clang-format on
+  int64_t ts = transToRelativeTime(e.timestamp());
+  int64_t tid = e.resourceId();
+  // Use the virtual tid for Stream Sync events to match the row
+  // they were placed on in handleActivity().
+  if (e.type() == ActivityType::CUDA_SYNC && e.name() == "Stream Sync") {
+    tid = tid + kSyncStreamTidOffset;
+  }
+  writeFlowEvent(
+      /*type=*/type,
+      /*id=*/id,
+      /*pid=*/e.deviceId(),
+      /*tid=*/sanitizeTid(tid),
+      /*ts=*/ts,
+      /*cat=*/name,
+      /*name=*/name);
 }
 
 void ChromeTraceLogger::finalizeTrace(
@@ -690,19 +941,24 @@ void ChromeTraceLogger::addOnDemandDistMetadata() {
       distInfo_.backend,
       distInfo_.rank,
       distInfo_.world_size,
-      std::to_string(pgMap.size()));
+      std::to_string(pgMap_.size()));
 
-  for (const auto& element : pgMap) {
+  bool first = true;
+  for (const auto& element : pgMap_) {
+    if (!first) {
+      fmt::print(traceOf_, ",");
+    }
     fmt::print(
         traceOf_,
-        R"JSON({{"pg_name": {}, "pg_desc": {}, "backend_config": "{}", "pg_size": {}, "ranks": {}}},)JSON",
+        R"JSON({{"pg_name": {}, "pg_desc": {}, "backend_config": "{}", "pg_size": {}, "ranks": {}}})JSON",
         element.second.pg_name,
         element.second.pg_desc,
         element.second.backend_config,
         element.second.pg_size,
         element.second.ranks);
+    first = false;
   }
-  traceOf_.seekp(-1, std::ios_base::end);
+
   fmt::print(
       traceOf_,
       R"JSON(], "nccl_version": "{}"}},)JSON",
@@ -719,26 +975,36 @@ void ChromeTraceLogger::finalizeTrace(
   }
   sanitizeStrForJSON(fileName_);
   LOG(INFO) << "Chrome Trace written to " << fileName_;
-  // clang-format off
+
+  // Note that this call ends the `traceEvents` array opened up in
+  // `handleTraceStart.`
   endTime = transToRelativeTime(endTime);
-  fmt::print(traceOf_, R"JSON(
-  {{
-    "name": "Record Window End", "ph": "i", "s": "g",
-    "pid": "", "tid": "", "ts": {}.{:03}
-  }}
-  ],)JSON",
-      endTime/1000, endTime %1000);
+  ArgsBuilder emptyArgs;
+  writeInstantEvent(
+      /*cat=*/"",
+      /*name=*/"Record Window End",
+      /*scope=*/"g",
+      /*pid=*/R"("")",
+      /*tid=*/R"("")",
+      /*ts=*/endTime,
+      /*args=*/emptyArgs,
+      /*finalEvent=*/true);
+
+  // Close the `traceEvents` array.
+  fmt::print(traceOf_, "\n  ],");
 
   if (!distInfo_.distInfo_present_) {
-   addOnDemandDistMetadata();
+    addOnDemandDistMetadata();
   }
+
 #if !USE_GOOGLE_LOG
-  std::unordered_map<std::string, std::string> PreparedMetadata;
+  std::unordered_map<std::string, std::string> preparedMetadata;
   for (const auto& kv : metadata) {
     // Skip empty log buckets, ex. skip ERROR if its empty.
     if (!kv.second.empty()) {
       std::string value = "[";
-      // Ex. Each metadata from logger is a list of strings, expressed in JSON as
+      // Ex. Each metadata from logger is a list of strings, expressed in JSON
+      // as
       //   "ERROR": ["Error 1", "Error 2"],
       //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
       //   ...
@@ -746,24 +1012,23 @@ void ChromeTraceLogger::finalizeTrace(
       for (auto v : kv.second) {
         sanitizeStrForJSON(v);
         value.append("\"" + v + "\"");
-        if(mdv_count > 1) {
+        if (mdv_count > 1) {
           value.append(",");
           mdv_count--;
         }
       }
       value.append("]");
-      PreparedMetadata[kv.first] = value;
+      preparedMetadata[kv.first] = value;
     }
   }
-  metadataToJSON(PreparedMetadata);
+  metadataToJSON(preparedMetadata);
 #endif // !USE_GOOGLE_LOG
 
-  // Putting this here because the last entry MUST not end with a comma.
-  fmt::print(traceOf_, R"JSON(
-  "traceName": "{}"
-}})JSON", fileName_);
+  // The last entry MUST NOT end with a comma.
+  fmt::print(traceOf_, R"JSON("traceName": "{}" }})JSON", fileName_);
 
   traceOf_.close();
+
   // On some systems, rename() fails if the destination file exists.
   // So, remove the destination file first.
   remove(fileName_.c_str());

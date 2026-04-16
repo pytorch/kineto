@@ -593,11 +593,20 @@ void GenericActivityProfiler::toggleCollectionDynamic(const bool enable) {
     return;
   }
   toggleState_.store(enable);
+
+  // The ordering of conditions and synchronization is deliberate. We
+  // intentionally synchronize:
+  //
+  //   - AFTER we disable
+  //   - BEFORE we enable
+  //
+  // Both to prevent the synchronization event from showing up in traces.
+  if (!enable) {
+    disableGpuTracing();
+  }
   synchronizeGpuDevice();
   if (enable) {
     enableGpuTracing();
-  } else {
-    disableGpuTracing();
   }
 }
 
@@ -748,7 +757,10 @@ GenericActivityProfiler::getLoggerMetadata() {
   // Save logs from LoggerCollector objects into Trace metadata.
   auto LoggerMDMap = loggerCollectorMetadata_->extractCollectorMetadata();
   for (auto& md : LoggerMDMap) {
-    loggerMD[toString(md.first)] = md.second;
+    // Only WARNING and ERROR are included in trace metadata.
+    if (md.first == WARNING || md.first == ERROR) {
+      loggerMD[toString(md.first)] = md.second;
+    }
   }
 #endif // !USE_GOOGLE_LOG
   return loggerMD;

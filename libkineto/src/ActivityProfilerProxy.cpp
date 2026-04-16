@@ -92,6 +92,10 @@ bool ActivityProfilerProxy::isActive() {
   return controller_->isActive();
 }
 
+bool ActivityProfilerProxy::isStopped() const {
+  return controller_->isStopped();
+}
+
 void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
   controller_->pushCorrelationId(id);
 }

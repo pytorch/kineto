@@ -115,26 +115,34 @@ static unsigned acceptDriverActivities(
 }
 
 class TestActivityLogger : public KN::ActivityLogger {
-  void handleDeviceInfo(const KN::DeviceInfo& info, uint64_t time) override {}
-  void handleResourceInfo(const KN::ResourceInfo& info, int64_t time) override {
-  }
+  void handleDeviceInfo(
+      [[maybe_unused]] const KN::DeviceInfo& info,
+      [[maybe_unused]] int64_t time) override {}
+  void handleResourceInfo(
+      [[maybe_unused]] const KN::ResourceInfo& info,
+      [[maybe_unused]] int64_t time) override {}
   void handleOverheadInfo(
-      const KN::ActivityLogger::OverheadInfo& info,
-      int64_t time) override {}
-  void handleTraceSpan(const KN::TraceSpan& span) override {}
-  void handleActivity(const KN::ITraceActivity& activity) override {}
+      [[maybe_unused]] const KN::ActivityLogger::OverheadInfo& info,
+      [[maybe_unused]] int64_t time) override {}
+  void handleTraceSpan([[maybe_unused]] const KN::TraceSpan& span) override {}
+  void handleActivity(
+      [[maybe_unused]] const KN::ITraceActivity& activity) override {}
   void handleGenericActivity(
-      const KN::GenericTraceActivity& activity) override {}
+      [[maybe_unused]] const KN::GenericTraceActivity& activity) override {}
   void handleTraceStart(
-      const std::unordered_map<std::string, std::string>& metadata,
-      const std::string& device_properties) override {}
-  void finalizeMemoryTrace(const std::string&, const KN::Config&) override {}
+      [[maybe_unused]] const std::unordered_map<std::string, std::string>&
+          metadata,
+      [[maybe_unused]] const std::string& device_properties) override {}
+  void finalizeMemoryTrace(
+      [[maybe_unused]] const std::string&,
+      [[maybe_unused]] const KN::Config&) override {}
   void finalizeTrace(
-      const KN::Config& config,
-      std::unique_ptr<KN::ActivityBuffers> buffers,
-      int64_t endTime,
-      std::unordered_map<std::string, std::vector<std::string>>& metadata)
-      override {}
+      [[maybe_unused]] const KN::Config& config,
+      [[maybe_unused]] std::unique_ptr<KN::ActivityBuffers> buffers,
+      [[maybe_unused]] int64_t endTime,
+      [[maybe_unused]] std::unordered_map<
+          std::string,
+          std::vector<std::string>>& metadata) override {}
 };
 
 std::pair<
@@ -217,6 +225,9 @@ RunProfilerTest(
     auto insertResult = stringStorage.insert(pActivity->name());
     activitiesCount[*insertResult.first]++;
     typesCount[pActivity->type()]++;
+
+    [[maybe_unused]] auto [metricsCount, metricsMask] =
+        CountMetricsInString(metrics, pActivity->metadataJson());
 
     if (isVerbose) {
 #define PRINT(A) std::cout << #A " = " << pActivity->A() << std::endl;

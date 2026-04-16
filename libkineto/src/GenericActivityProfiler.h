@@ -116,6 +116,9 @@ class GenericActivityProfiler {
   bool isActive() const {
     return currentRunloopState_ != RunloopState::WaitForRequest;
   }
+  bool isStopped() const {
+    return isGpuCollectionStopped();
+  }
   bool isCollectingMemorySnapshot() const {
     return currentRunloopState_ == RunloopState::CollectMemorySnapshot;
   }
@@ -243,7 +246,7 @@ class GenericActivityProfiler {
   // these virtual member functions. We provide empty defaults because
   // GenericActivityProfiler can also be in cpuOnly mode.
   virtual void logGpuVersions() {}
-  virtual void setMaxGpuBufferSize([[maybe_unused]] int size) {}
+  virtual void setMaxGpuBufferSize([[maybe_unused]] int64_t size) {}
   virtual void enableGpuTracing() {}
   virtual void disableGpuTracing() {}
   virtual void clearGpuActivities() {}
@@ -264,6 +267,7 @@ class GenericActivityProfiler {
   struct DeferredLogEntry {
     uint32_t device;
     uint32_t stream;
+    bool isWaitEvent = false;
     std::function<void()> logMe;
   };
 

@@ -15,6 +15,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "LoggerCollector.h"
 #include "include/libkineto.h"
+#include "src/ActivityProfilerController.h"
 #include "src/Logger.h"
 
 using namespace KINETO_NAMESPACE;
@@ -101,6 +102,85 @@ TEST(LoggerObserverTest, FourCollectorObserver) {
   Logger::removeLoggerObserver(lc2.get());
   Logger::removeLoggerObserver(lc3.get());
   Logger::removeLoggerObserver(lc4.get());
+}
+
+TEST(LoggerObserverTest, AddAndGetLoggerCollector) {
+  auto baseline = ActivityProfilerController::getLoggerCollectors().size();
+
+  // Register a logger collector via the static API.
+  ActivityProfilerController::addLoggerCollectorFactory(
+      []() { return std::make_shared<LoggerCollector>(); });
+
+  auto collectors = ActivityProfilerController::getLoggerCollectors();
+  EXPECT_EQ(collectors.size(), baseline + 1);
+
+  // The returned collector should be a valid LoggerCollector that can
+  // receive log messages when manually registered as an observer.
+  auto& collector = collectors[baseline];
+  Logger::addLoggerObserver(collector.get());
+
+  LOG(INFO) << InfoTestStr;
+  LOG(WARNING) << WarningTestStr;
+  LOG(ERROR) << ErrorTestStr;
+
+  auto metadata = collector->extractCollectorMetadata();
+  EXPECT_TRUE(
+      metadata[LoggerOutputType::INFO][0].find(InfoTestStr) !=
+      std::string::npos);
+  EXPECT_TRUE(
+      metadata[LoggerOutputType::WARNING][0].find(WarningTestStr) !=
+      std::string::npos);
+  EXPECT_TRUE(
+      metadata[LoggerOutputType::ERROR][0].find(ErrorTestStr) !=
+      std::string::npos);
+
+  Logger::removeLoggerObserver(collector.get());
+}
+
+TEST(LoggerObserverTest, MultipleLoggerCollectors) {
+  auto baseline = ActivityProfilerController::getLoggerCollectors().size();
+
+  // Register two more collectors.
+  ActivityProfilerController::addLoggerCollectorFactory(
+      []() { return std::make_shared<LoggerCollector>(); });
+  ActivityProfilerController::addLoggerCollectorFactory(
+      []() { return std::make_shared<LoggerCollector>(); });
+
+  auto collectors = ActivityProfilerController::getLoggerCollectors();
+  EXPECT_EQ(collectors.size(), baseline + 2);
+
+  // Both collectors should independently receive log messages.
+  auto& c1 = collectors[baseline];
+  auto& c2 = collectors[baseline + 1];
+  Logger::addLoggerObserver(c1.get());
+  Logger::addLoggerObserver(c2.get());
+
+  LOG(INFO) << InfoTestStr;
+
+  auto md1 = c1->extractCollectorMetadata();
+  auto md2 = c2->extractCollectorMetadata();
+  EXPECT_EQ(md1[LoggerOutputType::INFO].size(), 1);
+  EXPECT_EQ(md2[LoggerOutputType::INFO].size(), 1);
+
+  Logger::removeLoggerObserver(c1.get());
+  Logger::removeLoggerObserver(c2.get());
+}
+
+TEST(LoggerObserverTest, GetLoggerMetadataOnlyIncludesWarningAndError) {
+  GenericActivityProfiler profiler(/*cpuOnly=*/true);
+  profiler.configure(Config{}, {});
+
+  LOG(INFO) << InfoTestStr;
+  LOG(WARNING) << WarningTestStr;
+  LOG(ERROR) << ErrorTestStr;
+
+  const auto loggerMD = profiler.getLoggerMetadata();
+  EXPECT_EQ(loggerMD.size(), 2);
+  EXPECT_EQ(loggerMD.count("INFO"), 0);
+  EXPECT_EQ(loggerMD.count("WARNING"), 1);
+  EXPECT_EQ(loggerMD.count("ERROR"), 1);
+
+  profiler.reset();
 }
 
 #endif // !USE_GOOGLE_LOG

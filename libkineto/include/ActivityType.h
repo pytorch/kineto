@@ -35,31 +35,74 @@ enum class ActivityType {
   MTIA_INSIGHT = 14, // MTIA Insight Events
   CUDA_SYNC = 15, // synchronization events between runtime and kernels
   CUDA_EVENT = 16, // CUDA event activities (cudaEventRecord, etc.)
+  MTIA_COUNTERS = 17, // MTIA hardware counter events (HBM, cache, DPE, SFU)
 
   // Optional Activity types
-  GLOW_RUNTIME = 17, // host side glow runtime events
-  CUDA_PROFILER_RANGE = 18, // CUPTI Profiler range for performance metrics
-  HPU_OP = 19, // HPU host side runtime event
-  XPU_RUNTIME = 20, // host side xpu runtime events
-  XPU_DRIVER = 21, // host side xpu driver events
-  COLLECTIVE_COMM = 22, // collective communication
+  GLOW_RUNTIME = 18, // host side glow runtime events
+  CUDA_PROFILER_RANGE = 19, // CUPTI Profiler range for performance metrics
+  HPU_OP = 20, // HPU host side runtime event
+  XPU_RUNTIME = 21, // host side xpu runtime events
+  XPU_DRIVER = 22, // host side xpu driver events
+  COLLECTIVE_COMM = 23, // collective communication
 
   // PRIVATEUSE1 Activity types are used for custom backends.
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
-  PRIVATEUSE1_RUNTIME = 23, // host side privateUse1 runtime events
-  PRIVATEUSE1_DRIVER = 24, // host side privateUse1 driver events
+  PRIVATEUSE1_RUNTIME = 24, // host side privateUse1 runtime events
+  PRIVATEUSE1_DRIVER = 25, // host side privateUse1 driver events
 
-  ENUM_COUNT = 25, // This is to add buffer and not used for any profiling logic. Add
+  ENUM_COUNT = 26, // This is to add buffer and not used for any profiling logic. Add
   // your new type before it.
   OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
 };
 
-const char* toString(ActivityType t);
-ActivityType toActivityType(const std::string& str);
-
 // Return an array of all activity types except COUNT
 constexpr int activityTypeCount = (int)ActivityType::ENUM_COUNT;
 constexpr int defaultActivityTypeCount = (int)ActivityType::OPTIONAL_ACTIVITY_TYPE_START;
+
+// These definitions are not part of the public Kineto API. They are inlined
+// here because some build configurations include this header
+// without linking libkineto, and toString() must resolve at compile time.
+struct _ActivityTypeName {
+  const char* name;
+  ActivityType type;
+};
+
+inline constexpr std::array<_ActivityTypeName, activityTypeCount + 1> _activityTypeNames{{
+    {"cpu_op", ActivityType::CPU_OP},
+    {"user_annotation", ActivityType::USER_ANNOTATION},
+    {"gpu_user_annotation", ActivityType::GPU_USER_ANNOTATION},
+    {"gpu_memcpy", ActivityType::GPU_MEMCPY},
+    {"gpu_memset", ActivityType::GPU_MEMSET},
+    {"kernel", ActivityType::CONCURRENT_KERNEL},
+    {"external_correlation", ActivityType::EXTERNAL_CORRELATION},
+    {"cuda_runtime", ActivityType::CUDA_RUNTIME},
+    {"cuda_driver", ActivityType::CUDA_DRIVER},
+    {"cpu_instant_event", ActivityType::CPU_INSTANT_EVENT},
+    {"python_function", ActivityType::PYTHON_FUNCTION},
+    {"overhead", ActivityType::OVERHEAD},
+    {"mtia_runtime", ActivityType::MTIA_RUNTIME},
+    {"mtia_ccp_events", ActivityType::MTIA_CCP_EVENTS},
+    {"mtia_insight", ActivityType::MTIA_INSIGHT},
+    {"cuda_sync", ActivityType::CUDA_SYNC},
+    {"cuda_event", ActivityType::CUDA_EVENT},
+    {"mtia_counters", ActivityType::MTIA_COUNTERS},
+    {"glow_runtime", ActivityType::GLOW_RUNTIME},
+    {"cuda_profiler_range", ActivityType::CUDA_PROFILER_RANGE},
+    {"hpu_op", ActivityType::HPU_OP},
+    {"xpu_runtime", ActivityType::XPU_RUNTIME},
+    {"xpu_driver", ActivityType::XPU_DRIVER},
+    {"collective_comm", ActivityType::COLLECTIVE_COMM},
+    {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
+    {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
+    {"ENUM_COUNT", ActivityType::ENUM_COUNT},
+}};
+
+inline const char* toString(ActivityType t) {
+  return _activityTypeNames[static_cast<int>(t)].name;
+}
+
+ActivityType toActivityType(const std::string& str);
+
 std::array<ActivityType, activityTypeCount> activityTypes();
 std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
 

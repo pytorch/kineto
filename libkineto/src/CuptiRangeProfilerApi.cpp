@@ -239,14 +239,14 @@ void __trackCudaKernelLaunch(
 }
 
 bool enableKernelCallbacks() {
-  auto cbapi = CuptiCallbackApi::singleton();
+  auto& cbapi = CuptiCallbackApi::singleton();
 
-  bool status = cbapi->enableCallback(
+  bool status = cbapi.enableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
 // cudaLaunchKernelExC() used from H100 onwards.
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
-  status &= cbapi->enableCallback(
+  status &= cbapi.enableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
 #endif
@@ -262,13 +262,13 @@ bool enableKernelCallbacks() {
 }
 
 bool disableKernelCallbacks() {
-  auto cbapi = CuptiCallbackApi::singleton();
+  auto& cbapi = CuptiCallbackApi::singleton();
 
-  bool status = cbapi->disableCallback(
+  bool status = cbapi.disableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000);
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
-  status &= cbapi->disableCallback(
+  status &= cbapi.disableCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060);
 #endif
@@ -311,31 +311,31 @@ void CuptiRBProfilerSession::deInitCupti() {
 // static
 bool CuptiRBProfilerSession::staticInit() {
   // Register CUPTI callbacks
-  auto cbapi = CuptiCallbackApi::singleton();
+  auto& cbapi = CuptiCallbackApi::singleton();
   CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
-  bool status = cbapi->registerCallback(
+  bool status = cbapi.registerCallback(
       domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED, trackCudaCtx);
   status = status &&
-      cbapi->registerCallback(
+      cbapi.registerCallback(
           domain, CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED, trackCudaCtx);
   status = status &&
-      cbapi->enableCallback(domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
+      cbapi.enableCallback(domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
   status = status &&
-      cbapi->enableCallback(
+      cbapi.enableCallback(
           domain, CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING);
 
   if (!status) {
     LOG(WARNING) << "CUPTI Range Profiler unable to attach cuda context "
                  << "create and destroy callbacks";
-    CUPTI_CALL(cbapi->getCuptiStatus());
+    CUPTI_CALL(cbapi.getCuptiStatus());
     return false;
   }
 
   domain = CUPTI_CB_DOMAIN_RUNTIME_API;
-  status = cbapi->registerCallback(
+  status = cbapi.registerCallback(
       domain, CuptiCallbackApi::CUDA_LAUNCH_KERNEL, trackCudaKernelLaunch);
   status = status &&
-      cbapi->registerCallback(
+      cbapi.registerCallback(
           domain,
           CuptiCallbackApi::CUDA_LAUNCH_KERNEL_EXC,
           trackCudaKernelLaunch);

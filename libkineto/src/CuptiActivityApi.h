@@ -57,7 +57,7 @@ class CuptiActivityApi {
   virtual const std::pair<int, size_t> processActivities(CuptiActivityBufferMap&,
                                                          const std::function<void(const CUpti_Activity*)>& handler);
 
-  void setMaxBufferSize(int size);
+  void setMaxBufferSize(int64_t size);
   void setDeviceBufferSize(size_t size);
   void setDeviceBufferPoolLimit(size_t limit);
 
@@ -70,13 +70,13 @@ class CuptiActivityApi {
   static void preConfigureCUPTI();
 
  private:
-  int maxGpuBufferCount_{0};
+  int64_t maxGpuBufferCount_{0};
   CuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
   std::atomic<uint32_t> tracingEnabled_{0};
   std::atomic<uint32_t> tearingDown_{0};
-  bool externalCorrelationEnabled_{false};
+  std::atomic<bool> externalCorrelationEnabled_{false};
 
   int processActivitiesForBuffer(uint8_t* buf,
                                  size_t validSize,

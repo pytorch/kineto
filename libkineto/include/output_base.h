@@ -43,7 +43,7 @@ class ActivityLogger {
     const std::string name;
   };
 
-  virtual void handleDeviceInfo(const DeviceInfo& info, uint64_t time) = 0;
+  virtual void handleDeviceInfo(const DeviceInfo& info, int64_t time) = 0;
 
   virtual void handleResourceInfo(const ResourceInfo& info, int64_t time) = 0;
 

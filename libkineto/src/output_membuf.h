@@ -34,7 +34,7 @@ class MemoryTraceLogger : public ActivityLogger {
 
   // Note: the caller of these functions should handle concurrency
   // i.e., these functions are not thread-safe
-  void handleDeviceInfo(const DeviceInfo& info, uint64_t time) override {
+  void handleDeviceInfo(const DeviceInfo& info, int64_t time) override {
     deviceInfoList_.emplace_back(info, time);
   }
 

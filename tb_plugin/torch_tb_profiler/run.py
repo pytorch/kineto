@@ -282,7 +282,7 @@ class RunProfile:
 
             return curves, peaks
 
-        # NOTE: this should have been occured in frontend
+        # NOTE: this should have have occurred in frontend
         def patch_curves_for_step_plot(curves: Dict[str, List]):
             # For example, if a curve is [(0, 0), (1, 1), (2,2)], the line plot
             # is a stright line. Interpolating it as [(0, 0), (1, 0), (1, 1),

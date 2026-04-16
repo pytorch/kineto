@@ -33,6 +33,7 @@
 #include "src/RoctracerActivityApi.h"
 #include "src/RoctracerLogger.h"
 #else
+#include "src/RocprofActivity.h"
 #include "src/RocprofActivityApi.h"
 #include "src/RocprofLogger.h"
 #endif

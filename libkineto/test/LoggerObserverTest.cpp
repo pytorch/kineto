@@ -166,6 +166,23 @@ TEST(LoggerObserverTest, MultipleLoggerCollectors) {
   Logger::removeLoggerObserver(c2.get());
 }
 
+TEST(LoggerObserverTest, GetLoggerMetadataOnlyIncludesWarningAndError) {
+  GenericActivityProfiler profiler(/*cpuOnly=*/true);
+  profiler.configure(Config{}, {});
+
+  LOG(INFO) << InfoTestStr;
+  LOG(WARNING) << WarningTestStr;
+  LOG(ERROR) << ErrorTestStr;
+
+  const auto loggerMD = profiler.getLoggerMetadata();
+  EXPECT_EQ(loggerMD.size(), 2);
+  EXPECT_EQ(loggerMD.count("INFO"), 0);
+  EXPECT_EQ(loggerMD.count("WARNING"), 1);
+  EXPECT_EQ(loggerMD.count("ERROR"), 1);
+
+  profiler.reset();
+}
+
 #endif // !USE_GOOGLE_LOG
 
 int main(int argc, char** argv) {

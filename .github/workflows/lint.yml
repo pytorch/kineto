@@ -63,4 +63,5 @@ jobs:
             -not -path "./.venv/*" \
             -not -path "./__pycache__/*" \
             -not -path "*/build/*" \
+            -not -path "*/third_party/*" \
             | xargs python .github/scripts/check_license_headers.py

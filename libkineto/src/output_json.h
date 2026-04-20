@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
@@ -203,6 +204,14 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // pg_name, value is pgConfig that will be used to populate pg_config in
   // distributedInfo of trace
   std::unordered_map<std::string, pgConfig> pgMap_ = {};
+
+  // Offset added to stream ID for CUDA_SYNC events to place them on a
+  // separate row from kernel events in the Chrome Trace JSON output.
+  static constexpr int64_t kSyncStreamTidOffset = 1000000;
+
+  // Tracks which (device, virtualTid) pairs have had thread_name metadata
+  // emitted, to avoid duplicates.
+  std::unordered_set<int64_t> syncStreamMetadataEmitted_;
 };
 
 // std::chrono header start

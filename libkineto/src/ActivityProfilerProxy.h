@@ -45,6 +45,7 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   }
 
   bool isActive() override;
+  bool isStopped() const override;
 
   void recordThreadInfo() override;
 

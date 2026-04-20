@@ -34,6 +34,9 @@ class ActivityProfilerInterface {
   virtual bool isActive() {
     return false;
   }
+  virtual bool isStopped() const {
+    return false;
+  }
 
   // *** Asynchronous API ***
   // Instead of starting and stopping the trace manually, provide a start time

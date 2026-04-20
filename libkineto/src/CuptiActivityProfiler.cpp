@@ -51,11 +51,12 @@ struct WaitEventInfo {
   uint32_t correlationId;
 };
 
-// Map (ctx, eventId) -> (stream, corr Id) that recorded the CUDA event
-std::unordered_map<CtxEventPair, WaitEventInfo, CtxEventPairHash>&
+// Map (ctx, eventId) -> list of WaitEventInfo for all recorded events.
+std::unordered_map<CtxEventPair, std::vector<WaitEventInfo>, CtxEventPairHash>&
 waitEventMap() {
-  static std::unordered_map<CtxEventPair, WaitEventInfo, CtxEventPairHash>
-      waitEventMap_;
+  static std::
+      unordered_map<CtxEventPair, std::vector<WaitEventInfo>, CtxEventPairHash>
+          waitEventMap_;
   return waitEventMap_;
 }
 
@@ -168,6 +169,7 @@ void CuptiActivityProfiler::popCorrelationIdImpl(CorrelationFlowType type) {
 void CuptiActivityProfiler::onResetTraceData() {
   cupti_.teardownContext();
   KernelRegistry::singleton()->clear();
+  waitEventMap().clear();
 }
 
 void CuptiActivityProfiler::onFinalizeTrace(
@@ -313,11 +315,25 @@ void CuptiActivityProfiler::handleOverheadActivity(
 
 static std::optional<WaitEventInfo> getWaitEventInfo(
     uint32_t ctx,
-    uint32_t eventId) {
+    uint32_t eventId,
+    uint32_t queryCorrelationId) {
   auto key = CtxEventPair{ctx, eventId};
   auto it = waitEventMap().find(key);
   if (it != waitEventMap().end()) {
-    return it->second;
+    // Records are sorted by correlationId. Find the most recent record
+    // that precedes the query (i.e., the last record with
+    // correlationId < queryCorrelationId).
+    const std::vector<WaitEventInfo>& vec = it->second;
+    std::vector<WaitEventInfo>::const_iterator pos = std::upper_bound(
+        vec.begin(),
+        vec.end(),
+        queryCorrelationId,
+        [](uint32_t val, const WaitEventInfo& info) {
+          return val < info.correlationId;
+        });
+    if (pos != vec.begin()) {
+      return *std::prev(pos);
+    }
   }
   return std::nullopt;
 }
@@ -331,10 +347,18 @@ void CuptiActivityProfiler::handleCudaEventActivity(
           << " streamId=" << activity->streamId
           << " contextId=" << activity->contextId;
 
-  // Update the stream, corrID the cudaEvent was last recorded on
+  // Record the stream and correlationId, sorted for binary search in
+  // getWaitEventInfo().
   auto key = CtxEventPair{activity->contextId, activity->eventId};
-  waitEventMap()[key] =
-      WaitEventInfo{activity->streamId, activity->correlationId};
+  std::vector<WaitEventInfo>& vec = waitEventMap()[key];
+  std::vector<WaitEventInfo>::iterator pos = std::lower_bound(
+      vec.begin(),
+      vec.end(),
+      activity->correlationId,
+      [](const WaitEventInfo& info, uint32_t val) {
+        return info.correlationId < val;
+      });
+  vec.insert(pos, WaitEventInfo{activity->streamId, activity->correlationId});
 
   // Create and log the CUDA event activity
   const ITraceActivity* linked =
@@ -381,8 +405,8 @@ void CuptiActivityProfiler::handleCudaSyncActivity(
     int32_t src_stream = -1;
     int32_t src_corrid = -1;
     if (isEventSync(activity->type)) {
-      auto maybe_wait_event_info =
-          getWaitEventInfo(activity->contextId, activity->cudaEventId);
+      auto maybe_wait_event_info = getWaitEventInfo(
+          activity->contextId, activity->cudaEventId, activity->correlationId);
       if (maybe_wait_event_info) {
         src_stream = maybe_wait_event_info->stream;
         src_corrid = maybe_wait_event_info->correlationId;

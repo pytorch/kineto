@@ -83,5 +83,5 @@ documentation for implementation specifics is available in the source files.
 Libkineto is BSD licensed, as detailed in the [LICENSE](../LICENSE) file.
 
 [1]:https://developer.nvidia.com/CUPTI-CTK10_2
-[2]:https://github.com/fmt
+[2]:https://github.com/fmtlib/fmt
 [3]:https://github.com/google/googletest

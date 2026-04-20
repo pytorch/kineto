@@ -10,6 +10,7 @@
 
 #include "AbstractConfig.h"
 #include "ActivityType.h"
+#include "ClientInterface.h"
 
 #include <cassert>
 #include <chrono>
@@ -202,6 +203,22 @@ class Config : public AbstractConfig {
 
   [[nodiscard]] bool isWithModulesEnabled() const {
     return enableWithModules_;
+  }
+
+  // Experimental Profiler config fields
+  [[nodiscard]] bool isCaptureOverloadNamesEnabled() const {
+    return enableCaptureOverloadNames_;
+  }
+
+  [[nodiscard]] bool isRecordPythonGCInfoEnabled() const {
+    return enableRecordPythonGCInfo_;
+  }
+
+  [[nodiscard]] ProfilerExperimentalConfig profilerExperimentalConfig() const {
+    return {
+        .captureOverloadNames = enableCaptureOverloadNames_,
+        .recordPythonGCInfo = enableRecordPythonGCInfo_,
+    };
   }
 
   // Trace for this long
@@ -467,6 +484,8 @@ class Config : public AbstractConfig {
   bool enableWithStack_{false};
   bool enableWithFlops_{false};
   bool enableWithModules_{false};
+  bool enableCaptureOverloadNames_{false};
+  bool enableRecordPythonGCInfo_{false};
 
   // Profile for specified iterations and duration
   std::chrono::milliseconds activitiesDuration_;

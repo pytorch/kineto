@@ -37,6 +37,7 @@ class CuptiActivityProfiler : public GenericActivityProfiler {
   void onFinalizeTrace(const Config& config, ActivityLogger& logger) override;
 
  private:
+  void buildProcessingState(CuptiActivityBufferMap& buffers);
   // Process generic CUPTI activity
   void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
   // Process specific GPU activity types

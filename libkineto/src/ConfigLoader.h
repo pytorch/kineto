@@ -87,8 +87,13 @@ class ConfigLoader {
 
   std::string getConfString();
 
-  // Stop the background polling thread. Safe to call multiple times.
-  // Exposed for embedders that need to join the thread before other
+  // Signal the background polling thread to stop without joining it.
+  // Use this when joining is unsafe (e.g., the thread may be blocked on a
+  // lock held by the caller). The thread will exit on its next loop iteration.
+  void signalStop();
+
+  // Stop the background polling thread and join it. Safe to call multiple
+  // times. Exposed for embedders that need to join the thread before other
   // singletons are destroyed.
   void stopThread();
 

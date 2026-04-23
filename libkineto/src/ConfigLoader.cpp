@@ -166,13 +166,17 @@ void ConfigLoader::startThread() {
   }
 }
 
+void ConfigLoader::signalStop() {
+  stopFlag_ = true;
+  {
+    std::lock_guard<std::mutex> lock(updateThreadMutex_);
+    updateThreadCondVar_.notify_one();
+  }
+}
+
 void ConfigLoader::stopThread() {
+  signalStop();
   if (updateThread_) {
-    stopFlag_ = true;
-    {
-      std::lock_guard<std::mutex> lock(updateThreadMutex_);
-      updateThreadCondVar_.notify_one();
-    }
     if (updateThread_->joinable()) {
       updateThread_->join();
     }

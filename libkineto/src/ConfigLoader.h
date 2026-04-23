@@ -87,11 +87,6 @@ class ConfigLoader {
 
   std::string getConfString();
 
-  // Stop the background polling thread. Safe to call multiple times.
-  // Exposed for embedders that need to join the thread before other
-  // singletons are destroyed.
-  void stopThread();
-
  private:
   ConfigLoader();
   ~ConfigLoader();
@@ -99,6 +94,7 @@ class ConfigLoader {
   IDaemonConfigLoader* daemonConfigLoader();
 
   void startThread();
+  void stopThread();
   void updateConfigThread();
   void updateBaseConfig();
 

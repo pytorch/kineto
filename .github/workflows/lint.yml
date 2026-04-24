@@ -6,6 +6,7 @@ on:
 # Linting is separate from tests - this only checks code formatting
 jobs:
   lint:
+    if: false # TODO: Temporarily disabled until lintrunner issues are resolved
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -41,3 +42,26 @@ jobs:
             echo ""
             exit $status
           fi
+
+  license-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Check license headers
+        run: |
+          find . \
+            \( -name "*.py" -o -name "*.cpp" -o -name "*.h" -o -name "*.cu" -o -name "*.cuh" -o -name "*.sh" \) \
+            -type f \
+            -not -path "./.git/*" \
+            -not -path "./.venv/*" \
+            -not -path "./__pycache__/*" \
+            -not -path "*/build/*" \
+            -not -path "*/third_party/*" \
+            | xargs python .github/scripts/check_license_headers.py

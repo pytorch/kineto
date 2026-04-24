@@ -10,11 +10,12 @@
 #include <array>
 #include <set>
 
+#include <unistd.h>
+
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 #endif
 
 #include <fmt/format.h>
@@ -57,13 +58,11 @@ static ICuptiRBProfilerSessionFactory& getFactory() {
   return factory_;
 }
 
-#ifdef __linux__
 void createTempTraceFile(char* filename) {
   const int fd = mkstemps(filename, 5);
   ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
   close(fd);
 }
-#endif
 
 // Create mock CUPTI profiler events and simuulate context
 // creation and kernel launches

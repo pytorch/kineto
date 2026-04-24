@@ -18,10 +18,11 @@
 #include <cstdint>
 #include <cstdio>
 
+#include <unistd.h>
+
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #endif
 
 #include "include/Config.h"
@@ -76,13 +77,11 @@ const TraceSpan& defaultTraceSpan() {
   return span;
 }
 
-#ifdef __linux__
 void createTempTraceFile(char* filename) {
   const int fd = mkstemps(filename, 5);
   ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
   close(fd);
 }
-#endif
 } // namespace
 
 // Provides ability to easily create a few test CPU-side ops

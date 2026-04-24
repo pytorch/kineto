@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #endif
 
 #include "include/Config.h"
@@ -80,6 +81,14 @@ const TraceSpan& defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
   return span;
 }
+
+#ifdef __linux__
+void createTempTraceFile(char* filename) {
+  const int fd = mkstemps(filename, 5);
+  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
+  close(fd);
+}
+#endif
 } // namespace
 
 // Provides ability to easily create a test CPU-side ops
@@ -444,7 +453,7 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
 
 #ifdef __linux__
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   trace.save(filename);
   // Check that the expected file was written and that it has some content
   int fd = open(filename, O_RDONLY);
@@ -584,7 +593,7 @@ TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
 #ifdef __linux__
   // Test saved output can be loaded as JSON
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file: " << filename;
   trace.save(filename);
 
@@ -741,7 +750,7 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
   EXPECT_TRUE(profiler.isActive());
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file " << filename;
 
   // process trace
@@ -817,7 +826,7 @@ TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {
 #ifdef __linux__
   // Test saved output can be loaded as JSON
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file: " << filename;
   trace.save(filename);
 

@@ -75,6 +75,14 @@ const TraceSpan& defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
   return span;
 }
+
+#ifdef __linux__
+void createTempTraceFile(char* filename) {
+  const int fd = mkstemps(filename, 5);
+  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
+  close(fd);
+}
+#endif
 } // namespace
 
 // Provides ability to easily create a few test CPU-side ops
@@ -331,7 +339,7 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
   CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
 
   Config cfg;
 
@@ -424,7 +432,7 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
     CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
     char filename[] = "/tmp/libkineto_testXXXXXX.json";
-    mkstemps(filename, 5);
+    createTempTraceFile(filename);
 
     Config cfg;
 
@@ -645,7 +653,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
 #ifdef __linux__
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   trace.save(filename);
   // Check that the expected file was written and that it has some content
   int fd = open(filename, O_RDONLY);
@@ -800,7 +808,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
 
 #ifdef __linux__
   char filename[] = "/tmp/libkineto_out_of_order_XXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   trace.save(filename);
   LOG(INFO) << "Trace exported to: " << filename;
 #endif
@@ -941,7 +949,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 #ifdef __linux__
   // Test saved output can be loaded as JSON
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file: " << filename;
   trace.save(filename);
 
@@ -1100,7 +1108,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   EXPECT_TRUE(profiler.isActive());
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file " << filename;
 
   // process trace
@@ -1186,7 +1194,7 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
 
   Config cfg;
 
@@ -1326,7 +1334,7 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
 #ifdef __linux__
   // Test saved output can be loaded as JSON
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file: " << filename;
   trace.save(filename);
 

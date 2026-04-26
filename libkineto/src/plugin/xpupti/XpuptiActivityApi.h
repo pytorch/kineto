@@ -28,22 +28,22 @@ class XpuptiActivityApi {
   XpuptiActivityApi(const XpuptiActivityApi&) = delete;
   XpuptiActivityApi& operator=(const XpuptiActivityApi&) = delete;
 
-  virtual ~XpuptiActivityApi() {}
+  ~XpuptiActivityApi() = default;
 
   static XpuptiActivityApi& singleton();
 
-  static void pushCorrelationID(int id, CorrelationFlowType type);
-  static void popCorrelationID(CorrelationFlowType type);
+  void pushCorrelationID(int id, CorrelationFlowType type);
+  void popCorrelationID(CorrelationFlowType type);
 
   void enableXpuptiActivities(const std::set<ActivityType>& selected_activities);
   void disablePtiActivities(const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();
 
-  virtual std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
+  std::unique_ptr<XpuptiActivityBufferMap> activityBuffers();
 
-  virtual const std::pair<int, int> processActivities(XpuptiActivityBufferMap&,
-                                                      std::function<void(const pti_view_record_base*)> handler);
+  const std::pair<int, int> processActivities(XpuptiActivityBufferMap&,
+                                              std::function<void(const pti_view_record_base*)> handler);
 
  private:
   XpuptiActivityBufferMap allocatedGpuTraceBuffers_;

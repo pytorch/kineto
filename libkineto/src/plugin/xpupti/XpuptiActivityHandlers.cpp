@@ -95,18 +95,6 @@ inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
   }
 }
 
-std::string XpuptiActivityProfilerSession::getApiName(
-    const pti_view_record_api_t* activity) {
-#if PTI_VERSION_AT_LEAST(0, 11)
-  const char* api_name = nullptr;
-  XPUPTI_CALL(
-      ptiViewGetApiIdName(activity->_api_group, activity->_api_id, &api_name));
-  return std::string(api_name);
-#else
-  return std::string(activity->_name);
-#endif
-}
-
 inline std::string memcpyName(
     pti_view_memcpy_type kind,
     pti_view_memory_type src,
@@ -183,8 +171,6 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
 
   traceBuffer_.span.opCount += 1;
   traceBuffer_.gpuOpCount += 1;
-  const ITraceActivity* linked =
-      linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
 
   if constexpr (handleRuntimeActivities) {
     traceBuffer_.emplace_activity(
@@ -209,11 +195,14 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
 
   trace_activity->startTime = activity->_start_timestamp;
   trace_activity->endTime = activity->_end_timestamp;
-  trace_activity->id = activity->_correlation_id;
   trace_activity->threadId = activity->_thread_id;
   trace_activity->flow.id = activity->_correlation_id;
   trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
-  trace_activity->linked = linked;
+
+  trace_activity->id = activity->_correlation_id;
+  trace_activity->linked =
+      linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
+  trace_activity->addMetadata("correlation", activity->_correlation_id);
 
   if constexpr (handleRuntimeActivities) {
     trace_activity->device = activity->_process_id;
@@ -263,8 +252,6 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
         "l0 queue", handleToHexString(activity->_queue_handle));
   }
 
-  trace_activity->addMetadata("correlation", activity->_correlation_id);
-
   if constexpr (handleKernelActivities) {
     if (activity->_source_file_name) {
       trace_activity->addMetadataQuoted(
@@ -292,6 +279,116 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   }
   trace_activity->log(logger);
 }
+
+namespace {
+std::string getStringFromSynchronizationType(
+    const pti_view_synchronization_type& synchronization_type) {
+  using pv_st = pti_view_synchronization_type;
+  static const std::unordered_map<pv_st, std::string> name_map{
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_UNKNOWN, "UNKNOWN"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION,
+       "GPU_BARRIER_EXECUTION"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY,
+       "GPU_BARRIER_MEMORY"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_FENCE, "HOST_FENCE"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_EVENT, "HOST_EVENT"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_COMMAND_LIST,
+       "HOST_COMMAND_LIST"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_COMMAND_QUEUE,
+       "HOST_COMMAND_QUEUE"},
+  };
+
+  const auto& name_string = name_map.find(synchronization_type);
+  if (name_string == name_map.end()) {
+    const std::string error_message =
+        "404: Not found string literal for this synchronization type: " +
+        std::to_string(synchronization_type);
+    return error_message;
+  }
+  return name_string->second;
+}
+} // namespace
+
+void XpuptiActivityProfilerSession::handleSynchronizationActivity(
+    const pti_view_record_synchronization* activity,
+    ActivityLogger& logger) {
+  const auto& activity_record = *activity;
+  const auto record_name = getApiName(activity);
+
+  const bool isGpuSync =
+      activity_record._synch_type == PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION ||
+      activity_record._synch_type == PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY;
+
+  traceBuffer_.span.opCount += 1;
+  if (isGpuSync) {
+    traceBuffer_.gpuOpCount += 1;
+  }
+  traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::XPU_SYNC, record_name);
+  auto& synchronization_activity = *(traceBuffer_.activities.back());
+
+  synchronization_activity.startTime = activity_record._start_timestamp;
+  synchronization_activity.endTime = activity_record._end_timestamp;
+  synchronization_activity.device = -1;
+  synchronization_activity.resource = activity_record._thread_id;
+  synchronization_activity.threadId = activity_record._thread_id;
+
+  synchronization_activity.id = activity->_correlation_id;
+  synchronization_activity.linked =
+      linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
+  synchronization_activity.addMetadata(
+      "correlation", activity_record._correlation_id);
+
+  synchronization_activity.addMetadataQuoted(
+      "Type", getStringFromSynchronizationType(activity_record._synch_type));
+  synchronization_activity.addMetadataQuoted("Context_handle", handleToHexString(activity_record._context_handle));
+  synchronization_activity.addMetadataQuoted("Queue_handle", handleToHexString(activity_record._queue_handle));
+  synchronization_activity.addMetadataQuoted("Event_handle", handleToHexString(activity_record._event_handle));
+  synchronization_activity.addMetadata("Number_wait_events", activity_record._number_wait_events);
+  synchronization_activity.addMetadata("Return_code", activity_record._return_code);
+
+  if (outOfRange(&synchronization_activity)) {
+    traceBuffer_.span.opCount -= 1;
+    if (isGpuSync) {
+      traceBuffer_.gpuOpCount -= 1;
+    }
+    removeCorrelatedPtiActivities(&synchronization_activity);
+    traceBuffer_.activities.pop_back();
+    return;
+  }
+
+  synchronization_activity.log(logger);
+}
+
+#if PTI_VERSION_AT_LEAST(0, 17)
+void XpuptiActivityProfilerSession::handleCommunicationActivity(
+    const pti_view_record_comms* activity,
+    ActivityLogger& logger) {
+  const auto& activity_record = *activity;
+  const std::string activity_name{activity_record._name};
+  const std::string xccl_prefix{"xccl::"};
+  const auto record_name = xccl_prefix + activity_name;
+
+  traceBuffer_.span.opCount += 1;
+  traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::COLLECTIVE_COMM, record_name);
+  auto& comms_activity = *(traceBuffer_.activities.back());
+
+  comms_activity.startTime = activity_record._start_timestamp;
+  comms_activity.endTime = activity_record._end_timestamp;
+  comms_activity.device = activity_record._process_id;
+  comms_activity.resource = activity_record._thread_id;
+  comms_activity.threadId = activity_record._thread_id;
+
+  comms_activity.addMetadata("Communicator_id", activity_record._communicator_id);
+
+  if (outOfRange(&comms_activity)) {
+    traceBuffer_.span.opCount -= 1;
+    traceBuffer_.activities.pop_back();
+    return;
+  }
+
+  comms_activity.log(logger);
+}
+#endif
 
 void XpuptiActivityProfilerSession::handleOverheadActivity(
     const pti_view_record_overhead* activity,
@@ -367,6 +464,17 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
       handleOverheadActivity(
           reinterpret_cast<const pti_view_record_overhead*>(record), logger);
       break;
+    case PTI_VIEW_DEVICE_SYNCHRONIZATION:
+      handleSynchronizationActivity(
+          reinterpret_cast<const pti_view_record_synchronization*>(record),
+          logger);
+      break;
+#if PTI_VERSION_AT_LEAST(0, 17)
+    case PTI_VIEW_COMMUNICATION:
+      handleCommunicationActivity(
+          reinterpret_cast<const pti_view_record_comms*>(record), logger);
+      break;
+#endif
     default:
       errors_.push_back(
           "Unexpected activity type: " + std::to_string(record->_view_kind));

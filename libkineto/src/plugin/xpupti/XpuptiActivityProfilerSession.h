@@ -76,13 +76,27 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   using pti_view_record_api_t = pti_view_record_sycl_runtime;
 #endif
 
-  std::string getApiName(const pti_view_record_api_t* activity);
+  template <typename PTI_VIEW>
+  std::string getApiName(const PTI_VIEW* activity) {
+#if PTI_VERSION_AT_LEAST(0, 11)
+    const char* api_name = nullptr;
+    XPUPTI_CALL(ptiViewGetApiIdName(
+        activity->_api_group, activity->_api_id, &api_name));
+    return std::string(api_name);
+#else
+    return std::string(activity->_name);
+#endif
+  }
 
   template <class pti_view_memory_record_type>
   void handleRuntimeKernelMemcpyMemsetActivities(ActivityType activityType,
                                                  const pti_view_memory_record_type* activity,
                                                  ActivityLogger& logger);
 
+  void handleSynchronizationActivity(const pti_view_record_synchronization* activity, ActivityLogger& logger);
+#if PTI_VERSION_AT_LEAST(0, 17)
+  void handleCommunicationActivity(const pti_view_record_comms* activity, ActivityLogger& logger);
+#endif
   void handleOverheadActivity(const pti_view_record_overhead* activity, ActivityLogger& logger);
   void handlePtiActivity(const pti_view_record_base* record, ActivityLogger& logger);
 

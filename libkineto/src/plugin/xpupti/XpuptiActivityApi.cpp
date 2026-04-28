@@ -7,6 +7,7 @@
  */
 
 #include "XpuptiActivityApi.h"
+#include "Logger.h"
 
 #include <chrono>
 #include <stdexcept>
@@ -249,6 +250,20 @@ void XpuptiActivityApi::enableXpuptiActivities(
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
 
+#if PTI_VERSION_AT_LEAST(0, 17)
+      case ActivityType::COLLECTIVE_COMM: {
+        auto rc = ptiViewEnable(PTI_VIEW_COMMUNICATION);
+        if (rc != PTI_SUCCESS) {
+          LOG(WARNING) << "Failed to enable PTI_VIEW_COMMUNICATION: "
+                       << ptiResultTypeToString(rc);
+        }
+        break;
+      }
+#endif
+      case ActivityType::XPU_SYNC:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+        break;
+
       default:
         break;
     }
@@ -291,6 +306,20 @@ void XpuptiActivityApi::disablePtiActivities(
 
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+#if PTI_VERSION_AT_LEAST(0, 17)
+      case ActivityType::COLLECTIVE_COMM: {
+        auto rc = ptiViewDisable(PTI_VIEW_COMMUNICATION);
+        if (rc != PTI_SUCCESS) {
+          LOG(WARNING) << "Failed to disable PTI_VIEW_COMMUNICATION: "
+                       << ptiResultTypeToString(rc);
+        }
+        break;
+      }
+#endif
+      case ActivityType::XPU_SYNC:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
         break;
 
       default:

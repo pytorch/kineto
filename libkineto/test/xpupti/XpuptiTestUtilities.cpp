@@ -8,6 +8,7 @@
 
 #include "XpuptiTestUtilities.h"
 
+#include "src/ActivityBuffers.h"
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"
 
 #include <libkineto.h>
@@ -70,9 +71,9 @@ void CheckCountsInMap(
   }
 
   EXPECT_EQ(countsMap.size(), expMap.size());
-
-  for (auto itCountsMap = countsMap.begin(), itExpArray = expMap.begin();
-       (itCountsMap != countsMap.end()) && (itExpArray != expMap.end());
+  auto itCountsMap = countsMap.begin();
+  auto itExpArray = expMap.begin();
+  for (; (itCountsMap != countsMap.end()) && (itExpArray != expMap.end());
        ++itCountsMap, ++itExpArray) {
     EXPECT_EQ(itCountsMap->first, itExpArray->first * repeatCount);
     EXPECT_EQ(itCountsMap->second, itExpArray->second);

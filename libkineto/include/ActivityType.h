@@ -50,7 +50,9 @@ enum class ActivityType {
   PRIVATEUSE1_RUNTIME = 24, // host side privateUse1 runtime events
   PRIVATEUSE1_DRIVER = 25, // host side privateUse1 driver events
 
-  ENUM_COUNT = 26, // This is to add buffer and not used for any profiling logic. Add
+  XPU_SYNC = 26, // XPU synchronization events
+
+  ENUM_COUNT = 27, // This is to add buffer and not used for any profiling logic. Add
   // your new type before it.
   OPTIONAL_ACTIVITY_TYPE_START = GLOW_RUNTIME,
 };
@@ -94,6 +96,7 @@ inline constexpr std::array<_ActivityTypeName, activityTypeCount + 1> _activityT
     {"collective_comm", ActivityType::COLLECTIVE_COMM},
     {"privateuse1_runtime", ActivityType::PRIVATEUSE1_RUNTIME},
     {"privateuse1_driver", ActivityType::PRIVATEUSE1_DRIVER},
+    {"xpu_sync", ActivityType::XPU_SYNC},
     {"ENUM_COUNT", ActivityType::ENUM_COUNT},
 }};
 

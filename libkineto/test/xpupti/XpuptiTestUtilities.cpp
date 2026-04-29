@@ -41,6 +41,24 @@ std::ostream& operator<<(std::ostream& os, KN::ActivityType actType) {
   return os;
 }
 
+static std::pair<unsigned, unsigned> CountMetricsInVector(
+    const std::vector<std::string_view>& metrics,
+    const decltype(std::declval<KN::GenericTraceActivity>()
+                       .counterValues())& vec) {
+  unsigned metricsCount = 0;
+  unsigned metricsMask = 0;
+  for (unsigned i = 0; i < metrics.size(); ++i) {
+    const auto metricSv = metrics[i];
+    if (std::find_if(vec.begin(), vec.end(), [metricSv](const auto& pair) {
+          return pair.first == metricSv;
+        }) != vec.end()) {
+      ++metricsCount;
+      metricsMask |= (1 << i);
+    }
+  }
+  return std::pair{metricsCount, metricsMask};
+}
+
 static std::pair<unsigned, unsigned> CountMetricsInString(
     const std::vector<std::string_view>& metrics,
     const std::string_view sv) {
@@ -226,8 +244,58 @@ RunProfilerTest(
     activitiesCount[*insertResult.first]++;
     typesCount[pActivity->type()]++;
 
-    [[maybe_unused]] auto [metricsCount, metricsMask] =
-        CountMetricsInString(metrics, pActivity->metadataJson());
+    bool isNameXpu = pActivity->name() == "xpu";
+    bool nameStartsWithMetrics = pActivity->name().find("metrics:") == 0;
+
+    unsigned metricsCount = 0;
+    unsigned metricsMask = 0;
+    if (isNameXpu) {
+      std::tie(metricsCount, metricsMask) =
+          CountMetricsInVector(metrics, pActivity->counterValues());
+    } else if (nameStartsWithMetrics) {
+      std::tie(metricsCount, metricsMask) =
+          CountMetricsInString(metrics, pActivity->metadataJson());
+    }
+
+    enum class TestScenario {
+      defaultScenario,
+      scopeProfiler,
+      nameStartsWithMetrics
+    };
+    TestScenario testScenario = TestScenario::defaultScenario;
+
+    switch (pActivity->type()) {
+      case KN::ActivityType::CONCURRENT_KERNEL:
+        if (nameStartsWithMetrics) {
+          testScenario = TestScenario::nameStartsWithMetrics;
+        } else {
+          testScenario = TestScenario::defaultScenario;
+        }
+        break;
+
+      case KN::ActivityType::XPU_SCOPE_PROFILER:
+        testScenario = TestScenario::scopeProfiler;
+        break;
+
+      default:
+        testScenario = TestScenario::defaultScenario;
+    }
+
+    switch (testScenario) {
+      case TestScenario::scopeProfiler:
+        EXPECT_TRUE(isNameXpu);
+        [[fallthrough]];
+      case TestScenario::nameStartsWithMetrics:
+        EXPECT_EQ(metricsCount, metrics.size());
+        EXPECT_EQ(metricsMask, (1u << metrics.size()) - 1);
+        ++scopeProfilerActCount;
+        break;
+
+      case TestScenario::defaultScenario:
+        EXPECT_FALSE(isNameXpu);
+        EXPECT_EQ(metricsCount, 0);
+        EXPECT_EQ(metricsMask, 0);
+    }
 
     if (isVerbose) {
 #define PRINT(A) std::cout << #A " = " << pActivity->A() << std::endl;

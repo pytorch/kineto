@@ -245,6 +245,17 @@ void XpuptiActivityApi::enableXpuptiActivities(
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DRIVER_API));
         break;
 
+      case ActivityType::XPU_SCOPE_PROFILER:
+#if PTI_VERSION_AT_LEAST(0, 15)
+        // This case is handled in constructor of
+        // XpuptiScopeProfilerSession
+#else
+        throw std::runtime_error(
+            "Intel® PTI version required to use scope profiler is at least 0.15 "
+            "(available with Intel® oneAPI in version at least 2025.3.1).");
+#endif
+        break;
+
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;

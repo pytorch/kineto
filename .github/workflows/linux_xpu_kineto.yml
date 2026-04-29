@@ -1,9 +1,9 @@
-name: Linux ROCm build and test
+name: Linux XPU Kineto build and test
 
 on:
   push:
     tags:
-      - ciflow/rocm/*
+      - ciflow/xpu/*
     branches:
       - main
 
@@ -19,17 +19,16 @@ jobs:
   pr-test:
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
-      job-name: linux-rocm-build-and-test
-      runner: linux.rocm.gpu.gfx942.1
+      job-name: linux-xpu-kineto-build-and-test
+      runner: linux.idc.xpu
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules
       repository: ${{ github.repository }}
       ref: ${{ github.ref }}
       submodules: recursive
-      gpu-arch-type: rocm
-      gpu-arch-version: "7.2"
+      gpu-arch-type: xpu
+      docker-image: pytorch/manylinux2_28-builder:xpu
       script: |
         set -eux
         .github/scripts/setup.sh
-        .github/scripts/kineto_build_test.sh rocm
-        .github/scripts/pytorch_build_test.sh rocm
+        .github/scripts/kineto_build_test.sh xpu

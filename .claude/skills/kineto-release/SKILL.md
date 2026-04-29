@@ -47,9 +47,11 @@ The PyTorch repo is required — do not proceed without it. Store the path as
    git log --format='- %s %h' <old_hash>..<new_hash> | sed 's/(#/(pytorch\/kineto#/g'
    ```
 
-5. **(PyTorch) Update the submodule** to the new hash:
+5. **(PyTorch) Update the submodule** to the new hash. The submodule's local
+   object store likely won't have the target commit, so fetch from the local
+   Kineto repo first:
    ```
-   cd $PYTORCH/third_party/kineto && git checkout <new_hash>
+   cd $PYTORCH/third_party/kineto && git fetch <path_to_kineto_repo> main && git checkout <new_hash>
    ```
 
 6. **(PyTorch) Commit** with a message in this format:

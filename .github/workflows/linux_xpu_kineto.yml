@@ -2,9 +2,10 @@ name: Linux XPU Kineto build and test
 
 on:
   push:
+    tags:
+      - ciflow/xpu/*
     branches:
       - main
-  pull_request:
 
 permissions:
   id-token: write

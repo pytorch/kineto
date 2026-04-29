@@ -2,9 +2,10 @@ name: Linux ROCm Kineto build and test
 
 on:
   push:
+    tags:
+      - ciflow/rocm/*
     branches:
       - main
-  pull_request:
 
 permissions:
   id-token: write

@@ -27,6 +27,7 @@
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND()
 #define LOGGER_OBSERVER_ADD_METADATA(key, value)
 #define UST_LOGGER_MARK_COMPLETED(stage)
+#define UST_LOGGER_STAGE_SCOPE(stage)
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type)
 #define USDT_EMIT_START_TRACE()
 #define USDT_EMIT_STOP_TRACE()
@@ -155,6 +156,25 @@ class VoidLogger {
   void operator&(std::ostream&) {}
 };
 
+// RAII helper that fires UST_LOGGER_MARK_COMPLETED(stage) on destruction.
+// Use to ensure a UST stage row is emitted on every exit from a scope —
+// including the case where an exception escapes the stage's body. Bucketed
+// LOG(ERROR) / LOG(WARNING) calls within the scope are picked up by the
+// emitted row as usual.
+class USTLoggerStageGuard {
+ public:
+  explicit USTLoggerStageGuard(const std::string& stage) : stage_(stage) {}
+  ~USTLoggerStageGuard();
+
+  USTLoggerStageGuard(const USTLoggerStageGuard&) = delete;
+  USTLoggerStageGuard& operator=(const USTLoggerStageGuard&) = delete;
+  USTLoggerStageGuard(USTLoggerStageGuard&&) = delete;
+  USTLoggerStageGuard& operator=(USTLoggerStageGuard&&) = delete;
+
+ private:
+  std::string stage_;
+};
+
 } // namespace KINETO_NAMESPACE
 
 #ifdef LOG // Undefine in case these are already defined (quite likely)
@@ -253,6 +273,11 @@ struct __to_constant__ {
 
 // UST Logger Semantics to describe when a stage is complete.
 #define UST_LOGGER_MARK_COMPLETED(stage) LOG(libkineto::LoggerOutputType::STAGE) << "Completed Stage: " << stage
+
+// RAII helper that fires UST_LOGGER_MARK_COMPLETED(stage) on scope exit. Use
+// to guarantee the stage row is emitted on every exit path, including when an
+// exception escapes the stage's body.
+#define UST_LOGGER_STAGE_SCOPE(stage) libkineto::USTLoggerStageGuard LOCAL_VARNAME(ust_stage_guard)(stage)
 
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type) LOG(libkineto::LoggerOutputType::USDT) << usdt_type
 #define USDT_EMIT_START_TRACE() USDT_LOGGER_EMIT_MESSAGE("profiler_start")

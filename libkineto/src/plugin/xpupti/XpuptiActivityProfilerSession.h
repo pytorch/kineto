@@ -119,11 +119,7 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   std::string name_;
 
   struct KernelActivity {
-    void emplace(
-        int64_t startTime,
-        int64_t endTime,
-        int32_t device,
-        int32_t resource) {
+    void emplace(int64_t startTime, int64_t endTime, int32_t device, int32_t resource) {
       startTime_ = startTime;
       endTime_ = endTime;
       device_ = device;

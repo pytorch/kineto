@@ -33,15 +33,12 @@ class XpuptiScopeProfilerApi {
   void startScopeActivity();
   void stopScopeActivity();
 
-  void processScopeTrace(
-      std::function<void(
-          const pti_metrics_scope_record_t*,
-          const pti_metrics_scope_record_metadata_t& metadata)> handler);
+  void processScopeTrace(std::function<void(const pti_metrics_scope_record_t*,
+                                            const pti_metrics_scope_record_metadata_t& metadata)> handler);
 
  private:
   struct safe_pti_scope_collection_handle_t {
-    safe_pti_scope_collection_handle_t(
-        std::exception_ptr& exceptFromDestructor);
+    safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor);
     ~safe_pti_scope_collection_handle_t() noexcept;
 
     operator pti_scope_collection_handle_t() {

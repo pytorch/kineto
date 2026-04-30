@@ -95,7 +95,7 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
 
   void addResouceInfo(int32_t device_id, int32_t sycl_queue_id);
 
- private:
+ protected:
   static uint32_t iterationCount_;
   static std::vector<DeviceUUIDsT> deviceUUIDs_;
   static std::unordered_set<std::string_view> correlateRuntimeOps_;
@@ -117,6 +117,27 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;
   std::string name_;
+
+  struct KernelActivity {
+    void emplace(
+        int64_t startTime,
+        int64_t endTime,
+        int32_t device,
+        int32_t resource) {
+      startTime_ = startTime;
+      endTime_ = endTime;
+      device_ = device;
+      resource_ = resource;
+    }
+
+    int64_t startTime_{0};
+    int64_t endTime_{0};
+    int32_t device_{0};
+    int32_t resource_{0};
+  };
+
+  std::unordered_map<uint64_t, KernelActivity> kernelActivities_;
+  uint64_t lastKernelActivityEndTime_{0};
 };
 
 } // namespace KINETO_NAMESPACE

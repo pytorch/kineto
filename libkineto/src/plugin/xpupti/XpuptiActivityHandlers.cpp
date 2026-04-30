@@ -225,6 +225,14 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->resource = activity->_sycl_queue_id;
     trace_activity->flow.start = 0;
 
+    if constexpr (handleKernelActivities) {
+      kernelActivities_[activity->_kernel_id].emplace(
+          trace_activity->startTime,
+          trace_activity->endTime,
+          trace_activity->device,
+          trace_activity->resource);
+    }
+
     addResouceInfo(trace_activity->device, trace_activity->resource);
   }
 

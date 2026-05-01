@@ -130,6 +130,8 @@ class Logger {
 
   static void setLoggerObserverOnDemand();
 
+  static void resetLoggerObservers();
+
   static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
 
  private:

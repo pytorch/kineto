@@ -266,6 +266,7 @@ void AsyncActivityProfilerHandler::activateConfig(
     std::chrono::time_point<std::chrono::system_clock> now) {
   logger_ = ActivityProfilerController::makeLogger(*asyncRequestConfig_);
   profiler_.setLogger(logger_.get());
+  Logger::resetLoggerObservers();
   LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND();
   profiler_.configure(*asyncRequestConfig_, now);
   asyncRequestConfig_ = nullptr;

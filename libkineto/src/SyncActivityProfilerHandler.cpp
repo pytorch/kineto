@@ -62,7 +62,6 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
   profiler_.processTrace(*logger);
   // Will follow up with another patch for logging URLs when ActivityTrace
   // is moved.
-  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
 
   // Logger Metadata contains a map of LOGs collected in Kineto
   //   logger_level -> List of log lines

@@ -7,22 +7,25 @@
 include(GoogleTest)
 set(CMAKE_CXX_STANDARD 17)
 
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+set(_kineto_test_with_xpu OFF)
+if(KINETO_BACKEND STREQUAL "xpu")
+    set(_kineto_test_with_xpu ON)
     if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR))
         include(FindSYCLToolkit.cmake)
         if(NOT SYCLTOOLKIT_FOUND)
-            set(LIBKINETO_NOXPUPTI ON)
-            message(WARNING "XPUPTI tests has not been built because ${SYCL_NOT_FOUND_MESSAGE}")
+            set(_kineto_test_with_xpu OFF)
+            message(WARNING "XPUPTI tests have not been built because ${SYCL_NOT_FOUND_MESSAGE}")
         endif()
     endif()
 endif()
 
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+if(_kineto_test_with_xpu)
     set(XPU_XPUPTI_LIBRARY ${PTI_LIBRARY} ${SYCL_LIBRARY})
     add_subdirectory(xpupti)
 else()
     set(XPU_XPUPTI_LIBRARY "")
 endif()
+unset(_kineto_test_with_xpu)
 
 include_directories(${LIBKINETO_DIR})
 link_libraries(fmt::fmt-header-only)
@@ -42,7 +45,7 @@ target_link_libraries(ConfigTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
-if(NOT LIBKINETO_NOCUPTI)
+if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
@@ -106,7 +109,7 @@ target_link_libraries(EventProfilerTest PRIVATE
 gtest_discover_tests(EventProfilerTest)
 endif()
 
-if(NOT LIBKINETO_NOROCTRACER)
+if(KINETO_BACKEND STREQUAL "rocm")
 # RocmActivityProfilerTest
 add_executable(RocmActivityProfilerTest
     RocmActivityProfilerTest.cpp

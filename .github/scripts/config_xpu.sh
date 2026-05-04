@@ -11,9 +11,7 @@
 # Enable XPU (XPUPTI) and disable CUPTI/ROCm backends.
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
-  -DLIBKINETO_NOROCTRACER=1
-  -DLIBKINETO_NOXPUPTI=OFF
+  -DKINETO_BACKEND=xpu
 )
 
 # --- PyTorch build environment variables ---

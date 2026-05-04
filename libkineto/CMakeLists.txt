@@ -50,38 +50,70 @@ if(NOT ROCM_SOURCE_DIR)
   message(STATUS " ROCM_SOURCE_DIR = ${ROCM_SOURCE_DIR}")
 endif()
 
-# Set LIBKINETO_NOCUPTI to explicitly disable CUPTI
-# Otherwise, CUPTI is disabled if not found
-option(LIBKINETO_NOCUPTI "Disable CUPTI" OFF)
+# --- Backend selection ---
+# KINETO_BACKEND selects the GPU backend (or "cpu" for no GPU profiling).
+# Selection is explicit: if the chosen toolkit isn't available, configuration
+# fails. Use KINETO_BACKEND=cpu to build without GPU support.
 
-find_package(CUDAToolkit)
-if(NOT LIBKINETO_NOCUPTI)
-  if(TARGET CUDA::cupti)
-    message(STATUS "Found CUPTI")
-  else()
-    set(LIBKINETO_NOCUPTI ON CACHE BOOL "" FORCE)
-    message(STATUS "Could not find CUPTI library")
+# Backwards-compat shim: derive KINETO_BACKEND from legacy LIBKINETO_NO* flags
+# when the user hasn't set KINETO_BACKEND directly.
+# TODO: remove after PyTorch migrates to KINETO_BACKEND.
+if(NOT DEFINED CACHE{KINETO_BACKEND} AND NOT DEFINED KINETO_BACKEND)
+  if(DEFINED LIBKINETO_NOROCTRACER AND NOT LIBKINETO_NOROCTRACER)
+    set(KINETO_BACKEND "rocm" CACHE STRING "")
+  elseif(DEFINED LIBKINETO_NOCUPTI AND NOT LIBKINETO_NOCUPTI)
+    set(KINETO_BACKEND "cuda" CACHE STRING "")
+  elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    set(KINETO_BACKEND "xpu" CACHE STRING "")
   endif()
 endif()
 
-# NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
-# Only check for NVPERF availability if CUPTI is enabled
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
-  message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
+set(KINETO_BACKEND "cpu" CACHE STRING
+    "Kineto GPU backend: cpu, cuda, rocm, or xpu")
+set_property(CACHE KINETO_BACKEND PROPERTY STRINGS cpu cuda rocm xpu)
+
+set(_KINETO_BACKEND_VALID cpu cuda rocm xpu)
+if(NOT KINETO_BACKEND IN_LIST _KINETO_BACKEND_VALID)
+  message(FATAL_ERROR
+    "KINETO_BACKEND=${KINETO_BACKEND} is invalid. "
+    "Must be one of: ${_KINETO_BACKEND_VALID}")
+endif()
+unset(_KINETO_BACKEND_VALID)
+message(STATUS "KINETO_BACKEND = ${KINETO_BACKEND}")
+
+# CUDA / CUPTI detection
+if(KINETO_BACKEND STREQUAL "cuda")
+  find_package(CUDAToolkit REQUIRED)
+  if(NOT TARGET CUDA::cupti)
+    message(FATAL_ERROR
+      "KINETO_BACKEND=cuda but CUPTI was not found. "
+      "Install the CUDA Toolkit with CUPTI, set CUDAToolkit_ROOT, "
+      "or set KINETO_BACKEND=cpu.")
+  endif()
+  message(STATUS "Found CUPTI")
+  # NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
+  if(TARGET CUDA::nvperf_host)
+    message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
+  endif()
 endif()
 
-if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
-  set(LIBKINETO_NOROCTRACER ON CACHE BOOL "" FORCE)
+# ROCm prerequisites
+if(KINETO_BACKEND STREQUAL "rocm")
+  if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
+    message(FATAL_ERROR
+      "KINETO_BACKEND=rocm but neither ROCM_SOURCE_DIR nor ROCTRACER_INCLUDE_DIR is set. "
+      "Set ROCM_SOURCE_DIR (or the ROCM_SOURCE_DIR environment variable) "
+      "or set KINETO_BACKEND=cpu.")
+  endif()
 endif()
 
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+# XPU plugin
+if(KINETO_BACKEND STREQUAL "xpu")
   add_subdirectory(src/plugin/xpupti)
-else()
-  set(LIBKINETO_NOXPUPTI ON)
 endif()
 
 # Detect ROCM Version
-if(NOT LIBKINETO_NOROCTRACER)
+if(KINETO_BACKEND STREQUAL "rocm")
   if(NOT ROCM_INCLUDE_DIRS)
     set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
   endif()
@@ -125,28 +157,26 @@ if(NOT LIBKINETO_NOROCTRACER)
   endif()
 endif()
 
-# Define file lists
-# All backends are mutually exclusive - only one can be active at a time
-if(LIBKINETO_NOCUPTI AND LIBKINETO_NOROCTRACER AND LIBKINETO_NOXPUPTI)
+# Define file lists. Backends are mutually exclusive — exactly one (or none)
+# is active per build, gated on KINETO_BACKEND.
+if(KINETO_BACKEND STREQUAL "cpu")
   get_filelist("get_libkineto_cpu_only_srcs(with_api=False)" LIBKINETO_SRCS)
-  message(STATUS " No GPU backend available - building CPU-only profilers")
-else()
-  if(NOT LIBKINETO_NOROCTRACER)
-    if (${USE_ROCPROFILER_SDK})
-      get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_SRCS)
-      message(STATUS " Building with rocprofiler-sdk")
-    else()
-      get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
-      add_compile_options(-DROCTRACER_FALLBACK)
-      message(STATUS " Building with roctracer")
-    endif()
-  elseif(NOT LIBKINETO_NOCUPTI)
-    get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " Building with cupti")
-  elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    get_filelist("get_libkineto_xpupti_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " Building with xpupti")
+  message(STATUS " Building CPU-only profilers")
+elseif(KINETO_BACKEND STREQUAL "rocm")
+  if(${USE_ROCPROFILER_SDK})
+    get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_SRCS)
+    message(STATUS " Building with rocprofiler-sdk")
+  else()
+    get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
+    add_compile_options(-DROCTRACER_FALLBACK)
+    message(STATUS " Building with roctracer")
   endif()
+elseif(KINETO_BACKEND STREQUAL "cuda")
+  get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
+  message(STATUS " Building with cupti")
+elseif(KINETO_BACKEND STREQUAL "xpu")
+  get_filelist("get_libkineto_xpupti_srcs(with_api=False)" LIBKINETO_SRCS)
+  message(STATUS " Building with xpupti")
 endif()
 get_filelist("get_libkineto_public_headers()" LIBKINETO_PUBLIC_HEADERS)
 get_filelist("get_libkineto_api_srcs()" LIBKINETO_API_SRCS)
@@ -164,24 +194,24 @@ set(KINETO_COMPILE_OPTIONS)
 if(MSVC)
   list(APPEND KINETO_COMPILE_OPTIONS "/utf-8")
 endif()
-if(NOT LIBKINETO_NOCUPTI)
+if(KINETO_BACKEND STREQUAL "cuda")
   list(APPEND KINETO_DEFINITIONS "HAS_CUPTI")
 endif()
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+if(KINETO_BACKEND STREQUAL "xpu")
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
   if(KINETO_BUILD_TESTS)
     set_target_properties(kineto_base PROPERTIES POSITION_INDEPENDENT_CODE ON)
     set_target_properties(kineto_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
   endif()
 endif()
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+if(KINETO_BACKEND STREQUAL "cuda" AND TARGET CUDA::nvperf_host)
   # Disable CUPTI range profiler on Windows temporarily. Should fix in future
   if(NOT WIN32)
     list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
   endif()
 endif()
 
-if(NOT LIBKINETO_NOROCTRACER)
+if(KINETO_BACKEND STREQUAL "rocm")
   list(APPEND KINETO_DEFINITIONS "HAS_ROCTRACER")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_HCC__")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_AMD__")
@@ -233,7 +263,7 @@ target_include_directories(kineto_base SYSTEM PUBLIC
       $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
 
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+if(KINETO_BACKEND STREQUAL "xpu")
   target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
 endif()
 target_link_libraries(kineto_base PRIVATE $<BUILD_INTERFACE:fmt::fmt-header-only>)
@@ -262,7 +292,7 @@ endif()
 # Strict, pedantic compilation with warnings-as-errors.
 # Only enabled for platforms covered by Kineto's CI (CPU-only, CUDA, ROCm on
 # Linux). Disabled for Windows, macOS, and XPU builds which lack CI coverage.
-if(NOT WIN32 AND NOT APPLE AND NOT (DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI))
+if(NOT WIN32 AND NOT APPLE AND NOT KINETO_BACKEND STREQUAL "xpu")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Werror")
 endif()
 
@@ -275,28 +305,28 @@ target_include_directories(kineto PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>)
 
-# Link backend libraries - mutually exclusive (only one backend active)
-if(NOT LIBKINETO_NOROCTRACER)
-if (${USE_ROCPROFILER_SDK})
-  find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
-    ${ROCM_SOURCE_DIR}/lib)
-else()
-  find_library(ROCPROF_LIBRARY NAMES libroctracer64.so HINTS
-    ${ROCM_SOURCE_DIR}/lib)
-endif()
+# Link backend libraries — at most one backend active.
+if(KINETO_BACKEND STREQUAL "rocm")
+  if(${USE_ROCPROFILER_SDK})
+    find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
+      ${ROCM_SOURCE_DIR}/lib)
+  else()
+    find_library(ROCPROF_LIBRARY NAMES libroctracer64.so HINTS
+      ${ROCM_SOURCE_DIR}/lib)
+  endif()
   target_link_libraries(kineto "${ROCPROF_LIBRARY}")
   target_link_libraries(kineto_base PUBLIC "${ROCPROF_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS
     ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
   target_link_libraries(kineto_base PUBLIC "${KINETO_HIP_LIBRARY}")
-elseif(NOT LIBKINETO_NOCUPTI)
+elseif(KINETO_BACKEND STREQUAL "cuda")
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart)
   if(TARGET CUDA::nvperf_host)
     target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
   endif()
-elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+elseif(KINETO_BACKEND STREQUAL "xpu")
   target_link_libraries(kineto PRIVATE "${XPU_xpupti_LIBRARY}")
 endif()
 target_compile_definitions(kineto PUBLIC "${KINETO_DEFINITIONS}")
@@ -308,7 +338,7 @@ if(KINETO_BUILD_TESTS)
     set(BUILD_SHARED_LIBS OFF)
     add_subdirectory("${LIBKINETO_THIRDPARTY_DIR}/googletest")
     set(BUILD_SHARED_LIBS "${TMP_BUILD_SHARED_LIBS}")
-    if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    if(KINETO_BACKEND STREQUAL "xpu")
       set_property(TARGET gtest PROPERTY POSITION_INDEPENDENT_CODE ON)
     endif()
   endif()

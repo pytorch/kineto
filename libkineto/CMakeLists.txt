@@ -250,15 +250,6 @@ target_include_directories(kineto_base PUBLIC
 target_include_directories(kineto_base SYSTEM PUBLIC
       $<BUILD_INTERFACE:${DYNOLOG_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>)
-
-if(KINETO_BACKEND STREQUAL "rocm")
-  target_include_directories(kineto_base SYSTEM PUBLIC
-        $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
-        $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
-endif()
-if(KINETO_BACKEND STREQUAL "xpu")
-  target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
-endif()
 target_link_libraries(kineto_base PRIVATE $<BUILD_INTERFACE:fmt::fmt-header-only>)
 
 target_include_directories(kineto_api PUBLIC
@@ -298,8 +289,11 @@ target_include_directories(kineto PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_INCLUDE_DIR}>
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>)
 
-# Link backend libraries — at most one backend active.
+# Attach backend-specific includes and libraries — at most one backend active.
 if(KINETO_BACKEND STREQUAL "rocm")
+  target_include_directories(kineto_base SYSTEM PUBLIC
+        $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
   if(${USE_ROCPROFILER_SDK})
     find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
       ${ROCM_SOURCE_DIR}/lib)
@@ -320,6 +314,7 @@ elseif(KINETO_BACKEND STREQUAL "cuda")
     target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
   endif()
 elseif(KINETO_BACKEND STREQUAL "xpu")
+  target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
   target_link_libraries(kineto PRIVATE "${XPU_xpupti_LIBRARY}")
 endif()
 target_compile_definitions(kineto PUBLIC "${KINETO_DEFINITIONS}")

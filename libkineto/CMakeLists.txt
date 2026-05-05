@@ -340,8 +340,12 @@ elseif(KINETO_BACKEND STREQUAL "rocm")
   target_link_libraries(kineto "${KINETO_HIP_LIBRARY}")
   target_link_libraries(kineto_base PUBLIC "${KINETO_HIP_LIBRARY}")
 elseif(KINETO_BACKEND STREQUAL "xpu")
-  target_include_directories(kineto_base SYSTEM PUBLIC
-        $<BUILD_INTERFACE:${XPUPTI_INCLUDE_DIR}>)
+  # Bare form, not $<BUILD_INTERFACE:...>, because XPUPTI_INCLUDE_DIR is a
+  # multi-path semicolon list (SYCL + PTI). Wrapping a list in a single
+  # generator expression mangles paths after the first. kineto_base is not
+  # installed, so the install-interface concern that motivates BUILD_INTERFACE
+  # elsewhere doesn't apply here.
+  target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
   target_link_libraries(kineto PRIVATE "${XPU_xpupti_LIBRARY}")
 endif()
 target_compile_definitions(kineto PUBLIC "${KINETO_DEFINITIONS}")

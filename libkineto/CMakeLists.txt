@@ -81,6 +81,30 @@ endif()
 unset(_KINETO_BACKEND_VALID)
 message(STATUS "KINETO_BACKEND = ${KINETO_BACKEND}")
 
+# Warn if legacy LIBKINETO_NO* flags disagree with the cached KINETO_BACKEND.
+# The shim only fires on initial configure; once KINETO_BACKEND is in the
+# cache, subsequent legacy-flag changes are silently ignored. Detect that and
+# tell the user. TODO: remove with the rest of the legacy shim.
+if(DEFINED LIBKINETO_NOCUPTI OR DEFINED LIBKINETO_NOROCTRACER OR DEFINED LIBKINETO_NOXPUPTI)
+  if(DEFINED LIBKINETO_NOROCTRACER AND NOT LIBKINETO_NOROCTRACER)
+    set(_legacy_implied_backend "rocm")
+  elseif(DEFINED LIBKINETO_NOCUPTI AND NOT LIBKINETO_NOCUPTI)
+    set(_legacy_implied_backend "cuda")
+  elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+    set(_legacy_implied_backend "xpu")
+  else()
+    set(_legacy_implied_backend "cpu")
+  endif()
+  if(NOT KINETO_BACKEND STREQUAL _legacy_implied_backend)
+    message(WARNING
+      "Legacy LIBKINETO_NO* flags imply KINETO_BACKEND=${_legacy_implied_backend} "
+      "but KINETO_BACKEND=${KINETO_BACKEND} (cached from a previous configure). "
+      "Legacy flags are ignored. Pass -DKINETO_BACKEND=${_legacy_implied_backend} "
+      "explicitly or remove the build directory to switch backends.")
+  endif()
+  unset(_legacy_implied_backend)
+endif()
+
 # Per-backend configure-time setup.
 if(KINETO_BACKEND STREQUAL "cuda")
   # CUDA / CUPTI detection

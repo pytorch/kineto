@@ -96,7 +96,7 @@ if(KINETO_BACKEND STREQUAL "cuda")
   endif()
 endif()
 
-# ROCm prerequisites
+# ROCm prerequisites and version detection
 if(KINETO_BACKEND STREQUAL "rocm")
   if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
     message(FATAL_ERROR
@@ -110,15 +110,7 @@ if(KINETO_BACKEND STREQUAL "rocm")
   if(NOT ROCTRACER_INCLUDE_DIR)
     set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
   endif()
-endif()
 
-# XPU plugin
-if(KINETO_BACKEND STREQUAL "xpu")
-  add_subdirectory(src/plugin/xpupti)
-endif()
-
-# Detect ROCM Version
-if(KINETO_BACKEND STREQUAL "rocm")
   find_file(ROCM_VERSION_HEADER_PATH
     NAMES rocm-core/rocm_version.h
     NO_DEFAULT_PATH
@@ -129,7 +121,6 @@ if(KINETO_BACKEND STREQUAL "rocm")
     set(ROCM_HEADER_FILE ${ROCM_VERSION_HEADER_PATH})
   endif()
 
-  # Read the ROCM headerfile into a variable
   message(STATUS "Reading ROCM version from: ${ROCM_HEADER_FILE}")
   file(READ "${ROCM_HEADER_FILE}" ROCM_HEADER_CONTENT)
 
@@ -147,15 +138,20 @@ if(KINETO_BACKEND STREQUAL "rocm")
   message(STATUS "ROCM minor: ${ROCM_VERSION_DEV_MINOR}")
   message(STATUS "ROCM patch: ${ROCM_VERSION_DEV_PATCH}")
 
-# Use rocprofiler-sdk for rocm version 6.4 forward
-  if ((${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 7) OR (${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 6 AND ${ROCM_VERSION_DEV_MINOR} GREATER_EQUAL 4))
+  # Use rocprofiler-sdk for rocm version 6.4 forward
+  if((${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 7) OR (${ROCM_VERSION_DEV_MAJOR} GREATER_EQUAL 6 AND ${ROCM_VERSION_DEV_MINOR} GREATER_EQUAL 4))
     set(USE_ROCPROFILER_SDK ON)
   endif()
-  if (${USE_ROCPROFILER_SDK})
+  if(${USE_ROCPROFILER_SDK})
     message(STATUS "Building with: rocprofiler-sdk")
   else()
     message(STATUS "Building with: libroctracer")
   endif()
+endif()
+
+# XPU plugin
+if(KINETO_BACKEND STREQUAL "xpu")
+  add_subdirectory(src/plugin/xpupti)
 endif()
 
 # Define file lists. Backends are mutually exclusive — exactly one (or none)

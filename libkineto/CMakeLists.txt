@@ -110,6 +110,7 @@ if(KINETO_BACKEND STREQUAL "rocm")
   if(NOT ROCTRACER_INCLUDE_DIR)
     set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
   endif()
+  message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
 
   find_file(ROCM_VERSION_HEADER_PATH
     NAMES rocm-core/rocm_version.h
@@ -238,9 +239,6 @@ if(NOT TARGET fmt::fmt-header-only)
   message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
 endif()
 
-if(KINETO_BACKEND STREQUAL "rocm")
-  message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
-endif()
 message(STATUS " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
 message(STATUS " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
 

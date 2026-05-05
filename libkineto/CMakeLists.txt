@@ -91,9 +91,8 @@ if(KINETO_BACKEND STREQUAL "cuda")
       "or set KINETO_BACKEND=cpu.")
   endif()
   message(STATUS "Found CUPTI")
-  # NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
   if(TARGET CUDA::nvperf_host)
-    message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
+    message(STATUS "Found NVPERF")
   endif()
 endif()
 

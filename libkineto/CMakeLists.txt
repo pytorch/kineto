@@ -104,6 +104,12 @@ if(KINETO_BACKEND STREQUAL "rocm")
       "Set ROCM_SOURCE_DIR (or the ROCM_SOURCE_DIR environment variable) "
       "or set KINETO_BACKEND=cpu.")
   endif()
+  if(NOT ROCM_INCLUDE_DIRS)
+    set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
+  endif()
+  if(NOT ROCTRACER_INCLUDE_DIR)
+    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
+  endif()
 endif()
 
 # XPU plugin
@@ -113,10 +119,6 @@ endif()
 
 # Detect ROCM Version
 if(KINETO_BACKEND STREQUAL "rocm")
-  if(NOT ROCM_INCLUDE_DIRS)
-    set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
-  endif()
-
   find_file(ROCM_VERSION_HEADER_PATH
     NAMES rocm-core/rocm_version.h
     NO_DEFAULT_PATH
@@ -221,13 +223,6 @@ target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_definitions(kineto_api PUBLIC "${KINETO_DEFINITIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
-if(NOT ROCTRACER_INCLUDE_DIR)
-  set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
-endif()
-if(NOT ROCM_INCLUDE_DIRS)
-  set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
-endif()
-
 set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
 set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
 add_subdirectory("${IPCFABRIC_INCLUDE_DIR}")
@@ -247,7 +242,9 @@ if(NOT TARGET fmt::fmt-header-only)
   message(STATUS "Kineto: FMT_SOURCE_DIR = ${FMT_SOURCE_DIR}")
 endif()
 
-message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
+if(KINETO_BACKEND STREQUAL "rocm")
+  message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
+endif()
 message(STATUS " DYNOLOG_INCLUDE_DIR = ${DYNOLOG_INCLUDE_DIR}")
 message(STATUS " IPCFABRIC_INCLUDE_DIR = ${IPCFABRIC_INCLUDE_DIR}")
 
@@ -258,10 +255,13 @@ target_include_directories(kineto_base PUBLIC
       $<BUILD_INTERFACE:${LIBKINETO_SOURCE_DIR}>)
 target_include_directories(kineto_base SYSTEM PUBLIC
       $<BUILD_INTERFACE:${DYNOLOG_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
-      $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
+      $<BUILD_INTERFACE:${IPCFABRIC_INCLUDE_DIR}>)
 
+if(KINETO_BACKEND STREQUAL "rocm")
+  target_include_directories(kineto_base SYSTEM PUBLIC
+        $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
+endif()
 if(KINETO_BACKEND STREQUAL "xpu")
   target_include_directories(kineto_base SYSTEM PUBLIC ${XPUPTI_INCLUDE_DIR})
 endif()

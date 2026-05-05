@@ -81,8 +81,9 @@ endif()
 unset(_KINETO_BACKEND_VALID)
 message(STATUS "KINETO_BACKEND = ${KINETO_BACKEND}")
 
-# CUDA / CUPTI detection
+# Per-backend configure-time setup.
 if(KINETO_BACKEND STREQUAL "cuda")
+  # CUDA / CUPTI detection
   find_package(CUDAToolkit REQUIRED)
   if(NOT TARGET CUDA::cupti)
     message(FATAL_ERROR
@@ -94,10 +95,8 @@ if(KINETO_BACKEND STREQUAL "cuda")
   if(TARGET CUDA::nvperf_host)
     message(STATUS "Found NVPERF")
   endif()
-endif()
-
-# ROCm prerequisites and version detection
-if(KINETO_BACKEND STREQUAL "rocm")
+elseif(KINETO_BACKEND STREQUAL "rocm")
+  # ROCm prerequisites and version detection
   if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
     message(FATAL_ERROR
       "KINETO_BACKEND=rocm but neither ROCM_SOURCE_DIR nor ROCTRACER_INCLUDE_DIR is set. "
@@ -148,10 +147,8 @@ if(KINETO_BACKEND STREQUAL "rocm")
   else()
     message(STATUS "Building with: libroctracer")
   endif()
-endif()
-
-# XPU plugin
-if(KINETO_BACKEND STREQUAL "xpu")
+elseif(KINETO_BACKEND STREQUAL "xpu")
+  # XPU plugin
   add_subdirectory(src/plugin/xpupti)
 endif()
 

@@ -796,6 +796,8 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         libkineto::ActivityType::CONCURRENT_KERNEL,
         libkineto::ActivityType::CUDA_RUNTIME,
         libkineto::ActivityType::CUDA_DRIVER,
+        libkineto::ActivityType::XPU_RUNTIME,
+        libkineto::ActivityType::XPU_DRIVER,
         libkineto::ActivityType::PRIVATEUSE1_RUNTIME,
         libkineto::ActivityType::PRIVATEUSE1_DRIVER};
     if (excludedTypes.find(op.type()) == excludedTypes.end()) {

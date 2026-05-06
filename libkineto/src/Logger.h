@@ -252,9 +252,20 @@ struct __to_constant__ {
 #define LOGGER_OBSERVER_ADD_METADATA(key, value) libkineto::Logger::addLoggerObserverAddMetadata(key, value)
 
 // UST Logger Semantics to describe when a stage is complete.
-#define UST_LOGGER_MARK_COMPLETED(stage) LOG(libkineto::LoggerOutputType::STAGE) << "Completed Stage: " << stage
+// Use libkineto::Logger directly instead of the LOG macro, which can be
+// redefined by glog in translation units that include both Logger.h and
+// glog/logging.h. Mirror the LOG_IF gating so messages are still suppressed
+// when libkineto's severity threshold is above the message severity.
+#define UST_LOGGER_MARK_COMPLETED(stage)                                                     \
+  !LOG_IS_ON(libkineto::LoggerOutputType::STAGE) ? (void)0                                   \
+                                                 : libkineto::VoidLogger() &                 \
+          libkineto::Logger(libkineto::LoggerOutputType::STAGE, __LINE__, __FILE__).stream() \
+              << "Completed Stage: " << stage
 
-#define USDT_LOGGER_EMIT_MESSAGE(usdt_type) LOG(libkineto::LoggerOutputType::USDT) << usdt_type
+#define USDT_LOGGER_EMIT_MESSAGE(usdt_type)                                 \
+  !LOG_IS_ON(libkineto::LoggerOutputType::USDT) ? (void)0                   \
+                                                : libkineto::VoidLogger() & \
+          libkineto::Logger(libkineto::LoggerOutputType::USDT, __LINE__, __FILE__).stream() << usdt_type
 #define USDT_EMIT_START_TRACE() USDT_LOGGER_EMIT_MESSAGE("profiler_start")
 #define USDT_EMIT_STOP_TRACE() USDT_LOGGER_EMIT_MESSAGE("profiler_stop")
 

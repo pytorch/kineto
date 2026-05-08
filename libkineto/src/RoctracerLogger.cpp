@@ -342,13 +342,13 @@ void RoctracerLogger::startLogging() {
     loggedIds_.add("__hipPushCallConfiguration");
     loggedIds_.add("__hipPopCallConfiguration");
     loggedIds_.add("hipCtxSetCurrent");
-    loggedIds_.add("hipEventQuery");
-    loggedIds_.add("hipGetDeviceProperties");
+    loggedIds_.add("hipGetDevicePropertiesR0600");
+    loggedIds_.add("hipGetDeviceCount");
+    loggedIds_.add("hipDeviceGetAttribute");
+    loggedIds_.add("hipRuntimeGetVersion");
     loggedIds_.add("hipPeekAtLastError");
     loggedIds_.add("hipModuleGetFunction");
-    loggedIds_.add("hipEventCreateWithFlags");
-    loggedIds_.add("hipGetDeviceCount");
-    loggedIds_.add("hipDevicePrimaryCtxGetState");
+
 
     // Enable API callbacks
     if (loggedIds_.invertMode() == true) {

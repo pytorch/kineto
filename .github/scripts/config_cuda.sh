@@ -17,7 +17,9 @@
 # --- Kineto cmake flags ---
 
 # shellcheck disable=SC2034
-KINETO_CMAKE_FLAGS=()
+KINETO_CMAKE_FLAGS=(
+  -DKINETO_BACKEND=cuda
+)
 
 # --- PyTorch build environment variables ---
 

@@ -19,9 +19,7 @@
 
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
-  -DLIBKINETO_NOROCTRACER=1
-  -DLIBKINETO_NOXPUPTI=1
+  -DKINETO_BACKEND=cpu
 )
 
 # --- PyTorch build environment variables ---

@@ -693,7 +693,11 @@ void GenericActivityProfiler::finalizeTrace(
   string process_name = processName(pid);
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
-        {pid, pid, process_name, "CPU"}, captureWindowStartTime_);
+        {.id = pid,
+         .sortIndex = pid,
+         .name = process_name,
+         .label = "CPU"},
+        captureWindowStartTime_);
     if (!cpuOnly_ && use_default_device_info) {
       // Usually, GPU events use device id as pid (0-7).
       // In some cases, CPU sockets are numbered starting from 0.
@@ -706,10 +710,10 @@ void GenericActivityProfiler::finalizeTrace(
       // of the trace timelines.
       for (int gpu = 0; gpu <= kMaxGpuID; gpu++) {
         logger.handleDeviceInfo(
-            {gpu,
-             gpu + kExceedMaxPid,
-             process_name,
-             fmt::format("GPU {}", gpu)},
+            {.id = gpu,
+             .sortIndex = gpu + kExceedMaxPid,
+             .name = process_name,
+             .label = fmt::format("GPU {}", gpu)},
             captureWindowStartTime_);
       }
     }

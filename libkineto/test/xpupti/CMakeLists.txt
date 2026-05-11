@@ -115,4 +115,5 @@ function(make_sycl_test test_file)
 endfunction()
 
 make_sycl_test(XpuptiProfilerTest.cpp)
+make_sycl_test(XpuptiScopeProfilerTest.cpp)
 

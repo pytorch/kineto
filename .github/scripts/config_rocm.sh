@@ -20,7 +20,7 @@
 
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
+  -DKINETO_BACKEND=rocm
   -DROCM_SOURCE_DIR=/opt/rocm
 )
 

@@ -10,6 +10,8 @@
 #include <array>
 #include <set>
 
+#include <unistd.h>
+
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -54,6 +56,12 @@ static auto getActivityTypes() {
 static ICuptiRBProfilerSessionFactory& getFactory() {
   static MockCuptiRBProfilerSessionFactory factory_;
   return factory_;
+}
+
+void createTempTraceFile(char* filename) {
+  const int fd = mkstemps(filename, 5);
+  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
+  close(fd);
 }
 
 // Create mock CUPTI profiler events and simuulate context
@@ -166,7 +174,7 @@ void saveTrace([[maybe_unused]] ActivityTrace& trace) {
 #if 0
 //#ifdef __linux__
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   trace.save(filename);
   // Check that the expected file was written and that it has some content
   int fd = open(filename, O_RDONLY);

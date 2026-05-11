@@ -31,10 +31,6 @@
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
 #include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif
-#ifdef HAS_AIUPTI
-#include "plugin/aiupti/AiuptiActivityApi.h"
-#include "plugin/aiupti/AiuptiActivityProfiler.h"
-#endif
 #include "libkineto.h"
 
 #include "Logger.h"
@@ -194,14 +190,6 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
         return std::make_unique<XPUActivityProfiler>();
       });
 #endif // HAS_XPUPTI
-
-#ifdef HAS_AIUPTI
-  // register aiu pti profiler
-  libkineto::api().registerProfilerFactory(
-      []() -> std::unique_ptr<IActivityProfiler> {
-        return std::make_unique<AIUActivityProfiler>();
-      });
-#endif // HAS_AIUPTI
 
 #if __linux__
   // For open source users that would like to connect to a profiling daemon

@@ -760,9 +760,13 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
     return;
   }
 
-  if (op.type() == ActivityType::MTIA_COUNTERS) {
-    handleCounterEvent(op);
-    return;
+  switch (op.type()) {
+    case ActivityType::MTIA_COUNTERS:
+    case ActivityType::XPU_SCOPE_PROFILER:
+      handleCounterEvent(op);
+      return;
+    default:
+      break;
   }
 
   int64_t ts = op.timestamp();

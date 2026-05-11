@@ -18,10 +18,11 @@
 #include <cstdint>
 #include <cstdio>
 
+#include <unistd.h>
+
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #endif
 
 #include "include/Config.h"
@@ -74,6 +75,12 @@ namespace {
 const TraceSpan& defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
   return span;
+}
+
+void createTempTraceFile(char* filename) {
+  const int fd = mkstemps(filename, 5);
+  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
+  close(fd);
 }
 } // namespace
 
@@ -148,13 +155,16 @@ struct MockCuptiActivityBuffer {
   void addKernelActivity(
       int64_t start_ns,
       int64_t end_ns,
-      int64_t correlation) {
+      int64_t correlation,
+      uint32_t deviceId = 0,
+      uint32_t contextId = 0,
+      uint32_t streamId = 1) {
     auto& act =
         createActivity<CUpti_ActivityKernelType>(start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL;
-    act.deviceId = 0;
-    act.contextId = 0;
-    act.streamId = 1;
+    act.deviceId = deviceId;
+    act.contextId = contextId;
+    act.streamId = streamId;
     act.name = "kernel";
     act.gridX = act.gridY = act.gridZ = 1;
     act.blockX = act.blockY = act.blockZ = 1;
@@ -182,12 +192,13 @@ struct MockCuptiActivityBuffer {
       int64_t correlation,
       CUpti_ActivitySynchronizationType type,
       int64_t stream = 1,
-      uint32_t cudaEventId = 0) {
+      uint32_t cudaEventId = 0,
+      uint32_t contextId = 0) {
     auto& act = createActivity<CUpti_ActivitySynchronization>(
         start_ns, end_ns, correlation);
     act.kind = CUPTI_ACTIVITY_KIND_SYNCHRONIZATION;
     act.type = type;
-    act.contextId = 0;
+    act.contextId = contextId;
     act.streamId = stream;
     act.cudaEventId = cudaEventId;
     activities.push_back(reinterpret_cast<CUpti_Activity*>(&act));
@@ -327,7 +338,7 @@ TEST(CuptiActivityProfiler, AsyncTrace) {
   CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
 
   Config cfg;
 
@@ -420,7 +431,7 @@ TEST(CuptiActivityProfiler, AsyncTraceUsingIter) {
     CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
     char filename[] = "/tmp/libkineto_testXXXXXX.json";
-    mkstemps(filename, 5);
+    createTempTraceFile(filename);
 
     Config cfg;
 
@@ -641,7 +652,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
 #ifdef __linux__
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   trace.save(filename);
   // Check that the expected file was written and that it has some content
   int fd = open(filename, O_RDONLY);
@@ -692,8 +703,8 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 
 TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   // Test that wait_on_cuda_event_record_corr_id is populated even when
-  // SYNCHRONIZATION records appear before their corresponding CUDA_EVENT
-  // records in the CUPTI activity buffer (no ordering guarantee from CUPTI).
+  // SYNCHRONIZATION records appear before both the CUDA_EVENT and the kernel
+  // that provides the context->device mapping.
   std::vector<std::string> log_modules({"CuptiActivityProfiler.cpp"});
   SET_LOG_VERBOSITY_LEVEL(2, log_modules);
 
@@ -718,32 +729,45 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   profiler.transferCpuTrace(std::move(cpuOps));
 
   constexpr uint32_t kEventId = 7777;
+  constexpr uint32_t kContextId = 7;
+  constexpr uint32_t kDeviceId = 3;
   constexpr uint32_t kRecordCorrId = 100;
   constexpr uint32_t kWaitCorrId = 200;
   constexpr uint32_t kEvtSyncCorrId = 300;
+  constexpr uint32_t kEventStreamId = 11;
+  constexpr uint32_t kWaitStreamId = 13;
 
   // Wait events and synchronization records are added
-  // before the CUDA_EVENT record they reference, as CUPTI
+  // before the CUDA_EVENT and kernel they reference, as CUPTI
   // provides no ordering guarantee for activity buffer entries.
   auto gpuOps = std::make_unique<MockCuptiActivityBuffer>();
   gpuOps->addRuntimeActivity(
       CUDA_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 20, 1);
-  gpuOps->addKernelActivity(start_time_ns + 30, start_time_ns + 50, 1);
   gpuOps->addSyncActivity(
       start_time_ns + 100,
       start_time_ns + 110,
       kWaitCorrId,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_STREAM_WAIT_EVENT,
-      1,
-      kEventId);
+      kWaitStreamId,
+      kEventId,
+      kContextId);
   gpuOps->addSyncActivity(
       start_time_ns + 120,
       start_time_ns + 140,
       kEvtSyncCorrId,
       CUPTI_ACTIVITY_SYNCHRONIZATION_TYPE_EVENT_SYNCHRONIZE,
       -1,
-      kEventId);
-  gpuOps->addCudaEventActivity(kRecordCorrId, kEventId, 1, 0);
+      kEventId,
+      kContextId);
+  gpuOps->addCudaEventActivity(
+      kRecordCorrId, kEventId, kEventStreamId, kContextId);
+  gpuOps->addKernelActivity(
+      start_time_ns + 30,
+      start_time_ns + 50,
+      1,
+      kDeviceId,
+      kContextId,
+      kWaitStreamId);
   cuptiActivities_.activityBuffer = std::move(gpuOps);
 
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
@@ -763,7 +787,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
           << "Stream Wait Event should reference the correct event ID";
       EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], kRecordCorrId)
           << "Stream Wait Event corr_id should be populated despite out-of-order records";
-      EXPECT_EQ(json["wait_on_stream"], 1)
+      EXPECT_EQ(json["wait_on_stream"], kEventStreamId)
           << "Stream Wait Event should reference stream the event was recorded on";
       streamWaitFound++;
     }
@@ -773,7 +797,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
           << "Event Sync should reference the correct event ID";
       EXPECT_EQ(json["wait_on_cuda_event_record_corr_id"], kRecordCorrId)
           << "Event Sync corr_id should be populated despite out-of-order records";
-      EXPECT_EQ(json["wait_on_stream"], 1)
+      EXPECT_EQ(json["wait_on_stream"], kEventStreamId)
           << "Event Sync should reference stream the event was recorded on";
       eventSyncFound++;
     }
@@ -783,7 +807,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
 
 #ifdef __linux__
   char filename[] = "/tmp/libkineto_out_of_order_XXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   trace.save(filename);
   LOG(INFO) << "Trace exported to: " << filename;
 #endif
@@ -924,7 +948,7 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 #ifdef __linux__
   // Test saved output can be loaded as JSON
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file: " << filename;
   trace.save(filename);
 
@@ -1083,7 +1107,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   EXPECT_TRUE(profiler.isActive());
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file " << filename;
 
   // process trace
@@ -1169,7 +1193,7 @@ TEST(CuptiActivityProfiler, MetadataJsonFormatingTest) {
   CuptiActivityProfiler profiler(activities, /*cpu only*/ true);
 
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
 
   Config cfg;
 
@@ -1309,7 +1333,7 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
 #ifdef __linux__
   // Test saved output can be loaded as JSON
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  mkstemps(filename, 5);
+  createTempTraceFile(filename);
   LOG(INFO) << "Logging to tmp file: " << filename;
   trace.save(filename);
 

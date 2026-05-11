@@ -80,6 +80,10 @@ string AbstractConfig::toLower(string& s) const {
   return res;
 }
 
+bool AbstractConfig::endsWith(const string& s, const string& suffix) const {
+  return s.ends_with(suffix);
+}
+
 vector<string> AbstractConfig::splitAndTrim(const string& s, char delim) const {
   auto res = split(s, delim);
   for (string& x : res) {

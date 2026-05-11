@@ -93,6 +93,10 @@ class AbstractConfig {
   [[nodiscard]] std::vector<std::string> splitAndTrim(const std::string& s, char delim) const;
   // Lowercase for case-insensitive comparisons
   std::string toLower(std::string& s) const;
+  // Does string end with suffix.
+  // New code should prefer std::string::ends_with directly (C++20). This
+  // wrapper is kept only for existing callers; do not add new ones.
+  [[nodiscard]] bool endsWith(const std::string& s, const std::string& suffix) const;
   // Conversions
   [[nodiscard]] int64_t toIntRange(const std::string& val, int64_t min, int64_t max) const;
   [[nodiscard]] int32_t toInt32(const std::string& val) const;

@@ -798,7 +798,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         libkineto::ActivityType::CUDA_DRIVER,
         libkineto::ActivityType::PRIVATEUSE1_RUNTIME,
         libkineto::ActivityType::PRIVATEUSE1_DRIVER};
-    if (excludedTypes.find(op.type()) == excludedTypes.end()) {
+    if (!excludedTypes.contains(op.type())) {
       external_id = op.correlationId();
     }
   }

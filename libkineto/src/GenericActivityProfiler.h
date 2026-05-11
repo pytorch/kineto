@@ -209,7 +209,7 @@ class GenericActivityProfiler {
   // T107508020: We can deprecate the recordThreadInfo(void) once we optimized
   // profiler_kineto
   void recordThreadInfo(int32_t sysTid, int32_t tid, int32_t pid) {
-    if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
+    if (!resourceInfo_.contains({pid, tid})) {
       resourceInfo_.emplace(std::make_pair(pid, tid),
                             ResourceInfo(pid,
                                          sysTid,
@@ -328,7 +328,7 @@ class GenericActivityProfiler {
   void processCpuTrace(libkineto::CpuTraceBuffer& cpuTrace, ActivityLogger& logger);
 
   inline bool hasDeviceResource(int device, int id) {
-    return resourceInfo_.find({device, id}) != resourceInfo_.end();
+    return resourceInfo_.contains({device, id});
   }
 
   // Create resource names for streams

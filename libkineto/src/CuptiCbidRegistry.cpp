@@ -262,7 +262,7 @@ bool CuptiCbidRegistry::isBlocklisted(CallbackDomain domain, uint32_t cbid) {
 
 bool CuptiCbidRegistry::isRegistered(CallbackDomain domain, uint32_t cbid) {
   const auto& map = getMapForDomain(domain);
-  if (map.find(cbid) != map.end()) {
+  if (map.contains(cbid)) {
     return true;
   }
   for (const auto& [rangeDomain, range] : cbidRanges_) {

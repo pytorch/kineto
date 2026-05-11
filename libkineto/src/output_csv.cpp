@@ -53,7 +53,7 @@ void EventCSVLogger::handleSample(
     std::tm tm_result;
     get_local_time(&time, &tm_result);
     for (const Stat& s : sample.stats) {
-      if (eventNames_.find(s.name) == eventNames_.end()) {
+      if (!eventNames_.contains(s.name)) {
         continue;
       }
       *out_ << fmt::format("{:%Y-%m-%d %H:%M:%S}", tm_result) << ",";

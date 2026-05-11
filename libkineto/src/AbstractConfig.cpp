@@ -80,13 +80,6 @@ string AbstractConfig::toLower(string& s) const {
   return res;
 }
 
-bool AbstractConfig::endsWith(const string& s, const string& suffix) const {
-  if (suffix.size() > s.size()) {
-    return false;
-  }
-  return s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
-
 vector<string> AbstractConfig::splitAndTrim(const string& s, char delim) const {
   auto res = split(s, delim);
   for (string& x : res) {

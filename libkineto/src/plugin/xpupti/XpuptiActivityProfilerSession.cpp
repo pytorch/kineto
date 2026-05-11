@@ -169,10 +169,8 @@ void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
 
 DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
     const uint8_t deviceUUID[16]) {
-  auto it = std::find_if(
-      deviceUUIDs_.begin(),
-      deviceUUIDs_.end(),
-      [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {
+  auto it = std::ranges::find_if(
+      deviceUUIDs_, [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {
         return std::equal(
             deviceUUIDinVec.begin(),
             deviceUUIDinVec.end(),

@@ -162,8 +162,7 @@ void GenericActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   }
   for (const auto& session : sessions_) {
     if (auto props = session->getDeviceProperties(); !props.empty()) {
-      if (std::find(
-              device_properties.begin(), device_properties.end(), props) ==
+      if (std::ranges::find(device_properties, props) ==
           device_properties.end()) {
         device_properties.push_back(props);
       }

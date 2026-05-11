@@ -56,7 +56,7 @@ std::function<time_t(approx_time_t)> ApproximateClockToUnixTimeConverter::
     scale_factors[i] =
         static_cast<double>(delta_ns) / static_cast<double>(delta_approx);
   }
-  std::sort(scale_factors.begin(), scale_factors.end());
+  std::ranges::sort(scale_factors);
   long double scale_factor = scale_factors[(replicates / 2) + 1];
 
   // We shift all times by `t0` for better numerics. Double precision only has

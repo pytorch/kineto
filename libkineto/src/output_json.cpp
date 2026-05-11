@@ -60,9 +60,9 @@ constexpr std::string_view kDefaultLogFileFmt = "libkineto_activities_{}.json";
 void sanitizeStrForJSON(std::string& value) {
   // Replace all backslashes with forward slash because Windows paths causing
   // JSONDecodeError.
-  std::replace(value.begin(), value.end(), '\\', '/');
+  std::ranges::replace(value, '\\', '/');
   // Remove all new line characters
-  value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
+  std::erase(value, '\n');
 }
 
 std::string string2hex(const std::string& str) {
@@ -101,8 +101,8 @@ std::string fmtTs(int64_t time_ns) {
 }
 
 bool isWhitespace(std::string_view s) {
-  return std::all_of(
-      s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); });
+  return std::ranges::all_of(
+      s, [](unsigned char c) { return std::isspace(c); });
 }
 
 } // namespace

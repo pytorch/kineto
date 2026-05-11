@@ -301,6 +301,37 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->log(logger);
 }
 
+#if PTI_VERSION_AT_LEAST(0, 17)
+void XpuptiActivityProfilerSession::handleCommunicationActivity(
+    const pti_view_record_comms* activity,
+    ActivityLogger& logger) {
+  const auto& activity_record = *activity;
+  const std::string activity_name{activity_record._name};
+  const std::string xccl_prefix{"xccl::"};
+  const auto record_name = xccl_prefix + activity_name;
+
+  traceBuffer_.span.opCount += 1;
+  traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::COLLECTIVE_COMM, record_name);
+  auto& comms_activity = *(traceBuffer_.activities.back());
+
+  comms_activity.startTime = activity_record._start_timestamp;
+  comms_activity.endTime = activity_record._end_timestamp;
+  comms_activity.device = activity_record._process_id;
+  comms_activity.resource = activity_record._thread_id;
+  comms_activity.threadId = activity_record._thread_id;
+
+  comms_activity.addMetadata("Communicator_id", activity_record._communicator_id);
+
+  if (outOfRange(&comms_activity)) {
+    traceBuffer_.span.opCount -= 1;
+    traceBuffer_.activities.pop_back();
+    return;
+  }
+
+  comms_activity.log(logger);
+}
+#endif
+
 void XpuptiActivityProfilerSession::handleOverheadActivity(
     const pti_view_record_overhead* activity,
     ActivityLogger& logger) {
@@ -375,6 +406,12 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
       handleOverheadActivity(
           reinterpret_cast<const pti_view_record_overhead*>(record), logger);
       break;
+#if PTI_VERSION_AT_LEAST(0, 17)
+    case PTI_VIEW_COMMUNICATION:
+      handleCommunicationActivity(
+          reinterpret_cast<const pti_view_record_comms*>(record), logger);
+      break;
+#endif
     default:
       errors_.push_back(
           "Unexpected activity type: " + std::to_string(record->_view_kind));

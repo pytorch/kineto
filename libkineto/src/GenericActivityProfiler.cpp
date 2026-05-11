@@ -692,10 +692,7 @@ void GenericActivityProfiler::finalizeTrace(
   string process_name = processName(pid);
   if (!process_name.empty()) {
     logger.handleDeviceInfo(
-        {.id = pid,
-         .sortIndex = pid,
-         .name = process_name,
-         .label = "CPU"},
+        {.id = pid, .sortIndex = pid, .name = process_name, .label = "CPU"},
         captureWindowStartTime_);
     if (!cpuOnly_ && use_default_device_info) {
       // Usually, GPU events use device id as pid (0-7).

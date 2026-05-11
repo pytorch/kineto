@@ -211,11 +211,10 @@ class GenericActivityProfiler {
   void recordThreadInfo(int32_t sysTid, int32_t tid, int32_t pid) {
     if (!resourceInfo_.contains({pid, tid})) {
       resourceInfo_.emplace(std::make_pair(pid, tid),
-                            ResourceInfo{
-                                .id = sysTid,
-                                .sortIndex = sysTid,
-                                .deviceId = pid,
-                                .name = fmt::format("thread {} ({})", sysTid, getThreadName())});
+                            ResourceInfo{.id = sysTid,
+                                         .sortIndex = sysTid,
+                                         .deviceId = pid,
+                                         .name = fmt::format("thread {} ({})", sysTid, getThreadName())});
     }
   }
 
@@ -335,12 +334,10 @@ class GenericActivityProfiler {
   // Create resource names for streams
   inline void recordStream(int device, int id, const char* postfix) {
     if (!hasDeviceResource(device, id)) {
-      resourceInfo_.emplace(std::make_pair(device, id),
-                            ResourceInfo{
-                                .id = id,
-                                .sortIndex = id,
-                                .deviceId = device,
-                                .name = fmt::format("stream {} {}", id, postfix)});
+      resourceInfo_.emplace(
+          std::make_pair(device, id),
+          ResourceInfo{
+              .id = id, .sortIndex = id, .deviceId = device, .name = fmt::format("stream {} {}", id, postfix)});
     }
   }
 
@@ -348,12 +345,9 @@ class GenericActivityProfiler {
   inline void recordDevice(int device) {
     constexpr int id = -1;
     if (!hasDeviceResource(device, id)) {
-      resourceInfo_.emplace(std::make_pair(device, id),
-                            ResourceInfo{
-                                .id = id,
-                                .sortIndex = id,
-                                .deviceId = device,
-                                .name = fmt::format("Device {}", device)});
+      resourceInfo_.emplace(
+          std::make_pair(device, id),
+          ResourceInfo{.id = id, .sortIndex = id, .deviceId = device, .name = fmt::format("Device {}", device)});
     }
   }
 

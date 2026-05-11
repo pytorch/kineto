@@ -337,34 +337,35 @@ void CuptiActivityApi::enableCuptiActivities(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
 
   externalCorrelationEnabled_.store(false, std::memory_order_relaxed);
+  using enum ActivityType;
   for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::GPU_MEMCPY) {
+    if (activity == GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
     }
-    if (activity == ActivityType::GPU_MEMSET) {
+    if (activity == GPU_MEMSET) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
     }
-    if (activity == ActivityType::CONCURRENT_KERNEL) {
+    if (activity == CONCURRENT_KERNEL) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
     }
-    if (activity == ActivityType::EXTERNAL_CORRELATION) {
+    if (activity == EXTERNAL_CORRELATION) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
       externalCorrelationEnabled_.store(true, std::memory_order_relaxed);
     }
-    if (activity == ActivityType::CUDA_SYNC) {
+    if (activity == CUDA_SYNC) {
 #if CUDA_VERSION >= 13000
       CUPTI_CALL(cuptiActivityEnableCudaEventDeviceTimestamps(true));
 #endif
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
     }
-    if (activity == ActivityType::CUDA_RUNTIME) {
+    if (activity == CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
 #if (CUDART_VERSION >= 12050)
       CUPTI_CALL(cuptiActivityEnableRuntimeApi(
           CUPTI_RUNTIME_TRACE_CBID_cudaGetDevice_v3020, 0));
 #endif
     }
-    if (activity == ActivityType::CUDA_DRIVER) {
+    if (activity == CUDA_DRIVER) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
 #if (CUDART_VERSION >= 12050)
       CUPTI_CALL(cuptiActivityEnableDriverApi(
@@ -375,7 +376,7 @@ void CuptiActivityApi::enableCuptiActivities(
           CUPTI_DRIVER_TRACE_CBID_cuCtxGetCurrent, 0));
 #endif
     }
-    if (activity == ActivityType::OVERHEAD) {
+    if (activity == OVERHEAD) {
       CUPTI_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_OVERHEAD));
     }
   }
@@ -388,30 +389,31 @@ void CuptiActivityApi::enableCuptiActivities(
 
 void CuptiActivityApi::disableCuptiActivities(
     const std::set<ActivityType>& selected_activities) {
+  using enum ActivityType;
   for (const auto& activity : selected_activities) {
-    if (activity == ActivityType::GPU_MEMCPY) {
+    if (activity == GPU_MEMCPY) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
     }
-    if (activity == ActivityType::GPU_MEMSET) {
+    if (activity == GPU_MEMSET) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
     }
-    if (activity == ActivityType::CONCURRENT_KERNEL) {
+    if (activity == CONCURRENT_KERNEL) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
     }
-    if (activity == ActivityType::EXTERNAL_CORRELATION) {
+    if (activity == EXTERNAL_CORRELATION) {
       CUPTI_CALL(
           cuptiActivityDisable(CUPTI_ACTIVITY_KIND_EXTERNAL_CORRELATION));
     }
-    if (activity == ActivityType::CUDA_SYNC) {
+    if (activity == CUDA_SYNC) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
     }
-    if (activity == ActivityType::CUDA_RUNTIME) {
+    if (activity == CUDA_RUNTIME) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
     }
-    if (activity == ActivityType::CUDA_DRIVER) {
+    if (activity == CUDA_DRIVER) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
     }
-    if (activity == ActivityType::OVERHEAD) {
+    if (activity == OVERHEAD) {
       CUPTI_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_OVERHEAD));
     }
   }

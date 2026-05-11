@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 include(GoogleTest)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 if(KINETO_BACKEND STREQUAL "xpu")
     set(XPU_XPUPTI_LIBRARY ${PTI_LIBRARY} ${SYCL_LIBRARY})

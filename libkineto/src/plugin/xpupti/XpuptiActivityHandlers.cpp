@@ -183,8 +183,6 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
 
   traceBuffer_.span.opCount += 1;
   traceBuffer_.gpuOpCount += 1;
-  const ITraceActivity* linked =
-      linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
 
   if constexpr (handleRuntimeActivities) {
     traceBuffer_.emplace_activity(
@@ -209,11 +207,14 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
 
   trace_activity->startTime = activity->_start_timestamp;
   trace_activity->endTime = activity->_end_timestamp;
-  trace_activity->id = activity->_correlation_id;
   trace_activity->threadId = activity->_thread_id;
   trace_activity->flow.id = activity->_correlation_id;
   trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
-  trace_activity->linked = linked;
+
+  trace_activity->id = activity->_correlation_id;
+  trace_activity->linked =
+      linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
+  trace_activity->addMetadata("correlation", activity->_correlation_id);
 
   if constexpr (handleRuntimeActivities) {
     trace_activity->device = activity->_process_id;
@@ -270,8 +271,6 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     trace_activity->addMetadataQuoted(
         "l0 queue", handleToHexString(activity->_queue_handle));
   }
-
-  trace_activity->addMetadata("correlation", activity->_correlation_id);
 
   if constexpr (handleKernelActivities) {
     if (activity->_source_file_name) {

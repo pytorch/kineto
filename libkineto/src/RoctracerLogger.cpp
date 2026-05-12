@@ -349,7 +349,6 @@ void RoctracerLogger::startLogging() {
     loggedIds_.add("hipPeekAtLastError");
     loggedIds_.add("hipModuleGetFunction");
 
-
     // Enable API callbacks
     if (loggedIds_.invertMode() == true) {
       // exclusion list - enable entire domain and turn off things in list

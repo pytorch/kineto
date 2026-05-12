@@ -380,7 +380,6 @@ int RocprofLogger::toolInit(
   apiList.add("hipPeekAtLastError");
   apiList.add("hipModuleGetFunction");
 
-
   // Get a vector of the enabled api calls
   auto apis = apiList.allEnabled();
 

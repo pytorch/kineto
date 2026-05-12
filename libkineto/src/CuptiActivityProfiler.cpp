@@ -221,7 +221,7 @@ void CuptiActivityProfiler::processGpuActivities(ActivityLogger& logger) {
 // Populate ctxToDeviceId from a record with (contextId, deviceId) fields.
 template <class T>
 static inline void updateCtxToDeviceId(const T* act) {
-  if (ctxToDeviceId().count(act->contextId) == 0) {
+  if (!ctxToDeviceId().contains(act->contextId)) {
     ctxToDeviceId()[act->contextId] = act->deviceId;
   }
 }
@@ -229,10 +229,10 @@ static inline void updateCtxToDeviceId(const T* act) {
 // P2P memcpy carries separate source and destination (context, device) pairs.
 static inline void updateCtxToDeviceId(
     const CUpti_ActivityMemcpyPtoPType* act) {
-  if (ctxToDeviceId().count(act->srcContextId) == 0) {
+  if (!ctxToDeviceId().contains(act->srcContextId)) {
     ctxToDeviceId()[act->srcContextId] = act->srcDeviceId;
   }
-  if (ctxToDeviceId().count(act->dstContextId) == 0) {
+  if (!ctxToDeviceId().contains(act->dstContextId)) {
     ctxToDeviceId()[act->dstContextId] = act->dstDeviceId;
   }
 }
@@ -503,8 +503,7 @@ void CuptiActivityProfiler::logDeferredEvents() {
   // there was some GPU kernel/memcopy/memset observed on it in the trace
   // window.
   for (const auto& entry : logQueue_) {
-    if (seenDeviceStreams_.find({entry.device, entry.stream}) ==
-        seenDeviceStreams_.end()) {
+    if (!seenDeviceStreams_.contains({entry.device, entry.stream})) {
       VLOG(2) << "Skipping Stream Wait Event on unseen stream = "
               << entry.stream;
     } else {

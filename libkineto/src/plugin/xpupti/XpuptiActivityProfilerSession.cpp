@@ -114,11 +114,11 @@ std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
     getResourceInfos() {
   std::vector<libkineto::ResourceInfo> result;
   for (const auto& [device_id, sycl_queue_id] : resourceInfo_) {
-    result.emplace_back(
-        device_id,
-        sycl_queue_id,
-        sycl_queue_id,
-        fmt::format("Stream {}", sycl_queue_id));
+    result.push_back(
+        {.id = sycl_queue_id,
+         .sortIndex = sycl_queue_id,
+         .deviceId = device_id,
+         .name = fmt::format("Stream {}", sycl_queue_id)});
   }
   resourceInfo_.clear();
   return result;
@@ -169,10 +169,8 @@ void XpuptiActivityProfilerSession::enumDeviceUUIDs() {
 
 DeviceIndex_t XpuptiActivityProfilerSession::getDeviceIdxFromUUID(
     const uint8_t deviceUUID[16]) {
-  auto it = std::find_if(
-      deviceUUIDs_.begin(),
-      deviceUUIDs_.end(),
-      [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {
+  auto it = std::ranges::find_if(
+      deviceUUIDs_, [deviceUUID](const DeviceUUIDsT& deviceUUIDinVec) {
         return std::equal(
             deviceUUIDinVec.begin(),
             deviceUUIDinVec.end(),

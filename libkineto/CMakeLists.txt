@@ -302,7 +302,7 @@ if(NOT WIN32 AND NOT APPLE AND NOT KINETO_BACKEND STREQUAL "xpu")
 endif()
 
 set_target_properties(kineto kineto_base kineto_api PROPERTIES
-      CXX_STANDARD 17
+      CXX_STANDARD 20
       CXX_STANDARD_REQUIRED YES
       CXX_EXTENSIONS NO)
 

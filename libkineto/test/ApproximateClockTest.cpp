@@ -101,6 +101,7 @@ TEST(ApproximateClockTest, GetTimeIsPositiveAndAdvances) {
 
 TEST(ApproximateClockTest, DefaultTimeConverterIsIdentity) {
   auto& converter = get_time_converter();
+  converter = [](approx_time_t t) { return t; };
   constexpr approx_time_t kTestValue = 123456789;
   EXPECT_EQ(converter(kTestValue), static_cast<libkineto::time_t>(kTestValue));
 }

@@ -68,8 +68,7 @@ void XpuptiActivityProfilerSession::start() {
 
 void XpuptiActivityProfilerSession::stop() {
   xpti_.disablePtiActivities(activity_types_);
-  profilerEndTs_ =
-      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  profilerEndTs_ = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
 }
 
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {

@@ -172,7 +172,10 @@ RunProfilerTest(
     const KN::Config& cfg,
     unsigned repeatCount,
     std::vector<std::string_view>&& expectedActivities,
-    std::vector<std::string_view>&& expectedTypes) {
+    std::vector<std::string_view>&& expectedTypes,
+    int64_t userCorrelationId,
+    const KN::ITraceActivity* linkedCpuActivity,
+    std::function<const KN::ITraceActivity*(int32_t)> linkedActivityCallback) {
   KN::XPUActivityProfiler profiler;
   EXPECT_TRUE(profiler.name() == "__xpu_profiler__");
 
@@ -183,17 +186,34 @@ RunProfilerTest(
                           .count();
   pSession->start();
 
+  if (userCorrelationId != 0) {
+    pSession->pushUserCorrelationId(
+        static_cast<uint64_t>(userCorrelationId));
+  }
+
   void ComputeOnXpu(unsigned size, unsigned repeatCount);
   ComputeOnXpu(1024, repeatCount);
+
+  if (userCorrelationId != 0) {
+    pSession->popUserCorrelationId();
+  }
 
   pSession->stop();
   int64_t endTime = std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::system_clock::now().time_since_epoch())
                         .count();
 
-  auto getLinkedActivity = [](int32_t) -> const KN::ITraceActivity* {
-    return nullptr;
-  };
+  auto getLinkedActivity = std::move(linkedActivityCallback);
+  if (!getLinkedActivity) {
+    getLinkedActivity =
+        [userCorrelationId, linkedCpuActivity](
+            int32_t corr) -> const KN::ITraceActivity* {
+      if (userCorrelationId != 0 && corr == userCorrelationId) {
+        return linkedCpuActivity;
+      }
+      return nullptr;
+    };
+  }
 
   TestActivityLogger logger;
   pSession->processTrace(logger, getLinkedActivity, startTime, endTime);

@@ -8,6 +8,8 @@
 
 #include "include/output_base.h"
 
+#include <functional>
+
 namespace KN = KINETO_NAMESPACE;
 
 bool IsEnvVerbose();
@@ -18,4 +20,7 @@ std::pair<std::unique_ptr<KN::IActivityProfilerSession>, std::unique_ptr<KN::Cpu
     const KN::Config& cfg,
     unsigned repeatCount,
     std::vector<std::string_view>&& expectedActivities,
-    std::vector<std::string_view>&& expectedTypes);
+    std::vector<std::string_view>&& expectedTypes,
+    int64_t userCorrelationId = 0,
+    const KN::ITraceActivity* linkedCpuActivity = nullptr,
+    std::function<const KN::ITraceActivity*(int32_t)> linkedActivityCallback = nullptr);

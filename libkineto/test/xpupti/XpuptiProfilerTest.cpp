@@ -9,10 +9,124 @@
 #include "XpuptiTestUtilities.h"
 
 #include "include/libkineto.h"
+#include "include/GenericTraceActivity.h"
 
 #include <gtest/gtest.h>
 
+#include <set>
+
 namespace KN = KINETO_NAMESPACE;
+
+namespace {
+
+constexpr int64_t kUserCorrId = 0xC0FFEE;
+
+enum class LinkedActivityMode {
+  AlwaysLinked,
+  MissFirstThenLinked,
+};
+
+std::vector<std::string_view> expectedGpuUserAnnotationActivities() {
+  return {
+      "urEnqueueMemBufferWrite",
+      "urEnqueueMemBufferWrite",
+      "urEnqueueMemBufferWrite",
+      "urEnqueueKernelLaunch",
+      "urEnqueueMemBufferRead",
+      "Memcpy M2D",
+      "Memcpy M2D",
+      "Memcpy M2D",
+      "Run(sycl::_V1::queue, ...)",
+      "Memcpy D2M",
+      "user_function",
+      "user_function"};
+}
+
+std::vector<std::string_view> expectedGpuUserAnnotationTypes() {
+  return {
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "xpu_runtime",
+      "gpu_memcpy",
+      "gpu_memcpy",
+      "gpu_memcpy",
+      "kernel",
+      "gpu_memcpy",
+      "gpu_user_annotation",
+      "gpu_user_annotation"};
+}
+
+std::unique_ptr<KN::CpuTraceBuffer> runGpuUserAnnotationCase(
+    LinkedActivityMode mode) {
+  KN::Config cfg;
+  std::vector<std::string_view> metrics;
+
+  std::set<KN::ActivityType> activities{
+      KN::ActivityType::GPU_MEMCPY,
+      KN::ActivityType::CONCURRENT_KERNEL,
+      KN::ActivityType::XPU_RUNTIME,
+      KN::ActivityType::EXTERNAL_CORRELATION,
+      KN::ActivityType::GPU_USER_ANNOTATION,
+  };
+
+  auto expectedActivities = expectedGpuUserAnnotationActivities();
+  auto expectedTypes = expectedGpuUserAnnotationTypes();
+
+  static const KN::TraceSpan kCpuSpan(0, 0, "cpu_span", "");
+  KN::GenericTraceActivity cpuAct(
+      kCpuSpan, KN::ActivityType::CPU_OP, "user_function");
+  cpuAct.id = kUserCorrId;
+
+  bool firstLookup = true;
+  auto linkedActivityCallback =
+      [&cpuAct, &firstLookup, mode](int32_t corr)
+      -> const KN::ITraceActivity* {
+    if (corr != kUserCorrId) {
+      return nullptr;
+    }
+    if (mode == LinkedActivityMode::MissFirstThenLinked && firstLookup) {
+      firstLookup = false;
+      return nullptr;
+    }
+    return &cpuAct;
+  };
+
+  constexpr unsigned repeatCount = 1;
+  [[maybe_unused]] auto [pSession, pBuffer] = RunProfilerTest(
+      metrics,
+      activities,
+      cfg,
+      repeatCount,
+      std::move(expectedActivities),
+      std::move(expectedTypes),
+      kUserCorrId,
+      &cpuAct,
+      linkedActivityCallback);
+
+  return std::move(pBuffer);
+}
+
+void expectTwoUserAnnotations(const KN::CpuTraceBuffer& buffer) {
+  std::set<std::pair<int64_t, int64_t>> streamKeys;
+  unsigned annotationCount = 0;
+  for (const auto& activity : buffer.activities) {
+    if (activity->type() != KN::ActivityType::GPU_USER_ANNOTATION) {
+      continue;
+    }
+    ++annotationCount;
+    EXPECT_EQ(activity->correlationId(), kUserCorrId);
+    ASSERT_NE(activity->linkedActivity(), nullptr);
+    EXPECT_EQ(activity->linkedActivity()->name(), "user_function");
+    streamKeys.insert({activity->deviceId(), activity->resourceId()});
+  }
+
+  EXPECT_EQ(annotationCount, 2);
+  EXPECT_EQ(streamKeys.size(), 2);
+}
+
+} // namespace
 
 TEST(XpuptiProfilerTest, XpuDriverEvents) {
   KN::Config cfg;
@@ -116,4 +230,15 @@ TEST(XpuptiProfilerTest, TestEvents) {
         << "resourceInfo for deviceId = " << resourceInfos[i].deviceId
         << ", resourceId=" << resourceInfos[i].id << " never used.";
   }
+}
+
+TEST(XpuptiProfilerTest, GpuUserAnnotation) {
+  auto pBuffer = runGpuUserAnnotationCase(LinkedActivityMode::AlwaysLinked);
+  expectTwoUserAnnotations(*pBuffer);
+}
+
+TEST(XpuptiProfilerTest, GpuUserAnnotationLinkedActivityRetry) {
+  auto pBuffer =
+      runGpuUserAnnotationCase(LinkedActivityMode::MissFirstThenLinked);
+  expectTwoUserAnnotations(*pBuffer);
 }

@@ -11,8 +11,6 @@
 #include "XpuptiActivityProfilerSession.h"
 #include "XpuptiScopeProfilerApi.h"
 
-#if PTI_VERSION_AT_LEAST(0, 15)
-
 #include <pti/pti_metrics_scope.h>
 
 namespace KINETO_NAMESPACE {
@@ -46,5 +44,3 @@ class XpuptiScopeProfilerSession : public XpuptiActivityProfilerSession {
 };
 
 } // namespace KINETO_NAMESPACE
-
-#endif

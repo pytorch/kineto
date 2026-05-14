@@ -63,13 +63,13 @@ XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
 // =========== Session Public Methods ============= //
 void XpuptiActivityProfilerSession::start() {
   profilerStartTs_ =
-      libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
 }
 
 void XpuptiActivityProfilerSession::stop() {
   xpti_.disablePtiActivities(activity_types_);
   profilerEndTs_ =
-      libkineto::timeSinceEpoch(std::chrono::high_resolution_clock::now());
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
 }
 
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {

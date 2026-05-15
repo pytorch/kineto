@@ -669,7 +669,7 @@ inline const std::string DriverActivity::metadataJson() const {
 }
 
 inline const std::string DriverActivity::name() const {
-  return CuptiCbidRegistry::instance().getName(CallbackDomain::DRIVER, activity_.cbid);
+  return driverCbidName(activity_.cbid);
 }
 
 template <class T>

@@ -8,33 +8,48 @@
 
 #include "XpuptiProfilerMacros.h"
 
-#include <fmt/format.h>
-
 #include <stdexcept>
+#include <string_view>
+
+#include <fmt/format.h>
 
 namespace KINETO_NAMESPACE {
 
+namespace {
 [[noreturn]] void throwXpuRuntimeError(
-    std::string_view errMsg,
-    pti_result errCode) {
-  auto errMsgWithCode =
-      fmt::format("{} The error code is {}", errMsg, static_cast<int>(errCode));
-#if PTI_VERSION_AT_LEAST(0, 10)
-  errMsgWithCode = fmt::format(
-      "{}. The detailed error message is: {}",
-      errMsgWithCode,
+    pti_result errCode,
+    std::string_view message,
+    std::source_location source_location) {
+  const auto& function_location = fmt::format(
+      "function {} located: {}:{}",
+      source_location.function_name(),
+      source_location.file_name(),
+      source_location.line());
+  const auto& error_code = fmt::format(
+      "Error code: {} ({})",
+      static_cast<int>(errCode),
       ptiResultTypeToString(errCode));
-#endif
-  throw std::runtime_error(errMsgWithCode);
-}
+  const auto& error = fmt::format(
+      "Kineto Profiler on XPU got error from {}. {}.",
+      function_location,
+      error_code);
 
-[[noreturn]] void throwXpuRuntimeError(
-    const char* func,
-    int line,
-    pti_result errCode) {
-  auto errMsg = fmt::format(
-      "Kineto Profiler on XPU got error from function {} line {}.", func, line);
-  throwXpuRuntimeError(errMsg, errCode);
+  if (message.empty())
+    throw std::runtime_error(error);
+  else {
+    const auto& error_with_message =
+        fmt::format("{}. Message: {}", error, message);
+    throw std::runtime_error(error_with_message);
+  }
+}
+} // namespace
+
+void XPUPTI_CALL(
+    pti_result errCode,
+    std::string_view message,
+    std::source_location source_location) {
+  if (errCode != PTI_SUCCESS)
+    throwXpuRuntimeError(errCode, message, source_location);
 }
 
 } // namespace KINETO_NAMESPACE

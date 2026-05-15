@@ -46,8 +46,6 @@ enum class TraceStatus {
  *   processes and gpu rows in the trace viewer.
  */
 struct DeviceInfo {
-  DeviceInfo(int64_t id, int64_t sortIndex, std::string name, std::string label)
-      : id(id), sortIndex(sortIndex), name(std::move(name)), label(std::move(label)) {}
   int64_t id; // process id
   int64_t sortIndex; // position in trace view
   const std::string name; // process name
@@ -58,8 +56,6 @@ struct DeviceInfo {
  *   Can be used to specify resource inside device
  */
 struct ResourceInfo {
-  ResourceInfo(int64_t deviceId, int64_t id, int64_t sortIndex, std::string name)
-      : id(id), sortIndex(sortIndex), deviceId(deviceId), name(std::move(name)) {}
   int64_t id; // resource id
   int64_t sortIndex; // position in trace view
   int64_t deviceId; // id of device which owns this resource (specified in

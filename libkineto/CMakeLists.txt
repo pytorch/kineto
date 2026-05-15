@@ -55,17 +55,11 @@ endif()
 # Selection is explicit: if the chosen toolkit isn't available, configuration
 # fails. Use KINETO_BACKEND=cpu to build without GPU support.
 
-# Backwards-compat shim: derive KINETO_BACKEND from legacy LIBKINETO_NO* flags
-# when the user hasn't set KINETO_BACKEND directly.
-# TODO: remove after PyTorch migrates to KINETO_BACKEND.
+# Track whether the user explicitly set KINETO_BACKEND before the default
+# fires below, so we can warn when we fall back to cpu.
+set(_kineto_backend_explicit ON)
 if(NOT DEFINED CACHE{KINETO_BACKEND} AND NOT DEFINED KINETO_BACKEND)
-  if(DEFINED LIBKINETO_NOROCTRACER AND NOT LIBKINETO_NOROCTRACER)
-    set(KINETO_BACKEND "rocm" CACHE STRING "")
-  elseif(DEFINED LIBKINETO_NOCUPTI AND NOT LIBKINETO_NOCUPTI)
-    set(KINETO_BACKEND "cuda" CACHE STRING "")
-  elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    set(KINETO_BACKEND "xpu" CACHE STRING "")
-  endif()
+  set(_kineto_backend_explicit OFF)
 endif()
 
 set(KINETO_BACKEND "cpu" CACHE STRING
@@ -81,29 +75,12 @@ endif()
 unset(_KINETO_BACKEND_VALID)
 message(STATUS "KINETO_BACKEND = ${KINETO_BACKEND}")
 
-# Warn if legacy LIBKINETO_NO* flags disagree with the cached KINETO_BACKEND.
-# The shim only fires on initial configure; once KINETO_BACKEND is in the
-# cache, subsequent legacy-flag changes are silently ignored. Detect that and
-# tell the user. TODO: remove with the rest of the legacy shim.
-if(DEFINED LIBKINETO_NOCUPTI OR DEFINED LIBKINETO_NOROCTRACER OR DEFINED LIBKINETO_NOXPUPTI)
-  if(DEFINED LIBKINETO_NOROCTRACER AND NOT LIBKINETO_NOROCTRACER)
-    set(_legacy_implied_backend "rocm")
-  elseif(DEFINED LIBKINETO_NOCUPTI AND NOT LIBKINETO_NOCUPTI)
-    set(_legacy_implied_backend "cuda")
-  elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    set(_legacy_implied_backend "xpu")
-  else()
-    set(_legacy_implied_backend "cpu")
-  endif()
-  if(NOT KINETO_BACKEND STREQUAL _legacy_implied_backend)
-    message(WARNING
-      "Legacy LIBKINETO_NO* flags imply KINETO_BACKEND=${_legacy_implied_backend} "
-      "but KINETO_BACKEND=${KINETO_BACKEND} (cached from a previous configure). "
-      "Legacy flags are ignored. Pass -DKINETO_BACKEND=${_legacy_implied_backend} "
-      "explicitly or remove the build directory to switch backends.")
-  endif()
-  unset(_legacy_implied_backend)
+if(NOT _kineto_backend_explicit)
+  message(WARNING
+    "KINETO_BACKEND was not set; defaulting to 'cpu'. "
+    "Pass -DKINETO_BACKEND={cpu,cuda,rocm,xpu} explicitly to silence this warning.")
 endif()
+unset(_kineto_backend_explicit)
 
 # Per-backend configure-time setup.
 if(KINETO_BACKEND STREQUAL "cuda")
@@ -302,7 +279,7 @@ if(NOT WIN32 AND NOT APPLE AND NOT KINETO_BACKEND STREQUAL "xpu")
 endif()
 
 set_target_properties(kineto kineto_base kineto_api PROPERTIES
-      CXX_STANDARD 17
+      CXX_STANDARD 20
       CXX_STANDARD_REQUIRED YES
       CXX_EXTENSIONS NO)
 

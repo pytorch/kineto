@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Do not link gtest into the shared library to avoid duplicate gtest globals
 # (gtest is statically linked into the executable; the shared library resolves

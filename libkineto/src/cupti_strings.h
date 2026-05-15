@@ -8,13 +8,16 @@
 
 #pragma once
 
+#include <string>
+
 #include <cupti.h>
 
 namespace libkineto {
 
 const char* memoryKindString(CUpti_ActivityMemoryKind kind);
 const char* memcpyKindString(CUpti_ActivityMemcpyKind kind);
-const char* runtimeCbidName(CUpti_CallbackId cbid);
+std::string runtimeCbidName(CUpti_CallbackId cbid);
+std::string driverCbidName(CUpti_CallbackId cbid);
 const char* overheadKindString(CUpti_ActivityOverheadKind kind);
 const char* syncTypeString(CUpti_ActivitySynchronizationType kind);
 

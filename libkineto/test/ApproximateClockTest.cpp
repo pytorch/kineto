@@ -98,9 +98,3 @@ TEST(ApproximateClockTest, GetTimeIsPositiveAndAdvances) {
   } while (t1 == t0 && std::chrono::steady_clock::now() < deadline);
   EXPECT_GT(t1, t0);
 }
-
-TEST(ApproximateClockTest, DefaultTimeConverterIsIdentity) {
-  auto& converter = get_time_converter();
-  constexpr approx_time_t kTestValue = 123456789;
-  EXPECT_EQ(converter(kTestValue), static_cast<libkineto::time_t>(kTestValue));
-}

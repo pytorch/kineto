@@ -191,6 +191,9 @@ list(APPEND KINETO_DEFINITIONS "ENABLE_IPC_FABRIC")
 set(KINETO_COMPILE_OPTIONS)
 if(MSVC)
   list(APPEND KINETO_COMPILE_OPTIONS "/utf-8")
+  # MSVC reports __cplusplus as 199711L unless /Zc:__cplusplus is set, which
+  # breaks SYCL headers that static_assert __cplusplus >= 201703L.
+  list(APPEND KINETO_COMPILE_OPTIONS "/Zc:__cplusplus")
 endif()
 if(KINETO_BACKEND STREQUAL "cuda")
   list(APPEND KINETO_DEFINITIONS "HAS_CUPTI")

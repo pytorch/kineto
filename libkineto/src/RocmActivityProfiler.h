@@ -12,6 +12,8 @@
 //                       need this guard in the header file.
 #ifdef HAS_ROCTRACER
 
+#include <cstdint>
+
 #include "GenericActivityProfiler.h"
 #include "RocLogger.h"
 #ifndef ROCTRACER_FALLBACK

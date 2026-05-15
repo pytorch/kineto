@@ -15,6 +15,8 @@
 #include <time.h>
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
+#include <iterator>
 
 #include <unistd.h>
 
@@ -30,6 +32,7 @@
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
 #include "src/RocmActivityProfiler.h"
+#include "src/RocmStreamQueue.h"
 
 #ifdef ROCTRACER_FALLBACK
 #include "src/RoctracerActivityApi.h"
@@ -88,6 +91,24 @@ void createTempTraceFile(char* filename) {
   ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
   close(fd);
 }
+
+bool isAsyncCopy(const rocprofAsyncRow& async) {
+#ifdef ROCTRACER_FALLBACK
+  switch (async.kind) {
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      return true;
+    default:
+      return false;
+  }
+#else
+  return async.domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY;
+#endif
+}
 } // namespace
 
 // Provides ability to easily create a test CPU-side ops
@@ -133,7 +154,8 @@ struct MockRocLogger {
       uint32_t cid,
       int64_t start_ns,
       int64_t end_ns,
-      int64_t correlation) {
+      int64_t correlation,
+      uint64_t stream = 0) {
     rocprofKernelRow* row = new rocprofKernelRow(
         correlation,
         RUNTIME_DOMAIN,
@@ -151,7 +173,7 @@ struct MockRocLogger {
         0,
         0,
         0,
-        0);
+        reinterpret_cast<hipStream_t>(stream));
     activities_.push_back(row);
   }
 
@@ -177,7 +199,9 @@ struct MockRocLogger {
       uint32_t cid,
       int64_t start_ns,
       int64_t end_ns,
-      int64_t correlation) {
+      int64_t correlation,
+      hipMemcpyKind kind = hipMemcpyHostToHost,
+      uint64_t stream = 0) {
     rocprofCopyRow* row = new rocprofCopyRow(
         correlation,
         RUNTIME_DOMAIN,
@@ -189,15 +213,16 @@ struct MockRocLogger {
         nullptr,
         nullptr,
         1,
-        hipMemcpyHostToHost,
-        static_cast<hipStream_t>(0));
+        kind,
+        reinterpret_cast<hipStream_t>(stream));
     activities_.push_back(row);
   }
 
   void addKernelActivity(
       int64_t start_ns,
       int64_t end_ns,
-      int64_t correlation) {
+      int64_t correlation,
+      uint64_t queue = 1) {
 #ifdef ROCTRACER_FALLBACK
     rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
@@ -205,7 +230,7 @@ struct MockRocLogger {
         HIP_OP_DISPATCH_KIND_KERNEL_,
         0,
         0,
-        1,
+        queue,
         start_ns,
         end_ns,
         std::string("kernel"));
@@ -216,7 +241,7 @@ struct MockRocLogger {
         0,
         0,
         0,
-        1,
+        queue,
         start_ns,
         end_ns,
         std::string("kernel"));
@@ -227,7 +252,8 @@ struct MockRocLogger {
   void addMemcpyH2DActivity(
       int64_t start_ns,
       int64_t end_ns,
-      int64_t correlation) {
+      int64_t correlation,
+      uint64_t queue = 2) {
 #ifdef ROCTRACER_FALLBACK
     rocprofAsyncRow* row = new rocprofAsyncRow(
         correlation,
@@ -235,7 +261,7 @@ struct MockRocLogger {
         HIP_OP_COPY_KIND_HOST_TO_DEVICE_,
         0,
         0,
-        2,
+        queue,
         start_ns,
         end_ns,
         std::string());
@@ -246,7 +272,7 @@ struct MockRocLogger {
         0,
         ROCPROFILER_MEMORY_COPY_HOST_TO_DEVICE,
         0,
-        2,
+        queue,
         start_ns,
         end_ns,
         std::string());
@@ -321,6 +347,7 @@ class MockRocActivities : public RocprofActivityApi {
       }
       externalCorrelations.clear();
     }
+    detail::backfillAsyncCopyStreams(activityLogger->activities_, isAsyncCopy);
     for (auto& item : activityLogger->activities_) {
       handler(item);
       ++count;
@@ -465,6 +492,157 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 #endif
+}
+
+TEST_F(
+    RocmActivityProfilerTest,
+    HtoDMemcpyUsesRuntimeStreamWhenAsyncQueueIsZero) {
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 15, 2, 7);
+  gpuOps->addKernelActivity(start_time_ns + 16, start_time_ns + 19, 2, 23);
+  gpuOps->addRuntimeCopyActivity(
+      HIP_MEMCPY,
+      start_time_ns + 20,
+      start_time_ns + 30,
+      1,
+      hipMemcpyHostToDevice,
+      7);
+  gpuOps->addMemcpyH2DActivity(start_time_ns + 40, start_time_ns + 50, 1, 0);
+  rocActivities_.activityLogger = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  const ITraceActivity* memcpyActivity = nullptr;
+  for (const auto& activity : *trace.activities()) {
+    if (activity->name() == "Memcpy HtoD (Host -> Device)") {
+      memcpyActivity = activity;
+      break;
+    }
+  }
+
+  ASSERT_NE(memcpyActivity, nullptr);
+  EXPECT_EQ(memcpyActivity->resourceId(), 23);
+
+#ifdef __linux__
+  char filename[] = "/tmp/libkineto_testXXXXXX.json";
+  createTempTraceFile(filename);
+  trace.save(filename);
+
+  std::ifstream file(filename);
+  ASSERT_TRUE(file.is_open());
+  std::string jsonStr(
+      (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  nlohmann::json jsonData = nlohmann::json::parse(jsonStr);
+
+  bool foundMemcpy = false;
+  for (const auto& event : jsonData["traceEvents"]) {
+    if (event.value("name", "") == "Memcpy HtoD (Host -> Device)") {
+      foundMemcpy = true;
+      EXPECT_EQ(event["args"]["stream"].get<int64_t>(), 23);
+    }
+  }
+  EXPECT_TRUE(foundMemcpy);
+#endif
+}
+
+TEST_F(RocmActivityProfilerTest, HtoDMemcpyKeepsNonzeroAsyncQueue) {
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 15, 2, 7);
+  gpuOps->addKernelActivity(start_time_ns + 16, start_time_ns + 19, 2, 23);
+  gpuOps->addRuntimeCopyActivity(
+      HIP_MEMCPY,
+      start_time_ns + 20,
+      start_time_ns + 30,
+      1,
+      hipMemcpyHostToDevice,
+      7);
+  gpuOps->addMemcpyH2DActivity(start_time_ns + 40, start_time_ns + 50, 1, 42);
+  rocActivities_.activityLogger = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  const ITraceActivity* memcpyActivity = nullptr;
+  for (const auto& activity : *trace.activities()) {
+    if (activity->name() == "Memcpy HtoD (Host -> Device)") {
+      memcpyActivity = activity;
+      break;
+    }
+  }
+
+  ASSERT_NE(memcpyActivity, nullptr);
+  EXPECT_EQ(memcpyActivity->resourceId(), 42);
+}
+
+TEST_F(
+    RocmActivityProfilerTest,
+    HtoDMemcpyStaysOnZeroWhenRuntimeStreamMapsToMultipleQueues) {
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 10, start_time_ns + 15, 2, 7);
+  gpuOps->addKernelActivity(start_time_ns + 16, start_time_ns + 19, 2, 23);
+  gpuOps->addRuntimeKernelActivity(
+      HIP_LAUNCH_KERNEL, start_time_ns + 20, start_time_ns + 25, 3, 7);
+  gpuOps->addKernelActivity(start_time_ns + 26, start_time_ns + 29, 3, 24);
+  gpuOps->addRuntimeCopyActivity(
+      HIP_MEMCPY,
+      start_time_ns + 30,
+      start_time_ns + 40,
+      1,
+      hipMemcpyHostToDevice,
+      7);
+  gpuOps->addMemcpyH2DActivity(start_time_ns + 50, start_time_ns + 60, 1, 0);
+  rocActivities_.activityLogger = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  const ITraceActivity* memcpyActivity = nullptr;
+  for (const auto& activity : *trace.activities()) {
+    if (activity->name() == "Memcpy HtoD (Host -> Device)") {
+      memcpyActivity = activity;
+      break;
+    }
+  }
+
+  ASSERT_NE(memcpyActivity, nullptr);
+  EXPECT_EQ(memcpyActivity->resourceId(), 0);
 }
 
 TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {

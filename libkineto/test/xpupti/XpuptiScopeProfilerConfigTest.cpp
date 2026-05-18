@@ -51,7 +51,7 @@ TEST_F(XpuptiScopeProfilerConfigTest, ScopesDefaults) {
   EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_METRICS = metric1"));
   EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_ENABLE_PER_KERNEL = false"));
 
-  cfg.setSignalDefaults();
+  cfg.setClientDefaults();
 
   EXPECT_TRUE(cfg_auto.parse("XPUPTI_PROFILER_METRICS = metric2"));
   EXPECT_TRUE(cfg_auto.parse("XPUPTI_PROFILER_ENABLE_PER_KERNEL = true"));

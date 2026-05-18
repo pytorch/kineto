@@ -34,13 +34,6 @@ class AbstractConfig {
   // Returns true if successfully parsed the config string
   bool parse(const std::string& conf);
 
-  // Default setup for signal-triggered profiling
-  virtual void setSignalDefaults() {
-    for (auto& p : featureConfigs_) {
-      p.second->setSignalDefaults();
-    }
-  }
-
   // Default setup for client-triggered profiling
   virtual void setClientDefaults() {
     for (auto& p : featureConfigs_) {

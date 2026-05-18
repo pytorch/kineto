@@ -292,10 +292,6 @@ class Config : public AbstractConfig {
     return verboseLogModules_;
   }
 
-  [[nodiscard]] bool sigUsr2Enabled() const {
-    return enableSigUsr2_;
-  }
-
   [[nodiscard]] bool ipcFabricEnabled() const {
     return enableIpcFabric_;
   }
@@ -493,9 +489,6 @@ class Config : public AbstractConfig {
 
   // DEPRECATED
   std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;
-
-  // Enable profiling via SIGUSR2
-  bool enableSigUsr2_;
 
   // Enable IPC Fabric instead of thrift communication
   bool enableIpcFabric_;

@@ -81,8 +81,6 @@ class ConfigLoader {
   bool hasNewConfig(const Config& oldConfig);
   int contextCountForGpu(uint32_t device);
 
-  void handleOnDemandSignal();
-
   static void setDaemonConfigLoaderFactory(std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
 
   std::string getConfString();
@@ -97,9 +95,6 @@ class ConfigLoader {
   void stopThread();
   void updateConfigThread();
   void updateBaseConfig();
-
-  // Create configuration when receiving SIGUSR2
-  void configureFromSignal(std::chrono::time_point<std::chrono::system_clock> now, Config& config);
 
   // Create configuration when receiving request from a daemon
   void configureFromDaemon(std::chrono::time_point<std::chrono::system_clock> now, Config& config);
@@ -119,7 +114,6 @@ class ConfigLoader {
   std::condition_variable updateThreadCondVar_;
   std::mutex updateThreadMutex_;
   std::atomic_bool stopFlag_{false};
-  std::atomic_bool onDemandSignal_{false};
 };
 
 } // namespace KINETO_NAMESPACE

@@ -150,10 +150,6 @@ constexpr char kProfileStartIterationRoundUpKey[] =
 constexpr char kRequestTraceID[] = "REQUEST_TRACE_ID";
 constexpr char kRequestGroupTraceID[] = "REQUEST_GROUP_TRACE_ID";
 
-// Enable on-demand trigger via kill -USR2 <pid>
-// When triggered in this way, /tmp/libkineto.conf will be used as config.
-constexpr char kEnableSigUsr2Key[] = "ENABLE_SIGUSR2";
-
 // Enable communication through IPC Fabric
 // and disable thrift communication with dynolog daemon
 constexpr char kEnableIpcFabricKey[] = "ENABLE_IPC_FABRIC";
@@ -252,7 +248,6 @@ Config::Config()
       profileStartIteration_(-1),
       profileStartIterationRoundUp_(-1),
       requestTimestamp_(milliseconds(0)),
-      enableSigUsr2_(false),
       enableIpcFabric_(false),
       onDemandConfigUpdateIntervalSecs_(
           kDefaultOnDemandConfigUpdateIntervalSecs),
@@ -480,8 +475,6 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     profileStartIteration_ = toInt32(val);
   } else if (!name.compare(kProfileStartIterationRoundUpKey)) {
     profileStartIterationRoundUp_ = toInt32(val);
-  } else if (!name.compare(kEnableSigUsr2Key)) {
-    enableSigUsr2_ = toBool(val);
   } else if (!name.compare(kEnableIpcFabricKey)) {
     enableIpcFabric_ = toBool(val);
   } else if (!name.compare(kOnDemandConfigUpdateIntervalSecsKey)) {

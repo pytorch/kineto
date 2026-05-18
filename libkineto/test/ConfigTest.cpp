@@ -253,34 +253,6 @@ TEST(ParseTest, SamplesPerReport) {
   EXPECT_EQ(cfg.samplesPerReport(), 1);
 }
 
-TEST(ParseTest, EnableSigUsr2) {
-  Config cfg;
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=yes"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=no"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=YES"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=NO"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=Y"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=N"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=T"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=F"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=true"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=false"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=  "));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=2"));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=-1"));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=yep"));
-}
-
 TEST(ParseTest, DeviceMask) {
   Config cfg;
   // Single device

@@ -46,10 +46,6 @@ class CuptiRangeProfilerConfig : public AbstractConfig {
     return cuptiProfilerMaxRanges_;
   }
 
-  void setSignalDefaults() override {
-    setDefaults();
-  }
-
   void setClientDefaults() override {
     setDefaults();
   }

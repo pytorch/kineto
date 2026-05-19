@@ -299,30 +299,6 @@ TEST(ParseTest, DeviceMask) {
   EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 1.0"));
 }
 
-TEST(ParseTest, RequestTime) {
-  Config cfg;
-  system_clock::time_point now = system_clock::now();
-  int64_t tgood_ms =
-      duration_cast<milliseconds>(now.time_since_epoch()).count();
-  EXPECT_TRUE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tgood_ms)));
-
-  tgood_ms = duration_cast<milliseconds>((now - seconds(5)).time_since_epoch())
-                 .count();
-  EXPECT_TRUE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tgood_ms)));
-
-  int64_t tbad_ms =
-      duration_cast<milliseconds>((now - seconds(20)).time_since_epoch())
-          .count();
-  EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
-
-  EXPECT_FALSE(cfg.parse("REQUEST_TIMESTAMP = 0"));
-  EXPECT_FALSE(cfg.parse("REQUEST_TIMESTAMP = -1"));
-
-  tbad_ms = duration_cast<milliseconds>((now + seconds(10)).time_since_epoch())
-                .count();
-  EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
-}
-
 TEST(ParseTest, ProfileStartTime) {
   Config cfg;
   system_clock::time_point now = system_clock::now();

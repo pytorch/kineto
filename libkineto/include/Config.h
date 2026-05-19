@@ -235,22 +235,12 @@ class Config : public AbstractConfig {
     activitiesCudaSyncWaitEvents_ = enable;
   }
 
-  // Timestamp at which the profiling to start, requested by the user.
   [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> requestTimestamp() const {
-    if (profileStartTime_.time_since_epoch().count()) {
-      return profileStartTime_;
-    }
-    // If no one requested timestamp, return 0.
-    if (requestTimestamp_.time_since_epoch().count() == 0) {
-      return requestTimestamp_;
-    }
-
-    // TODO(T94634890): Deprecate requestTimestamp
-    return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
+    return profileStartTime_;
   }
 
   [[nodiscard]] bool hasProfileStartTime() const {
-    return requestTimestamp_.time_since_epoch().count() > 0 || profileStartTime_.time_since_epoch().count() > 0;
+    return profileStartTime_.time_since_epoch().count() > 0;
   }
 
   [[nodiscard]] int profileStartIteration() const {
@@ -486,9 +476,6 @@ class Config : public AbstractConfig {
   // Or start iterations.
   int profileStartIteration_;
   int profileStartIterationRoundUp_;
-
-  // DEPRECATED
-  std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;
 
   // Enable IPC Fabric instead of thrift communication
   bool enableIpcFabric_;

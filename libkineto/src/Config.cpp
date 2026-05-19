@@ -123,9 +123,6 @@ constexpr char kRoctracerSetMaxEvents[] = "ROCTRACER_MAX_EVENTS";
 // an error somehow - no checks are done at config parse time.
 // Note PROFILE_START_ITERATION has higher precedence
 constexpr char kProfileStartTimeKey[] = "PROFILE_START_TIME";
-// DEPRECATED - USE PROFILE_START_TIME instead
-constexpr char kRequestTimestampKey[] = "REQUEST_TIMESTAMP";
-
 // Alternatively if the application supports reporting iterations
 // start the profile at specific iteration. If the iteration count
 // is >= this value the profile is started immediately.
@@ -247,7 +244,6 @@ Config::Config()
       profileStartTime_(milliseconds(0)),
       profileStartIteration_(-1),
       profileStartIterationRoundUp_(-1),
-      requestTimestamp_(milliseconds(0)),
       enableIpcFabric_(false),
       onDemandConfigUpdateIntervalSecs_(
           kDefaultOnDemandConfigUpdateIntervalSecs),
@@ -297,26 +293,6 @@ static std::string getTimeStr(time_point<system_clock> t) {
   std::tm tm{};
   get_local_time(&t_c, &tm);
   return fmt::format("{:%H:%M:%S}", tm);
-}
-
-static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
-  auto t = time_point<system_clock>(milliseconds(ms));
-  auto now = system_clock::now();
-  if (t > now) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Invalid {}: {} - time is in future",
-            kRequestTimestampKey,
-            getTimeStr(t)));
-  } else if ((now - t) > kMaxRequestAge) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Invalid {}: {} - time is more than {}s in the past",
-            kRequestTimestampKey,
-            getTimeStr(t),
-            kMaxRequestAge.count()));
-  }
-  return t;
 }
 
 static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
@@ -465,11 +441,7 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   }
 
   // Common
-  else if (!name.compare(kRequestTimestampKey)) {
-    LOG(INFO) << kRequestTimestampKey << " has been deprecated - please use "
-              << kProfileStartTimeKey;
-    requestTimestamp_ = handleRequestTimestamp(toInt64(val));
-  } else if (!name.compare(kProfileStartTimeKey)) {
+  else if (!name.compare(kProfileStartTimeKey)) {
     profileStartTime_ = handleProfileStartTime(toInt64(val));
   } else if (!name.compare(kProfileStartIterationKey)) {
     profileStartIteration_ = toInt32(val);

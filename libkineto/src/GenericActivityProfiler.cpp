@@ -601,11 +601,17 @@ void GenericActivityProfiler::toggleCollectionDynamic(const bool enable) {
   //
   // Both to prevent the synchronization event from showing up in traces.
   if (!enable) {
+    for (auto& session : sessions_) {
+      session->toggleCollectionDynamic(enable);
+    }
     disableGpuTracing();
   }
   synchronizeGpuDevice();
   if (enable) {
     enableGpuTracing();
+    for (auto& session : sessions_) {
+      session->toggleCollectionDynamic(enable);
+    }
   }
 }
 

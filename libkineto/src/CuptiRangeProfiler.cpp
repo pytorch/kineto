@@ -120,7 +120,21 @@ CuptiRangeProfilerSession::CuptiRangeProfilerSession(
   opts.unitTest = false;
   opts.has_gpu_activities_enabled_ = hasGPUActivitiesEnabled(config);
 
-  for (auto device_id : CuptiRBProfilerSession::getActiveDevices()) {
+  auto active = CuptiRBProfilerSession::getActiveDevices();
+  if (active.empty()) {
+    int dev = 0;
+    cudaError_t err = cudaGetDevice(&dev);
+    if (err == cudaSuccess) {
+      LOG(WARNING) << "CUPTI range profiler: no active CUDA contexts seen via "
+                   << "CUPTI callbacks; falling back to current device "
+                   << dev << ".";
+      active.insert(static_cast<uint32_t>(dev));
+    } else {
+      LOG(ERROR) << "CUPTI range profiler: no active CUDA devices and "
+                 << "cudaGetDevice failed with " << err;
+    }
+  }
+  for (auto device_id : active) {
     LOG(INFO) << "Init CUPTI range profiler on gpu = " << device_id
               << " max ranges = " << max_ranges;
     opts.deviceId = device_id;

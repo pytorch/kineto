@@ -64,10 +64,35 @@ if(NOT LIBKINETO_NOCUPTI)
   endif()
 endif()
 
-# NVPERF target is automatically available via FindCUDAToolkit starting in CUDA 10.2
-# Only check for NVPERF availability if CUPTI is enabled
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
-  message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
+# NVPERF target is automatically available via FindCUDAToolkit on CUDA 10.2-12.x.
+# On CUDA 13.x FindCUDAToolkit no longer defines CUDA::nvperf_host even though
+# libnvperf_host.so still ships, so fall back to find_library() in that case.
+set(LIBKINETO_HAVE_NVPERF FALSE)
+set(LIBKINETO_NVPERF_LINK)
+if(NOT LIBKINETO_NOCUPTI)
+  if(TARGET CUDA::nvperf_host)
+    set(LIBKINETO_HAVE_NVPERF TRUE)
+    set(LIBKINETO_NVPERF_LINK CUDA::nvperf_host)
+    message(STATUS "Found NVPERF: Using built-in FindCUDAToolkit target")
+  else()
+    find_library(LIBKINETO_NVPERF_HOST_LIB
+      NAMES nvperf_host
+      HINTS ${CUDAToolkit_LIBRARY_DIR}
+            ${CUDAToolkit_TARGET_DIR}/lib
+            ${CUDAToolkit_TARGET_DIR}/lib64
+            ${CUDAToolkit_ROOT}/lib64
+            ${CUDAToolkit_ROOT}/targets/x86_64-linux/lib
+            $ENV{CUDA_HOME}/lib64
+            $ENV{CUDA_HOME}/targets/x86_64-linux/lib
+    )
+    if(LIBKINETO_NVPERF_HOST_LIB)
+      set(LIBKINETO_HAVE_NVPERF TRUE)
+      set(LIBKINETO_NVPERF_LINK ${LIBKINETO_NVPERF_HOST_LIB})
+      message(STATUS "Found NVPERF: ${LIBKINETO_NVPERF_HOST_LIB}")
+    else()
+      message(STATUS "NVPERF: nvperf_host not found; CUPTI Range Profiler disabled")
+    endif()
+  endif()
 endif()
 
 if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
@@ -174,7 +199,7 @@ if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
     set_target_properties(kineto_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
   endif()
 endif()
-if(NOT LIBKINETO_NOCUPTI AND TARGET CUDA::nvperf_host)
+if(NOT LIBKINETO_NOCUPTI AND LIBKINETO_HAVE_NVPERF)
   # Disable CUPTI range profiler on Windows temporarily. Should fix in future
   if(NOT WIN32)
     list(APPEND KINETO_DEFINITIONS "USE_CUPTI_RANGE_PROFILER")
@@ -293,8 +318,9 @@ endif()
 elseif(NOT LIBKINETO_NOCUPTI)
   target_link_libraries(kineto PUBLIC CUDA::cupti CUDA::cudart)
   target_link_libraries(kineto_base PUBLIC CUDA::cupti CUDA::cudart)
-  if(TARGET CUDA::nvperf_host)
-    target_link_libraries(kineto_base PUBLIC CUDA::nvperf_host)
+  if(LIBKINETO_HAVE_NVPERF)
+    target_link_libraries(kineto PUBLIC ${LIBKINETO_NVPERF_LINK})
+    target_link_libraries(kineto_base PUBLIC ${LIBKINETO_NVPERF_LINK})
   endif()
 elseif(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
   target_link_libraries(kineto PRIVATE "${XPU_xpupti_LIBRARY}")

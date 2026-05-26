@@ -8,9 +8,10 @@
 if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR))
     include(FindSYCLToolkit.cmake)
     if(NOT SYCLTOOLKIT_FOUND)
-        set(LIBKINETO_NOXPUPTI ON CACHE STRING "" FORCE PARENT_SCOPE)
-        message(WARNING "XPU PTI has not built because ${SYCL_NOT_FOUND_MESSAGE}")
-        return()
+        message(FATAL_ERROR
+            "KINETO_BACKEND=xpu but SYCL toolkit was not found: "
+            "${SYCL_NOT_FOUND_MESSAGE}. "
+            "Install the SYCL toolkit or set KINETO_BACKEND=cpu.")
     endif()
 endif()
 
@@ -54,10 +55,7 @@ if(TARGET Pti::pti_view)
     message(STATUS " XPUPTI_INCLUDE_DIR = ${XPUPTI_INCLUDE_DIR}")
     message(STATUS " XPUPTI_BUILD_FLAG = ${XPUPTI_BUILD_FLAG}")
 else()
-    set(LIBKINETO_NOXPUPTI ON CACHE STRING "" FORCE PARENT_SCOPE)
-    set(XPU_xpupti_LIBRARY PARENT_SCOPE)
-    set(XPUPTI_BUILD_FLAG PARENT_SCOPE)
-    set(XPUPTI_INCLUDE_DIR PARENT_SCOPE)
-    message(WARNING " Could not find XPUPTI for building kineto")
-    return()
+    message(FATAL_ERROR
+        "KINETO_BACKEND=xpu but XPUPTI (Pti::pti_view) was not found. "
+        "Install Intel PTI or set KINETO_BACKEND=cpu.")
 endif()

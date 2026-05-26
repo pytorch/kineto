@@ -54,7 +54,7 @@ TEST_F(CuptiRangeProfilerConfigTest, RangesDefaults) {
   EXPECT_TRUE(cfg.parse("CUPTI_PROFILER_METRICS = kineto__cuda_core_flops"));
   EXPECT_TRUE(cfg.parse("CUPTI_PROFILER_ENABLE_PER_KERNEL = false"));
 
-  cfg.setSignalDefaults();
+  cfg.setClientDefaults();
 
   EXPECT_TRUE(
       cfg_auto.parse("CUPTI_PROFILER_METRICS = kineto__cuda_core_flops"));

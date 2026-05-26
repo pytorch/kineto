@@ -11,9 +11,7 @@
 # Enable XPU (XPUPTI) and disable CUPTI/ROCm backends.
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
-  -DLIBKINETO_NOROCTRACER=1
-  -DLIBKINETO_NOXPUPTI=OFF
+  -DKINETO_BACKEND=xpu
 )
 
 # --- PyTorch build environment variables ---
@@ -51,14 +49,5 @@ export TORCH_XPU_ARCH_LIST=pvc
 #
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
-  test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
-  test/profiler/test_profiler.py::TestProfiler::test_kineto
-  test/profiler/test_profiler.py::TestProfiler::test_user_annotation
-  test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
-  test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
 )

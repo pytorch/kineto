@@ -166,6 +166,129 @@ TEST(LoggerObserverTest, MultipleLoggerCollectors) {
   Logger::removeLoggerObserver(c2.get());
 }
 
+// Minimal observer that, unlike LoggerCollector, retains STAGE messages so we
+// can verify UST_LOGGER_MARK_COMPLETED behavior.
+class CapturingObserver : public ILoggerObserver {
+ public:
+  void write(const std::string& message, LoggerOutputType ot) override {
+    messages[ot].push_back(message);
+  }
+  const std::map<LoggerOutputType, std::vector<std::string>>
+  extractCollectorMetadata() override {
+    return messages;
+  }
+  void reset() override {
+    messages.clear();
+  }
+  void addDevice([[maybe_unused]] const int64_t device) override {}
+  void setTraceDurationMS([[maybe_unused]] const int64_t duration) override {}
+  void addEventCount([[maybe_unused]] const int64_t count) override {}
+  void addDestination([[maybe_unused]] const std::string& dest) override {}
+  void addMetadata(
+      [[maybe_unused]] const std::string& key,
+      [[maybe_unused]] const std::string& value) override {}
+
+  std::map<LoggerOutputType, std::vector<std::string>> messages;
+};
+
+// Regression test for UST_LOGGER_MARK_COMPLETED and related UST logger
+// completion behavior. USDT_LOGGER_EMIT_MESSAGE previously expanded through the
+// unqualified `LOG`/`LOG_IS_ON` macros, which glog's <glog/logging.h> redefines
+// (LOG -> COMPACT_GOOGLE_LOG_##sev, LOG_IS_ON -> google::GLOG_##sev >= ...).
+// Including both headers in the same translation unit produced
+// COMPACT_GOOGLE_LOG_libkineto / google::GLOG_libkineto -- a compile error.
+//
+// Rather than taking on a build-time dep on glog (which the OSS CMake build
+// does not link), simulate glog's LOG and LOG_IS_ON macros locally. If a
+// future change reintroduces a bare `LOG(...)` or `LOG_IS_ON(...)` token at
+// any UST/USDT macro site, the preprocessor will expand it to
+// `COMPACT_GOOGLE_LOG_libkineto::...` / `google::GLOG_libkineto::...` here
+// and the test will fail to compile. The `#pragma push_macro/pop_macro` pairs
+// scope the redefinition so the surrounding tests still see libkineto's own
+// LOG/LOG_IS_ON.
+#pragma push_macro("LOG")
+#pragma push_macro("LOG_IS_ON")
+#undef LOG
+#undef LOG_IS_ON
+#define COMPACT_GOOGLE_LOG_INFO 0
+#define COMPACT_GOOGLE_LOG_WARNING 0
+#define COMPACT_GOOGLE_LOG_ERROR 0
+#define COMPACT_GOOGLE_LOG_FATAL 0
+#define LOG(severity) COMPACT_GOOGLE_LOG_##severity
+#define LOG_IS_ON(severity) (google::GLOG_##severity >= 0)
+
+TEST(LoggerObserverTest, MacrosImmuneToGlogLogCollision) {
+  auto observer = std::make_unique<CapturingObserver>();
+  Logger::addLoggerObserver(observer.get());
+
+  UST_LOGGER_MARK_COMPLETED("test_stage");
+  USDT_LOGGER_EMIT_MESSAGE("test_msg");
+  USDT_EMIT_START_TRACE();
+  USDT_EMIT_STOP_TRACE();
+
+  const auto md = observer->extractCollectorMetadata();
+  const auto stageIt = md.find(LoggerOutputType::STAGE);
+  ASSERT_NE(stageIt, md.end());
+  EXPECT_EQ(stageIt->second.size(), 1u);
+  EXPECT_NE(stageIt->second[0].find("test_stage"), std::string::npos);
+
+  const auto usdtIt = md.find(LoggerOutputType::USDT);
+  ASSERT_NE(usdtIt, md.end());
+  // One from USDT_LOGGER_EMIT_MESSAGE, plus one each from start/stop trace.
+  EXPECT_EQ(usdtIt->second.size(), 3u);
+
+  Logger::removeLoggerObserver(observer.get());
+}
+
+#pragma pop_macro("LOG_IS_ON")
+#pragma pop_macro("LOG")
+
+// Regression test for the second arm of the fix: the macros must
+// continue to honor Logger::severityLevel(). suppressLibkinetoLogMessages()
+// in init.cpp raises the threshold to ERROR, which historically suppressed
+// STAGE output (STAGE=3 < ERROR=4) via LOG_IF. Since the macros no longer
+// expand through LOG_IF, the gating must be re-implemented in the macro
+// expansion itself.
+//
+// USDT (=5) is the highest severity value in the enum, so it is never
+// suppressed by setSeverityLevel(ERROR); to verify USDT is also gated we set
+// the threshold one step above USDT.
+TEST(LoggerObserverTest, UstMacrosRespectSeverityThreshold) {
+  auto observer = std::make_unique<CapturingObserver>();
+  Logger::addLoggerObserver(observer.get());
+
+  const int originalLevel = Logger::severityLevel();
+
+  // STAGE (3) < ERROR (4): UST_LOGGER_MARK_COMPLETED must be suppressed.
+  Logger::setSeverityLevel(LoggerOutputType::ERROR);
+  UST_LOGGER_MARK_COMPLETED("suppressed_stage");
+  auto md = observer->extractCollectorMetadata();
+  EXPECT_EQ(md[LoggerOutputType::STAGE].size(), 0u);
+
+  // USDT (5) is the highest severity; to suppress it the threshold must be
+  // higher than USDT itself.
+  Logger::setSeverityLevel(LoggerOutputType::USDT + 1);
+  USDT_LOGGER_EMIT_MESSAGE("suppressed_usdt");
+  md = observer->extractCollectorMetadata();
+  EXPECT_EQ(md[LoggerOutputType::USDT].size(), 0u);
+
+  // Lower the threshold and confirm the macros now emit messages.
+  Logger::setSeverityLevel(LoggerOutputType::VERBOSE);
+  UST_LOGGER_MARK_COMPLETED("emitted_stage");
+  USDT_LOGGER_EMIT_MESSAGE("emitted_usdt");
+
+  md = observer->extractCollectorMetadata();
+  ASSERT_EQ(md[LoggerOutputType::STAGE].size(), 1u);
+  EXPECT_NE(
+      md[LoggerOutputType::STAGE][0].find("emitted_stage"), std::string::npos);
+  ASSERT_EQ(md[LoggerOutputType::USDT].size(), 1u);
+  EXPECT_NE(
+      md[LoggerOutputType::USDT][0].find("emitted_usdt"), std::string::npos);
+
+  Logger::setSeverityLevel(originalLevel);
+  Logger::removeLoggerObserver(observer.get());
+}
+
 TEST(LoggerObserverTest, GetLoggerMetadataOnlyIncludesWarningAndError) {
   GenericActivityProfiler profiler(/*cpuOnly=*/true);
   profiler.configure(Config{}, {});

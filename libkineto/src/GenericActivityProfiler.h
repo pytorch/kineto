@@ -209,12 +209,12 @@ class GenericActivityProfiler {
   // T107508020: We can deprecate the recordThreadInfo(void) once we optimized
   // profiler_kineto
   void recordThreadInfo(int32_t sysTid, int32_t tid, int32_t pid) {
-    if (resourceInfo_.find({pid, tid}) == resourceInfo_.end()) {
+    if (!resourceInfo_.contains({pid, tid})) {
       resourceInfo_.emplace(std::make_pair(pid, tid),
-                            ResourceInfo(pid,
-                                         sysTid,
-                                         sysTid, // sortindex
-                                         fmt::format("thread {} ({})", sysTid, getThreadName())));
+                            ResourceInfo{.id = sysTid,
+                                         .sortIndex = sysTid,
+                                         .deviceId = pid,
+                                         .name = fmt::format("thread {} ({})", sysTid, getThreadName())});
     }
   }
 
@@ -328,14 +328,16 @@ class GenericActivityProfiler {
   void processCpuTrace(libkineto::CpuTraceBuffer& cpuTrace, ActivityLogger& logger);
 
   inline bool hasDeviceResource(int device, int id) {
-    return resourceInfo_.find({device, id}) != resourceInfo_.end();
+    return resourceInfo_.contains({device, id});
   }
 
   // Create resource names for streams
   inline void recordStream(int device, int id, const char* postfix) {
     if (!hasDeviceResource(device, id)) {
-      resourceInfo_.emplace(std::make_pair(device, id),
-                            ResourceInfo(device, id, id, fmt::format("stream {} {}", id, postfix)));
+      resourceInfo_.emplace(
+          std::make_pair(device, id),
+          ResourceInfo{
+              .id = id, .sortIndex = id, .deviceId = device, .name = fmt::format("stream {} {}", id, postfix)});
     }
   }
 
@@ -343,7 +345,9 @@ class GenericActivityProfiler {
   inline void recordDevice(int device) {
     constexpr int id = -1;
     if (!hasDeviceResource(device, id)) {
-      resourceInfo_.emplace(std::make_pair(device, id), ResourceInfo(device, id, id, fmt::format("Device {}", device)));
+      resourceInfo_.emplace(
+          std::make_pair(device, id),
+          ResourceInfo{.id = id, .sortIndex = id, .deviceId = device, .name = fmt::format("Device {}", device)});
     }
   }
 

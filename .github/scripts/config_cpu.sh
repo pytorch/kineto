@@ -19,9 +19,7 @@
 
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
-  -DLIBKINETO_NOROCTRACER=1
-  -DLIBKINETO_NOXPUPTI=1
+  -DKINETO_BACKEND=cpu
 )
 
 # --- PyTorch build environment variables ---
@@ -41,14 +39,5 @@ export BUILD_TEST=1
 
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
-  test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
-  test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
-
-  # https://github.com/pytorch/kineto/issues/1230
-  test/profiler/test_profiler_tree.py::TestProfilerTree::test_profiler_experimental_tree_with_stack_and_modules
 )

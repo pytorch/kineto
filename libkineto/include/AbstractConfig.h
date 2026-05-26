@@ -34,13 +34,6 @@ class AbstractConfig {
   // Returns true if successfully parsed the config string
   bool parse(const std::string& conf);
 
-  // Default setup for signal-triggered profiling
-  virtual void setSignalDefaults() {
-    for (auto& p : featureConfigs_) {
-      p.second->setSignalDefaults();
-    }
-  }
-
   // Default setup for client-triggered profiling
   virtual void setClientDefaults() {
     for (auto& p : featureConfigs_) {
@@ -93,7 +86,9 @@ class AbstractConfig {
   [[nodiscard]] std::vector<std::string> splitAndTrim(const std::string& s, char delim) const;
   // Lowercase for case-insensitive comparisons
   std::string toLower(std::string& s) const;
-  // Does string end with suffix
+  // Does string end with suffix.
+  // New code should prefer std::string::ends_with directly (C++20). This
+  // wrapper is kept only for existing callers; do not add new ones.
   [[nodiscard]] bool endsWith(const std::string& s, const std::string& suffix) const;
   // Conversions
   [[nodiscard]] int64_t toIntRange(const std::string& val, int64_t min, int64_t max) const;

@@ -62,8 +62,8 @@ std::unordered_map<std::string, std::vector<std::string>> kDerivedMetrics = {
 };
 
 inline bool hasGPUActivitiesEnabled(const Config& config) {
-  return (config.selectedActivityTypes().count(
-             ActivityType::CONCURRENT_KERNEL)) > 0;
+  return config.selectedActivityTypes().contains(
+      ActivityType::CONCURRENT_KERNEL);
 }
 
 } // namespace
@@ -291,7 +291,7 @@ std::unique_ptr<IActivityProfilerSession> CuptiRangeProfiler::configure(
     const std::set<ActivityType>& /*activity_types*/,
     const Config& config) {
   const auto& activity_types_ = config.selectedActivityTypes();
-  if (activity_types_.find(kProfActivityType) == activity_types_.end()) {
+  if (!activity_types_.contains(kProfActivityType)) {
     return nullptr;
   }
 

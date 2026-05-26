@@ -210,7 +210,7 @@ bool CuptiCallbackApi::registerCallback(
   }
 
   // avoid duplicates
-  auto it = std::find(cblist->begin(), cblist->end(), cbfn);
+  auto it = std::ranges::find(*cblist, cbfn);
   if (it != cblist->end()) {
     LOG(WARNING) << "Adding duplicate callback -- domain = " << domain
                  << " callback id = " << cbid;
@@ -242,7 +242,7 @@ bool CuptiCallbackApi::deleteCallback(
   //  https://en.cppreference.com/w/cpp/container/list/erase
   //  "References and iterators to the erased elements are invalidated.
   //   Other references and iterators are not affected."
-  auto it = std::find(cblist->begin(), cblist->end(), cbfn);
+  auto it = std::ranges::find(*cblist, cbfn);
   if (it == cblist->end()) {
     LOG(WARNING) << "Could not find callback to remove -- domain = " << domain
                  << " callback id = " << cbid;

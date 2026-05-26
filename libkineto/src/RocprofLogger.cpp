@@ -373,12 +373,12 @@ int RocprofLogger::toolInit(
   apiList.add("__hipPushCallConfiguration");
   apiList.add("__hipPopCallConfiguration");
   apiList.add("hipCtxSetCurrent");
-  apiList.add("hipEventRecord");
-  apiList.add("hipEventQuery");
-  apiList.add("hipGetDeviceProperties");
+  apiList.add("hipGetDevicePropertiesR0600");
+  apiList.add("hipGetDeviceCount");
+  apiList.add("hipDeviceGetAttribute");
+  apiList.add("hipRuntimeGetVersion");
   apiList.add("hipPeekAtLastError");
   apiList.add("hipModuleGetFunction");
-  apiList.add("hipEventCreateWithFlags");
 
   // Get a vector of the enabled api calls
   auto apis = apiList.allEnabled();

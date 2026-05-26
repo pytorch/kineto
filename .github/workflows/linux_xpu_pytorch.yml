@@ -1,4 +1,4 @@
-name: Linux XPU build and test
+name: Linux XPU PyTorch build and test
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
   pr-test:
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
-      job-name: linux-xpu-build-and-test
+      job-name: linux-xpu-pytorch-build-and-test
       runner: linux.idc.xpu
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules
@@ -31,5 +31,4 @@ jobs:
       script: |
         set -eux
         .github/scripts/setup.sh
-        .github/scripts/kineto_build_test.sh xpu
         .github/scripts/pytorch_build_test.sh xpu

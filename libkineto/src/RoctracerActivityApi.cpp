@@ -10,17 +10,37 @@
 
 #include <time.h>
 #include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <functional>
+#include <unordered_map>
+#include <vector>
 #include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
+#include "RocmStreamQueue.h"
 #include "ThreadUtil.h"
 #include "output_base.h"
 
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
+
+namespace {
+bool isAsyncCopy(const rocprofAsyncRow& async) {
+  switch (async.kind) {
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_HOST_2D_:
+    case HIP_OP_COPY_KIND_HOST_TO_DEVICE_2D_:
+    case HIP_OP_COPY_KIND_DEVICE_TO_DEVICE_2D_:
+      return true;
+    default:
+      return false;
+  }
+}
+} // namespace
 
 RoctracerActivityApi& RoctracerActivityApi::singleton() {
   static RoctracerActivityApi instance;
@@ -114,6 +134,10 @@ int RoctracerActivityApi::processActivities(
   // The time_converter is not available at collection time.  Or we could do a
   // much better job.
   auto toffset = getTimeOffset();
+
+  if (isLogged(ActivityType::GPU_MEMCPY)) {
+    detail::backfillAsyncCopyStreams(d->rows_, isAsyncCopy);
+  }
 
   // All Runtime API Calls
   for (auto& item : d->rows_) {

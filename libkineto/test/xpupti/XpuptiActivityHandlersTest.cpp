@@ -44,7 +44,7 @@ class MockActivityLogger : public ActivityLogger {
  public:
   std::vector<const GenericTraceActivity*> logged_activities;
 
-  void handleDeviceInfo(const DeviceInfo&, uint64_t) override {}
+  void handleDeviceInfo(const DeviceInfo&, int64_t) override {}
   void handleResourceInfo(const ResourceInfo&, int64_t) override {}
   void handleOverheadInfo(const OverheadInfo&, int64_t) override {}
   void handleTraceSpan(const TraceSpan&) override {}
@@ -79,7 +79,7 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
       int64_t windowStart = 0,
       int64_t windowEnd = 1000) {
     Config config;
-    std::set<ActivityType> activity_types = {ActivityType::COLLECTIVE_COMM, ActivityType::XPU_SYNC};
+    std::set<ActivityType> activity_types = {ActivityType::COLLECTIVE_COMM};
     auto session = std::make_unique<KN::XpuptiActivityProfilerSession>(
         mockApi_, "__test_profiler__", config, activity_types);
     session->processTrace(

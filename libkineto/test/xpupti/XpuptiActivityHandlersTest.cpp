@@ -44,7 +44,7 @@ class MockActivityLogger : public ActivityLogger {
  public:
   std::vector<const GenericTraceActivity*> logged_activities;
 
-  void handleDeviceInfo(const DeviceInfo&, uint64_t) override {}
+  void handleDeviceInfo(const DeviceInfo&, int64_t) override {}
   void handleResourceInfo(const ResourceInfo&, int64_t) override {}
   void handleOverheadInfo(const OverheadInfo&, int64_t) override {}
   void handleTraceSpan(const TraceSpan&) override {}

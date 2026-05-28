@@ -16,6 +16,8 @@
 #include <string>
 #include <utility>
 
+#include "Logger.h"
+
 namespace KINETO_NAMESPACE {
 
 class ActivityLogger;
@@ -26,7 +28,11 @@ class ActivityLoggerFactory {
 
   // Add logger factory for a protocol prefix
   void addProtocol(const std::string& protocol, FactoryFunc f) {
-    factories_[tolower(protocol)] = std::move(f);
+    auto key = tolower(protocol);
+    if (factories_.count(key)) {
+      LOG(WARNING) << "Overwriting logger factory for protocol: " << key;
+    }
+    factories_[key] = std::move(f);
   }
 
   // Create a logger, invoking the factory for the protocol specified in url

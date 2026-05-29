@@ -598,10 +598,25 @@ void Config::setActivityDependentConfig() {
 }
 
 // Returns a reference to the protobuf trace enabled flag.
-// Default is false. FBConfig will set this based on JustKnobs.
+// Default is false. Downstream consumers override at startup.
 bool& get_protobuf_trace_enabled() {
   static bool _protobuf_trace_enabled = false;
   return _protobuf_trace_enabled;
+}
+
+// Returns a reference to the perfetto trace enabled flag.
+// Default is false. Downstream consumers override at startup.
+bool& get_perfetto_trace_enabled() {
+  static bool perfetto_trace_enabled = false;
+  return perfetto_trace_enabled;
+}
+
+// Returns a reference to the perfetto packet compression enabled flag.
+// Default is true (compression is on). Downstream consumers override at
+// startup.
+bool& get_perfetto_packet_compression_enabled() {
+  static bool perfetto_packet_compression_enabled = true;
+  return perfetto_packet_compression_enabled;
 }
 
 } // namespace KINETO_NAMESPACE

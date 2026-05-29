@@ -509,8 +509,20 @@ constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 bool isDaemonEnvVarSet();
 
 // Returns a reference to the protobuf trace enabled flag.
-// This allows the flag to be set externally (e.g., from JustKnobs in FBConfig)
-// and read in other components (e.g., ChromeTraceLogger).
+// This allows the flag to be set externally by downstream consumers
+// and read in trace output components.
 bool& get_protobuf_trace_enabled();
+
+// Returns a reference to the Perfetto trace enabled flag.
+// When true, a consumer writes a Perfetto-native trace via the
+// Perfetto SDK alongside other output formats.
+bool& get_perfetto_trace_enabled();
+
+// Returns a reference to the Perfetto packet compression enabled flag.
+// When true, in-process Perfetto SDK tracing sessions configure
+// `TraceConfig.compression_type = COMPRESSION_TYPE_DEFLATE`, producing
+// a smaller .pftrace at the cost of some CPU. The Perfetto UI and
+// trace_processor decompress transparently.
+bool& get_perfetto_packet_compression_enabled();
 
 } // namespace libkineto

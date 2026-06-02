@@ -489,6 +489,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
   return fmt::format(R"JSON(
       "queued": {}, "device": {}, "context": {},
       "stream": {}, "correlation": {},
+      "channel": {}, "channel_type": {},
       "registers per thread": {},
       "shared memory": {},
       "blocks per SM": {},
@@ -509,6 +510,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
       }}{}{})JSON",
       kernel.queued, kernel.deviceId, kernel.contextId,
       kernel.streamId, kernel.correlationId,
+      kernel.channelID, static_cast<uint32_t>(kernel.channelType),
       kernel.registersPerThread,
       kernel.staticSharedMemory + kernel.dynamicSharedMemory,
       std::isinf(blocksPerSmVal) ? "\"inf\"" : std::to_string(blocksPerSmVal),
@@ -559,9 +561,11 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::metadataJson() c
   return fmt::format(R"JSON(
       "device": {}, "context": {},
       "stream": {}, "correlation": {},
+      "channel": {}, "channel_type": {},
       "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId,
+      memcpy.channelID, static_cast<uint32_t>(memcpy.channelType),
       memcpy.bytes, bandwidth(memcpy.bytes, duration()),
       getGraphNodeMetadata(memcpy));
   // clang-format on
@@ -585,10 +589,12 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::metadataJson
       "fromDevice": {}, "inDevice": {}, "toDevice": {},
       "fromContext": {}, "inContext": {}, "toContext": {},
       "stream": {}, "correlation": {},
+      "channel": {}, "channel_type": {},
       "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
       memcpy.streamId, memcpy.correlationId,
+      memcpy.channelID, static_cast<uint32_t>(memcpy.channelType),
       memcpy.bytes, bandwidth(memcpy.bytes, duration()),
       getGraphNodeMetadata(memcpy));
   // clang-format on
@@ -612,9 +618,11 @@ inline const std::string GpuActivity<CUpti_ActivityMemsetType>::metadataJson() c
   return fmt::format(R"JSON(
       "device": {}, "context": {},
       "stream": {}, "correlation": {},
+      "channel": {}, "channel_type": {},
       "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId,
+      memset.channelID, static_cast<uint32_t>(memset.channelType),
       memset.bytes, bandwidth(memset.bytes, duration()),
       getGraphNodeMetadata(memset));
   // clang-format on

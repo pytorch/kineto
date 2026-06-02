@@ -142,7 +142,7 @@ class GenericTraceActivity : public ITraceActivity {
   int64_t endTime{0};
   int32_t id{0};
   int32_t device{0};
-  int32_t resource{0};
+  int64_t resource{0};
   int32_t threadId{0};
   ActivityType activityType;
   std::string activityName;

@@ -10,6 +10,7 @@
 
 #include <rocprofiler-sdk/context.h>
 #include <rocprofiler-sdk/cxx/name_info.hpp>
+#include <rocprofiler-sdk/external_correlation.h>
 #include <rocprofiler-sdk/fwd.h>
 #include <rocprofiler-sdk/marker/api_id.h>
 #include <rocprofiler-sdk/registration.h>
@@ -41,6 +42,10 @@ using kernel_name_map_t =
 using rocprofiler::sdk::buffer_name_info;
 using rocprofiler::sdk::callback_name_info;
 using agent_info_map_t = std::unordered_map<uint64_t, rocprofiler_agent_v0_t>;
+
+uint64_t streamIdFromHipStream(hipStream_t stream) {
+  return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stream));
+}
 
 // extract copy args
 struct copy_args {
@@ -82,8 +87,10 @@ auto extract_copy_args =
 
 // extract kernel args
 struct kernel_args {
-  // const char *stream;
+  const void* functionAddr{nullptr};
+  hipFunction_t function{nullptr};
   hipStream_t stream{nullptr};
+  bool pushedStreamCorrelation{false};
   uint32_t privateSize{0};
   uint32_t groupSize{0};
   rocprofiler_dim3_t workgroupSize{0, 0, 0};
@@ -103,9 +110,15 @@ auto extract_kernel_args =
        [[maybe_unused]] int32_t dereference_count,
        void* cb_data) -> int {
   auto& args = *(static_cast<kernel_args*>(cb_data));
-  if (strcmp("stream", arg_name) == 0)
+  if (strcmp("function_address", arg_name) == 0 ||
+      strcmp("functionAddress", arg_name) == 0 ||
+      strcmp("func", arg_name) == 0) {
+    args.functionAddr = *(reinterpret_cast<const void* const*>(arg_value_addr));
+  } else if (strcmp("f", arg_name) == 0 || strcmp("function", arg_name) == 0) {
+    args.function = *(reinterpret_cast<const hipFunction_t*>(arg_value_addr));
+  } else if (strcmp("stream", arg_name) == 0) {
     args.stream = *(reinterpret_cast<const hipStream_t*>(arg_value_addr));
-  else if (strcmp("numBlocks", arg_name) == 0)
+  } else if (strcmp("numBlocks", arg_name) == 0)
     args.workgroupSize =
         *(reinterpret_cast<const rocprofiler_dim3_t*>(arg_value_addr));
   else if (strcmp("dimBlocks", arg_name) == 0)
@@ -549,17 +562,12 @@ void RocprofLogger::api_callback(
     [[maybe_unused]] rocprofiler_user_data_t* user_data,
     [[maybe_unused]] void* callback_data) {
   thread_local std::unordered_map<uint64_t, uint64_t> timestamps;
+  thread_local std::unordered_map<uint64_t, kernel_args>
+      kernelArgsByCorrelation;
 
   if (record.kind == ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API) {
     if (record.phase == ROCPROFILER_CALLBACK_PHASE_ENTER) {
       timestamps[record.correlation_id.internal] = getApproximateTime();
-    } // ROCPROFILER_CALLBACK_PHASE_ENTER
-    else { // ROCPROFILER_CALLBACK_PHASE_EXIT
-      uint64_t startTime = timestamps[record.correlation_id.internal];
-      timestamps.erase(record.correlation_id.internal);
-      uint64_t endTime = getApproximateTime();
-
-      // Kernel Launch Records
       if (isKernelApi(record.operation)) {
         kernel_args args;
         rocprofiler_iterate_callback_tracing_kind_operation_args(
@@ -568,6 +576,40 @@ void RocprofLogger::api_callback(
             1 /*max_deref*/
             ,
             &args);
+        rocprofiler_user_data_t streamCorrelation{};
+        streamCorrelation.value = streamIdFromHipStream(args.stream);
+        if (streamCorrelation.value != 0 &&
+            rocprofiler_push_external_correlation_id(
+                record.context_id, record.thread_id, streamCorrelation) ==
+                ROCPROFILER_STATUS_SUCCESS) {
+          args.pushedStreamCorrelation = true;
+        }
+        kernelArgsByCorrelation[record.correlation_id.internal] = args;
+      }
+    } // ROCPROFILER_CALLBACK_PHASE_ENTER
+    else { // ROCPROFILER_CALLBACK_PHASE_EXIT
+      uint64_t startTime = timestamps[record.correlation_id.internal];
+      timestamps.erase(record.correlation_id.internal);
+      uint64_t endTime = getApproximateTime();
+      bool popStreamCorrelation = false;
+
+      // Kernel Launch Records
+      if (isKernelApi(record.operation)) {
+        kernel_args args;
+        auto argsIt =
+            kernelArgsByCorrelation.find(record.correlation_id.internal);
+        if (argsIt != kernelArgsByCorrelation.end()) {
+          args = argsIt->second;
+          kernelArgsByCorrelation.erase(argsIt);
+        } else {
+          rocprofiler_iterate_callback_tracing_kind_operation_args(
+              record,
+              extract_kernel_args,
+              1 /*max_deref*/
+              ,
+              &args);
+        }
+        popStreamCorrelation = args.pushedStreamCorrelation;
 
         rocprofKernelRow* row = new rocprofKernelRow(
             record.correlation_id.internal,
@@ -577,8 +619,8 @@ void RocprofLogger::api_callback(
             systemThreadId(),
             startTime,
             endTime,
-            nullptr,
-            nullptr,
+            args.functionAddr,
+            args.function,
             args.workgroupSize.x,
             args.workgroupSize.y,
             args.workgroupSize.z,
@@ -660,6 +702,11 @@ void RocprofLogger::api_callback(
               record.correlation_id.internal, t_externalIds[it].back());
         }
       }
+      if (popStreamCorrelation) {
+        rocprofiler_user_data_t poppedCorrelation{};
+        rocprofiler_pop_external_correlation_id(
+            record.context_id, record.thread_id, &poppedCorrelation);
+      }
     } // ROCPROFILER_CALLBACK_PHASE_EXIT
   } // ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API
 }
@@ -705,6 +752,8 @@ void RocprofLogger::buffer_callback(
             record.start_timestamp,
             record.end_timestamp,
             kernel_name);
+        row->stream = record.correlation_id.external.value;
+        row->tid = record.thread_id;
         insert_row_to_buffer(row);
       } else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
         auto& record =
@@ -728,6 +777,7 @@ void RocprofLogger::buffer_callback(
             record.start_timestamp,
             record.end_timestamp,
             "");
+        row->tid = record.thread_id;
         insert_row_to_buffer(row);
       }
     }

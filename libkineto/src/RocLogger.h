@@ -145,6 +145,7 @@ struct rocprofKernelRow : public rocprofRow {
   unsigned int workgroupZ;
   size_t groupSegmentSize;
   hipStream_t stream;
+  std::string kernelName;
 };
 
 struct rocprofCopyRow : public rocprofRow {
@@ -211,5 +212,7 @@ struct rocprofAsyncRow : public rocprofBase {
   uint32_t op;
   int device;
   uint64_t queue;
+  uint64_t stream{0};
+  uint64_t tid{0};
   std::string kernelName;
 };

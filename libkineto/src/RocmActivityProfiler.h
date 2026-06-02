@@ -18,10 +18,8 @@
 #include "RocLogger.h"
 #ifndef ROCTRACER_FALLBACK
 #include <rocprofiler-sdk/version.h>
-#include "RocprofActivityApi.h"
 #else
 #include <roctracer.h>
-#include "RoctracerActivityApi.h"
 #endif
 
 namespace KINETO_NAMESPACE {

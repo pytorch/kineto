@@ -451,6 +451,19 @@ inline std::string getPriorityMetadata([[maybe_unused]] const T& kernel) {
 #endif
 }
 
+template <class T>
+inline std::string getChannelMetadata([[maybe_unused]] const T& activity) {
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
+  return fmt::format(
+      R"JSON(,
+      "channel": {}, "channel_type": {})JSON",
+      activity.channelID,
+      static_cast<uint32_t>(activity.channelType));
+#else
+  return "";
+#endif
+}
+
 // Convert limitingFactors bitmask to human-readable string
 // Based on cudaOccLimitingFactor enum from cuda_occupancy.h
 // This can be found in the CUDA toolkit typically /usr/local/cuda/targets/x86_64-linux/include/cuda_occupancy.h
@@ -506,7 +519,7 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
         "blockLimitBarriers": {},
         "allocatedRegistersPerBlock": {},
         "allocatedSharedMemPerBlock": {}
-      }}{}{})JSON",
+      }}{}{}{})JSON",
       kernel.queued, kernel.deviceId, kernel.contextId,
       kernel.streamId, kernel.correlationId,
       kernel.registersPerThread,
@@ -526,7 +539,8 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
       occMetrics.result.allocatedRegistersPerBlock,
       occMetrics.result.allocatedSharedMemPerBlock,
       getGraphNodeMetadata(kernel),
-      getPriorityMetadata(kernel)
+      getPriorityMetadata(kernel),
+      getChannelMetadata(kernel)
       );
   // clang-format on
 }
@@ -559,11 +573,12 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::metadataJson() c
   return fmt::format(R"JSON(
       "device": {}, "context": {},
       "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
+      "bytes": {}, "memory bandwidth (GB/s)": {}{}{})JSON",
       memcpy.deviceId, memcpy.contextId,
       memcpy.streamId, memcpy.correlationId,
       memcpy.bytes, bandwidth(memcpy.bytes, duration()),
-      getGraphNodeMetadata(memcpy));
+      getGraphNodeMetadata(memcpy),
+      getChannelMetadata(memcpy));
   // clang-format on
 }
 
@@ -585,12 +600,13 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::metadataJson
       "fromDevice": {}, "inDevice": {}, "toDevice": {},
       "fromContext": {}, "inContext": {}, "toContext": {},
       "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
+      "bytes": {}, "memory bandwidth (GB/s)": {}{}{})JSON",
       memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
       memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
       memcpy.streamId, memcpy.correlationId,
       memcpy.bytes, bandwidth(memcpy.bytes, duration()),
-      getGraphNodeMetadata(memcpy));
+      getGraphNodeMetadata(memcpy),
+      getChannelMetadata(memcpy));
   // clang-format on
 }
 
@@ -612,11 +628,12 @@ inline const std::string GpuActivity<CUpti_ActivityMemsetType>::metadataJson() c
   return fmt::format(R"JSON(
       "device": {}, "context": {},
       "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {}{})JSON",
+      "bytes": {}, "memory bandwidth (GB/s)": {}{}{})JSON",
       memset.deviceId, memset.contextId,
       memset.streamId, memset.correlationId,
       memset.bytes, bandwidth(memset.bytes, duration()),
-      getGraphNodeMetadata(memset));
+      getGraphNodeMetadata(memset),
+      getChannelMetadata(memset));
   // clang-format on
 }
 

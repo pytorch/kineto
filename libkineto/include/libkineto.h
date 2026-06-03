@@ -49,14 +49,17 @@ class ConfigLoader;
 struct CpuTraceBuffer {
   template <class... Args>
   void emplace_activity(Args&&... args) {
-    activities.emplace_back(std::make_unique<GenericTraceActivity>(std::forward<Args>(args)...));
+    activities.emplace_back(
+        std::make_unique<GenericTraceActivity>(std::forward<Args>(args)...));
   }
 
-  static GenericTraceActivity& toRef(std::unique_ptr<GenericTraceActivity>& ref) {
+  static GenericTraceActivity& toRef(
+      std::unique_ptr<GenericTraceActivity>& ref) {
     return *ref;
   }
 
-  static const GenericTraceActivity& toRef(const std::unique_ptr<GenericTraceActivity>& ref) {
+  static const GenericTraceActivity& toRef(
+      const std::unique_ptr<GenericTraceActivity>& ref) {
     return *ref;
   }
 
@@ -65,12 +68,15 @@ struct CpuTraceBuffer {
   std::deque<std::unique_ptr<GenericTraceActivity>> activities;
 };
 
-using ChildActivityProfilerFactory = std::function<std::unique_ptr<IActivityProfiler>()>;
-using LoggerFactory = std::function<std::unique_ptr<ActivityLogger>(const std::string&)>;
+using ChildActivityProfilerFactory =
+    std::function<std::unique_ptr<IActivityProfiler>()>;
+using LoggerFactory =
+    std::function<std::unique_ptr<ActivityLogger>(const std::string&)>;
 
 class LibkinetoApi {
  public:
-  explicit LibkinetoApi(ConfigLoader& configLoader) : configLoader_(configLoader) {}
+  explicit LibkinetoApi(ConfigLoader& configLoader)
+      : configLoader_(configLoader) {}
 
   // Called by client that supports tracing API.
   // libkineto can still function without this.
@@ -157,12 +163,10 @@ class LibkinetoApi {
 LibkinetoApi& api();
 
 // Register a custom output format logger with a protocol prefix.
-// Example: registerLoggerFactory("perfetto", [](const std::string& path) {
-//   return std::make_unique<PerfettoLogger>(path);
+// Example: registerLoggerFactory("foo", [](const std::string& path) {
+//   return std::make_unique<FooLogger>(path);
 // });
-// Users can then call trace.save("perfetto:///tmp/trace.pftrace")
-void registerLoggerFactory(
-    const std::string& protocol,
-    LoggerFactory factory);
+// Users can then call trace.save("foo:///tmp/trace.pftrace")
+void registerLoggerFactory(const std::string& protocol, LoggerFactory factory);
 
 } // namespace libkineto

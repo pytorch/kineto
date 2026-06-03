@@ -225,9 +225,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::
 
 namespace libkineto {
 
-void registerLoggerFactory(
-    const std::string& protocol,
-    LoggerFactory factory) {
+void registerLoggerFactory(const std::string& protocol, LoggerFactory factory) {
   KINETO_NAMESPACE::ActivityProfilerController::addLoggerFactory(
       protocol, std::move(factory));
 }

@@ -125,6 +125,18 @@ target_link_libraries(LoggerObserverTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(LoggerObserverTest)
 
+# RegisterLoggerFactoryTest
+add_executable(RegisterLoggerFactoryTest RegisterLoggerFactoryTest.cpp)
+target_link_libraries(RegisterLoggerFactoryTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(RegisterLoggerFactoryTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(RegisterLoggerFactoryTest)
+
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_link_libraries(PidInfoTest PRIVATE

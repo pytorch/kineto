@@ -40,6 +40,10 @@ bool isAsyncCopy(const rocprofAsyncRow& async) {
       return false;
   }
 }
+
+bool isAsyncKernel(const rocprofAsyncRow& async) {
+  return async.kind == HIP_OP_DISPATCH_KIND_KERNEL_;
+}
 } // namespace
 
 RoctracerActivityApi& RoctracerActivityApi::singleton() {
@@ -135,9 +139,12 @@ int RoctracerActivityApi::processActivities(
   // much better job.
   auto toffset = getTimeOffset();
 
-  if (isLogged(ActivityType::GPU_MEMCPY)) {
-    detail::backfillAsyncCopyStreams(d->rows_, isAsyncCopy);
-  }
+  detail::backfillAsyncStreams(
+      d->rows_,
+      isLogged(ActivityType::GPU_MEMCPY),
+      isLogged(ActivityType::CONCURRENT_KERNEL),
+      isAsyncCopy,
+      isAsyncKernel);
 
   // All Runtime API Calls
   for (auto& item : d->rows_) {

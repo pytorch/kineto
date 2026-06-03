@@ -112,7 +112,7 @@ inline const std::string GpuActivity::metadataJson() const {
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}",
       "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
-      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.device, resourceId(),
       gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
       size, bandwidth_gib);
   }
@@ -123,14 +123,14 @@ inline const std::string GpuActivity::metadataJson() const {
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}",
       "grid": {}, "block": {})JSON",
-      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.device, resourceId(),
       gpuActivity.id, getGpuActivityKindString(gpuActivity.kind),
       correlationToGrid[gpuActivity.id], correlationToBlock[gpuActivity.id]);
   } else {
     return fmt::format(R"JSON(
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}")JSON",
-      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.device, resourceId(),
       gpuActivity.id, getGpuActivityKindString(gpuActivity.kind));
   }
   // clang-format on
@@ -156,7 +156,12 @@ inline void RuntimeActivity<T>::log(ActivityLogger& logger) const {
 template <>
 inline const std::string RuntimeActivity<rocprofKernelRow>::metadataJson() const {
   std::string kernel = "";
-  if ((raw().functionAddr != nullptr)) {
+  if (!raw().kernelName.empty()) {
+    kernel = fmt::format(
+        R"JSON(
+    "kernel": "{}", )JSON",
+        raw().kernelName);
+  } else if ((raw().functionAddr != nullptr)) {
     kernel = fmt::format(
         R"JSON(
     "kernel": "{}", )JSON",

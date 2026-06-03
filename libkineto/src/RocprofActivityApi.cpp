@@ -30,6 +30,10 @@ namespace {
 bool isAsyncCopy(const rocprofAsyncRow& async) {
   return async.domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY;
 }
+
+bool isAsyncKernel(const rocprofAsyncRow& async) {
+  return async.domain == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH;
+}
 } // namespace
 
 RocprofActivityApi& RocprofActivityApi::singleton() {
@@ -127,9 +131,12 @@ int RocprofActivityApi::processActivities(
   // much better job.
   auto toffset = getTimeOffset();
 
-  if (isLogged(ActivityType::GPU_MEMCPY)) {
-    detail::backfillAsyncCopyStreams(d->rows_, isAsyncCopy);
-  }
+  detail::backfillAsyncStreams(
+      d->rows_,
+      isLogged(ActivityType::GPU_MEMCPY),
+      isLogged(ActivityType::CONCURRENT_KERNEL),
+      isAsyncCopy,
+      isAsyncKernel);
 
   // All Runtime API Calls
   for (auto& item : d->rows_) {

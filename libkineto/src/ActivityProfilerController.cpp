@@ -21,12 +21,7 @@
 
 #elif defined(HAS_ROCTRACER)
 #include "RocmActivityProfiler.h"
-
-#if defined(ROCTRACER_FALLBACK)
-#include "RoctracerActivityApi.h"
-#elif defined(HAS_ROCTRACER)
 #include "RocprofActivityApi.h"
-#endif
 
 #endif
 
@@ -78,9 +73,6 @@ ActivityProfilerController::ActivityProfilerController(
 #if defined(HAS_CUPTI)
   profiler_ = std::make_unique<CuptiActivityProfiler>(
       CuptiActivityApi::singleton(), cpuOnly);
-#elif defined(HAS_ROCTRACER) && defined(ROCTRACER_FALLBACK)
-  profiler_ = std::make_unique<RocmActivityProfiler>(
-      RoctracerActivityApi::singleton(), cpuOnly);
 #elif defined(HAS_ROCTRACER)
   profiler_ = std::make_unique<RocmActivityProfiler>(
       RocprofActivityApi::singleton(), cpuOnly);

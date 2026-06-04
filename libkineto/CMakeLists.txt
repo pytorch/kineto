@@ -98,19 +98,15 @@ if(KINETO_BACKEND STREQUAL "cuda")
   endif()
 elseif(KINETO_BACKEND STREQUAL "rocm")
   # ROCm prerequisites and version detection
-  if(NOT ROCM_SOURCE_DIR AND NOT ROCTRACER_INCLUDE_DIR)
+  if(NOT ROCM_SOURCE_DIR)
     message(FATAL_ERROR
-      "KINETO_BACKEND=rocm but neither ROCM_SOURCE_DIR nor ROCTRACER_INCLUDE_DIR is set. "
+      "KINETO_BACKEND=rocm but ROCM_SOURCE_DIR is not set. "
       "Set ROCM_SOURCE_DIR (or the ROCM_SOURCE_DIR environment variable) "
       "or set KINETO_BACKEND=cpu.")
   endif()
   if(NOT ROCM_INCLUDE_DIRS)
     set(ROCM_INCLUDE_DIRS "${ROCM_SOURCE_DIR}/include")
   endif()
-  if(NOT ROCTRACER_INCLUDE_DIR)
-    set(ROCTRACER_INCLUDE_DIR "${ROCM_SOURCE_DIR}/include/roctracer")
-  endif()
-  message(STATUS " ROCTRACER_INCLUDE_DIR = ${ROCTRACER_INCLUDE_DIR}")
 
   find_file(ROCM_VERSION_HEADER_PATH
     NAMES rocm-core/rocm_version.h
@@ -142,15 +138,16 @@ elseif(KINETO_BACKEND STREQUAL "rocm")
   message(STATUS "ROCM minor: ${ROCM_VERSION_DEV_MINOR}")
   message(STATUS "ROCM patch: ${ROCM_VERSION_DEV_PATCH}")
 
-  # Use rocprofiler-sdk for rocm version 6.4 forward
-  if((ROCM_VERSION_DEV_MAJOR GREATER_EQUAL 7) OR (ROCM_VERSION_DEV_MAJOR GREATER_EQUAL 6 AND ROCM_VERSION_DEV_MINOR GREATER_EQUAL 4))
-    set(USE_ROCPROFILER_SDK ON)
+  # Kineto uses rocprofiler-sdk, which is supported on ROCm 7.0 and later.
+  # roctracer was the only pre-7.0 path and has been removed, so older ROCm
+  # versions are no longer supported.
+  if(ROCM_VERSION_DEV_MAJOR LESS 7)
+    message(FATAL_ERROR
+      "KINETO_BACKEND=rocm requires ROCm >= 7.0 (rocprofiler-sdk); detected "
+      "ROCm ${ROCM_VERSION_DEV_MAJOR}.${ROCM_VERSION_DEV_MINOR}. "
+      "Upgrade ROCm or set KINETO_BACKEND=cpu.")
   endif()
-  if(USE_ROCPROFILER_SDK)
-    message(STATUS "Building with: rocprofiler-sdk")
-  else()
-    message(STATUS "Building with: libroctracer")
-  endif()
+  message(STATUS "Building with: rocprofiler-sdk")
 elseif(KINETO_BACKEND STREQUAL "xpu")
   # XPU plugin
   add_subdirectory(src/plugin/xpupti)
@@ -165,13 +162,8 @@ elseif(KINETO_BACKEND STREQUAL "cuda")
   get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
   message(STATUS " Building with cupti")
 elseif(KINETO_BACKEND STREQUAL "rocm")
-  if(USE_ROCPROFILER_SDK)
-    get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " Building with rocprofiler-sdk")
-  else()
-    get_filelist("get_libkineto_roctracer_srcs(with_api=False)" LIBKINETO_SRCS)
-    message(STATUS " Building with roctracer")
-  endif()
+  get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_SRCS)
+  message(STATUS " Building with rocprofiler-sdk")
 elseif(KINETO_BACKEND STREQUAL "xpu")
   get_filelist("get_libkineto_xpupti_srcs(with_api=False)" LIBKINETO_SRCS)
   message(STATUS " Building with xpupti")
@@ -200,9 +192,6 @@ if(KINETO_BACKEND STREQUAL "cuda")
   endif()
 elseif(KINETO_BACKEND STREQUAL "rocm")
   list(APPEND KINETO_DEFINITIONS "HAS_ROCTRACER")
-  if(NOT USE_ROCPROFILER_SDK)
-    list(APPEND KINETO_DEFINITIONS "ROCTRACER_FALLBACK")
-  endif()
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_HCC__")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_AMD__")
 elseif(KINETO_BACKEND STREQUAL "xpu")
@@ -301,15 +290,9 @@ if(KINETO_BACKEND STREQUAL "cuda")
   endif()
 elseif(KINETO_BACKEND STREQUAL "rocm")
   target_include_directories(kineto_base SYSTEM PUBLIC
-        $<BUILD_INTERFACE:${ROCTRACER_INCLUDE_DIR}>
         $<BUILD_INTERFACE:${ROCM_INCLUDE_DIRS}>)
-  if(USE_ROCPROFILER_SDK)
-    find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
-      ${ROCM_SOURCE_DIR}/lib)
-  else()
-    find_library(ROCPROF_LIBRARY NAMES libroctracer64.so HINTS
-      ${ROCM_SOURCE_DIR}/lib)
-  endif()
+  find_library(ROCPROF_LIBRARY NAMES librocprofiler-sdk.so HINTS
+    ${ROCM_SOURCE_DIR}/lib)
   target_link_libraries(kineto "${ROCPROF_LIBRARY}")
   target_link_libraries(kineto_base PUBLIC "${ROCPROF_LIBRARY}")
   find_library(KINETO_HIP_LIBRARY NAMES libamdhip64.so HINTS

@@ -166,6 +166,13 @@ void Logger::addLoggerObserverAddMetadata(
   }
 }
 
+USTLoggerStageGuard::~USTLoggerStageGuard() {
+  try {
+    UST_LOGGER_MARK_COMPLETED(stage_);
+  } catch (...) {
+  }
+}
+
 } // namespace KINETO_NAMESPACE
 
 #endif // USE_GOOGLE_LOG

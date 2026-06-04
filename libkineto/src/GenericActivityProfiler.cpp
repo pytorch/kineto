@@ -143,6 +143,7 @@ const std::unordered_set<std::string>& getLoggerMedataAllowList() {
 } // namespace
 
 void GenericActivityProfiler::processTraceInternal(ActivityLogger& logger) {
+  UST_LOGGER_STAGE_SCOPE(kPostProcessingStage);
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
@@ -974,7 +975,6 @@ time_point<system_clock> GenericActivityProfiler::performRunLoopStep(
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::recursive_mutex> guard(mutex_);
       processTraceInternal(*logger_);
-      UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
       resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;

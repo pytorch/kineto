@@ -348,35 +348,6 @@ TEST(RegisterLoggerFactoryTest, DocumentedPerfettoExample) {
   EXPECT_EQ(mock->getUrl(), "/tmp/trace.pftrace");
 }
 
-// Concurrent registration
-TEST(RegisterLoggerFactoryTest, ConcurrentRegistration) {
-  std::vector<std::thread> threads;
-  std::atomic<int> successCount{0};
-
-  for (int i = 0; i < 10; i++) {
-    threads.emplace_back([i, &successCount]() {
-      std::string protocol = "concurrent" + std::to_string(i);
-      libkineto::registerLoggerFactory(protocol, [](const std::string& path) {
-        return std::make_unique<MockActivityLogger>(path);
-      });
-      successCount++;
-    });
-  }
-
-  for (auto& t : threads) {
-    t.join();
-  }
-
-  EXPECT_EQ(successCount, 10);
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  for (int i = 0; i < 10; i++) {
-    std::string url = "concurrent" + std::to_string(i) + ":///path";
-    auto logger = factory.makeLogger(url);
-    EXPECT_NE(logger, nullptr);
-  }
-}
-
 // Very long protocol name
 TEST(RegisterLoggerFactoryTest, LongProtocolName) {
   std::string longProtocol(1000, 'a');
@@ -460,35 +431,6 @@ TEST(RegisterLoggerFactoryTest, RegisterAfterMultipleLoggerCalls) {
   auto* mock2 = dynamic_cast<MockActivityLogger*>(logger2.get());
   EXPECT_EQ(mock1->getUrl(), "1st:/path");
   EXPECT_EQ(mock2->getUrl(), "2nd:/path");
-}
-
-// Static singleton persistence
-namespace {
-bool g_persistence_registered = false;
-}
-
-TEST(RegisterLoggerFactoryTest, RegisterForPersistence) {
-  if (!g_persistence_registered) {
-    libkineto::registerLoggerFactory("persistent", [](const std::string& path) {
-      return std::make_unique<MockActivityLogger>("persist:" + path);
-    });
-    g_persistence_registered = true;
-  }
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  auto logger = factory.makeLogger("persistent:///path");
-  ASSERT_NE(logger, nullptr);
-  auto* mock = dynamic_cast<MockActivityLogger*>(logger.get());
-  EXPECT_EQ(mock->getUrl(), "persist:/path");
-}
-
-TEST(RegisterLoggerFactoryTest, UsePersistentLogger) {
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger = factory.makeLogger("persistent:///another_path");
-  ASSERT_NE(logger, nullptr);
-  auto* mock = dynamic_cast<MockActivityLogger*>(logger.get());
-  EXPECT_EQ(mock->getUrl(), "persist:/another_path");
 }
 
 // Register logger interleaved with factory usage

@@ -28,6 +28,7 @@
 #define LOGGER_OBSERVER_ADD_METADATA(key, value)
 #define LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(key, value)
 #define LOGGER_OBSERVER_RESET()
+#define LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(trace_id, group_trace_id, reason)
 #define UST_LOGGER_MARK_COMPLETED(stage)
 #define UST_LOGGER_STAGE_SCOPE(stage)
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type)
@@ -137,6 +138,10 @@ class Logger {
   static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
 
   static void addLoggerObserverPersistentMetadata(const std::string& key, const std::string& value);
+
+  static void writeStageCancellation(const std::string& trace_id,
+                                     const std::string& group_trace_id,
+                                     const std::string& reason);
 
  private:
   std::stringstream buf_;
@@ -274,6 +279,10 @@ struct __to_constant__ {
 
 // Reset all logger observers to a clean per-trace state.
 #define LOGGER_OBSERVER_RESET() libkineto::Logger::resetLoggerObservers()
+
+// Record that an on-demand trace request was rejected.
+#define LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(trace_id, group_trace_id, reason) \
+  libkineto::Logger::writeStageCancellation(trace_id, group_trace_id, reason)
 
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_ADD_METADATA(key, value) libkineto::Logger::addLoggerObserverAddMetadata(key, value)

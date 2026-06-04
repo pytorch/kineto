@@ -9,6 +9,7 @@
 #include "AsyncActivityProfilerHandler.h"
 
 #include <chrono>
+#include <string>
 
 #include "ActivityProfilerController.h"
 #include "Config.h"
@@ -20,6 +21,14 @@
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
+
+static void logAsyncRequestCancellation(
+    const Config& config,
+    const std::string& reason) {
+  LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(
+      config.requestTraceID(), config.requestGroupTraceID(), reason);
+  LOG(WARNING) << reason;
+}
 
 AsyncActivityProfilerHandler::AsyncActivityProfilerHandler(
     GenericActivityProfiler& profiler,
@@ -51,7 +60,7 @@ void AsyncActivityProfilerHandler::acceptConfig(const Config& config) {
 void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
   VLOG(1) << "scheduleTrace";
   if (profiler_.isActive()) {
-    LOG(WARNING) << "Ignored request - profiler busy";
+    logAsyncRequestCancellation(config, "Ignored request - profiler busy");
     return;
   }
 
@@ -68,8 +77,9 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
       configToSchedule = config.clone();
       configToSchedule->setProfileStartIteration(-1);
     } else {
-      LOG(WARNING) << "Ignored profile iteration count based request as "
-                   << "application is not updating iteration count";
+      logAsyncRequestCancellation(
+          config,
+          "Ignored profile iteration count based request as application is not updating iteration count");
       return;
     }
   } else {
@@ -86,7 +96,8 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
     }
   }
   if (!newConfigScheduled) {
-    LOG(WARNING) << "Ignored request - another profile request is pending.";
+    logAsyncRequestCancellation(
+        config, "Ignored request - another profile request is pending.");
     return;
   }
 

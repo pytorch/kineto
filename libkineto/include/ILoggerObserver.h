@@ -12,6 +12,10 @@
 #include <string>
 
 // Stages in libkineto used when pushing logs to UST Logger.
+// Emitted when a trace request is cancelled: rejected before it runs
+// (busy/pending/can't-start) or an in-flight trace preempted by a
+// higher-priority request.
+constexpr char kCancellationStage[] = "Cancellation";
 constexpr char kWarmUpStage[] = "Warm Up";
 constexpr char kCollectionStage[] = "Collection";
 constexpr char kPostProcessingStage[] = "Post Processing";
@@ -59,6 +63,12 @@ class ILoggerObserver {
   // survives across traces and must not be used for per-trace values.
   virtual void addPersistentMetadata([[maybe_unused]] const std::string& key,
                                      [[maybe_unused]] const std::string& value) {}
+  // Emit a standalone record that an on-demand trace request was cancelled,
+  // attributed to the cancelled request's trace id. Stateless: does not read or
+  // mutate the observer's per-trace state (a trace may be active).
+  virtual void writeStageCancellation([[maybe_unused]] const std::string& trace_id,
+                                      [[maybe_unused]] const std::string& group_trace_id,
+                                      [[maybe_unused]] const std::string& reason) {}
 };
 
 } // namespace libkineto

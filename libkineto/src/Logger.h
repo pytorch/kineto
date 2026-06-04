@@ -26,6 +26,8 @@
 #define LOGGER_OBSERVER_ADD_DESTINATION(dest)
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND()
 #define LOGGER_OBSERVER_ADD_METADATA(key, value)
+#define LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(key, value)
+#define LOGGER_OBSERVER_RESET()
 #define UST_LOGGER_MARK_COMPLETED(stage)
 #define UST_LOGGER_STAGE_SCOPE(stage)
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type)
@@ -130,7 +132,11 @@ class Logger {
 
   static void setLoggerObserverOnDemand();
 
+  static void resetLoggerObservers();
+
   static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
+
+  static void addLoggerObserverPersistentMetadata(const std::string& key, const std::string& value);
 
  private:
   std::stringstream buf_;
@@ -266,8 +272,15 @@ struct __to_constant__ {
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND() libkineto::Logger::setLoggerObserverOnDemand()
 
+// Reset all logger observers to a clean per-trace state.
+#define LOGGER_OBSERVER_RESET() libkineto::Logger::resetLoggerObservers()
+
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_ADD_METADATA(key, value) libkineto::Logger::addLoggerObserverAddMetadata(key, value)
+
+// Metadata that is constant for the process lifetime and survives reset().
+#define LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(key, value) \
+  libkineto::Logger::addLoggerObserverPersistentMetadata(key, value)
 
 // UST Logger Semantics to describe when a stage is complete.
 // Use libkineto::Logger directly instead of the LOG/LOG_IS_ON macros, which

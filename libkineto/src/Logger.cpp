@@ -157,12 +157,28 @@ void Logger::setLoggerObserverOnDemand() {
   }
 }
 
+void Logger::resetLoggerObservers() {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->reset();
+  }
+}
+
 void Logger::addLoggerObserverAddMetadata(
     const std::string& key,
     const std::string& value) {
   std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->addMetadata(key, value);
+  }
+}
+
+void Logger::addLoggerObserverPersistentMetadata(
+    const std::string& key,
+    const std::string& value) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->addPersistentMetadata(key, value);
   }
 }
 

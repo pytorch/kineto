@@ -49,10 +49,11 @@ void RocmActivityProfiler::logGpuVersions() {
             << "; Runtime: " << hipRuntimeVersion
             << "; Driver: " << hipDriverVersion;
 
-  LOGGER_OBSERVER_ADD_METADATA("rocprofiler-sdk_version", rocprofVersion);
-  LOGGER_OBSERVER_ADD_METADATA(
+  LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(
+      "rocprofiler-sdk_version", rocprofVersion);
+  LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(
       "hip_runtime_version", std::to_string(hipRuntimeVersion));
-  LOGGER_OBSERVER_ADD_METADATA(
+  LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(
       "hip_driver_version", std::to_string(hipDriverVersion));
   addVersionMetadata("rocprofiler-sdk_version", rocprofVersion);
   addVersionMetadata("hip_runtime_version", std::to_string(hipRuntimeVersion));

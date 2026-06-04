@@ -24,8 +24,7 @@ class ActivityLogger;
 
 class ActivityLoggerFactory {
  public:
-  using FactoryFunc =
-      std::function<std::unique_ptr<ActivityLogger>(const std::string& url)>;
+  using FactoryFunc = std::function<std::unique_ptr<ActivityLogger>(const std::string& url)>;
 
   // Add logger factory for a protocol prefix
   void addProtocol(const std::string& protocol, FactoryFunc f) {
@@ -43,17 +42,13 @@ class ActivityLoggerFactory {
     if (it != factories_.end()) {
       return it->second(stripProtocol(url));
     }
-    throw std::invalid_argument(
-        fmt::format(
-            "No logger registered for the {} protocol prefix", protocol));
+    throw std::invalid_argument(fmt::format("No logger registered for the {} protocol prefix", protocol));
     return nullptr;
   }
 
  private:
   static std::string tolower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-      return std::tolower(c);
-    });
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     return s;
   }
 

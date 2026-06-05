@@ -97,10 +97,11 @@ void CuptiActivityProfiler::logGpuVersions() {
             << "; Runtime: " << cudaRuntimeVersion
             << "; Driver: " << cudaDriverVersion;
 
-  LOGGER_OBSERVER_ADD_METADATA("cupti_version", std::to_string(cuptiVersion));
-  LOGGER_OBSERVER_ADD_METADATA(
+  LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(
+      "cupti_version", std::to_string(cuptiVersion));
+  LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(
       "cuda_runtime_version", std::to_string(cudaRuntimeVersion));
-  LOGGER_OBSERVER_ADD_METADATA(
+  LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(
       "cuda_driver_version", std::to_string(cudaDriverVersion));
   addVersionMetadata("cupti_version", std::to_string(cuptiVersion));
   addVersionMetadata(

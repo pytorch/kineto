@@ -44,6 +44,7 @@ void SyncActivityProfilerHandler::prepareTrace(const Config& config) {
     profiler_.reset();
   }
 
+  LOGGER_OBSERVER_RESET();
   profiler_.configure(config, now);
 }
 

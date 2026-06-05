@@ -54,6 +54,11 @@ class ILoggerObserver {
   virtual void addDestination(const std::string& dest) = 0;
   virtual void setTriggerOnDemand() {}
   virtual void addMetadata(const std::string& key, const std::string& value) = 0;
+  // Metadata that is constant for the process lifetime (e.g. GPU/driver
+  // versions). Unlike addMetadata, this is NOT cleared by reset(), so it
+  // survives across traces and must not be used for per-trace values.
+  virtual void addPersistentMetadata([[maybe_unused]] const std::string& key,
+                                     [[maybe_unused]] const std::string& value) {}
 };
 
 } // namespace libkineto

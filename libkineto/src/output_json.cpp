@@ -73,6 +73,26 @@ void sanitizeLogStrForJSON(std::string& value) {
   std::ranges::replace(value, '"', '\'');
 }
 
+// Escape bare double quotes so a string can be safely embedded between the
+// quotes of a JSON string literal (i.e. `"name": "<value>"`).
+//
+// NOTE: This must NOT be used on pre-formatted JSON fragments (e.g.
+// ITraceActivity::metadataJson()), whose quotes are structural. It is only
+// for raw string values such as an op/event name.
+//
+// Names/paths can legitimately contain `"` (e.g. torch.compile / dynamo
+// generated co_filenames such as `{"device": "cpu"}` surfaced via
+// with_stack=True). An unescaped `"` terminates the JSON string early and
+// corrupts the whole trace. Run this *after* sanitizeStrForJSON() so the
+// backslash escapes inserted here are not rewritten to forward slashes.
+// See pytorch/pytorch#146900.
+void escapeQuotesForJSON(std::string& value) {
+  for (size_t pos = value.find('"'); pos != std::string::npos;
+       pos = value.find('"', pos + 2)) {
+    value.insert(pos, 1, '\\');
+  }
+}
+
 std::string string2hex(const std::string& str) {
   std::string out;
   out.reserve(str.size() * 2);
@@ -861,6 +881,11 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   std::string op_name = op.name() == "kernel" ? "Kernel" : op.name();
   sanitizeStrForJSON(op_name);
   sanitizeForNonReadableChars(op_name);
+  // The name is written as a bare JSON string value ("name": "<op_name>").
+  // Escape embedded quotes so names containing `"` (e.g. dynamo-generated
+  // co_filenames with with_stack=True) cannot corrupt the trace. See
+  // pytorch/pytorch#146900.
+  escapeQuotesForJSON(op_name);
 
   ts = transToRelativeTime(ts);
   writeCompleteEvent(

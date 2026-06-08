@@ -60,12 +60,12 @@ bool ConfigDerivedState::canStart(
     return true;
   }
   if (profileStartTime_ < now) {
-    LOG(ERROR)
+    LOG(WARNING)
         << "Not starting tracing - start timestamp is in the past. Time difference (ms): "
         << duration_cast<milliseconds>(now - profileStartTime_).count();
     return false;
   } else if ((profileStartTime_ - now) < profileWarmupDuration_) {
-    LOG(ERROR)
+    LOG(WARNING)
         << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): "
         << duration_cast<milliseconds>(profileStartTime_ - now).count();
     return false;
@@ -493,6 +493,10 @@ void GenericActivityProfiler::configure(
 
   // Check if now is a valid time to start.
   if (!derivedConfig_->canStart(now)) {
+    LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(
+        config_->requestTraceID(),
+        config_->requestGroupTraceID(),
+        "Trace request could not start at the scheduled time");
     return;
   }
 

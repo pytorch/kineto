@@ -182,6 +182,16 @@ void Logger::addLoggerObserverPersistentMetadata(
   }
 }
 
+void Logger::writeStageCancellation(
+    const std::string& trace_id,
+    const std::string& group_trace_id,
+    const std::string& reason) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->writeStageCancellation(trace_id, group_trace_id, reason);
+  }
+}
+
 USTLoggerStageGuard::~USTLoggerStageGuard() {
   try {
     UST_LOGGER_MARK_COMPLETED(stage_);

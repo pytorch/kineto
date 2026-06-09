@@ -82,6 +82,10 @@ void createTempTraceFile(char* filename) {
 bool isAsyncCopy(const rocprofAsyncRow& async) {
   return async.domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY;
 }
+
+bool isAsyncKernel(const rocprofAsyncRow& async) {
+  return async.domain == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH;
+}
 } // namespace
 
 // Provides ability to easily create a test CPU-side ops
@@ -277,7 +281,10 @@ class MockRocActivities : public RocprofActivityApi {
       }
       externalCorrelations.clear();
     }
-    detail::backfillAsyncCopyStreams(activityLogger->activities_, isAsyncCopy);
+    detail::backfillAsyncStreams(
+        activityLogger->activities_, [](const rocprofAsyncRow& async) {
+          return isAsyncCopy(async) || isAsyncKernel(async);
+        });
     for (auto& item : activityLogger->activities_) {
       handler(item);
       ++count;
@@ -464,7 +471,9 @@ TEST_F(
   }
 
   ASSERT_NE(memcpyActivity, nullptr);
-  EXPECT_EQ(memcpyActivity->resourceId(), 23);
+  // The copy shares HIP stream 7 with the kernel (via runtime correlation), so
+  // both remap to the same dense per-device stream index (1).
+  EXPECT_EQ(memcpyActivity->resourceId(), 1);
 
 #ifdef __linux__
   char filename[] = "/tmp/libkineto_testXXXXXX.json";
@@ -481,14 +490,14 @@ TEST_F(
   for (const auto& event : jsonData["traceEvents"]) {
     if (event.value("name", "") == "Memcpy HtoD (Host -> Device)") {
       foundMemcpy = true;
-      EXPECT_EQ(event["args"]["stream"].get<int64_t>(), 23);
+      EXPECT_EQ(event["args"]["stream"].get<int64_t>(), 1);
     }
   }
   EXPECT_TRUE(foundMemcpy);
 #endif
 }
 
-TEST_F(RocmActivityProfilerTest, HtoDMemcpyKeepsNonzeroAsyncQueue) {
+TEST_F(RocmActivityProfilerTest, HtoDMemcpyPrefersRuntimeStreamOverAsyncQueue) {
   RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
@@ -526,12 +535,14 @@ TEST_F(RocmActivityProfilerTest, HtoDMemcpyKeepsNonzeroAsyncQueue) {
   }
 
   ASSERT_NE(memcpyActivity, nullptr);
-  EXPECT_EQ(memcpyActivity->resourceId(), 42);
+  // Even though the async copy carries a nonzero HW queue (42), it is grouped
+  // by its real HIP stream (7) -- shared with the kernel -> dense index 1.
+  EXPECT_EQ(memcpyActivity->resourceId(), 1);
 }
 
 TEST_F(
     RocmActivityProfilerTest,
-    HtoDMemcpyStaysOnZeroWhenRuntimeStreamMapsToMultipleQueues) {
+    HtoDMemcpyJoinsRuntimeStreamDespiteQueueAmbiguity) {
   RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
@@ -572,7 +583,10 @@ TEST_F(
   }
 
   ASSERT_NE(memcpyActivity, nullptr);
-  EXPECT_EQ(memcpyActivity->resourceId(), 0);
+  // The copy's stream is resolved directly from its runtime correlation (HIP
+  // stream 7), so HW-queue ambiguity no longer matters -- it joins the shared
+  // stream index 1 instead of being dropped to 0.
+  EXPECT_EQ(memcpyActivity->resourceId(), 1);
 }
 
 TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {

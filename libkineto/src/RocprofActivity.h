@@ -99,7 +99,7 @@ struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
     return activity_.device;
   }
   int64_t resourceId() const override {
-    return activity_.queue;
+    return activity_.stream != 0 ? activity_.stream : activity_.queue;
   }
   ActivityType type() const override {
     return type_;

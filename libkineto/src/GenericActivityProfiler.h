@@ -327,12 +327,12 @@ class GenericActivityProfiler {
   // Process a single CPU trace
   void processCpuTrace(libkineto::CpuTraceBuffer& cpuTrace, ActivityLogger& logger);
 
-  inline bool hasDeviceResource(int device, int id) {
+  inline bool hasDeviceResource(int64_t device, int64_t id) {
     return resourceInfo_.contains({device, id});
   }
 
   // Create resource names for streams
-  inline void recordStream(int device, int id, const char* postfix) {
+  inline void recordStream(int64_t device, int64_t id, const char* postfix) {
     if (!hasDeviceResource(device, id)) {
       resourceInfo_.emplace(
           std::make_pair(device, id),

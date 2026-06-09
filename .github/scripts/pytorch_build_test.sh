@@ -14,11 +14,17 @@ SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 KINETO_DIR=$(pwd)
 echo "====: Kineto directory: ${KINETO_DIR}"
 
-# Clone PyTorch and replace its Kineto with PR version
-git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git
+# Clone PyTorch as a sibling of the Kineto checkout, never inside it. Below we
+# replace PyTorch's third_party/kineto with a symlink back to KINETO_DIR. If the
+# PyTorch tree lived inside KINETO_DIR, that symlink would point at a directory
+# that contains the clone, forming an endless path cycle
+# (third_party/kineto/pytorch/third_party/kineto/pytorch/...) that setuptools
+# follows for minutes while gathering license files.
+PYTORCH_DIR="$(dirname "${KINETO_DIR}")/pytorch"
+git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git "${PYTORCH_DIR}"
 echo "====: Cloned PyTorch"
 
-pushd pytorch
+pushd "${PYTORCH_DIR}"
 rm -rf third_party/kineto
 ln -s "${KINETO_DIR}" third_party/kineto
 echo "====: Linked PR version of Kineto to PyTorch (${KINETO_DIR} -> third_party/kineto)"

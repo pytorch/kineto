@@ -28,38 +28,45 @@ echo "====: Linked PR version of Kineto to PyTorch (${KINETO_DIR} -> third_party
 source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 
 # Enable sccache so PyTorch object files persist across CI runs. Most Kineto
-# PRs touch only Kineto, so the bulk of PyTorch's thousands of objects are
-# cache hits on warm runs. PyTorch's CMake picks up the compiler launchers
-# below, so we only install the binary and point it at S3. Credentials come
-# from the runner's AWS instance role, the same fleet PyTorch CI uses.
-#
-# All callers of this script run on Linux; select the binary by host
-# architecture so the same script works on x86_64 and aarch64 runners. An
-# unrecognized architecture warns and builds uncached rather than failing.
-case "$(uname -m)" in
-  x86_64)        SCCACHE_ARCH=x86_64 ;;
-  aarch64|arm64) SCCACHE_ARCH=aarch64 ;;
-  *) echo "====: Unsupported arch for sccache: $(uname -m); building uncached" >&2
-     SCCACHE_ARCH="" ;;
-esac
+# PRs touch only Kineto, so the bulk of PyTorch's objects are cache hits on
+# warm runs. Whether the runner can reach the S3 cache is architecture
+# specific (only the AWS-hosted runners can), so each config_<arch>.sh opts
+# in via KINETO_USE_SCCACHE.
+if [[ "${KINETO_USE_SCCACHE:-0}" == "1" ]]; then
+  # Callers run on Linux; select the prebuilt binary by host architecture.
+  case "$(uname -m)" in
+    x86_64)        SCCACHE_ARCH=x86_64 ;;
+    aarch64|arm64) SCCACHE_ARCH=aarch64 ;;
+    *) SCCACHE_ARCH="" ;;
+  esac
 
-if [[ -n "${SCCACHE_ARCH}" ]]; then
-  SCCACHE_VERSION="v0.8.2"
-  SCCACHE_PKG="sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl"
-  curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/${SCCACHE_PKG}.tar.gz" | tar -xz -C /tmp
-  install -m755 "/tmp/${SCCACHE_PKG}/sccache" /usr/local/bin/sccache
+  if [[ -z "${SCCACHE_ARCH}" ]]; then
+    echo "====: Unsupported arch for sccache: $(uname -m); building uncached" >&2
+  else
+    SCCACHE_VERSION="v0.8.2"
+    SCCACHE_PKG="sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl"
+    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/${SCCACHE_PKG}.tar.gz" | tar -xz -C /tmp
+    install -m755 "/tmp/${SCCACHE_PKG}/sccache" /usr/local/bin/sccache
 
-  export SCCACHE_BUCKET=ossci-compiler-cache-circleci-v2
-  export SCCACHE_REGION=us-east-1
-  export SCCACHE_S3_KEY_PREFIX=kineto
-  export SCCACHE_IDLE_TIMEOUT=0
-  export SCCACHE_ERROR_LOG=/tmp/sccache_error.log
-  export CMAKE_C_COMPILER_LAUNCHER=sccache
-  export CMAKE_CXX_COMPILER_LAUNCHER=sccache
-  export CMAKE_CUDA_COMPILER_LAUNCHER=sccache
-  sccache --start-server || true
-  sccache --zero-stats || true
-  echo "====: Enabled sccache (${SCCACHE_VERSION}, ${SCCACHE_ARCH})"
+    export SCCACHE_BUCKET=ossci-compiler-cache-circleci-v2
+    export SCCACHE_REGION=us-east-1
+    export SCCACHE_S3_KEY_PREFIX=kineto
+    export SCCACHE_IDLE_TIMEOUT=0
+    export SCCACHE_ERROR_LOG=/tmp/sccache_error.log
+
+    # Route compilers through sccache only if the cache backend actually
+    # starts. A configured-but-unreachable bucket otherwise makes every
+    # compile fail, so this keeps a cache problem from breaking the build.
+    if sccache --start-server; then
+      sccache --zero-stats || true
+      export CMAKE_C_COMPILER_LAUNCHER=sccache
+      export CMAKE_CXX_COMPILER_LAUNCHER=sccache
+      export CMAKE_CUDA_COMPILER_LAUNCHER=sccache
+      echo "====: Enabled sccache (${SCCACHE_VERSION}, ${SCCACHE_ARCH})"
+    else
+      echo "====: sccache cache unreachable; building without it" >&2
+    fi
+  fi
 fi
 
 # Build PyTorch from source

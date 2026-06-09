@@ -30,6 +30,12 @@ export USE_NCCL=0
 export USE_ROCM=0
 export BUILD_TEST=1
 
+# --- PyTorch build caching ---
+# This arch's CI runner is an AWS instance, so it can reach PyTorch's shared
+# S3 sccache bucket. pytorch_build_test.sh reads this to cache the build.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=1
+
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #

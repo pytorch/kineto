@@ -30,6 +30,12 @@ export USE_ROCM=1
 export BUILD_TEST=1
 export PYTORCH_TEST_WITH_ROCM=1
 
+# --- PyTorch build caching ---
+# This arch's CI runner is not on AWS and cannot reach PyTorch's S3 sccache
+# bucket, so the PyTorch build runs without a compiler cache.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=0
+
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #

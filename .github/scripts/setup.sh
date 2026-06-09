@@ -13,10 +13,5 @@ python -m pip install --upgrade pip
 echo "====: Installed pip version: $(python -m pip --version)"
 
 # Ensure cmake is at least the max version needed by PyTorch and Kineto.
-# Install from PyPI rather than conda: the cmake wheel ships a prebuilt
-# binary and installs in seconds. The old conda path added the conda-forge
-# channel with strict priority, which forced conda's classic solver to
-# re-solve the entire base environment onto conda-forge and took over an
-# hour on CI runners.
 python -m pip install --upgrade 'cmake>=3.27'
 echo "====: Installed cmake version: $(cmake --version)"

@@ -8,7 +8,6 @@
 
 #include <gtest/gtest.h>
 
-#include <atomic>
 #include <chrono>
 
 #include "include/Config.h"
@@ -20,8 +19,7 @@ using namespace KINETO_NAMESPACE;
 
 TEST(SyncActivityProfilerHandler, Cancel) {
   GenericActivityProfiler profiler(/*cpu only*/ true);
-  std::atomic_bool syncTraceActive{false};
-  SyncActivityProfilerHandler handler(profiler, syncTraceActive);
+  SyncActivityProfilerHandler handler(profiler);
 
   // Cancel when inactive is a no-op
   EXPECT_FALSE(handler.isSyncActive());

@@ -31,9 +31,8 @@ static void logRequestCancellation(
 }
 
 AsyncActivityProfilerHandler::AsyncActivityProfilerHandler(
-    GenericActivityProfiler& profiler,
-    std::atomic_bool& syncTraceActive)
-    : profiler_(profiler), syncTraceActive_(syncTraceActive) {}
+    GenericActivityProfiler& profiler)
+    : profiler_(profiler) {}
 
 AsyncActivityProfilerHandler::~AsyncActivityProfilerHandler() {
   for (auto& profilerThread : profilerThreads_) {
@@ -233,9 +232,7 @@ void AsyncActivityProfilerHandler::profilerLoop() {
       next_wakeup_time += Config::kControllerIntervalMsecs;
     }
 
-    // Use syncTraceActive_ so we don't step into the loop while sync trace is
-    // running
-    if (isAsyncActive() && !isCollectingMemorySnapshot() && !syncTraceActive_) {
+    if (isAsyncActive() && !isCollectingMemorySnapshot()) {
       next_wakeup_time = performRunLoopStep(now, next_wakeup_time);
       VLOG(1) << "Profiler loop: "
               << duration_cast<milliseconds>(system_clock::now() - now).count()
@@ -304,7 +301,11 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
       break;
     case RunloopState::WaitForRequest:
       VLOG(1) << "State: WaitForRequest";
-      // Nothing to do
+      break;
+    case RunloopState::Cancelling:
+      // cancel() is tearing down the profiler on another thread.
+      // Do nothing — we must not drive the profiler concurrently.
+      VLOG(1) << "State: Cancelling";
       break;
 
     case RunloopState::Warmup: {
@@ -335,6 +336,10 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
           LOG(INFO) << "Tracing started";
         }
         profiler_.startTrace(now);
+        // An extra check in case cancellation came in during startTrace
+        if (currentRunloopState_ == RunloopState::Cancelling) {
+          break;
+        }
         VLOG(0) << "Warmup -> CollectTrace";
         currentRunloopState_ = RunloopState::CollectTrace;
         if (libkineto::api().client() != nullptr) {
@@ -426,7 +431,13 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
 void AsyncActivityProfilerHandler::collectTrace(
     bool collection_done,
     const std::chrono::time_point<std::chrono::system_clock>& now) {
+  if (currentRunloopState_ == RunloopState::Cancelling) {
+    return;
+  }
   profiler_.collectTrace(collection_done, now);
+  if (currentRunloopState_ == RunloopState::Cancelling) {
+    return;
+  }
   VLOG(0) << "CollectTrace -> ProcessTrace";
   currentRunloopState_ = RunloopState::ProcessTrace;
 }
@@ -470,6 +481,8 @@ void AsyncActivityProfilerHandler::cancel() {
   if (!isAsyncActive()) {
     return;
   }
+
+  currentRunloopState_ = RunloopState::Cancelling;
 
   LOG(ERROR) << "Cancelling current trace request in order to start "
              << "higher priority synchronous request";

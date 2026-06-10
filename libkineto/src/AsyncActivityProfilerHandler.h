@@ -30,7 +30,7 @@ class Config;
 
 class AsyncActivityProfilerHandler {
  public:
-  explicit AsyncActivityProfilerHandler(GenericActivityProfiler& profiler, std::atomic_bool& syncTraceActive);
+  explicit AsyncActivityProfilerHandler(GenericActivityProfiler& profiler);
   AsyncActivityProfilerHandler(const AsyncActivityProfilerHandler&) = delete;
   AsyncActivityProfilerHandler& operator=(const AsyncActivityProfilerHandler&) = delete;
   AsyncActivityProfilerHandler(AsyncActivityProfilerHandler&&) = delete;
@@ -79,7 +79,6 @@ class AsyncActivityProfilerHandler {
   std::atomic<std::int64_t> iterationCount_{-1};
 
   GenericActivityProfiler& profiler_;
-  std::atomic_bool& syncTraceActive_;
   std::unique_ptr<ActivityLogger> logger_;
 
   enum class RunloopState {
@@ -88,6 +87,7 @@ class AsyncActivityProfilerHandler {
     CollectTrace,
     ProcessTrace,
     CollectMemorySnapshot,
+    Cancelling,
   };
 
   void performMemoryLoop(const std::string& path, uint32_t profile_time, ActivityLogger* logger, Config& config);

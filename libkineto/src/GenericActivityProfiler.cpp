@@ -60,12 +60,12 @@ bool ConfigDerivedState::canStart(
     return true;
   }
   if (profileStartTime_ < now) {
-    LOG(ERROR)
+    LOG(WARNING)
         << "Not starting tracing - start timestamp is in the past. Time difference (ms): "
         << duration_cast<milliseconds>(now - profileStartTime_).count();
     return false;
   } else if ((profileStartTime_ - now) < profileWarmupDuration_) {
-    LOG(ERROR)
+    LOG(WARNING)
         << "Not starting tracing - insufficient time for warmup. Time to warmup (ms): "
         << duration_cast<milliseconds>(profileStartTime_ - now).count();
     return false;
@@ -143,6 +143,7 @@ const std::unordered_set<std::string>& getLoggerMedataAllowList() {
 } // namespace
 
 void GenericActivityProfiler::processTraceInternal(ActivityLogger& logger) {
+  UST_LOGGER_STAGE_SCOPE(kPostProcessingStage);
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;
@@ -492,6 +493,10 @@ void GenericActivityProfiler::configure(
 
   // Check if now is a valid time to start.
   if (!derivedConfig_->canStart(now)) {
+    LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(
+        config_->requestTraceID(),
+        config_->requestGroupTraceID(),
+        "Trace request could not start at the scheduled time");
     return;
   }
 
@@ -974,7 +979,6 @@ time_point<system_clock> GenericActivityProfiler::performRunLoopStep(
       // for quickly handling trace request via synchronous API
       std::lock_guard<std::recursive_mutex> guard(mutex_);
       processTraceInternal(*logger_);
-      UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
       resetInternal();
       VLOG(0) << "ProcessTrace -> WaitForRequest";
       break;

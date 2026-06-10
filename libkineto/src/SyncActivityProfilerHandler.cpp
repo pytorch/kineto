@@ -34,8 +34,9 @@ void SyncActivityProfilerHandler::prepareTrace(const Config& config) {
   auto now = system_clock::now();
   syncTraceActive_ = true;
   if (profiler_.isActive()) {
-    LOG(WARNING) << "Cancelling current trace request in order to start "
-                 << "higher priority synchronous request";
+    LOG(ERROR) << "Cancelling current trace request in order to start "
+               << "higher priority synchronous request";
+    UST_LOGGER_MARK_COMPLETED(kCancellationStage);
     if (libkineto::api().client()) {
       libkineto::api().client()->stop();
     }
@@ -44,6 +45,7 @@ void SyncActivityProfilerHandler::prepareTrace(const Config& config) {
     profiler_.reset();
   }
 
+  LOGGER_OBSERVER_RESET();
   profiler_.configure(config, now);
 }
 
@@ -62,7 +64,6 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
   profiler_.processTrace(*logger);
   // Will follow up with another patch for logging URLs when ActivityTrace
   // is moved.
-  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
 
   // Logger Metadata contains a map of LOGs collected in Kineto
   //   logger_level -> List of log lines

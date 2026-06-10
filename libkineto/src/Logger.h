@@ -26,7 +26,11 @@
 #define LOGGER_OBSERVER_ADD_DESTINATION(dest)
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND()
 #define LOGGER_OBSERVER_ADD_METADATA(key, value)
+#define LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(key, value)
+#define LOGGER_OBSERVER_RESET()
+#define LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(trace_id, group_trace_id, reason)
 #define UST_LOGGER_MARK_COMPLETED(stage)
+#define UST_LOGGER_STAGE_SCOPE(stage)
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type)
 #define USDT_EMIT_START_TRACE()
 #define USDT_EMIT_STOP_TRACE()
@@ -129,7 +133,15 @@ class Logger {
 
   static void setLoggerObserverOnDemand();
 
+  static void resetLoggerObservers();
+
   static void addLoggerObserverAddMetadata(const std::string& key, const std::string& value);
+
+  static void addLoggerObserverPersistentMetadata(const std::string& key, const std::string& value);
+
+  static void writeStageCancellation(const std::string& trace_id,
+                                     const std::string& group_trace_id,
+                                     const std::string& reason);
 
  private:
   std::stringstream buf_;
@@ -153,6 +165,23 @@ class VoidLogger {
  public:
   VoidLogger() {}
   void operator&(std::ostream&) {}
+};
+
+// RAII helper used to ensure a UST stage row is emitted on every exit from a scope.
+// Bucketed LOG(ERROR) / LOG(WARNING) calls within the scope are picked up by the
+// emitted row as usual.
+class USTLoggerStageGuard {
+ public:
+  explicit USTLoggerStageGuard(const std::string& stage) : stage_(stage) {}
+  ~USTLoggerStageGuard();
+
+  USTLoggerStageGuard(const USTLoggerStageGuard&) = delete;
+  USTLoggerStageGuard& operator=(const USTLoggerStageGuard&) = delete;
+  USTLoggerStageGuard(USTLoggerStageGuard&&) = delete;
+  USTLoggerStageGuard& operator=(USTLoggerStageGuard&&) = delete;
+
+ private:
+  std::string stage_;
 };
 
 } // namespace KINETO_NAMESPACE
@@ -248,8 +277,19 @@ struct __to_constant__ {
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND() libkineto::Logger::setLoggerObserverOnDemand()
 
+// Reset all logger observers to a clean per-trace state.
+#define LOGGER_OBSERVER_RESET() libkineto::Logger::resetLoggerObservers()
+
+// Record that an on-demand trace request was rejected.
+#define LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(trace_id, group_trace_id, reason) \
+  libkineto::Logger::writeStageCancellation(trace_id, group_trace_id, reason)
+
 // Record this was triggered by On-Demand.
 #define LOGGER_OBSERVER_ADD_METADATA(key, value) libkineto::Logger::addLoggerObserverAddMetadata(key, value)
+
+// Metadata that is constant for the process lifetime and survives reset().
+#define LOGGER_OBSERVER_ADD_PERSISTENT_METADATA(key, value) \
+  libkineto::Logger::addLoggerObserverPersistentMetadata(key, value)
 
 // UST Logger Semantics to describe when a stage is complete.
 // Use libkineto::Logger directly instead of the LOG/LOG_IS_ON macros, which
@@ -262,6 +302,9 @@ struct __to_constant__ {
                                                                               : libkineto::VoidLogger() & \
           libkineto::Logger(libkineto::LoggerOutputType::STAGE, __LINE__, __FILE__).stream()              \
               << "Completed Stage: " << stage
+
+// RAII helper that fires UST_LOGGER_MARK_COMPLETED(stage) on scope exit.
+#define UST_LOGGER_STAGE_SCOPE(stage) libkineto::USTLoggerStageGuard LOCAL_VARNAME(ust_stage_guard)(stage)
 
 #define USDT_LOGGER_EMIT_MESSAGE(usdt_type)                                                              \
   !(libkineto::LoggerOutputType::USDT >= libkineto::Logger::severityLevel()) ? (void)0                   \

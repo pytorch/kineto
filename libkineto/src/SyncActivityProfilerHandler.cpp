@@ -23,13 +23,11 @@ using namespace std::chrono;
 namespace KINETO_NAMESPACE {
 
 SyncActivityProfilerHandler::SyncActivityProfilerHandler(
-    GenericActivityProfiler& profiler,
-    std::atomic_bool& syncTraceActive)
-    : profiler_(profiler), syncTraceActive_(syncTraceActive) {}
+    GenericActivityProfiler& profiler)
+    : profiler_(profiler) {}
 
 void SyncActivityProfilerHandler::prepareTrace(const Config& config) {
   auto now = std::chrono::system_clock::now();
-  syncTraceActive_ = true;
   active_ = true;
 
   LOGGER_OBSERVER_RESET();
@@ -60,7 +58,6 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
   logger->setLoggerMetadata(std::move(loggerMD));
 
   profiler_.reset();
-  syncTraceActive_ = false;
   active_ = false;
   return std::make_unique<ActivityTrace>(
       std::move(logger), ActivityProfilerController::loggerFactory());
@@ -79,7 +76,6 @@ void SyncActivityProfilerHandler::cancel() {
     libkineto::api().client()->stop();
   }
   profiler_.cancelTrace(std::chrono::system_clock::now());
-  syncTraceActive_ = false;
   active_ = false;
 }
 

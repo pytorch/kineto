@@ -42,17 +42,12 @@ KINETO_USE_SCCACHE=1
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  # The device-generic TestProfilerDevice suite (pytorch/pytorch#182434) does
-  # not hold on GPU runners: its CUDA instances error during setup (on ROCm/HIP
-  # one also asserts a CUDA-specific event count), and forked_process deadlocks
-  # once a GPU runtime is initialized. A class node ID deselects all its methods
-  # because pytest matches --deselect by node-ID prefix. Remove when fixed upstream.
+
+  # https://github.com/pytorch/kineto/issues/1429
   test/profiler/test_profiler.py::TestProfilerDeviceCUDA
   test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
-  # On this CUDA runner CUPTI is built in but captures no GPU kernel events at
-  # runtime, so every test that inspects kernel activity in the trace fails with
-  # "No kernel activity found in trace". These are the kernel-metadata JSON
-  # format tests; they pass on ROCm, so this is CUDA-runner-specific.
+
+  # https://github.com/pytorch/kineto/issues/1430
   test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_field_types
   test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_has_expected_fields
   test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_is_valid_json_fragment

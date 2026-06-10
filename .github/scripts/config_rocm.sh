@@ -46,11 +46,8 @@ KINETO_USE_SCCACHE=0
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  # The device-generic TestProfilerDevice suite (pytorch/pytorch#182434) does
-  # not hold on GPU runners: its CUDA instances error during setup (on ROCm/HIP
-  # one also asserts a CUDA-specific event count), and forked_process deadlocks
-  # once a GPU runtime is initialized. A class node ID deselects all its methods
-  # because pytest matches --deselect by node-ID prefix. Remove when fixed upstream.
+
+  # https://github.com/pytorch/kineto/issues/1429
   test/profiler/test_profiler.py::TestProfilerDeviceCUDA
   test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
 )

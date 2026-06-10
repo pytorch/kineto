@@ -9,6 +9,7 @@
 #include "ActivityProfilerController.h"
 
 #include <functional>
+#include <string>
 #include <utility>
 
 #include "ActivityLoggerFactory.h"
@@ -33,6 +34,14 @@
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
+
+static void logRequestCancellation(
+    const Config& config,
+    const std::string& reason) {
+  LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(
+      config.requestTraceID(), config.requestGroupTraceID(), reason);
+  LOG(WARNING) << reason;
+}
 
 #if !USE_GOOGLE_LOG
 namespace {
@@ -138,7 +147,7 @@ void ActivityProfilerController::setInvariantViolationsLoggerFactory(
 }
 
 bool ActivityProfilerController::isActive() {
-  return profiler_->isActive();
+  return syncHandler_->isSyncActive() || asyncHandler_->isAsyncActive();
 }
 
 bool ActivityProfilerController::isStopped() const {
@@ -194,12 +203,20 @@ void ActivityProfilerController::logInvariantViolation(
 
 // Async-only functions
 bool ActivityProfilerController::canAcceptConfig() {
-  return asyncHandler_->canAcceptConfig();
+  return !isActive();
 }
 void ActivityProfilerController::acceptConfig(const Config& config) {
+  if (isActive()) {
+    logRequestCancellation(config, "Ignored request - profiler busy");
+    return;
+  }
   asyncHandler_->acceptConfig(config);
 }
 void ActivityProfilerController::scheduleTrace(const Config& config) {
+  if (isActive()) {
+    logRequestCancellation(config, "Ignored request - profiler busy");
+    return;
+  }
   asyncHandler_->scheduleTrace(config);
 }
 void ActivityProfilerController::step() {
@@ -208,6 +225,12 @@ void ActivityProfilerController::step() {
 
 // Sync-only functions
 void ActivityProfilerController::prepareTrace(const Config& config) {
+  // Sync-trace requests preempt any active trace.
+  asyncHandler_->cancel();
+  if (syncHandler_->isSyncActive()) {
+    syncHandler_->cancel();
+  }
+
   syncHandler_->prepareTrace(config);
 }
 void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {

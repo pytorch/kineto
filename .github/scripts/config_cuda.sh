@@ -49,4 +49,12 @@ DESELECTED_TESTS=(
   # because pytest matches --deselect by node-ID prefix. Remove when fixed upstream.
   test/profiler/test_profiler.py::TestProfilerDeviceCUDA
   test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
+  # On this CUDA runner CUPTI is built in but captures no GPU kernel events at
+  # runtime, so every test that inspects kernel activity in the trace fails with
+  # "No kernel activity found in trace". These are the kernel-metadata JSON
+  # format tests; they pass on ROCm, so this is CUDA-runner-specific.
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_field_types
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_has_expected_fields
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_is_valid_json_fragment
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_key_value_format
 )

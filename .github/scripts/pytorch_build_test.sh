@@ -106,8 +106,12 @@ for t in "${DESELECTED_TESTS[@]}"; do
   DESELECT_ARGS+=(--deselect="$t")
 done
 
-# Run PyTorch profiler tests
-pip install pytest
-python -m pytest test/profiler/ -v "${DESELECT_ARGS[@]}"
+# Run PyTorch profiler tests. Bound each test so a single hang (e.g. slow stack
+# symbolization on these runners) fails that one test instead of consuming the
+# whole job's timeout. The thread method aborts on hangs that hold the GIL in
+# native code, which the signal method cannot interrupt, and dumps the stack so
+# the hang is diagnosable.
+pip install pytest pytest-timeout
+python -m pytest test/profiler/ -v --timeout=300 --timeout-method=thread "${DESELECT_ARGS[@]}"
 popd
 echo "====: Ran PyTorch profiler tests"

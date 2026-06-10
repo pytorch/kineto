@@ -17,9 +17,7 @@ echo "====: Kineto directory: ${KINETO_DIR}"
 # Clone PyTorch as a sibling of the Kineto checkout, never inside it. Below we
 # replace PyTorch's third_party/kineto with a symlink back to KINETO_DIR. If the
 # PyTorch tree lived inside KINETO_DIR, that symlink would point at a directory
-# that contains the clone, forming an endless path cycle
-# (third_party/kineto/pytorch/third_party/kineto/pytorch/...) that setuptools
-# follows for minutes while gathering license files.
+# that contains the clone, forming an endless path cycle.
 PYTORCH_DIR="$(dirname "${KINETO_DIR}")/pytorch"
 git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git "${PYTORCH_DIR}"
 echo "====: Cloned PyTorch"
@@ -39,7 +37,9 @@ source "${SCRIPTS_DIR}/config_${GPU_ARCH}.sh"
 # specific (only the AWS-hosted runners can), so each config_<arch>.sh opts
 # in via KINETO_USE_SCCACHE.
 if [[ "${KINETO_USE_SCCACHE:-0}" == "1" ]]; then
-  # Callers run on Linux; select the prebuilt binary by host architecture.
+  # Note that the sscache binary we use is hard-coded to be Linux specific.
+  # That's safe because we only have Linux specific callers. Also note that
+  # GPU_ARCH does not determine a CPU architecture, so we determine that here.
   case "$(uname -m)" in
     x86_64)        SCCACHE_ARCH=x86_64 ;;
     aarch64|arm64) SCCACHE_ARCH=aarch64 ;;
@@ -110,8 +110,7 @@ done
 # test instead of consuming the whole job's timeout. Use the signal method, not
 # thread: the thread method's watchdog thread is captured by the profiler and
 # inflates the thread counts that some profiler tests assert on. The tradeoff is
-# that signal cannot interrupt a hang holding the GIL in native code; such a
-# hang still rides the job timeout, which we will address separately.
+# that signal cannot interrupt a hang holding the GIL in native code.
 pip install pytest pytest-timeout
 python -m pytest test/profiler/ -v --timeout=300 --timeout-method=signal "${DESELECT_ARGS[@]}"
 popd

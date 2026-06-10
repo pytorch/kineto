@@ -32,7 +32,7 @@ export PYTORCH_TEST_WITH_ROCM=1
 
 # --- PyTorch build caching ---
 # This arch's CI runner is not on AWS and cannot reach PyTorch's S3 sccache
-# bucket, so the PyTorch build runs without a compiler cache.
+# bucket.
 # shellcheck disable=SC2034
 KINETO_USE_SCCACHE=0
 

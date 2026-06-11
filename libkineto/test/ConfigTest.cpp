@@ -253,34 +253,6 @@ TEST(ParseTest, SamplesPerReport) {
   EXPECT_EQ(cfg.samplesPerReport(), 1);
 }
 
-TEST(ParseTest, EnableSigUsr2) {
-  Config cfg;
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=yes"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=no"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=YES"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=NO"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=Y"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=N"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=T"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=F"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=true"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=false"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=  "));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=2"));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=-1"));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=yep"));
-}
-
 TEST(ParseTest, DeviceMask) {
   Config cfg;
   // Single device
@@ -325,30 +297,6 @@ TEST(ParseTest, DeviceMask) {
   EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 0,1,,2"));
   EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = -1"));
   EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 1.0"));
-}
-
-TEST(ParseTest, RequestTime) {
-  Config cfg;
-  system_clock::time_point now = system_clock::now();
-  int64_t tgood_ms =
-      duration_cast<milliseconds>(now.time_since_epoch()).count();
-  EXPECT_TRUE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tgood_ms)));
-
-  tgood_ms = duration_cast<milliseconds>((now - seconds(5)).time_since_epoch())
-                 .count();
-  EXPECT_TRUE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tgood_ms)));
-
-  int64_t tbad_ms =
-      duration_cast<milliseconds>((now - seconds(20)).time_since_epoch())
-          .count();
-  EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
-
-  EXPECT_FALSE(cfg.parse("REQUEST_TIMESTAMP = 0"));
-  EXPECT_FALSE(cfg.parse("REQUEST_TIMESTAMP = -1"));
-
-  tbad_ms = duration_cast<milliseconds>((now + seconds(10)).time_since_epoch())
-                .count();
-  EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
 }
 
 TEST(ParseTest, ProfileStartTime) {

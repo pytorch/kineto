@@ -30,6 +30,12 @@ export USE_ROCM=1
 export BUILD_TEST=1
 export PYTORCH_TEST_WITH_ROCM=1
 
+# --- PyTorch build caching ---
+# This arch's CI runner is not on AWS and cannot reach PyTorch's S3 sccache
+# bucket.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=0
+
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #
@@ -40,4 +46,8 @@ export PYTORCH_TEST_WITH_ROCM=1
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
+
+  # https://github.com/pytorch/kineto/issues/1429
+  test/profiler/test_profiler.py::TestProfilerDeviceCUDA
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
 )

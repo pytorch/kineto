@@ -211,5 +211,6 @@ struct rocprofAsyncRow : public rocprofBase {
   uint32_t op;
   int device;
   uint64_t queue;
+  uint64_t stream{0};
   std::string kernelName;
 };

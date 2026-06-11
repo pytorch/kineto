@@ -20,7 +20,7 @@ class Config;
 
 class SyncActivityProfilerHandler {
  public:
-  explicit SyncActivityProfilerHandler(GenericActivityProfiler& profiler, std::atomic_bool& syncTraceActive);
+  explicit SyncActivityProfilerHandler(GenericActivityProfiler& profiler);
   SyncActivityProfilerHandler(const SyncActivityProfilerHandler&) = delete;
   SyncActivityProfilerHandler& operator=(const SyncActivityProfilerHandler&) = delete;
   SyncActivityProfilerHandler(SyncActivityProfilerHandler&&) = delete;
@@ -31,9 +31,14 @@ class SyncActivityProfilerHandler {
   void toggleCollectionDynamic(const bool enable);
   void startTrace();
   std::unique_ptr<ActivityTraceInterface> stopTrace();
+  void cancel();
+
+  [[nodiscard]] bool isSyncActive() const {
+    return active_;
+  }
 
  private:
   GenericActivityProfiler& profiler_;
-  std::atomic_bool& syncTraceActive_;
+  std::atomic<bool> active_{false};
 };
 } // namespace KINETO_NAMESPACE

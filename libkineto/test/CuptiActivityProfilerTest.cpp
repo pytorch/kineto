@@ -29,7 +29,6 @@
 #include "include/libkineto.h"
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
-#include "src/ActivityProfilerController.h"
 #include "src/ActivityTrace.h"
 #include "src/ApproximateClock.h"
 #include "src/CuptiActivityApi.h"
@@ -78,8 +77,8 @@ const TraceSpan& defaultTraceSpan() {
   return span;
 }
 
-void createTempTraceFile(char* filename, int suffix_len = 5) {
-  const int fd = mkstemps(filename, suffix_len);
+void createTempTraceFile(char* filename) {
+  const int fd = mkstemps(filename, 5);
   ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
   close(fd);
 }

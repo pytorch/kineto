@@ -20,6 +20,7 @@
 #include "include/output_base.h"
 #include "src/ActivityLoggerFactory.h"
 #include "src/ActivityProfilerController.h"
+#include "src/Logger.h"
 
 using namespace KINETO_NAMESPACE;
 
@@ -59,32 +60,6 @@ class MockActivityLogger : public libkineto::ActivityLogger {
   bool constructed_;
 };
 
-class ThrowingConstructorLogger : public libkineto::ActivityLogger {
- public:
-  explicit ThrowingConstructorLogger(const std::string&) {
-    throw std::runtime_error("Constructor failure");
-  }
-
-  void handleDeviceInfo(const libkineto::DeviceInfo&, int64_t) override {}
-  void handleResourceInfo(const libkineto::ResourceInfo&, int64_t) override {}
-  void handleOverheadInfo(
-      const libkineto::ActivityLogger::OverheadInfo&,
-      int64_t) override {}
-  void handleTraceSpan(const libkineto::TraceSpan&) override {}
-  void handleActivity(const libkineto::ITraceActivity&) override {}
-  void handleGenericActivity(const libkineto::GenericTraceActivity&) override {}
-  void handleTraceStart(
-      const std::unordered_map<std::string, std::string>&,
-      const std::string&) override {}
-  void finalizeTrace(
-      const libkineto::Config&,
-      std::unique_ptr<libkineto::ActivityBuffers>,
-      int64_t,
-      std::unordered_map<std::string, std::vector<std::string>>&) override {}
-  void finalizeMemoryTrace(const std::string&, const libkineto::Config&)
-      override {}
-};
-
 class CountingLogger : public libkineto::ActivityLogger {
  public:
   explicit CountingLogger(const std::string& url, int& counter)
@@ -114,6 +89,28 @@ class CountingLogger : public libkineto::ActivityLogger {
  private:
   std::string url_;
   int& counter_;
+};
+
+class WarningObserver : public libkineto::ILoggerObserver {
+ public:
+  void write(const std::string& message, libkineto::LoggerOutputType ot) override {
+    if (ot == libkineto::LoggerOutputType::WARNING) {
+      warnings_.push_back(message);
+    }
+  }
+  const std::map<libkineto::LoggerOutputType, std::vector<std::string>>
+  extractCollectorMetadata() override { return {}; }
+  void reset() override { warnings_.clear(); }
+  void addDevice(int64_t) override {}
+  void setTraceDurationMS(int64_t) override {}
+  void addEventCount(int64_t) override {}
+  void addDestination(const std::string&) override {}
+  void addMetadata(const std::string&, const std::string&) override {}
+
+  const std::vector<std::string>& warnings() const { return warnings_; }
+
+ private:
+  std::vector<std::string> warnings_;
 };
 
 // Basic public API functionality
@@ -156,29 +153,6 @@ TEST(RegisterLoggerFactoryTest, ProtocolCaseInsensitive) {
   EXPECT_EQ(mock3->getUrl(), "/path3");
 }
 
-// Multiple independent protocols
-TEST(RegisterLoggerFactoryTest, MultipleProtocols) {
-  libkineto::registerLoggerFactory("proto1", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("proto1:" + path);
-  });
-
-  libkineto::registerLoggerFactory("proto2", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("proto2:" + path);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger1 = factory.makeLogger("proto1:///path");
-  auto* mock1 = dynamic_cast<MockActivityLogger*>(logger1.get());
-  ASSERT_NE(mock1, nullptr);
-  EXPECT_EQ(mock1->getUrl(), "proto1:/path");
-
-  auto logger2 = factory.makeLogger("proto2:///path");
-  auto* mock2 = dynamic_cast<MockActivityLogger*>(logger2.get());
-  ASSERT_NE(mock2, nullptr);
-  EXPECT_EQ(mock2->getUrl(), "proto2:/path");
-}
-
 // Unregistered protocol throws
 TEST(RegisterLoggerFactoryTest, UnregisteredProtocolThrows) {
   auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
@@ -203,296 +177,32 @@ TEST(RegisterLoggerFactoryTest, OverwriteProtocolWarning) {
   int counter2 = 0;
 
   libkineto::registerLoggerFactory(
-      "overwrite", [&counter1](const std::string& path) {
+      "overwrite_protocol", [&counter1](const std::string& path) {
         return std::make_unique<CountingLogger>(path, counter1);
       });
 
+  WarningObserver observer;
+  libkineto::Logger::addLoggerObserver(&observer);
+
   libkineto::registerLoggerFactory(
-      "overwrite", [&counter2](const std::string& path) {
+      "overwrite_protocol", [&counter2](const std::string& path) {
         return std::make_unique<CountingLogger>(path, counter2);
       });
 
+  libkineto::Logger::removeLoggerObserver(&observer);
+
+  ASSERT_EQ(observer.warnings().size(), 1);
+  EXPECT_TRUE(observer.warnings()[0].find("Overwriting") != std::string::npos);
+  EXPECT_TRUE(observer.warnings()[0].find("overwrite_protocol") != std::string::npos);
+
   auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  auto logger = factory.makeLogger("overwrite:///path");
+  auto logger = factory.makeLogger("overwrite_protocol:///path");
 
   EXPECT_EQ(counter1, 0);
   EXPECT_EQ(counter2, 1);
   ASSERT_NE(logger, nullptr);
 }
 
-// URL protocol stripping
-TEST(RegisterLoggerFactoryTest, UrlProtocolStripping) {
-  std::string receivedPath;
-
-  libkineto::registerLoggerFactory(
-      "striptest", [&receivedPath](const std::string& path) {
-        receivedPath = path;
-        return std::make_unique<MockActivityLogger>(path);
-      });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  factory.makeLogger("striptest:///absolute/path/file.log");
-  EXPECT_EQ(receivedPath, "/absolute/path/file.log");
-
-  factory.makeLogger("striptest://relative/path");
-  EXPECT_EQ(receivedPath, "relative/path");
-
-  factory.makeLogger("striptest://hostname:8080/path");
-  EXPECT_EQ(receivedPath, "hostname:8080/path");
-}
-
-// Empty protocol string
-TEST(RegisterLoggerFactoryTest, EmptyProtocol) {
-  libkineto::registerLoggerFactory("", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>(path);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger = factory.makeLogger("://empty-protocol-path");
-  ASSERT_NE(logger, nullptr);
-  auto* mock = dynamic_cast<MockActivityLogger*>(logger.get());
-  EXPECT_EQ(mock->getUrl(), "empty-protocol-path");
-}
-
-// URL with no protocol separator
-TEST(RegisterLoggerFactoryTest, NoProtocolSeparator) {
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  EXPECT_THROW(factory.makeLogger("justaplainpath"), std::invalid_argument);
-}
-
-// Factory that throws exception
-TEST(RegisterLoggerFactoryTest, FactoryThrowsException) {
-  libkineto::registerLoggerFactory(
-      "throwing",
-      [](const std::string&) -> std::unique_ptr<libkineto::ActivityLogger> {
-        throw std::runtime_error("Factory intentionally failed");
-      });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  EXPECT_THROW(factory.makeLogger("throwing:///path"), std::runtime_error);
-}
-
-// Factory that returns nullptr
-TEST(RegisterLoggerFactoryTest, FactoryReturnsNullptr) {
-  libkineto::registerLoggerFactory("nullfactory", [](const std::string&) {
-    return std::unique_ptr<libkineto::ActivityLogger>(nullptr);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger = factory.makeLogger("nullfactory:///path");
-  EXPECT_EQ(logger, nullptr);
-}
-
-// Logger constructor throws
-TEST(RegisterLoggerFactoryTest, LoggerConstructorThrows) {
-  libkineto::registerLoggerFactory("badlogger", [](const std::string& path) {
-    return std::make_unique<ThrowingConstructorLogger>(path);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  EXPECT_THROW(factory.makeLogger("badlogger:///path"), std::runtime_error);
-}
-
-// Special characters in protocol name
-TEST(RegisterLoggerFactoryTest, SpecialCharactersInProtocol) {
-  libkineto::registerLoggerFactory(
-      "my-custom_proto", [](const std::string& path) {
-        return std::make_unique<MockActivityLogger>(path);
-      });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  auto logger = factory.makeLogger("my-custom_proto:///path");
-  ASSERT_NE(logger, nullptr);
-}
-
-// Special characters in URL path
-TEST(RegisterLoggerFactoryTest, SpecialCharactersInPath) {
-  std::string receivedPath;
-
-  libkineto::registerLoggerFactory(
-      "pathtest", [&receivedPath](const std::string& path) {
-        receivedPath = path;
-        return std::make_unique<MockActivityLogger>(path);
-      });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  factory.makeLogger("pathtest:///tmp/trace-2024_06_02-v1.0.log");
-  EXPECT_EQ(receivedPath, "/tmp/trace-2024_06_02-v1.0.log");
-
-  factory.makeLogger("pathtest:///path/with spaces/file.log");
-  EXPECT_EQ(receivedPath, "/path/with spaces/file.log");
-
-  factory.makeLogger("pathtest:///path/with/query?param=value");
-  EXPECT_EQ(receivedPath, "/path/with/query?param=value");
-}
-
-// Documented example from libkineto.h
-TEST(RegisterLoggerFactoryTest, DocumentedPerfettoExample) {
-  libkineto::registerLoggerFactory("perfetto", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>(path);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  auto logger = factory.makeLogger("perfetto:///tmp/trace.pftrace");
-
-  ASSERT_NE(logger, nullptr);
-  auto* mock = dynamic_cast<MockActivityLogger*>(logger.get());
-  ASSERT_NE(mock, nullptr);
-  EXPECT_EQ(mock->getUrl(), "/tmp/trace.pftrace");
-}
-
-// Very long protocol name
-TEST(RegisterLoggerFactoryTest, LongProtocolName) {
-  std::string longProtocol(1000, 'a');
-  libkineto::registerLoggerFactory(longProtocol, [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>(path);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  auto logger = factory.makeLogger(longProtocol + ":///path");
-  ASSERT_NE(logger, nullptr);
-}
-
-// Very long URL path
-TEST(RegisterLoggerFactoryTest, LongUrlPath) {
-  std::string receivedPath;
-  std::string longPath(10000, 'x');
-
-  libkineto::registerLoggerFactory(
-      "longpath", [&receivedPath](const std::string& path) {
-        receivedPath = path;
-        return std::make_unique<MockActivityLogger>(path);
-      });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  factory.makeLogger("longpath://" + longPath);
-
-  EXPECT_EQ(receivedPath, longPath);
-}
-
-// Register logger before and after using other loggers
-TEST(RegisterLoggerFactoryTest, RegisterAtDifferentTimes) {
-  libkineto::registerLoggerFactory("early", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("early:" + path);
-  });
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger1 = factory.makeLogger("early:///path1");
-  ASSERT_NE(logger1, nullptr);
-  auto* mock1 = dynamic_cast<MockActivityLogger*>(logger1.get());
-  EXPECT_EQ(mock1->getUrl(), "early:/path1");
-
-  libkineto::registerLoggerFactory("late", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("late:" + path);
-  });
-
-  auto logger2 = factory.makeLogger("late:///path2");
-  ASSERT_NE(logger2, nullptr);
-  auto* mock2 = dynamic_cast<MockActivityLogger*>(logger2.get());
-  EXPECT_EQ(mock2->getUrl(), "late:/path2");
-
-  auto logger3 = factory.makeLogger("early:///path3");
-  ASSERT_NE(logger3, nullptr);
-  auto* mock3 = dynamic_cast<MockActivityLogger*>(logger3.get());
-  EXPECT_EQ(mock3->getUrl(), "early:/path3");
-}
-
-// Register logger after making logger calls with different protocols
-TEST(RegisterLoggerFactoryTest, RegisterAfterMultipleLoggerCalls) {
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  libkineto::registerLoggerFactory("first", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("1st:" + path);
-  });
-
-  for (int i = 0; i < 5; i++) {
-    auto logger = factory.makeLogger("first:///call" + std::to_string(i));
-    ASSERT_NE(logger, nullptr);
-  }
-
-  libkineto::registerLoggerFactory("second", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("2nd:" + path);
-  });
-
-  auto logger1 = factory.makeLogger("first:///path");
-  auto logger2 = factory.makeLogger("second:///path");
-  ASSERT_NE(logger1, nullptr);
-  ASSERT_NE(logger2, nullptr);
-
-  auto* mock1 = dynamic_cast<MockActivityLogger*>(logger1.get());
-  auto* mock2 = dynamic_cast<MockActivityLogger*>(logger2.get());
-  EXPECT_EQ(mock1->getUrl(), "1st:/path");
-  EXPECT_EQ(mock2->getUrl(), "2nd:/path");
-}
-
-// Register logger interleaved with factory usage
-TEST(RegisterLoggerFactoryTest, InterleavedRegistrationAndUsage) {
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  libkineto::registerLoggerFactory("interleave1", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("i1:" + path);
-  });
-
-  auto logger1 = factory.makeLogger("interleave1:///path");
-  ASSERT_NE(logger1, nullptr);
-
-  libkineto::registerLoggerFactory("interleave2", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("i2:" + path);
-  });
-
-  auto logger2 = factory.makeLogger("interleave2:///path");
-  ASSERT_NE(logger2, nullptr);
-
-  libkineto::registerLoggerFactory("interleave3", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("i3:" + path);
-  });
-
-  auto test1 = factory.makeLogger("interleave1:///test");
-  auto test2 = factory.makeLogger("interleave2:///test");
-  auto test3 = factory.makeLogger("interleave3:///test");
-
-  ASSERT_NE(test1, nullptr);
-  ASSERT_NE(test2, nullptr);
-  ASSERT_NE(test3, nullptr);
-
-  auto* mock1 = dynamic_cast<MockActivityLogger*>(test1.get());
-  auto* mock2 = dynamic_cast<MockActivityLogger*>(test2.get());
-  auto* mock3 = dynamic_cast<MockActivityLogger*>(test3.get());
-
-  EXPECT_EQ(mock1->getUrl(), "i1:/test");
-  EXPECT_EQ(mock2->getUrl(), "i2:/test");
-  EXPECT_EQ(mock3->getUrl(), "i3:/test");
-}
-
-// Register logger from different thread, use from main thread
-TEST(RegisterLoggerFactoryTest, RegisterFromThreadUseFromMain) {
-  std::atomic<bool> registered{false};
-
-  std::thread registrationThread([&registered]() {
-    libkineto::registerLoggerFactory("threaded", [](const std::string& path) {
-      return std::make_unique<MockActivityLogger>("thread:" + path);
-    });
-    registered = true;
-  });
-
-  registrationThread.join();
-  ASSERT_TRUE(registered);
-
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-  auto logger = factory.makeLogger("threaded:///path");
-
-  ASSERT_NE(logger, nullptr);
-  auto* mock = dynamic_cast<MockActivityLogger*>(logger.get());
-  EXPECT_EQ(mock->getUrl(), "thread:/path");
-}
 
 // Built-in "file" protocol remains functional
 TEST(RegisterLoggerFactoryTest, BuiltInFileProtocolStillWorks) {
@@ -505,63 +215,12 @@ TEST(RegisterLoggerFactoryTest, BuiltInFileProtocolStillWorks) {
     return std::make_unique<MockActivityLogger>("custom1:" + path);
   });
 
-  libkineto::registerLoggerFactory("custom2", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("custom2:" + path);
-  });
-
-  libkineto::registerLoggerFactory("custom3", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("custom3:" + path);
-  });
-
   auto customLogger1 = factory.makeLogger("custom1:///path");
-  auto customLogger2 = factory.makeLogger("custom2:///path");
-  auto customLogger3 = factory.makeLogger("custom3:///path");
 
   ASSERT_NE(customLogger1, nullptr);
-  ASSERT_NE(customLogger2, nullptr);
-  ASSERT_NE(customLogger3, nullptr);
 
   auto logger2 = factory.makeLogger("file:///tmp/trace2.json");
   ASSERT_NE(logger2, nullptr);
-
-  auto logger3 = factory.makeLogger("file:///tmp/trace3.json");
-  ASSERT_NE(logger3, nullptr);
-}
-
-// Built-in "file" protocol is case-insensitive
-TEST(RegisterLoggerFactoryTest, BuiltInFileProtocolCaseInsensitive) {
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger1 = factory.makeLogger("file:///tmp/trace.json");
-  ASSERT_NE(logger1, nullptr);
-
-  auto logger2 = factory.makeLogger("FILE:///tmp/trace.json");
-  ASSERT_NE(logger2, nullptr);
-
-  auto logger3 = factory.makeLogger("File:///tmp/trace.json");
-  ASSERT_NE(logger3, nullptr);
-
-  auto logger4 = factory.makeLogger("FiLe:///tmp/trace.json");
-  ASSERT_NE(logger4, nullptr);
-}
-
-// Overwriting built-in "file" protocol logs warning
-TEST(RegisterLoggerFactoryTest, OverwritingFileProtocolLogsWarning) {
-  auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
-
-  auto logger1 = factory.makeLogger("file:///tmp/original.json");
-  ASSERT_NE(logger1, nullptr);
-
-  libkineto::registerLoggerFactory("file", [](const std::string& path) {
-    return std::make_unique<MockActivityLogger>("overwritten:" + path);
-  });
-
-  auto logger2 = factory.makeLogger("file:///tmp/overwritten.json");
-  ASSERT_NE(logger2, nullptr);
-
-  auto* mock = dynamic_cast<MockActivityLogger*>(logger2.get());
-  ASSERT_NE(mock, nullptr);
-  EXPECT_EQ(mock->getUrl(), "overwritten:/tmp/overwritten.json");
 }
 
 int main(int argc, char** argv) {

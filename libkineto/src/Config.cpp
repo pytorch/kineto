@@ -123,9 +123,6 @@ constexpr char kRoctracerSetMaxEvents[] = "ROCTRACER_MAX_EVENTS";
 // an error somehow - no checks are done at config parse time.
 // Note PROFILE_START_ITERATION has higher precedence
 constexpr char kProfileStartTimeKey[] = "PROFILE_START_TIME";
-// DEPRECATED - USE PROFILE_START_TIME instead
-constexpr char kRequestTimestampKey[] = "REQUEST_TIMESTAMP";
-
 // Alternatively if the application supports reporting iterations
 // start the profile at specific iteration. If the iteration count
 // is >= this value the profile is started immediately.
@@ -149,10 +146,6 @@ constexpr char kProfileStartIterationRoundUpKey[] =
 
 constexpr char kRequestTraceID[] = "REQUEST_TRACE_ID";
 constexpr char kRequestGroupTraceID[] = "REQUEST_GROUP_TRACE_ID";
-
-// Enable on-demand trigger via kill -USR2 <pid>
-// When triggered in this way, /tmp/libkineto.conf will be used as config.
-constexpr char kEnableSigUsr2Key[] = "ENABLE_SIGUSR2";
 
 // Enable communication through IPC Fabric
 // and disable thrift communication with dynolog daemon
@@ -251,8 +244,6 @@ Config::Config()
       profileStartTime_(milliseconds(0)),
       profileStartIteration_(-1),
       profileStartIterationRoundUp_(-1),
-      requestTimestamp_(milliseconds(0)),
-      enableSigUsr2_(false),
       enableIpcFabric_(false),
       onDemandConfigUpdateIntervalSecs_(
           kDefaultOnDemandConfigUpdateIntervalSecs),
@@ -302,26 +293,6 @@ static std::string getTimeStr(time_point<system_clock> t) {
   std::tm tm{};
   get_local_time(&t_c, &tm);
   return fmt::format("{:%H:%M:%S}", tm);
-}
-
-static time_point<system_clock> handleRequestTimestamp(int64_t ms) {
-  auto t = time_point<system_clock>(milliseconds(ms));
-  auto now = system_clock::now();
-  if (t > now) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Invalid {}: {} - time is in future",
-            kRequestTimestampKey,
-            getTimeStr(t)));
-  } else if ((now - t) > kMaxRequestAge) {
-    throw std::invalid_argument(
-        fmt::format(
-            "Invalid {}: {} - time is more than {}s in the past",
-            kRequestTimestampKey,
-            getTimeStr(t),
-            kMaxRequestAge.count()));
-  }
-  return t;
 }
 
 static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
@@ -470,18 +441,12 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   }
 
   // Common
-  else if (!name.compare(kRequestTimestampKey)) {
-    LOG(INFO) << kRequestTimestampKey << " has been deprecated - please use "
-              << kProfileStartTimeKey;
-    requestTimestamp_ = handleRequestTimestamp(toInt64(val));
-  } else if (!name.compare(kProfileStartTimeKey)) {
+  else if (!name.compare(kProfileStartTimeKey)) {
     profileStartTime_ = handleProfileStartTime(toInt64(val));
   } else if (!name.compare(kProfileStartIterationKey)) {
     profileStartIteration_ = toInt32(val);
   } else if (!name.compare(kProfileStartIterationRoundUpKey)) {
     profileStartIterationRoundUp_ = toInt32(val);
-  } else if (!name.compare(kEnableSigUsr2Key)) {
-    enableSigUsr2_ = toBool(val);
   } else if (!name.compare(kEnableIpcFabricKey)) {
     enableIpcFabric_ = toBool(val);
   } else if (!name.compare(kOnDemandConfigUpdateIntervalSecsKey)) {
@@ -633,10 +598,25 @@ void Config::setActivityDependentConfig() {
 }
 
 // Returns a reference to the protobuf trace enabled flag.
-// Default is false. FBConfig will set this based on JustKnobs.
+// Default is false. Downstream consumers override at startup.
 bool& get_protobuf_trace_enabled() {
   static bool _protobuf_trace_enabled = false;
   return _protobuf_trace_enabled;
+}
+
+// Returns a reference to the perfetto trace enabled flag.
+// Default is false. Downstream consumers override at startup.
+bool& get_perfetto_trace_enabled() {
+  static bool perfetto_trace_enabled = false;
+  return perfetto_trace_enabled;
+}
+
+// Returns a reference to the perfetto packet compression enabled flag.
+// Default is true (compression is on). Downstream consumers override at
+// startup.
+bool& get_perfetto_packet_compression_enabled() {
+  static bool perfetto_packet_compression_enabled = true;
+  return perfetto_packet_compression_enabled;
 }
 
 } // namespace KINETO_NAMESPACE

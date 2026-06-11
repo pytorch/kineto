@@ -23,27 +23,14 @@ using namespace std::chrono;
 namespace KINETO_NAMESPACE {
 
 SyncActivityProfilerHandler::SyncActivityProfilerHandler(
-    GenericActivityProfiler& profiler,
-    std::atomic_bool& syncTraceActive)
-    : profiler_(profiler), syncTraceActive_(syncTraceActive) {}
+    GenericActivityProfiler& profiler)
+    : profiler_(profiler) {}
 
 void SyncActivityProfilerHandler::prepareTrace(const Config& config) {
-  // Requests from ActivityProfilerApi have higher priority than
-  // requests from other sources (signal, daemon).
-  // Cancel any ongoing request and refuse new ones.
-  auto now = system_clock::now();
-  syncTraceActive_ = true;
-  if (profiler_.isActive()) {
-    LOG(WARNING) << "Cancelling current trace request in order to start "
-                 << "higher priority synchronous request";
-    if (libkineto::api().client()) {
-      libkineto::api().client()->stop();
-    }
+  auto now = std::chrono::system_clock::now();
+  active_ = true;
 
-    profiler_.stopTrace(now);
-    profiler_.reset();
-  }
-
+  LOGGER_OBSERVER_RESET();
   profiler_.configure(config, now);
 }
 
@@ -62,7 +49,6 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
   profiler_.processTrace(*logger);
   // Will follow up with another patch for logging URLs when ActivityTrace
   // is moved.
-  UST_LOGGER_MARK_COMPLETED(kPostProcessingStage);
 
   // Logger Metadata contains a map of LOGs collected in Kineto
   //   logger_level -> List of log lines
@@ -72,9 +58,25 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
   logger->setLoggerMetadata(std::move(loggerMD));
 
   profiler_.reset();
-  syncTraceActive_ = false;
+  active_ = false;
   return std::make_unique<ActivityTrace>(
       std::move(logger), ActivityProfilerController::loggerFactory());
+}
+
+void SyncActivityProfilerHandler::cancel() {
+  if (!active_) {
+    return;
+  }
+
+  LOG(ERROR) << "Cancelling current trace request in order to start "
+             << "higher priority synchronous request";
+  UST_LOGGER_MARK_COMPLETED(kCancellationStage);
+
+  if (libkineto::api().client() != nullptr) {
+    libkineto::api().client()->stop();
+  }
+  profiler_.cancelTrace(std::chrono::system_clock::now());
+  active_ = false;
 }
 
 void SyncActivityProfilerHandler::toggleCollectionDynamic(const bool enable) {

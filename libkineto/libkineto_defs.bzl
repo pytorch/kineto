@@ -37,14 +37,6 @@ def get_libkineto_rocprofiler_srcs(with_api = True):
         "src/RocLogger.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
-def get_libkineto_roctracer_srcs(with_api = True):
-    return [
-        "src/RocmActivityProfiler.cpp",
-        "src/RoctracerActivityApi.cpp",
-        "src/RoctracerLogger.cpp",
-        "src/RocLogger.cpp",
-    ] + (get_libkineto_cpu_only_srcs(with_api))
-
 def get_libkineto_xpupti_srcs(with_api = True):
     return [
         "src/plugin/xpupti/XpuptiActivityApi.cpp",

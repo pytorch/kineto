@@ -20,6 +20,7 @@
 #include <functional>
 #include <mutex>
 #include <ostream>
+#include <string_view>
 #include <utility>
 
 #include "Logger.h"
@@ -220,6 +221,34 @@ static string defaultMemoryTraceFileName() {
   return fmt::format("/tmp/memory_snapshot_{}.pickle", processId());
 }
 
+namespace {
+
+// Dir that on-demand trace files are restricted to. Defaults to
+// /tmp; overridable locally via KINETO_ONDEMAND_TRACE_DIR.
+constexpr std::string_view kDefaultOnDemandTraceDir = "/tmp/";
+
+const string& allowedOnDemandTraceDir() {
+  static const string kDir = [] {
+    const char* env = std::getenv("KINETO_ONDEMAND_TRACE_DIR");
+    string d = (env != nullptr && *env != '\0')
+        ? string(env)
+        : string(kDefaultOnDemandTraceDir);
+    if (d.back() != '/') {
+      d.push_back('/');
+    }
+    return d;
+  }();
+  return kDir;
+}
+
+// Allowed only if under the allowed dir and free of ".." traversal.
+bool isAllowedOnDemandTraceFile(const string& path) {
+  const string& dir = allowedOnDemandTraceDir();
+  return path.starts_with(dir) && path.find("..") == string::npos;
+}
+
+} // namespace
+
 Config::Config()
     : verboseLogLevel_(-1),
       samplePeriod_(kDefaultSamplePeriodMsecs),
@@ -348,7 +377,13 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kSamplesPerReportKey)) {
     samplesPerReport_ = toInt32(val);
   } else if (!name.compare(kEventsLogFileKey)) {
-    eventLogFile_ = val;
+    if (onDemand_ && !isAllowedOnDemandTraceFile(val)) {
+      LOG(WARNING) << "Ignoring on-demand " << kEventsLogFileKey
+                   << " outside allowed directory " << allowedOnDemandTraceDir()
+                   << ": " << val;
+    } else {
+      eventLogFile_ = val;
+    }
   } else if (!name.compare(kEventsEnabledDevicesKey)) {
     eventProfilerDeviceMask_ = createDeviceMask(val);
   } else if (!name.compare(kOnDemandDurationKey)) {
@@ -389,17 +424,23 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kProfileMemoryDuration)) {
     profileMemoryDuration_ = toInt32(val);
   } else if (!name.compare(kActivitiesLogFileKey)) {
-    activitiesLogFile_ = val;
-    activitiesLogUrl_ = fmt::format("file://{}", val);
-    size_t jidx = activitiesLogUrl_.find(".pt.trace.json");
-    if (jidx != std::string::npos) {
-      activitiesLogUrl_.replace(
-          jidx, 14, fmt::format("_{}.pt.trace.json", processId()));
+    if (onDemand_ && !isAllowedOnDemandTraceFile(val)) {
+      LOG(WARNING) << "Ignoring on-demand " << kActivitiesLogFileKey
+                   << " outside allowed directory " << allowedOnDemandTraceDir()
+                   << ": " << val << " (trace will use the default path)";
     } else {
-      jidx = activitiesLogUrl_.find(".json");
+      activitiesLogFile_ = val;
+      activitiesLogUrl_ = fmt::format("file://{}", val);
+      size_t jidx = activitiesLogUrl_.find(".pt.trace.json");
       if (jidx != std::string::npos) {
         activitiesLogUrl_.replace(
-            jidx, 5, fmt::format("_{}.json", processId()));
+            jidx, 14, fmt::format("_{}.pt.trace.json", processId()));
+      } else {
+        jidx = activitiesLogUrl_.find(".json");
+        if (jidx != std::string::npos) {
+          activitiesLogUrl_.replace(
+              jidx, 5, fmt::format("_{}.json", processId()));
+        }
       }
     }
     activitiesOnDemandTimestamp_ = timestamp();

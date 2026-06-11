@@ -192,6 +192,8 @@ void ConfigLoader::configureFromDaemon(
   }
 
   LOG(INFO) << "Received config from dyno:\n" << config_str;
+  // Untrusted daemon IPC config; restrict trace output path.
+  config.setOnDemand(true);
   config.parse(config_str);
   notifyHandlers(config);
 }

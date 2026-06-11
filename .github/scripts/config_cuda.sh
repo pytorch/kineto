@@ -26,6 +26,12 @@ KINETO_CMAKE_FLAGS=(
 export USE_CUDA=1
 export BUILD_TEST=1
 
+# --- PyTorch build caching ---
+# This arch's CI runner is an AWS instance, so it can reach PyTorch's shared
+# S3 sccache bucket.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=1
+
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #
@@ -36,4 +42,14 @@ export BUILD_TEST=1
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
+
+  # https://github.com/pytorch/kineto/issues/1429
+  test/profiler/test_profiler.py::TestProfilerDeviceCUDA
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
+
+  # https://github.com/pytorch/kineto/issues/1430
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_field_types
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_has_expected_fields
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_is_valid_json_fragment
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_key_value_format
 )

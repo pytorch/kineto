@@ -206,7 +206,7 @@ static void enableSpecifcRuntimeAPIsTracing() {
 #endif
 
 namespace {
-void warnIfIttNotifyLibInvalid() {
+void warnIfIttNotifyLibInvalid() noexcept {
   const auto itt_collector_path_env = std::getenv("INTEL_LIBITTNOTIFY64");
   if (itt_collector_path_env == nullptr) {
     LOG(WARNING) << "ENV variable `INTEL_LIBITTNOTIFY64` not set. "

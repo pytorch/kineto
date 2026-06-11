@@ -32,6 +32,14 @@ target_link_libraries(ConfigTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
+# ActivityProfilerControllerTest
+add_executable(ActivityProfilerControllerTest ActivityProfilerControllerTest.cpp)
+target_link_libraries(ActivityProfilerControllerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(ActivityProfilerControllerTest)
+
 if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest

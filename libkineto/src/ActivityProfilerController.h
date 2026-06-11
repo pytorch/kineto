@@ -52,12 +52,12 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   bool canAcceptConfig() override;
   void acceptConfig(const Config& config) override;
   void scheduleTrace(const Config& config);
+  void step();
 
   // These API are used for Synchronous Tracing.
   void prepareTrace(const Config& config);
   void toggleCollectionDynamic(const bool enable);
   void startTrace();
-  void step();
   std::unique_ptr<ActivityTraceInterface> stopTrace();
 
   bool isActive();

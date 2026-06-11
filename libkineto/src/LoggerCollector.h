@@ -41,6 +41,7 @@ class LoggerCollector : public ILoggerObserver {
   }
 
   void reset() override {
+    buckets_.clear();
     trace_duration_ms = 0;
     event_count = 0;
     destinations.clear();

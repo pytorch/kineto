@@ -157,12 +157,45 @@ void Logger::setLoggerObserverOnDemand() {
   }
 }
 
+void Logger::resetLoggerObservers() {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->reset();
+  }
+}
+
 void Logger::addLoggerObserverAddMetadata(
     const std::string& key,
     const std::string& value) {
   std::lock_guard<std::mutex> guard(loggerObserversMutex());
   for (auto observer : loggerObservers()) {
     observer->addMetadata(key, value);
+  }
+}
+
+void Logger::addLoggerObserverPersistentMetadata(
+    const std::string& key,
+    const std::string& value) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->addPersistentMetadata(key, value);
+  }
+}
+
+void Logger::writeStageCancellation(
+    const std::string& trace_id,
+    const std::string& group_trace_id,
+    const std::string& reason) {
+  std::lock_guard<std::mutex> guard(loggerObserversMutex());
+  for (auto observer : loggerObservers()) {
+    observer->writeStageCancellation(trace_id, group_trace_id, reason);
+  }
+}
+
+USTLoggerStageGuard::~USTLoggerStageGuard() {
+  try {
+    UST_LOGGER_MARK_COMPLETED(stage_);
+  } catch (...) {
   }
 }
 

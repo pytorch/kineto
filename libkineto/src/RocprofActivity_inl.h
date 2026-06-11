@@ -112,7 +112,7 @@ inline const std::string GpuActivity::metadataJson() const {
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}",
       "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
-      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.device, resourceId(),
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       size, bandwidth_gib);
   }
@@ -123,14 +123,14 @@ inline const std::string GpuActivity::metadataJson() const {
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}",
       "grid": {}, "block": {})JSON",
-      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.device, resourceId(),
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       correlationToGrid[gpuActivity.id], correlationToBlock[gpuActivity.id]);
   } else {
     return fmt::format(R"JSON(
       "device": {}, "stream": {},
       "correlation": {}, "kind": "{}")JSON",
-      gpuActivity.device, gpuActivity.queue,
+      gpuActivity.device, resourceId(),
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op));
   }
   // clang-format on

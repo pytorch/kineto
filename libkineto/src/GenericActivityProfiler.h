@@ -113,27 +113,9 @@ class GenericActivityProfiler {
   GenericActivityProfiler& operator=(const GenericActivityProfiler&) = delete;
   virtual ~GenericActivityProfiler();
 
-  bool isActive() const {
-    return currentRunloopState_ != RunloopState::WaitForRequest;
-  }
   bool isStopped() const {
     return isGpuCollectionStopped();
   }
-  bool isCollectingMemorySnapshot() const {
-    return currentRunloopState_ == RunloopState::CollectMemorySnapshot;
-  }
-
-  // Invoke at a regular interval to perform profiling activities.
-  // When not active, an interval of 1-5 seconds is probably fine,
-  // depending on required warm-up time and delayed start time.
-  // When active, it's a good idea to invoke more frequently to stay below
-  // memory usage limit (ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB) during warmup.
-  std::chrono::time_point<std::chrono::system_clock> performRunLoopStep(
-      const std::chrono::time_point<std::chrono::system_clock>& now,
-      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime,
-      int64_t currentIter = -1);
-
-  void performMemoryLoop(const std::string& path, uint32_t profile_time, ActivityLogger* logger, Config& config);
 
   // Collect CPU and GPU traces
   void collectTrace(bool collection_done, const std::chrono::time_point<std::chrono::system_clock>& now);
@@ -159,7 +141,37 @@ class GenericActivityProfiler {
     return cpuActivityPresent_ || gpuActivityPresent_;
   }
 
-  // Synchronous control API
+  void flushWarmupBuffers(int64_t currentIter,
+                          const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime);
+
+  bool isWarmupDone(const std::chrono::time_point<std::chrono::system_clock>& now, int64_t currentIter) const {
+    return derivedConfig_->isWarmupDone(now, currentIter);
+  }
+
+  bool isCollectionDone(const std::chrono::time_point<std::chrono::system_clock>& now, int64_t currentIter) const {
+    return derivedConfig_->isCollectionDone(now, currentIter);
+  }
+
+  virtual bool isGpuCollectionStopped() const {
+    return false;
+  }
+
+  bool isProfilingByIteration() const {
+    return derivedConfig_->isProfilingByIteration();
+  }
+
+  std::chrono::time_point<std::chrono::system_clock> profileStartTime() const {
+    return derivedConfig_->profileStartTime();
+  }
+
+  std::chrono::time_point<std::chrono::system_clock> profileEndTime() const {
+    return derivedConfig_->profileEndTime();
+  }
+
+  int activitiesMaxGpuBufferSizeMB() const {
+    return config_ ? config_->activitiesMaxGpuBufferSize() / 1024 / 1024 : 0;
+  }
+
   void startTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     startTraceInternal(now);
@@ -170,12 +182,21 @@ class GenericActivityProfiler {
     stopTraceInternal(now);
   }
 
-  // Ensure collectTrace is done
-  void ensureCollectTraceDone();
-  // Process CPU and GPU traces
+  void cancelTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
+    stopTraceInternal(now);
+    resetInternal();
+  }
+
   void processTrace(ActivityLogger& logger) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     processTraceInternal(logger);
+  }
+
+  void completeTrace(ActivityLogger& logger) {
+    std::lock_guard<std::recursive_mutex> guard(mutex_);
+    processTraceInternal(logger);
+    resetInternal();
   }
 
   void reset() {
@@ -183,7 +204,11 @@ class GenericActivityProfiler {
     resetInternal();
   }
 
-  // Set up profiler as specified in config.
+  bool canStart(const Config& config, const std::chrono::time_point<std::chrono::system_clock>& now) const {
+    ConfigDerivedState derived(config);
+    return derived.canStart(now);
+  }
+
   void configure(const Config& config, const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Toggle GPU tracing during a profile instance
@@ -250,9 +275,6 @@ class GenericActivityProfiler {
   virtual void enableGpuTracing() {}
   virtual void disableGpuTracing() {}
   virtual void clearGpuActivities() {}
-  virtual bool isGpuCollectionStopped() const {
-    return false;
-  }
   virtual void processGpuActivities([[maybe_unused]] ActivityLogger& logger) {}
   virtual void synchronizeGpuDevice() {}
   virtual void pushCorrelationIdImpl([[maybe_unused]] uint64_t id, [[maybe_unused]] CorrelationFlowType type) {}
@@ -327,12 +349,12 @@ class GenericActivityProfiler {
   // Process a single CPU trace
   void processCpuTrace(libkineto::CpuTraceBuffer& cpuTrace, ActivityLogger& logger);
 
-  inline bool hasDeviceResource(int device, int id) {
+  inline bool hasDeviceResource(int64_t device, int64_t id) {
     return resourceInfo_.contains({device, id});
   }
 
   // Create resource names for streams
-  inline void recordStream(int device, int id, const char* postfix) {
+  inline void recordStream(int64_t device, int64_t id, const char* postfix) {
     if (!hasDeviceResource(device, id)) {
       resourceInfo_.emplace(
           std::make_pair(device, id),
@@ -385,8 +407,6 @@ class GenericActivityProfiler {
 
   void checkTimestampOrder(const ITraceActivity* act1);
 
-  bool getCollectTraceState();
-
   // On-demand Request Config (should not be modified)
   // TODO: remove this config_, dependency needs to be removed from
   // finalizeTrace.
@@ -397,14 +417,6 @@ class GenericActivityProfiler {
 
   // Logger used during trace processing
   ActivityLogger* logger_;
-
-  enum class RunloopState {
-    WaitForRequest,
-    Warmup,
-    CollectTrace,
-    ProcessTrace,
-    CollectMemorySnapshot,
-  };
 
   // All recorded trace spans, both CPU and GPU
   // Trace Id -> list of iterations.
@@ -432,6 +444,10 @@ class GenericActivityProfiler {
   bool gpuOnly_{false};
   bool cpuActivityPresent_{false};
   bool gpuActivityPresent_{false};
+
+  // Gate for CPU trace ingestion. True only between startTraceInternal()
+  // and resetInternal() — spans arriving outside this window are discarded.
+  bool acceptCpuTraces_{false};
   bool rangeProfilingActive_{false};
   std::atomic<bool> toggleState_{true};
 
@@ -443,18 +459,6 @@ class GenericActivityProfiler {
 
   // Mutex to protect non-atomic access to below state
   std::recursive_mutex mutex_;
-
-  // Add a thread to collect both cpu and gpu traces in case torch main thread
-  // is blocked when profiling by iterations is enabled. Issue #953 shows
-  // details.
-  std::unique_ptr<std::thread> collectTraceThread_{nullptr};
-
-  // Add a mutex to protect state for CollectTrace
-  std::recursive_mutex collectTraceStateMutex_;
-  bool isCollectingTrace{false};
-
-  // Runloop phase
-  std::atomic<RunloopState> currentRunloopState_{RunloopState::WaitForRequest};
 
   // Keep track of the start time and end time for the trace collected.
   // External threads using startTrace need to manually stopTrace. Part of the

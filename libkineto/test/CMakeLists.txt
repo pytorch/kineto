@@ -113,8 +113,7 @@ target_include_directories(RocmActivityProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
     "${LIBKINETO_DIR}/src"
-    "${ROCM_INCLUDE_DIRS}"
-    "${ROCTRACER_INCLUDE_DIR}")
+    "${ROCM_INCLUDE_DIRS}")
 gtest_discover_tests(RocmActivityProfilerTest)
 endif()
 

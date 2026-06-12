@@ -160,7 +160,7 @@ LibkinetoApi& api();
 // Example: registerLoggerFactory("foo", [](const std::string& path) {
 //   return std::make_unique<FooLogger>(path);
 // });
-// Users can then call trace.save("foo:///tmp/trace.pftrace")
+// Users can then call trace.save("foo:///tmp/trace.bar")
 void registerLoggerFactory(const std::string& protocol, LoggerFactory factory);
 
 } // namespace libkineto

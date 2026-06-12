@@ -31,6 +31,7 @@
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
 #include "src/ApproximateClock.h"
+#include "src/CudaMetadataFields.h"
 #include "src/CuptiActivityApi.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/output_json.h"
@@ -590,6 +591,16 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
           << "Stream Wait Event corr_id should be populated despite out-of-order records";
       EXPECT_EQ(json["wait_on_stream"], kEventStreamId)
           << "Stream Wait Event should reference stream the event was recorded on";
+      const auto typedMetadata = activity->typedMetadata();
+      EXPECT_EQ(
+          typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventId),
+          static_cast<int64_t>(kEventId));
+      EXPECT_EQ(
+          typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventRecordCorrId),
+          static_cast<int64_t>(kRecordCorrId));
+      EXPECT_EQ(
+          typedMetadata.get(CudaMetadataFields::kWaitOnStream),
+          static_cast<int64_t>(kEventStreamId));
       streamWaitFound++;
     }
     if (metadata.find("Event Sync") != std::string::npos) {
@@ -600,6 +611,16 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
           << "Event Sync corr_id should be populated despite out-of-order records";
       EXPECT_EQ(json["wait_on_stream"], kEventStreamId)
           << "Event Sync should reference stream the event was recorded on";
+      const auto typedMetadata = activity->typedMetadata();
+      EXPECT_EQ(
+          typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventId),
+          static_cast<int64_t>(kEventId));
+      EXPECT_EQ(
+          typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventRecordCorrId),
+          static_cast<int64_t>(kRecordCorrId));
+      EXPECT_EQ(
+          typedMetadata.get(CudaMetadataFields::kWaitOnStream),
+          static_cast<int64_t>(kEventStreamId));
       eventSyncFound++;
     }
   }

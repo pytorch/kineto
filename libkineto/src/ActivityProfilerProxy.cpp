@@ -31,6 +31,15 @@ void ActivityProfilerProxy::init() {
   }
 }
 
+bool ActivityProfilerProxy::isActive() {
+  return controller_->isActive();
+}
+
+bool ActivityProfilerProxy::isStopped() const {
+  return controller_->isStopped();
+}
+
+// Async/on-demand tracing functions.
 void ActivityProfilerProxy::scheduleTrace(const std::string& configStr) {
   resetTLS();
   Config config;
@@ -42,6 +51,11 @@ void ActivityProfilerProxy::scheduleTrace(const Config& config) {
   controller_->scheduleTrace(config);
 }
 
+void ActivityProfilerProxy::step() {
+  controller_->step();
+}
+
+// Sync/auto-trace tracing functions.
 void ActivityProfilerProxy::prepareTrace(
     const std::set<ActivityType>& activityTypes,
     const std::string& configStr) {
@@ -84,18 +98,7 @@ std::unique_ptr<ActivityTraceInterface> ActivityProfilerProxy::stopTrace() {
   return controller_->stopTrace();
 }
 
-void ActivityProfilerProxy::step() {
-  controller_->step();
-}
-
-bool ActivityProfilerProxy::isActive() {
-  return controller_->isActive();
-}
-
-bool ActivityProfilerProxy::isStopped() const {
-  return controller_->isStopped();
-}
-
+// TraceActivity API.
 void ActivityProfilerProxy::pushCorrelationId(uint64_t id) {
   controller_->pushCorrelationId(id);
 }

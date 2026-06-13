@@ -109,10 +109,10 @@ inline const std::string GpuActivity::metadataJson() const {
     size_t size = correlationToSize[gpuActivity.id];
     std::string bandwidth_gib = (bandwidth(size, gpuActivity.end - gpuActivity.begin));
     return fmt::format(R"JSON(
-      "device": {}, "stream": {},
+      "device": {}, "stream": {}, "hsa_queue": {},
       "correlation": {}, "kind": "{}",
       "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
-      gpuActivity.device, resourceId(),
+      gpuActivity.device, resourceId(), gpuActivity.queue,
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       size, bandwidth_gib);
   }
@@ -120,17 +120,17 @@ inline const std::string GpuActivity::metadataJson() const {
   // if compute kernel, add grid and block
   else if (correlationToGrid.count(gpuActivity.id) > 0) {
     return fmt::format(R"JSON(
-      "device": {}, "stream": {},
+      "device": {}, "stream": {}, "hsa_queue": {},
       "correlation": {}, "kind": "{}",
       "grid": {}, "block": {})JSON",
-      gpuActivity.device, resourceId(),
+      gpuActivity.device, resourceId(), gpuActivity.queue,
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
       correlationToGrid[gpuActivity.id], correlationToBlock[gpuActivity.id]);
   } else {
     return fmt::format(R"JSON(
-      "device": {}, "stream": {},
+      "device": {}, "stream": {}, "hsa_queue": {},
       "correlation": {}, "kind": "{}")JSON",
-      gpuActivity.device, resourceId(),
+      gpuActivity.device, resourceId(), gpuActivity.queue,
       gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op));
   }
   // clang-format on

@@ -538,6 +538,11 @@ TEST_F(RocmActivityProfilerTest, HtoDMemcpyPrefersRuntimeStreamOverAsyncQueue) {
   // Even though the async copy carries a nonzero HW queue (42), it is grouped
   // by its real HIP stream (7) -- shared with the kernel -> dense index 1.
   EXPECT_EQ(memcpyActivity->resourceId(), 1);
+  // The raw HSA queue (42) is still logged in the event metadata for debugging,
+  // even though track placement uses the stream.
+  EXPECT_NE(
+      memcpyActivity->metadataJson().find("\"hsa_queue\": 42"),
+      std::string::npos);
 }
 
 TEST_F(

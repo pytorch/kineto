@@ -34,6 +34,7 @@
 #include "src/RocmActivityProfiler.h"
 #include "src/RocmStreamQueue.h"
 
+#include "src/RocmMetadataFields.h"
 #include "src/RocprofActivity.h"
 #include "src/RocprofActivityApi.h"
 #include "src/RocprofLogger.h"
@@ -429,6 +430,47 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
   fstat(fd, &buf);
   EXPECT_GT(buf.st_size, 100);
 #endif
+}
+
+TEST_F(RocmActivityProfilerTest, GpuTypedMetadataMatchesLegacyStreamMetadata) {
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addMemcpyH2DActivity(start_time_ns + 10, start_time_ns + 20, 1, 42);
+  rocActivities_.activityLogger = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  const ITraceActivity* memcpyActivity = nullptr;
+  for (const auto& activity : *trace.activities()) {
+    if (activity->name() == "Memcpy HtoD (Host -> Device)") {
+      memcpyActivity = activity;
+      break;
+    }
+  }
+
+  ASSERT_NE(memcpyActivity, nullptr);
+  EXPECT_EQ(memcpyActivity->resourceId(), 42);
+
+  const auto typedMetadata = memcpyActivity->typedMetadata();
+  const auto jsonMetadata =
+      nlohmann::json::parse("{" + memcpyActivity->metadataJson() + "}");
+  EXPECT_EQ(
+      typedMetadata.get(RocmMetadataFields::kStream),
+      jsonMetadata["stream"].get<int64_t>());
+  EXPECT_EQ(
+      typedMetadata.get(RocmMetadataFields::kHsaQueue),
+      jsonMetadata["hsa_queue"].get<int64_t>());
 }
 
 TEST_F(

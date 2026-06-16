@@ -64,30 +64,6 @@ target_link_libraries(CuptiCallbackApiTest PRIVATE
     kineto_base kineto_api)
 gtest_discover_tests(CuptiCallbackApiTest)
 
-# CuptiRangeProfilerApiTest
-add_executable(CuptiRangeProfilerApiTest CuptiRangeProfilerApiTest.cpp)
-target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerApiTest)
-
-# CuptiRangeProfilerConfigTest
-add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
-target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerConfigTest)
-
-# CuptiRangeProfilerTest
-add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
-target_link_libraries(CuptiRangeProfilerTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerTest)
-
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
 target_link_libraries(CuptiStringsTest PRIVATE
@@ -140,13 +116,3 @@ target_link_libraries(PidInfoTest PRIVATE
     kineto_base kineto_api
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(PidInfoTest)
-
-# CuptiProfilerApiTest
-# TODO: Re-enable once runtime crash in cuptiDeviceGetChipName is fixed.
-# enable_language(CUDA)
-# add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
-# target_link_libraries(CuptiProfilerApiTest PRIVATE
-#     kineto_base kineto_api
-#     CUDA::cuda_driver
-#     gtest_main)
-# add_test(NAME CuptiProfilerApiTest COMMAND CuptiProfilerApiTest)

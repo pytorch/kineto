@@ -324,10 +324,7 @@ bool GenericActivityProfiler::outOfRange(const ITraceActivity& act) {
             << captureWindowEndTime_;
     ecs_.out_of_range_events++;
   }
-  // Range Profiling mode returns kernels with 0 ts and duration that we can
-  // pass through to output
-  bool zero_ts = rangeProfilingActive_ && (act.timestamp() == 0);
-  return !zero_ts && out_of_range;
+  return out_of_range;
 }
 
 inline void GenericActivityProfiler::updateGpuNetSpan(
@@ -524,8 +521,6 @@ void GenericActivityProfiler::configure(
   if (!profilers_.empty()) {
     configureChildProfilers();
   }
-  rangeProfilingActive_ = config_->selectedActivityTypes().contains(
-      ActivityType::CUDA_PROFILER_RANGE);
 
   if (libkineto::api().client()) {
     libkineto::api().client()->prepare(

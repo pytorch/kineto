@@ -192,9 +192,20 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
                       std::string_view cat,
                       std::string_view name);
 
+  // Shared arg-copy: writes the NCCL-shaped collective args (seq, pg, dtype,
+  // msg sizes, ...) read from the linked record_param_comms op into args.
+  // Backend-agnostic -- reused by both the NCCL and MTIA/HCCL paths.
+  void appendCollectiveArgs(ArgsBuilder& args, const ITraceActivity& collectiveRecord);
+
   void appendNcclCollectiveMetadata(ArgsBuilder& args,
                                     const ITraceActivity& gpuOp,
                                     const ITraceActivity& collectiveRecord);
+
+  // MTIA/HCCL counterpart of appendNcclCollectiveMetadata: same arg shape via
+  // appendCollectiveArgs, but with MTIA backend labels and no version field
+  // (the schema carries only nccl_version, and there is no HCCL version source
+  // on this path).
+  void appendMtiaCollectiveMetadata(ArgsBuilder& args, const ITraceActivity& collectiveRecord);
 
   std::string fileName_;
   std::string tempFileName_;

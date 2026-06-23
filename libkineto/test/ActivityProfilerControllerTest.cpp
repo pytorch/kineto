@@ -61,9 +61,9 @@ TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
           filename));
   ASSERT_TRUE(success);
 
-  // Start an async request via scheduleTrace -- populate asyncRequestConfig_
+  // Start an async request via acceptConfig -- populate asyncRequestConfig_
   ActivityProfilerController controller(ConfigLoader::instance(), true);
-  controller.step();
+  controller.asyncStep();
   controller.acceptConfig(asyncCfg);
   EXPECT_FALSE(controller.isActive());
 
@@ -71,19 +71,19 @@ TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
   Config syncCfg;
   syncCfg.setClientDefaults();
   syncCfg.validate(system_clock::now());
-  controller.prepareTrace(syncCfg);
+  controller.syncPrepareTrace(syncCfg);
   EXPECT_TRUE(controller.isActive());
 
-  controller.startTrace();
+  controller.syncStartTrace();
 
   // When the sync trace stops, the async request should be completely inactive
-  auto trace = controller.stopTrace();
+  auto trace = controller.syncStopTrace();
   EXPECT_NE(trace, nullptr);
   EXPECT_FALSE(controller.isActive());
 
-  // Use .step() being no-op as a proxy to validate that async was cancelled
+  // Use asyncStep() being no-op as a proxy to validate that async was cancelled
   for (int i = 0; i < 10; ++i) {
-    controller.step();
+    controller.asyncStep();
     EXPECT_FALSE(controller.isActive());
   }
 
@@ -108,14 +108,14 @@ TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
   ASSERT_TRUE(success);
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
-  controller.step();
+  controller.asyncStep();
 
   Config syncCfg;
   syncCfg.setClientDefaults();
   syncCfg.validate(system_clock::now());
 
   // Start a sync trace
-  controller.prepareTrace(syncCfg);
+  controller.syncPrepareTrace(syncCfg);
   EXPECT_TRUE(controller.isActive());
   EXPECT_FALSE(controller.canAcceptConfig());
 
@@ -124,16 +124,16 @@ TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
   controller.acceptConfig(asyncCfg);
   EXPECT_TRUE(controller.isActive());
 
-  controller.startTrace();
-  auto trace = controller.stopTrace();
+  controller.syncStartTrace();
+  auto trace = controller.syncStopTrace();
   EXPECT_NE(trace, nullptr);
   EXPECT_FALSE(controller.isActive());
 
   // After sync runs to completion, check that the async request was not
   // accepted.
-  // Use .step() being no-op as a proxy to validate that async was cancelled
+  // Use asyncStep() being no-op as a proxy to validate that async was cancelled
   for (int i = 0; i < 10; ++i) {
-    controller.step();
+    controller.asyncStep();
     EXPECT_FALSE(controller.isActive());
   }
 
@@ -158,32 +158,32 @@ TEST(ActivityProfilerController, PrepareTracePreemptsActiveAsyncRequest) {
   ASSERT_TRUE(success);
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
-  controller.step();
+  controller.asyncStep();
 
   // Start an async request, step until it's active
   controller.acceptConfig(asyncCfg);
   EXPECT_FALSE(controller.isActive());
-  controller.step();
+  controller.asyncStep();
   EXPECT_FALSE(controller.isActive());
-  controller.step();
+  controller.asyncStep();
   EXPECT_TRUE(controller.isActive());
-  controller.step();
+  controller.asyncStep();
   EXPECT_TRUE(controller.isActive());
 
   // Start a sync trace, which should preempt the async request
   Config syncCfg;
   syncCfg.setClientDefaults();
   syncCfg.validate(system_clock::now());
-  controller.prepareTrace(syncCfg);
+  controller.syncPrepareTrace(syncCfg);
   EXPECT_TRUE(controller.isActive());
-  controller.startTrace();
-  auto trace = controller.stopTrace();
+  controller.syncStartTrace();
+  auto trace = controller.syncStopTrace();
   EXPECT_NE(trace, nullptr);
   EXPECT_FALSE(controller.isActive());
 
-  // Use .step() being no-op as a proxy to validate that async was cancelled
+  // Use asyncStep() being no-op as a proxy to validate that async was cancelled
   for (int i = 0; i < 10; ++i) {
-    controller.step();
+    controller.asyncStep();
     EXPECT_FALSE(controller.isActive());
   }
 

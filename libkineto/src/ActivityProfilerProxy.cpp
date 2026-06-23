@@ -44,15 +44,15 @@ void ActivityProfilerProxy::scheduleTrace(const std::string& configStr) {
   resetTLS();
   Config config;
   config.parse(configStr);
-  controller_->scheduleTrace(config);
+  controller_->asyncScheduleTrace(config);
 }
 
 void ActivityProfilerProxy::scheduleTrace(const Config& config) {
-  controller_->scheduleTrace(config);
+  controller_->asyncScheduleTrace(config);
 }
 
 void ActivityProfilerProxy::step() {
-  controller_->step();
+  controller_->asyncStep();
 }
 
 // Sync/auto-trace tracing functions.
@@ -83,19 +83,19 @@ void ActivityProfilerProxy::prepareTrace(
     config.validate(std::chrono::system_clock::now());
   }
 
-  controller_->prepareTrace(config);
+  controller_->syncPrepareTrace(config);
 }
 
 void ActivityProfilerProxy::toggleCollectionDynamic(const bool enable) {
-  controller_->toggleCollectionDynamic(enable);
+  controller_->syncToggleCollectionDynamic(enable);
 }
 
 void ActivityProfilerProxy::startTrace() {
-  controller_->startTrace();
+  controller_->syncStartTrace();
 }
 
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerProxy::stopTrace() {
-  return controller_->stopTrace();
+  return controller_->syncStopTrace();
 }
 
 // TraceActivity API.

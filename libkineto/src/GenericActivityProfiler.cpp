@@ -109,7 +109,12 @@ void GenericActivityProfiler::transferCpuTrace(
     std::unique_ptr<libkineto::CpuTraceBuffer> cpuTrace) {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
   const string& trace_name = cpuTrace->span.name;
-  if (!acceptCpuTraces_) {
+  // acceptCpuTraces_ stays true after the synchronous processTrace() path moves
+  // traceBuffers_ out via finalizeTrace() (only completeTrace()/resetInternal()
+  // clears it), so a late span can arrive with traceBuffers_ already null.
+  // Treat either condition as "not collecting" and discard instead of
+  // dereferencing.
+  if (!acceptCpuTraces_ || traceBuffers_ == nullptr) {
     VLOG(0) << "Trace collection not in progress - discarding span "
             << trace_name;
     return;
@@ -135,6 +140,13 @@ const std::unordered_set<std::string>& getLoggerMedataAllowList() {
 
 void GenericActivityProfiler::processTraceInternal(ActivityLogger& logger) {
   UST_LOGGER_STAGE_SCOPE(kPostProcessingStage);
+  // A previous processTraceInternal() moved traceBuffers_ out via
+  // finalizeTrace(); a redundant process call can reach here with it already
+  // null. Bail out instead of dereferencing null.
+  if (traceBuffers_ == nullptr) {
+    LOG(WARNING) << "No trace buffers to process - skipping";
+    return;
+  }
   LOG(INFO) << "Processing " << traceBuffers_->cpu.size() << " CPU buffers";
   VLOG(0) << "Profile time range: " << captureWindowStartTime_ << " - "
           << captureWindowEndTime_;

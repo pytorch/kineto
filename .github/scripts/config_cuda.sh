@@ -26,6 +26,13 @@ KINETO_CMAKE_FLAGS=(
 export USE_CUDA=1
 export BUILD_TEST=1
 
+# Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
+# core (16 on the g5.4xlarge runner). On a cold sccache cache the heavy ATen
+# CPU kernels then compile all at once, peaking past the runner's 64 GB and
+# tripping the OOM killer (SIGKILL / exit 137). 8 jobs bounds peak memory;
+# warm cache-hit builds use little memory and stay fast regardless.
+export MAX_JOBS=8
+
 # --- PyTorch build caching ---
 # This arch's CI runner is an AWS instance, so it can reach PyTorch's shared
 # S3 sccache bucket.

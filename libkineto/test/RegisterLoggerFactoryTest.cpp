@@ -179,7 +179,7 @@ TEST(RegisterLoggerFactoryTest, OverwriteProtocolWarning) {
   auto counter2 = std::make_shared<int>(0);
 
   libkineto::registerLoggerFactory(
-      "overwrite_warning_proto", [counter1](const std::string& path) {
+      "overwrite_warning_proto", [counter1](const std::string&) {
         return std::make_unique<CountingLogger>(counter1);
       });
 
@@ -187,7 +187,7 @@ TEST(RegisterLoggerFactoryTest, OverwriteProtocolWarning) {
   libkineto::Logger::addLoggerObserver(&observer);
 
   libkineto::registerLoggerFactory(
-      "overwrite_warning_proto", [counter2](const std::string& path) {
+      "overwrite_warning_proto", [counter2](const std::string&) {
         return std::make_unique<CountingLogger>(counter2);
       });
 

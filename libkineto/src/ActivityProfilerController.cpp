@@ -212,19 +212,19 @@ void ActivityProfilerController::acceptConfig(const Config& config) {
   }
   asyncHandler_->acceptConfig(config);
 }
-void ActivityProfilerController::scheduleTrace(const Config& config) {
+void ActivityProfilerController::asyncScheduleTrace(const Config& config) {
   if (isActive()) {
     logRequestCancellation(config, "Ignored request - profiler busy");
     return;
   }
   asyncHandler_->scheduleTrace(config);
 }
-void ActivityProfilerController::step() {
+void ActivityProfilerController::asyncStep() {
   asyncHandler_->step();
 }
 
 // Sync-only functions
-void ActivityProfilerController::prepareTrace(const Config& config) {
+void ActivityProfilerController::syncPrepareTrace(const Config& config) {
   // Sync-trace requests preempt any active trace.
   asyncHandler_->cancel();
   if (syncHandler_->isSyncActive()) {
@@ -233,14 +233,15 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
 
   syncHandler_->prepareTrace(config);
 }
-void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {
+void ActivityProfilerController::syncToggleCollectionDynamic(
+    const bool enable) {
   syncHandler_->toggleCollectionDynamic(enable);
 }
-void ActivityProfilerController::startTrace() {
+void ActivityProfilerController::syncStartTrace() {
   syncHandler_->startTrace();
 }
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::
-    stopTrace() {
+    syncStopTrace() {
   return syncHandler_->stopTrace();
 }
 

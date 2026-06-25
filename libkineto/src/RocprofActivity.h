@@ -111,7 +111,7 @@ struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
 
   // Add small buffer to fix visual error created by
   // https://github.com/ROCm/rocprof/issues/105 Once this is resolved we can
@@ -150,7 +150,7 @@ struct RuntimeActivity : public RocprofActivity<T> {
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
   const T& raw() const {
     return RocprofActivity<T>::raw();
   }

@@ -123,7 +123,7 @@ struct RuntimeActivity : public CuptiActivity<CUpti_ActivityAPI> {
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
 
  private:
   const int32_t threadId_;
@@ -149,7 +149,7 @@ struct DriverActivity : public CuptiActivity<CUpti_ActivityAPI> {
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
 
  private:
   const int32_t threadId_;
@@ -200,7 +200,7 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
 
  private:
   const int32_t threadId_;
@@ -227,7 +227,7 @@ struct CudaSyncActivity : public CuptiActivity<CUpti_ActivitySynchronization> {
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
   const CUpti_ActivitySynchronization& raw() const {
     return CuptiActivity<CUpti_ActivitySynchronization>::raw();
   }
@@ -288,7 +288,7 @@ struct CudaEventActivity : public CuptiActivity<CUpti_ActivityCudaEventType> {
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
   const CUpti_ActivityCudaEventType& raw() const {
     return CuptiActivity<CUpti_ActivityCudaEventType>::raw();
   }
@@ -315,7 +315,7 @@ struct GpuActivity : public CuptiActivity<T> {
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
-  TypedMetadata typedMetadata() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
   const T& raw() const {
     return CuptiActivity<T>::raw();
   }
@@ -396,20 +396,18 @@ inline const std::string CudaSyncActivity::metadataJson() const {
   return "";
 }
 
-inline TypedMetadata CudaSyncActivity::typedMetadata() const {
+inline void CudaSyncActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivitySynchronization& sync = raw();
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kCudaSyncKind, std::string{syncTypeString(sync.type)});
+  visitor.visit(CudaMetadataFields::kCudaSyncKind, std::string{syncTypeString(sync.type)});
   if (isEventSync(sync.type)) {
-    metadata.set(CudaMetadataFields::kWaitOnStream, static_cast<int64_t>(srcStream_));
-    metadata.set(CudaMetadataFields::kWaitOnCudaEventRecordCorrId, static_cast<int64_t>(srcCorrId_));
-    metadata.set(CudaMetadataFields::kWaitOnCudaEventId, static_cast<int64_t>(sync.cudaEventId));
+    visitor.visit(CudaMetadataFields::kWaitOnStream, static_cast<int64_t>(srcStream_));
+    visitor.visit(CudaMetadataFields::kWaitOnCudaEventRecordCorrId, static_cast<int64_t>(srcCorrId_));
+    visitor.visit(CudaMetadataFields::kWaitOnCudaEventId, static_cast<int64_t>(sync.cudaEventId));
   }
-  metadata.set(CudaMetadataFields::kStream, static_cast<int64_t>(streamIdForTrace(sync.streamId)));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(sync.correlationId));
-  metadata.set(CudaMetadataFields::kDevice, deviceId());
-  metadata.set(CudaMetadataFields::kContext, static_cast<int64_t>(sync.contextId));
-  return metadata;
+  visitor.visit(CudaMetadataFields::kStream, static_cast<int64_t>(streamIdForTrace(sync.streamId)));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(sync.correlationId));
+  visitor.visit(CudaMetadataFields::kDevice, deviceId());
+  visitor.visit(CudaMetadataFields::kContext, static_cast<int64_t>(sync.contextId));
 }
 
 inline const std::string CudaEventActivity::name() const {
@@ -443,15 +441,13 @@ inline const std::string CudaEventActivity::metadataJson() const {
   // clang-format on
 }
 
-inline TypedMetadata CudaEventActivity::typedMetadata() const {
+inline void CudaEventActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityCudaEventType& event = raw();
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kEventId, static_cast<int64_t>(event.eventId));
-  metadata.set(CudaMetadataFields::kStream, static_cast<int64_t>(streamIdForTrace(event.streamId)));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(event.correlationId));
-  metadata.set(CudaMetadataFields::kDevice, deviceId());
-  metadata.set(CudaMetadataFields::kContext, static_cast<int64_t>(event.contextId));
-  return metadata;
+  visitor.visit(CudaMetadataFields::kEventId, static_cast<int64_t>(event.eventId));
+  visitor.visit(CudaMetadataFields::kStream, static_cast<int64_t>(streamIdForTrace(event.streamId)));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(event.correlationId));
+  visitor.visit(CudaMetadataFields::kDevice, deviceId());
+  visitor.visit(CudaMetadataFields::kContext, static_cast<int64_t>(event.contextId));
 }
 
 template <class T>
@@ -504,33 +500,38 @@ inline std::string getChannelMetadata([[maybe_unused]] const T& activity) {
 }
 
 template <class T>
-inline void addGraphNodeTypedMetadata([[maybe_unused]] TypedMetadata& metadata, [[maybe_unused]] const T& activity) {
+inline void addGraphNodeTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor,
+                                      [[maybe_unused]] const T& activity) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
-  metadata.set(CudaMetadataFields::kGraphId, static_cast<int64_t>(activity.graphId));
-  metadata.set(CudaMetadataFields::kGraphNodeId, static_cast<int64_t>(activity.graphNodeId));
+  visitor.visit(CudaMetadataFields::kGraphId, static_cast<int64_t>(activity.graphId));
+  visitor.visit(CudaMetadataFields::kGraphNodeId, static_cast<int64_t>(activity.graphNodeId));
 #endif
 }
 
 template <class T>
-inline void addPriorityTypedMetadata([[maybe_unused]] TypedMetadata& metadata, [[maybe_unused]] const T& kernel) {
+inline void addPriorityTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor,
+                                     [[maybe_unused]] const T& kernel) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 13010
-  metadata.set(CudaMetadataFields::kPriority, static_cast<int64_t>(kernel.priority));
+  visitor.visit(CudaMetadataFields::kPriority, static_cast<int64_t>(kernel.priority));
 #endif
 }
 
 template <class T>
-inline void addChannelTypedMetadata([[maybe_unused]] TypedMetadata& metadata, [[maybe_unused]] const T& activity) {
+inline void addChannelTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor,
+                                    [[maybe_unused]] const T& activity) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
-  metadata.set(CudaMetadataFields::kChannel, static_cast<int64_t>(activity.channelID));
-  metadata.set(CudaMetadataFields::kChannelType, static_cast<int64_t>(activity.channelType));
+  visitor.visit(CudaMetadataFields::kChannel, static_cast<int64_t>(activity.channelID));
+  visitor.visit(CudaMetadataFields::kChannelType, static_cast<int64_t>(activity.channelType));
 #endif
 }
 
-inline void addBandwidthTypedMetadata([[maybe_unused]] TypedMetadata& metadata, uint64_t bytes, int64_t duration) {
+inline void addBandwidthTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor,
+                                      uint64_t bytes,
+                                      int64_t duration) {
   if (duration == 0) {
     return;
   }
-  metadata.set(CudaMetadataFields::kMemoryBandwidthGbps, static_cast<double>(bytes) / static_cast<double>(duration));
+  visitor.visit(CudaMetadataFields::kMemoryBandwidthGbps, static_cast<double>(bytes) / static_cast<double>(duration));
 }
 
 // Convert limitingFactors bitmask to human-readable string
@@ -615,49 +616,47 @@ inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() c
 }
 
 template <>
-inline TypedMetadata GpuActivity<CUpti_ActivityKernelType>::typedMetadata() const {
+inline void GpuActivity<CUpti_ActivityKernelType>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityKernelType& kernel = raw();
   const float blocksPerSmVal = blocksPerSm(kernel);
   const float warpsPerSmVal = warpsPerSm(kernel);
   const OccupancyMetrics occMetrics = computeOccupancyMetrics(kernel);
 
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kQueued, static_cast<int64_t>(kernel.queued));
-  metadata.set(CudaMetadataFields::kDevice, static_cast<int64_t>(kernel.deviceId));
-  metadata.set(CudaMetadataFields::kContext, static_cast<int64_t>(kernel.contextId));
-  metadata.set(CudaMetadataFields::kStream, static_cast<int64_t>(kernel.streamId));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(kernel.correlationId));
-  metadata.set(CudaMetadataFields::kRegistersPerThread, static_cast<int64_t>(kernel.registersPerThread));
-  metadata.set(CudaMetadataFields::kSharedMemory,
-               static_cast<int64_t>(kernel.staticSharedMemory + kernel.dynamicSharedMemory));
-  metadata.set(CudaMetadataFields::kBlocksPerSm, static_cast<double>(blocksPerSmVal));
-  metadata.set(CudaMetadataFields::kWarpsPerSm, static_cast<double>(warpsPerSmVal));
-  metadata.set(
+  visitor.visit(CudaMetadataFields::kQueued, static_cast<int64_t>(kernel.queued));
+  visitor.visit(CudaMetadataFields::kDevice, static_cast<int64_t>(kernel.deviceId));
+  visitor.visit(CudaMetadataFields::kContext, static_cast<int64_t>(kernel.contextId));
+  visitor.visit(CudaMetadataFields::kStream, static_cast<int64_t>(kernel.streamId));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(kernel.correlationId));
+  visitor.visit(CudaMetadataFields::kRegistersPerThread, static_cast<int64_t>(kernel.registersPerThread));
+  visitor.visit(CudaMetadataFields::kSharedMemory,
+                static_cast<int64_t>(kernel.staticSharedMemory + kernel.dynamicSharedMemory));
+  visitor.visit(CudaMetadataFields::kBlocksPerSm, static_cast<double>(blocksPerSmVal));
+  visitor.visit(CudaMetadataFields::kWarpsPerSm, static_cast<double>(warpsPerSmVal));
+  visitor.visit(
       CudaMetadataFields::kGrid,
       std::vector<int64_t>{
           static_cast<int64_t>(kernel.gridX), static_cast<int64_t>(kernel.gridY), static_cast<int64_t>(kernel.gridZ)});
-  metadata.set(CudaMetadataFields::kBlock,
-               std::vector<int64_t>{static_cast<int64_t>(kernel.blockX),
-                                    static_cast<int64_t>(kernel.blockY),
-                                    static_cast<int64_t>(kernel.blockZ)});
-  metadata.set(CudaMetadataFields::kEstAchievedOccupancyPercent,
-               static_cast<int64_t>(std::lround(occMetrics.occupancy * 100.0)));
-  metadata.set(CudaMetadataFields::kActiveBlocksPerMultiprocessor,
-               static_cast<int64_t>(occMetrics.result.activeBlocksPerMultiprocessor));
-  metadata.set(CudaMetadataFields::kLimitingFactors, limitingFactorsToString(occMetrics.result.limitingFactors));
-  metadata.set(CudaMetadataFields::kBlockLimitRegs, static_cast<int64_t>(occMetrics.result.blockLimitRegs));
-  metadata.set(CudaMetadataFields::kBlockLimitSharedMem, static_cast<int64_t>(occMetrics.result.blockLimitSharedMem));
-  metadata.set(CudaMetadataFields::kBlockLimitWarps, static_cast<int64_t>(occMetrics.result.blockLimitWarps));
-  metadata.set(CudaMetadataFields::kBlockLimitBlocks, static_cast<int64_t>(occMetrics.result.blockLimitBlocks));
-  metadata.set(CudaMetadataFields::kBlockLimitBarriers, static_cast<int64_t>(occMetrics.result.blockLimitBarriers));
-  metadata.set(CudaMetadataFields::kAllocatedRegistersPerBlock,
-               static_cast<int64_t>(occMetrics.result.allocatedRegistersPerBlock));
-  metadata.set(CudaMetadataFields::kAllocatedSharedMemPerBlock,
-               static_cast<int64_t>(occMetrics.result.allocatedSharedMemPerBlock));
-  addGraphNodeTypedMetadata(metadata, kernel);
-  addPriorityTypedMetadata(metadata, kernel);
-  addChannelTypedMetadata(metadata, kernel);
-  return metadata;
+  visitor.visit(CudaMetadataFields::kBlock,
+                std::vector<int64_t>{static_cast<int64_t>(kernel.blockX),
+                                     static_cast<int64_t>(kernel.blockY),
+                                     static_cast<int64_t>(kernel.blockZ)});
+  visitor.visit(CudaMetadataFields::kEstAchievedOccupancyPercent,
+                static_cast<int64_t>(std::lround(occMetrics.occupancy * 100.0)));
+  visitor.visit(CudaMetadataFields::kActiveBlocksPerMultiprocessor,
+                static_cast<int64_t>(occMetrics.result.activeBlocksPerMultiprocessor));
+  visitor.visit(CudaMetadataFields::kLimitingFactors, limitingFactorsToString(occMetrics.result.limitingFactors));
+  visitor.visit(CudaMetadataFields::kBlockLimitRegs, static_cast<int64_t>(occMetrics.result.blockLimitRegs));
+  visitor.visit(CudaMetadataFields::kBlockLimitSharedMem, static_cast<int64_t>(occMetrics.result.blockLimitSharedMem));
+  visitor.visit(CudaMetadataFields::kBlockLimitWarps, static_cast<int64_t>(occMetrics.result.blockLimitWarps));
+  visitor.visit(CudaMetadataFields::kBlockLimitBlocks, static_cast<int64_t>(occMetrics.result.blockLimitBlocks));
+  visitor.visit(CudaMetadataFields::kBlockLimitBarriers, static_cast<int64_t>(occMetrics.result.blockLimitBarriers));
+  visitor.visit(CudaMetadataFields::kAllocatedRegistersPerBlock,
+                static_cast<int64_t>(occMetrics.result.allocatedRegistersPerBlock));
+  visitor.visit(CudaMetadataFields::kAllocatedSharedMemPerBlock,
+                static_cast<int64_t>(occMetrics.result.allocatedSharedMemPerBlock));
+  addGraphNodeTypedMetadata(visitor, kernel);
+  addPriorityTypedMetadata(visitor, kernel);
+  addChannelTypedMetadata(visitor, kernel);
 }
 
 inline std::string memcpyName(uint8_t kind, uint8_t src, uint8_t dst) {
@@ -698,18 +697,16 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::metadataJson() c
 }
 
 template <>
-inline TypedMetadata GpuActivity<CUpti_ActivityMemcpyType>::typedMetadata() const {
+inline void GpuActivity<CUpti_ActivityMemcpyType>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityMemcpyType& memcpy = raw();
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kDevice, static_cast<int64_t>(memcpy.deviceId));
-  metadata.set(CudaMetadataFields::kContext, static_cast<int64_t>(memcpy.contextId));
-  metadata.set(CudaMetadataFields::kStream, static_cast<int64_t>(memcpy.streamId));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(memcpy.correlationId));
-  metadata.set(CudaMetadataFields::kBytes, static_cast<int64_t>(memcpy.bytes));
-  addBandwidthTypedMetadata(metadata, memcpy.bytes, duration());
-  addGraphNodeTypedMetadata(metadata, memcpy);
-  addChannelTypedMetadata(metadata, memcpy);
-  return metadata;
+  visitor.visit(CudaMetadataFields::kDevice, static_cast<int64_t>(memcpy.deviceId));
+  visitor.visit(CudaMetadataFields::kContext, static_cast<int64_t>(memcpy.contextId));
+  visitor.visit(CudaMetadataFields::kStream, static_cast<int64_t>(memcpy.streamId));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(memcpy.correlationId));
+  visitor.visit(CudaMetadataFields::kBytes, static_cast<int64_t>(memcpy.bytes));
+  addBandwidthTypedMetadata(visitor, memcpy.bytes, duration());
+  addGraphNodeTypedMetadata(visitor, memcpy);
+  addChannelTypedMetadata(visitor, memcpy);
 }
 
 template <>
@@ -741,22 +738,20 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::metadataJson
 }
 
 template <>
-inline TypedMetadata GpuActivity<CUpti_ActivityMemcpyPtoPType>::typedMetadata() const {
+inline void GpuActivity<CUpti_ActivityMemcpyPtoPType>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityMemcpyPtoPType& memcpy = raw();
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kFromDevice, static_cast<int64_t>(memcpy.srcDeviceId));
-  metadata.set(CudaMetadataFields::kInDevice, static_cast<int64_t>(memcpy.deviceId));
-  metadata.set(CudaMetadataFields::kToDevice, static_cast<int64_t>(memcpy.dstDeviceId));
-  metadata.set(CudaMetadataFields::kFromContext, static_cast<int64_t>(memcpy.srcContextId));
-  metadata.set(CudaMetadataFields::kInContext, static_cast<int64_t>(memcpy.contextId));
-  metadata.set(CudaMetadataFields::kToContext, static_cast<int64_t>(memcpy.dstContextId));
-  metadata.set(CudaMetadataFields::kStream, static_cast<int64_t>(memcpy.streamId));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(memcpy.correlationId));
-  metadata.set(CudaMetadataFields::kBytes, static_cast<int64_t>(memcpy.bytes));
-  addBandwidthTypedMetadata(metadata, memcpy.bytes, duration());
-  addGraphNodeTypedMetadata(metadata, memcpy);
-  addChannelTypedMetadata(metadata, memcpy);
-  return metadata;
+  visitor.visit(CudaMetadataFields::kFromDevice, static_cast<int64_t>(memcpy.srcDeviceId));
+  visitor.visit(CudaMetadataFields::kInDevice, static_cast<int64_t>(memcpy.deviceId));
+  visitor.visit(CudaMetadataFields::kToDevice, static_cast<int64_t>(memcpy.dstDeviceId));
+  visitor.visit(CudaMetadataFields::kFromContext, static_cast<int64_t>(memcpy.srcContextId));
+  visitor.visit(CudaMetadataFields::kInContext, static_cast<int64_t>(memcpy.contextId));
+  visitor.visit(CudaMetadataFields::kToContext, static_cast<int64_t>(memcpy.dstContextId));
+  visitor.visit(CudaMetadataFields::kStream, static_cast<int64_t>(memcpy.streamId));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(memcpy.correlationId));
+  visitor.visit(CudaMetadataFields::kBytes, static_cast<int64_t>(memcpy.bytes));
+  addBandwidthTypedMetadata(visitor, memcpy.bytes, duration());
+  addGraphNodeTypedMetadata(visitor, memcpy);
+  addChannelTypedMetadata(visitor, memcpy);
 }
 
 template <>
@@ -787,18 +782,16 @@ inline const std::string GpuActivity<CUpti_ActivityMemsetType>::metadataJson() c
 }
 
 template <>
-inline TypedMetadata GpuActivity<CUpti_ActivityMemsetType>::typedMetadata() const {
+inline void GpuActivity<CUpti_ActivityMemsetType>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityMemsetType& memset = raw();
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kDevice, static_cast<int64_t>(memset.deviceId));
-  metadata.set(CudaMetadataFields::kContext, static_cast<int64_t>(memset.contextId));
-  metadata.set(CudaMetadataFields::kStream, static_cast<int64_t>(memset.streamId));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(memset.correlationId));
-  metadata.set(CudaMetadataFields::kBytes, static_cast<int64_t>(memset.bytes));
-  addBandwidthTypedMetadata(metadata, memset.bytes, duration());
-  addGraphNodeTypedMetadata(metadata, memset);
-  addChannelTypedMetadata(metadata, memset);
-  return metadata;
+  visitor.visit(CudaMetadataFields::kDevice, static_cast<int64_t>(memset.deviceId));
+  visitor.visit(CudaMetadataFields::kContext, static_cast<int64_t>(memset.contextId));
+  visitor.visit(CudaMetadataFields::kStream, static_cast<int64_t>(memset.streamId));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(memset.correlationId));
+  visitor.visit(CudaMetadataFields::kBytes, static_cast<int64_t>(memset.bytes));
+  addBandwidthTypedMetadata(visitor, memset.bytes, duration());
+  addGraphNodeTypedMetadata(visitor, memset);
+  addChannelTypedMetadata(visitor, memset);
 }
 
 inline void RuntimeActivity::log(ActivityLogger& logger) const {
@@ -821,9 +814,7 @@ inline const std::string OverheadActivity::metadataJson() const {
   return "";
 }
 
-inline TypedMetadata OverheadActivity::typedMetadata() const {
-  return {};
-}
+inline void OverheadActivity::visitTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor) const {}
 
 inline bool RuntimeActivity::flowStart() const {
   return CuptiCbidRegistry::instance().requiresFlowCorrelation(CallbackDomain::RUNTIME, activity_.cbid);
@@ -837,11 +828,9 @@ inline const std::string RuntimeActivity::metadataJson() const {
       activity_.correlationId);
 }
 
-inline TypedMetadata RuntimeActivity::typedMetadata() const {
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kCbid, static_cast<int64_t>(activity_.cbid));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(activity_.correlationId));
-  return metadata;
+inline void RuntimeActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
+  visitor.visit(CudaMetadataFields::kCbid, static_cast<int64_t>(activity_.cbid));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(activity_.correlationId));
 }
 
 inline bool isTrackedDriverCbid(const CUpti_ActivityAPI& activity_) {
@@ -860,11 +849,9 @@ inline const std::string DriverActivity::metadataJson() const {
       activity_.correlationId);
 }
 
-inline TypedMetadata DriverActivity::typedMetadata() const {
-  TypedMetadata metadata;
-  metadata.set(CudaMetadataFields::kCbid, static_cast<int64_t>(activity_.cbid));
-  metadata.set(CudaMetadataFields::kCorrelation, static_cast<int64_t>(activity_.correlationId));
-  return metadata;
+inline void DriverActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
+  visitor.visit(CudaMetadataFields::kCbid, static_cast<int64_t>(activity_.cbid));
+  visitor.visit(CudaMetadataFields::kCorrelation, static_cast<int64_t>(activity_.correlationId));
 }
 
 inline const std::string DriverActivity::name() const {
@@ -877,8 +864,6 @@ inline const std::string GpuActivity<T>::metadataJson() const {
 }
 
 template <class T>
-inline TypedMetadata GpuActivity<T>::typedMetadata() const {
-  return {};
-}
+inline void GpuActivity<T>::visitTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor) const {}
 
 } // namespace KINETO_NAMESPACE

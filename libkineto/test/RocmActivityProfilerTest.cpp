@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
+#include <optional>
 
 #include <unistd.h>
 
@@ -87,6 +88,37 @@ bool isAsyncCopy(const rocprofAsyncRow& async) {
 bool isAsyncKernel(const rocprofAsyncRow& async) {
   return async.domain == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH;
 }
+
+struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
+  void visitValue(const MetadataField<int64_t>& field, int64_t value) override {
+    if (field.name == RocmMetadataFields::kStream.name) {
+      stream = value;
+    } else if (field.name == RocmMetadataFields::kHsaQueue.name) {
+      hsaQueue = value;
+    }
+  }
+
+  void visitValue(
+      [[maybe_unused]] const MetadataField<double>& field,
+      [[maybe_unused]] double value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<bool>& field,
+      [[maybe_unused]] bool value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<std::string>& field,
+      [[maybe_unused]] std::string_view value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<std::vector<int64_t>>& field,
+      [[maybe_unused]] const std::vector<int64_t>& value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<std::vector<std::string>>& field,
+      [[maybe_unused]] const std::vector<std::string>& value) override {}
+
+  void visitUnsupported(std::string_view /*name*/) override {}
+
+  std::optional<int64_t> stream;
+  std::optional<int64_t> hsaQueue;
+};
 } // namespace
 
 // Provides ability to easily create a test CPU-side ops
@@ -462,15 +494,12 @@ TEST_F(RocmActivityProfilerTest, GpuTypedMetadataMatchesLegacyStreamMetadata) {
   ASSERT_NE(memcpyActivity, nullptr);
   EXPECT_EQ(memcpyActivity->resourceId(), 42);
 
-  const auto typedMetadata = memcpyActivity->typedMetadata();
+  RocmStreamTypedMetadataVisitor typedMetadata;
+  memcpyActivity->visitTypedMetadata(typedMetadata);
   const auto jsonMetadata =
       nlohmann::json::parse("{" + memcpyActivity->metadataJson() + "}");
-  EXPECT_EQ(
-      typedMetadata.get(RocmMetadataFields::kStream),
-      jsonMetadata["stream"].get<int64_t>());
-  EXPECT_EQ(
-      typedMetadata.get(RocmMetadataFields::kHsaQueue),
-      jsonMetadata["hsa_queue"].get<int64_t>());
+  EXPECT_EQ(typedMetadata.stream, jsonMetadata["stream"].get<int64_t>());
+  EXPECT_EQ(typedMetadata.hsaQueue, jsonMetadata["hsa_queue"].get<int64_t>());
 }
 
 TEST_F(

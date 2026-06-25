@@ -17,6 +17,9 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <map>
+#include <optional>
+#include <variant>
 
 #include <unistd.h>
 
@@ -83,6 +86,63 @@ void createTempTraceFile(char* filename) {
   ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
   close(fd);
 }
+
+using RecordedMetadataValue = std::variant<
+    int64_t,
+    double,
+    bool,
+    std::string,
+    std::vector<int64_t>,
+    std::vector<std::string>>;
+
+class RecordingTypedMetadataVisitor final : public ITypedMetadataVisitor {
+ public:
+  template <typename T>
+  [[nodiscard]]
+  std::optional<typename MetadataField<T>::FieldType> get(
+      const MetadataField<T>& field) const {
+    auto it = values_.find(std::string{field.name});
+    if (it == values_.end()) {
+      return std::nullopt;
+    }
+    return std::get<typename MetadataField<T>::FieldType>(it->second);
+  }
+
+ private:
+  void visitValue(const MetadataField<int64_t>& field, int64_t value) override {
+    values_[std::string{field.name}] = value;
+  }
+
+  void visitValue(const MetadataField<double>& field, double value) override {
+    values_[std::string{field.name}] = value;
+  }
+
+  void visitValue(const MetadataField<bool>& field, bool value) override {
+    values_[std::string{field.name}] = value;
+  }
+
+  void visitValue(
+      const MetadataField<std::string>& field,
+      std::string_view value) override {
+    values_[std::string{field.name}] = std::string{value};
+  }
+
+  void visitValue(
+      const MetadataField<std::vector<int64_t>>& field,
+      const std::vector<int64_t>& value) override {
+    values_[std::string{field.name}] = value;
+  }
+
+  void visitValue(
+      const MetadataField<std::vector<std::string>>& field,
+      const std::vector<std::string>& value) override {
+    values_[std::string{field.name}] = value;
+  }
+
+  void visitUnsupported(std::string_view /*name*/) override {}
+
+  std::map<std::string, RecordedMetadataValue> values_;
+};
 } // namespace
 
 // Provides ability to easily create a few test CPU-side ops
@@ -591,7 +651,8 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
           << "Stream Wait Event corr_id should be populated despite out-of-order records";
       EXPECT_EQ(json["wait_on_stream"], kEventStreamId)
           << "Stream Wait Event should reference stream the event was recorded on";
-      const auto typedMetadata = activity->typedMetadata();
+      RecordingTypedMetadataVisitor typedMetadata;
+      activity->visitTypedMetadata(typedMetadata);
       EXPECT_EQ(
           typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventId),
           static_cast<int64_t>(kEventId));
@@ -611,7 +672,8 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
           << "Event Sync corr_id should be populated despite out-of-order records";
       EXPECT_EQ(json["wait_on_stream"], kEventStreamId)
           << "Event Sync should reference stream the event was recorded on";
-      const auto typedMetadata = activity->typedMetadata();
+      RecordingTypedMetadataVisitor typedMetadata;
+      activity->visitTypedMetadata(typedMetadata);
       EXPECT_EQ(
           typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventId),
           static_cast<int64_t>(kEventId));

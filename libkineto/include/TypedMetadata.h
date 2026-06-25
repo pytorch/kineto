@@ -9,18 +9,12 @@
 #pragma once
 
 #include <cstdint>
-#include <map>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <utility>
-#include <variant>
 #include <vector>
 
 namespace libkineto {
-
-using TypedValue = std::variant<int64_t, double, bool, std::string, std::vector<int64_t>, std::vector<std::string>>;
 
 template <typename T>
 struct MetadataField {
@@ -30,66 +24,63 @@ struct MetadataField {
 };
 
 /*
- * TypedMetadata is a per-activity map for structured metadata with
+ * ITypedMetadataVisitor is a per-activity visitor for structured metadata with
  * field-level type checking.
  *
  * Usage:
- *   // Declare each field once. FieldType is int64_t here, and set/get enforce
+ *   // Declare each field once. FieldType is int64_t here, and visit() enforces
  *   // that declared type.
  *   inline constexpr MetadataField<int64_t> kCorrelation{"correlation"};
  *
- *   // Producer: populate metadata from ITraceActivity::typedMetadata().
- *   TypedMetadata metadata;
- *   metadata.set(kCorrelation, int64_t{activity.correlationId});
+ *   // Producer: emit metadata from ITraceActivity::visitTypedMetadata().
+ *   void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override {
+ *     visitor.visit(kCorrelation, int64_t{activity.correlationId});
+ *   }
  *
- *   // Consumer: read a known field with its declared type.
- *   std::optional<int64_t> correlation = metadata.get(kCorrelation);
- *
- *   // Consumer: iterate over all fields for generic output conversion.
- *   metadata.visit([](std::string_view name, const TypedValue& value) {
+ *   // Consumer: implement visitValue() overloads for handled field types.
+ *   class MyVisitor : public ITypedMetadataVisitor {
  *     ...
- *   });
+ *   };
+ *
+ *   // Consumer: pass the visitor to an activity for generic output conversion.
+ *   MyVisitor visitor;
+ *   activity.visitTypedMetadata(visitor);
  */
-class TypedMetadata {
+class ITypedMetadataVisitor {
  public:
+  virtual ~ITypedMetadataVisitor() = default;
+
   template <typename T, typename V>
-  void set(const MetadataField<T>& field, V&& value) {
+  void visit(const MetadataField<T>& field, const V& value) {
     using FieldType = typename MetadataField<T>::FieldType;
     static_assert(std::is_same_v<FieldType, std::decay_t<V>>, "value type must match field's declared type");
-    entries_.insert_or_assign(std::string{field.name}, TypedValue{std::forward<V>(value)});
+    visitValue(field, value);
   }
 
-  [[nodiscard]] std::optional<TypedValue> get(std::string_view key) const {
-    auto it = entries_.find(key);
-    if (it == entries_.end()) {
-      return std::nullopt;
-    }
-    return it->second;
-  }
+ protected:
+  virtual void visitUnsupported(std::string_view name) = 0;
 
   template <typename T>
-  [[nodiscard]] std::optional<typename MetadataField<T>::FieldType> get(const MetadataField<T>& field) const {
-    using FieldType = typename MetadataField<T>::FieldType;
-    auto it = entries_.find(field.name);
-    if (it == entries_.end()) {
-      return std::nullopt;
-    }
-    return std::get<FieldType>(it->second);
+  void visitValue(const MetadataField<T>& field, const T& /*value*/) {
+    visitUnsupported(field.name);
   }
 
-  template <typename Fn>
-  void visit(Fn&& fn) const {
-    for (const auto& [name, value] : entries_) {
-      fn(std::string_view{name}, value);
-    }
+  void visitValue(const MetadataField<std::string>& field, const std::string& value) {
+    visitValue(field, std::string_view{value});
   }
 
-  [[nodiscard]] bool empty() const {
-    return entries_.empty();
-  }
+  virtual void visitValue(const MetadataField<int64_t>& field, int64_t value) = 0;
 
- private:
-  std::map<std::string, TypedValue, std::less<>> entries_;
+  virtual void visitValue(const MetadataField<double>& field, double value) = 0;
+
+  virtual void visitValue(const MetadataField<bool>& field, bool value) = 0;
+
+  virtual void visitValue(const MetadataField<std::string>& field, std::string_view value) = 0;
+
+  virtual void visitValue(const MetadataField<std::vector<int64_t>>& field, const std::vector<int64_t>& value) = 0;
+
+  virtual void visitValue(const MetadataField<std::vector<std::string>>& field,
+                          const std::vector<std::string>& value) = 0;
 };
 
 } // namespace libkineto

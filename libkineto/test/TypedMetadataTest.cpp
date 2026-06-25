@@ -7,6 +7,7 @@
  */
 
 #include "include/TypedMetadata.h"
+#include "include/TypedMetadataJson.h"
 
 #include <gtest/gtest.h>
 #include <map>
@@ -27,6 +28,7 @@ constexpr MetadataField<double> kRatio{"ratio"};
 constexpr MetadataField<bool> kEnabled{"enabled"};
 constexpr MetadataField<std::vector<std::string>> kNames{"names"};
 constexpr MetadataField<std::pair<int64_t, int64_t>> kPair{"pair"};
+constexpr MetadataField<std::string> kSpecialChars{"special"};
 
 using RecordedValue = std::variant<
     int64_t,
@@ -113,6 +115,33 @@ TEST(TypedMetadataVisitorTest, VisitsTypedFields) {
   EXPECT_EQ(
       std::get<std::vector<std::string>>(recorder.values.at("names")),
       std::vector<std::string>({"a", "b"}));
+}
+
+TEST(TypedMetadataVisitorTest, SerializesVisitedFieldsToJson) {
+  internal::JsonTypedMetadataVisitor jsonVisitor;
+  ITypedMetadataVisitor& visitor = jsonVisitor;
+
+  visitor.visit(kCount, int64_t{5});
+  visitor.visit(kIds, std::vector<int64_t>{1, 2});
+  visitor.visit(kLabel, std::string{"label"});
+  visitor.visit(kRatio, 1.5);
+  visitor.visit(kEnabled, true);
+  visitor.visit(kNames, std::vector<std::string>{"a", "b"});
+  visitor.visit(kSpecialChars, std::string{"quote \" slash \\ newline\n"});
+
+  const auto json = std::move(jsonVisitor).json();
+
+  EXPECT_NE(json.find("\"count\": 5"), std::string::npos);
+  EXPECT_NE(json.find("\"ids\": [1, 2]"), std::string::npos);
+  EXPECT_NE(json.find("\"label\": \"label\""), std::string::npos);
+  EXPECT_NE(json.find("\"ratio\": 1.5"), std::string::npos);
+  EXPECT_NE(json.find("\"enabled\": true"), std::string::npos);
+  EXPECT_NE(json.find("\"names\": [\"a\", \"b\"]"), std::string::npos);
+  // String values pass through verbatim; output_json.cpp sanitizes the full
+  // metadata fragment before appending it to the Chrome trace.
+  EXPECT_NE(
+      json.find("\"special\": \"quote \" slash \\ newline\n\""),
+      std::string::npos);
 }
 
 TEST(TypedMetadataVisitorTest, FallsBackToVisitUnsupported) {

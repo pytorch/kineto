@@ -28,9 +28,11 @@ export BUILD_TEST=1
 
 # Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
 # core (16 on the g5.4xlarge runner). On a cold sccache cache the heavy ATen
-# CPU kernels then compile all at once, peaking past the runner's 64 GB and
-# tripping the OOM killer (SIGKILL / exit 137). 8 jobs bounds peak memory;
-# warm cache-hit builds use little memory and stay fast regardless.
+# CPU kernels then compile all at once, peaking past the runner's total memory
+# and tripping the OOM killer.
+#
+# Note that this is tuned to the current g5.4xlarge runner to half the available
+# cores. This should be updated if we change the default runner.
 export MAX_JOBS=8
 
 # --- PyTorch build caching ---

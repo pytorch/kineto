@@ -33,8 +33,10 @@ export PYTORCH_TEST_WITH_ROCM=1
 # Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
 # core, and ROCm never reaches the sccache bucket (see below), so every build
 # recompiles the heavy ATen kernels from scratch. Without a cap they compile
-# all at once and can exhaust runner memory, tripping the OOM killer (SIGKILL /
-# exit 137). 8 jobs bounds peak memory.
+# all at once and can exhaust runner memory, tripping the OOM killer.
+#
+# Note that this is naively set the same as on the CUDA side. We can tweak this
+# if needed.
 export MAX_JOBS=8
 
 # --- PyTorch build caching ---

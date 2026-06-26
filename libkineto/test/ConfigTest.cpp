@@ -324,3 +324,39 @@ TEST(ParseTest, RequestTraceIds) {
   EXPECT_TRUE(cfg.parse("REQUEST_GROUP_TRACE_ID=ABC"));
   EXPECT_EQ(cfg.requestGroupTraceID(), "ABC");
 }
+
+// Trusted base config may set any trace path.
+TEST(ParseTest, BaseConfigLogFileUnrestricted) {
+  Config cfg;
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/home/user/custom/trace.json"));
+  EXPECT_EQ(cfg.activitiesLogFile(), "/home/user/custom/trace.json");
+
+  EXPECT_TRUE(cfg.parse("EVENTS_LOG_FILE=/home/user/custom/events.log"));
+  EXPECT_EQ(cfg.eventLogFile(), "/home/user/custom/events.log");
+}
+
+// On-demand path under the allowed dir is accepted.
+TEST(ParseTest, OnDemandLogFileAllowed) {
+  Config cfg;
+  cfg.setOnDemand(true);
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/tmp/my_trace.json"));
+  EXPECT_EQ(cfg.activitiesLogFile(), "/tmp/my_trace.json");
+}
+
+// On-demand path outside the allowed dir (or with traversal) falls back.
+TEST(ParseTest, OnDemandLogFileRejectedOutsideAllowedDir) {
+  Config cfg;
+  cfg.setOnDemand(true);
+  const std::string original = cfg.activitiesLogFile();
+
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/etc/cron.d/payload"));
+  EXPECT_EQ(cfg.activitiesLogFile(), original);
+  EXPECT_EQ(cfg.activitiesLogFile().rfind("/tmp/", 0), 0u);
+
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/tmp/../etc/cron.d/payload"));
+  EXPECT_EQ(cfg.activitiesLogFile(), original);
+
+  const std::string originalEvents = cfg.eventLogFile();
+  EXPECT_TRUE(cfg.parse("EVENTS_LOG_FILE=/etc/passwd"));
+  EXPECT_EQ(cfg.eventLogFile(), originalEvents);
+}

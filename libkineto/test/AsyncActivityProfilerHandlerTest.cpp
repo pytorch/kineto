@@ -365,6 +365,54 @@ TEST(AsyncActivityProfilerHandler, Cancel) {
   EXPECT_FALSE(handler.isAsyncActive());
 }
 
+TEST(AsyncActivityProfilerHandler, FinalizesPendingTraceOnTeardown) {
+  // Destroying a scheduled handler with a collected-but-unprocessed trace must
+  // let the profiler loop finalize it, not drop it.
+  GenericActivityProfiler profiler(/*cpu only*/ true);
+
+  char filename[] = "/tmp/libkineto_testXXXXXX.json";
+  createTempTraceFile(filename);
+
+  Config cfg;
+
+  bool success = cfg.parse(
+      fmt::format(
+          R"CFG(
+    PROFILE_START_ITERATION = 1
+    ACTIVITIES_WARMUP_ITERATIONS = 0
+    ACTIVITIES_ITERATIONS = 1
+    ACTIVITIES_DURATION_SECS = 1
+    ACTIVITIES_LOG_FILE = {}
+  )CFG",
+          filename));
+  EXPECT_TRUE(success);
+
+  {
+    AsyncActivityProfilerHandler handler(profiler);
+    handler.step();
+    EXPECT_FALSE(handler.isAsyncActive());
+
+    handler.scheduleTrace(cfg);
+
+    // Activate the scheduled config and enter CollectTrace.
+    handler.step();
+    EXPECT_TRUE(handler.isAsyncActive());
+
+    // CollectTrace -> ProcessTrace asynchronously. Application step()
+    // deliberately does not finalize ProcessTrace; the loop thread should do
+    // that while exiting.
+    handler.step();
+    handler.ensureCollectTraceDone();
+    EXPECT_TRUE(handler.isAsyncActive());
+
+    // handler goes out of scope here with a collected trace still pending.
+  }
+
+  // The pending trace must have been finalized during teardown.
+  auto logFile = logUrlToPath(cfg.activitiesLogUrl());
+  checkTracefile(logFile.c_str());
+}
+
 TEST(AsyncActivityProfilerHandler, BufferSizeLimitDuringWarmup) {
   MockGpuProfiler profiler;
   AsyncActivityProfilerHandler handler(profiler);

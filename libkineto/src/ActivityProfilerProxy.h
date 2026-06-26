@@ -47,19 +47,20 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   bool isActive() override;
   bool isStopped() const override;
 
-  void recordThreadInfo() override;
-
+  // These API are used for async/on-demand tracing.
   void scheduleTrace(const std::string& configStr) override;
   void scheduleTrace(const Config& config);
+  void step() override;
 
+  // These API are used for sync/auto-trace tracing.
   void prepareTrace(const std::set<ActivityType>& activityTypes, const std::string& configStr = "") override;
 
   void toggleCollectionDynamic(const bool enable) override;
 
   void startTrace() override;
-  void step() override;
   std::unique_ptr<ActivityTraceInterface> stopTrace() override;
 
+  // TraceActivity API.
   void pushCorrelationId(uint64_t id) override;
   void popCorrelationId() override;
 
@@ -67,6 +68,8 @@ class ActivityProfilerProxy : public ActivityProfilerInterface {
   void popUserCorrelationId() override;
 
   void transferCpuTrace(std::unique_ptr<CpuTraceBuffer> traceBuffer) override;
+
+  void recordThreadInfo() override;
 
   void addMetadata(const std::string& key, const std::string& value) override;
 

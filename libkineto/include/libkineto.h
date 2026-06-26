@@ -42,6 +42,7 @@ bool hasTestEnvVar();
 
 namespace libkineto {
 
+class ActivityLogger;
 class Config;
 class ConfigLoader;
 
@@ -65,6 +66,7 @@ struct CpuTraceBuffer {
 };
 
 using ChildActivityProfilerFactory = std::function<std::unique_ptr<IActivityProfiler>()>;
+using LoggerFactory = std::function<std::unique_ptr<ActivityLogger>(const std::string&)>;
 
 class LibkinetoApi {
  public:
@@ -153,5 +155,12 @@ class LibkinetoApi {
 
 // Singleton
 LibkinetoApi& api();
+
+// Register a custom output format logger with a protocol prefix.
+// Example: registerLoggerFactory("foo", [](const std::string& path) {
+//   return std::make_unique<FooLogger>(path);
+// });
+// Users can then call trace.save("foo:///tmp/trace.bar")
+void registerLoggerFactory(const std::string& protocol, LoggerFactory factory);
 
 } // namespace libkineto

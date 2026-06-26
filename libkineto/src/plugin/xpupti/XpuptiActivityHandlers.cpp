@@ -290,6 +290,30 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
 }
 
 namespace {
+// Map a PTI overhead kind to a human-readable name aligned with CUPTI's
+// overheadKindString() (see cupti_strings.cpp), so XPU and CUDA traces use the
+// same vocabulary. PTI's own ptiViewOverheadKindToString() returns raw enum
+// spellings (e.g. "BUFFER_FLUSH", "BUFFER_TIME") which do not match CUDA.
+// PTI_VIEW_OVERHEAD_KIND_TIME aggregates the time PTI spends inside
+// the Level Zero calls it injects to instrument the workload,
+// which is the same notion as CUPTI's "Instrumentation" overhead.
+const char* overheadKindString(pti_view_overhead_kind kind) {
+  switch (kind) {
+    case PTI_VIEW_OVERHEAD_KIND_UNKNOWN:
+      return "Unknown";
+    case PTI_VIEW_OVERHEAD_KIND_RESOURCE:
+      return "Resource";
+    case PTI_VIEW_OVERHEAD_KIND_BUFFER_FLUSH:
+      return "Buffer Flush";
+    case PTI_VIEW_OVERHEAD_KIND_DRIVER:
+      return "Driver";
+    case PTI_VIEW_OVERHEAD_KIND_TIME:
+      return "Instrumentation";
+    default:
+      return "Unknown";
+  }
+}
+
 std::string getStringFromSynchronizationType(
     const pti_view_synchronization_type& synchronization_type) {
   using pv_st = pti_view_synchronization_type;
@@ -374,7 +398,7 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
   traceBuffer_.emplace_activity(
       traceBuffer_.span,
       ActivityType::OVERHEAD,
-      ptiViewOverheadKindToString(activity->_overhead_kind));
+      overheadKindString(activity->_overhead_kind));
   auto& overhead_activity = traceBuffer_.activities.back();
   overhead_activity->startTime = activity->_overhead_start_timestamp_ns;
   overhead_activity->endTime = activity->_overhead_end_timestamp_ns;
@@ -383,11 +407,18 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
   overhead_activity->threadId = activity->_overhead_thread_id;
   overhead_activity->addMetadata(
       "overhead cost", activity->_overhead_duration_ns);
+  // Occupancy is the share of the observation window [start, end] that was
+  // actually spent in overhead: _overhead_duration_ns is cumulative and may be
+  // smaller than the window. Guard on the divisor (duration()) directly so the
+  // check holds regardless of PTI's start/end/duration relationship -- PTI may
+  // emit point-like records (start == end), e.g. on platforms with a coarse
+  // clock.
+  const auto occupancy = overhead_activity->duration() > 0
+      ? activity->_overhead_duration_ns * 100 / overhead_activity->duration()
+      : 0;
   overhead_activity->addMetadataQuoted(
       "overhead occupancy",
-      fmt::format(
-          "{}%",
-          activity->_overhead_duration_ns / overhead_activity->duration()));
+      fmt::format("{}%", occupancy));
   overhead_activity->addMetadata("overhead count", activity->_overhead_count);
 
   if (!outOfRange(overhead_activity.get())) {

@@ -16,23 +16,18 @@
 namespace KINETO_NAMESPACE {
 
 namespace {
-[[noreturn]] void throwXpuRuntimeError(
-    pti_result errCode,
-    std::string_view message,
-    std::source_location source_location) {
-  const std::string function_location = fmt::format(
-      "function {} located: {}:{}",
-      source_location.function_name(),
-      source_location.file_name(),
-      source_location.line());
-  const std::string error_code = fmt::format(
-      "Error code: {} ({})",
-      static_cast<int>(errCode),
-      ptiResultTypeToString(errCode));
-  const std::string error = fmt::format(
-      "Kineto Profiler on XPU got error from {}. {}.",
-      function_location,
-      error_code);
+[[noreturn]] void throwXpuRuntimeError(pti_result errCode,
+                                       std::string_view message,
+                                       std::source_location source_location) {
+  const std::string function_location =
+      fmt::format("function {} located: {}:{}", source_location.function_name(),
+                  source_location.file_name(), source_location.line());
+  const std::string error_code =
+      fmt::format("Error code: {} ({})", static_cast<int>(errCode),
+                  ptiResultTypeToString(errCode));
+  const std::string error =
+      fmt::format("Kineto Profiler on XPU got error from {}. {}.",
+                  function_location, error_code);
 
   if (message.empty())
     throw std::runtime_error(error);
@@ -44,10 +39,8 @@ namespace {
 }
 } // namespace
 
-void XPUPTI_CALL(
-    pti_result errCode,
-    std::string_view message,
-    std::source_location source_location) {
+void XPUPTI_CALL(pti_result errCode, std::string_view message,
+                 std::source_location source_location) {
   if (errCode != PTI_SUCCESS)
     throwXpuRuntimeError(errCode, message, source_location);
 }

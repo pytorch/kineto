@@ -128,3 +128,11 @@ target_link_libraries(PidInfoTest PRIVATE
     kineto_base kineto_api
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(PidInfoTest)
+
+# OutputJsonTest
+add_executable(OutputJsonTest OutputJsonTest.cpp)
+target_link_libraries(OutputJsonTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(OutputJsonTest)

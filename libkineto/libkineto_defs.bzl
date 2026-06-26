@@ -88,6 +88,7 @@ def get_libkineto_public_headers():
         "include/TraceSpan.h",
         "include/ThreadUtil.h",
         "include/TypedMetadata.h",
+        "include/TypedMetadataJson.h",
         "include/libkineto.h",
         "include/time_since_epoch.h",
         "include/output_base.h",

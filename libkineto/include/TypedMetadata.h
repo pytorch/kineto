@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -20,6 +21,10 @@ template <typename T>
 struct MetadataField {
   using FieldType = T;
 
+  std::string_view name;
+};
+
+struct MetadataDict {
   std::string_view name;
 };
 
@@ -57,7 +62,22 @@ class ITypedMetadataVisitor {
     visitValue(field, value);
   }
 
+  // Visits a nested dict: everything `visitChildren` visits is grouped under
+  // dict.name. Example:
+  // visitor.visit(kStats, [](auto& d) { d.visit(kCount, int64_t{1}); });
+  void visit(const MetadataDict& dict, std::invocable<ITypedMetadataVisitor&> auto&& visitChildren) {
+    beginDict(dict.name);
+    visitChildren(*this);
+    endDict();
+  }
+
  protected:
+  // beginDict/endDict bracket a nested dict and are always invoked as a
+  // pair by visit(MetadataDict, ...), with the dict's children visited in
+  // between.
+  virtual void beginDict(std::string_view name) = 0;
+  virtual void endDict() = 0;
+
   virtual void visitUnsupported(std::string_view name) = 0;
 
   template <typename T>

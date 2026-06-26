@@ -116,6 +116,9 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
 
   void visitUnsupported(std::string_view /*name*/) override {}
 
+  void beginDict(std::string_view /*name*/) override {}
+  void endDict() override {}
+
   std::optional<int64_t> stream;
   std::optional<int64_t> hsaQueue;
 };

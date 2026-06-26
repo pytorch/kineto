@@ -79,22 +79,34 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
   // Emit a visible placeholder rather than silently dropping a metadata type
   // the JSON serializer doesn't handle, so the gap shows up in the trace.
   void visitUnsupported(std::string_view name) override {
-    appendKey(json_, name);
+    appendKey(name);
     appendQuoted(json_, "<unsupported metadata type>");
+  }
+
+  void beginDict(std::string_view name) override {
+    appendKey(name);
+    json_ += '{';
+    firstEntry_ = true;
+  }
+
+  void endDict() override {
+    json_ += '}';
+    firstEntry_ = false;
   }
 
   template <typename T, typename WriteValue>
   void appendField(const MetadataField<T>& field, WriteValue writeValue) {
-    appendKey(json_, field.name);
+    appendKey(field.name);
     writeValue(json_);
   }
 
-  static void appendKey(std::string& json, std::string_view key) {
-    if (!json.empty()) {
-      json += ", ";
+  void appendKey(std::string_view key) {
+    if (!firstEntry_) {
+      json_ += ", ";
     }
-    appendQuoted(json, key);
-    json += ": ";
+    firstEntry_ = false;
+    appendQuoted(json_, key);
+    json_ += ": ";
   }
 
   static void appendQuoted(std::string& json, std::string_view value) {
@@ -140,6 +152,7 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
   }
 
   std::string json_;
+  bool firstEntry_ = true;
 };
 
 } // namespace libkineto::internal

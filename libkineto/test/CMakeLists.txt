@@ -32,6 +32,14 @@ target_link_libraries(ConfigTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
+# ActivityProfilerControllerTest
+add_executable(ActivityProfilerControllerTest ActivityProfilerControllerTest.cpp)
+target_link_libraries(ActivityProfilerControllerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(ActivityProfilerControllerTest)
+
 if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest
@@ -55,30 +63,6 @@ target_link_libraries(CuptiCallbackApiTest PRIVATE
     gtest_main
     kineto_base kineto_api)
 gtest_discover_tests(CuptiCallbackApiTest)
-
-# CuptiRangeProfilerApiTest
-add_executable(CuptiRangeProfilerApiTest CuptiRangeProfilerApiTest.cpp)
-target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerApiTest)
-
-# CuptiRangeProfilerConfigTest
-add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
-target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerConfigTest)
-
-# CuptiRangeProfilerTest
-add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
-target_link_libraries(CuptiRangeProfilerTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerTest)
 
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
@@ -125,6 +109,18 @@ target_link_libraries(LoggerObserverTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(LoggerObserverTest)
 
+# RegisterLoggerFactoryTest
+add_executable(RegisterLoggerFactoryTest RegisterLoggerFactoryTest.cpp)
+target_link_libraries(RegisterLoggerFactoryTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(RegisterLoggerFactoryTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(RegisterLoggerFactoryTest)
+
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_link_libraries(PidInfoTest PRIVATE
@@ -132,13 +128,3 @@ target_link_libraries(PidInfoTest PRIVATE
     kineto_base kineto_api
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(PidInfoTest)
-
-# CuptiProfilerApiTest
-# TODO: Re-enable once runtime crash in cuptiDeviceGetChipName is fixed.
-# enable_language(CUDA)
-# add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
-# target_link_libraries(CuptiProfilerApiTest PRIVATE
-#     kineto_base kineto_api
-#     CUDA::cuda_driver
-#     gtest_main)
-# add_test(NAME CuptiProfilerApiTest COMMAND CuptiProfilerApiTest)

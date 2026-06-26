@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
+#include <optional>
 
 #include <unistd.h>
 
@@ -34,6 +35,7 @@
 #include "src/RocmActivityProfiler.h"
 #include "src/RocmStreamQueue.h"
 
+#include "src/RocmMetadataFields.h"
 #include "src/RocprofActivity.h"
 #include "src/RocprofActivityApi.h"
 #include "src/RocprofLogger.h"
@@ -86,6 +88,37 @@ bool isAsyncCopy(const rocprofAsyncRow& async) {
 bool isAsyncKernel(const rocprofAsyncRow& async) {
   return async.domain == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH;
 }
+
+struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
+  void visitValue(const MetadataField<int64_t>& field, int64_t value) override {
+    if (field.name == RocmMetadataFields::kStream.name) {
+      stream = value;
+    } else if (field.name == RocmMetadataFields::kHsaQueue.name) {
+      hsaQueue = value;
+    }
+  }
+
+  void visitValue(
+      [[maybe_unused]] const MetadataField<double>& field,
+      [[maybe_unused]] double value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<bool>& field,
+      [[maybe_unused]] bool value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<std::string>& field,
+      [[maybe_unused]] std::string_view value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<std::vector<int64_t>>& field,
+      [[maybe_unused]] const std::vector<int64_t>& value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<std::vector<std::string>>& field,
+      [[maybe_unused]] const std::vector<std::string>& value) override {}
+
+  void visitUnsupported(std::string_view /*name*/) override {}
+
+  std::optional<int64_t> stream;
+  std::optional<int64_t> hsaQueue;
+};
 } // namespace
 
 // Provides ability to easily create a test CPU-side ops
@@ -431,6 +464,44 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
 #endif
 }
 
+TEST_F(RocmActivityProfilerTest, GpuTypedMetadataMatchesLegacyStreamMetadata) {
+  RocmActivityProfiler profiler(rocActivities_, /*cpu only*/ false);
+  int64_t start_time_ns =
+      libkineto::timeSinceEpoch(std::chrono::system_clock::now());
+  int64_t duration_ns = 300;
+  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  profiler.configure(*cfg_, start_time);
+  profiler.startTrace(start_time);
+  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+
+  auto gpuOps = std::make_unique<MockRocLogger>();
+  gpuOps->addMemcpyH2DActivity(start_time_ns + 10, start_time_ns + 20, 1, 42);
+  rocActivities_.activityLogger = std::move(gpuOps);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler.processTrace(*logger);
+  profiler.reset();
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  const ITraceActivity* memcpyActivity = nullptr;
+  for (const auto& activity : *trace.activities()) {
+    if (activity->name() == "Memcpy HtoD (Host -> Device)") {
+      memcpyActivity = activity;
+      break;
+    }
+  }
+
+  ASSERT_NE(memcpyActivity, nullptr);
+  EXPECT_EQ(memcpyActivity->resourceId(), 42);
+
+  RocmStreamTypedMetadataVisitor typedMetadata;
+  memcpyActivity->visitTypedMetadata(typedMetadata);
+  const auto jsonMetadata =
+      nlohmann::json::parse("{" + memcpyActivity->metadataJson() + "}");
+  EXPECT_EQ(typedMetadata.stream, jsonMetadata["stream"].get<int64_t>());
+  EXPECT_EQ(typedMetadata.hsaQueue, jsonMetadata["hsa_queue"].get<int64_t>());
+}
+
 TEST_F(
     RocmActivityProfilerTest,
     HtoDMemcpyUsesRuntimeStreamWhenAsyncQueueIsZero) {
@@ -538,6 +609,11 @@ TEST_F(RocmActivityProfilerTest, HtoDMemcpyPrefersRuntimeStreamOverAsyncQueue) {
   // Even though the async copy carries a nonzero HW queue (42), it is grouped
   // by its real HIP stream (7) -- shared with the kernel -> dense index 1.
   EXPECT_EQ(memcpyActivity->resourceId(), 1);
+  // The raw HSA queue (42) is still logged in the event metadata for debugging,
+  // even though track placement uses the stream.
+  EXPECT_NE(
+      memcpyActivity->metadataJson().find("\"hsa_queue\": 42"),
+      std::string::npos);
 }
 
 TEST_F(

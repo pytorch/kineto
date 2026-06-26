@@ -9,6 +9,7 @@
 #include "AsyncActivityProfilerHandler.h"
 
 #include <chrono>
+#include <exception>
 #include <string>
 
 #include "ActivityProfilerController.h"
@@ -240,7 +241,31 @@ void AsyncActivityProfilerHandler::profilerLoop() {
     }
   }
 
+  // On teardown the destructor sets stopRunloop_ and joins this thread; if
+  // collection reached ProcessTrace, finalize the pending trace before logger_
+  // is destroyed.
+  if (currentRunloopState_ == RunloopState::ProcessTrace) {
+    try {
+      completePendingTrace();
+    } catch (const std::exception& e) {
+      LOG(ERROR)
+          << "Failed to finalize pending trace on profiler loop teardown: "
+          << e.what();
+    } catch (...) {
+      LOG(ERROR)
+          << "Failed to finalize pending trace on profiler loop teardown: "
+          << "unknown exception";
+    }
+  }
+
   VLOG(0) << "Exited activity profiling loop";
+}
+
+void AsyncActivityProfilerHandler::completePendingTrace() {
+  ensureCollectTraceDone();
+  profiler_.completeTrace(*logger_);
+  currentRunloopState_ = RunloopState::WaitForRequest;
+  VLOG(0) << "ProcessTrace -> WaitForRequest";
 }
 
 void AsyncActivityProfilerHandler::memoryProfilerLoop() {
@@ -413,14 +438,9 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
         return new_wakeup_time;
       }
 
-      // Before processing, we should wait for collectTrace thread to be done.
-      ensureCollectTraceDone();
-
       // FIXME: Probably want to allow interruption here
       // for quickly handling trace request via synchronous API
-      profiler_.completeTrace(*logger_);
-      currentRunloopState_ = RunloopState::WaitForRequest;
-      VLOG(0) << "ProcessTrace -> WaitForRequest";
+      completePendingTrace();
       break;
     }
   }

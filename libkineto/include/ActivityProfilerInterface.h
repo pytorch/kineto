@@ -44,6 +44,10 @@ class ActivityProfilerInterface {
   // Tracing terminates when either condition is met.
   virtual void scheduleTrace([[maybe_unused]] const std::string& configStr) {}
 
+  // Re-evaluate internal state to allow for triggering operations based
+  // on number of iteration. each implicitly increments the iteration count
+  virtual void step() {}
+
   // *** Synchronous API ***
   // These must be called in order:
   // prepareTrace -> startTrace -> stopTrace.
@@ -68,10 +72,6 @@ class ActivityProfilerInterface {
   virtual std::unique_ptr<ActivityTraceInterface> stopTrace() {
     return nullptr;
   }
-
-  // Re-evaluate internal state to allow for triggering operations based
-  // on number of iteration. each implicitly increments the iteration count
-  virtual void step() {}
 
   // *** TraceActivity API ***
   // FIXME: Pass activityProfiler interface into clientInterface?

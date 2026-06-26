@@ -20,7 +20,6 @@
 #ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
 #include "CuptiCallbackApi.h"
-#include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
 #ifdef HAS_ROCTRACER
@@ -123,8 +122,6 @@ bool setupCuptiInitCallback(bool logOnError) {
 
   return status;
 }
-
-static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
 #endif // HAS_CUPTI
 
 } // namespace KINETO_NAMESPACE
@@ -154,12 +151,6 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
   if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
     bool success = setupCuptiInitCallback(logOnError);
     cpuOnly = !success;
-    // Initialize CUPTI Range Profiler API
-    if constexpr (kHasCuptiRangeProfiler) {
-      if (success) {
-        rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
-      }
-    }
   }
 
   if (!cpuOnly && shouldPreloadCuptiInstrumentation()) {

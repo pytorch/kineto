@@ -63,6 +63,11 @@ class Config : public AbstractConfig {
     activitiesLogUrl_ = url;
   }
 
+  // Called for configs from the daemon IPC path. See onDemand_.
+  void setOnDemand(bool onDemand) {
+    onDemand_ = onDemand;
+  }
+
   [[nodiscard]] bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
   }
@@ -439,6 +444,9 @@ class Config : public AbstractConfig {
 
   // Log activities to memory buffer
   bool activitiesLogToMemory_{false};
+
+  // Restricts trace output path when set (untrusted on-demand config).
+  bool onDemand_{false};
 
   int64_t activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;

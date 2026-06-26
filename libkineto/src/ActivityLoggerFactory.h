@@ -13,6 +13,7 @@
 #include <cctype>
 #include <functional>
 #include <map>
+#include <mutex>
 #include <string>
 #include <utility>
 
@@ -24,20 +25,33 @@ class ActivityLoggerFactory {
  public:
   using FactoryFunc = std::function<std::unique_ptr<ActivityLogger>(const std::string& url)>;
 
-  // Add logger factory for a protocol prefix
-  void addProtocol(const std::string& protocol, FactoryFunc f) {
-    factories_[tolower(protocol)] = std::move(f);
+  // Add a logger factory for a protocol prefix. Returns true if a factory was
+  // already registered for the protocol and is being overwritten.
+  bool addProtocol(const std::string& protocol, FactoryFunc f) {
+    const std::string key = tolower(protocol);
+    std::lock_guard<std::mutex> guard(mutex_);
+    const bool overwritten = factories_.contains(key);
+    factories_[key] = std::move(f);
+    return overwritten;
   }
 
   // Create a logger, invoking the factory for the protocol specified in url
   std::unique_ptr<ActivityLogger> makeLogger(const std::string& url) const {
-    std::string protocol = extractProtocol(url);
-    auto it = factories_.find(tolower(protocol));
-    if (it != factories_.end()) {
-      return it->second(stripProtocol(url));
+    const std::string protocol = extractProtocol(url);
+    FactoryFunc factory;
+    {
+      std::lock_guard<std::mutex> guard(mutex_);
+      auto it = factories_.find(tolower(protocol));
+      if (it != factories_.end()) {
+        factory = it->second;
+      }
+    }
+    // Invoke the factory outside the lock so a user-supplied callback cannot
+    // deadlock by re-entering the registry while mutex_ is held.
+    if (factory) {
+      return factory(stripProtocol(url));
     }
     throw std::invalid_argument(fmt::format("No logger registered for the {} protocol prefix", protocol));
-    return nullptr;
   }
 
  private:
@@ -56,6 +70,9 @@ class ActivityLoggerFactory {
   }
 
   std::map<std::string, FactoryFunc> factories_;
+  // registerLoggerFactory is public API and can run concurrently with trace
+  // saves that call makeLogger; serialize all access to factories_.
+  mutable std::mutex mutex_;
 };
 
 } // namespace KINETO_NAMESPACE

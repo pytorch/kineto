@@ -448,7 +448,6 @@ class GenericActivityProfiler {
   // Gate for CPU trace ingestion. True only between startTraceInternal()
   // and resetInternal() — spans arriving outside this window are discarded.
   bool acceptCpuTraces_{false};
-  bool rangeProfilingActive_{false};
   std::atomic<bool> toggleState_{true};
 
   // ***************************************************************************

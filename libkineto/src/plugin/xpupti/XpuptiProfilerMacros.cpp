@@ -20,16 +20,16 @@ namespace {
     pti_result errCode,
     std::string_view message,
     std::source_location source_location) {
-  const auto& function_location = fmt::format(
+  const std::string function_location = fmt::format(
       "function {} located: {}:{}",
       source_location.function_name(),
       source_location.file_name(),
       source_location.line());
-  const auto& error_code = fmt::format(
+  const std::string error_code = fmt::format(
       "Error code: {} ({})",
       static_cast<int>(errCode),
       ptiResultTypeToString(errCode));
-  const auto& error = fmt::format(
+  const std::string error = fmt::format(
       "Kineto Profiler on XPU got error from {}. {}.",
       function_location,
       error_code);
@@ -37,7 +37,7 @@ namespace {
   if (message.empty())
     throw std::runtime_error(error);
   else {
-    const auto& error_with_message =
+    const std::string error_with_message =
         fmt::format("{}. Message: {}", error, message);
     throw std::runtime_error(error_with_message);
   }

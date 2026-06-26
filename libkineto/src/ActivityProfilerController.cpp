@@ -105,23 +105,25 @@ ActivityProfilerController::~ActivityProfilerController() {
 #endif // !USE_GOOGLE_LOG
 }
 
-static ActivityLoggerFactory initLoggerFactory() {
-  ActivityLoggerFactory factory;
-  factory.addProtocol("file", [](const std::string& url) {
-    return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
-  });
-  return factory;
-}
-
 ActivityLoggerFactory& ActivityProfilerController::loggerFactory() {
-  static ActivityLoggerFactory factory = initLoggerFactory();
+  static ActivityLoggerFactory factory;
+  // Technique to ensure we register the ChromeTraceLogger as the file
+  // protocol once and only once on the static instance.
+  [[maybe_unused]] static const bool kFileProtocolRegistered = [] {
+    factory.addProtocol("file", [](const std::string& url) {
+      return std::unique_ptr<ActivityLogger>(new ChromeTraceLogger(url));
+    });
+    return true;
+  }();
   return factory;
 }
 
 void ActivityProfilerController::addLoggerFactory(
     const std::string& protocol,
     ActivityLoggerFactory::FactoryFunc factory) {
-  loggerFactory().addProtocol(protocol, std::move(factory));
+  if (loggerFactory().addProtocol(protocol, std::move(factory))) {
+    LOG(WARNING) << "Overwriting logger factory for protocol: " << protocol;
+  }
 }
 
 std::unique_ptr<ActivityLogger> ActivityProfilerController::makeLogger(
@@ -210,19 +212,19 @@ void ActivityProfilerController::acceptConfig(const Config& config) {
   }
   asyncHandler_->acceptConfig(config);
 }
-void ActivityProfilerController::scheduleTrace(const Config& config) {
+void ActivityProfilerController::asyncScheduleTrace(const Config& config) {
   if (isActive()) {
     logRequestCancellation(config, "Ignored request - profiler busy");
     return;
   }
   asyncHandler_->scheduleTrace(config);
 }
-void ActivityProfilerController::step() {
+void ActivityProfilerController::asyncStep() {
   asyncHandler_->step();
 }
 
 // Sync-only functions
-void ActivityProfilerController::prepareTrace(const Config& config) {
+void ActivityProfilerController::syncPrepareTrace(const Config& config) {
   // Sync-trace requests preempt any active trace.
   asyncHandler_->cancel();
   if (syncHandler_->isSyncActive()) {
@@ -231,15 +233,25 @@ void ActivityProfilerController::prepareTrace(const Config& config) {
 
   syncHandler_->prepareTrace(config);
 }
-void ActivityProfilerController::toggleCollectionDynamic(const bool enable) {
+void ActivityProfilerController::syncToggleCollectionDynamic(
+    const bool enable) {
   syncHandler_->toggleCollectionDynamic(enable);
 }
-void ActivityProfilerController::startTrace() {
+void ActivityProfilerController::syncStartTrace() {
   syncHandler_->startTrace();
 }
 std::unique_ptr<ActivityTraceInterface> ActivityProfilerController::
-    stopTrace() {
+    syncStopTrace() {
   return syncHandler_->stopTrace();
 }
 
 } // namespace KINETO_NAMESPACE
+
+namespace libkineto {
+
+void registerLoggerFactory(const std::string& protocol, LoggerFactory factory) {
+  KINETO_NAMESPACE::ActivityProfilerController::addLoggerFactory(
+      protocol, std::move(factory));
+}
+
+} // namespace libkineto

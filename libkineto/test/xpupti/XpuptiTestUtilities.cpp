@@ -89,6 +89,9 @@ void CheckCountsInMap(
   }
 
   EXPECT_EQ(countsMap.size(), expMap.size());
+
+  // Declared separately: countsMap is non-const (iterator) while expMap is
+  // const (const_iterator), so a single `auto` cannot deduce both.
   auto itCountsMap = countsMap.begin();
   auto itExpArray = expMap.begin();
   for (; (itCountsMap != countsMap.end()) && (itExpArray != expMap.end());
@@ -127,6 +130,26 @@ static unsigned acceptDriverActivities(
       auto insertResult = stringStorage.insert(pActivity->name());
       expectedActivities.push_back(*insertResult.first);
       expectedTypes.push_back(driverActivity);
+      ++count;
+    }
+  }
+  return count;
+}
+
+constexpr const std::string_view overheadActivity = "overhead";
+
+static unsigned acceptOverheadActivities(
+    const std::deque<std::unique_ptr<libkineto::GenericTraceActivity>>&
+        pBufferActivities,
+    std::vector<std::string_view>& expectedActivities,
+    std::vector<std::string_view>& expectedTypes,
+    std::set<std::string>& stringStorage) {
+  unsigned count = 0;
+  for (auto&& pActivity : pBufferActivities) {
+    if (pActivity->type() == KN::ActivityType::OVERHEAD) {
+      auto insertResult = stringStorage.insert(pActivity->name());
+      expectedActivities.push_back(*insertResult.first);
+      expectedTypes.push_back(overheadActivity);
       ++count;
     }
   }
@@ -184,8 +207,10 @@ RunProfilerTest(
                           .count();
   pSession->start();
 
+  // A 16x16 GEMM is enough to exercise every activity type while keeping the
+  // simulator-based CI runtime small.
   void ComputeOnXpu(unsigned size, unsigned repeatCount);
-  ComputeOnXpu(1024, repeatCount);
+  ComputeOnXpu(16, repeatCount);
 
   pSession->stop();
   int64_t endTime = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -208,6 +233,11 @@ RunProfilerTest(
   if (activities.find(KN::ActivityType::XPU_DRIVER) != activities.end()) {
     EXPECT_EQ(repeatCount, 1);
     auto count = acceptDriverActivities(
+        pBuffer->activities, expectedActivities, expectedTypes, stringStorage);
+    EXPECT_GT(count, 0);
+  }
+  if (activities.find(KN::ActivityType::OVERHEAD) != activities.end()) {
+    auto count = acceptOverheadActivities(
         pBuffer->activities, expectedActivities, expectedTypes, stringStorage);
     EXPECT_GT(count, 0);
   }

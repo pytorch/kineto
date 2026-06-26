@@ -65,6 +65,14 @@ void sanitizeStrForJSON(std::string& value) {
   std::erase(value, '\n');
 }
 
+// Free-form log strings: drop control chars, replace backslashes and double
+// quotes
+void sanitizeLogStrForJSON(std::string& value) {
+  std::erase_if(value, [](unsigned char c) { return c < 0x20; });
+  std::ranges::replace(value, '\\', '/');
+  std::ranges::replace(value, '"', '\'');
+}
+
 std::string string2hex(const std::string& str) {
   std::string out;
   out.reserve(str.size() * 2);
@@ -1002,30 +1010,34 @@ void ChromeTraceLogger::finalizeTrace(
   }
 
 #if !USE_GOOGLE_LOG
-  std::unordered_map<std::string, std::string> preparedMetadata;
   for (const auto& kv : metadata) {
     // Skip empty log buckets, ex. skip ERROR if its empty.
-    if (!kv.second.empty()) {
-      std::string value = "[";
-      // Ex. Each metadata from logger is a list of strings, expressed in JSON
-      // as
-      //   "ERROR": ["Error 1", "Error 2"],
-      //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
-      //   ...
-      int mdv_count = kv.second.size();
-      for (auto v : kv.second) {
-        sanitizeStrForJSON(v);
-        value.append("\"" + v + "\"");
-        if (mdv_count > 1) {
-          value.append(",");
-          mdv_count--;
-        }
-      }
-      value.append("]");
-      preparedMetadata[kv.first] = value;
+    if (kv.second.empty()) {
+      continue;
     }
+    std::string value = "[";
+    // Ex. Each metadata from logger is a list of strings, expressed in JSON
+    // as
+    //   "ERROR": ["Error 1", "Error 2"],
+    //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
+    //   ...
+    size_t mdv_count = kv.second.size();
+    for (auto v : kv.second) {
+      sanitizeLogStrForJSON(v);
+      value.append("\"" + v + "\"");
+      if (mdv_count > 1) {
+        value.append(",");
+        mdv_count--;
+      }
+    }
+    value.append("]");
+    fmt::print(
+        traceOf_,
+        R"JSON(
+      "{}": {},)JSON",
+        kv.first,
+        value);
   }
-  metadataToJSON(preparedMetadata);
 #endif // !USE_GOOGLE_LOG
 
   // The last entry MUST NOT end with a comma.

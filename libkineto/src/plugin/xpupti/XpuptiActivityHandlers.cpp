@@ -352,8 +352,7 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
       ? activity->_overhead_duration_ns * 100 / overhead_activity->duration()
       : 0;
   overhead_activity->addMetadataQuoted(
-      "overhead occupancy",
-      fmt::format("{}%", occupancy));
+      "overhead occupancy", fmt::format("{}%", occupancy));
   overhead_activity->addMetadata("overhead count", activity->_overhead_count);
 
   if (!outOfRange(overhead_activity.get())) {

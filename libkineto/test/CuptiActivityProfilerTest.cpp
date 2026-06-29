@@ -141,6 +141,9 @@ class RecordingTypedMetadataVisitor final : public ITypedMetadataVisitor {
 
   void visitUnsupported(std::string_view /*name*/) override {}
 
+  void beginDict(std::string_view /*name*/) override {}
+  void endDict() override {}
+
   std::map<std::string, RecordedMetadataValue> values_;
 };
 } // namespace

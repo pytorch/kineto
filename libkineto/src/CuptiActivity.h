@@ -642,18 +642,20 @@ inline void GpuActivity<CUpti_ActivityKernelType>::visitTypedMetadata(ITypedMeta
                                      static_cast<int64_t>(kernel.blockZ)});
   visitor.visit(CudaMetadataFields::kEstAchievedOccupancyPercent,
                 static_cast<int64_t>(std::lround(occMetrics.occupancy * 100.0)));
-  visitor.visit(CudaMetadataFields::kActiveBlocksPerMultiprocessor,
-                static_cast<int64_t>(occMetrics.result.activeBlocksPerMultiprocessor));
-  visitor.visit(CudaMetadataFields::kLimitingFactors, limitingFactorsToString(occMetrics.result.limitingFactors));
-  visitor.visit(CudaMetadataFields::kBlockLimitRegs, static_cast<int64_t>(occMetrics.result.blockLimitRegs));
-  visitor.visit(CudaMetadataFields::kBlockLimitSharedMem, static_cast<int64_t>(occMetrics.result.blockLimitSharedMem));
-  visitor.visit(CudaMetadataFields::kBlockLimitWarps, static_cast<int64_t>(occMetrics.result.blockLimitWarps));
-  visitor.visit(CudaMetadataFields::kBlockLimitBlocks, static_cast<int64_t>(occMetrics.result.blockLimitBlocks));
-  visitor.visit(CudaMetadataFields::kBlockLimitBarriers, static_cast<int64_t>(occMetrics.result.blockLimitBarriers));
-  visitor.visit(CudaMetadataFields::kAllocatedRegistersPerBlock,
-                static_cast<int64_t>(occMetrics.result.allocatedRegistersPerBlock));
-  visitor.visit(CudaMetadataFields::kAllocatedSharedMemPerBlock,
-                static_cast<int64_t>(occMetrics.result.allocatedSharedMemPerBlock));
+  visitor.visit(CudaMetadataFields::kOccupancy, [&](auto& d) {
+    d.visit(CudaMetadataFields::kActiveBlocksPerMultiprocessor,
+            static_cast<int64_t>(occMetrics.result.activeBlocksPerMultiprocessor));
+    d.visit(CudaMetadataFields::kLimitingFactors, limitingFactorsToString(occMetrics.result.limitingFactors));
+    d.visit(CudaMetadataFields::kBlockLimitRegs, static_cast<int64_t>(occMetrics.result.blockLimitRegs));
+    d.visit(CudaMetadataFields::kBlockLimitSharedMem, static_cast<int64_t>(occMetrics.result.blockLimitSharedMem));
+    d.visit(CudaMetadataFields::kBlockLimitWarps, static_cast<int64_t>(occMetrics.result.blockLimitWarps));
+    d.visit(CudaMetadataFields::kBlockLimitBlocks, static_cast<int64_t>(occMetrics.result.blockLimitBlocks));
+    d.visit(CudaMetadataFields::kBlockLimitBarriers, static_cast<int64_t>(occMetrics.result.blockLimitBarriers));
+    d.visit(CudaMetadataFields::kAllocatedRegistersPerBlock,
+            static_cast<int64_t>(occMetrics.result.allocatedRegistersPerBlock));
+    d.visit(CudaMetadataFields::kAllocatedSharedMemPerBlock,
+            static_cast<int64_t>(occMetrics.result.allocatedSharedMemPerBlock));
+  });
   addGraphNodeTypedMetadata(visitor, kernel);
   addPriorityTypedMetadata(visitor, kernel);
   addChannelTypedMetadata(visitor, kernel);

@@ -29,6 +29,7 @@
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
 #include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
+#include "plugin/xpupti/XpuptiProfilerMacros.h"
 #endif
 #include "libkineto.h"
 
@@ -172,11 +173,9 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
   // register xpu pti profiler
   libkineto::api().registerProfilerFactory(
       []() -> std::unique_ptr<IActivityProfiler> {
-        auto returnCode = ptiViewGPULocalAvailable();
-        if (returnCode != PTI_SUCCESS) {
-          throwXpuRuntimeError(
-              "Fail to enable Kineto Profiler on XPU.", returnCode);
-        }
+        XPUPTI_CALL(
+            ptiViewGPULocalAvailable(),
+            /*error_message=*/"Failed to enable Kineto Profiler on XPU.");
         XpuptiScopeProfilerConfig::registerFactory();
         return std::make_unique<XPUActivityProfiler>();
       });

@@ -8,13 +8,11 @@
 
 #pragma once
 
-#include "XpuptiActivityApi.h"
-
-#if PTI_VERSION_AT_LEAST(0, 15)
+#include <optional>
 
 #include <pti/pti_metrics_scope.h>
 
-#include <optional>
+#include "XpuptiActivityApi.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -54,5 +52,3 @@ class XpuptiScopeProfilerApi {
 };
 
 } // namespace KINETO_NAMESPACE
-
-#endif

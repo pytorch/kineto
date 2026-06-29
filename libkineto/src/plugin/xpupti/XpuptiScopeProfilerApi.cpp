@@ -6,21 +6,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "XpuptiScopeProfilerApi.h"
-
-#if PTI_VERSION_AT_LEAST(0, 15)
-
-#include "XpuptiScopeProfilerConfig.h"
-
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
 
-#endif
+#include "XpuptiScopeProfilerApi.h"
+#include "XpuptiScopeProfilerConfig.h"
 
 namespace KINETO_NAMESPACE {
-
-#if PTI_VERSION_AT_LEAST(0, 15)
 
 XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
@@ -172,7 +165,5 @@ void XpuptiScopeProfilerApi::processScopeTrace(
     }
   }
 }
-
-#endif
 
 } // namespace KINETO_NAMESPACE

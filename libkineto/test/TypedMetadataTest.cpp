@@ -29,6 +29,12 @@ constexpr MetadataField<bool> kEnabled{"enabled"};
 constexpr MetadataField<std::vector<std::string>> kNames{"names"};
 constexpr MetadataField<std::pair<int64_t, int64_t>> kPair{"pair"};
 constexpr MetadataField<std::string> kSpecialChars{"special"};
+constexpr MetadataDict kNested{"nested"};
+constexpr MetadataField<int64_t> kNestedCount{"nested_count"};
+constexpr MetadataField<int64_t> kNestedOther{"nested_other"};
+constexpr MetadataField<int64_t> kAfterNested{"after_nested"};
+constexpr MetadataDict kOuter{"outer"};
+constexpr MetadataDict kInner{"inner"};
 
 using RecordedValue = std::variant<
     int64_t,
@@ -71,6 +77,9 @@ class RecordingTypedMetadataVisitor : public ITypedMetadataVisitor {
   }
 
   void visitUnsupported(std::string_view /*name*/) override {}
+
+  void beginDict(std::string_view /*name*/) override {}
+  void endDict() override {}
 
   std::map<std::string, RecordedValue> values;
 
@@ -128,6 +137,11 @@ TEST(TypedMetadataVisitorTest, SerializesVisitedFieldsToJson) {
   visitor.visit(kEnabled, true);
   visitor.visit(kNames, std::vector<std::string>{"a", "b"});
   visitor.visit(kSpecialChars, std::string{"quote \" slash \\ newline\n"});
+  visitor.visit(kNested, [&](auto& d) {
+    d.visit(kNestedCount, int64_t{7});
+    d.visit(kNestedOther, int64_t{8});
+  });
+  visitor.visit(kAfterNested, int64_t{9});
 
   const auto json = std::move(jsonVisitor).json();
 
@@ -142,6 +156,32 @@ TEST(TypedMetadataVisitorTest, SerializesVisitedFieldsToJson) {
   EXPECT_NE(
       json.find("\"special\": \"quote \" slash \\ newline\n\""),
       std::string::npos);
+  EXPECT_NE(
+      json.find("\"nested\": {\"nested_count\": 7, \"nested_other\": 8}"),
+      std::string::npos);
+  EXPECT_NE(json.find("\"after_nested\": 9"), std::string::npos);
+}
+
+TEST(TypedMetadataVisitorTest, SerializesNestedDictsToJson) {
+  internal::JsonTypedMetadataVisitor jsonVisitor;
+  ITypedMetadataVisitor& visitor = jsonVisitor;
+
+  visitor.visit(kOuter, [&](auto& outer) {
+    outer.visit(kCount, int64_t{1});
+    outer.visit(kInner, [&](auto& inner) { inner.visit(kEnabled, true); });
+    outer.visit(kRatio, 2.5);
+  });
+  visitor.visit(kAfterNested, int64_t{9});
+
+  const auto json = std::move(jsonVisitor).json();
+
+  // A dict nested inside another dict, with sibling fields before and after the
+  // inner dict, then a field back at the top level.
+  EXPECT_NE(
+      json.find(
+          "\"outer\": {\"count\": 1, \"inner\": {\"enabled\": true}, \"ratio\": 2.5}"),
+      std::string::npos);
+  EXPECT_NE(json.find("\"after_nested\": 9"), std::string::npos);
 }
 
 TEST(TypedMetadataVisitorTest, FallsBackToVisitUnsupported) {

@@ -23,7 +23,12 @@ KINETO_CMAKE_FLAGS=(
 set +u
 source /opt/intel/oneapi/compiler/latest/env/vars.sh
 source /opt/intel/oneapi/pti/latest/env/vars.sh
-source /opt/intel/oneapi/umf/latest/env/vars.sh
+if [ -f /opt/intel/oneapi/umf/latest/env/vars.sh ]; then
+  source /opt/intel/oneapi/umf/latest/env/vars.sh
+fi
+if [ -f /opt/intel/oneapi/tcm/latest/env/vars.sh ]; then
+  source /opt/intel/oneapi/tcm/latest/env/vars.sh
+fi
 source /opt/intel/oneapi/ccl/latest/env/vars.sh
 source /opt/intel/oneapi/mpi/latest/env/vars.sh
 set -u

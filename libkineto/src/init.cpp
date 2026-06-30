@@ -28,8 +28,8 @@
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
-#include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #include "plugin/xpupti/XpuptiProfilerMacros.h"
+#include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif
 #include "libkineto.h"
 

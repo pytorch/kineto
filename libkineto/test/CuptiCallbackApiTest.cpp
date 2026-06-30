@@ -112,28 +112,28 @@ TEST(CuptiCallbackApiTest, SimpleTest) {
 
   bool ret = api.deleteCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL,
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL,
       &simple_cudaLaunchKernel_cb);
 
   EXPECT_TRUE(ret) << "Failed to remove callback";
 
   ret = api.deleteCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL_EXC,
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
       &simple_cudaLaunchKernelExC_cb);
 
   EXPECT_TRUE(ret) << "Failed to remove callback";
 
   ret = api.deleteCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL,
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL,
       &atomic_cb);
 
   EXPECT_FALSE(ret) << "oops! deleted a callback that was never added";
 
   ret = api.deleteCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL_EXC,
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
       &atomic_cb);
 
   EXPECT_FALSE(ret) << "oops! deleted a callback that was never added";
@@ -166,25 +166,25 @@ TEST(CuptiCallbackApiTest, AllCallbacks) {
   EXPECT_TRUE(testCallback(
       CUPTI_CB_DOMAIN_RESOURCE,
       CUPTI_CBID_RESOURCE_CONTEXT_CREATED,
-      CuptiCallbackApi::RESOURCE_CONTEXT_CREATED))
+      CuptiCallbackApi::CuptiCallBackID::RESOURCE_CONTEXT_CREATED))
       << "Failed to run callback for RESOURCE_CONTEXT_CREATED";
 
   EXPECT_TRUE(testCallback(
       CUPTI_CB_DOMAIN_RESOURCE,
       CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING,
-      CuptiCallbackApi::RESOURCE_CONTEXT_DESTROYED))
+      CuptiCallbackApi::CuptiCallBackID::RESOURCE_CONTEXT_DESTROYED))
       << "Failed to run callback for RESOURCE_CONTEXT_DESTROYED";
 
   EXPECT_TRUE(testCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000,
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL))
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL))
       << "Failed to run callback for CUDA_LAUNCH_KERNEL";
 
   EXPECT_TRUE(testCallback(
       CUPTI_CB_DOMAIN_RUNTIME_API,
       CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060,
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL_EXC))
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC))
       << "Failed to run callback for CUDA_LAUNCH_KERNEL_EXC";
 }
 
@@ -193,7 +193,7 @@ TEST(CuptiCallbackApiTest, ContentionTest) {
   const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RUNTIME_API;
   const CUpti_CallbackId cbid = CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000;
   const CuptiCallbackApi::CuptiCallBackID kineto_cbid =
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL;
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL;
 
   bool ret = api.registerCallback(domain, kineto_cbid, empty_cb);
   EXPECT_TRUE(ret) << "Failed to add callback";
@@ -242,7 +242,7 @@ TEST(CuptiCallbackApiTest, Bechmark) {
   const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RUNTIME_API;
   const CUpti_CallbackId cbid = CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000;
   const CuptiCallbackApi::CuptiCallBackID kineto_cbid =
-      CuptiCallbackApi::CUDA_LAUNCH_KERNEL;
+      CuptiCallbackApi::CuptiCallBackID::CUDA_LAUNCH_KERNEL;
 
   LOG(INFO) << "Iteration count = " << iters;
 

@@ -102,11 +102,11 @@ bool setupCuptiInitCallback(bool logOnError) {
     const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
     status = cbapi.registerCallback(
         domain,
-        CuptiCallbackApi::RESOURCE_CONTEXT_CREATED,
+        CuptiCallbackApi::CuptiCallBackID::RESOURCE_CONTEXT_CREATED,
         initProfilersCallback);
     if (status) {
-      status = cbapi.enableCallback(
-          domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
+      status =
+          cbapi.enableCallback(domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
     }
   }
 

@@ -660,9 +660,8 @@ void ChromeTraceLogger::handleCounterEvent(
       /*args=*/args);
 }
 
-void ChromeTraceLogger::appendNcclCollectiveMetadata(
+void ChromeTraceLogger::appendCollectiveArgs(
     ArgsBuilder& args,
-    [[maybe_unused]] const ITraceActivity& gpuOp,
     const ITraceActivity& collectiveRecord) {
   const auto& collectiveName =
       collectiveRecord.getMetadataValue(std::string(kCollectiveName));
@@ -741,18 +740,40 @@ void ChromeTraceLogger::appendNcclCollectiveMetadata(
   if (!commsId.empty()) {
     args.addRaw(kCommsId, commsId);
   }
+}
+
+void ChromeTraceLogger::appendCollectiveMetadata(
+    ArgsBuilder& args,
+    const ITraceActivity& collectiveRecord,
+    const std::string& backend,
+    const std::string& backendConfig) {
+  appendCollectiveArgs(args, collectiveRecord);
+
+  const auto& groupSize =
+      collectiveRecord.getMetadataValue(std::string(kGroupSize));
+  const auto& processGroupName =
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupName));
+  const auto& processGroupDesc =
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupDesc));
+  const auto& groupRanks =
+      collectiveRecord.getMetadataValue(std::string(kGroupRanks));
 
   if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
-    distInfo_.backend = "nccl";
+    distInfo_.backend = backend;
     distInfo_.rank = collectiveRecord.getMetadataValue(std::string(kRank));
     distInfo_.world_size = groupSize;
-    distInfo_.nccl_version = "unknown";
+    // DistributedInfo carries only an NCCL version and there is no version
+    // source for other backends, so populate it for NCCL and leave it empty
+    // otherwise rather than mislabel non-NCCL traffic.
+    if (backend == "nccl") {
+      distInfo_.nccl_version = "unknown";
+    }
   }
 
   auto pg_config = pgConfig();
   pg_config.pg_name = processGroupName;
   pg_config.pg_desc = processGroupDesc;
-  pg_config.backend_config = "cuda:nccl";
+  pg_config.backend_config = backendConfig;
   pg_config.pg_size = groupSize;
   pg_config.ranks = groupRanks;
   pgMap_.insert({processGroupName, pg_config});
@@ -818,10 +839,16 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   sanitizeStrForJSON(op_metadata);
   args.appendFragment(op_metadata);
 
-  // Populate NCCL collective metadata from CPU to GPU
-  if (op.type() == ActivityType::CONCURRENT_KERNEL && op.linkedActivity() &&
-      op.linkedActivity()->name() == kParamCommsCallName) {
-    appendNcclCollectiveMetadata(args, op, *op.linkedActivity());
+  // Populate collective metadata from the linked record_param_comms CPU op.
+  const auto* linkedOp = op.linkedActivity();
+  if (linkedOp != nullptr && linkedOp->name() == kParamCommsCallName) {
+    if (op.type() == ActivityType::CONCURRENT_KERNEL) {
+      appendCollectiveMetadata(args, *linkedOp, "nccl", "cuda:nccl");
+    } else if (
+        op.type() == ActivityType::MTIA_CCP_EVENTS &&
+        op.name().starts_with("hccl::")) {
+      appendCollectiveMetadata(args, *linkedOp, "hccl", "mtia:hccl");
+    }
   }
 
   int64_t device = op.deviceId();

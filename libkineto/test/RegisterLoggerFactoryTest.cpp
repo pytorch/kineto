@@ -43,8 +43,7 @@ class MockActivityLogger : public libkineto::ActivityLogger {
   void finalizeTrace(
       const libkineto::Config&,
       std::unique_ptr<libkineto::ActivityBuffers>,
-      int64_t,
-      std::unordered_map<std::string, std::vector<std::string>>&) override {}
+      int64_t) override {}
   void finalizeMemoryTrace(const std::string&, const libkineto::Config&)
       override {}
 
@@ -77,8 +76,7 @@ class CountingLogger : public libkineto::ActivityLogger {
   void finalizeTrace(
       const libkineto::Config&,
       std::unique_ptr<libkineto::ActivityBuffers>,
-      int64_t,
-      std::unordered_map<std::string, std::vector<std::string>>&) override {}
+      int64_t) override {}
   void finalizeMemoryTrace(const std::string&, const libkineto::Config&)
       override {}
 

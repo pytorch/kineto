@@ -27,7 +27,6 @@
 
 #include "GenericTraceActivity.h"
 #include "IActivityProfiler.h"
-#include "LoggerCollector.h"
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
 #include "libkineto.h"
@@ -257,8 +256,6 @@ class GenericActivityProfiler {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     profilers_.push_back(std::move(profiler));
   }
-
-  std::unordered_map<std::string, std::vector<std::string>> getLoggerMetadata();
 
   void pushCorrelationId(uint64_t id);
   void popCorrelationId();
@@ -518,11 +515,6 @@ class GenericActivityProfiler {
   uint32_t resourceOverheadCount_;
 
   ErrorCounts ecs_;
-
-  // LoggerCollector to collect all LOGs during the trace
-#if !USE_GOOGLE_LOG
-  std::unique_ptr<LoggerCollector> loggerCollectorMetadata_;
-#endif // !USE_GOOGLE_LOG
 };
 
 } // namespace KINETO_NAMESPACE

@@ -114,6 +114,8 @@ class IActivityProfilerSession {
   virtual void pushUserCorrelationId([[maybe_unused]] uint64_t id) {}
   virtual void popUserCorrelationId() {}
 
+  virtual void toggleCollectionDynamic([[maybe_unused]] bool enable) {}
+
   virtual std::string getDeviceProperties() {
     return "";
   }

@@ -139,6 +139,19 @@ class RecordingTypedMetadataVisitor final : public ITypedMetadataVisitor {
     values_[std::string{field.name}] = value;
   }
 
+  void visitValue(const MetadataField<RawJson>& field, const RawJson& value)
+      override {
+    values_[std::string{field.name}] = std::string{value.value};
+  }
+
+  void visitValue(
+      [[maybe_unused]] const MetadataField<uint64_t>& field,
+      [[maybe_unused]] uint64_t value) override {}
+
+  void visitValue(
+      [[maybe_unused]] const MetadataField<InputShapes>& field,
+      [[maybe_unused]] const InputShapes& value) override {}
+
   void visitUnsupported(std::string_view /*name*/) override {}
 
   void beginDict(std::string_view /*name*/) override {}

@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 // Migration-only typed metadata -> metadataJson compatibility helpers.
@@ -76,6 +77,18 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     appendField(field, [&](std::string& json) { appendArray(json, value); });
   }
 
+  void visitValue(const MetadataField<RawJson>& field, const RawJson& value) override {
+    appendField(field, [&](std::string& json) { json += value.value; });
+  }
+
+  void visitValue(const MetadataField<uint64_t>& field, uint64_t value) override {
+    appendField(field, [&](std::string& json) { appendUIntValue(json, value); });
+  }
+
+  void visitValue(const MetadataField<InputShapes>& field, const InputShapes& value) override {
+    appendField(field, [&](std::string& json) { appendArray(json, value); });
+  }
+
   // Emit a visible placeholder rather than silently dropping a metadata type
   // the JSON serializer doesn't handle, so the gap shows up in the trace.
   void visitUnsupported(std::string_view name) override {
@@ -121,6 +134,12 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     json.append(buf, static_cast<size_t>(result.ptr - buf));
   }
 
+  static void appendUIntValue(std::string& json, uint64_t value) {
+    char buf[kMaxInt64Chars];
+    const auto result = std::to_chars(buf, buf + sizeof(buf), value);
+    json.append(buf, static_cast<size_t>(result.ptr - buf));
+  }
+
   static void appendDoubleValue(std::string& json, double value) {
     if (std::isfinite(value)) {
       fmt::format_to(std::back_inserter(json), "{}", value);
@@ -149,6 +168,15 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
 
   static void appendArrayValue(std::string& json, const std::string& value) {
     appendQuoted(json, value);
+  }
+
+  // Nested-array entries so InputShapes serializes through the appendArray recursion
+  static void appendArrayValue(std::string& json, const std::vector<int64_t>& value) {
+    appendArray(json, value);
+  }
+
+  static void appendArrayValue(std::string& json, const std::variant<std::vector<int64_t>, TensorListShapes>& value) {
+    std::visit([&json](const auto& shapes) { appendArray(json, shapes); }, value);
   }
 
   std::string json_;

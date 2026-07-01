@@ -8,9 +8,13 @@
 
 #include "DeviceProperties.h"
 
+#include "TypedMetadata.h"
+#include "TypedMetadataJson.h"
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #ifdef HAS_CUPTI
@@ -70,53 +74,79 @@ static const std::vector<gpuDeviceProp>& deviceProps() {
   return props;
 }
 
-static std::string createDevicePropertiesJson(
-    size_t id,
-    const gpuDeviceProp& props) {
-  std::string gpuSpecific;
+namespace {
+constexpr libkineto::MetadataField<int64_t> kId{"id"};
+constexpr libkineto::MetadataField<std::string> kName{"name"};
+constexpr libkineto::MetadataField<int64_t> kTotalGlobalMem{"totalGlobalMem"};
+constexpr libkineto::MetadataField<int64_t> kComputeMajor{"computeMajor"};
+constexpr libkineto::MetadataField<int64_t> kComputeMinor{"computeMinor"};
+constexpr libkineto::MetadataField<int64_t> kMaxThreadsPerBlock{
+    "maxThreadsPerBlock"};
+constexpr libkineto::MetadataField<int64_t> kMaxThreadsPerMultiprocessor{
+    "maxThreadsPerMultiprocessor"};
+constexpr libkineto::MetadataField<int64_t> kRegsPerBlock{"regsPerBlock"};
+constexpr libkineto::MetadataField<int64_t> kWarpSize{"warpSize"};
+constexpr libkineto::MetadataField<int64_t> kSharedMemPerBlock{
+    "sharedMemPerBlock"};
+constexpr libkineto::MetadataField<int64_t> kNumSms{"numSms"};
 #ifdef HAS_CUPTI
-  gpuSpecific = fmt::format(
-      R"JSON(
-    , "regsPerMultiprocessor": {}, "sharedMemPerBlockOptin": {}, "sharedMemPerMultiprocessor": {})JSON",
-      props.regsPerMultiprocessor,
-      props.sharedMemPerBlockOptin,
-      props.sharedMemPerMultiprocessor);
+constexpr libkineto::MetadataField<int64_t> kRegsPerMultiprocessor{
+    "regsPerMultiprocessor"};
+constexpr libkineto::MetadataField<int64_t> kSharedMemPerBlockOptin{
+    "sharedMemPerBlockOptin"};
+constexpr libkineto::MetadataField<int64_t> kSharedMemPerMultiprocessor{
+    "sharedMemPerMultiprocessor"};
 #elif defined(HAS_ROCTRACER)
-  gpuSpecific = fmt::format(
-      R"JSON(
-    , "maxSharedMemoryPerMultiProcessor": {})JSON",
-      props.maxSharedMemoryPerMultiProcessor);
+constexpr libkineto::MetadataField<int64_t> kMaxSharedMemoryPerMultiProcessor{
+    "maxSharedMemoryPerMultiProcessor"};
 #endif
+} // namespace
 
-  return fmt::format(
-      R"JSON(
-    {{
-      "id": {}, "name": "{}", "totalGlobalMem": {},
-      "computeMajor": {}, "computeMinor": {},
-      "maxThreadsPerBlock": {}, "maxThreadsPerMultiprocessor": {},
-      "regsPerBlock": {}, "warpSize": {},
-      "sharedMemPerBlock": {}, "numSms": {}{}
-    }})JSON",
-      id,
-      props.name,
-      props.totalGlobalMem,
-      props.major,
-      props.minor,
-      props.maxThreadsPerBlock,
-      props.maxThreadsPerMultiProcessor,
-      props.regsPerBlock,
-      props.warpSize,
-      props.sharedMemPerBlock,
-      props.multiProcessorCount,
-      gpuSpecific);
+// Emit one device's compute properties as typed metadata
+static void visitDeviceMetadata(
+    size_t id,
+    const gpuDeviceProp& props,
+    libkineto::ITypedMetadataVisitor& visitor) {
+  visitor.visit(kId, static_cast<int64_t>(id));
+  visitor.visit(kName, std::string{props.name});
+  visitor.visit(kTotalGlobalMem, static_cast<int64_t>(props.totalGlobalMem));
+  visitor.visit(kComputeMajor, static_cast<int64_t>(props.major));
+  visitor.visit(kComputeMinor, static_cast<int64_t>(props.minor));
+  visitor.visit(
+      kMaxThreadsPerBlock, static_cast<int64_t>(props.maxThreadsPerBlock));
+  visitor.visit(
+      kMaxThreadsPerMultiprocessor,
+      static_cast<int64_t>(props.maxThreadsPerMultiProcessor));
+  visitor.visit(kRegsPerBlock, static_cast<int64_t>(props.regsPerBlock));
+  visitor.visit(kWarpSize, static_cast<int64_t>(props.warpSize));
+  visitor.visit(
+      kSharedMemPerBlock, static_cast<int64_t>(props.sharedMemPerBlock));
+  visitor.visit(kNumSms, static_cast<int64_t>(props.multiProcessorCount));
+#ifdef HAS_CUPTI
+  visitor.visit(
+      kRegsPerMultiprocessor,
+      static_cast<int64_t>(props.regsPerMultiprocessor));
+  visitor.visit(
+      kSharedMemPerBlockOptin,
+      static_cast<int64_t>(props.sharedMemPerBlockOptin));
+  visitor.visit(
+      kSharedMemPerMultiprocessor,
+      static_cast<int64_t>(props.sharedMemPerMultiprocessor));
+#elif defined(HAS_ROCTRACER)
+  visitor.visit(
+      kMaxSharedMemoryPerMultiProcessor,
+      static_cast<int64_t>(props.maxSharedMemoryPerMultiProcessor));
+#endif
 }
 
 static std::string createDevicePropertiesJson() {
-  std::vector<std::string> jsonProps;
   const auto& props = deviceProps();
+  std::vector<std::string> jsonProps;
   jsonProps.reserve(props.size());
   for (size_t i = 0; i < props.size(); i++) {
-    jsonProps.push_back(createDevicePropertiesJson(i, props[i]));
+    libkineto::internal::JsonTypedMetadataVisitor visitor;
+    visitDeviceMetadata(i, props[i], visitor);
+    jsonProps.push_back("{" + std::move(visitor).json() + "}");
   }
   return fmt::format("{}", fmt::join(jsonProps, ","));
 }

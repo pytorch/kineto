@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 namespace libkineto {
@@ -27,6 +28,19 @@ struct MetadataField {
 struct MetadataDict {
   std::string_view name;
 };
+
+// Used to identify JSON fields from normal strings.
+struct RawJson {
+  std::string value;
+};
+
+// For a TensorList op argument: the per-dimension shape of each tensor in the
+// list.
+using TensorListShapes = std::vector<std::vector<int64_t>>;
+
+// "Input Dims" / "Input Strides" payload: one entry per op argument, each either
+// a single tensor's shape or, for a TensorList argument, a list of tensor shapes.
+using InputShapes = std::vector<std::variant<std::vector<int64_t>, TensorListShapes>>;
 
 /*
  * ITypedMetadataVisitor is a per-activity visitor for structured metadata with
@@ -101,6 +115,12 @@ class ITypedMetadataVisitor {
 
   virtual void visitValue(const MetadataField<std::vector<std::string>>& field,
                           const std::vector<std::string>& value) = 0;
+
+  virtual void visitValue(const MetadataField<RawJson>& field, const RawJson& value) = 0;
+
+  virtual void visitValue(const MetadataField<uint64_t>& field, uint64_t value) = 0;
+
+  virtual void visitValue(const MetadataField<InputShapes>& field, const InputShapes& value) = 0;
 };
 
 } // namespace libkineto

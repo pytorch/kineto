@@ -478,12 +478,6 @@ void GenericActivityProfiler::configure(
   // Ensure we're starting in a clean state
   resetTraceData();
 
-#if !USE_GOOGLE_LOG
-  // Add a LoggerObserverCollector to collect all logs during the trace.
-  loggerCollectorMetadata_ = std::make_unique<LoggerCollector>();
-  Logger::addLoggerObserver(loggerCollectorMetadata_.get());
-#endif // !USE_GOOGLE_LOG
-
   derivedConfig_.reset();
   derivedConfig_ = std::make_unique<ConfigDerivedState>(*config_);
 
@@ -736,30 +730,7 @@ void GenericActivityProfiler::finalizeTrace(
     }
   }
 
-  // Logger Metadata contains a map of LOGs collected in Kineto
-  //   logger_level -> List of log lines
-  // This will be added into the trace as metadata.
-  std::unordered_map<std::string, std::vector<std::string>> loggerMD =
-      getLoggerMetadata();
-  logger.finalizeTrace(
-      config, std::move(traceBuffers_), captureWindowEndTime_, loggerMD);
-}
-
-std::unordered_map<std::string, std::vector<std::string>>
-GenericActivityProfiler::getLoggerMetadata() {
-  std::unordered_map<std::string, std::vector<std::string>> loggerMD;
-
-#if !USE_GOOGLE_LOG
-  // Save logs from LoggerCollector objects into Trace metadata.
-  auto LoggerMDMap = loggerCollectorMetadata_->extractCollectorMetadata();
-  for (auto& md : LoggerMDMap) {
-    // Only WARNING and ERROR are included in trace metadata.
-    if (md.first == WARNING || md.first == ERROR) {
-      loggerMD[toString(md.first)] = md.second;
-    }
-  }
-#endif // !USE_GOOGLE_LOG
-  return loggerMD;
+  logger.finalizeTrace(config, std::move(traceBuffers_), captureWindowEndTime_);
 }
 
 void GenericActivityProfiler::pushCorrelationId(uint64_t id) {
@@ -808,9 +779,6 @@ void GenericActivityProfiler::resetTraceData() {
   sessions_.clear();
   resourceOverheadCount_ = 0;
   ecs_ = ErrorCounts{};
-#if !USE_GOOGLE_LOG
-  Logger::removeLoggerObserver(loggerCollectorMetadata_.get());
-#endif // !USE_GOOGLE_LOG
 }
 
 void GenericActivityProfiler::collectTrace(

@@ -65,14 +65,6 @@ void sanitizeStrForJSON(std::string& value) {
   std::erase(value, '\n');
 }
 
-// Free-form log strings: drop control chars, replace backslashes and double
-// quotes
-void sanitizeLogStrForJSON(std::string& value) {
-  std::erase_if(value, [](unsigned char c) { return c < 0x20; });
-  std::ranges::replace(value, '\\', '/');
-  std::ranges::replace(value, '"', '\'');
-}
-
 std::string string2hex(const std::string& str) {
   std::string out;
   out.reserve(str.size() * 2);
@@ -964,9 +956,8 @@ void ChromeTraceLogger::handleLink(
 void ChromeTraceLogger::finalizeTrace(
     [[maybe_unused]] const Config& config,
     [[maybe_unused]] std::unique_ptr<ActivityBuffers> buffers,
-    int64_t endTime,
-    std::unordered_map<std::string, std::vector<std::string>>& metadata) {
-  finalizeTrace(endTime, metadata);
+    int64_t endTime) {
+  finalizeTrace(endTime);
 }
 
 void ChromeTraceLogger::addOnDemandDistMetadata() {
@@ -1005,9 +996,7 @@ void ChromeTraceLogger::addOnDemandDistMetadata() {
   distInfo_.distInfo_present_ = true;
 }
 
-void ChromeTraceLogger::finalizeTrace(
-    int64_t endTime,
-    std::unordered_map<std::string, std::vector<std::string>>& metadata) {
+void ChromeTraceLogger::finalizeTrace(int64_t endTime) {
   if (!traceOf_) {
     LOG(ERROR) << "Failed to write to log file!";
     return;
@@ -1035,37 +1024,6 @@ void ChromeTraceLogger::finalizeTrace(
   if (!distInfo_.distInfo_present_) {
     addOnDemandDistMetadata();
   }
-
-#if !USE_GOOGLE_LOG
-  for (const auto& kv : metadata) {
-    // Skip empty log buckets, ex. skip ERROR if its empty.
-    if (kv.second.empty()) {
-      continue;
-    }
-    std::string value = "[";
-    // Ex. Each metadata from logger is a list of strings, expressed in JSON
-    // as
-    //   "ERROR": ["Error 1", "Error 2"],
-    //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
-    //   ...
-    size_t mdv_count = kv.second.size();
-    for (auto v : kv.second) {
-      sanitizeLogStrForJSON(v);
-      value.append("\"" + v + "\"");
-      if (mdv_count > 1) {
-        value.append(",");
-        mdv_count--;
-      }
-    }
-    value.append("]");
-    fmt::print(
-        traceOf_,
-        R"JSON(
-      "{}": {},)JSON",
-        kv.first,
-        value);
-  }
-#endif // !USE_GOOGLE_LOG
 
   // The last entry MUST NOT end with a comma.
   fmt::print(traceOf_, R"JSON("traceName": "{}" }})JSON", fileName_);

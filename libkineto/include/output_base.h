@@ -63,10 +63,7 @@ class ActivityLogger {
 
   virtual void finalizeMemoryTrace(const std::string&, const Config&) = 0;
 
-  virtual void finalizeTrace(const Config& config,
-                             std::unique_ptr<ActivityBuffers> buffers,
-                             int64_t endTime,
-                             std::unordered_map<std::string, std::vector<std::string>>& metadata) = 0;
+  virtual void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers, int64_t endTime) = 0;
 
  protected:
   ActivityLogger() = default;

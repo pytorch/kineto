@@ -192,9 +192,17 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
                       std::string_view cat,
                       std::string_view name);
 
-  void appendNcclCollectiveMetadata(ArgsBuilder& args,
-                                    const ITraceActivity& gpuOp,
-                                    const ITraceActivity& collectiveRecord);
+  // Copy the collective args (name, message sizes, dtype, process group, ranks,
+  // seq, ...) recorded on a record_param_comms op into args. Backend-agnostic.
+  void appendCollectiveArgs(ArgsBuilder& args, const ITraceActivity& collectiveRecord);
+
+  // Enrich a device collective row from its linked record_param_comms op: copy
+  // the collective args and fold its process group into the trace's
+  // distributedInfo under the given backend labels.
+  void appendCollectiveMetadata(ArgsBuilder& args,
+                                const ITraceActivity& collectiveRecord,
+                                const std::string& backend,
+                                const std::string& backendConfig);
 
   std::string fileName_;
   std::string tempFileName_;

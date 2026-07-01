@@ -13,8 +13,11 @@
 #include <fmt/format.h>
 #include <stddef.h>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 #include "Demangle.h"
+#include "TypedMetadataJson.h"
 #include "output_base.h"
 
 namespace KINETO_NAMESPACE {
@@ -22,9 +25,21 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 
 namespace {
-thread_local std::unordered_map<int, std::string> correlationToGrid;
-thread_local std::unordered_map<int, std::string> correlationToBlock;
+thread_local std::unordered_map<int, std::vector<int64_t>> correlationToGrid;
+thread_local std::unordered_map<int, std::vector<int64_t>> correlationToBlock;
 thread_local std::unordered_map<int, size_t> correlationToSize;
+
+inline std::vector<int64_t> rocprofKernelGrid(const rocprofKernelRow& activity) {
+  return {
+      static_cast<int64_t>(activity.gridX), static_cast<int64_t>(activity.gridY), static_cast<int64_t>(activity.gridZ)};
+}
+
+inline std::vector<int64_t> rocprofKernelBlock(const rocprofKernelRow& activity) {
+  return {static_cast<int64_t>(activity.workgroupX),
+          static_cast<int64_t>(activity.workgroupY),
+          static_cast<int64_t>(activity.workgroupZ)};
+}
+
 } // namespace
 
 inline const char* getGpuActivityKindString(uint32_t domain, uint32_t op) {
@@ -96,44 +111,42 @@ inline void GpuActivity::log(ActivityLogger& logger) const {
   logger.handleActivity(*this);
 }
 
-static inline std::string bandwidth(size_t bytes, uint64_t duration) {
-  return duration == 0 ? "\"N/A\"" : fmt::format("{}", bytes * 1.0 / duration);
+static inline void addBandwidthTypedMetadata(ITypedMetadataVisitor& visitor, size_t bytes, uint64_t duration) {
+  if (duration == 0) {
+    return;
+  }
+  visitor.visit(RocmMetadataFields::kMemoryBandwidthGbps, static_cast<double>(bytes) / static_cast<double>(duration));
 }
 
 inline const std::string GpuActivity::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
+}
+
+inline void GpuActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const auto& gpuActivity = raw();
-  // clang-format off
+  visitor.visit(RocmMetadataFields::kDevice, static_cast<int64_t>(gpuActivity.device));
+  visitor.visit(RocmMetadataFields::kStream, resourceId());
+  visitor.visit(RocmMetadataFields::kHsaQueue, static_cast<int64_t>(gpuActivity.queue));
+  visitor.visit(RocmMetadataFields::kCorrelation, static_cast<int64_t>(gpuActivity.id));
+  visitor.visit(RocmMetadataFields::kKind, std::string{getGpuActivityKindString(gpuActivity.domain, gpuActivity.op)});
 
   // if memcpy or memset, add size
-  if (correlationToSize.count(gpuActivity.id) > 0) {
-    size_t size = correlationToSize[gpuActivity.id];
-    std::string bandwidth_gib = (bandwidth(size, gpuActivity.end - gpuActivity.begin));
-    return fmt::format(R"JSON(
-      "device": {}, "stream": {},
-      "correlation": {}, "kind": "{}",
-      "bytes": {}, "memory bandwidth (GB/s)": {})JSON",
-      gpuActivity.device, gpuActivity.queue,
-      gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
-      size, bandwidth_gib);
+  auto sizeIt = correlationToSize.find(gpuActivity.id);
+  if (sizeIt != correlationToSize.end()) {
+    visitor.visit(RocmMetadataFields::kBytes, static_cast<int64_t>(sizeIt->second));
+    addBandwidthTypedMetadata(visitor, sizeIt->second, gpuActivity.end - gpuActivity.begin);
+    return;
   }
 
   // if compute kernel, add grid and block
-  else if (correlationToGrid.count(gpuActivity.id) > 0) {
-    return fmt::format(R"JSON(
-      "device": {}, "stream": {},
-      "correlation": {}, "kind": "{}",
-      "grid": {}, "block": {})JSON",
-      gpuActivity.device, gpuActivity.queue,
-      gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op),
-      correlationToGrid[gpuActivity.id], correlationToBlock[gpuActivity.id]);
-  } else {
-    return fmt::format(R"JSON(
-      "device": {}, "stream": {},
-      "correlation": {}, "kind": "{}")JSON",
-      gpuActivity.device, gpuActivity.queue,
-      gpuActivity.id, getGpuActivityKindString(gpuActivity.domain, gpuActivity.op));
+  auto gridIt = correlationToGrid.find(gpuActivity.id);
+  auto blockIt = correlationToBlock.find(gpuActivity.id);
+  if (gridIt != correlationToGrid.end() && blockIt != correlationToBlock.end()) {
+    visitor.visit(RocmMetadataFields::kGrid, gridIt->second);
+    visitor.visit(RocmMetadataFields::kBlock, blockIt->second);
   }
-  // clang-format on
 }
 
 // Runtime Activities
@@ -160,92 +173,78 @@ inline void RuntimeActivity<T>::log(ActivityLogger& logger) const {
 }
 
 template <>
-inline const std::string RuntimeActivity<rocprofKernelRow>::metadataJson() const {
-  std::string kernel = "";
+inline void RuntimeActivity<rocprofKernelRow>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   if ((raw().functionAddr != nullptr)) {
-    kernel = fmt::format(
-        R"JSON(
-    "kernel": "{}", )JSON",
-        demangle(hipKernelNameRefByPtr(raw().functionAddr, raw().stream)));
+    visitor.visit(RocmMetadataFields::kKernel, demangle(hipKernelNameRefByPtr(raw().functionAddr, raw().stream)));
   } else if ((raw().function != nullptr)) {
-    kernel = fmt::format(
-        R"JSON(
-    "kernel": "{}", )JSON",
-        demangle(hipKernelNameRef(raw().function)));
+    visitor.visit(RocmMetadataFields::kKernel, demangle(hipKernelNameRef(raw().function)));
   }
+
   // cache grid and block so we can pass it into async activity (GPU track)
-  correlationToGrid[raw().id] = fmt::format(
-      R"JSON(
-    [{}, {}, {}])JSON",
-      raw().gridX,
-      raw().gridY,
-      raw().gridZ);
+  correlationToGrid[raw().id] = rocprofKernelGrid(raw());
+  correlationToBlock[raw().id] = rocprofKernelBlock(raw());
 
-  correlationToBlock[raw().id] = fmt::format(
-      R"JSON(
-    [{}, {}, {}])JSON",
-      raw().workgroupX,
-      raw().workgroupY,
-      raw().workgroupZ);
+  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+  visitor.visit(RocmMetadataFields::kGrid, correlationToGrid[raw().id]);
+  visitor.visit(RocmMetadataFields::kBlock, correlationToBlock[raw().id]);
+  visitor.visit(RocmMetadataFields::kSharedMemory, static_cast<int64_t>(raw().groupSegmentSize));
+}
 
-  return fmt::format(
-      R"JSON(
-      {}"cid": {}, "correlation": {},
-      "grid": [{}, {}, {}],
-      "block": [{}, {}, {}],
-      "shared memory": {})JSON",
-      kernel,
-      raw().cid,
-      raw().id,
-      raw().gridX,
-      raw().gridY,
-      raw().gridZ,
-      raw().workgroupX,
-      raw().workgroupY,
-      raw().workgroupZ,
-      raw().groupSegmentSize);
+template <>
+inline const std::string RuntimeActivity<rocprofKernelRow>::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
+}
+
+template <>
+inline void RuntimeActivity<rocprofCopyRow>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
+  correlationToSize[raw().id] = raw().size;
+  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+  visitor.visit(RocmMetadataFields::kSrc, fmt::format("{}", raw().src));
+  visitor.visit(RocmMetadataFields::kDst, fmt::format("{}", raw().dst));
+  visitor.visit(RocmMetadataFields::kBytes, static_cast<int64_t>(raw().size));
+  visitor.visit(RocmMetadataFields::kKind, fmt::format("{}", fmt::underlying(raw().kind)));
 }
 
 template <>
 inline const std::string RuntimeActivity<rocprofCopyRow>::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
+}
+
+template <>
+inline void RuntimeActivity<rocprofMallocRow>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   correlationToSize[raw().id] = raw().size;
-  return fmt::format(
-      R"JSON(
-      "cid": {}, "correlation": {}, "src": "{}", "dst": "{}", "bytes": "{}", "kind": "{}")JSON",
-      raw().cid,
-      raw().id,
-      raw().src,
-      raw().dst,
-      raw().size,
-      fmt::underlying(raw().kind));
+  if (raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMalloc) {
+    visitor.visit(RocmMetadataFields::kBytes, static_cast<int64_t>(raw().size));
+  }
+  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+  visitor.visit(RocmMetadataFields::kPtr, fmt::format("{}", raw().ptr));
 }
 
 template <>
 inline const std::string RuntimeActivity<rocprofMallocRow>::metadataJson() const {
-  correlationToSize[raw().id] = raw().size;
-  std::string size = "";
-  if (raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMalloc) {
-    size = fmt::format(
-        R"JSON(
-      "bytes": {}, )JSON",
-        raw().size);
-  }
-  return fmt::format(
-      R"JSON(
-      {}"cid": {}, "correlation": {}, "ptr": "{}")JSON",
-      size,
-      raw().cid,
-      raw().id,
-      raw().ptr);
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 template <class T>
 inline const std::string RuntimeActivity<T>::metadataJson() const {
-  return fmt::format(
-      R"JSON(
-      "cid": {}, "correlation": {})JSON",
-      raw().cid,
-      raw().id);
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
+}
+
+template <class T>
+inline void RuntimeActivity<T>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
+  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
 }
 
 } // namespace KINETO_NAMESPACE

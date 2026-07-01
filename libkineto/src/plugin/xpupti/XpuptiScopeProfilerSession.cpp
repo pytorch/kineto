@@ -8,8 +8,6 @@
 
 #include "XpuptiScopeProfilerSession.h"
 
-#if PTI_VERSION_AT_LEAST(0, 15)
-
 namespace KINETO_NAMESPACE {
 
 XpuptiScopeProfilerSession::XpuptiScopeProfilerSession(
@@ -69,5 +67,3 @@ void XpuptiScopeProfilerSession::processTrace(ActivityLogger& logger) {
 }
 
 } // namespace KINETO_NAMESPACE
-
-#endif

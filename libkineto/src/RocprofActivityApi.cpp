@@ -10,17 +10,31 @@
 
 #include <time.h>
 #include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <functional>
+#include <unordered_map>
+#include <vector>
 #include "ApproximateClock.h"
 #include "Demangle.h"
 #include "Logger.h"
+#include "RocmStreamQueue.h"
 #include "ThreadUtil.h"
 #include "output_base.h"
 
 using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
+
+namespace {
+bool isAsyncCopy(const rocprofAsyncRow& async) {
+  return async.domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY;
+}
+
+bool isAsyncKernel(const rocprofAsyncRow& async) {
+  return async.domain == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH;
+}
+} // namespace
 
 RocprofActivityApi& RocprofActivityApi::singleton() {
   static RocprofActivityApi instance;
@@ -116,6 +130,16 @@ int RocprofActivityApi::processActivities(
   // The time_converter is not available at collection time.  Or we could do a
   // much better job.
   auto toffset = getTimeOffset();
+
+  const bool logCopies = isLogged(ActivityType::GPU_MEMCPY);
+  const bool logKernels = isLogged(ActivityType::CONCURRENT_KERNEL);
+  if (logCopies || logKernels) {
+    detail::backfillAsyncStreams(
+        d->rows_, [logCopies, logKernels](const rocprofAsyncRow& async) {
+          return (logCopies && isAsyncCopy(async)) ||
+              (logKernels && isAsyncKernel(async));
+        });
+  }
 
   // All Runtime API Calls
   for (auto& item : d->rows_) {

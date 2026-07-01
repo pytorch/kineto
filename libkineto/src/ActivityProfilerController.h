@@ -48,17 +48,19 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   static void setInvariantViolationsLoggerFactory(
       const std::function<std::unique_ptr<InvariantViolationsLogger>()>& factory);
 
-  // These API are used for On-Demand Tracing.
+  // ConfigLoader::ConfigHandler callback API.
   bool canAcceptConfig() override;
   void acceptConfig(const Config& config) override;
-  void scheduleTrace(const Config& config);
+
+  // These API are used for On-Demand Tracing.
+  void asyncScheduleTrace(const Config& config);
+  void asyncStep();
 
   // These API are used for Synchronous Tracing.
-  void prepareTrace(const Config& config);
-  void toggleCollectionDynamic(const bool enable);
-  void startTrace();
-  void step();
-  std::unique_ptr<ActivityTraceInterface> stopTrace();
+  void syncPrepareTrace(const Config& config);
+  void syncToggleCollectionDynamic(const bool enable);
+  void syncStartTrace();
+  std::unique_ptr<ActivityTraceInterface> syncStopTrace();
 
   bool isActive();
   bool isStopped() const;
@@ -91,7 +93,6 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
  private:
   std::unique_ptr<GenericActivityProfiler> profiler_;
   std::vector<std::shared_ptr<LoggerCollector>> loggerCollectors_;
-  std::atomic_bool syncTraceActive_{false};
   ConfigLoader& configLoader_;
 
   std::unique_ptr<SyncActivityProfilerHandler> syncHandler_;

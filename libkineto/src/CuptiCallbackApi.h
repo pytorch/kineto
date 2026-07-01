@@ -39,7 +39,7 @@ class CuptiCallbackApi {
  public:
   /* Global list of supported callback ids
    *  use the class namespace to avoid confusing with CUPTI enums*/
-  enum CuptiCallBackID {
+  enum class CuptiCallBackID : int {
     CUDA_LAUNCH_KERNEL = 0,
     // can possibly support more callback ids per domain
     //
@@ -98,10 +98,19 @@ class CuptiCallbackApi {
   // For callback table design overview see the .cpp file
   using CallbackList = std::list<CuptiCallbackFn>;
 
-  // level 2 tables sizes are known at compile time
-  constexpr static size_t RUNTIME_CB_DOMAIN_SIZE = (__RUNTIME_CB_DOMAIN_END - __RUNTIME_CB_DOMAIN_START);
+  // Computing the slot of the callback id within its domain's table.
+  static constexpr size_t domainIndex(CuptiCallBackID cbid, CuptiCallBackID domainStart) {
+    return static_cast<size_t>(cbid) - static_cast<size_t>(domainStart);
+  }
 
-  constexpr static size_t RESOURCE_CB_DOMAIN_SIZE = (__RESOURCE_CB_DOMAIN_END - __RESOURCE_CB_DOMAIN_START);
+  // level 2 tables sizes are known at compile time. Computed inline rather than
+  // via domainIndex(): an inline member function isn't yet usable in a constexpr
+  // member initializer within the same class definition.
+  constexpr static size_t RUNTIME_CB_DOMAIN_SIZE = static_cast<size_t>(CuptiCallBackID::__RUNTIME_CB_DOMAIN_END) -
+      static_cast<size_t>(CuptiCallBackID::__RUNTIME_CB_DOMAIN_START);
+
+  constexpr static size_t RESOURCE_CB_DOMAIN_SIZE = static_cast<size_t>(CuptiCallBackID::__RESOURCE_CB_DOMAIN_END) -
+      static_cast<size_t>(CuptiCallBackID::__RESOURCE_CB_DOMAIN_START);
 
   // level 1 table is a struct
   struct CallbackTable {

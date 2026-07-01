@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include <set>
+#include <unordered_set>
 
 namespace KN = KINETO_NAMESPACE;
 
@@ -161,6 +162,56 @@ TEST(XpuptiProfilerTest, XpuDriverEvents) {
       repeatCount,
       std::move(expectedActivities),
       std::move(expectedTypes));
+}
+
+TEST(XpuptiProfilerTest, OverheadActivity) {
+  KN::Config cfg;
+
+  std::vector<std::string_view> metrics;
+
+  // Profile a normal kernel workload alongside the OVERHEAD activity so that
+  // PTI has collection work to attribute overhead to.
+  std::set<KN::ActivityType> activities{
+      KN::ActivityType::CONCURRENT_KERNEL,
+      KN::ActivityType::OVERHEAD,
+  };
+
+  std::vector<std::string_view> expectedActivities = {
+      "Run(sycl::_V1::queue, ...)"};
+  std::vector<std::string_view> expectedTypes = {"kernel"};
+
+  constexpr unsigned repeatCount = 1;
+  auto [pSession, pBuffer] = RunProfilerTest(
+      metrics,
+      activities,
+      cfg,
+      repeatCount,
+      std::move(expectedActivities),
+      std::move(expectedTypes));
+
+  // Verify the shape of every overhead record the run produced.
+  static const std::unordered_set<std::string> kExpectedNames{
+      "Unknown", "Resource", "Buffer Flush", "Driver", "Instrumentation"};
+  for (auto&& pActivity : pBuffer->activities) {
+    if (pActivity->type() != KN::ActivityType::OVERHEAD) {
+      continue;
+    }
+
+    // Overhead is host-side, not attributed to a device.
+    EXPECT_EQ(pActivity->deviceId(), -1);
+
+    const std::string name = pActivity->name();
+    EXPECT_TRUE(kExpectedNames.count(name) == 1)
+        << "unexpected overhead name: " << name;
+
+    const auto metadata = pActivity->metadataJson();
+    EXPECT_NE(metadata.find("overhead cost"), std::string::npos)
+        << "metadata = " << metadata;
+    EXPECT_NE(metadata.find("overhead count"), std::string::npos)
+        << "metadata = " << metadata;
+    EXPECT_NE(metadata.find("overhead occupancy"), std::string::npos)
+        << "metadata = " << metadata;
+  }
 }
 
 TEST(XpuptiProfilerTest, TestEvents) {

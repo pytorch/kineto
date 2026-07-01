@@ -17,12 +17,29 @@
 # --- Kineto cmake flags ---
 
 # shellcheck disable=SC2034
-KINETO_CMAKE_FLAGS=()
+KINETO_CMAKE_FLAGS=(
+  -DKINETO_BACKEND=cuda
+)
 
 # --- PyTorch build environment variables ---
 
 export USE_CUDA=1
 export BUILD_TEST=1
+
+# Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
+# core (16 on the g5.4xlarge runner). On a cold sccache cache the heavy ATen
+# CPU kernels then compile all at once, peaking past the runner's total memory
+# and tripping the OOM killer.
+#
+# Note that this is tuned to the current g5.4xlarge runner to half the available
+# cores. This should be updated if we change the default runner.
+export MAX_JOBS=8
+
+# --- PyTorch build caching ---
+# This arch's CI runner is an AWS instance, so it can reach PyTorch's shared
+# S3 sccache bucket.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=1
 
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
@@ -33,20 +50,15 @@ export BUILD_TEST=1
 
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
-  test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
-
-  # https://github.com/pytorch/kineto/issues/1253
-  test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
-
-  # https://github.com/pytorch/kineto/issues/1308
-  test/profiler/test_profiler.py::TestProfiler::test_record_function_fast
-
-  # https://github.com/pytorch/kineto/issues/1319
-  test/profiler/test_profiler.py::TestProfiler::test_schedule_function_count
-
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+
+  # https://github.com/pytorch/kineto/issues/1429
+  test/profiler/test_profiler.py::TestProfilerDeviceCUDA
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
+
+  # https://github.com/pytorch/kineto/issues/1430
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_field_types
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_kernel_metadata_has_expected_fields
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_is_valid_json_fragment
+  test/profiler/test_profiler.py::TestMetadataJsonFormat::test_metadata_json_key_value_format
 )

@@ -12,6 +12,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "GenericTraceActivity.h"
 #include "ITraceActivity.h"
+#include "RocmMetadataFields.h"
 #include "RocprofLogger.h"
 #include "ThreadUtil.h"
 
@@ -99,7 +100,7 @@ struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
     return activity_.device;
   }
   int64_t resourceId() const override {
-    return activity_.queue;
+    return activity_.stream != 0 ? activity_.stream : activity_.queue;
   }
   ActivityType type() const override {
     return type_;
@@ -110,6 +111,7 @@ struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
   const std::string name() const override;
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
 
   // Add small buffer to fix visual error created by
   // https://github.com/ROCm/rocprof/issues/105 Once this is resolved we can
@@ -148,6 +150,7 @@ struct RuntimeActivity : public RocprofActivity<T> {
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override;
   const T& raw() const {
     return RocprofActivity<T>::raw();
   }

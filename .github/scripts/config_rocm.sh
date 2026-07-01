@@ -20,7 +20,7 @@
 
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
+  -DKINETO_BACKEND=rocm
   -DROCM_SOURCE_DIR=/opt/rocm
 )
 
@@ -29,6 +29,21 @@ KINETO_CMAKE_FLAGS=(
 export USE_ROCM=1
 export BUILD_TEST=1
 export PYTORCH_TEST_WITH_ROCM=1
+
+# Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
+# core, and ROCm never reaches the sccache bucket (see below), so every build
+# recompiles the heavy ATen kernels from scratch. Without a cap they compile
+# all at once and can exhaust runner memory, tripping the OOM killer.
+#
+# Note that this is naively set the same as on the CUDA side. We can tweak this
+# if needed.
+export MAX_JOBS=8
+
+# --- PyTorch build caching ---
+# This arch's CI runner is not on AWS and cannot reach PyTorch's S3 sccache
+# bucket.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=0
 
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
@@ -39,17 +54,9 @@ export PYTORCH_TEST_WITH_ROCM=1
 
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
-  test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
-  test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
 
-  # https://github.com/pytorch/kineto/issues/1243
-  test/profiler/test_profiler.py::TestProfiler::test_profiler_cuda_sync_events
-
-  # https://github.com/pytorch/kineto/issues/1241
-  test/profiler/test_profiler.py::TestProfilerCUDA::test_mem_leak
+  # https://github.com/pytorch/kineto/issues/1429
+  test/profiler/test_profiler.py::TestProfilerDeviceCUDA
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
 )

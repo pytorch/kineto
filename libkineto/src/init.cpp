@@ -20,7 +20,6 @@
 #ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
 #include "CuptiCallbackApi.h"
-#include "CuptiRangeProfiler.h"
 #include "EventProfilerController.h"
 #endif
 #ifdef HAS_ROCTRACER
@@ -29,6 +28,7 @@
 #ifdef HAS_XPUPTI
 #include "plugin/xpupti/XpuptiActivityApi.h"
 #include "plugin/xpupti/XpuptiActivityProfiler.h"
+#include "plugin/xpupti/XpuptiProfilerMacros.h"
 #include "plugin/xpupti/XpuptiScopeProfilerConfig.h"
 #endif
 #include "libkineto.h"
@@ -102,11 +102,11 @@ bool setupCuptiInitCallback(bool logOnError) {
     const CUpti_CallbackDomain domain = CUPTI_CB_DOMAIN_RESOURCE;
     status = cbapi.registerCallback(
         domain,
-        CuptiCallbackApi::RESOURCE_CONTEXT_CREATED,
+        CuptiCallbackApi::CuptiCallBackID::RESOURCE_CONTEXT_CREATED,
         initProfilersCallback);
     if (status) {
-      status = cbapi.enableCallback(
-          domain, CuptiCallbackApi::RESOURCE_CONTEXT_CREATED);
+      status =
+          cbapi.enableCallback(domain, CUPTI_CBID_RESOURCE_CONTEXT_CREATED);
     }
   }
 
@@ -123,8 +123,6 @@ bool setupCuptiInitCallback(bool logOnError) {
 
   return status;
 }
-
-static std::unique_ptr<CuptiRangeProfilerInit> rangeProfilerInit;
 #endif // HAS_CUPTI
 
 } // namespace KINETO_NAMESPACE
@@ -154,12 +152,6 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
   if (!cpuOnly && !libkineto::isDaemonEnvVarSet()) {
     bool success = setupCuptiInitCallback(logOnError);
     cpuOnly = !success;
-    // Initialize CUPTI Range Profiler API
-    if constexpr (kHasCuptiRangeProfiler) {
-      if (success) {
-        rangeProfilerInit = std::make_unique<CuptiRangeProfilerInit>();
-      }
-    }
   }
 
   if (!cpuOnly && shouldPreloadCuptiInstrumentation()) {
@@ -181,11 +173,9 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
   // register xpu pti profiler
   libkineto::api().registerProfilerFactory(
       []() -> std::unique_ptr<IActivityProfiler> {
-        auto returnCode = ptiViewGPULocalAvailable();
-        if (returnCode != PTI_SUCCESS) {
-          throwXpuRuntimeError(
-              "Fail to enable Kineto Profiler on XPU.", returnCode);
-        }
+        XPUPTI_CALL(
+            ptiViewGPULocalAvailable(),
+            /*error_message=*/"Failed to enable Kineto Profiler on XPU.");
         XpuptiScopeProfilerConfig::registerFactory();
         return std::make_unique<XPUActivityProfiler>();
       });

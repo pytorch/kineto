@@ -60,9 +60,17 @@ constexpr std::string_view kDefaultLogFileFmt = "libkineto_activities_{}.json";
 void sanitizeStrForJSON(std::string& value) {
   // Replace all backslashes with forward slash because Windows paths causing
   // JSONDecodeError.
-  std::replace(value.begin(), value.end(), '\\', '/');
+  std::ranges::replace(value, '\\', '/');
   // Remove all new line characters
-  value.erase(std::remove(value.begin(), value.end(), '\n'), value.end());
+  std::erase(value, '\n');
+}
+
+// Free-form log strings: drop control chars, replace backslashes and double
+// quotes
+void sanitizeLogStrForJSON(std::string& value) {
+  std::erase_if(value, [](unsigned char c) { return c < 0x20; });
+  std::ranges::replace(value, '\\', '/');
+  std::ranges::replace(value, '"', '\'');
 }
 
 std::string string2hex(const std::string& str) {
@@ -101,8 +109,8 @@ std::string fmtTs(int64_t time_ns) {
 }
 
 bool isWhitespace(std::string_view s) {
-  return std::all_of(
-      s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); });
+  return std::ranges::all_of(
+      s, [](unsigned char c) { return std::isspace(c); });
 }
 
 } // namespace
@@ -798,7 +806,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
         libkineto::ActivityType::CUDA_DRIVER,
         libkineto::ActivityType::PRIVATEUSE1_RUNTIME,
         libkineto::ActivityType::PRIVATEUSE1_DRIVER};
-    if (excludedTypes.find(op.type()) == excludedTypes.end()) {
+    if (!excludedTypes.contains(op.type())) {
       external_id = op.correlationId();
     }
   }
@@ -1002,30 +1010,34 @@ void ChromeTraceLogger::finalizeTrace(
   }
 
 #if !USE_GOOGLE_LOG
-  std::unordered_map<std::string, std::string> preparedMetadata;
   for (const auto& kv : metadata) {
     // Skip empty log buckets, ex. skip ERROR if its empty.
-    if (!kv.second.empty()) {
-      std::string value = "[";
-      // Ex. Each metadata from logger is a list of strings, expressed in JSON
-      // as
-      //   "ERROR": ["Error 1", "Error 2"],
-      //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
-      //   ...
-      int mdv_count = kv.second.size();
-      for (auto v : kv.second) {
-        sanitizeStrForJSON(v);
-        value.append("\"" + v + "\"");
-        if (mdv_count > 1) {
-          value.append(",");
-          mdv_count--;
-        }
-      }
-      value.append("]");
-      preparedMetadata[kv.first] = value;
+    if (kv.second.empty()) {
+      continue;
     }
+    std::string value = "[";
+    // Ex. Each metadata from logger is a list of strings, expressed in JSON
+    // as
+    //   "ERROR": ["Error 1", "Error 2"],
+    //   "WARNING": ["Warning 1", "Warning 2", "Warning 3"],
+    //   ...
+    size_t mdv_count = kv.second.size();
+    for (auto v : kv.second) {
+      sanitizeLogStrForJSON(v);
+      value.append("\"" + v + "\"");
+      if (mdv_count > 1) {
+        value.append(",");
+        mdv_count--;
+      }
+    }
+    value.append("]");
+    fmt::print(
+        traceOf_,
+        R"JSON(
+      "{}": {},)JSON",
+        kv.first,
+        value);
   }
-  metadataToJSON(preparedMetadata);
 #endif // !USE_GOOGLE_LOG
 
   // The last entry MUST NOT end with a comma.

@@ -17,10 +17,6 @@ def get_libkineto_cupti_srcs(with_api = True):
         "src/CuptiCbidRegistry.cpp",
         "src/CuptiEventApi.cpp",
         "src/CuptiMetricApi.cpp",
-        "src/CuptiRangeProfiler.cpp",
-        "src/CuptiRangeProfilerApi.cpp",
-        "src/CuptiRangeProfilerConfig.cpp",
-        "src/CuptiNvPerfMetric.cpp",
         "src/Demangle.cpp",
         "src/EventProfiler.cpp",
         "src/EventProfilerController.cpp",
@@ -34,14 +30,6 @@ def get_libkineto_rocprofiler_srcs(with_api = True):
         "src/RocmActivityProfiler.cpp",
         "src/RocprofActivityApi.cpp",
         "src/RocprofLogger.cpp",
-        "src/RocLogger.cpp",
-    ] + (get_libkineto_cpu_only_srcs(with_api))
-
-def get_libkineto_roctracer_srcs(with_api = True):
-    return [
-        "src/RocmActivityProfiler.cpp",
-        "src/RoctracerActivityApi.cpp",
-        "src/RoctracerLogger.cpp",
         "src/RocLogger.cpp",
     ] + (get_libkineto_cpu_only_srcs(with_api))
 
@@ -99,6 +87,8 @@ def get_libkineto_public_headers():
         "include/LoggingAPI.h",
         "include/TraceSpan.h",
         "include/ThreadUtil.h",
+        "include/TypedMetadata.h",
+        "include/TypedMetadataJson.h",
         "include/libkineto.h",
         "include/time_since_epoch.h",
         "include/output_base.h",

@@ -63,6 +63,11 @@ class Config : public AbstractConfig {
     activitiesLogUrl_ = url;
   }
 
+  // Called for configs from the daemon IPC path. See onDemand_.
+  void setOnDemand(bool onDemand) {
+    onDemand_ = onDemand;
+  }
+
   [[nodiscard]] bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
   }
@@ -235,22 +240,12 @@ class Config : public AbstractConfig {
     activitiesCudaSyncWaitEvents_ = enable;
   }
 
-  // Timestamp at which the profiling to start, requested by the user.
   [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> requestTimestamp() const {
-    if (profileStartTime_.time_since_epoch().count()) {
-      return profileStartTime_;
-    }
-    // If no one requested timestamp, return 0.
-    if (requestTimestamp_.time_since_epoch().count() == 0) {
-      return requestTimestamp_;
-    }
-
-    // TODO(T94634890): Deprecate requestTimestamp
-    return requestTimestamp_ + maxRequestAge() + activitiesWarmupDuration();
+    return profileStartTime_;
   }
 
   [[nodiscard]] bool hasProfileStartTime() const {
-    return requestTimestamp_.time_since_epoch().count() > 0 || profileStartTime_.time_since_epoch().count() > 0;
+    return profileStartTime_.time_since_epoch().count() > 0;
   }
 
   [[nodiscard]] int profileStartIteration() const {
@@ -290,10 +285,6 @@ class Config : public AbstractConfig {
   // If empty, logging is enabled for all modules.
   [[nodiscard]] const std::vector<std::string>& verboseLogModules() const {
     return verboseLogModules_;
-  }
-
-  [[nodiscard]] bool sigUsr2Enabled() const {
-    return enableSigUsr2_;
   }
 
   [[nodiscard]] bool ipcFabricEnabled() const {
@@ -454,6 +445,9 @@ class Config : public AbstractConfig {
   // Log activities to memory buffer
   bool activitiesLogToMemory_{false};
 
+  // Restricts trace output path when set (untrusted on-demand config).
+  bool onDemand_{false};
+
   int64_t activitiesMaxGpuBufferSize_;
   std::chrono::seconds activitiesWarmupDuration_;
   int activitiesWarmupIterations_;
@@ -491,12 +485,6 @@ class Config : public AbstractConfig {
   int profileStartIteration_;
   int profileStartIterationRoundUp_;
 
-  // DEPRECATED
-  std::chrono::time_point<std::chrono::system_clock> requestTimestamp_;
-
-  // Enable profiling via SIGUSR2
-  bool enableSigUsr2_;
-
   // Enable IPC Fabric instead of thrift communication
   bool enableIpcFabric_;
   std::chrono::seconds onDemandConfigUpdateIntervalSecs_;
@@ -529,8 +517,20 @@ constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 bool isDaemonEnvVarSet();
 
 // Returns a reference to the protobuf trace enabled flag.
-// This allows the flag to be set externally (e.g., from JustKnobs in FBConfig)
-// and read in other components (e.g., ChromeTraceLogger).
+// This allows the flag to be set externally by downstream consumers
+// and read in trace output components.
 bool& get_protobuf_trace_enabled();
+
+// Returns a reference to the Perfetto trace enabled flag.
+// When true, a consumer writes a Perfetto-native trace via the
+// Perfetto SDK alongside other output formats.
+bool& get_perfetto_trace_enabled();
+
+// Returns a reference to the Perfetto packet compression enabled flag.
+// When true, in-process Perfetto SDK tracing sessions configure
+// `TraceConfig.compression_type = COMPRESSION_TYPE_DEFLATE`, producing
+// a smaller .pftrace at the cost of some CPU. The Perfetto UI and
+// trace_processor decompress transparently.
+bool& get_perfetto_packet_compression_enabled();
 
 } // namespace libkineto

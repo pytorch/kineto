@@ -113,6 +113,18 @@ auto extract_kernel_args =
         *(reinterpret_cast<const rocprofiler_dim3_t*>(arg_value_addr));
   else if (strcmp("sharedMemBytes", arg_name) == 0)
     args.groupSize = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+  else if (strcmp("gridDimX", arg_name) == 0)
+    args.workgroupSize.x = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+  else if (strcmp("gridDimY", arg_name) == 0)
+    args.workgroupSize.y = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+  else if (strcmp("gridDimZ", arg_name) == 0)
+    args.workgroupSize.z = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+  else if (strcmp("blockDimX", arg_name) == 0)
+    args.gridSize.x = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+  else if (strcmp("blockDimY", arg_name) == 0)
+    args.gridSize.y = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
+  else if (strcmp("blockDimZ", arg_name) == 0)
+    args.gridSize.z = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeX", arg_name) == 0)
     args.workgroupSize.x = *(reinterpret_cast<const uint32_t*>(arg_value_addr));
   else if (strcmp("globalWorkSizeY", arg_name) == 0)
@@ -373,12 +385,12 @@ int RocprofLogger::toolInit(
   apiList.add("__hipPushCallConfiguration");
   apiList.add("__hipPopCallConfiguration");
   apiList.add("hipCtxSetCurrent");
-  apiList.add("hipEventRecord");
-  apiList.add("hipEventQuery");
-  apiList.add("hipGetDeviceProperties");
+  apiList.add("hipGetDevicePropertiesR0600");
+  apiList.add("hipGetDeviceCount");
+  apiList.add("hipDeviceGetAttribute");
+  apiList.add("hipRuntimeGetVersion");
   apiList.add("hipPeekAtLastError");
   apiList.add("hipModuleGetFunction");
-  apiList.add("hipEventCreateWithFlags");
 
   // Get a vector of the enabled api calls
   auto apis = apiList.allEnabled();

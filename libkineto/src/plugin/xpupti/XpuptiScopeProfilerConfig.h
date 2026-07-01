@@ -44,10 +44,6 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
     return xpuptiProfilerMaxScopes_;
   }
 
-  void setSignalDefaults() override {
-    setDefaults();
-  }
-
   void setClientDefaults() override {
     setDefaults();
   }

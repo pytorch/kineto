@@ -72,11 +72,7 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
                                        const std::unordered_map<int64_t, int64_t>& correlationMap);
   void handleCorrelationActivity(const pti_view_record_external_correlation* correlation);
 
-#if PTI_VERSION_AT_LEAST(0, 11)
   using pti_view_record_api_t = pti_view_record_api;
-#else
-  using pti_view_record_api_t = pti_view_record_sycl_runtime;
-#endif
 
   std::string getApiName(const pti_view_record_api_t* activity);
 

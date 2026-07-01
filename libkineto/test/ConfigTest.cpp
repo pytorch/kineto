@@ -253,34 +253,6 @@ TEST(ParseTest, SamplesPerReport) {
   EXPECT_EQ(cfg.samplesPerReport(), 1);
 }
 
-TEST(ParseTest, EnableSigUsr2) {
-  Config cfg;
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=yes"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=no"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=YES"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=NO"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=Y"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=N"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=T"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=F"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=true"));
-  EXPECT_TRUE(cfg.sigUsr2Enabled());
-  EXPECT_TRUE(cfg.parse("ENABLE_SIGUSR2=false"));
-  EXPECT_FALSE(cfg.sigUsr2Enabled());
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=  "));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=2"));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=-1"));
-  EXPECT_FALSE(cfg.parse("ENABLE_SIGUSR2=yep"));
-}
-
 TEST(ParseTest, DeviceMask) {
   Config cfg;
   // Single device
@@ -327,30 +299,6 @@ TEST(ParseTest, DeviceMask) {
   EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 1.0"));
 }
 
-TEST(ParseTest, RequestTime) {
-  Config cfg;
-  system_clock::time_point now = system_clock::now();
-  int64_t tgood_ms =
-      duration_cast<milliseconds>(now.time_since_epoch()).count();
-  EXPECT_TRUE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tgood_ms)));
-
-  tgood_ms = duration_cast<milliseconds>((now - seconds(5)).time_since_epoch())
-                 .count();
-  EXPECT_TRUE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tgood_ms)));
-
-  int64_t tbad_ms =
-      duration_cast<milliseconds>((now - seconds(20)).time_since_epoch())
-          .count();
-  EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
-
-  EXPECT_FALSE(cfg.parse("REQUEST_TIMESTAMP = 0"));
-  EXPECT_FALSE(cfg.parse("REQUEST_TIMESTAMP = -1"));
-
-  tbad_ms = duration_cast<milliseconds>((now + seconds(10)).time_since_epoch())
-                .count();
-  EXPECT_FALSE(cfg.parse(fmt::format("REQUEST_TIMESTAMP = {}", tbad_ms)));
-}
-
 TEST(ParseTest, ProfileStartTime) {
   Config cfg;
   system_clock::time_point now = system_clock::now();
@@ -375,4 +323,40 @@ TEST(ParseTest, RequestTraceIds) {
   EXPECT_EQ(cfg.requestTraceID(), "XYZ");
   EXPECT_TRUE(cfg.parse("REQUEST_GROUP_TRACE_ID=ABC"));
   EXPECT_EQ(cfg.requestGroupTraceID(), "ABC");
+}
+
+// Trusted base config may set any trace path.
+TEST(ParseTest, BaseConfigLogFileUnrestricted) {
+  Config cfg;
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/home/user/custom/trace.json"));
+  EXPECT_EQ(cfg.activitiesLogFile(), "/home/user/custom/trace.json");
+
+  EXPECT_TRUE(cfg.parse("EVENTS_LOG_FILE=/home/user/custom/events.log"));
+  EXPECT_EQ(cfg.eventLogFile(), "/home/user/custom/events.log");
+}
+
+// On-demand path under the allowed dir is accepted.
+TEST(ParseTest, OnDemandLogFileAllowed) {
+  Config cfg;
+  cfg.setOnDemand(true);
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/tmp/my_trace.json"));
+  EXPECT_EQ(cfg.activitiesLogFile(), "/tmp/my_trace.json");
+}
+
+// On-demand path outside the allowed dir (or with traversal) falls back.
+TEST(ParseTest, OnDemandLogFileRejectedOutsideAllowedDir) {
+  Config cfg;
+  cfg.setOnDemand(true);
+  const std::string original = cfg.activitiesLogFile();
+
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/etc/cron.d/payload"));
+  EXPECT_EQ(cfg.activitiesLogFile(), original);
+  EXPECT_EQ(cfg.activitiesLogFile().rfind("/tmp/", 0), 0u);
+
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/tmp/../etc/cron.d/payload"));
+  EXPECT_EQ(cfg.activitiesLogFile(), original);
+
+  const std::string originalEvents = cfg.eventLogFile();
+  EXPECT_TRUE(cfg.parse("EVENTS_LOG_FILE=/etc/passwd"));
+  EXPECT_EQ(cfg.eventLogFile(), originalEvents);
 }

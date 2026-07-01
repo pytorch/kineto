@@ -9,7 +9,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -57,9 +56,6 @@ class CuptiCbidRegistry {
   // Check if a callback ID is registered
   [[nodiscard]] bool isRegistered(CallbackDomain domain, uint32_t cbid);
 
-  // Get the name for a callback ID (returns "unknown" if not found)
-  [[nodiscard]] const std::string& getName(CallbackDomain domain, uint32_t cbid);
-
  private:
   CuptiCbidRegistry();
   ~CuptiCbidRegistry() = default;
@@ -68,7 +64,6 @@ class CuptiCbidRegistry {
   struct CbidProperties {
     bool requiresFlowCorrelation;
     bool isBlocklisted;
-    std::string name;
   };
 
   // Range of callback IDs (for memory operations)
@@ -81,13 +76,6 @@ class CuptiCbidRegistry {
 
   // Register a callback ID
   void registerCbid(CallbackDomain domain, uint32_t cbid, bool requiresFlowCorrelation, bool isBlocklisted);
-
-  // Register a callback ID with a name
-  void registerCbid(CallbackDomain domain,
-                    uint32_t cbid,
-                    bool requiresFlowCorrelation,
-                    bool isBlocklisted,
-                    const std::string& name);
 
   // Register a range of callback IDs
   void registerCbidRange(CallbackDomain domain,

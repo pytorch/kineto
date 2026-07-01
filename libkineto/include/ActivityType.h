@@ -39,7 +39,10 @@ enum class ActivityType {
 
   // Optional Activity types
   GLOW_RUNTIME = 18, // host side glow runtime events
-  CUDA_PROFILER_RANGE = 19, // CUPTI Profiler range for performance metrics
+  // Reserved and no longer produced: the CUPTI range profiler that emitted this
+  // activity was removed. The value stays fixed so existing traces and other
+  // tools that share this serialized integer keep deserializing correctly.
+  CUDA_PROFILER_RANGE = 19,
   HPU_OP = 20, // HPU host side runtime event
   XPU_RUNTIME = 21, // host side xpu runtime events
   XPU_DRIVER = 22, // host side xpu driver events

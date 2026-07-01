@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "ActivityType.h"
+#include "TypedMetadata.h"
 
 namespace libkineto {
 
@@ -50,6 +51,8 @@ struct ITraceActivity {
   // Return json formatted metadata
   // FIXME: Return iterator to dynamic type map here instead
   [[nodiscard]] virtual const std::string metadataJson() const = 0;
+  // Write structured metadata to a consumer.
+  virtual void visitTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor) const {}
   // Return the metadata value in string format with key
   // @lint-ignore CLANGTIDY: clang-diagnostic-unused-parameter
   [[nodiscard]] virtual const std::string getMetadataValue([[maybe_unused]] const std::string& key) const {

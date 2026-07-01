@@ -8,7 +8,7 @@ include(GoogleTest)
 cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 project(${PROJECT_NAME} LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-fsycl" has_sycl)

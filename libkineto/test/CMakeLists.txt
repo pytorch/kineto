@@ -5,19 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 include(GoogleTest)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
-    if((NOT SYCL_INCLUDE_DIR) OR (NOT SYCL_LIBRARY_DIR))
-        include(FindSYCLToolkit.cmake)
-        if(NOT SYCLTOOLKIT_FOUND)
-            set(LIBKINETO_NOXPUPTI ON)
-            message(WARNING "XPUPTI tests has not been built because ${SYCL_NOT_FOUND_MESSAGE}")
-        endif()
-    endif()
-endif()
-
-if(DEFINED LIBKINETO_NOXPUPTI AND NOT LIBKINETO_NOXPUPTI)
+if(KINETO_BACKEND STREQUAL "xpu")
     set(XPU_XPUPTI_LIBRARY ${PTI_LIBRARY} ${SYCL_LIBRARY})
     add_subdirectory(xpupti)
 else()
@@ -42,7 +32,15 @@ target_link_libraries(ConfigTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
-if(NOT LIBKINETO_NOCUPTI)
+# ActivityProfilerControllerTest
+add_executable(ActivityProfilerControllerTest ActivityProfilerControllerTest.cpp)
+target_link_libraries(ActivityProfilerControllerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(ActivityProfilerControllerTest)
+
+if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
@@ -66,30 +64,6 @@ target_link_libraries(CuptiCallbackApiTest PRIVATE
     kineto_base kineto_api)
 gtest_discover_tests(CuptiCallbackApiTest)
 
-# CuptiRangeProfilerApiTest
-add_executable(CuptiRangeProfilerApiTest CuptiRangeProfilerApiTest.cpp)
-target_link_libraries(CuptiRangeProfilerApiTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerApiTest)
-
-# CuptiRangeProfilerConfigTest
-add_executable(CuptiRangeProfilerConfigTest CuptiRangeProfilerConfigTest.cpp)
-target_link_libraries(CuptiRangeProfilerConfigTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerConfigTest)
-
-# CuptiRangeProfilerTest
-add_executable(CuptiRangeProfilerTest CuptiRangeProfilerTest.cpp)
-target_link_libraries(CuptiRangeProfilerTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>)
-gtest_discover_tests(CuptiRangeProfilerTest)
-
 # CuptiStringsTest
 add_executable(CuptiStringsTest CuptiStringsTest.cpp)
 target_link_libraries(CuptiStringsTest PRIVATE
@@ -106,7 +80,7 @@ target_link_libraries(EventProfilerTest PRIVATE
 gtest_discover_tests(EventProfilerTest)
 endif()
 
-if(NOT LIBKINETO_NOROCTRACER)
+if(KINETO_BACKEND STREQUAL "rocm")
 # RocmActivityProfilerTest
 add_executable(RocmActivityProfilerTest
     RocmActivityProfilerTest.cpp
@@ -123,8 +97,7 @@ target_include_directories(RocmActivityProfilerTest PRIVATE
     "${LIBKINETO_DIR}"
     "${LIBKINETO_DIR}/include"
     "${LIBKINETO_DIR}/src"
-    "${ROCM_INCLUDE_DIRS}"
-    "${ROCTRACER_INCLUDE_DIR}")
+    "${ROCM_INCLUDE_DIRS}")
 gtest_discover_tests(RocmActivityProfilerTest)
 endif()
 
@@ -136,6 +109,18 @@ target_link_libraries(LoggerObserverTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(LoggerObserverTest)
 
+# RegisterLoggerFactoryTest
+add_executable(RegisterLoggerFactoryTest RegisterLoggerFactoryTest.cpp)
+target_link_libraries(RegisterLoggerFactoryTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(RegisterLoggerFactoryTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(RegisterLoggerFactoryTest)
+
 # PidInfoTest
 add_executable(PidInfoTest PidInfoTest.cpp)
 target_link_libraries(PidInfoTest PRIVATE
@@ -144,12 +129,10 @@ target_link_libraries(PidInfoTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(PidInfoTest)
 
-# CuptiProfilerApiTest
-# TODO: Re-enable once runtime crash in cuptiDeviceGetChipName is fixed.
-# enable_language(CUDA)
-# add_executable(CuptiProfilerApiTest CuptiProfilerApiTest.cu)
-# target_link_libraries(CuptiProfilerApiTest PRIVATE
-#     kineto_base kineto_api
-#     CUDA::cuda_driver
-#     gtest_main)
-# add_test(NAME CuptiProfilerApiTest COMMAND CuptiProfilerApiTest)
+# OutputJsonTest
+add_executable(OutputJsonTest OutputJsonTest.cpp)
+target_link_libraries(OutputJsonTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(OutputJsonTest)

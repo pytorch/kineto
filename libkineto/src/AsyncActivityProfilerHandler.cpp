@@ -9,6 +9,8 @@
 #include "AsyncActivityProfilerHandler.h"
 
 #include <chrono>
+#include <exception>
+#include <string>
 
 #include "ActivityProfilerController.h"
 #include "Config.h"
@@ -21,10 +23,17 @@ using namespace std::chrono;
 
 namespace KINETO_NAMESPACE {
 
+static void logRequestCancellation(
+    const Config& config,
+    const std::string& reason) {
+  LOGGER_OBSERVER_WRITE_STAGE_CANCELLATION(
+      config.requestTraceID(), config.requestGroupTraceID(), reason);
+  LOG(WARNING) << reason;
+}
+
 AsyncActivityProfilerHandler::AsyncActivityProfilerHandler(
-    GenericActivityProfiler& profiler,
-    std::atomic_bool& syncTraceActive)
-    : profiler_(profiler), syncTraceActive_(syncTraceActive) {}
+    GenericActivityProfiler& profiler)
+    : profiler_(profiler) {}
 
 AsyncActivityProfilerHandler::~AsyncActivityProfilerHandler() {
   for (auto& profilerThread : profilerThreads_) {
@@ -35,10 +44,7 @@ AsyncActivityProfilerHandler::~AsyncActivityProfilerHandler() {
       profilerThread.reset();
     }
   }
-}
-
-bool AsyncActivityProfilerHandler::canAcceptConfig() {
-  return !profiler_.isActive();
+  ensureCollectTraceDone();
 }
 
 void AsyncActivityProfilerHandler::acceptConfig(const Config& config) {
@@ -50,10 +56,6 @@ void AsyncActivityProfilerHandler::acceptConfig(const Config& config) {
 
 void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
   VLOG(1) << "scheduleTrace";
-  if (profiler_.isActive()) {
-    LOG(WARNING) << "Ignored request - profiler busy";
-    return;
-  }
 
   int64_t currentIter = iterationCount_;
   std::unique_ptr<Config> configToSchedule;
@@ -68,8 +70,9 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
       configToSchedule = config.clone();
       configToSchedule->setProfileStartIteration(-1);
     } else {
-      LOG(WARNING) << "Ignored profile iteration count based request as "
-                   << "application is not updating iteration count";
+      logRequestCancellation(
+          config,
+          "Ignored profile iteration count based request as application is not updating iteration count");
       return;
     }
   } else {
@@ -86,7 +89,8 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
     }
   }
   if (!newConfigScheduled) {
-    LOG(WARNING) << "Ignored request - another profile request is pending.";
+    logRequestCancellation(
+        config, "Ignored request - another profile request is pending.");
     return;
   }
 
@@ -114,18 +118,18 @@ void AsyncActivityProfilerHandler::step() {
   VLOG(0) << "Step called , iteration  = " << currentIter;
 
   // Perform Double-checked locking to reduce overhead of taking lock.
-  if (asyncRequestConfig_ && !profiler_.isActive()) {
+  if (asyncRequestConfig_ && !isAsyncActive()) {
     std::lock_guard<std::mutex> lock(asyncConfigLock_);
     auto now = system_clock::now();
-    if (asyncRequestConfig_ && !profiler_.isActive() &&
+    if (asyncRequestConfig_ && !isAsyncActive() &&
         shouldActivateIterationConfig(currentIter)) {
       activateConfig(now);
     }
   }
-  if (profiler_.isActive() && !profiler_.isCollectingMemorySnapshot()) {
+  if (isAsyncActive() && !isCollectingMemorySnapshot()) {
     auto now = system_clock::now();
     auto next_wakeup_time = now + Config::kControllerIntervalMsecs;
-    profiler_.performRunLoopStep(now, next_wakeup_time, currentIter);
+    performRunLoopStep(now, next_wakeup_time, currentIter);
   }
 }
 
@@ -217,9 +221,9 @@ void AsyncActivityProfilerHandler::profilerLoop() {
     }
 
     // Perform Double-checked locking to reduce overhead of taking lock.
-    if (asyncRequestConfig_ && !profiler_.isActive()) {
+    if (asyncRequestConfig_ && !isAsyncActive()) {
       std::lock_guard<std::mutex> lock(asyncConfigLock_);
-      if (asyncRequestConfig_ && !profiler_.isActive() &&
+      if (asyncRequestConfig_ && !isAsyncActive() &&
           shouldActivateTimestampConfig(now)) {
         activateConfig(now);
       }
@@ -229,46 +233,291 @@ void AsyncActivityProfilerHandler::profilerLoop() {
       next_wakeup_time += Config::kControllerIntervalMsecs;
     }
 
-    // Use syncTraceActive_ so we don't step into the loop while sync trace is
-    // running
-    if (profiler_.isActive() && !profiler_.isCollectingMemorySnapshot() &&
-        !syncTraceActive_) {
-      next_wakeup_time = profiler_.performRunLoopStep(now, next_wakeup_time);
+    if (isAsyncActive() && !isCollectingMemorySnapshot()) {
+      next_wakeup_time = performRunLoopStep(now, next_wakeup_time);
       VLOG(1) << "Profiler loop: "
               << duration_cast<milliseconds>(system_clock::now() - now).count()
               << "ms";
     }
   }
 
+  // On teardown the destructor sets stopRunloop_ and joins this thread; if
+  // collection reached ProcessTrace, finalize the pending trace before logger_
+  // is destroyed.
+  if (currentRunloopState_ == RunloopState::ProcessTrace) {
+    try {
+      completePendingTrace();
+    } catch (const std::exception& e) {
+      LOG(ERROR)
+          << "Failed to finalize pending trace on profiler loop teardown: "
+          << e.what();
+    } catch (...) {
+      LOG(ERROR)
+          << "Failed to finalize pending trace on profiler loop teardown: "
+          << "unknown exception";
+    }
+  }
+
   VLOG(0) << "Exited activity profiling loop";
+}
+
+void AsyncActivityProfilerHandler::completePendingTrace() {
+  ensureCollectTraceDone();
+  profiler_.completeTrace(*logger_);
+  currentRunloopState_ = RunloopState::WaitForRequest;
+  VLOG(0) << "ProcessTrace -> WaitForRequest";
 }
 
 void AsyncActivityProfilerHandler::memoryProfilerLoop() {
   while (!stopRunloop_) {
     // Perform Double-checked locking to reduce overhead of taking lock.
-    if (asyncRequestConfig_ && !profiler_.isActive()) {
+    if (asyncRequestConfig_ && !isAsyncActive()) {
       std::lock_guard<std::mutex> lock(asyncConfigLock_);
-      if (asyncRequestConfig_ && !profiler_.isActive() &&
+      if (asyncRequestConfig_ && !isAsyncActive() &&
           asyncRequestConfig_->memoryProfilerEnabled()) {
         logger_ = ActivityProfilerController::makeLogger(*asyncRequestConfig_);
         auto path = asyncRequestConfig_->activitiesLogFile();
         auto profile_time = asyncRequestConfig_->profileMemoryDuration();
         auto config = asyncRequestConfig_->clone();
         asyncRequestConfig_ = nullptr;
-        profiler_.performMemoryLoop(path, profile_time, logger_.get(), *config);
+        performMemoryLoop(path, profile_time, logger_.get(), *config);
       }
     }
   }
 }
 
+void AsyncActivityProfilerHandler::configure(
+    const Config& config,
+    std::chrono::time_point<std::chrono::system_clock> now) {
+  if (!profiler_.canStart(config, now)) {
+    logRequestCancellation(
+        config, "Trace request could not start at the scheduled time");
+    return;
+  }
+  logger_ = ActivityProfilerController::makeLogger(config);
+  profiler_.setLogger(logger_.get());
+  LOGGER_OBSERVER_RESET();
+  LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND();
+  profiler_.configure(config, now);
+  VLOG(0) << "WaitForRequest -> Warmup";
+  currentRunloopState_ = RunloopState::Warmup;
+}
+
 // This function should only be called when holding the configLock_.
 void AsyncActivityProfilerHandler::activateConfig(
     std::chrono::time_point<std::chrono::system_clock> now) {
-  logger_ = ActivityProfilerController::makeLogger(*asyncRequestConfig_);
-  profiler_.setLogger(logger_.get());
-  LOGGER_OBSERVER_SET_TRIGGER_ON_DEMAND();
-  profiler_.configure(*asyncRequestConfig_, now);
+  configure(*asyncRequestConfig_, now);
   asyncRequestConfig_ = nullptr;
+}
+
+time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
+    const time_point<system_clock>& now,
+    const time_point<system_clock>& nextWakeupTime,
+    int64_t currentIter) {
+  auto new_wakeup_time = nextWakeupTime;
+
+  VLOG_IF(1, currentIter >= 0)
+      << "Run loop on application step(), iteration = " << currentIter;
+
+  switch (currentRunloopState_) {
+    case RunloopState::CollectMemorySnapshot:
+      LOG(WARNING)
+          << "Entered CollectMemorySnapshot in Kineto Loop Step, skipping loop";
+      break;
+    case RunloopState::WaitForRequest:
+      VLOG(1) << "State: WaitForRequest";
+      break;
+    case RunloopState::Cancelling:
+      // cancel() is tearing down the profiler on another thread.
+      // Do nothing — we must not drive the profiler concurrently.
+      VLOG(1) << "State: Cancelling";
+      break;
+
+    case RunloopState::Warmup: {
+      VLOG(1) << "State: Warmup";
+      profiler_.flushWarmupBuffers(currentIter, nextWakeupTime);
+
+      if (profiler_.isGpuCollectionStopped()) {
+        profiler_.cancelTrace(now);
+        LOG(ERROR)
+            << "State: Warmup stopped by GPU profiler. (Buffer size configured is "
+            << profiler_.activitiesMaxGpuBufferSizeMB() << "MB)";
+        UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
+        VLOG(0) << "Warmup -> WaitForRequest";
+        currentRunloopState_ = RunloopState::WaitForRequest;
+        break;
+      }
+
+      if (profiler_.isWarmupDone(now, currentIter)) {
+        UST_LOGGER_MARK_COMPLETED(kWarmUpStage);
+        if (!profiler_.isProfilingByIteration() &&
+            (now > profiler_.profileStartTime() + milliseconds(10))) {
+          LOG(INFO) << "Tracing started "
+                    << duration_cast<milliseconds>(
+                           now - profiler_.profileStartTime())
+                           .count()
+                    << "ms late!";
+        } else {
+          LOG(INFO) << "Tracing started";
+        }
+        profiler_.startTrace(now);
+        // An extra check in case cancellation came in during startTrace
+        if (currentRunloopState_ == RunloopState::Cancelling) {
+          break;
+        }
+        VLOG(0) << "Warmup -> CollectTrace";
+        currentRunloopState_ = RunloopState::CollectTrace;
+        if (libkineto::api().client() != nullptr) {
+          libkineto::api().client()->start();
+        }
+        if (nextWakeupTime > profiler_.profileEndTime()) {
+          new_wakeup_time = profiler_.profileEndTime();
+        }
+      } else if (nextWakeupTime > profiler_.profileStartTime()) {
+        new_wakeup_time = profiler_.profileStartTime();
+      }
+      break;
+    }
+
+    case RunloopState::CollectTrace: {
+      VLOG(1) << "State: CollectTrace";
+      bool collection_done = profiler_.isCollectionDone(now, currentIter);
+
+      if (collection_done || profiler_.isGpuCollectionStopped()) {
+        LOG(INFO) << "Tracing complete.";
+        VLOG_IF(1, currentIter >= 0)
+            << "This state change was invoked by application's step() call";
+        // currentIter >= 0 means this is called from the step() api of
+        // the profiler in pytorch main thread, it should be executed in
+        // another thread in case pytorch main thread is blocked
+        if (currentIter >= 0) {
+          // if collectTraceThread_ is already running, there's no need to
+          // execute collectTrace twice.
+          // Do not call collectTrace when profilerThread_ is collecting
+          // Trace. Otherwise, libkineto::api().client()->stop will be called
+          // twice, which leads to an unrecoverable ::c10:Error at
+          // disableProfiler
+          if (!collectTraceThread_ && !getCollectTraceState()) {
+            std::lock_guard<std::recursive_mutex> guard(
+                collectTraceStateMutex_);
+            collectTraceThread_ = std::make_unique<std::thread>(
+                &AsyncActivityProfilerHandler::collectTrace,
+                this,
+                collection_done,
+                now);
+          }
+          break;
+        }
+        // this is executed in profilerThread_
+        {
+          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+          isCollectingTrace_ = true;
+        }
+        collectTrace(collection_done, now);
+        {
+          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+          isCollectingTrace_ = false;
+        }
+      } else if (profiler_.isProfilingByIteration()) {
+        // nothing to do here
+      } else if (
+          now < profiler_.profileEndTime() &&
+          profiler_.profileEndTime() < nextWakeupTime) {
+        new_wakeup_time = profiler_.profileEndTime();
+      }
+      break;
+    }
+
+    case RunloopState::ProcessTrace: {
+      VLOG(1) << "State: ProcessTrace";
+      // skip this state transition if it called from the step() api
+      // of the profiler.
+      // else it could lead to a race between the profiler thread and an
+      // application thread calling step()
+      if (currentIter >= 0) {
+        return new_wakeup_time;
+      }
+
+      // FIXME: Probably want to allow interruption here
+      // for quickly handling trace request via synchronous API
+      completePendingTrace();
+      break;
+    }
+  }
+
+  return new_wakeup_time;
+}
+
+void AsyncActivityProfilerHandler::collectTrace(
+    bool collection_done,
+    const std::chrono::time_point<std::chrono::system_clock>& now) {
+  if (currentRunloopState_ == RunloopState::Cancelling) {
+    return;
+  }
+  profiler_.collectTrace(collection_done, now);
+  if (currentRunloopState_ == RunloopState::Cancelling) {
+    return;
+  }
+  VLOG(0) << "CollectTrace -> ProcessTrace";
+  currentRunloopState_ = RunloopState::ProcessTrace;
+}
+
+void AsyncActivityProfilerHandler::performMemoryLoop(
+    const std::string& path,
+    uint32_t profile_time,
+    ActivityLogger* logger,
+    Config& config) {
+  currentRunloopState_ = RunloopState::CollectMemorySnapshot;
+  if (libkineto::api().client() != nullptr) {
+    libkineto::api().client()->start_memory_profile();
+    LOG(INFO) << "Running memory profiling for " << profile_time << " ms";
+    std::this_thread::sleep_for(std::chrono::milliseconds(profile_time));
+    LOG(INFO) << "Exporting memory profiling results to " << path;
+    libkineto::api().client()->export_memory_profile(path);
+    libkineto::api().client()->stop_memory_profile();
+    LOG(INFO) << "Finalizing trace";
+    logger->finalizeMemoryTrace(path, config);
+  }
+  currentRunloopState_ = RunloopState::WaitForRequest;
+}
+
+bool AsyncActivityProfilerHandler::getCollectTraceState() {
+  std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+  return isCollectingTrace_;
+}
+
+void AsyncActivityProfilerHandler::ensureCollectTraceDone() {
+  if (collectTraceThread_ && collectTraceThread_->joinable()) {
+    collectTraceThread_->join();
+    collectTraceThread_.reset(nullptr);
+  }
+}
+
+void AsyncActivityProfilerHandler::cancel() {
+  {
+    std::lock_guard<std::mutex> lock(asyncConfigLock_);
+    asyncRequestConfig_ = nullptr;
+  }
+  if (!isAsyncActive()) {
+    return;
+  }
+
+  currentRunloopState_ = RunloopState::Cancelling;
+
+  LOG(ERROR) << "Cancelling current trace request in order to start "
+             << "higher priority synchronous request";
+  UST_LOGGER_MARK_COMPLETED(kCancellationStage);
+
+  ensureCollectTraceDone();
+  if (libkineto::api().client() != nullptr) {
+    libkineto::api().client()->stop();
+  }
+  profiler_.cancelTrace(std::chrono::system_clock::now());
+  VLOG(0) << "Cancelled from state == "
+          << static_cast<std::underlying_type_t<RunloopState>>(
+                 currentRunloopState_.load())
+          << " -> WaitForRequest";
+  currentRunloopState_ = RunloopState::WaitForRequest;
 }
 
 } // namespace KINETO_NAMESPACE

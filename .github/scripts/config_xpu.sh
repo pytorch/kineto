@@ -11,9 +11,7 @@
 # Enable XPU (XPUPTI) and disable CUPTI/ROCm backends.
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
-  -DLIBKINETO_NOCUPTI=1
-  -DLIBKINETO_NOROCTRACER=1
-  -DLIBKINETO_NOXPUPTI=OFF
+  -DKINETO_BACKEND=xpu
 )
 
 # --- PyTorch build environment variables ---
@@ -25,7 +23,12 @@ KINETO_CMAKE_FLAGS=(
 set +u
 source /opt/intel/oneapi/compiler/latest/env/vars.sh
 source /opt/intel/oneapi/pti/latest/env/vars.sh
-source /opt/intel/oneapi/umf/latest/env/vars.sh
+if [ -f /opt/intel/oneapi/umf/latest/env/vars.sh ]; then
+  source /opt/intel/oneapi/umf/latest/env/vars.sh
+fi
+if [ -f /opt/intel/oneapi/tcm/latest/env/vars.sh ]; then
+  source /opt/intel/oneapi/tcm/latest/env/vars.sh
+fi
 source /opt/intel/oneapi/ccl/latest/env/vars.sh
 source /opt/intel/oneapi/mpi/latest/env/vars.sh
 set -u
@@ -46,19 +49,31 @@ export USE_MPI=0
 # TODO: better explanation
 export TORCH_XPU_ARCH_LIST=pvc
 
+# --- PyTorch build caching ---
+# This arch's CI runner is not on AWS and cannot reach PyTorch's S3 sccache
+# bucket.
+# shellcheck disable=SC2034
+KINETO_USE_SCCACHE=0
+
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.
 #
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
-  test/profiler/test_memory_profiler.py::TestDataFlow::test_data_flow_graph_complicated
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_sequential_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd
-  test/profiler/test_memory_profiler.py::TestMemoryProfilerE2E::test_categories_e2e_simple_fwd_bwd_step
-  test/profiler/test_profiler.py::TestProfiler::test_kineto
-  test/profiler/test_profiler.py::TestProfiler::test_user_annotation
-  test/profiler/test_profiler.py::TestProfiler::test_python_gc_event
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-  test/profiler/test_profiler.py::TestExperimentalUtils::test_profiler_debug_autotuner
-  test/profiler/test_torch_tidy.py::TestTorchTidyProfiler::test_tensorimpl_invalidation_scalar_args
+
+  # https://github.com/pytorch/kineto/issues/1429
+  # Moved into the device-parametrized TestProfilerDevice by pytorch/pytorch#182434.
+  # fork-after-init: re-initializing XPU in a forked subprocess raises
+  # "Cannot re-initialize XPU in forked subprocess". Independent of runtime XPU
+  # availability and already deselected for CUDA and ROCm.
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
+
+  # https://github.com/pytorch/kineto/issues/1429
+  # _validate_basic_json indexes traceEvents[-4] expecting the "PyTorch Profiler (0)"
+  # event, but a USE_XPU=1 build appends a second "__xpu_profiler__ (0)" instance to
+  # the trace, shifting that fixed offset. Caused by XPU being built (not by runtime
+  # availability), so it fails on this runner like the CPU-variant does here.
+  # Tracked for an upstream fix that locates the events by name instead of by offset.
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_basic_chrome_trace_cpu
 )

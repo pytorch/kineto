@@ -8,10 +8,6 @@
 
 #include "ConfigLoader.h"
 
-#ifdef __linux__
-#include <csignal>
-#endif
-
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
@@ -30,64 +26,11 @@ namespace KINETO_NAMESPACE {
 constexpr char kConfigFileEnvVar[] = "KINETO_CONFIG";
 #ifdef __linux__
 constexpr char kConfigFile[] = "/etc/libkineto.conf";
-constexpr char kOnDemandConfigFile[] = "/tmp/libkineto.conf";
 #else
 constexpr char kConfigFile[] = "libkineto.conf";
-constexpr char kOnDemandConfigFile[] = "libkineto.conf";
 #endif
 
 constexpr std::chrono::seconds kConfigUpdateIntervalSecs(300);
-
-#ifdef __linux__
-static struct sigaction originalUsr2Handler = {};
-#endif
-
-// Use SIGUSR2 to initiate profiling.
-// Look for an on-demand config file.
-// If none is found, default to base config.
-// Try to not affect existing handlers
-static bool hasOriginalSignalHandler() {
-#ifdef __linux__
-  return originalUsr2Handler.sa_handler != nullptr ||
-      originalUsr2Handler.sa_sigaction != nullptr;
-#else
-  return false;
-#endif
-}
-
-static void handle_signal([[maybe_unused]] int signal) {
-#ifdef __linux__
-  if (signal == SIGUSR2) {
-    ConfigLoader::instance().handleOnDemandSignal();
-    if (hasOriginalSignalHandler()) {
-      // Invoke original handler and reinstate ours
-      struct sigaction act;
-      sigaction(SIGUSR2, &originalUsr2Handler, &act);
-      raise(SIGUSR2);
-      sigaction(SIGUSR2, &act, &originalUsr2Handler);
-    }
-  }
-#endif
-}
-
-static void setupSignalHandler([[maybe_unused]] bool enableSigUsr2) {
-#ifdef __linux__
-  if (enableSigUsr2) {
-    struct sigaction act = {};
-    act.sa_handler = &handle_signal;
-    act.sa_flags = SA_NODEFER;
-    if (sigaction(SIGUSR2, &act, &originalUsr2Handler) < 0) {
-      PLOG(ERROR) << "Failed to register SIGUSR2 handler";
-    }
-    if (originalUsr2Handler.sa_handler == &handle_signal) {
-      originalUsr2Handler = {};
-    }
-  } else if (hasOriginalSignalHandler()) {
-    sigaction(SIGUSR2, &originalUsr2Handler, nullptr);
-    originalUsr2Handler = {};
-  }
-#endif
-}
 
 // return an empty string if reading gets any errors. Otherwise a config string.
 static std::string readConfigFromConfigFile(
@@ -150,8 +93,7 @@ ConfigLoader::ConfigLoader()
       // on-demand config will be overwritten by the value read from the regular
       // config so the initial value is not important
       onDemandConfigUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
-      stopFlag_(false),
-      onDemandSignal_(false) {}
+      stopFlag_(false) {}
 
 void ConfigLoader::startThread() {
   if (!updateThread_) {
@@ -185,14 +127,6 @@ ConfigLoader::~ConfigLoader() {
 #if !USE_GOOGLE_LOG
   Logger::clearLoggerObservers();
 #endif // !USE_GOOGLE_LOG
-}
-
-void ConfigLoader::handleOnDemandSignal() {
-  onDemandSignal_ = true;
-  {
-    std::lock_guard<std::mutex> lock(updateThreadMutex_);
-    updateThreadCondVar_.notify_one();
-  }
 }
 
 namespace {
@@ -243,24 +177,10 @@ void ConfigLoader::updateBaseConfig() {
     if (daemonConfigLoader()) {
       daemonConfigLoader()->setCommunicationFabric(config_->ipcFabricEnabled());
     }
-    setupSignalHandler(config_->sigUsr2Enabled());
     SET_LOG_VERBOSITY_LEVEL(
         config_->verboseLogLevel(), config_->verboseLogModules());
     VLOG(0) << "Detected base config change";
   }
-}
-
-void ConfigLoader::configureFromSignal(
-    [[maybe_unused]] time_point<system_clock> now,
-    Config& config) {
-  LOG(INFO) << "Received on-demand profiling signal, " << "reading config from "
-            << kOnDemandConfigFile;
-  // Reset start time to 0 in order to compute new default start time
-  const std::string config_str =
-      "PROFILE_START_TIME=0\n" + readConfigFromConfigFile(kOnDemandConfigFile);
-  config.parse(config_str);
-  config.setSignalDefaults();
-  notifyHandlers(config);
 }
 
 void ConfigLoader::configureFromDaemon(
@@ -272,6 +192,8 @@ void ConfigLoader::configureFromDaemon(
   }
 
   LOG(INFO) << "Received config from dyno:\n" << config_str;
+  // Untrusted daemon IPC config; restrict trace output path.
+  config.setOnDemand(true);
   config.parse(config_str);
   notifyHandlers(config);
 }
@@ -317,11 +239,7 @@ void ConfigLoader::updateConfigThread() {
           config_->onDemandConfigUpdateIntervalSecs();
       prev_config_load_time = now;
     }
-    if (onDemandSignal_.exchange(false)) {
-      onDemandConfig = config_->clone();
-      configureFromSignal(now, *onDemandConfig);
-    } else if (
-        now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
+    if (now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
       onDemandConfig = std::make_unique<Config>();
       configureFromDaemon(now, *onDemandConfig);
       prev_on_demand_load_time = now;

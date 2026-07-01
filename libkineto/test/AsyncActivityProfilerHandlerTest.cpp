@@ -9,7 +9,7 @@
 #include <fmt/format.h>
 #include <folly/json/json.h>
 #include <gtest/gtest.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <chrono>
 

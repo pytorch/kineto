@@ -42,6 +42,17 @@ using TensorListShapes = std::vector<std::vector<int64_t>>;
 // a single tensor's shape or, for a TensorList argument, a list of tensor shapes.
 using InputShapes = std::vector<std::variant<std::vector<int64_t>, TensorListShapes>>;
 
+// The set of value types the typed-metadata system supports.
+using TypedValue = std::variant<int64_t,
+                                uint64_t,
+                                double,
+                                bool,
+                                std::string,
+                                std::vector<int64_t>,
+                                std::vector<std::string>,
+                                RawJson,
+                                InputShapes>;
+
 /*
  * ITypedMetadataVisitor is a per-activity visitor for structured metadata with
  * field-level type checking.

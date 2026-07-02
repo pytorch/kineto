@@ -45,6 +45,22 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     return std::move(json_);
   }
 
+  // Public so GenericTraceActivity's metadata serialization can render
+  // collections without duplicating this logic.
+  template <typename T>
+  static void appendArray(std::string& json, const std::vector<T>& values) {
+    json += '[';
+    bool first = true;
+    for (const auto& value : values) {
+      if (!first) {
+        json += ", ";
+      }
+      appendArrayValue(json, value);
+      first = false;
+    }
+    json += ']';
+  }
+
  private:
   // Sized to hold the largest common CUDA activity (kernels) in one allocation, with some buffer
   static constexpr size_t kInitialJsonCapacity = 1024;
@@ -146,20 +162,6 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
       return;
     }
     appendQuoted(json, fmt::format("{}", value));
-  }
-
-  template <typename T>
-  static void appendArray(std::string& json, const std::vector<T>& values) {
-    json += '[';
-    bool first = true;
-    for (const auto& value : values) {
-      if (!first) {
-        json += ", ";
-      }
-      appendArrayValue(json, value);
-      first = false;
-    }
-    json += ']';
   }
 
   static void appendArrayValue(std::string& json, int64_t value) {

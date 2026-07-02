@@ -113,6 +113,15 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
   void visitValue(
       [[maybe_unused]] const MetadataField<std::vector<std::string>>& field,
       [[maybe_unused]] const std::vector<std::string>& value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<RawJson>& field,
+      [[maybe_unused]] const RawJson& value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<uint64_t>& field,
+      [[maybe_unused]] uint64_t value) override {}
+  void visitValue(
+      [[maybe_unused]] const MetadataField<InputShapes>& field,
+      [[maybe_unused]] const InputShapes& value) override {}
 
   void visitUnsupported(std::string_view /*name*/) override {}
 

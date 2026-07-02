@@ -188,6 +188,12 @@ elseif(KINETO_BACKEND STREQUAL "rocm")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_HCC__")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_AMD__")
 elseif(KINETO_BACKEND STREQUAL "xpu")
+  if(MSVC)
+    # MSVC reports __cplusplus as 199711L unless /Zc:__cplusplus is set, which
+    # breaks SYCL headers that static_assert __cplusplus >= 201703L.
+    list(APPEND KINETO_COMPILE_OPTIONS "/Zc:__cplusplus")
+  endif()
+
   list(APPEND KINETO_COMPILE_OPTIONS ${XPUPTI_BUILD_FLAG})
   if(KINETO_BUILD_TESTS)
     set_target_properties(kineto_base PROPERTIES POSITION_INDEPENDENT_CODE ON)

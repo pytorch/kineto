@@ -13,8 +13,9 @@
 
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-dest_dir="${script_dir}/dynolog"
+# Destination is the same directory this script lives in.
+dest_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 version_file="${dest_dir}/version.txt"
 repo_url="https://github.com/facebookincubator/dynolog.git"
 rel_headers="dynolog/src/ipcfabric"

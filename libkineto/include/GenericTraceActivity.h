@@ -9,15 +9,18 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <sstream>
+#include <optional>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include "ITraceActivity.h"
 #include "ThreadUtil.h"
 #include "TraceSpan.h"
+#include "TypedMetadata.h"
 
 namespace libkineto {
 
@@ -93,14 +96,22 @@ class GenericTraceActivity : public ITraceActivity {
 
   void log(ActivityLogger& logger) const override;
 
-  // Encode client side metadata as a key/value
+  // Encode client side metadata as a key/value (as a JSON fragment)
   template <typename ValType>
   void addMetadata(const std::string& key, const ValType& value) {
-    metadataMap_.emplace(key, std::make_pair(fmt::format("{}", value), false));
+    metadataMap_.emplace(key, RawJson{fmt::format("{}", value)});
   }
 
+  // Typed metadata: the value is stored as the field's declared type
+  template <typename T, typename V>
+  void addMetadata(const MetadataField<T>& field, const V& value) {
+    static_assert(std::is_same_v<T, std::decay_t<V>>, "value type must match field's declared type");
+    metadataMap_.emplace(std::string{field.name}, TypedValue{value});
+  }
+
+  // The value is a plain string to be emitted quoted in JSON.
   void addMetadataQuoted(const std::string& key, const std::string& value) {
-    metadataMap_.emplace(key, std::make_pair(value, true));
+    metadataMap_.emplace(key, value);
   }
 
   // Store a typed counter value. Preferred over addMetadata for counter
@@ -114,26 +125,29 @@ class GenericTraceActivity : public ITraceActivity {
     return counterValues_;
   }
 
-  const std::string getMetadataValue(const std::string& key) const override {
-    if (auto it = metadataMap_.find(key); it != metadataMap_.end()) {
-      return it->second.first;
+  // Return the metadata value in string format
+  const std::string getMetadataValue(const std::string& key) const override;
+
+  // Typed read-back
+  template <typename T>
+  std::optional<T> getMetadataValue(const MetadataField<T>& field) const {
+    const auto it = metadataMap_.find(std::string{field.name});
+    if (it != metadataMap_.end()) {
+      if (const T* value = std::get_if<T>(&it->second)) {
+        return *value;
+      }
     }
-    return "";
+    return std::nullopt;
   }
 
-  const std::string metadataJson() const override {
-    std::stringstream json;
-    bool first = true;
-    for (const auto& [key, val] : metadataMap_) {
-      if (!first) {
-        json << ", ";
-      }
-      // Ok to use fmt::format here as we are not logging
-      val.second ? json << fmt::format("\"{}\": \"{}\"", key, val.first)
-                 : json << fmt::format("\"{}\": {}", key, val.first);
-      first = false;
+  const std::string metadataJson() const override;
+
+  void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override {
+    // Dynamically build a MetadataField during visit
+    for (const auto& kv : metadataMap_) {
+      std::visit([&](const auto& v) { visitor.visit(MetadataField<std::decay_t<decltype(v)>>{kv.first}, v); },
+                 kv.second);
     }
-    return json.str();
   }
 
   virtual ~GenericTraceActivity() override {}
@@ -159,8 +173,7 @@ class GenericTraceActivity : public ITraceActivity {
 
  private:
   const TraceSpan* traceSpan_;
-  // Metadata map: { key: (value, quoted)}
-  std::unordered_map<std::string, std::pair<std::string, bool>> metadataMap_;
+  std::unordered_map<std::string, TypedValue> metadataMap_;
   // Typed counter values: (name, double) to avoid round-tripping though string
   std::vector<std::pair<std::string, double>> counterValues_;
 };

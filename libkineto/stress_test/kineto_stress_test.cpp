@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <cupti_activity.h>
@@ -132,7 +133,7 @@ void run_parallel_stress_test(stress_test_args test_args) {
   std::vector<std::thread> v_workers;
   if (test_args.num_workers > 1) {
     v_workers.reserve(test_args.num_workers);
-    for (int i = 0; i < test_args.num_workers; ++i) {
+    for (int i = 0; std::cmp_less(i, test_args.num_workers); ++i) {
       v_workers.emplace_back(
           run_stress_test, i, test_args.num_workers, test_args);
     }
@@ -208,7 +209,7 @@ void cleanup_cuda_streams(stress_test_args& test_args) {
   }
 
   if (test_args.use_memcpy_stream) {
-    for (int i = 0; i < test_args.num_workers; ++i) {
+    for (int i = 0; std::cmp_less(i, test_args.num_workers); ++i) {
       checkCudaStatus(
           cudaStreamSynchronize(test_args.memcpy_streams[i]), __LINE__);
       checkCudaStatus(cudaStreamDestroy(test_args.memcpy_streams[i]), __LINE__);
@@ -220,7 +221,7 @@ void cleanup_cuda_streams(stress_test_args& test_args) {
   }
 
   if (test_args.use_uvm_stream) {
-    for (int i = 0; i < test_args.num_workers; ++i) {
+    for (int i = 0; std::cmp_less(i, test_args.num_workers); ++i) {
       checkCudaStatus(
           cudaStreamSynchronize(test_args.uvm_streams[i]), __LINE__);
       checkCudaStatus(cudaStreamDestroy(test_args.uvm_streams[i]), __LINE__);

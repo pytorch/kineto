@@ -93,7 +93,6 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
 
 // --- Communication Activity Tests ---
 
-#if PTI_VERSION_AT_LEAST(0, 17)
 TEST_F(XpuptiActivityHandlersTest, CommunicationActivityHasXcclPrefix) {
   pti_view_record_comms comms_record{};
   comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
@@ -156,4 +155,3 @@ TEST_F(XpuptiActivityHandlersTest, CommunicationActivityOutOfRange) {
   auto traceBuffer = processAndGetTrace(100, 500);
   EXPECT_EQ(traceBuffer->activities.size(), 0);
 }
-#endif // PTI_VERSION_AT_LEAST(0, 17)

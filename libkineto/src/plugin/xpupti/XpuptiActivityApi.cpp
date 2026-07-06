@@ -248,12 +248,11 @@ void XpuptiActivityApi::enableXpuptiActivities(
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
 
-#if PTI_VERSION_AT_LEAST(0, 17)
       case ActivityType::COLLECTIVE_COMM:
         warnIfIttNotifyLibInvalid();
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COMMUNICATION));
         break;
-#endif
+
       default:
         break;
     }
@@ -294,11 +293,10 @@ void XpuptiActivityApi::disablePtiActivities(
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
 
-#if PTI_VERSION_AT_LEAST(0, 17)
       case ActivityType::COLLECTIVE_COMM:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COMMUNICATION));
         break;
-#endif
+
       default:
         break;
     }

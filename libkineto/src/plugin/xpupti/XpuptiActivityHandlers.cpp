@@ -297,7 +297,6 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->log(logger);
 }
 
-#if PTI_VERSION_AT_LEAST(0, 17)
 void XpuptiActivityProfilerSession::handleCommunicationActivity(
     const pti_view_record_comms* activity,
     ActivityLogger& logger) {
@@ -326,7 +325,6 @@ void XpuptiActivityProfilerSession::handleCommunicationActivity(
 
   comms_activity.log(logger);
 }
-#endif
 
 namespace {
 // Map a PTI overhead kind to a human-readable name aligned with CUPTI's
@@ -430,12 +428,10 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
       handleOverheadActivity(
           reinterpret_cast<const pti_view_record_overhead*>(record), logger);
       break;
-#if PTI_VERSION_AT_LEAST(0, 17)
     case PTI_VIEW_COMMUNICATION:
       handleCommunicationActivity(
           reinterpret_cast<const pti_view_record_comms*>(record), logger);
       break;
-#endif
     default:
       errors_.push_back(
           "Unexpected activity type: " + std::to_string(record->_view_kind));

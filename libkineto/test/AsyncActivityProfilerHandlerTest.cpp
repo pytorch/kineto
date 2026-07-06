@@ -24,9 +24,11 @@
 #include "src/GenericActivityProfiler.h"
 
 #include "src/Logger.h"
+#include "test/TestUtils.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
+using namespace libkineto::test;
 
 // Subclass that lets us control isGpuCollectionStopped() for testing
 // the buffer-overflow-during-warmup path without needing real CUPTI.
@@ -69,12 +71,6 @@ static void checkTracefile(const char* filename) {
 #endif
 }
 
-static void createTempTraceFile(char* filename) {
-  const int fd = mkstemps(filename, 5);
-  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
-  close(fd);
-}
-
 TEST(AsyncActivityProfilerHandler, AsyncTrace) {
   std::vector<std::string> log_modules(
       {"CuptiActivityProfiler.cpp", "output_json.cpp"});
@@ -83,8 +79,7 @@ TEST(AsyncActivityProfilerHandler, AsyncTrace) {
   GenericActivityProfiler profiler(/*cpu only*/ true);
   AsyncActivityProfilerHandler handler(profiler);
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
 
@@ -102,7 +97,7 @@ TEST(AsyncActivityProfilerHandler, AsyncTrace) {
     PROFILE_START_TIME = {}
   )CFG",
           warmup,
-          filename,
+          traceFile.path(),
           duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
@@ -160,8 +155,7 @@ TEST(AsyncActivityProfilerHandler, AsyncTraceUsingIter) {
     GenericActivityProfiler profiler(/*cpu only*/ true);
     AsyncActivityProfilerHandler handler(profiler);
 
-    char filename[] = "/tmp/libkineto_testXXXXXX.json";
-    createTempTraceFile(filename);
+    auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
     Config cfg;
 
@@ -180,7 +174,7 @@ TEST(AsyncActivityProfilerHandler, AsyncTraceUsingIter) {
             start_iter,
             warmup_iters,
             trace_iters,
-            filename));
+            traceFile.path()));
 
     EXPECT_TRUE(success);
     EXPECT_FALSE(handler.isAsyncActive());
@@ -239,8 +233,7 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   GenericActivityProfiler profiler(/*cpu only*/ true);
   AsyncActivityProfilerHandler handler(profiler);
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
 
@@ -255,7 +248,7 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          filename,
+          traceFile.path(),
           duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
@@ -326,8 +319,7 @@ TEST(AsyncActivityProfilerHandler, Cancel) {
   handler.cancel();
   EXPECT_FALSE(handler.isAsyncActive());
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
   auto now = system_clock::now();
@@ -341,7 +333,7 @@ TEST(AsyncActivityProfilerHandler, Cancel) {
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          filename,
+          traceFile.path(),
           duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
   EXPECT_TRUE(success);
 
@@ -370,8 +362,7 @@ TEST(AsyncActivityProfilerHandler, FinalizesPendingTraceOnTeardown) {
   // let the profiler loop finalize it, not drop it.
   GenericActivityProfiler profiler(/*cpu only*/ true);
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
 
@@ -384,7 +375,7 @@ TEST(AsyncActivityProfilerHandler, FinalizesPendingTraceOnTeardown) {
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          filename));
+          traceFile.path()));
   EXPECT_TRUE(success);
 
   {
@@ -417,8 +408,7 @@ TEST(AsyncActivityProfilerHandler, BufferSizeLimitDuringWarmup) {
   MockGpuProfiler profiler;
   AsyncActivityProfilerHandler handler(profiler);
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
   auto now = system_clock::now();
@@ -433,7 +423,7 @@ TEST(AsyncActivityProfilerHandler, BufferSizeLimitDuringWarmup) {
     PROFILE_START_TIME = {}
     ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB = 3
   )CFG",
-          filename,
+          traceFile.path(),
           duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
   EXPECT_TRUE(success);
 

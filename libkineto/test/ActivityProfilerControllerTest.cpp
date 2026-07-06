@@ -14,13 +14,13 @@
 #include <fstream>
 #include <string>
 
-#include <unistd.h>
-
 #include "include/Config.h"
 #include "src/ActivityProfilerController.h"
+#include "test/TestUtils.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
+using namespace libkineto::test;
 
 namespace {
 
@@ -32,12 +32,6 @@ std::string logUrlToPath(const std::string& url) {
   return url;
 }
 
-void createTempTraceFile(char* filename) {
-  const int fd = mkstemps(filename, 5);
-  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
-  close(fd);
-}
-
 bool traceFileHasContent(const std::string& filename) {
   std::ifstream file(filename, std::ios::binary | std::ios::ate);
   return file.is_open() && file.tellg() > 0;
@@ -46,8 +40,7 @@ bool traceFileHasContent(const std::string& filename) {
 } // namespace
 
 TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
   Config asyncCfg;
   bool success = asyncCfg.parse(
       fmt::format(
@@ -58,7 +51,7 @@ TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          filename));
+          traceFile.path()));
   ASSERT_TRUE(success);
 
   // Start an async request via acceptConfig -- populate asyncRequestConfig_
@@ -92,8 +85,7 @@ TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
 }
 
 TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
   Config asyncCfg;
   bool success = asyncCfg.parse(
       fmt::format(
@@ -104,7 +96,7 @@ TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          filename));
+          traceFile.path()));
   ASSERT_TRUE(success);
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
@@ -142,8 +134,7 @@ TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
 }
 
 TEST(ActivityProfilerController, PrepareTracePreemptsActiveAsyncRequest) {
-  char asyncFilename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(asyncFilename);
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
   Config asyncCfg;
   bool success = asyncCfg.parse(
       fmt::format(
@@ -154,7 +145,7 @@ TEST(ActivityProfilerController, PrepareTracePreemptsActiveAsyncRequest) {
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          asyncFilename));
+          traceFile.path()));
   ASSERT_TRUE(success);
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);

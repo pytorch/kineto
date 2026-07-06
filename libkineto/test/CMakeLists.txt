@@ -33,7 +33,9 @@ target_link_libraries(ConfigTest PRIVATE
 gtest_discover_tests(ConfigTest)
 
 # ActivityProfilerControllerTest
-add_executable(ActivityProfilerControllerTest ActivityProfilerControllerTest.cpp)
+add_executable(ActivityProfilerControllerTest
+    ActivityProfilerControllerTest.cpp
+    TestUtils.cpp)
 target_link_libraries(ActivityProfilerControllerTest PRIVATE
     gtest_main
     kineto_base kineto_api
@@ -44,7 +46,8 @@ if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
-    MockActivitySubProfiler.cpp)
+    MockActivitySubProfiler.cpp
+    TestUtils.cpp)
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
     gmock
@@ -84,7 +87,8 @@ if(KINETO_BACKEND STREQUAL "rocm")
 # RocmActivityProfilerTest
 add_executable(RocmActivityProfilerTest
     RocmActivityProfilerTest.cpp
-    MockActivitySubProfiler.cpp)
+    MockActivitySubProfiler.cpp
+    TestUtils.cpp)
 target_compile_definitions(RocmActivityProfilerTest PRIVATE
     "__HIP_PLATFORM_HCC__"
     "__HIP_PLATFORM_AMD__")

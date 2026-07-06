@@ -21,8 +21,6 @@
 #include <optional>
 #include <variant>
 
-#include <unistd.h>
-
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -42,9 +40,11 @@
 
 #include "src/Logger.h"
 #include "test/MockActivitySubProfiler.h"
+#include "test/TestUtils.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
+using namespace libkineto::test;
 
 const std::string kParamCommsCallName = "record_param_comms";
 static constexpr auto kCollectiveName = "Collective name";
@@ -79,12 +79,6 @@ namespace {
 const TraceSpan& defaultTraceSpan() {
   static TraceSpan span(0, 0, "Unknown", "");
   return span;
-}
-
-void createTempTraceFile(char* filename) {
-  const int fd = mkstemps(filename, 5);
-  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
-  close(fd);
 }
 
 using RecordedMetadataValue = std::variant<
@@ -529,13 +523,12 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(resourceIds[2], 1);
 
 #ifdef __linux__
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  trace.save(filename);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  trace.save(tmpTrace.path());
   // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
+  int fd = open(tmpTrace.c_str(), O_RDONLY);
   if (!fd) {
-    perror(filename);
+    perror(tmpTrace.c_str());
   }
   EXPECT_TRUE(fd);
   // Should expect at least 100 bytes
@@ -546,7 +539,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   // Verify Stream Sync events are on a separate row from kernel events
   // in the JSON trace output (tid offset by kSyncStreamTidOffset).
   {
-    std::ifstream traceFile(filename);
+    std::ifstream traceFile(tmpTrace.path());
     std::string traceStr(
         (std::istreambuf_iterator<char>(traceFile)),
         std::istreambuf_iterator<char>());
@@ -706,10 +699,9 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   EXPECT_EQ(eventSyncFound, 1) << "Expected exactly one Event Sync";
 
 #ifdef __linux__
-  char filename[] = "/tmp/libkineto_out_of_order_XXXXXX.json";
-  createTempTraceFile(filename);
-  trace.save(filename);
-  LOG(INFO) << "Trace exported to: " << filename;
+  auto tmpTrace = createTempTraceFile("libkineto_out_of_order_", ".json");
+  trace.save(tmpTrace.path());
+  LOG(INFO) << "Trace exported to: " << tmpTrace.path();
 #endif
 }
 
@@ -847,13 +839,12 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  LOG(INFO) << "Logging to tmp file: " << filename;
-  trace.save(filename);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  LOG(INFO) << "Logging to tmp file: " << tmpTrace.path();
+  trace.save(tmpTrace.path());
 
   // Check that the saved JSON file can be loaded and deserialized
-  std::ifstream file(filename);
+  std::ifstream file(tmpTrace.path());
   if (!file.is_open()) {
     throw std::runtime_error("Failed to open the trace JSON file.");
   }
@@ -1003,9 +994,8 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  LOG(INFO) << "Logging to tmp file " << filename;
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  LOG(INFO) << "Logging to tmp file " << tmpTrace.path();
 
   // process trace
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
@@ -1016,16 +1006,16 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   profiler.reset();
 
   ActivityTrace trace(std::move(logger), loggerFactory);
-  trace.save(filename);
+  trace.save(tmpTrace.path());
   const auto& traced_activites = trace.activities();
 
   // Test we have all the events
   EXPECT_EQ(traced_activites->size(), test_activities.size());
 
   // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
+  int fd = open(tmpTrace.c_str(), O_RDONLY);
   if (!fd) {
-    perror(filename);
+    perror(tmpTrace.c_str());
   }
   EXPECT_TRUE(fd);
 
@@ -1079,13 +1069,12 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  LOG(INFO) << "Logging to tmp file: " << filename;
-  trace.save(filename);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  LOG(INFO) << "Logging to tmp file: " << tmpTrace.path();
+  trace.save(tmpTrace.path());
 
   // Check that the saved JSON file can be loaded and deserialized
-  std::ifstream file(filename);
+  std::ifstream file(tmpTrace.path());
   if (!file.is_open()) {
     throw std::runtime_error("Failed to open the trace JSON file.");
   }

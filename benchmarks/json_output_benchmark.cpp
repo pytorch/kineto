@@ -234,10 +234,9 @@ double runBenchmarkIteration(
 
     // Finalize the trace
     const Config config;
-    std::unordered_map<std::string, std::vector<std::string>> finalMetadata;
     const int64_t endTime =
         activities.empty() ? span.endTime : activities.back().endTime;
-    logger.finalizeTrace(config, nullptr, endTime, finalMetadata);
+    logger.finalizeTrace(config, nullptr, endTime);
   }
 
   auto end = std::chrono::steady_clock::now();

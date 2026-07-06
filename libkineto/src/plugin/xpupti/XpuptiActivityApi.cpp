@@ -178,33 +178,6 @@ void XpuptiActivityApi::bufferCompleted(
 }
 #endif
 
-#if PTI_VERSION_AT_LEAST(0, 12)
-#elif PTI_VERSION_AT_LEAST(0, 11)
-static void enableSpecifcRuntimeAPIsTracing() {
-  constexpr const std::array<pti_api_id_runtime_sycl, 14>
-      specifcRuntimeAPIsTracing = {
-          urEnqueueUSMFill_id,
-          urEnqueueUSMFill2D_id,
-          urEnqueueUSMMemcpy_id,
-          urEnqueueUSMMemcpy2D_id,
-          urEnqueueKernelLaunch_id,
-          urEnqueueKernelLaunchCustomExp_id,
-          urEnqueueCooperativeKernelLaunchExp_id,
-          urEnqueueMemBufferFill_id,
-          urEnqueueMemBufferRead_id,
-          urEnqueueMemBufferWrite_id,
-          urEnqueueMemBufferCopy_id,
-          urUSMHostAlloc_id,
-          urUSMSharedAlloc_id,
-          urUSMDeviceAlloc_id};
-
-  for (auto tracing_id : specifcRuntimeAPIsTracing) {
-    XPUPTI_CALL(ptiViewEnableRuntimeApi(
-        1, pti_api_group_id::PTI_API_GROUP_SYCL, tracing_id));
-  }
-}
-#endif
-
 namespace {
 void warnIfIttNotifyLibInvalid() noexcept {
   const auto itt_collector_path_env = std::getenv("INTEL_LIBITTNOTIFY64");
@@ -257,16 +230,9 @@ void XpuptiActivityApi::enableXpuptiActivities(
         break;
 
       case ActivityType::XPU_RUNTIME:
-#if PTI_VERSION_AT_LEAST(0, 12)
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
         XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
             1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
-#elif PTI_VERSION_AT_LEAST(0, 11)
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
-        enableSpecifcRuntimeAPIsTracing();
-#else
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_SYCL_RUNTIME_CALLS));
-#endif
         break;
 
       case ActivityType::XPU_DRIVER:
@@ -274,14 +240,8 @@ void XpuptiActivityApi::enableXpuptiActivities(
         break;
 
       case ActivityType::XPU_SCOPE_PROFILER:
-#if PTI_VERSION_AT_LEAST(0, 15)
         // This case is handled in constructor of
         // XpuptiScopeProfilerSession
-#else
-        throw std::runtime_error(
-            "Intel® PTI version required to use scope profiler is at least 0.15 "
-            "(available with Intel® oneAPI in version at least 2025.3.1).");
-#endif
         break;
 
       case ActivityType::OVERHEAD:
@@ -323,11 +283,7 @@ void XpuptiActivityApi::disablePtiActivities(
         break;
 
       case ActivityType::XPU_RUNTIME:
-#if PTI_VERSION_AT_LEAST(0, 11)
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_RUNTIME_API));
-#else
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_SYCL_RUNTIME_CALLS));
-#endif
         break;
 
       case ActivityType::XPU_DRIVER:

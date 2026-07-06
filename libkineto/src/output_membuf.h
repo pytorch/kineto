@@ -71,8 +71,7 @@ class MemoryTraceLogger : public ActivityLogger {
 
   void finalizeTrace([[maybe_unused]] const Config& config,
                      std::unique_ptr<ActivityBuffers> buffers,
-                     int64_t endTime,
-                     [[maybe_unused]] std::unordered_map<std::string, std::vector<std::string>>& metadata) override {
+                     int64_t endTime) override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
   }
@@ -100,11 +99,7 @@ class MemoryTraceLogger : public ActivityLogger {
       logger.handleTraceSpan(cpu_trace_buffer->span);
     }
     // Hold on to the buffers
-    logger.finalizeTrace(*config_, nullptr, endTime_, loggerMetadata_);
-  }
-
-  void setLoggerMetadata(std::unordered_map<std::string, std::vector<std::string>>&& lmd) {
-    loggerMetadata_ = std::move(lmd);
+    logger.finalizeTrace(*config_, nullptr, endTime_);
   }
 
   void setChromeLogger(std::shared_ptr<ActivityLogger> logger) {
@@ -124,7 +119,6 @@ class MemoryTraceLogger : public ActivityLogger {
   std::vector<std::pair<ResourceInfo, int64_t>> resourceInfoList_;
   std::unique_ptr<ActivityBuffers> buffers_;
   std::unordered_map<std::string, std::string> metadata_;
-  std::unordered_map<std::string, std::vector<std::string>> loggerMetadata_;
   std::string device_properties_;
   int64_t endTime_{0};
   std::shared_ptr<ActivityLogger> chrome_logger_;

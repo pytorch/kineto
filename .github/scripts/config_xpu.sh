@@ -23,7 +23,12 @@ KINETO_CMAKE_FLAGS=(
 set +u
 source /opt/intel/oneapi/compiler/latest/env/vars.sh
 source /opt/intel/oneapi/pti/latest/env/vars.sh
-source /opt/intel/oneapi/umf/latest/env/vars.sh
+if [ -f /opt/intel/oneapi/umf/latest/env/vars.sh ]; then
+  source /opt/intel/oneapi/umf/latest/env/vars.sh
+fi
+if [ -f /opt/intel/oneapi/tcm/latest/env/vars.sh ]; then
+  source /opt/intel/oneapi/tcm/latest/env/vars.sh
+fi
 source /opt/intel/oneapi/ccl/latest/env/vars.sh
 source /opt/intel/oneapi/mpi/latest/env/vars.sh
 set -u
@@ -56,4 +61,19 @@ KINETO_USE_SCCACHE=0
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
+
+  # https://github.com/pytorch/kineto/issues/1429
+  # Moved into the device-parametrized TestProfilerDevice by pytorch/pytorch#182434.
+  # fork-after-init: re-initializing XPU in a forked subprocess raises
+  # "Cannot re-initialize XPU in forked subprocess". Independent of runtime XPU
+  # availability and already deselected for CUDA and ROCm.
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
+
+  # https://github.com/pytorch/kineto/issues/1429
+  # _validate_basic_json indexes traceEvents[-4] expecting the "PyTorch Profiler (0)"
+  # event, but a USE_XPU=1 build appends a second "__xpu_profiler__ (0)" instance to
+  # the trace, shifting that fixed offset. Caused by XPU being built (not by runtime
+  # availability), so it fails on this runner like the CPU-variant does here.
+  # Tracked for an upstream fix that locates the events by name instead of by offset.
+  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_basic_chrome_trace_cpu
 )

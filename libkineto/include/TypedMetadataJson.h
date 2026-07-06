@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 // Migration-only typed metadata -> metadataJson compatibility helpers.
@@ -42,6 +43,22 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
 
   [[nodiscard]] std::string json() && {
     return std::move(json_);
+  }
+
+  // Public so GenericTraceActivity's metadata serialization can render
+  // collections without duplicating this logic.
+  template <typename T>
+  static void appendArray(std::string& json, const std::vector<T>& values) {
+    json += '[';
+    bool first = true;
+    for (const auto& value : values) {
+      if (!first) {
+        json += ", ";
+      }
+      appendArrayValue(json, value);
+      first = false;
+    }
+    json += ']';
   }
 
  private:
@@ -76,25 +93,49 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     appendField(field, [&](std::string& json) { appendArray(json, value); });
   }
 
+  void visitValue(const MetadataField<RawJson>& field, const RawJson& value) override {
+    appendField(field, [&](std::string& json) { json += value.value; });
+  }
+
+  void visitValue(const MetadataField<uint64_t>& field, uint64_t value) override {
+    appendField(field, [&](std::string& json) { appendUIntValue(json, value); });
+  }
+
+  void visitValue(const MetadataField<InputShapes>& field, const InputShapes& value) override {
+    appendField(field, [&](std::string& json) { appendArray(json, value); });
+  }
+
   // Emit a visible placeholder rather than silently dropping a metadata type
   // the JSON serializer doesn't handle, so the gap shows up in the trace.
   void visitUnsupported(std::string_view name) override {
-    appendKey(json_, name);
+    appendKey(name);
     appendQuoted(json_, "<unsupported metadata type>");
+  }
+
+  void beginDict(std::string_view name) override {
+    appendKey(name);
+    json_ += '{';
+    firstEntry_ = true;
+  }
+
+  void endDict() override {
+    json_ += '}';
+    firstEntry_ = false;
   }
 
   template <typename T, typename WriteValue>
   void appendField(const MetadataField<T>& field, WriteValue writeValue) {
-    appendKey(json_, field.name);
+    appendKey(field.name);
     writeValue(json_);
   }
 
-  static void appendKey(std::string& json, std::string_view key) {
-    if (!json.empty()) {
-      json += ", ";
+  void appendKey(std::string_view key) {
+    if (!firstEntry_) {
+      json_ += ", ";
     }
-    appendQuoted(json, key);
-    json += ": ";
+    firstEntry_ = false;
+    appendQuoted(json_, key);
+    json_ += ": ";
   }
 
   static void appendQuoted(std::string& json, std::string_view value) {
@@ -109,26 +150,18 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     json.append(buf, static_cast<size_t>(result.ptr - buf));
   }
 
+  static void appendUIntValue(std::string& json, uint64_t value) {
+    char buf[kMaxInt64Chars];
+    const auto result = std::to_chars(buf, buf + sizeof(buf), value);
+    json.append(buf, static_cast<size_t>(result.ptr - buf));
+  }
+
   static void appendDoubleValue(std::string& json, double value) {
     if (std::isfinite(value)) {
       fmt::format_to(std::back_inserter(json), "{}", value);
       return;
     }
     appendQuoted(json, fmt::format("{}", value));
-  }
-
-  template <typename T>
-  static void appendArray(std::string& json, const std::vector<T>& values) {
-    json += '[';
-    bool first = true;
-    for (const auto& value : values) {
-      if (!first) {
-        json += ", ";
-      }
-      appendArrayValue(json, value);
-      first = false;
-    }
-    json += ']';
   }
 
   static void appendArrayValue(std::string& json, int64_t value) {
@@ -139,7 +172,17 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     appendQuoted(json, value);
   }
 
+  // Nested-array entries so InputShapes serializes through the appendArray recursion
+  static void appendArrayValue(std::string& json, const std::vector<int64_t>& value) {
+    appendArray(json, value);
+  }
+
+  static void appendArrayValue(std::string& json, const std::variant<std::vector<int64_t>, TensorListShapes>& value) {
+    std::visit([&json](const auto& shapes) { appendArray(json, shapes); }, value);
+  }
+
   std::string json_;
+  bool firstEntry_ = true;
 };
 
 } // namespace libkineto::internal

@@ -4,9 +4,6 @@
 [submodule "libkineto/third_party/fmt"]
 	path = libkineto/third_party/fmt
 	url = https://github.com/fmtlib/fmt.git
-[submodule "libkineto/third_party/dynolog"]
-	path = libkineto/third_party/dynolog
-	url = https://github.com/facebookincubator/dynolog.git
 [submodule "libkineto/third_party/json"]
 	path = libkineto/third_party/json
 	url = https://github.com/nlohmann/json.git

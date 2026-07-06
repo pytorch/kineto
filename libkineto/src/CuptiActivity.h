@@ -23,6 +23,7 @@
 #include "ITraceActivity.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
+#include "TypedMetadataJson.h"
 #include "cupti_strings.h"
 #include "output_base.h"
 
@@ -352,17 +353,6 @@ inline int32_t streamIdForTrace(uint32_t streamId) {
   return static_cast<int32_t>(streamId);
 }
 
-inline std::string eventSyncInfo(const CUpti_ActivitySynchronization& act, int32_t srcStream, int32_t srcCorrId) {
-  return fmt::format(
-      R"JSON(
-      "wait_on_stream": {},
-      "wait_on_cuda_event_record_corr_id": {},
-      "wait_on_cuda_event_id": {},)JSON",
-      srcStream,
-      srcCorrId,
-      act.cudaEventId);
-}
-
 inline const std::string CudaSyncActivity::name() const {
   return syncTypeString(raw().type);
 }
@@ -380,20 +370,9 @@ inline void CudaSyncActivity::log(ActivityLogger& logger) const {
 }
 
 inline const std::string CudaSyncActivity::metadataJson() const {
-  const CUpti_ActivitySynchronization& sync = raw();
-  // clang-format off
-  return fmt::format(R"JSON(
-      "cuda_sync_kind": "{}",{}
-      "stream": {}, "correlation": {},
-      "device": {}, "context": {})JSON",
-      syncTypeString(sync.type),
-      isEventSync(raw().type) ? eventSyncInfo(raw(), srcStream_, srcCorrId_) : "",
-      streamIdForTrace(sync.streamId),
-      sync.correlationId,
-      deviceId(),
-      sync.contextId);
-  // clang-format on
-  return "";
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline void CudaSyncActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
@@ -427,18 +406,9 @@ inline void CudaEventActivity::log(ActivityLogger& logger) const {
 }
 
 inline const std::string CudaEventActivity::metadataJson() const {
-  const CUpti_ActivityCudaEventType& event = raw();
-  // clang-format off
-  return fmt::format(R"JSON(
-      "event_id": {},
-      "stream": {}, "correlation": {},
-      "device": {}, "context": {})JSON",
-      event.eventId,
-      streamIdForTrace(event.streamId),
-      event.correlationId,
-      deviceId(),
-      event.contextId);
-  // clang-format on
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline void CudaEventActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
@@ -459,44 +429,6 @@ constexpr int64_t us(int64_t timestamp) {
   // It's important that this conversion is the same here and in the CPU trace.
   // No rounding!
   return timestamp / 1000;
-}
-
-template <class T>
-inline std::string getGraphNodeMetadata([[maybe_unused]] const T& activity) {
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
-  return fmt::format(
-      R"JSON(,
-      "graph id": {}, "graph node id": {})JSON",
-      activity.graphId,
-      activity.graphNodeId);
-#else
-  return "";
-#endif
-}
-
-template <class T>
-inline std::string getPriorityMetadata([[maybe_unused]] const T& kernel) {
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 13010
-  return fmt::format(
-      R"JSON(,
-      "priority": {})JSON",
-      kernel.priority);
-#else
-  return "";
-#endif
-}
-
-template <class T>
-inline std::string getChannelMetadata([[maybe_unused]] const T& activity) {
-#if defined(CUDA_VERSION) && CUDA_VERSION >= 12000
-  return fmt::format(
-      R"JSON(,
-      "channel": {}, "channel_type": {})JSON",
-      activity.channelID,
-      static_cast<uint32_t>(activity.channelType));
-#else
-  return "";
-#endif
 }
 
 template <class T>
@@ -561,61 +493,6 @@ inline std::string limitingFactorsToString(unsigned int factors) {
 }
 
 template <>
-inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() const {
-  const CUpti_ActivityKernelType& kernel = raw();
-  float blocksPerSmVal = blocksPerSm(kernel);
-  float warpsPerSmVal = warpsPerSm(kernel);
-  OccupancyMetrics occMetrics = computeOccupancyMetrics(kernel);
-
-  // clang-format off
-
-  return fmt::format(R"JSON(
-      "queued": {}, "device": {}, "context": {},
-      "stream": {}, "correlation": {},
-      "registers per thread": {},
-      "shared memory": {},
-      "blocks per SM": {},
-      "warps per SM": {},
-      "grid": [{}, {}, {}],
-      "block": [{}, {}, {}],
-      "est. achieved occupancy %": {},
-      "occupancy": {{
-        "activeBlocksPerMultiprocessor": {},
-        "limitingFactors": "{}",
-        "blockLimitRegs": {},
-        "blockLimitSharedMem": {},
-        "blockLimitWarps": {},
-        "blockLimitBlocks": {},
-        "blockLimitBarriers": {},
-        "allocatedRegistersPerBlock": {},
-        "allocatedSharedMemPerBlock": {}
-      }}{}{}{})JSON",
-      kernel.queued, kernel.deviceId, kernel.contextId,
-      kernel.streamId, kernel.correlationId,
-      kernel.registersPerThread,
-      kernel.staticSharedMemory + kernel.dynamicSharedMemory,
-      std::isinf(blocksPerSmVal) ? "\"inf\"" : std::to_string(blocksPerSmVal),
-      std::isinf(warpsPerSmVal) ? "\"inf\"" : std::to_string(warpsPerSmVal),
-      kernel.gridX, kernel.gridY, kernel.gridZ,
-      kernel.blockX, kernel.blockY, kernel.blockZ,
-      static_cast<int>(std::lround(occMetrics.occupancy * 100.0)),
-      occMetrics.result.activeBlocksPerMultiprocessor,
-      limitingFactorsToString(occMetrics.result.limitingFactors),
-      occMetrics.result.blockLimitRegs,
-      occMetrics.result.blockLimitSharedMem,
-      occMetrics.result.blockLimitWarps,
-      occMetrics.result.blockLimitBlocks,
-      occMetrics.result.blockLimitBarriers,
-      occMetrics.result.allocatedRegistersPerBlock,
-      occMetrics.result.allocatedSharedMemPerBlock,
-      getGraphNodeMetadata(kernel),
-      getPriorityMetadata(kernel),
-      getChannelMetadata(kernel)
-      );
-  // clang-format on
-}
-
-template <>
 inline void GpuActivity<CUpti_ActivityKernelType>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityKernelType& kernel = raw();
   const float blocksPerSmVal = blocksPerSm(kernel);
@@ -642,21 +519,30 @@ inline void GpuActivity<CUpti_ActivityKernelType>::visitTypedMetadata(ITypedMeta
                                      static_cast<int64_t>(kernel.blockZ)});
   visitor.visit(CudaMetadataFields::kEstAchievedOccupancyPercent,
                 static_cast<int64_t>(std::lround(occMetrics.occupancy * 100.0)));
-  visitor.visit(CudaMetadataFields::kActiveBlocksPerMultiprocessor,
-                static_cast<int64_t>(occMetrics.result.activeBlocksPerMultiprocessor));
-  visitor.visit(CudaMetadataFields::kLimitingFactors, limitingFactorsToString(occMetrics.result.limitingFactors));
-  visitor.visit(CudaMetadataFields::kBlockLimitRegs, static_cast<int64_t>(occMetrics.result.blockLimitRegs));
-  visitor.visit(CudaMetadataFields::kBlockLimitSharedMem, static_cast<int64_t>(occMetrics.result.blockLimitSharedMem));
-  visitor.visit(CudaMetadataFields::kBlockLimitWarps, static_cast<int64_t>(occMetrics.result.blockLimitWarps));
-  visitor.visit(CudaMetadataFields::kBlockLimitBlocks, static_cast<int64_t>(occMetrics.result.blockLimitBlocks));
-  visitor.visit(CudaMetadataFields::kBlockLimitBarriers, static_cast<int64_t>(occMetrics.result.blockLimitBarriers));
-  visitor.visit(CudaMetadataFields::kAllocatedRegistersPerBlock,
-                static_cast<int64_t>(occMetrics.result.allocatedRegistersPerBlock));
-  visitor.visit(CudaMetadataFields::kAllocatedSharedMemPerBlock,
-                static_cast<int64_t>(occMetrics.result.allocatedSharedMemPerBlock));
+  visitor.visit(CudaMetadataFields::kOccupancy, [&](auto& d) {
+    d.visit(CudaMetadataFields::kActiveBlocksPerMultiprocessor,
+            static_cast<int64_t>(occMetrics.result.activeBlocksPerMultiprocessor));
+    d.visit(CudaMetadataFields::kLimitingFactors, limitingFactorsToString(occMetrics.result.limitingFactors));
+    d.visit(CudaMetadataFields::kBlockLimitRegs, static_cast<int64_t>(occMetrics.result.blockLimitRegs));
+    d.visit(CudaMetadataFields::kBlockLimitSharedMem, static_cast<int64_t>(occMetrics.result.blockLimitSharedMem));
+    d.visit(CudaMetadataFields::kBlockLimitWarps, static_cast<int64_t>(occMetrics.result.blockLimitWarps));
+    d.visit(CudaMetadataFields::kBlockLimitBlocks, static_cast<int64_t>(occMetrics.result.blockLimitBlocks));
+    d.visit(CudaMetadataFields::kBlockLimitBarriers, static_cast<int64_t>(occMetrics.result.blockLimitBarriers));
+    d.visit(CudaMetadataFields::kAllocatedRegistersPerBlock,
+            static_cast<int64_t>(occMetrics.result.allocatedRegistersPerBlock));
+    d.visit(CudaMetadataFields::kAllocatedSharedMemPerBlock,
+            static_cast<int64_t>(occMetrics.result.allocatedSharedMemPerBlock));
+  });
   addGraphNodeTypedMetadata(visitor, kernel);
   addPriorityTypedMetadata(visitor, kernel);
   addChannelTypedMetadata(visitor, kernel);
+}
+
+template <>
+inline const std::string GpuActivity<CUpti_ActivityKernelType>::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline std::string memcpyName(uint8_t kind, uint8_t src, uint8_t dst) {
@@ -676,26 +562,6 @@ inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::name() const {
   return memcpyName(raw().copyKind, raw().srcKind, raw().dstKind);
 }
 
-inline std::string bandwidth(uint64_t bytes, uint64_t duration) {
-  return duration == 0 ? "\"N/A\"" : fmt::format("{}", bytes * 1.0 / duration);
-}
-
-template <>
-inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::metadataJson() const {
-  const CUpti_ActivityMemcpyType& memcpy = raw();
-  // clang-format off
-  return fmt::format(R"JSON(
-      "device": {}, "context": {},
-      "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {}{}{})JSON",
-      memcpy.deviceId, memcpy.contextId,
-      memcpy.streamId, memcpy.correlationId,
-      memcpy.bytes, bandwidth(memcpy.bytes, duration()),
-      getGraphNodeMetadata(memcpy),
-      getChannelMetadata(memcpy));
-  // clang-format on
-}
-
 template <>
 inline void GpuActivity<CUpti_ActivityMemcpyType>::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
   const CUpti_ActivityMemcpyType& memcpy = raw();
@@ -710,6 +576,13 @@ inline void GpuActivity<CUpti_ActivityMemcpyType>::visitTypedMetadata(ITypedMeta
 }
 
 template <>
+inline const std::string GpuActivity<CUpti_ActivityMemcpyType>::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
+}
+
+template <>
 inline ActivityType GpuActivity<CUpti_ActivityMemcpyPtoPType>::type() const {
   return ActivityType::GPU_MEMCPY;
 }
@@ -717,24 +590,6 @@ inline ActivityType GpuActivity<CUpti_ActivityMemcpyPtoPType>::type() const {
 template <>
 inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::name() const {
   return memcpyName(raw().copyKind, raw().srcKind, raw().dstKind);
-}
-
-template <>
-inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::metadataJson() const {
-  const CUpti_ActivityMemcpyPtoPType& memcpy = raw();
-  // clang-format off
-  return fmt::format(R"JSON(
-      "fromDevice": {}, "inDevice": {}, "toDevice": {},
-      "fromContext": {}, "inContext": {}, "toContext": {},
-      "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {}{}{})JSON",
-      memcpy.srcDeviceId, memcpy.deviceId, memcpy.dstDeviceId,
-      memcpy.srcContextId, memcpy.contextId, memcpy.dstContextId,
-      memcpy.streamId, memcpy.correlationId,
-      memcpy.bytes, bandwidth(memcpy.bytes, duration()),
-      getGraphNodeMetadata(memcpy),
-      getChannelMetadata(memcpy));
-  // clang-format on
 }
 
 template <>
@@ -755,6 +610,13 @@ inline void GpuActivity<CUpti_ActivityMemcpyPtoPType>::visitTypedMetadata(ITyped
 }
 
 template <>
+inline const std::string GpuActivity<CUpti_ActivityMemcpyPtoPType>::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
+}
+
+template <>
 inline const std::string GpuActivity<CUpti_ActivityMemsetType>::name() const {
   const char* memory_kind = memoryKindString((CUpti_ActivityMemoryKind)raw().memoryKind);
   return fmt::format("Memset ({})", memory_kind);
@@ -763,22 +625,6 @@ inline const std::string GpuActivity<CUpti_ActivityMemsetType>::name() const {
 template <>
 inline ActivityType GpuActivity<CUpti_ActivityMemsetType>::type() const {
   return ActivityType::GPU_MEMSET;
-}
-
-template <>
-inline const std::string GpuActivity<CUpti_ActivityMemsetType>::metadataJson() const {
-  const CUpti_ActivityMemsetType& memset = raw();
-  // clang-format off
-  return fmt::format(R"JSON(
-      "device": {}, "context": {},
-      "stream": {}, "correlation": {},
-      "bytes": {}, "memory bandwidth (GB/s)": {}{}{})JSON",
-      memset.deviceId, memset.contextId,
-      memset.streamId, memset.correlationId,
-      memset.bytes, bandwidth(memset.bytes, duration()),
-      getGraphNodeMetadata(memset),
-      getChannelMetadata(memset));
-  // clang-format on
 }
 
 template <>
@@ -792,6 +638,13 @@ inline void GpuActivity<CUpti_ActivityMemsetType>::visitTypedMetadata(ITypedMeta
   addBandwidthTypedMetadata(visitor, memset.bytes, duration());
   addGraphNodeTypedMetadata(visitor, memset);
   addChannelTypedMetadata(visitor, memset);
+}
+
+template <>
+inline const std::string GpuActivity<CUpti_ActivityMemsetType>::metadataJson() const {
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline void RuntimeActivity::log(ActivityLogger& logger) const {
@@ -811,7 +664,9 @@ inline bool OverheadActivity::flowStart() const {
 }
 
 inline const std::string OverheadActivity::metadataJson() const {
-  return "";
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline void OverheadActivity::visitTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor) const {}
@@ -821,11 +676,9 @@ inline bool RuntimeActivity::flowStart() const {
 }
 
 inline const std::string RuntimeActivity::metadataJson() const {
-  return fmt::format(
-      R"JSON(
-      "cbid": {}, "correlation": {})JSON",
-      activity_.cbid,
-      activity_.correlationId);
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline void RuntimeActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
@@ -842,11 +695,9 @@ inline bool DriverActivity::flowStart() const {
 }
 
 inline const std::string DriverActivity::metadataJson() const {
-  return fmt::format(
-      R"JSON(
-      "cbid": {}, "correlation": {})JSON",
-      activity_.cbid,
-      activity_.correlationId);
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 inline void DriverActivity::visitTypedMetadata(ITypedMetadataVisitor& visitor) const {
@@ -860,7 +711,9 @@ inline const std::string DriverActivity::name() const {
 
 template <class T>
 inline const std::string GpuActivity<T>::metadataJson() const {
-  return "";
+  libkineto::internal::JsonTypedMetadataVisitor visitor;
+  visitTypedMetadata(visitor);
+  return std::move(visitor).json();
 }
 
 template <class T>

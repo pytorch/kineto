@@ -15,6 +15,7 @@
 #include "TypedMetadata.h"
 
 namespace libkineto::CudaMetadataFields {
+inline constexpr MetadataDict kOccupancy{"occupancy"};
 inline constexpr MetadataField<int64_t> kActiveBlocksPerMultiprocessor{"activeBlocksPerMultiprocessor"};
 inline constexpr MetadataField<int64_t> kAllocatedRegistersPerBlock{"allocatedRegistersPerBlock"};
 inline constexpr MetadataField<int64_t> kAllocatedSharedMemPerBlock{"allocatedSharedMemPerBlock"};

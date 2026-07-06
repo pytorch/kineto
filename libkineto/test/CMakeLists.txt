@@ -128,3 +128,28 @@ target_link_libraries(PidInfoTest PRIVATE
     kineto_base kineto_api
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(PidInfoTest)
+
+# TypedMetadataTest
+add_executable(TypedMetadataTest TypedMetadataTest.cpp)
+target_link_libraries(TypedMetadataTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(TypedMetadataTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(TypedMetadataTest)
+
+# GenericTraceActivityMetadataTest
+add_executable(GenericTraceActivityMetadataTest
+    GenericTraceActivityMetadataTest.cpp)
+target_link_libraries(GenericTraceActivityMetadataTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(GenericTraceActivityMetadataTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(GenericTraceActivityMetadataTest)

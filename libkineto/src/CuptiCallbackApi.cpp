@@ -75,15 +75,15 @@ void CuptiCallbackApi::__callback_switchboard(
     case CUPTI_CB_DOMAIN_RUNTIME_API:
       switch (cbid) {
         case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000:
-          cblist =
-              &callbacks_
-                   .runtime[CUDA_LAUNCH_KERNEL - __RUNTIME_CB_DOMAIN_START];
+          cblist = &callbacks_.runtime[domainIndex(
+              CuptiCallBackID::CUDA_LAUNCH_KERNEL,
+              CuptiCallBackID::__RUNTIME_CB_DOMAIN_START)];
           break;
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 11080)
         case CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060:
-          cblist =
-              &callbacks_
-                   .runtime[CUDA_LAUNCH_KERNEL_EXC - __RUNTIME_CB_DOMAIN_START];
+          cblist = &callbacks_.runtime[domainIndex(
+              CuptiCallBackID::CUDA_LAUNCH_KERNEL_EXC,
+              CuptiCallBackID::__RUNTIME_CB_DOMAIN_START)];
           break;
 #endif
         default:
@@ -109,13 +109,14 @@ void CuptiCallbackApi::__callback_switchboard(
     case CUPTI_CB_DOMAIN_RESOURCE:
       switch (cbid) {
         case CUPTI_CBID_RESOURCE_CONTEXT_CREATED:
-          cblist = &callbacks_.resource
-                        [RESOURCE_CONTEXT_CREATED - __RESOURCE_CB_DOMAIN_START];
+          cblist = &callbacks_.resource[domainIndex(
+              CuptiCallBackID::RESOURCE_CONTEXT_CREATED,
+              CuptiCallBackID::__RESOURCE_CB_DOMAIN_START)];
           break;
         case CUPTI_CBID_RESOURCE_CONTEXT_DESTROY_STARTING:
-          cblist =
-              &callbacks_.resource
-                   [RESOURCE_CONTEXT_DESTROYED - __RESOURCE_CB_DOMAIN_START];
+          cblist = &callbacks_.resource[domainIndex(
+              CuptiCallBackID::RESOURCE_CONTEXT_DESTROYED,
+              CuptiCallBackID::__RESOURCE_CB_DOMAIN_START)];
           break;
         default:
           break;
@@ -180,15 +181,15 @@ CuptiCallbackApi::CallbackList* CuptiCallbackApi::CallbackTable::lookup(
 
   switch (domain) {
     case CUPTI_CB_DOMAIN_RESOURCE:
-      assert(cbid >= __RESOURCE_CB_DOMAIN_START);
-      assert(cbid < __RESOURCE_CB_DOMAIN_END);
-      idx = cbid - __RESOURCE_CB_DOMAIN_START;
+      assert(cbid >= CuptiCallBackID::__RESOURCE_CB_DOMAIN_START);
+      assert(cbid < CuptiCallBackID::__RESOURCE_CB_DOMAIN_END);
+      idx = domainIndex(cbid, CuptiCallBackID::__RESOURCE_CB_DOMAIN_START);
       return &resource.at(idx);
 
     case CUPTI_CB_DOMAIN_RUNTIME_API:
-      assert(cbid >= __RUNTIME_CB_DOMAIN_START);
-      assert(cbid < __RUNTIME_CB_DOMAIN_END);
-      idx = cbid - __RUNTIME_CB_DOMAIN_START;
+      assert(cbid >= CuptiCallBackID::__RUNTIME_CB_DOMAIN_START);
+      assert(cbid < CuptiCallBackID::__RUNTIME_CB_DOMAIN_END);
+      idx = domainIndex(cbid, CuptiCallBackID::__RUNTIME_CB_DOMAIN_START);
       return &runtime.at(idx);
 
     default:
@@ -205,7 +206,7 @@ bool CuptiCallbackApi::registerCallback(
 
   if (!cblist) {
     LOG(WARNING) << "Could not register callback -- domain = " << domain
-                 << " callback id = " << cbid;
+                 << " callback id = " << static_cast<int>(cbid);
     return false;
   }
 
@@ -213,13 +214,13 @@ bool CuptiCallbackApi::registerCallback(
   auto it = std::ranges::find(*cblist, cbfn);
   if (it != cblist->end()) {
     LOG(WARNING) << "Adding duplicate callback -- domain = " << domain
-                 << " callback id = " << cbid;
+                 << " callback id = " << static_cast<int>(cbid);
     return true;
   }
 
   if (cblist->size() == MAX_CB_FNS_PER_CB) {
     LOG(WARNING) << "Already registered max callback -- domain = " << domain
-                 << " callback id = " << cbid;
+                 << " callback id = " << static_cast<int>(cbid);
   }
 
   WriteLockGuard wl(callbackLock_);
@@ -234,7 +235,7 @@ bool CuptiCallbackApi::deleteCallback(
   CallbackList* cblist = callbacks_.lookup(domain, cbid);
   if (!cblist) {
     LOG(WARNING) << "Attempting to remove unsupported callback -- domain = "
-                 << domain << " callback id = " << cbid;
+                 << domain << " callback id = " << static_cast<int>(cbid);
     return false;
   }
 
@@ -245,7 +246,7 @@ bool CuptiCallbackApi::deleteCallback(
   auto it = std::ranges::find(*cblist, cbfn);
   if (it == cblist->end()) {
     LOG(WARNING) << "Could not find callback to remove -- domain = " << domain
-                 << " callback id = " << cbid;
+                 << " callback id = " << static_cast<int>(cbid);
     return false;
   }
 

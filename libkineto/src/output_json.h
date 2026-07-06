@@ -75,10 +75,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleTraceStart(const std::unordered_map<std::string, std::string>& metadata,
                         const std::string& device_properties) override;
 
-  void finalizeTrace(const Config& config,
-                     std::unique_ptr<ActivityBuffers> buffers,
-                     int64_t endTime,
-                     std::unordered_map<std::string, std::vector<std::string>>& metadata) override;
+  void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers, int64_t endTime) override;
 
   void finalizeMemoryTrace(const std::string&, const Config&) override;
 
@@ -87,7 +84,7 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   }
 
  protected:
-  void finalizeTrace(int64_t endTime, std::unordered_map<std::string, std::vector<std::string>>& metadata);
+  void finalizeTrace(int64_t endTime);
 
  private:
   // Create a flow event (arrow)
@@ -192,9 +189,17 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
                       std::string_view cat,
                       std::string_view name);
 
-  void appendNcclCollectiveMetadata(ArgsBuilder& args,
-                                    const ITraceActivity& gpuOp,
-                                    const ITraceActivity& collectiveRecord);
+  // Copy the collective args (name, message sizes, dtype, process group, ranks,
+  // seq, ...) recorded on a record_param_comms op into args. Backend-agnostic.
+  void appendCollectiveArgs(ArgsBuilder& args, const ITraceActivity& collectiveRecord);
+
+  // Enrich a device collective row from its linked record_param_comms op: copy
+  // the collective args and fold its process group into the trace's
+  // distributedInfo under the given backend labels.
+  void appendCollectiveMetadata(ArgsBuilder& args,
+                                const ITraceActivity& collectiveRecord,
+                                const std::string& backend,
+                                const std::string& backendConfig);
 
   std::string fileName_;
   std::string tempFileName_;

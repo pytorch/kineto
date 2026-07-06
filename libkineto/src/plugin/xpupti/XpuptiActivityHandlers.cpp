@@ -97,14 +97,10 @@ inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
 
 std::string XpuptiActivityProfilerSession::getApiName(
     const pti_view_record_api_t* activity) {
-#if PTI_VERSION_AT_LEAST(0, 11)
   const char* api_name = nullptr;
   XPUPTI_CALL(
       ptiViewGetApiIdName(activity->_api_group, activity->_api_id, &api_name));
   return std::string(api_name);
-#else
-  return std::string(activity->_name);
-#endif
 }
 
 inline std::string memcpyName(
@@ -351,8 +347,7 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
       ? activity->_overhead_duration_ns * 100 / overhead_activity->duration()
       : 0;
   overhead_activity->addMetadataQuoted(
-      "overhead occupancy",
-      fmt::format("{}%", occupancy));
+      "overhead occupancy", fmt::format("{}%", occupancy));
   overhead_activity->addMetadata("overhead count", activity->_overhead_count);
 
   if (!outOfRange(overhead_activity.get())) {
@@ -369,11 +364,7 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
           reinterpret_cast<const pti_view_record_external_correlation*>(
               record));
       break;
-#if PTI_VERSION_AT_LEAST(0, 11)
     case PTI_VIEW_RUNTIME_API:
-#else
-    case PTI_VIEW_SYCL_RUNTIME_CALLS:
-#endif
       handleRuntimeKernelMemcpyMemsetActivities(
           ActivityType::XPU_RUNTIME,
           reinterpret_cast<const pti_view_record_api_t*>(record),

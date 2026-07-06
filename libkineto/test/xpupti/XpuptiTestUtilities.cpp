@@ -181,10 +181,7 @@ class TestActivityLogger : public KN::ActivityLogger {
   void finalizeTrace(
       [[maybe_unused]] const KN::Config& config,
       [[maybe_unused]] std::unique_ptr<KN::ActivityBuffers> buffers,
-      [[maybe_unused]] int64_t endTime,
-      [[maybe_unused]] std::unordered_map<
-          std::string,
-          std::vector<std::string>>& metadata) override {}
+      [[maybe_unused]] int64_t endTime) override {}
 };
 
 std::pair<

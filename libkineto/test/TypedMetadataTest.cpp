@@ -29,6 +29,15 @@ constexpr MetadataField<bool> kEnabled{"enabled"};
 constexpr MetadataField<std::vector<std::string>> kNames{"names"};
 constexpr MetadataField<std::pair<int64_t, int64_t>> kPair{"pair"};
 constexpr MetadataField<std::string> kSpecialChars{"special"};
+constexpr MetadataField<RawJson> kRaw{"raw"};
+constexpr MetadataField<uint64_t> kAddress{"address"};
+constexpr MetadataField<InputShapes> kInputDims{"input_dims"};
+constexpr MetadataDict kNested{"nested"};
+constexpr MetadataField<int64_t> kNestedCount{"nested_count"};
+constexpr MetadataField<int64_t> kNestedOther{"nested_other"};
+constexpr MetadataField<int64_t> kAfterNested{"after_nested"};
+constexpr MetadataDict kOuter{"outer"};
+constexpr MetadataDict kInner{"inner"};
 
 using RecordedValue = std::variant<
     int64_t,
@@ -70,7 +79,23 @@ class RecordingTypedMetadataVisitor : public ITypedMetadataVisitor {
     record(field, value);
   }
 
+  void visitValue(const MetadataField<RawJson>& field, const RawJson& value)
+      override {
+    record(field, std::string{value.value});
+  }
+
+  void visitValue(
+      [[maybe_unused]] const MetadataField<uint64_t>& field,
+      [[maybe_unused]] uint64_t value) override {}
+
+  void visitValue(
+      [[maybe_unused]] const MetadataField<InputShapes>& field,
+      [[maybe_unused]] const InputShapes& value) override {}
+
   void visitUnsupported(std::string_view /*name*/) override {}
+
+  void beginDict(std::string_view /*name*/) override {}
+  void endDict() override {}
 
   std::map<std::string, RecordedValue> values;
 
@@ -128,6 +153,11 @@ TEST(TypedMetadataVisitorTest, SerializesVisitedFieldsToJson) {
   visitor.visit(kEnabled, true);
   visitor.visit(kNames, std::vector<std::string>{"a", "b"});
   visitor.visit(kSpecialChars, std::string{"quote \" slash \\ newline\n"});
+  visitor.visit(kNested, [&](auto& d) {
+    d.visit(kNestedCount, int64_t{7});
+    d.visit(kNestedOther, int64_t{8});
+  });
+  visitor.visit(kAfterNested, int64_t{9});
 
   const auto json = std::move(jsonVisitor).json();
 
@@ -142,6 +172,32 @@ TEST(TypedMetadataVisitorTest, SerializesVisitedFieldsToJson) {
   EXPECT_NE(
       json.find("\"special\": \"quote \" slash \\ newline\n\""),
       std::string::npos);
+  EXPECT_NE(
+      json.find("\"nested\": {\"nested_count\": 7, \"nested_other\": 8}"),
+      std::string::npos);
+  EXPECT_NE(json.find("\"after_nested\": 9"), std::string::npos);
+}
+
+TEST(TypedMetadataVisitorTest, SerializesNestedDictsToJson) {
+  internal::JsonTypedMetadataVisitor jsonVisitor;
+  ITypedMetadataVisitor& visitor = jsonVisitor;
+
+  visitor.visit(kOuter, [&](auto& outer) {
+    outer.visit(kCount, int64_t{1});
+    outer.visit(kInner, [&](auto& inner) { inner.visit(kEnabled, true); });
+    outer.visit(kRatio, 2.5);
+  });
+  visitor.visit(kAfterNested, int64_t{9});
+
+  const auto json = std::move(jsonVisitor).json();
+
+  // A dict nested inside another dict, with sibling fields before and after the
+  // inner dict, then a field back at the top level.
+  EXPECT_NE(
+      json.find(
+          "\"outer\": {\"count\": 1, \"inner\": {\"enabled\": true}, \"ratio\": 2.5}"),
+      std::string::npos);
+  EXPECT_NE(json.find("\"after_nested\": 9"), std::string::npos);
 }
 
 TEST(TypedMetadataVisitorTest, FallsBackToVisitUnsupported) {
@@ -153,4 +209,37 @@ TEST(TypedMetadataVisitorTest, FallsBackToVisitUnsupported) {
 
   EXPECT_EQ(std::get<int64_t>(recorder.values.at("count")), int64_t{5});
   EXPECT_EQ(recorder.unsupportedFields, std::vector<std::string>({"pair"}));
+}
+
+TEST(TypedMetadataVisitorTest, SerializesRawJsonVerbatim) {
+  internal::JsonTypedMetadataVisitor jsonVisitor;
+  ITypedMetadataVisitor& visitor = jsonVisitor;
+
+  visitor.visit(kCount, int64_t{5});
+  visitor.visit(kRaw, RawJson{"[1, 2, 3]"});
+
+  const auto json = std::move(jsonVisitor).json();
+
+  // RawJson is emitted as-is, unquoted, so an array stays an array.
+  EXPECT_NE(json.find("\"raw\": [1, 2, 3]"), std::string::npos);
+}
+
+TEST(TypedMetadataVisitorTest, SerializesUInt64AndInputShapesToJson) {
+  internal::JsonTypedMetadataVisitor jsonVisitor;
+  ITypedMetadataVisitor& visitor = jsonVisitor;
+
+  visitor.visit(kAddress, uint64_t{18446744073709551615ULL});
+  InputShapes dims;
+  dims.emplace_back(std::vector<int64_t>{2, 2});
+  dims.emplace_back(TensorListShapes{{4, 1}, {4, 1}});
+  visitor.visit(kInputDims, dims);
+
+  const auto json = std::move(jsonVisitor).json();
+
+  // uint64 is emitted as an unsigned number, not truncated.
+  EXPECT_NE(json.find("\"address\": 18446744073709551615"), std::string::npos);
+  // Each arg is a single tensor's shape or a nested list of tensor shapes.
+  EXPECT_NE(
+      json.find("\"input_dims\": [[2, 2], [[4, 1], [4, 1]]]"),
+      std::string::npos);
 }

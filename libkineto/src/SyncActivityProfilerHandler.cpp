@@ -50,13 +50,6 @@ std::unique_ptr<ActivityTraceInterface> SyncActivityProfilerHandler::
   // Will follow up with another patch for logging URLs when ActivityTrace
   // is moved.
 
-  // Logger Metadata contains a map of LOGs collected in Kineto
-  //   logger_level -> List of log lines
-  // This will be added into the trace as metadata.
-  std::unordered_map<std::string, std::vector<std::string>> loggerMD =
-      profiler_.getLoggerMetadata();
-  logger->setLoggerMetadata(std::move(loggerMD));
-
   profiler_.reset();
   active_ = false;
   return std::make_unique<ActivityTrace>(

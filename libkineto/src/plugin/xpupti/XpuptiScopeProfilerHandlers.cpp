@@ -7,9 +7,6 @@
  */
 
 #include "XpuptiProfilerMacros.h"
-
-#if PTI_VERSION_AT_LEAST(0, 15)
-
 #include "XpuptiScopeProfilerSession.h"
 
 namespace KINETO_NAMESPACE {
@@ -138,5 +135,3 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
 }
 
 } // namespace KINETO_NAMESPACE
-
-#endif

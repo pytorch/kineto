@@ -99,11 +99,7 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
     eptr = std::current_exception();
   }
 
-#if PTI_VERSION_AT_LEAST(0, 15)
   bool expectThrow = (perKernel == "false");
-#else
-  constexpr bool expectThrow = true;
-#endif
 
   if (expectThrow) {
     EXPECT_THROW(

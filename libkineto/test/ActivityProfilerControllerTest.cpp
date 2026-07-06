@@ -24,14 +24,6 @@ using namespace libkineto::test;
 
 namespace {
 
-std::string logUrlToPath(const std::string& url) {
-  const std::string prefix = "file://";
-  if (url.substr(0, prefix.size()) == prefix) {
-    return url.substr(prefix.size());
-  }
-  return url;
-}
-
 bool traceFileHasContent(const std::string& filename) {
   std::ifstream file(filename, std::ios::binary | std::ios::ate);
   return file.is_open() && file.tellg() > 0;

@@ -47,6 +47,7 @@ if(KINETO_BACKEND STREQUAL "cuda")
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
     MockActivitySubProfiler.cpp
+    MockCpuActivityBuffer.cpp
     TestUtils.cpp)
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
@@ -88,6 +89,7 @@ if(KINETO_BACKEND STREQUAL "rocm")
 add_executable(RocmActivityProfilerTest
     RocmActivityProfilerTest.cpp
     MockActivitySubProfiler.cpp
+    MockCpuActivityBuffer.cpp
     TestUtils.cpp)
 target_compile_definitions(RocmActivityProfilerTest PRIVATE
     "__HIP_PLATFORM_HCC__"

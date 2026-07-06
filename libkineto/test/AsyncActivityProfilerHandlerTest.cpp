@@ -13,12 +13,6 @@
 
 #include <chrono>
 
-#ifdef __linux__
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 #include "include/Config.h"
 #include "src/AsyncActivityProfilerHandler.h"
 #include "src/GenericActivityProfiler.h"
@@ -48,28 +42,6 @@ class MockGpuProfiler : public GenericActivityProfiler {
  private:
   bool gpuStopped_{false};
 };
-
-static std::string logUrlToPath(const std::string& url) {
-  const std::string prefix = "file://";
-  if (url.substr(0, prefix.size()) == prefix) {
-    return url.substr(prefix.size());
-  }
-  return url;
-}
-
-static void checkTracefile(const char* filename) {
-#ifdef __linux__
-  int fd = open(filename, O_RDONLY);
-  if (fd == 0) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
-  close(fd);
-#endif
-}
 
 TEST(AsyncActivityProfilerHandler, AsyncTrace) {
   std::vector<std::string> log_modules(
@@ -284,17 +256,6 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   folly::dynamic jsonData = folly::parseJson(jsonStr);
-
-  auto countSubstrings = [](const std::string& source,
-                            const std::string& substring) {
-    size_t count = 0;
-    size_t pos = source.find(substring);
-    while (pos != std::string::npos) {
-      ++count;
-      pos = source.find(substring, pos + substring.length());
-    }
-    return count;
-  };
 
   EXPECT_EQ(3, countSubstrings(jsonStr, keyPrefix));
   EXPECT_EQ(2, countSubstrings(jsonStr, "metadata value"));

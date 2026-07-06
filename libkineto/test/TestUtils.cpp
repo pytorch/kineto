@@ -17,6 +17,11 @@
 #include <string_view>
 #include <utility>
 
+#ifdef __linux__
+#include <fcntl.h>
+#include <sys/stat.h>
+#endif
+
 namespace libkineto::test {
 
 TempTraceFile::TempTraceFile(std::string_view prefix, std::string_view suffix) {
@@ -61,6 +66,41 @@ TempTraceFile createTempTraceFile(
     std::string_view prefix,
     std::string_view suffix) {
   return TempTraceFile(prefix, suffix);
+}
+
+std::string logUrlToPath(const std::string& url) {
+  const std::string prefix = "file://";
+  if (url.starts_with(prefix)) {
+    return url.substr(prefix.size());
+  }
+  return url;
+}
+
+size_t countSubstrings(
+    const std::string& source,
+    const std::string& substring) {
+  if (source.empty() || substring.empty()) {
+    return 0;
+  }
+  size_t count = 0;
+  size_t pos = source.find(substring);
+  while (pos != std::string::npos) {
+    ++count;
+    pos = source.find(substring, pos + substring.length());
+  }
+  return count;
+}
+
+void checkTracefile(const char* path) {
+#ifdef __linux__
+  // @lint-ignore NULLSAFECLANG callers always pass a non-null path
+  int fd = open(path, O_RDONLY);
+  ASSERT_GE(fd, 0) << "failed to open " << path;
+  struct stat buf{};
+  fstat(fd, &buf);
+  EXPECT_GT(buf.st_size, 100);
+  close(fd);
+#endif
 }
 
 } // namespace libkineto::test

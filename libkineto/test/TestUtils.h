@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -48,5 +49,15 @@ class TempTraceFile {
 // naming scheme. The returned object removes the file when it goes out of
 // scope.
 [[nodiscard]] TempTraceFile createTempTraceFile(std::string_view prefix, std::string_view suffix);
+
+// Strips a leading "file://" from url, returning the bare filesystem path.
+std::string logUrlToPath(const std::string& url);
+
+// Returns the number of non-overlapping occurrences of substring in source.
+size_t countSubstrings(const std::string& source, const std::string& substring);
+
+// Asserts (via gtest) that the file at path exists and holds more than 100
+// bytes. No-op on non-Linux platforms.
+void checkTracefile(const char* path);
 
 } // namespace libkineto::test

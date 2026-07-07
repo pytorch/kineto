@@ -21,11 +21,6 @@
 #include <optional>
 #include <variant>
 
-#ifdef __linux__
-#include <fcntl.h>
-#include <sys/stat.h>
-#endif
-
 #include "include/Config.h"
 #include "include/libkineto.h"
 #include "include/output_base.h"
@@ -40,26 +35,12 @@
 
 #include "src/Logger.h"
 #include "test/MockActivitySubProfiler.h"
+#include "test/MockCpuActivityBuffer.h"
 #include "test/TestUtils.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 using namespace libkineto::test;
-
-const std::string kParamCommsCallName = "record_param_comms";
-static constexpr auto kCollectiveName = "Collective name";
-static constexpr auto kDtype = "dtype";
-static constexpr auto kInMsgNelems = "In msg nelems";
-static constexpr auto kOutMsgNelems = "Out msg nelems";
-static constexpr auto kInSplit = "In split size";
-static constexpr auto kOutSplit = "Out split size";
-static constexpr auto kGroupSize = "Group size";
-static constexpr const char* kProcessGroupName = "Process Group Name";
-static constexpr const char* kProcessGroupDesc = "Process Group Description";
-static constexpr const char* kGroupRanks = "Process Group Ranks";
-static constexpr auto kSeqNum = "Seq";
-static constexpr const char* kCommsId = "Comms Id";
-static constexpr int32_t kTruncatLength = 30;
 
 #define CUDA_LAUNCH_KERNEL CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
 #define CUDA_MEMCPY CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020
@@ -76,11 +57,6 @@ static constexpr int32_t kTruncatLength = 30;
 #define CU_MEM_IMPORT CUPTI_DRIVER_TRACE_CBID_cuMemImportFromShareableHandle
 
 namespace {
-const TraceSpan& defaultTraceSpan() {
-  static TraceSpan span(0, 0, "Unknown", "");
-  return span;
-}
-
 using RecordedMetadataValue = std::variant<
     int64_t,
     double,
@@ -154,35 +130,6 @@ class RecordingTypedMetadataVisitor final : public ITypedMetadataVisitor {
   std::map<std::string, RecordedMetadataValue> values_;
 };
 } // namespace
-
-// Provides ability to easily create a few test CPU-side ops
-struct MockCpuActivityBuffer : public CpuTraceBuffer {
-  MockCpuActivityBuffer(int64_t startTime, int64_t endTime) {
-    span = TraceSpan(startTime, endTime, "Test trace");
-    gpuOpCount = 0;
-  }
-
-  void addOp(
-      std::string name,
-      int64_t startTime,
-      int64_t endTime,
-      int64_t correlation,
-      const std::unordered_map<std::string, std::string>& metadataMap = {}) {
-    GenericTraceActivity op(span, ActivityType::CPU_OP, name);
-    op.startTime = startTime;
-    op.endTime = endTime;
-    op.device = systemThreadId();
-    op.resource = systemThreadId();
-    op.id = correlation;
-
-    for (const auto& [key, val] : metadataMap) {
-      op.addMetadata(key, val);
-    }
-
-    emplace_activity(std::move(op));
-    span.opCount++;
-  }
-};
 
 // Provides ability to easily create a few test CUPTI ops
 struct MockCuptiActivityBuffer {
@@ -525,16 +472,7 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
 #ifdef __linux__
   auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
   trace.save(tmpTrace.path());
-  // Check that the expected file was written and that it has some content
-  int fd = open(tmpTrace.c_str(), O_RDONLY);
-  if (!fd) {
-    perror(tmpTrace.c_str());
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
+  checkTracefile(tmpTrace.c_str());
 
   // Verify Stream Sync events are on a separate row from kernel events
   // in the JSON trace output (tid offset by kSyncStreamTidOffset).
@@ -855,17 +793,6 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Convert the JSON object to a string and check
   // if the substring exists
   std::string jsonString = jsonData.dump();
-  auto countSubstrings = [](const std::string& source,
-                            const std::string& substring) {
-    size_t count = 0;
-    size_t pos = source.find(substring);
-    while (pos != std::string::npos) {
-      ++count;
-      pos = source.find(substring, pos + substring.length());
-    }
-    return count;
-  };
-
   EXPECT_EQ(3, countSubstrings(jsonString, "65664"));
   EXPECT_EQ(3, countSubstrings(jsonString, kInMsgNelems));
   EXPECT_EQ(3, countSubstrings(jsonString, "65664"));
@@ -1012,17 +939,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   // Test we have all the events
   EXPECT_EQ(traced_activites->size(), test_activities.size());
 
-  // Check that the expected file was written and that it has some content
-  int fd = open(tmpTrace.c_str(), O_RDONLY);
-  if (!fd) {
-    perror(tmpTrace.c_str());
-  }
-  EXPECT_TRUE(fd);
-
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
+  checkTracefile(tmpTrace.c_str());
 }
 
 TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {

@@ -45,24 +45,12 @@
 
 #include "src/Logger.h"
 #include "test/MockActivitySubProfiler.h"
+#include "test/MockCpuActivityBuffer.h"
 #include "test/TestUtils.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
 using namespace libkineto::test;
-
-const std::string kParamCommsCallName = "record_param_comms";
-static constexpr auto kCollectiveName = "Collective name";
-static constexpr auto kDtype = "dtype";
-static constexpr auto kInMsgNelems = "In msg nelems";
-static constexpr auto kOutMsgNelems = "Out msg nelems";
-static constexpr auto kInSplit = "In split size";
-static constexpr auto kOutSplit = "Out split size";
-static constexpr auto kGroupSize = "Group size";
-static constexpr const char* kProcessGroupName = "Process Group Name";
-static constexpr const char* kProcessGroupDesc = "Process Group Description";
-static constexpr const char* kGroupRanks = "Process Group Ranks";
-static constexpr int32_t kTruncatLength = 30;
 
 // API ID macros for rocprofiler-sdk
 #define HIP_LAUNCH_KERNEL ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchKernel
@@ -72,11 +60,6 @@ static constexpr int32_t kTruncatLength = 30;
 #define RUNTIME_DOMAIN ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API
 
 namespace {
-const TraceSpan& defaultTraceSpan() {
-  static TraceSpan span(0, 0, "Unknown", "");
-  return span;
-}
-
 bool isAsyncCopy(const rocprofAsyncRow& async) {
   return async.domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY;
 }
@@ -128,35 +111,6 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
   std::optional<int64_t> hsaQueue;
 };
 } // namespace
-
-// Provides ability to easily create a test CPU-side ops
-struct MockCpuActivityBuffer : public CpuTraceBuffer {
-  MockCpuActivityBuffer(int64_t startTime, int64_t endTime) {
-    span = TraceSpan(startTime, endTime, "Test trace");
-    gpuOpCount = 0;
-  }
-
-  void addOp(
-      std::string name,
-      int64_t startTime,
-      int64_t endTime,
-      int64_t correlation,
-      const std::unordered_map<std::string, std::string>& metadataMap = {}) {
-    GenericTraceActivity op(span, ActivityType::CPU_OP, name);
-    op.startTime = startTime;
-    op.endTime = endTime;
-    op.device = systemThreadId();
-    op.resource = systemThreadId();
-    op.id = correlation;
-
-    for (const auto& [key, val] : metadataMap) {
-      op.addMetadata(key, val);
-    }
-
-    emplace_activity(std::move(op));
-    span.opCount++;
-  }
-};
 
 // Provides ability to easily create test ROCm ops using the shared types
 // from RocLogger.h (rocprofKernelRow, rocprofAsyncRow, etc.)
@@ -355,22 +309,6 @@ class RocmActivityProfilerTest : public ::testing::Test {
   ActivityLoggerFactory loggerFactory;
 };
 
-void checkTracefile(const char* filename) {
-#ifdef __linux__
-  // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
-  if (!fd) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
-  close(fd);
-#endif
-}
-
 TEST_F(RocmActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
@@ -458,16 +396,7 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
 #ifdef __linux__
   auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
   trace.save(tmpTrace.path());
-  // Check that the expected file was written and that it has some content
-  int fd = open(tmpTrace.c_str(), O_RDONLY);
-  if (!fd) {
-    perror(tmpTrace.c_str());
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
+  checkTracefile(tmpTrace.c_str());
 #endif
 }
 
@@ -811,17 +740,6 @@ TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Convert the JSON object to a string and check
   // if the substring exists
   std::string jsonString = jsonData.dump();
-  auto countSubstrings = [](const std::string& source,
-                            const std::string& substring) {
-    size_t count = 0;
-    size_t pos = source.find(substring);
-    while (pos != std::string::npos) {
-      ++count;
-      pos = source.find(substring, pos + substring.length());
-    }
-    return count;
-  };
-
   // Check that the metadata fields are present in the JSON file
   EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
   EXPECT_EQ(2, countSubstrings(jsonString, kInMsgNelems));
@@ -966,17 +884,7 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
   // Test we have all the events
   EXPECT_EQ(traced_activites->size(), test_activities.size());
 
-  // Check that the expected file was written and that it has some content
-  int fd = open(tmpTrace.c_str(), O_RDONLY);
-  if (!fd) {
-    perror(tmpTrace.c_str());
-  }
-  EXPECT_TRUE(fd);
-
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
+  checkTracefile(tmpTrace.c_str());
 }
 
 TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {

@@ -200,10 +200,10 @@ target_compile_options(kineto_base PRIVATE "${KINETO_COMPILE_OPTIONS}")
 target_compile_definitions(kineto_api PUBLIC "${KINETO_DEFINITIONS}")
 target_compile_options(kineto_api PRIVATE "${KINETO_COMPILE_OPTIONS}")
 
-# dynolog's ipcfabric is header-only and vendored under third_party/dynolog
+# dynolog's ipcfabric is header-only and vendored under third_party/dynolog_headers
 # (pinned in version.txt), so only its include paths are needed below -- there
 # is no library to build or link.
-set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog/")
+set(DYNOLOG_INCLUDE_DIR "${LIBKINETO_THIRDPARTY_DIR}/dynolog_headers/")
 set(IPCFABRIC_INCLUDE_DIR "${DYNOLOG_INCLUDE_DIR}/dynolog/src/ipcfabric/")
 
 if(NOT TARGET fmt::fmt-header-only)

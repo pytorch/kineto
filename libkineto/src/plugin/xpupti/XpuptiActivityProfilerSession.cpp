@@ -19,28 +19,17 @@
 
 namespace KINETO_NAMESPACE {
 
-using namespace std::literals::string_view_literals;
-
 uint32_t XpuptiActivityProfilerSession::iterationCount_ = 0;
 std::vector<DeviceUUIDsT> XpuptiActivityProfilerSession::deviceUUIDs_ = {};
-std::unordered_set<std::string_view>
-    XpuptiActivityProfilerSession::correlateRuntimeOps_ = {
-        "piextUSMEnqueueFill"sv,
-        "urEnqueueUSMFill"sv,
-        "piextUSMEnqueueFill2D"sv,
-        "urEnqueueUSMFill2D"sv,
-        "piextUSMEnqueueMemcpy"sv,
-        "urEnqueueUSMMemcpy"sv,
-        "piextUSMEnqueueMemset"sv,
-        "piextUSMEnqueueMemcpy2D"sv,
-        "urEnqueueUSMMemcpy2D"sv,
-        "piextUSMEnqueueMemset2D"sv,
-        "piEnqueueKernelLaunch"sv,
-        "urEnqueueKernelLaunch"sv,
-        "piextEnqueueKernelLaunchCustom"sv,
-        "urEnqueueKernelLaunchCustomExp"sv,
-        "piextEnqueueCooperativeKernelLaunch"sv,
-        "urEnqueueCooperativeKernelLaunchExp"sv};
+
+bool XpuptiActivityProfilerSession::startsFlow(ActivityType activityType) {
+  // Only host runtime records start the CPU->GPU flow. The runtime view is
+  // already filtered to work-submitting APIs via
+  // ptiViewEnableRuntimeApiClass(PTI_API_CLASS_GPU_OPERATION_CORE). Driver
+  // (XPU_DRIVER) records share the same correlation id as the runtime record
+  // and must not also start a flow, or the trace gets a duplicate flow start.
+  return activityType == ActivityType::XPU_RUNTIME;
+}
 
 // =========== Session Constructor ============= //
 XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(

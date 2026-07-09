@@ -18,7 +18,6 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace KINETO_NAMESPACE {
@@ -61,6 +60,12 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   void pushUserCorrelationId(uint64_t id) override;
   void popUserCorrelationId() override;
 
+  // Whether a runtime/driver record starts a CPU->GPU flow arrow. Only host
+  // runtime (XPU_RUNTIME) records do; driver (XPU_DRIVER) records share the
+  // same correlation id and would otherwise create a duplicate flow start.
+  // Static so it can be unit-tested without real hardware.
+  static bool startsFlow(ActivityType activityType);
+
  private:
   void checkTimestampOrder(const ITraceActivity* act1);
   void removeCorrelatedPtiActivities(const ITraceActivity* act1);
@@ -94,7 +99,6 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
  protected:
   static uint32_t iterationCount_;
   static std::vector<DeviceUUIDsT> deviceUUIDs_;
-  static std::unordered_set<std::string_view> correlateRuntimeOps_;
 
   int64_t captureWindowStartTime_{0};
   int64_t captureWindowEndTime_{0};

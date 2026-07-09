@@ -11,10 +11,14 @@
 #include <nlohmann/json.hpp>
 #include <cstdlib>
 
+#include <atomic>
 #include <chrono>
 #include <fstream>
+#include <future>
+#include <mutex>
 
 #include "include/Config.h"
+#include "include/libkineto.h"
 #include "src/AsyncActivityProfilerHandler.h"
 #include "src/GenericActivityProfiler.h"
 
@@ -51,6 +55,83 @@ class MockGpuProfiler : public GenericActivityProfiler {
 
  private:
   bool gpuStopped_{false};
+};
+
+// Records ClientInterface callbacks so tests can assert the handler drives the
+// registered client. Counters are atomic because the memory-snapshot path
+// invokes them from a background thread.
+class MockClientInterface : public libkineto::ClientInterface {
+ public:
+  void init() override {}
+  void prepare(
+      bool /*unused*/,
+      bool /*unused*/,
+      bool /*unused*/,
+      bool /*unused*/,
+      bool /*unused*/) override {}
+  void start() override {
+    ++startCount;
+  }
+  void stop() override {
+    ++stopCount;
+  }
+  void start_memory_profile() override {
+    ++memoryStartCount;
+  }
+  void stop_memory_profile() override {
+    ++memoryStopCount;
+    // set_value() throws std::future_error if the promise is already satisfied,
+    // which on this background thread would terminate the test process. Signal
+    // exactly once so a repeated call surfaces via memoryStopCount instead of
+    // throwing.
+    if (!memoryStopSignaled_.exchange(true)) {
+      memoryStopPromise_.set_value();
+    }
+  }
+  void export_memory_profile(const std::string& path) override {
+    ++memoryExportCount;
+    std::scoped_lock guard(mutex_);
+    exportedPath_ = path;
+  }
+
+  std::string exportedPath() {
+    std::scoped_lock guard(mutex_);
+    return exportedPath_;
+  }
+
+  // Fulfilled when stop_memory_profile() runs, i.e. the memory loop finished.
+  std::future<void> memoryStopFuture() {
+    return memoryStopPromise_.get_future();
+  }
+
+  std::atomic<int> startCount{0};
+  std::atomic<int> stopCount{0};
+  std::atomic<int> memoryStartCount{0};
+  std::atomic<int> memoryStopCount{0};
+  std::atomic<int> memoryExportCount{0};
+
+ private:
+  std::mutex mutex_;
+  std::string exportedPath_;
+  std::promise<void> memoryStopPromise_;
+  std::atomic<bool> memoryStopSignaled_{false};
+};
+
+// Registers a mock client on the process-global libkineto::api() for a test,
+// saving and restoring whatever client was registered before so the fixture
+// never clobbers another test's client regardless of binary composition.
+class AsyncClientTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    priorClient_ = libkineto::api().client();
+    libkineto::api().registerClient(&client_);
+  }
+  void TearDown() override {
+    libkineto::api().registerClient(priorClient_);
+  }
+
+  MockClientInterface client_;
+  libkineto::ClientInterface* priorClient_ = nullptr;
 };
 
 TEST(AsyncActivityProfilerHandler, AsyncTrace) {
@@ -655,4 +736,131 @@ TEST(
   ASSERT_TRUE(cfg.activityProfilerEnabled());
 
   EXPECT_TRUE(handler.acceptConfig(cfg));
+}
+
+// Collection start and end drive the registered client exactly once each:
+// start() when warmup completes and collection begins, and stop() when
+// collection finishes (the profiler stops the client while collecting the
+// final trace).
+TEST_F(AsyncClientTest, StartsAndStopsClientAroundCollection) {
+  GenericActivityProfiler profiler(/*cpu only*/ true);
+  AsyncActivityProfilerHandler handler(profiler);
+
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
+
+  constexpr int kWarmupSecs = 5;
+  constexpr int kDurationSecs = 1;
+
+  auto now = system_clock::now();
+  auto startTime = now + seconds(kWarmupSecs + 1);
+
+  Config cfg;
+  ASSERT_TRUE(cfg.parse(
+      fmt::format(
+          R"CFG(
+    ACTIVITIES_WARMUP_PERIOD_SECS = {}
+    ACTIVITIES_DURATION_SECS = {}
+    ACTIVITIES_LOG_FILE = {}
+    PROFILE_START_TIME = {}
+  )CFG",
+          kWarmupSecs,
+          kDurationSecs,
+          traceFile.path(),
+          duration_cast<milliseconds>(startTime.time_since_epoch()).count())));
+
+  handler.configure(cfg, now);
+  EXPECT_EQ(client_.startCount.load(), 0);
+
+  // Warmup -> CollectTrace starts the client.
+  now = startTime;
+  handler.performRunLoopStep(now, now);
+  EXPECT_EQ(client_.startCount.load(), 1);
+  EXPECT_EQ(client_.stopCount.load(), 0);
+
+  // A second past the end of the collection window (startTime + duration).
+  auto afterEnd = startTime + seconds(kDurationSecs + 1);
+
+  // The run loop advances one state per call. First tick: the collection window
+  // has closed, so it collects the trace (where the profiler stops the client)
+  // and moves CollectTrace -> ProcessTrace. Second tick: it finalizes the
+  // trace, moving ProcessTrace -> WaitForRequest (idle). Same timestamps --
+  // collection has already ended, so we only pump the state machine, not
+  // advance time.
+  handler.performRunLoopStep(afterEnd, afterEnd);
+  handler.performRunLoopStep(afterEnd, afterEnd);
+  EXPECT_FALSE(handler.isAsyncActive());
+  EXPECT_EQ(client_.startCount.load(), 1);
+  EXPECT_EQ(client_.stopCount.load(), 1);
+}
+
+// Cancelling an in-progress collection stops the registered client.
+TEST_F(AsyncClientTest, CancelStopsClient) {
+  GenericActivityProfiler profiler(/*cpu only*/ true);
+  AsyncActivityProfilerHandler handler(profiler);
+
+  auto traceFile = createTempTraceFile("libkineto_test", ".json");
+
+  constexpr int kWarmupSecs = 5;
+  auto now = system_clock::now();
+  auto startTime = now + seconds(kWarmupSecs + 1);
+
+  Config cfg;
+  ASSERT_TRUE(cfg.parse(
+      fmt::format(
+          R"CFG(
+    ACTIVITIES_WARMUP_PERIOD_SECS = {}
+    ACTIVITIES_DURATION_SECS = 1
+    ACTIVITIES_LOG_FILE = {}
+    PROFILE_START_TIME = {}
+  )CFG",
+          kWarmupSecs,
+          traceFile.path(),
+          duration_cast<milliseconds>(startTime.time_since_epoch()).count())));
+
+  handler.configure(cfg, now);
+  now = startTime;
+  handler.performRunLoopStep(now, now); // Warmup -> CollectTrace
+  ASSERT_EQ(client_.startCount.load(), 1);
+
+  handler.cancel();
+  EXPECT_FALSE(handler.isAsyncActive());
+  EXPECT_EQ(client_.stopCount.load(), 1);
+}
+
+// A memory-profiling request drives the client's memory hooks in order and
+// exports to the configured path. This exercises the CollectMemorySnapshot
+// state and memoryProfilerLoop, which run on a background thread.
+TEST_F(AsyncClientTest, MemoryProfileRequestDrivesClientHooks) {
+  GenericActivityProfiler profiler(/*cpu only*/ true);
+
+  auto traceFile = createTempTraceFile("libkineto_test_memory", ".json");
+
+  Config cfg;
+  // PROFILE_MEMORY resets the log file to a default, so ACTIVITIES_LOG_FILE
+  // must follow it to control the export path.
+  ASSERT_TRUE(cfg.parse(
+      fmt::format(
+          R"CFG(
+    PROFILE_MEMORY = true
+    PROFILE_MEMORY_DURATION_MSECS = 50
+    ACTIVITIES_LOG_FILE = {}
+  )CFG",
+          traceFile.path())));
+  ASSERT_TRUE(cfg.memoryProfilerEnabled());
+
+  auto memoryStopped = client_.memoryStopFuture();
+  {
+    // The memory loop runs on a background thread; block on its final client
+    // call (stop_memory_profile) via a future instead of polling. Destroying
+    // the handler at the end of this scope joins that thread before we read the
+    // client below, so the assertions and fixture teardown cannot race the
+    // still-running loop.
+    AsyncActivityProfilerHandler handler(profiler);
+    EXPECT_TRUE(handler.scheduleTrace(cfg));
+    ASSERT_EQ(memoryStopped.wait_for(seconds(15)), std::future_status::ready);
+  }
+
+  EXPECT_EQ(client_.memoryStartCount.load(), 1);
+  EXPECT_EQ(client_.memoryExportCount.load(), 1);
+  EXPECT_EQ(client_.exportedPath(), traceFile.path());
 }

@@ -47,14 +47,15 @@ AsyncActivityProfilerHandler::~AsyncActivityProfilerHandler() {
   ensureCollectTraceDone();
 }
 
-void AsyncActivityProfilerHandler::acceptConfig(const Config& config) {
+bool AsyncActivityProfilerHandler::acceptConfig(const Config& config) {
   VLOG(1) << "acceptConfig";
   if (config.activityProfilerEnabled()) {
-    scheduleTrace(config);
+    return scheduleTrace(config);
   }
+  return false;
 }
 
-void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
+bool AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
   VLOG(1) << "scheduleTrace";
 
   int64_t currentIter = iterationCount_;
@@ -73,7 +74,7 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
       logRequestCancellation(
           config,
           "Ignored profile iteration count based request as application is not updating iteration count");
-      return;
+      return false;
     }
   } else {
     configToSchedule = config.clone();
@@ -91,7 +92,7 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
   if (!newConfigScheduled) {
     logRequestCancellation(
         config, "Ignored request - another profile request is pending.");
-    return;
+    return false;
   }
 
   // start a profilerLoop() thread to handle request
@@ -109,6 +110,7 @@ void AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
           &AsyncActivityProfilerHandler::profilerLoop, this);
     }
   }
+  return true;
 }
 
 void AsyncActivityProfilerHandler::step() {

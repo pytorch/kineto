@@ -42,6 +42,17 @@ target_link_libraries(ActivityProfilerControllerTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ActivityProfilerControllerTest)
 
+# AsyncActivityProfilerHandlerTest
+add_executable(AsyncActivityProfilerHandlerTest
+    AsyncActivityProfilerHandlerTest.cpp
+    TestUtils.cpp)
+target_link_libraries(AsyncActivityProfilerHandlerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(AsyncActivityProfilerHandlerTest)
+
 if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest

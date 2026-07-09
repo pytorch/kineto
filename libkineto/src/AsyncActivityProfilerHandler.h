@@ -37,8 +37,13 @@ class AsyncActivityProfilerHandler {
   AsyncActivityProfilerHandler& operator=(AsyncActivityProfilerHandler&&) = delete;
   ~AsyncActivityProfilerHandler();
 
-  void acceptConfig(const Config& config);
-  void scheduleTrace(const Config& config);
+  // Returns true if the config enabled the activity profiler and the request
+  // was accepted (scheduled), false otherwise.
+  bool acceptConfig(const Config& config);
+  // Returns true if the request was accepted (scheduled), false if it was
+  // dropped (e.g. an iteration request with no duration when the application is
+  // not counting iterations, or another request is already pending).
+  bool scheduleTrace(const Config& config);
   void step();
 
   [[nodiscard]] bool isAsyncActive() const {

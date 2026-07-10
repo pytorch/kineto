@@ -50,7 +50,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   // ConfigLoader::ConfigHandler callback API.
   bool canAcceptConfig() override;
-  void acceptConfig(const Config& config) override;
+  bool acceptConfig(const Config& config) override;
 
   // These API are used for On-Demand Tracing.
   void asyncScheduleTrace(const Config& config);

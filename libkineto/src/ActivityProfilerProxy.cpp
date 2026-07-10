@@ -43,7 +43,9 @@ bool ActivityProfilerProxy::isStopped() const {
 void ActivityProfilerProxy::scheduleTrace(const std::string& configStr) {
   resetTLS();
   Config config;
-  config.parse(configStr);
+  if (!config.parse(configStr)) {
+    LOG(WARNING) << "Failed to parse config : " << configStr;
+  }
   controller_->asyncScheduleTrace(config);
 }
 

@@ -28,7 +28,10 @@ class XpuptiScopeProfilerTest : public ::testing::Test {
   }
 };
 
-void RunTest(std::string_view perKernel, unsigned maxScopes) {
+void RunTest(
+    std::string_view perKernel,
+    unsigned maxScopes,
+    std::string_view devices = "") {
   KN::Config cfg;
 
   std::vector<std::string_view> metrics = {
@@ -45,6 +48,10 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
       fmt::format("XPUPTI_PROFILER_ENABLE_PER_KERNEL = {}", perKernel)));
   EXPECT_TRUE(
       cfg.parse(fmt::format("XPUPTI_PROFILER_MAX_SCOPES = {}", maxScopes)));
+  if (!devices.empty()) {
+    EXPECT_TRUE(cfg.parse(
+        fmt::format("XPUPTI_PROFILER_DEVICES = {}", devices)));
+  }
 
   std::set<KN::ActivityType> activities{
       KN::ActivityType::GPU_MEMCPY,
@@ -131,3 +138,13 @@ TEST_F(XpuptiScopeProfilerTest, PerKernelScope) {
 TEST_F(XpuptiScopeProfilerTest, UserScope) {
   RunTest("false", 159);
 }
+
+#if PTI_VERSION_AT_LEAST(0, 18)
+// Exercises the explicit device-subset path (selectDeviceHandles ->
+// ptiMetricsScopeConfigure with a device handle array). The gtest workload
+// uses a single queue/device, so requesting device 0 reproduces the same
+// activities as PerKernelScope while covering the multi-device code path.
+TEST_F(XpuptiScopeProfilerTest, PerKernelScopeExplicitDevice0) {
+  RunTest("true", 314, "0");
+}
+#endif

@@ -205,12 +205,12 @@ void ActivityProfilerController::logInvariantViolation(
 bool ActivityProfilerController::canAcceptConfig() {
   return !isActive();
 }
-void ActivityProfilerController::acceptConfig(const Config& config) {
+bool ActivityProfilerController::acceptConfig(const Config& config) {
   if (isActive()) {
     logRequestCancellation(config, "Ignored request - profiler busy");
-    return;
+    return false;
   }
-  asyncHandler_->acceptConfig(config);
+  return asyncHandler_->acceptConfig(config);
 }
 
 // These API are used for On-Demand Tracing.

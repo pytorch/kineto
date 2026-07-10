@@ -267,18 +267,19 @@ bool EventProfilerController::canAcceptConfig() {
   return !newOnDemandConfig_;
 }
 
-void EventProfilerController::acceptConfig(const Config& config) {
+bool EventProfilerController::acceptConfig(const Config& config) {
   if (config.eventProfilerOnDemandDuration().count() == 0) {
     // Ignore - not for this profiler
-    return;
+    return false;
   }
   std::lock_guard<std::mutex> guard(mutex_);
   if (newOnDemandConfig_) {
     LOG(WARNING) << "On demand request already queued - ignoring new request";
-    return;
+    return false;
   }
   newOnDemandConfig_ = config.clone();
   LOG(INFO) << "Received new on-demand config";
+  return true;
 }
 
 bool EventProfilerController::enableForDevice(Config& cfg) {

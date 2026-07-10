@@ -47,7 +47,7 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
 
   bool canAcceptConfig() override;
 
-  void acceptConfig(const Config& config) override;
+  bool acceptConfig(const Config& config) override;
 
  private:
   explicit EventProfilerController(CUcontext context,

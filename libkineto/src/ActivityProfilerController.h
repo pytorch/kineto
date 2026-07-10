@@ -36,7 +36,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   ActivityProfilerController(const ActivityProfilerController&) = delete;
   ActivityProfilerController& operator=(const ActivityProfilerController&) = delete;
 
-  ~ActivityProfilerController();
+  ~ActivityProfilerController() override;
 
 #if !USE_GOOGLE_LOG
   static void addLoggerCollectorFactory(const std::function<std::shared_ptr<LoggerCollector>()>& factory);

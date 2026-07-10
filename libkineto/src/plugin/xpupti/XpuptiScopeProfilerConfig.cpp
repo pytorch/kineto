@@ -14,6 +14,10 @@
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
 
+#include <algorithm>
+#include <iterator>
+#include <ranges>
+
 namespace KINETO_NAMESPACE {
 
 // number of scopes affect the size of counter data binary used by
@@ -33,6 +37,14 @@ bool XpuptiScopeProfilerConfig::handleOption(
     xpuptiProfilerPerKernel_ = toBool(val);
   } else if (name == "XPUPTI_PROFILER_MAX_SCOPES"sv) {
     xpuptiProfilerMaxScopes_ = toInt64(val);
+  } else if (name == "XPUPTI_PROFILER_DEVICES"sv) {
+    const auto tokens = splitAndTrim(val, ',');
+    const auto nonEmpty = [](const std::string& tok) { return !tok.empty(); };
+    const auto toIndex = [this](const std::string& tok) { return toInt32(tok); };
+    xpuptiProfilerDevices_.clear();
+    std::ranges::copy(
+        tokens | std::views::filter(nonEmpty) | std::views::transform(toIndex),
+        std::back_inserter(xpuptiProfilerDevices_));
   } else {
     return false;
   }
@@ -53,10 +65,14 @@ void XpuptiScopeProfilerConfig::printActivityProfilerConfig(
         s,
         "Xpupti Profiler metrics : {}\n"
         "Xpupti Profiler measure per kernel : {}\n"
-        "Xpupti Profiler max scopes : {}\n",
+        "Xpupti Profiler max scopes : {}\n"
+        "Xpupti Profiler devices : {}\n",
         fmt::join(activitiesXpuptiMetrics_, ", "),
         xpuptiProfilerPerKernel_,
-        xpuptiProfilerMaxScopes_);
+        xpuptiProfilerMaxScopes_,
+        xpuptiProfilerDevices_.empty()
+            ? std::string("all")
+            : fmt::format("{}", fmt::join(xpuptiProfilerDevices_, ", ")));
   }
 }
 

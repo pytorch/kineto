@@ -99,7 +99,7 @@ void ConfigLoader::startThread() {
   if (!updateThread_) {
     // Create default base config here - at this point static initializers
     // of extensions should have run and registered all config feature factories
-    std::lock_guard<std::mutex> lock(configLock_);
+    std::scoped_lock lock(configLock_);
     if (!config_) {
       config_ = std::make_unique<Config>();
     }
@@ -112,7 +112,7 @@ void ConfigLoader::stopThread() {
   if (updateThread_) {
     stopFlag_ = true;
     {
-      std::lock_guard<std::mutex> lock(updateThreadMutex_);
+      std::scoped_lock lock(updateThreadMutex_);
       updateThreadCondVar_.notify_one();
     }
     if (updateThread_->joinable()) {
@@ -171,7 +171,7 @@ void ConfigLoader::updateBaseConfig() {
     config_str = daemonConfigLoader()->readBaseConfig();
   }
   if (config_str != config_->source()) {
-    std::lock_guard<std::mutex> lock(configLock_);
+    std::scoped_lock lock(configLock_);
     config_ = std::make_unique<Config>();
     config_->parse(config_str);
     if (daemonConfigLoader()) {
@@ -256,7 +256,7 @@ void ConfigLoader::updateConfigThread() {
 }
 
 bool ConfigLoader::hasNewConfig(const Config& oldConfig) {
-  std::lock_guard<std::mutex> lock(configLock_);
+  std::scoped_lock lock(configLock_);
   return config_->timestamp() > oldConfig.timestamp();
 }
 

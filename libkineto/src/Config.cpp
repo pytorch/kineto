@@ -176,12 +176,12 @@ struct FactoryMap {
   void addFactory(
       std::string name,
       std::function<AbstractConfig*(Config&)> factory) {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::scoped_lock lock(lock_);
     factories_.emplace(std::move(name), std::move(factory));
   }
 
   void addFeatureConfigs(Config& cfg) {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::scoped_lock lock(lock_);
     for (const auto& p : factories_) {
       cfg.addFeature(p.first, p.second(cfg));
     }

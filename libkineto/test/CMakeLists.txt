@@ -33,25 +33,28 @@ target_link_libraries(ConfigTest PRIVATE
 gtest_discover_tests(ConfigTest)
 
 # ActivityProfilerControllerTest
-add_executable(ActivityProfilerControllerTest
-    ActivityProfilerControllerTest.cpp
-    TestUtils.cpp)
-target_link_libraries(ActivityProfilerControllerTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    ${XPU_XPUPTI_LIBRARY})
-gtest_discover_tests(ActivityProfilerControllerTest)
+# Not supported on Windows, uses unix "unistd.h"
+if(NOT WIN32)
+    add_executable(ActivityProfilerControllerTest
+        ActivityProfilerControllerTest.cpp
+        TestUtils.cpp)
+    target_link_libraries(ActivityProfilerControllerTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        ${XPU_XPUPTI_LIBRARY})
+    gtest_discover_tests(ActivityProfilerControllerTest)
 
-# AsyncActivityProfilerHandlerTest
-add_executable(AsyncActivityProfilerHandlerTest
-    AsyncActivityProfilerHandlerTest.cpp
-    TestUtils.cpp)
-target_link_libraries(AsyncActivityProfilerHandlerTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    nlohmann_json::nlohmann_json
-    ${XPU_XPUPTI_LIBRARY})
-gtest_discover_tests(AsyncActivityProfilerHandlerTest)
+    # AsyncActivityProfilerHandlerTest
+    add_executable(AsyncActivityProfilerHandlerTest
+        AsyncActivityProfilerHandlerTest.cpp
+        TestUtils.cpp)
+    target_link_libraries(AsyncActivityProfilerHandlerTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        nlohmann_json::nlohmann_json
+        ${XPU_XPUPTI_LIBRARY})
+    gtest_discover_tests(AsyncActivityProfilerHandlerTest)
+endif()
 
 if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest

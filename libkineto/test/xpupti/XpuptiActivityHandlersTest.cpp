@@ -64,8 +64,7 @@ class MockActivityLogger : public ActivityLogger {
   void finalizeTrace(
       const Config&,
       std::unique_ptr<KINETO_NAMESPACE::ActivityBuffers>,
-      int64_t,
-      std::unordered_map<std::string, std::vector<std::string>>&) override {}
+      int64_t) override {}
 };
 
 class XpuptiActivityHandlersTest : public ::testing::Test {

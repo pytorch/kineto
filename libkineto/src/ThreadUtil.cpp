@@ -56,7 +56,9 @@ int32_t pidNamespace(ino_t& ns) {
   }
 
   struct stat self_stat;
-  if (fstat(fd, &self_stat) == -1) {
+  int rc = fstat(fd, &self_stat);
+  close(fd);
+  if (rc == -1) {
     return -1;
   }
   ns = self_stat.st_ino;

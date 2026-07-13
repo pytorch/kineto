@@ -28,47 +28,53 @@ add_executable(XpuptiFlowCorrelationTest XpuptiFlowCorrelationTest.cpp)
 target_link_libraries(XpuptiFlowCorrelationTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiFlowCorrelationTest)
 
-include(ExternalProject)
-function(make_test test_file)
-  get_filename_component(test_name "${test_file}" NAME_WE)
-  set(lib_name "${test_name}Lib")
-  add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
-  # Do not link gtest into the shared library to avoid duplicate gtest globals
-  # (gtest is statically linked into the executable; the shared library resolves
-  #  gtest symbols from the executable at runtime via --export-dynamic).
-  set(LIB_LINK_LIBRARIES
-    kineto_base
-    kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>
-    ${SYCL_LIBRARY}
-    ${PTI_LIBRARY}
-  )
-  target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
-  target_include_directories(${lib_name} PRIVATE
-    $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
+# These tests build a .so shared library and rely on --export-dynamic runtime
+# symbol resolution (ELF/GNU linker), so they only build on Linux.
+if(NOT WIN32)
+  include(ExternalProject)
 
-  set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  function(make_test test_file)
+    get_filename_component(test_name "${test_file}" NAME_WE)
+    set(lib_name "${test_name}Lib")
+    add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
 
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-  install(TARGETS ${lib_name}
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-  )
+    # Do not link gtest into the shared library to avoid duplicate gtest globals
+    # (gtest is statically linked into the executable; the shared library resolves
+    # gtest symbols from the executable at runtime via --export-dynamic).
+    set(LIB_LINK_LIBRARIES
+      kineto_base
+      kineto_api
+      $<BUILD_INTERFACE:fmt::fmt-header-only>
+      ${SYCL_LIBRARY}
+      ${PTI_LIBRARY}
+    )
+    target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
+    target_include_directories(${lib_name} PRIVATE
+      $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
 
-  ExternalProject_Add(${test_name}
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-    CMAKE_ARGS -DPROJECT_NAME=${test_name}
-    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
-    CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
-    CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-    BUILD_ALWAYS TRUE
-  )
+    set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  add_dependencies(${test_name} ${lib_name})
-  add_dependencies(${test_name} gtest)
-  add_dependencies(${test_name} gtest_main)
-endfunction()
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
+    install(TARGETS ${lib_name}
+      LIBRARY DESTINATION lib
+      RUNTIME DESTINATION bin
+    )
 
-make_test(XpuptiProfilerTest.cpp)
-make_test(XpuptiScopeProfilerTest.cpp)
+    ExternalProject_Add(${test_name}
+      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
+      CMAKE_ARGS -DPROJECT_NAME=${test_name}
+      CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
+      CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
+      CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+      BUILD_ALWAYS TRUE
+    )
+
+    add_dependencies(${test_name} ${lib_name})
+    add_dependencies(${test_name} gtest)
+    add_dependencies(${test_name} gtest_main)
+  endfunction()
+
+  make_test(XpuptiProfilerTest.cpp)
+  make_test(XpuptiScopeProfilerTest.cpp)
+endif()

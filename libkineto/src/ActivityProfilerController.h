@@ -36,7 +36,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   ActivityProfilerController(const ActivityProfilerController&) = delete;
   ActivityProfilerController& operator=(const ActivityProfilerController&) = delete;
 
-  ~ActivityProfilerController();
+  ~ActivityProfilerController() override;
 
 #if !USE_GOOGLE_LOG
   static void addLoggerCollectorFactory(const std::function<std::shared_ptr<LoggerCollector>()>& factory);
@@ -50,7 +50,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   // ConfigLoader::ConfigHandler callback API.
   bool canAcceptConfig() override;
-  void acceptConfig(const Config& config) override;
+  bool acceptConfig(const Config& config) override;
 
   // These API are used for On-Demand Tracing.
   void asyncScheduleTrace(const Config& config);

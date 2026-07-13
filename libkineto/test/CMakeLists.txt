@@ -33,18 +33,33 @@ target_link_libraries(ConfigTest PRIVATE
 gtest_discover_tests(ConfigTest)
 
 # ActivityProfilerControllerTest
-add_executable(ActivityProfilerControllerTest ActivityProfilerControllerTest.cpp)
+add_executable(ActivityProfilerControllerTest
+    ActivityProfilerControllerTest.cpp
+    TestUtils.cpp)
 target_link_libraries(ActivityProfilerControllerTest PRIVATE
     gtest_main
     kineto_base kineto_api
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ActivityProfilerControllerTest)
 
+# AsyncActivityProfilerHandlerTest
+add_executable(AsyncActivityProfilerHandlerTest
+    AsyncActivityProfilerHandlerTest.cpp
+    TestUtils.cpp)
+target_link_libraries(AsyncActivityProfilerHandlerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(AsyncActivityProfilerHandlerTest)
+
 if(KINETO_BACKEND STREQUAL "cuda")
 # CuptiActivityProfilerTest
 add_executable(CuptiActivityProfilerTest
     CuptiActivityProfilerTest.cpp
-    MockActivitySubProfiler.cpp)
+    MockActivitySubProfiler.cpp
+    MockCpuActivityBuffer.cpp
+    TestUtils.cpp)
 target_link_libraries(CuptiActivityProfilerTest PRIVATE
     gtest_main
     gmock
@@ -84,7 +99,9 @@ if(KINETO_BACKEND STREQUAL "rocm")
 # RocmActivityProfilerTest
 add_executable(RocmActivityProfilerTest
     RocmActivityProfilerTest.cpp
-    MockActivitySubProfiler.cpp)
+    MockActivitySubProfiler.cpp
+    MockCpuActivityBuffer.cpp
+    TestUtils.cpp)
 target_compile_definitions(RocmActivityProfilerTest PRIVATE
     "__HIP_PLATFORM_HCC__"
     "__HIP_PLATFORM_AMD__")
@@ -153,3 +170,16 @@ target_include_directories(GenericTraceActivityMetadataTest PRIVATE
     "${LIBKINETO_DIR}/include"
     "${LIBKINETO_DIR}/src")
 gtest_discover_tests(GenericTraceActivityMetadataTest)
+
+# OutputJsonTest
+add_executable(OutputJsonTest OutputJsonTest.cpp)
+target_link_libraries(OutputJsonTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(OutputJsonTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(OutputJsonTest)

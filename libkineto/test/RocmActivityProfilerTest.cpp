@@ -45,22 +45,12 @@
 
 #include "src/Logger.h"
 #include "test/MockActivitySubProfiler.h"
+#include "test/MockCpuActivityBuffer.h"
+#include "test/TestUtils.h"
 
 using namespace std::chrono;
 using namespace KINETO_NAMESPACE;
-
-const std::string kParamCommsCallName = "record_param_comms";
-static constexpr auto kCollectiveName = "Collective name";
-static constexpr auto kDtype = "dtype";
-static constexpr auto kInMsgNelems = "In msg nelems";
-static constexpr auto kOutMsgNelems = "Out msg nelems";
-static constexpr auto kInSplit = "In split size";
-static constexpr auto kOutSplit = "Out split size";
-static constexpr auto kGroupSize = "Group size";
-static constexpr const char* kProcessGroupName = "Process Group Name";
-static constexpr const char* kProcessGroupDesc = "Process Group Description";
-static constexpr const char* kGroupRanks = "Process Group Ranks";
-static constexpr int32_t kTruncatLength = 30;
+using namespace libkineto::test;
 
 // API ID macros for rocprofiler-sdk
 #define HIP_LAUNCH_KERNEL ROCPROFILER_HIP_RUNTIME_API_ID_hipLaunchKernel
@@ -70,17 +60,6 @@ static constexpr int32_t kTruncatLength = 30;
 #define RUNTIME_DOMAIN ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API
 
 namespace {
-const TraceSpan& defaultTraceSpan() {
-  static TraceSpan span(0, 0, "Unknown", "");
-  return span;
-}
-
-void createTempTraceFile(char* filename) {
-  const int fd = mkstemps(filename, 5);
-  ASSERT_GE(fd, 0) << "mkstemps failed for " << filename;
-  close(fd);
-}
-
 bool isAsyncCopy(const rocprofAsyncRow& async) {
   return async.domain == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY;
 }
@@ -132,35 +111,6 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
   std::optional<int64_t> hsaQueue;
 };
 } // namespace
-
-// Provides ability to easily create a test CPU-side ops
-struct MockCpuActivityBuffer : public CpuTraceBuffer {
-  MockCpuActivityBuffer(int64_t startTime, int64_t endTime) {
-    span = TraceSpan(startTime, endTime, "Test trace");
-    gpuOpCount = 0;
-  }
-
-  void addOp(
-      std::string name,
-      int64_t startTime,
-      int64_t endTime,
-      int64_t correlation,
-      const std::unordered_map<std::string, std::string>& metadataMap = {}) {
-    GenericTraceActivity op(span, ActivityType::CPU_OP, name);
-    op.startTime = startTime;
-    op.endTime = endTime;
-    op.device = systemThreadId();
-    op.resource = systemThreadId();
-    op.id = correlation;
-
-    for (const auto& [key, val] : metadataMap) {
-      op.addMetadata(key, val);
-    }
-
-    emplace_activity(std::move(op));
-    span.opCount++;
-  }
-};
 
 // Provides ability to easily create test ROCm ops using the shared types
 // from RocLogger.h (rocprofKernelRow, rocprofAsyncRow, etc.)
@@ -359,22 +309,6 @@ class RocmActivityProfilerTest : public ::testing::Test {
   ActivityLoggerFactory loggerFactory;
 };
 
-void checkTracefile(const char* filename) {
-#ifdef __linux__
-  // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
-  if (!fd) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
-  close(fd);
-#endif
-}
-
 TEST_F(RocmActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging
   std::vector<std::string> log_modules({"RocmActivityProfiler.cpp"});
@@ -460,19 +394,9 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
   EXPECT_EQ(resourceIds[2], 2);
 
 #ifdef __linux__
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  trace.save(filename);
-  // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
-  if (!fd) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  trace.save(tmpTrace.path());
+  checkTracefile(tmpTrace.c_str());
 #endif
 }
 
@@ -559,11 +483,10 @@ TEST_F(
   EXPECT_EQ(memcpyActivity->resourceId(), 1);
 
 #ifdef __linux__
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  trace.save(filename);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  trace.save(tmpTrace.path());
 
-  std::ifstream file(filename);
+  std::ifstream file(tmpTrace.path());
   ASSERT_TRUE(file.is_open());
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -801,13 +724,12 @@ TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  LOG(INFO) << "Logging to tmp file: " << filename;
-  trace.save(filename);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  LOG(INFO) << "Logging to tmp file: " << tmpTrace.path();
+  trace.save(tmpTrace.path());
 
   // Check that the saved JSON file can be loaded and deserialized
-  std::ifstream file(filename);
+  std::ifstream file(tmpTrace.path());
   if (!file.is_open()) {
     throw std::runtime_error("Failed to open the trace JSON file.");
   }
@@ -818,17 +740,6 @@ TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Convert the JSON object to a string and check
   // if the substring exists
   std::string jsonString = jsonData.dump();
-  auto countSubstrings = [](const std::string& source,
-                            const std::string& substring) {
-    size_t count = 0;
-    size_t pos = source.find(substring);
-    while (pos != std::string::npos) {
-      ++count;
-      pos = source.find(substring, pos + substring.length());
-    }
-    return count;
-  };
-
   // Check that the metadata fields are present in the JSON file
   EXPECT_EQ(2, countSubstrings(jsonString, "65664"));
   EXPECT_EQ(2, countSubstrings(jsonString, kInMsgNelems));
@@ -955,9 +866,8 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
   profiler.startTrace(start_time);
   profiler.stopTrace(start_time + nanoseconds(duration_ns));
 
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  LOG(INFO) << "Logging to tmp file " << filename;
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  LOG(INFO) << "Logging to tmp file " << tmpTrace.path();
 
   // process trace
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
@@ -968,23 +878,13 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
   profiler.reset();
 
   ActivityTrace trace(std::move(logger), loggerFactory);
-  trace.save(filename);
+  trace.save(tmpTrace.path());
   const auto& traced_activites = trace.activities();
 
   // Test we have all the events
   EXPECT_EQ(traced_activites->size(), test_activities.size());
 
-  // Check that the expected file was written and that it has some content
-  int fd = open(filename, O_RDONLY);
-  if (!fd) {
-    perror(filename);
-  }
-  EXPECT_TRUE(fd);
-
-  // Should expect at least 100 bytes
-  struct stat buf{};
-  fstat(fd, &buf);
-  EXPECT_GT(buf.st_size, 100);
+  checkTracefile(tmpTrace.c_str());
 }
 
 TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {
@@ -1031,13 +931,12 @@ TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {
 
 #ifdef __linux__
   // Test saved output can be loaded as JSON
-  char filename[] = "/tmp/libkineto_testXXXXXX.json";
-  createTempTraceFile(filename);
-  LOG(INFO) << "Logging to tmp file: " << filename;
-  trace.save(filename);
+  auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
+  LOG(INFO) << "Logging to tmp file: " << tmpTrace.path();
+  trace.save(tmpTrace.path());
 
   // Check that the saved JSON file can be loaded and deserialized
-  std::ifstream file(filename);
+  std::ifstream file(tmpTrace.path());
   if (!file.is_open()) {
     throw std::runtime_error("Failed to open the trace JSON file.");
   }

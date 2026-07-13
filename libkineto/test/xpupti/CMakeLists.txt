@@ -23,6 +23,11 @@ add_executable(XpuptiActivityHandlersTest XpuptiActivityHandlersTest.cpp)
 target_link_libraries(XpuptiActivityHandlersTest PRIVATE ${LINK_LIBRARIES})
 gtest_add_tests(TARGET XpuptiActivityHandlersTest)
 
+# Hardware-free test for the CPU->GPU flow-link allowlist.
+add_executable(XpuptiFlowCorrelationTest XpuptiFlowCorrelationTest.cpp)
+target_link_libraries(XpuptiFlowCorrelationTest PRIVATE ${LINK_LIBRARIES})
+gtest_discover_tests(XpuptiFlowCorrelationTest)
+
 include(ExternalProject)
 function(make_test test_file)
   get_filename_component(test_name "${test_file}" NAME_WE)

@@ -22,7 +22,7 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
 
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
-  if (!singleton().externalCorrelationEnabled_) {
+  if (!externalCorrelationEnabled_) {
     return;
   }
   switch (type) {
@@ -39,7 +39,7 @@ void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
 
 void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 #ifdef HAS_XPUPTI
-  if (!singleton().externalCorrelationEnabled_) {
+  if (!externalCorrelationEnabled_) {
     return;
   }
   switch (type) {

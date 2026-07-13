@@ -201,17 +201,19 @@ void ActivityProfilerController::logInvariantViolation(
   }
 }
 
-// Async-only functions
+// ConfigLoader::ConfigHandler callback API.
 bool ActivityProfilerController::canAcceptConfig() {
   return !isActive();
 }
-void ActivityProfilerController::acceptConfig(const Config& config) {
+bool ActivityProfilerController::acceptConfig(const Config& config) {
   if (isActive()) {
     logRequestCancellation(config, "Ignored request - profiler busy");
-    return;
+    return false;
   }
-  asyncHandler_->acceptConfig(config);
+  return asyncHandler_->acceptConfig(config);
 }
+
+// These API are used for On-Demand Tracing.
 void ActivityProfilerController::asyncScheduleTrace(const Config& config) {
   if (isActive()) {
     logRequestCancellation(config, "Ignored request - profiler busy");
@@ -223,7 +225,7 @@ void ActivityProfilerController::asyncStep() {
   asyncHandler_->step();
 }
 
-// Sync-only functions
+// These API are used for Synchronous Tracing.
 void ActivityProfilerController::syncPrepareTrace(const Config& config) {
   // Sync-trace requests preempt any active trace.
   asyncHandler_->cancel();

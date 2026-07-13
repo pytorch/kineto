@@ -85,6 +85,7 @@ def get_libkineto_public_headers():
         "include/ILoggerObserver.h",
         "include/ITraceActivity.h",
         "include/LoggingAPI.h",
+        "include/MetadataFieldCatalog.h",
         "include/TraceSpan.h",
         "include/ThreadUtil.h",
         "include/TypedMetadata.h",

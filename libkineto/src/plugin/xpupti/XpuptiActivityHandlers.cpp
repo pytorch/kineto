@@ -214,8 +214,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   if constexpr (handleRuntimeActivities) {
     trace_activity->device = activity->_process_id;
     trace_activity->resource = activity->_thread_id;
-    trace_activity->flow.start =
-        (correlateRuntimeOps_.count(trace_activity->name()) > 0);
+    trace_activity->flow.start = startsFlow(activityType);
   } else {
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
     trace_activity->resource = activity->_sycl_queue_id;

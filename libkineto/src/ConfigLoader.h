@@ -37,7 +37,11 @@ class ConfigLoader {
   struct ConfigHandler {
     virtual ~ConfigHandler() = default;
     virtual bool canAcceptConfig() = 0;
-    virtual void acceptConfig(const Config& cfg) = 0;
+    // Returns true if the handler accepted the config for scheduling, false if
+    // it declined. Acceptance means the request was queued, NOT that profiling
+    // will run: a queued request can still be dropped later on the profiler
+    // thread (e.g. canStart() fails, or GPU buffers overflow during warmup).
+    virtual bool acceptConfig(const Config& cfg) = 0;
   };
 
   void addHandler(ConfigKind kind, ConfigHandler* handler) {

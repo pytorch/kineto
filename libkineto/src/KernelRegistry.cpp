@@ -20,7 +20,7 @@ void KernelRegistry::recordKernel(
     uint32_t deviceId,
     const std::string& kernelName,
     uint64_t correlationId) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::scoped_lock guard(mutex_);
   deviceKernelMap_[deviceId].emplace_back(kernelName, correlationId);
 }
 
@@ -29,7 +29,7 @@ void KernelRegistry::recordKernel(
 std::optional<KernelRegistry::KernelInfoTy> KernelRegistry::getKernelInfo(
     uint32_t deviceId,
     size_t idx) const {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::scoped_lock guard(mutex_);
 
   auto it = deviceKernelMap_.find(deviceId);
   if (it != deviceKernelMap_.end()) {
@@ -44,7 +44,7 @@ std::optional<KernelRegistry::KernelInfoTy> KernelRegistry::getKernelInfo(
 /// Return the number of kernels recorded for a specific device with
 /// 'deviceId'.
 size_t KernelRegistry::getNumKernels(uint32_t deviceId) const {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::scoped_lock guard(mutex_);
 
   auto it = deviceKernelMap_.find(deviceId);
   if (it != deviceKernelMap_.end()) {
@@ -55,7 +55,7 @@ size_t KernelRegistry::getNumKernels(uint32_t deviceId) const {
 }
 
 void KernelRegistry::clear() {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::scoped_lock guard(mutex_);
   deviceKernelMap_.clear();
 }
 

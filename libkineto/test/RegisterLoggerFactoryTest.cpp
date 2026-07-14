@@ -19,6 +19,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "include/libkineto.h"
 #include "include/output_base.h"
+#include "src/ActivityBuffers.h"
 #include "src/ActivityLoggerFactory.h"
 #include "src/ActivityProfilerController.h"
 #include "src/Logger.h"

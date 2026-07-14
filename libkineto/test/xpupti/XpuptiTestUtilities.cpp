@@ -8,6 +8,7 @@
 
 #include "XpuptiTestUtilities.h"
 
+#include "src/ActivityBuffers.h"
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"
 
 #include <libkineto.h>

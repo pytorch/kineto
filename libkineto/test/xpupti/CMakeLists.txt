@@ -19,53 +19,62 @@ add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
 target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiScopeProfilerConfigTest)
 
+add_executable(XpuptiActivityHandlersTest XpuptiActivityHandlersTest.cpp)
+target_link_libraries(XpuptiActivityHandlersTest PRIVATE ${LINK_LIBRARIES})
+gtest_add_tests(TARGET XpuptiActivityHandlersTest)
+
 # Hardware-free test for the CPU->GPU flow-link allowlist.
 add_executable(XpuptiFlowCorrelationTest XpuptiFlowCorrelationTest.cpp)
 target_link_libraries(XpuptiFlowCorrelationTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiFlowCorrelationTest)
 
-include(ExternalProject)
+# These tests build a .so shared library and rely on --export-dynamic runtime
+# symbol resolution (ELF/GNU linker), so they only build on Linux.
+if(NOT WIN32)
+  include(ExternalProject)
 
-function(make_test test_file)
-  get_filename_component(test_name "${test_file}" NAME_WE)
-  set(lib_name "${test_name}Lib")
-  add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
-  # Do not link gtest into the shared library to avoid duplicate gtest globals
-  # (gtest is statically linked into the executable; the shared library resolves
-  #  gtest symbols from the executable at runtime via --export-dynamic).
-  set(LIB_LINK_LIBRARIES
-    kineto_base
-    kineto_api
-    $<BUILD_INTERFACE:fmt::fmt-header-only>
-    ${SYCL_LIBRARY}
-    ${PTI_LIBRARY}
-  )
-  target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
-  target_include_directories(${lib_name} PRIVATE
-    $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
+  function(make_test test_file)
+    get_filename_component(test_name "${test_file}" NAME_WE)
+    set(lib_name "${test_name}Lib")
+    add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
 
-  set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # Do not link gtest into the shared library to avoid duplicate gtest globals
+    # (gtest is statically linked into the executable; the shared library resolves
+    # gtest symbols from the executable at runtime via --export-dynamic).
+    set(LIB_LINK_LIBRARIES
+      kineto_base
+      kineto_api
+      $<BUILD_INTERFACE:fmt::fmt-header-only>
+      ${SYCL_LIBRARY}
+      ${PTI_LIBRARY}
+    )
+    target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
+    target_include_directories(${lib_name} PRIVATE
+      $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
 
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-  install(TARGETS ${lib_name}
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-  )
+    set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  ExternalProject_Add(${test_name}
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-    CMAKE_ARGS -DPROJECT_NAME=${test_name}
-    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
-    CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
-    CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-    BUILD_ALWAYS TRUE
-  )
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
+    install(TARGETS ${lib_name}
+      LIBRARY DESTINATION lib
+      RUNTIME DESTINATION bin
+    )
 
-  add_dependencies(${test_name} ${lib_name})
-  add_dependencies(${test_name} gtest)
-  add_dependencies(${test_name} gtest_main)
-endfunction()
+    ExternalProject_Add(${test_name}
+      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
+      CMAKE_ARGS -DPROJECT_NAME=${test_name}
+      CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
+      CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
+      CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+      BUILD_ALWAYS TRUE
+    )
 
-make_test(XpuptiProfilerTest.cpp)
-make_test(XpuptiScopeProfilerTest.cpp)
+    add_dependencies(${test_name} ${lib_name})
+    add_dependencies(${test_name} gtest)
+    add_dependencies(${test_name} gtest_main)
+  endfunction()
+
+  make_test(XpuptiProfilerTest.cpp)
+  make_test(XpuptiScopeProfilerTest.cpp)
+endif()

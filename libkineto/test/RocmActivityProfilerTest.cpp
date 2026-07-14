@@ -28,6 +28,7 @@
 #endif
 
 #include "include/Config.h"
+#include "include/MetadataFieldCatalog.h"
 #include "include/libkineto.h"
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
@@ -35,7 +36,6 @@
 #include "src/RocmActivityProfiler.h"
 #include "src/RocmStreamQueue.h"
 
-#include "src/RocmMetadataFields.h"
 #include "src/RocprofActivity.h"
 #include "src/RocprofActivityApi.h"
 #include "src/RocprofLogger.h"

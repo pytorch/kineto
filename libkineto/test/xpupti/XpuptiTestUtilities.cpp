@@ -10,6 +10,7 @@
 
 #include "src/ActivityBuffers.h"
 #include "src/plugin/xpupti/XpuptiActivityProfiler.h"
+#include "test/xpupti/compute/XpuptiScopeProfilerCompute.h"
 
 #include <libkineto.h>
 
@@ -206,7 +207,6 @@ RunProfilerTest(
 
   // A 16x16 GEMM is enough to exercise every activity type while keeping the
   // simulator-based CI runtime small.
-  void ComputeOnXpu(unsigned size, unsigned repeatCount);
   ComputeOnXpu(16, repeatCount);
 
   pSession->stop();

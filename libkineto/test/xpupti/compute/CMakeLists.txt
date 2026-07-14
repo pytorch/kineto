@@ -4,69 +4,36 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-include(GoogleTest)
 cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
-project(${PROJECT_NAME} LANGUAGES CXX)
+project(xpupti_compute LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-fsycl" has_sycl)
-
 if(NOT has_sycl)
-  message(WARNING "${PROJECT_NAME} requires a sycl compatible compiler")
-  return()
+  message(FATAL_ERROR "xpupti_compute requires a SYCL-capable compiler (icpx -fsycl)")
 endif()
 
-function(find_libraries)
-  foreach(lib IN LISTS ARGN)
-    find_library(_FIND_LIB
-      NAMES ${lib}
-      PATHS ${CMAKE_PARENT_BINARY_DIR}
-      PATH_SUFFIXES lib/${CMAKE_BUILD_TYPE} lib
-      NO_DEFAULT_PATH
-    )
+# Kernel-only shared library. The SYCL compiler finalizes the device image
+# inside the library, so the host-compiled (GCC/MSVC) test executables can link
+# it without seeing any SYCL. ComputeOnXpu is exported via the API macro in the
+# header (dllexport on Windows / default visibility on ELF) - no need for
+# WINDOWS_EXPORT_ALL_SYMBOLS or an exe<->dll symbol cycle.
+add_library(xpupti_compute SHARED XpuptiScopeProfilerCompute.cpp)
+target_compile_options(xpupti_compute PRIVATE -fsycl)
+target_link_options(xpupti_compute PRIVATE -fsycl)
 
-    if(NOT _FIND_LIB)
-      message(FATAL_ERROR "Library ${lib} not found")
-    endif()
-
-    set(${lib}_FOR_XPU_PATH "${_FIND_LIB}" PARENT_SCOPE)
-    unset(_FIND_LIB CACHE)
-  endforeach()
-endfunction()
-
-find_libraries(gtest gtest_main)
-
-find_package(Threads REQUIRED)
-
-find_library(_LINK_LIB
-  NAMES ${LINK_LIBRARY_NAME}
-  PATHS ${LINK_LIBRARY_DIR}
-  PATH_SUFFIXES ${CMAKE_BUILD_TYPE} ""
-  NO_DEFAULT_PATH
-)
-if(NOT _LINK_LIB)
-  message(FATAL_ERROR "Library ${LINK_LIBRARY_NAME} not found in ${LINK_LIBRARY_DIR}")
-endif()
-
-add_executable(${PROJECT_NAME} XpuptiScopeProfilerCompute.cpp)
-target_compile_options(${PROJECT_NAME} PRIVATE -fsycl)
-target_link_options(${PROJECT_NAME} PRIVATE -fsycl)
-# Export gtest symbols so the shared library can resolve them at runtime
+# RPATH is a POSIX ELF concept; on Windows the loader finds the DLL via the
+# executable directory (where it is installed next to the tests), so guard it.
 if(NOT WIN32)
-  target_link_options(${PROJECT_NAME} PRIVATE -Wl,--export-dynamic)
+  set_target_properties(xpupti_compute PROPERTIES INSTALL_RPATH "$ORIGIN")
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  ${gtest_main_FOR_XPU_PATH}
-  ${gtest_FOR_XPU_PATH}
-  ${_LINK_LIB}
-  Threads::Threads
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN")
-
-gtest_discover_tests(${PROJECT_NAME})
-
-install(TARGETS ${PROJECT_NAME} DESTINATION .)
+# A SHARED library yields a runtime .dll (RUNTIME) + import .lib (ARCHIVE) on
+# Windows, and the .so (LIBRARY) on ELF. Install all three so the consumer can
+# link and load on either platform.
+install(TARGETS xpupti_compute
+  RUNTIME DESTINATION .
+  LIBRARY DESTINATION .
+  ARCHIVE DESTINATION .)

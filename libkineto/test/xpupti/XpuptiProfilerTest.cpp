@@ -76,7 +76,7 @@ std::unique_ptr<KN::CpuTraceBuffer> runGpuUserAnnotationCase(
   auto expectedTypes = expectedGpuUserAnnotationTypes();
 
   static const KN::TraceSpan kCpuSpan(0, 0, "cpu_span", "");
-  KN::GenericTraceActivity cpuAct(
+  static KN::GenericTraceActivity cpuAct(
       kCpuSpan, KN::ActivityType::CPU_OP, "user_function");
   cpuAct.id = kUserCorrId;
 

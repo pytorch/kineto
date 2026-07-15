@@ -15,13 +15,13 @@
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "ApproximateClock.h"
-#include "CudaMetadataFields.h"
 #include "CuptiCbidRegistry.h"
 #include "Demangle.h"
 #include "DeviceProperties.h"
 #include "GenericTraceActivity.h"
 #include "ITraceActivity.h"
 #include "Logger.h"
+#include "MetadataFieldCatalog.h"
 #include "ThreadUtil.h"
 #include "TypedMetadataJson.h"
 #include "cupti_strings.h"

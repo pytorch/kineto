@@ -12,7 +12,7 @@
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
 #include "GenericTraceActivity.h"
 #include "ITraceActivity.h"
-#include "RocmMetadataFields.h"
+#include "MetadataFieldCatalog.h"
 #include "RocprofLogger.h"
 #include "ThreadUtil.h"
 

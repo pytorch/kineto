@@ -9,7 +9,10 @@
 #include "XpuptiActivityApi.h"
 
 #include <chrono>
+#include <filesystem>
 #include <stdexcept>
+
+#include "Logger.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -157,6 +160,31 @@ void XpuptiActivityApi::bufferCompleted(
   allocatedGpuTraceBuffers_.erase(it);
 }
 
+namespace {
+void warnIfIttNotifyLibInvalid() noexcept {
+  const auto itt_collector_path_env = std::getenv("INTEL_LIBITTNOTIFY64");
+  if (itt_collector_path_env == nullptr) {
+    LOG(WARNING) << "ENV variable `INTEL_LIBITTNOTIFY64` not set. "
+                 << "XCCL host calls will not be collected.";
+    return;
+  }
+
+  const std::filesystem::path itt_collector_path(itt_collector_path_env);
+
+  if (itt_collector_path.is_relative()) {
+    LOG(WARNING) << "`INTEL_LIBITTNOTIFY64` contains a relative path, "
+                 << "an absolute path is recommended.";
+  }
+
+  std::error_code ec;
+  if (not std::filesystem::exists(itt_collector_path, ec)) {
+    LOG(WARNING)
+        << "The library pointed to by `INTEL_LIBITTNOTIFY64` does not exist. "
+        << "XCCL host calls will not be collected.";
+  }
+}
+} // namespace
+
 void XpuptiActivityApi::enableXpuptiActivities(
     const std::set<ActivityType>& selected_activities) {
   XPUPTI_CALL(ptiViewSetCallbacks(
@@ -201,6 +229,11 @@ void XpuptiActivityApi::enableXpuptiActivities(
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
 
+      case ActivityType::COLLECTIVE_COMM:
+        warnIfIttNotifyLibInvalid();
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COMMUNICATION));
+        break;
+
       default:
         break;
     }
@@ -237,6 +270,10 @@ void XpuptiActivityApi::disablePtiActivities(
 
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+      case ActivityType::COLLECTIVE_COMM:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COMMUNICATION));
         break;
 
       default:

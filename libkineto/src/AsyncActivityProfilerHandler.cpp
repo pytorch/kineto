@@ -83,7 +83,7 @@ bool AsyncActivityProfilerHandler::scheduleTrace(const Config& config) {
   // Common scheduling logic
   bool newConfigScheduled = false;
   if (!asyncRequestConfig_) {
-    std::lock_guard<std::mutex> lock(asyncConfigLock_);
+    std::scoped_lock lock(asyncConfigLock_);
     if (!asyncRequestConfig_) {
       asyncRequestConfig_ = std::move(configToSchedule);
       newConfigScheduled = true;
@@ -121,7 +121,7 @@ void AsyncActivityProfilerHandler::step() {
 
   // Perform Double-checked locking to reduce overhead of taking lock.
   if (asyncRequestConfig_ && !isAsyncActive()) {
-    std::lock_guard<std::mutex> lock(asyncConfigLock_);
+    std::scoped_lock lock(asyncConfigLock_);
     auto now = system_clock::now();
     if (asyncRequestConfig_ && !isAsyncActive() &&
         shouldActivateIterationConfig(currentIter)) {
@@ -224,7 +224,7 @@ void AsyncActivityProfilerHandler::profilerLoop() {
 
     // Perform Double-checked locking to reduce overhead of taking lock.
     if (asyncRequestConfig_ && !isAsyncActive()) {
-      std::lock_guard<std::mutex> lock(asyncConfigLock_);
+      std::scoped_lock lock(asyncConfigLock_);
       if (asyncRequestConfig_ && !isAsyncActive() &&
           shouldActivateTimestampConfig(now)) {
         activateConfig(now);
@@ -274,7 +274,7 @@ void AsyncActivityProfilerHandler::memoryProfilerLoop() {
   while (!stopRunloop_) {
     // Perform Double-checked locking to reduce overhead of taking lock.
     if (asyncRequestConfig_ && !isAsyncActive()) {
-      std::lock_guard<std::mutex> lock(asyncConfigLock_);
+      std::scoped_lock lock(asyncConfigLock_);
       if (asyncRequestConfig_ && !isAsyncActive() &&
           asyncRequestConfig_->memoryProfilerEnabled()) {
         logger_ = ActivityProfilerController::makeLogger(*asyncRequestConfig_);
@@ -400,8 +400,7 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
           // twice, which leads to an unrecoverable ::c10:Error at
           // disableProfiler
           if (!collectTraceThread_ && !getCollectTraceState()) {
-            std::lock_guard<std::recursive_mutex> guard(
-                collectTraceStateMutex_);
+            std::scoped_lock guard(collectTraceStateMutex_);
             collectTraceThread_ = std::make_unique<std::thread>(
                 &AsyncActivityProfilerHandler::collectTrace,
                 this,
@@ -412,12 +411,12 @@ time_point<system_clock> AsyncActivityProfilerHandler::performRunLoopStep(
         }
         // this is executed in profilerThread_
         {
-          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+          std::scoped_lock guard(collectTraceStateMutex_);
           isCollectingTrace_ = true;
         }
         collectTrace(collection_done, now);
         {
-          std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+          std::scoped_lock guard(collectTraceStateMutex_);
           isCollectingTrace_ = false;
         }
       } else if (profiler_.isProfilingByIteration()) {
@@ -484,7 +483,7 @@ void AsyncActivityProfilerHandler::performMemoryLoop(
 }
 
 bool AsyncActivityProfilerHandler::getCollectTraceState() {
-  std::lock_guard<std::recursive_mutex> guard(collectTraceStateMutex_);
+  std::scoped_lock guard(collectTraceStateMutex_);
   return isCollectingTrace_;
 }
 
@@ -497,7 +496,7 @@ void AsyncActivityProfilerHandler::ensureCollectTraceDone() {
 
 void AsyncActivityProfilerHandler::cancel() {
   {
-    std::lock_guard<std::mutex> lock(asyncConfigLock_);
+    std::scoped_lock lock(asyncConfigLock_);
     asyncRequestConfig_ = nullptr;
   }
   if (!isAsyncActive()) {

@@ -55,8 +55,4 @@ KINETO_USE_SCCACHE=0
 # shellcheck disable=SC2034
 DESELECTED_TESTS=(
   test/profiler/test_profiler.py::TestExperimentalUtils::test_fuzz_symbolize
-
-  # https://github.com/pytorch/kineto/issues/1429
-  test/profiler/test_profiler.py::TestProfilerDeviceCUDA
-  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
 )

@@ -90,6 +90,71 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
   }
 };
 
+// --- Communication Activity Tests ---
+
+TEST_F(XpuptiActivityHandlersTest, CommunicationActivityHasXcclPrefix) {
+  pti_view_record_comms comms_record{};
+  comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
+  comms_record._name = "allreduce";
+  comms_record._start_timestamp = 100;
+  comms_record._end_timestamp = 200;
+  comms_record._process_id = 1;
+  comms_record._thread_id = 42;
+  comms_record._communicator_id = 7;
+
+  mockApi_.records.push_back(
+      reinterpret_cast<const pti_view_record_base*>(&comms_record));
+
+  auto traceBuffer = processAndGetTrace();
+  ASSERT_EQ(traceBuffer->activities.size(), 1);
+
+  auto& activity = *traceBuffer->activities[0];
+  EXPECT_EQ(activity.name(), "xccl::allreduce");
+  EXPECT_EQ(activity.type(), ActivityType::COLLECTIVE_COMM);
+}
+
+TEST_F(XpuptiActivityHandlersTest, CommunicationActivityFields) {
+  pti_view_record_comms comms_record{};
+  comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
+  comms_record._name = "broadcast";
+  comms_record._start_timestamp = 300;
+  comms_record._end_timestamp = 500;
+  comms_record._process_id = 10;
+  comms_record._thread_id = 77;
+  comms_record._communicator_id = 99;
+
+  mockApi_.records.push_back(
+      reinterpret_cast<const pti_view_record_base*>(&comms_record));
+
+  auto traceBuffer = processAndGetTrace();
+  ASSERT_EQ(traceBuffer->activities.size(), 1);
+
+  auto& activity = *traceBuffer->activities[0];
+  EXPECT_EQ(activity.timestamp(), 300);
+  EXPECT_EQ(activity.duration(), 200);
+  EXPECT_EQ(activity.deviceId(), 10);
+  EXPECT_EQ(activity.resourceId(), 77);
+  EXPECT_EQ(activity.getThreadId(), 77);
+  EXPECT_EQ(activity.getMetadataValue("Communicator_id"), "99");
+}
+
+TEST_F(XpuptiActivityHandlersTest, CommunicationActivityOutOfRange) {
+  pti_view_record_comms comms_record{};
+  comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
+  comms_record._name = "allgather";
+  comms_record._start_timestamp = 2000;
+  comms_record._end_timestamp = 3000;
+  comms_record._process_id = 1;
+  comms_record._thread_id = 1;
+  comms_record._communicator_id = 1;
+
+  mockApi_.records.push_back(
+      reinterpret_cast<const pti_view_record_base*>(&comms_record));
+
+  auto traceBuffer = processAndGetTrace(100, 500);
+  EXPECT_EQ(traceBuffer->activities.size(), 0);
+}
+
 // --- Synchronization Activity Tests ---
 
 TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityDeviceIsNegativeOne) {
@@ -206,4 +271,45 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityOutOfRange) {
 
   auto traceBuffer = processAndGetTrace(100, 500);
   EXPECT_EQ(traceBuffer->activities.size(), 0);
+}
+
+// --- Mixed dispatch test ---
+
+TEST_F(XpuptiActivityHandlersTest, MixedCommunicationAndSynchronization) {
+  pti_view_record_comms comms_record{};
+  comms_record._view_kind._view_kind = PTI_VIEW_COMMUNICATION;
+  comms_record._name = "reduce_scatter";
+  comms_record._start_timestamp = 100;
+  comms_record._end_timestamp = 200;
+  comms_record._process_id = 1;
+  comms_record._thread_id = 10;
+  comms_record._communicator_id = 5;
+
+  pti_view_record_synchronization sync_record{};
+  sync_record._view_kind._view_kind = PTI_VIEW_DEVICE_SYNCHRONIZATION;
+  sync_record._synch_type = PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION;
+  sync_record._start_timestamp = 300;
+  sync_record._end_timestamp = 400;
+  sync_record._thread_id = 20;
+  sync_record._correlation_id = 2;
+  sync_record._api_id = 84; // zeEventHostSynchronize_id
+  sync_record._api_group = static_cast<pti_api_group_id>(1); // PTI_API_GROUP_LEVELZERO
+
+  mockApi_.records.push_back(
+      reinterpret_cast<const pti_view_record_base*>(&comms_record));
+  mockApi_.records.push_back(
+      reinterpret_cast<const pti_view_record_base*>(&sync_record));
+
+  auto traceBuffer = processAndGetTrace();
+  ASSERT_EQ(traceBuffer->activities.size(), 2);
+
+  auto& comms_activity = *traceBuffer->activities[0];
+  EXPECT_EQ(comms_activity.name(), "xccl::reduce_scatter");
+  EXPECT_EQ(comms_activity.type(), ActivityType::COLLECTIVE_COMM);
+
+  auto& sync_activity = *traceBuffer->activities[1];
+  EXPECT_EQ(sync_activity.deviceId(), -1);
+  EXPECT_EQ(sync_activity.type(), ActivityType::XPU_SYNC);
+  EXPECT_EQ(
+      sync_activity.getMetadataValue("Type"), "GPU_BARRIER_EXECUTION");
 }

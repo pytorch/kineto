@@ -97,13 +97,13 @@ class HeartbeatMonitor {
 
   void profilerHeartbeat() {
     int32_t tid = systemThreadId();
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::scoped_lock lock(mutex_);
     profilerAliveMap_[tid]++;
   }
 
   void setPeriod(seconds period) {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::scoped_lock lock(mutex_);
       if (period_ == period) {
         return;
       }
@@ -263,7 +263,7 @@ void EventProfilerController::stopIfEnabled(CUcontext ctx) {
 }
 
 bool EventProfilerController::canAcceptConfig() {
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::scoped_lock guard(mutex_);
   return !newOnDemandConfig_;
 }
 
@@ -272,7 +272,7 @@ bool EventProfilerController::acceptConfig(const Config& config) {
     // Ignore - not for this profiler
     return false;
   }
-  std::lock_guard<std::mutex> guard(mutex_);
+  std::scoped_lock guard(mutex_);
   if (newOnDemandConfig_) {
     LOG(WARNING) << "On demand request already queued - ignoring new request";
     return false;
@@ -340,7 +340,7 @@ void EventProfilerController::profilerLoop() {
     }
 
     if (!profiler_->isOnDemandActive()) {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::scoped_lock lock(mutex_);
       if (newOnDemandConfig_) {
         VLOG(0) << "Received on-demand config, reconfiguring";
         on_demand_config = std::move(newOnDemandConfig_);

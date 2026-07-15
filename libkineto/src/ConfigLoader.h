@@ -45,13 +45,13 @@ class ConfigLoader {
   };
 
   void addHandler(ConfigKind kind, ConfigHandler* handler) {
-    std::lock_guard<std::mutex> lock(updateThreadMutex_);
+    std::scoped_lock lock(updateThreadMutex_);
     handlers_[kind].push_back(handler);
     startThread();
   }
 
   void removeHandler(ConfigKind kind, ConfigHandler* handler) {
-    std::lock_guard<std::mutex> lock(updateThreadMutex_);
+    std::scoped_lock lock(updateThreadMutex_);
     auto it = std::find(handlers_[kind].begin(), handlers_[kind].end(), handler);
     if (it != handlers_[kind].end()) {
       handlers_[kind].erase(it);
@@ -59,7 +59,7 @@ class ConfigLoader {
   }
 
   void notifyHandlers(const Config& cfg) {
-    std::lock_guard<std::mutex> lock(updateThreadMutex_);
+    std::scoped_lock lock(updateThreadMutex_);
     for (auto& key_val : handlers_) {
       for (ConfigHandler* handler : key_val.second) {
         handler->acceptConfig(cfg);
@@ -68,7 +68,7 @@ class ConfigLoader {
   }
 
   bool canHandlerAcceptConfig(ConfigKind kind) {
-    std::lock_guard<std::mutex> lock(updateThreadMutex_);
+    std::scoped_lock lock(updateThreadMutex_);
     for (ConfigHandler* handler : handlers_[kind]) {
       if (!handler->canAcceptConfig()) {
         return false;
@@ -78,7 +78,7 @@ class ConfigLoader {
   }
 
   std::unique_ptr<Config> getConfigCopy() {
-    std::lock_guard<std::mutex> lock(configLock_);
+    std::scoped_lock lock(configLock_);
     return config_->clone();
   }
 

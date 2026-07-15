@@ -297,6 +297,15 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   }
   trace_activity->log(logger);
 
+  // GPU_USER_ANNOTATION activities are synthetic spans that bracket all
+  // GPU work (kernels/memcpies) on a given (device, stream) pair that was
+  // enqueued while a user correlation ID was active.  We only do this for
+  // actual GPU activities (handleRuntimeActivities == false); CPU-side
+  // runtime events are skipped because they carry no device/resource info.
+  // For each (device, stream, user_external_id) key we either expand the
+  // existing annotation to cover the new activity's time range, or create a
+  // fresh GenericTraceActivity linked back to the CPU op.  The annotations
+  // are flushed to the logger at the end of processTrace().
   if constexpr (!handleRuntimeActivities) {
     if (activity_types_.count(ActivityType::GPU_USER_ANNOTATION)) {
       auto userIt = userCorrelationMap_.find(activity->_correlation_id);

@@ -11,9 +11,11 @@
 #include <fmt/format.h>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -107,6 +109,11 @@ class GenericTraceActivity : public ITraceActivity {
   void addMetadata(const MetadataField<T>& field, const V& value) {
     static_assert(std::is_same_v<T, std::decay_t<V>>, "value type must match field's declared type");
     metadataMap_.emplace(std::string{field.name}, TypedValue{value});
+  }
+
+  // Adds typed metadata dynamically by key. Catalog registration is not required.
+  void addTypedMetadata(std::string_view key, TypedValue value) {
+    metadataMap_.emplace(std::string{key}, std::move(value));
   }
 
   // The value is a plain string to be emitted quoted in JSON.

@@ -41,6 +41,29 @@ inline constexpr MetadataField<std::string> kModuleHierarchy{"Module Hierarchy"}
 inline constexpr MetadataField<std::vector<std::string>> kConcreteInputs{"Concrete Inputs"};
 } // namespace libkineto::GenericMetadataFields
 
+namespace libkineto::CollectiveMetadataFields {
+inline constexpr MetadataField<std::string> kCollectiveName{"Collective name"};
+inline constexpr MetadataField<std::string> kDtype{"dtype"};
+inline constexpr MetadataField<int64_t> kInMsgNelems{"In msg nelems"};
+inline constexpr MetadataField<int64_t> kOutMsgNelems{"Out msg nelems"};
+inline constexpr MetadataField<std::string> kInSplit{"In split size"};
+inline constexpr MetadataField<std::string> kOutSplit{"Out split size"};
+inline constexpr MetadataField<int64_t> kGlobalRankStart{"Global rank start"};
+inline constexpr MetadataField<int64_t> kGlobalRankStride{"Global rank stride"};
+inline constexpr MetadataField<int64_t> kGroupSize{"Group size"};
+inline constexpr MetadataField<std::string> kProcessGroupName{"Process Group Name"};
+inline constexpr MetadataField<std::string> kProcessGroupDesc{"Process Group Description"};
+inline constexpr MetadataField<std::string> kGroupRanks{"Process Group Ranks"};
+inline constexpr MetadataField<int64_t> kRank{"Rank"};
+inline constexpr MetadataField<int64_t> kP2pSrc{"Src Rank"};
+inline constexpr MetadataField<int64_t> kP2pDst{"Dst Rank"};
+inline constexpr MetadataField<int64_t> kSeqNum{"Seq"};
+inline constexpr MetadataField<std::string> kInTensorsStart{"Input Tensors start"};
+inline constexpr MetadataField<std::string> kOutTensorsStart{"Output Tensors start"};
+inline constexpr MetadataField<bool> kIsAsynchronizedOp{"Is asynchronized op"};
+inline constexpr MetadataField<uint64_t> kCommsId{"Comms Id"};
+} // namespace libkineto::CollectiveMetadataFields
+
 namespace libkineto::DevicePropertyMetadataFields {
 inline constexpr MetadataField<int64_t> kId{"id"};
 inline constexpr MetadataField<std::string> kName{"name"};

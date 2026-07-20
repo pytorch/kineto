@@ -175,7 +175,9 @@ target_include_directories(GenericTraceActivityMetadataTest PRIVATE
 gtest_discover_tests(GenericTraceActivityMetadataTest)
 
 # OutputJsonTest
-add_executable(OutputJsonTest OutputJsonTest.cpp)
+add_executable(OutputJsonTest
+    OutputJsonTest.cpp
+    TestUtils.cpp)
 target_link_libraries(OutputJsonTest PRIVATE
     gtest_main
     kineto_base kineto_api

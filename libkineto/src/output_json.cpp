@@ -50,6 +50,17 @@ constexpr std::string_view kP2pDst = "Dst Rank";
 constexpr std::string_view kSeqNum = "Seq";
 constexpr std::string_view kCommsId = "Comms Id";
 
+// Collective string metadata arrives quoted from the legacy RawJson path and
+// unquoted from the typed path; strip a single surrounding pair of double
+// quotes so downstream emission can re-quote uniformly (tolerates both).
+std::string stripQuotes(std::string s) {
+  if (s.size() >= 2 && s.front() == '"' && s.back() == '"') {
+    s.pop_back();
+    s.erase(0, 1);
+  }
+  return s;
+}
+
 #ifdef __linux__
 constexpr std::string_view kDefaultLogFileFmt =
     "/tmp/libkineto_activities_{}.json";
@@ -152,8 +163,6 @@ class ArgsBuilder {
   }
 
   // Add a key with a string value (will be JSON-quoted).
-  // Note: this member function does not have any callers yet. We define it
-  // so that if it is needed, we don't accidentally call `addRaw()`.
   void addQuoted(std::string_view key, std::string_view value) {
     appendComma();
     fmt::format_to(std::back_inserter(buf_), R"("{}": "{}")", key, value);
@@ -668,62 +677,62 @@ void ChromeTraceLogger::handleCounterEvent(
 void ChromeTraceLogger::appendCollectiveArgs(
     ArgsBuilder& args,
     const ITraceActivity& collectiveRecord) {
-  const auto& collectiveName =
-      collectiveRecord.getMetadataValue(std::string(kCollectiveName));
+  auto collectiveName = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kCollectiveName)));
   const auto& inMsgSize =
       collectiveRecord.getMetadataValue(std::string(kInMsgNelems));
   const auto& outMsgSize =
       collectiveRecord.getMetadataValue(std::string(kOutMsgNelems));
   const auto& groupSize =
       collectiveRecord.getMetadataValue(std::string(kGroupSize));
-  const auto& dtype = collectiveRecord.getMetadataValue(std::string(kDtype));
+  auto dtype =
+      stripQuotes(collectiveRecord.getMetadataValue(std::string(kDtype)));
   if (!collectiveName.empty() && !inMsgSize.empty() && !outMsgSize.empty() &&
       !groupSize.empty() && !dtype.empty()) {
-    args.addRaw(kCollectiveName, collectiveName);
+    args.addQuoted(kCollectiveName, collectiveName);
     args.addRaw(kInMsgNelems, inMsgSize);
     args.addRaw(kOutMsgNelems, outMsgSize);
     args.addRaw(kGroupSize, groupSize);
-    args.addRaw(kDtype, dtype);
+    args.addQuoted(kDtype, dtype);
   }
 
-  const auto& input_tensor_starts =
-      collectiveRecord.getMetadataValue(std::string(kInTensorsStart));
-  const auto& output_tensor_starts =
-      collectiveRecord.getMetadataValue(std::string(kOutTensorsStart));
-  if (!input_tensor_starts.empty()) {
-    args.addRaw(kInTensorsStart, input_tensor_starts);
+  auto inputTensorStarts = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kInTensorsStart)));
+  auto outputTensorStarts = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kOutTensorsStart)));
+  if (!inputTensorStarts.empty()) {
+    args.addQuoted(kInTensorsStart, inputTensorStarts);
   }
-  if (!output_tensor_starts.empty()) {
-    args.addRaw(kOutTensorsStart, output_tensor_starts);
+  if (!outputTensorStarts.empty()) {
+    args.addQuoted(kOutTensorsStart, outputTensorStarts);
   }
 
   // In/out split size are valid for all_to_all
-  const auto& inSplitSize =
-      collectiveRecord.getMetadataValue(std::string(kInSplit));
-  const auto& outSplitSize =
-      collectiveRecord.getMetadataValue(std::string(kOutSplit));
+  auto inSplitSize =
+      stripQuotes(collectiveRecord.getMetadataValue(std::string(kInSplit)));
+  auto outSplitSize =
+      stripQuotes(collectiveRecord.getMetadataValue(std::string(kOutSplit)));
   if (!inSplitSize.empty() && !outSplitSize.empty()) {
-    args.addRaw(kInSplit, inSplitSize);
-    args.addRaw(kOutSplit, outSplitSize);
+    args.addQuoted(kInSplit, inSplitSize);
+    args.addQuoted(kOutSplit, outSplitSize);
   }
 
-  const auto& processGroupName =
-      collectiveRecord.getMetadataValue(std::string(kProcessGroupName));
+  auto processGroupName = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupName)));
   if (!processGroupName.empty()) {
-    args.addRaw(kProcessGroupName, processGroupName);
+    args.addQuoted(kProcessGroupName, processGroupName);
   }
 
-  const auto& processGroupDesc =
-      collectiveRecord.getMetadataValue(std::string(kProcessGroupDesc));
-  if (processGroupDesc.size() >= 2 && processGroupDesc.front() == '"' &&
-      processGroupDesc.back() == '"') {
-    args.addRaw(kProcessGroupDesc, processGroupDesc);
+  auto processGroupDesc = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupDesc)));
+  if (!processGroupDesc.empty()) {
+    args.addQuoted(kProcessGroupDesc, processGroupDesc);
   }
 
-  const auto& groupRanks =
-      collectiveRecord.getMetadataValue(std::string(kGroupRanks));
+  auto groupRanks =
+      stripQuotes(collectiveRecord.getMetadataValue(std::string(kGroupRanks)));
   if (!groupRanks.empty()) {
-    args.addRaw(kGroupRanks, groupRanks);
+    args.addQuoted(kGroupRanks, groupRanks);
   }
 
   const auto& dstRank = collectiveRecord.getMetadataValue(std::string(kP2pDst));
@@ -756,14 +765,14 @@ void ChromeTraceLogger::appendCollectiveMetadata(
 
   const auto& groupSize =
       collectiveRecord.getMetadataValue(std::string(kGroupSize));
-  const auto& processGroupName =
-      collectiveRecord.getMetadataValue(std::string(kProcessGroupName));
-  const auto& processGroupDesc =
-      collectiveRecord.getMetadataValue(std::string(kProcessGroupDesc));
-  const auto& groupRanks =
-      collectiveRecord.getMetadataValue(std::string(kGroupRanks));
+  auto processGroupName = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupName)));
+  auto processGroupDesc = stripQuotes(
+      collectiveRecord.getMetadataValue(std::string(kProcessGroupDesc)));
+  auto groupRanks =
+      stripQuotes(collectiveRecord.getMetadataValue(std::string(kGroupRanks)));
 
-  if (distInfo_.backend.empty() && processGroupDesc == "\"default_pg\"") {
+  if (distInfo_.backend.empty() && processGroupDesc == "default_pg") {
     distInfo_.backend = backend;
     distInfo_.rank = collectiveRecord.getMetadataValue(std::string(kRank));
     distInfo_.world_size = groupSize;
@@ -777,10 +786,10 @@ void ChromeTraceLogger::appendCollectiveMetadata(
 
   auto pg_config = pgConfig();
   pg_config.pg_name = processGroupName;
-  pg_config.pg_desc = processGroupDesc;
+  pg_config.pg_desc = std::move(processGroupDesc);
   pg_config.backend_config = backendConfig;
   pg_config.pg_size = groupSize;
-  pg_config.ranks = groupRanks;
+  pg_config.ranks = std::move(groupRanks);
   pgMap_.insert({processGroupName, pg_config});
 }
 
@@ -996,7 +1005,7 @@ void ChromeTraceLogger::addOnDemandDistMetadata() {
     }
     fmt::print(
         traceOf_,
-        R"JSON({{"pg_name": {}, "pg_desc": {}, "backend_config": "{}", "pg_size": {}, "ranks": {}}})JSON",
+        R"JSON({{"pg_name": "{}", "pg_desc": "{}", "backend_config": "{}", "pg_size": {}, "ranks": "{}"}})JSON",
         element.second.pg_name,
         element.second.pg_desc,
         element.second.backend_config,

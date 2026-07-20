@@ -130,6 +130,17 @@ TEST(GenericTraceActivityMetadataTest, TypedFieldOverloadStoresDeclaredType) {
   EXPECT_EQ(visitor.recorded, expected);
 }
 
+TEST(GenericTraceActivityMetadataTest, AddTypedMetadataStoresTypedValue) {
+  GenericTraceActivity activity;
+  activity.addTypedMetadata("count", TypedValue{int64_t{5}});
+
+  RecordingVisitor visitor;
+  activity.visitTypedMetadata(visitor);
+
+  const std::map<std::string, std::string> expected{{"count", "int64=5"}};
+  EXPECT_EQ(visitor.recorded, expected);
+}
+
 TEST(GenericTraceActivityMetadataTest, MetadataJsonPreservesValueShapes) {
   GenericTraceActivity activity;
   activity.addMetadata("count", 5);

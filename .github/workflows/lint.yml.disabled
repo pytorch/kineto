@@ -20,9 +20,10 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
+        # clang-format is not installed here: lintrunner init downloads the
+        # pinned version from S3 (see tools/linter/adapters/s3_init_config.json),
+        # matching the exact binary PyTorch uses.
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
           pip install lintrunner
 
       - name: Initialize lintrunner

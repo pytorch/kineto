@@ -15,8 +15,10 @@
 
 #include <pti/pti_view.h>
 
+#include <map>
 #include <memory>
 #include <set>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -108,6 +110,7 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   std::unordered_map<int64_t, int64_t> cpuCorrelationMap_;
   std::unordered_map<int64_t, int64_t> userCorrelationMap_;
   std::unordered_map<int64_t, const ITraceActivity*> correlatedPtiActivities_;
+  std::map<std::tuple<int32_t, int32_t, int64_t>, libkineto::GenericTraceActivity*> userAnnotationsByStream_;
   std::vector<std::string> errors_;
 
   libkineto::getLinkedActivityCallback cpuActivity_;

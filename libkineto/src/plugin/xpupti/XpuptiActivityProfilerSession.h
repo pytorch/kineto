@@ -42,7 +42,7 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
 
   void start() override;
   void stop() override;
-  void toggleCollectionDynamic(const bool);
+  void toggleCollectionDynamic(const bool enable) override;
   std::vector<std::string> errors() override {
     return errors_;
   };

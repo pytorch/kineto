@@ -89,10 +89,11 @@ class IActivityProfilerSession {
   // processes trace activities using logger
   virtual void processTrace(ActivityLogger& logger) = 0;
 
-  virtual void processTrace(ActivityLogger& logger,
-                            [[maybe_unused]] getLinkedActivityCallback getLinkedActivity,
-                            [[maybe_unused]] int64_t startTime,
-                            [[maybe_unused]] int64_t endTime) {
+  virtual void processTrace(
+      ActivityLogger& logger,
+      [[maybe_unused]] getLinkedActivityCallback getLinkedActivity,
+      [[maybe_unused]] int64_t startTime,
+      [[maybe_unused]] int64_t endTime) {
     processTrace(logger);
   }
 
@@ -142,18 +143,21 @@ class IActivityProfiler {
   [[nodiscard]] virtual const std::string& name() const = 0;
 
   // returns activity types this profiler supports
-  [[nodiscard]] virtual const std::set<ActivityType>& availableActivities() const = 0;
+  [[nodiscard]] virtual const std::set<ActivityType>& availableActivities()
+      const = 0;
 
   // Calls prepare() on registered tracer providers passing in the relevant
   // activity types. Returns a profiler session handle
-  virtual std::unique_ptr<IActivityProfilerSession> configure(const std::set<ActivityType>& activity_types,
-                                                              const Config& config) = 0;
+  virtual std::unique_ptr<IActivityProfilerSession> configure(
+      const std::set<ActivityType>& activity_types,
+      const Config& config) = 0;
 
   // asynchronous version of the above with future timestamp and duration.
-  virtual std::unique_ptr<IActivityProfilerSession> configure(int64_t ts_ms,
-                                                              int64_t duration_ms,
-                                                              const std::set<ActivityType>& activity_types,
-                                                              const Config& config) = 0;
+  virtual std::unique_ptr<IActivityProfilerSession> configure(
+      int64_t ts_ms,
+      int64_t duration_ms,
+      const std::set<ActivityType>& activity_types,
+      const Config& config) = 0;
 };
 
 } // namespace libkineto

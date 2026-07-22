@@ -52,15 +52,18 @@ struct ITraceActivity {
   // FIXME: Return iterator to dynamic type map here instead
   [[nodiscard]] virtual const std::string metadataJson() const = 0;
   // Write structured metadata to a consumer.
-  virtual void visitTypedMetadata([[maybe_unused]] ITypedMetadataVisitor& visitor) const {}
+  virtual void visitTypedMetadata(
+      [[maybe_unused]] ITypedMetadataVisitor& visitor) const {}
   // Return the metadata value in string format with key
   // @lint-ignore CLANGTIDY: clang-diagnostic-unused-parameter
-  [[nodiscard]] virtual const std::string getMetadataValue([[maybe_unused]] const std::string& key) const {
+  [[nodiscard]] virtual const std::string getMetadataValue(
+      [[maybe_unused]] const std::string& key) const {
     return "";
   }
   // Return typed counter values (name, value) for activities with
   // floating-point metadata that should not be round-tripped through strings.
-  [[nodiscard]] virtual const std::vector<std::pair<std::string, double>>& counterValues() const {
+  [[nodiscard]] virtual const std::vector<std::pair<std::string, double>>&
+  counterValues() const {
     static const std::vector<std::pair<std::string, double>> kEmpty;
     return kEmpty;
   }

@@ -46,9 +46,10 @@ class RocmActivityProfiler : public GenericActivityProfiler {
  private:
   // Process generic RocProf activity
   void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
-  void handleCorrelationActivity(uint64_t correlationId,
-                                 uint64_t externalId,
-                                 RocLogger::CorrelationDomain externalKind);
+  void handleCorrelationActivity(
+      uint64_t correlationId,
+      uint64_t externalId,
+      RocLogger::CorrelationDomain externalKind);
   // Process specific GPU activity types
   template <class T>
   void handleRuntimeActivity(const T* activity, ActivityLogger* logger);

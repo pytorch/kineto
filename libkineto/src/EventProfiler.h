@@ -70,7 +70,9 @@ class Event {
   Event(Event&&) = default;
   Event& operator=(Event&&) = default;
 
-  void addSample(std::chrono::time_point<std::chrono::system_clock> timestamp, const std::vector<int64_t>& values) {
+  void addSample(
+      std::chrono::time_point<std::chrono::system_clock> timestamp,
+      const std::vector<int64_t>& values) {
     assert(values.size() == static_cast<size_t>(instanceCount));
     samples_.emplace_back(timestamp, values);
   }
@@ -82,7 +84,8 @@ class Event {
   [[nodiscard]] int64_t sumAll(const SampleSlice& slice) const;
 
   // Create list of percentiles
-  PercentileList& percentiles(PercentileList& pcs, const SampleSlice& slice) const;
+  PercentileList& percentiles(PercentileList& pcs, const SampleSlice& slice)
+      const;
 
   void eraseSamples(int count) {
     auto end = samples_.begin();
@@ -114,26 +117,30 @@ class Event {
 
   // List of collected samples, where each sample has values for
   // one or more domain instances
-  using Sample = std::pair<std::chrono::time_point<std::chrono::system_clock>, std::vector<int64_t>>;
+  using Sample = std::pair<
+      std::chrono::time_point<std::chrono::system_clock>,
+      std::vector<int64_t>>;
   std::list<Sample> samples_;
 };
 
 class Metric {
  public:
-  Metric(std::string name,
-         CUpti_MetricID id,
-         std::vector<CUpti_EventID> events,
-         CUpti_MetricEvaluationMode eval_mode,
-         CuptiMetricApi& cupti_metrics);
+  Metric(
+      std::string name,
+      CUpti_MetricID id,
+      std::vector<CUpti_EventID> events,
+      CUpti_MetricEvaluationMode eval_mode,
+      CuptiMetricApi& cupti_metrics);
 
   struct CalculatedValues {
     std::vector<SampleValue> perInstance;
     SampleValue total;
   };
 
-  struct CalculatedValues calculate(std::map<CUpti_EventID, Event>& events,
-                                    std::chrono::nanoseconds sample_duration,
-                                    const SampleSlice& slice);
+  struct CalculatedValues calculate(
+      std::map<CUpti_EventID, Event>& events,
+      std::chrono::nanoseconds sample_duration,
+      const SampleSlice& slice);
 
   int instanceCount(std::map<CUpti_EventID, Event>& events) {
     return events[events_[0]].instanceCount;
@@ -160,7 +167,10 @@ class Metric {
  */
 class EventGroupSet {
  public:
-  EventGroupSet(CUpti_EventGroupSet& set, std::map<CUpti_EventID, Event>& events, CuptiEventApi& cupti);
+  EventGroupSet(
+      CUpti_EventGroupSet& set,
+      std::map<CUpti_EventID, Event>& events,
+      CuptiEventApi& cupti);
   ~EventGroupSet();
 
   EventGroupSet(const EventGroupSet&) = delete;
@@ -189,10 +199,11 @@ class EventGroupSet {
 // The sampler
 class EventProfiler {
  public:
-  explicit EventProfiler(std::unique_ptr<CuptiEventApi> cupti_events,
-                         std::unique_ptr<CuptiMetricApi> cupti_metrics,
-                         std::vector<std::unique_ptr<SampleListener>>& loggers,
-                         std::vector<std::unique_ptr<SampleListener>>& onDemandLoggers);
+  explicit EventProfiler(
+      std::unique_ptr<CuptiEventApi> cupti_events,
+      std::unique_ptr<CuptiMetricApi> cupti_metrics,
+      std::vector<std::unique_ptr<SampleListener>>& loggers,
+      std::vector<std::unique_ptr<SampleListener>>& onDemandLoggers);
   EventProfiler(const EventProfiler&) = delete;
   EventProfiler& operator=(const EventProfiler&) = delete;
   ~EventProfiler();
@@ -254,7 +265,8 @@ class EventProfiler {
 
   void eraseReportedSamples() {
     int erase_count = baseSamples_;
-    if (onDemandConfig_ && onDemandConfig_->eventProfilerOnDemandDuration().count() > 0) {
+    if (onDemandConfig_ &&
+        onDemandConfig_->eventProfilerOnDemandDuration().count() > 0) {
       erase_count = std::min(baseSamples_, onDemandSamples_);
     }
     eraseSamples(erase_count);
@@ -288,9 +300,10 @@ class EventProfiler {
   }
 
   // Notify listeners of collected samples
-  void dispatchSamples(const Config& config,
-                       const std::vector<std::unique_ptr<SampleListener>>& loggers,
-                       int report_nr);
+  void dispatchSamples(
+      const Config& config,
+      const std::vector<std::unique_ptr<SampleListener>>& loggers,
+      int report_nr);
 
   void eraseSamples(int count) {
     for (auto& pair : events_) {

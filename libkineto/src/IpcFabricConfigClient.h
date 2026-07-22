@@ -36,7 +36,8 @@ class FabricManager {
   FabricManager(const FabricManager&) = delete;
   FabricManager& operator=(const FabricManager&) = delete;
 
-  static std::unique_ptr<FabricManager> factory(std::string endpoint_name = "") {
+  static std::unique_ptr<FabricManager> factory(
+      std::string endpoint_name = "") {
     return nullptr;
   }
 };

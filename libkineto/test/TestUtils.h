@@ -48,7 +48,9 @@ class TempTraceFile {
 // Creates a self-cleaning temporary trace file; see TempTraceFile for the
 // naming scheme. The returned object removes the file when it goes out of
 // scope.
-[[nodiscard]] TempTraceFile createTempTraceFile(std::string_view prefix, std::string_view suffix);
+[[nodiscard]] TempTraceFile createTempTraceFile(
+    std::string_view prefix,
+    std::string_view suffix);
 
 // Strips a leading "file://" from url, returning the bare filesystem path.
 std::string logUrlToPath(const std::string& url);

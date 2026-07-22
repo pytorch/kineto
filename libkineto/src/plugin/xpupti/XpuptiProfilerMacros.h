@@ -19,11 +19,13 @@ using namespace libkineto;
 
 // Used to enable future features in PTI before release.
 #define PTI_VERSION_AT_LEAST(MAJOR, MINOR) \
-  (PTI_VERSION_MAJOR > MAJOR || (PTI_VERSION_MAJOR == MAJOR && PTI_VERSION_MINOR >= MINOR))
+  (PTI_VERSION_MAJOR > MAJOR ||            \
+   (PTI_VERSION_MAJOR == MAJOR && PTI_VERSION_MINOR >= MINOR))
 
-void XPUPTI_CALL(pti_result errCode,
-                 std::string_view message = "",
-                 std::source_location source_location = std::source_location::current());
+void XPUPTI_CALL(
+    pti_result errCode,
+    std::string_view message = "",
+    std::source_location source_location = std::source_location::current());
 
 using DeviceIndex_t = int8_t;
 

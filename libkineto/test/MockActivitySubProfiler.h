@@ -64,15 +64,18 @@ class MockActivityProfiler : public IActivityProfiler {
 
   [[nodiscard]] const std::string& name() const override;
 
-  [[nodiscard]] const std::set<ActivityType>& availableActivities() const override;
+  [[nodiscard]] const std::set<ActivityType>& availableActivities()
+      const override;
 
-  std::unique_ptr<IActivityProfilerSession> configure(const std::set<ActivityType>& activity_types,
-                                                      const Config& config) override;
+  std::unique_ptr<IActivityProfilerSession> configure(
+      const std::set<ActivityType>& activity_types,
+      const Config& config) override;
 
-  std::unique_ptr<IActivityProfilerSession> configure(int64_t ts_ms,
-                                                      int64_t duration_ms,
-                                                      const std::set<ActivityType>& activity_types,
-                                                      const Config& config) override;
+  std::unique_ptr<IActivityProfilerSession> configure(
+      int64_t ts_ms,
+      int64_t duration_ms,
+      const std::set<ActivityType>& activity_types,
+      const Config& config) override;
 
  private:
   std::deque<GenericTraceActivity> test_activities_;

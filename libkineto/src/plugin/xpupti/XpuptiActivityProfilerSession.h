@@ -28,15 +28,18 @@ class XpuptiActivityApi;
 
 using DeviceUUIDsT = std::array<unsigned char, 16>;
 
-class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession {
+class XpuptiActivityProfilerSession
+    : public libkineto::IActivityProfilerSession {
  public:
   XpuptiActivityProfilerSession() = delete;
-  XpuptiActivityProfilerSession(XpuptiActivityApi& xpti,
-                                const std::string& name,
-                                const libkineto::Config& config,
-                                const std::set<ActivityType>& activity_types);
+  XpuptiActivityProfilerSession(
+      XpuptiActivityApi& xpti,
+      const std::string& name,
+      const libkineto::Config& config,
+      const std::set<ActivityType>& activity_types);
   XpuptiActivityProfilerSession(const XpuptiActivityProfilerSession&) = delete;
-  XpuptiActivityProfilerSession& operator=(const XpuptiActivityProfilerSession&) = delete;
+  XpuptiActivityProfilerSession& operator=(
+      const XpuptiActivityProfilerSession&) = delete;
 
   ~XpuptiActivityProfilerSession();
 
@@ -47,10 +50,11 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
     return errors_;
   };
   void processTrace(ActivityLogger& logger) override;
-  void processTrace(ActivityLogger& logger,
-                    libkineto::getLinkedActivityCallback get_linked_activity,
-                    int64_t captureWindowStartTime,
-                    int64_t captureWindowEndTime) override;
+  void processTrace(
+      ActivityLogger& logger,
+      libkineto::getLinkedActivityCallback get_linked_activity,
+      int64_t captureWindowStartTime,
+      int64_t captureWindowEndTime) override;
   std::unique_ptr<libkineto::DeviceInfo> getDeviceInfo() override {
     return {};
   }
@@ -73,22 +77,31 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   void removeCorrelatedPtiActivities(const ITraceActivity* act1);
   bool outOfRange(const ITraceActivity* act);
   int64_t getMappedQueueId(uint64_t sycl_queue_id);
-  const ITraceActivity* linkedActivity(int32_t correlationId,
-                                       const std::unordered_map<int64_t, int64_t>& correlationMap);
-  void handleCorrelationActivity(const pti_view_record_external_correlation* correlation);
+  const ITraceActivity* linkedActivity(
+      int32_t correlationId,
+      const std::unordered_map<int64_t, int64_t>& correlationMap);
+  void handleCorrelationActivity(
+      const pti_view_record_external_correlation* correlation);
 
   using pti_view_record_api_t = pti_view_record_api;
 
   std::string getApiName(const pti_view_record_api_t* activity);
 
   template <class pti_view_memory_record_type>
-  void handleRuntimeKernelMemcpyMemsetActivities(ActivityType activityType,
-                                                 const pti_view_memory_record_type* activity,
-                                                 ActivityLogger& logger);
+  void handleRuntimeKernelMemcpyMemsetActivities(
+      ActivityType activityType,
+      const pti_view_memory_record_type* activity,
+      ActivityLogger& logger);
 
-  void handleCommunicationActivity(const pti_view_record_comms* activity, ActivityLogger& logger);
-  void handleOverheadActivity(const pti_view_record_overhead* activity, ActivityLogger& logger);
-  void handlePtiActivity(const pti_view_record_base* record, ActivityLogger& logger);
+  void handleCommunicationActivity(
+      const pti_view_record_comms* activity,
+      ActivityLogger& logger);
+  void handleOverheadActivity(
+      const pti_view_record_overhead* activity,
+      ActivityLogger& logger);
+  void handlePtiActivity(
+      const pti_view_record_base* record,
+      ActivityLogger& logger);
 
   // enumerate XPU Device UUIDs from runtime for once
   void enumDeviceUUIDs();
@@ -110,7 +123,10 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   std::unordered_map<int64_t, int64_t> cpuCorrelationMap_;
   std::unordered_map<int64_t, int64_t> userCorrelationMap_;
   std::unordered_map<int64_t, const ITraceActivity*> correlatedPtiActivities_;
-  std::map<std::tuple<int32_t, int32_t, int64_t>, libkineto::GenericTraceActivity*> userAnnotationsByStream_;
+  std::map<
+      std::tuple<int32_t, int32_t, int64_t>,
+      libkineto::GenericTraceActivity*>
+      userAnnotationsByStream_;
   std::vector<std::string> errors_;
 
   libkineto::getLinkedActivityCallback cpuActivity_;
@@ -123,7 +139,11 @@ class XpuptiActivityProfilerSession : public libkineto::IActivityProfilerSession
   std::string name_;
 
   struct KernelActivity {
-    void emplace(int64_t startTime, int64_t endTime, int32_t device, int32_t resource) {
+    void emplace(
+        int64_t startTime,
+        int64_t endTime,
+        int32_t device,
+        int32_t resource) {
       startTime_ = startTime;
       endTime_ = endTime;
       device_ = device;

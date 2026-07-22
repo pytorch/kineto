@@ -35,7 +35,8 @@ struct TraceSpan;
 // Abstract base class, templated on Rocprof activity type
 template <class T>
 struct RocprofActivity : public ITraceActivity {
-  explicit RocprofActivity(const T* activity, const ITraceActivity* linked) : activity_(*activity), linked_(linked) {}
+  explicit RocprofActivity(const T* activity, const ITraceActivity* linked)
+      : activity_(*activity), linked_(linked) {}
   // Our stored timestamps (from rocprof and generated) are in CLOCK_MONOTONIC
   // domain (in ns). Convert the timestamps.
   int64_t timestamp() const override {
@@ -81,7 +82,9 @@ struct RocprofActivity : public ITraceActivity {
 
 // rocprofAsyncRow - Rocprof GPU activities
 struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
-  explicit GpuActivity(const rocprofAsyncRow* activity, const ITraceActivity* linked)
+  explicit GpuActivity(
+      const rocprofAsyncRow* activity,
+      const ITraceActivity* linked)
       : RocprofActivity(activity, linked) {
     switch (activity_.domain) {
       case ROCPROFILER_BUFFER_TRACING_MEMORY_COPY:
@@ -131,7 +134,8 @@ struct GpuActivity : public RocprofActivity<rocprofAsyncRow> {
 // Rocprof runtime activities
 template <class T>
 struct RuntimeActivity : public RocprofActivity<T> {
-  explicit RuntimeActivity(const T* activity, const ITraceActivity* linked) : RocprofActivity<T>(activity, linked) {}
+  explicit RuntimeActivity(const T* activity, const ITraceActivity* linked)
+      : RocprofActivity<T>(activity, linked) {}
   int64_t correlationId() const override {
     return raw().id;
   }
@@ -146,7 +150,8 @@ struct RuntimeActivity : public RocprofActivity<T> {
   }
   bool flowStart() const override;
   const std::string name() const override {
-    return RocprofLogger::opString(ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API, raw().cid);
+    return RocprofLogger::opString(
+        ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API, raw().cid);
   }
   void log(ActivityLogger& logger) const override;
   const std::string metadataJson() const override;

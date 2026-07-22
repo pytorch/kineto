@@ -43,11 +43,12 @@ const TraceSpan& defaultTraceSpan();
 struct MockCpuActivityBuffer : public CpuTraceBuffer {
   MockCpuActivityBuffer(int64_t startTime, int64_t endTime);
 
-  void addOp(const std::string& name,
-             int64_t startTime,
-             int64_t endTime,
-             int32_t correlation,
-             const std::unordered_map<std::string, std::string>& metadataMap = {});
+  void addOp(
+      const std::string& name,
+      int64_t startTime,
+      int64_t endTime,
+      int32_t correlation,
+      const std::unordered_map<std::string, std::string>& metadataMap = {});
 };
 
 } // namespace libkineto::test

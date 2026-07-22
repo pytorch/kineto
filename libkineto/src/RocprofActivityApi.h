@@ -49,7 +49,8 @@ class RocprofActivityApi {
 
   virtual int processActivities(
       std::function<void(const rocprofBase*)> handler,
-      std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)> correlationHandler);
+      std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
+          correlationHandler);
 
   void setMaxBufferSize(int64_t size);
 

@@ -6,14 +6,39 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <fmt/core.h>
+
 #include <algorithm>
 #include <iterator>
+#include <span>
 #include <stdexcept>
+#include <utility>
 
 #include "XpuptiScopeProfilerApi.h"
 #include "XpuptiScopeProfilerConfig.h"
 
 namespace KINETO_NAMESPACE {
+
+std::vector<pti_device_handle_t> selectDeviceHandles(
+    std::span<const pti_device_handle_t> handles,
+    std::span<const int> indices) {
+  const auto outOfRange = [handles](int idx) {
+    return idx < 0 || std::cmp_greater_equal(idx, handles.size());
+  };
+  if (const auto bad = std::ranges::find_if(indices, outOfRange);
+      bad != indices.end()) {
+    throw std::runtime_error(fmt::format(
+        "XPUPTI_PROFILER_DEVICES index {} is out of range; {} XPU device(s) available",
+        *bad,
+        handles.size()));
+  }
+  // Gather: map each requested index to its device handle, preserving order.
+  std::vector<pti_device_handle_t> selected(indices.size());
+  std::ranges::transform(indices, selected.begin(), [handles](int idx) {
+    return handles[static_cast<std::size_t>(idx)];
+  });
+  return selected;
+}
 
 XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
@@ -67,13 +92,53 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
   }
 
   scopeHandleOpt_.emplace(exceptFromScopeHandleDestructor_);
+
+  const auto& requestedDevices = spcfg.xpuptiProfilerDevices();
+
+#if PTI_VERSION_AT_LEAST(0, 18)
+  if (requestedDevices.empty()) {
+    // Default: profile every available device (PTI auto-detect mode).
+    XPUPTI_CALL(ptiMetricsScopeConfigure(
+        *scopeHandleOpt_,
+        collectionMode,
+        /*devices_to_profile=*/nullptr,
+        /*device_count=*/0,
+        metricNames.data(),
+        metricNames.size()));
+  } else {
+    // Explicit subset: map requested indices to device handles.
+    auto selectedHandles = selectDeviceHandles(
+        {devicesHandles.get(), deviceCount}, requestedDevices);
+    XPUPTI_CALL(ptiMetricsScopeConfigure(
+        *scopeHandleOpt_,
+        collectionMode,
+        selectedHandles.data(),
+        static_cast<uint32_t>(selectedHandles.size()),
+        metricNames.data(),
+        metricNames.size()));
+  }
+#else
+  // PTI < 0.18 (pre PTI-363): multi-device metrics scope is not available;
+  // ptiMetricsScopeConfigure accepts only a single device.
+  if (requestedDevices.size() > 1) {
+    throw std::runtime_error(
+        "XPUPTI_PROFILER_DEVICES lists more than one device, but this build "
+        "links PTI < 0.18 which supports only single-device metrics scope. "
+        "Rebuild against PTI >= 0.18 for multi-device support.");
+  }
+  // Point at the single requested device (default: first device).
+  pti_device_handle_t singleHandle = requestedDevices.empty()
+      ? devicesHandles[0]
+      : selectDeviceHandles({devicesHandles.get(), deviceCount}, requestedDevices)
+            .front();
   XPUPTI_CALL(ptiMetricsScopeConfigure(
       *scopeHandleOpt_,
       collectionMode,
-      devicesHandles.get(),
-      ((void)deviceCount, 1), // Only 1 device is currently supported
+      &singleHandle,
+      1,
       metricNames.data(),
       metricNames.size()));
+#endif
 
   uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
   size_t estimatedCollectionBufferSize = 0;

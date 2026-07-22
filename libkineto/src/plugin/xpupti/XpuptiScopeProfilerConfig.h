@@ -44,6 +44,10 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
     return xpuptiProfilerMaxScopes_;
   }
 
+  const std::vector<int>& xpuptiProfilerDevices() const {
+    return xpuptiProfilerDevices_;
+  }
+
   void setClientDefaults() override {
     setDefaults();
   }
@@ -79,6 +83,10 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
   // max number of scopes to configure the profiler for.
   // this has to be set before hand to reserve space for the output
   int64_t xpuptiProfilerMaxScopes_ = 0;
+
+  // Explicit XPU device indices to profile with the scope profiler.
+  // Empty means "all available devices" (PTI auto-detect).
+  std::vector<int> xpuptiProfilerDevices_;
 };
 
 } // namespace KINETO_NAMESPACE

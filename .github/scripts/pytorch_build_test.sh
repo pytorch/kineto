@@ -117,13 +117,12 @@ done
 # inflates the thread counts that some profiler tests assert on. The tradeoff is
 # that signal cannot interrupt a hang holding the GIL in native code.
 pip install pytest pytest-timeout
+
 # Run pytest with PYTHONSAFEPATH so Python does not prepend the current
-# directory (the PyTorch source checkout) to sys.path. Without it, python -m
-# pytest puts the source tree first and import torch loads the uncompiled
-# source torch package instead of the wheel we just installed non-editable,
-# failing with "Failed to load PyTorch C extensions". pytest still adds test
-# and test/profiler to sys.path, and neither shadows torch. Requires Python
-# 3.11+; older versions ignore the variable rather than erroring.
+# directory (the PyTorch source checkout) to sys.path. Without it, the pytest
+# call below would put the source tree first and importing torch would load the
+# uncompiled source torch package instead of the wheel we just installed.
 PYTHONSAFEPATH=1 python -m pytest test/profiler/ -v --timeout=300 --timeout-method=signal "${DESELECT_ARGS[@]}"
+
 popd
 echo "====: Ran PyTorch profiler tests"

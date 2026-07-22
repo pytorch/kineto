@@ -84,7 +84,12 @@ if [[ "${GPU_ARCH}" == "rocm" ]]; then
   echo "====: Hipified PyTorch source for ROCm"
 fi
 
-python -m pip install --no-build-isolation -v -e .
+# Install non-editable (no -e). scikit-build-core's editable "redirect" mode
+# keeps the built C++ headers in the build tree, but torch.utils.cpp_extension
+# looks for them under the source tree's torch/include. The profiler tests
+# JIT-compile a C++ extension, so an editable install can't find headers like
+# profiler_kineto.h. A regular install stages torch/include into site-packages.
+python -m pip install --no-build-isolation -v .
 echo "====: Built PyTorch from source"
 
 # Surface cache hit rates so warm-vs-cold runs are diagnosable from the log.

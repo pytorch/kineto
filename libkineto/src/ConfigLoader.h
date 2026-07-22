@@ -89,6 +89,12 @@ class ConfigLoader {
 
   std::string getConfString();
 
+  // Stops and joins the background config-update thread; a no-op if it was
+  // never started. Exposed so a test that drives the singleton can tear the
+  // thread down deterministically before the test process exits, rather than
+  // leaving the join to run during static destruction.
+  void stopUpdateThread();
+
  private:
   ConfigLoader();
   ~ConfigLoader();

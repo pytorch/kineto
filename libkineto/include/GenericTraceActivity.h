@@ -11,9 +11,11 @@
 #include <fmt/format.h>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -33,9 +35,13 @@ constexpr unsigned int kLinkAsyncCpuGpu = 2;
 // @lint-ignore-every CLANGTIDY cppcoreguidelines-pro-type-member-init
 class GenericTraceActivity : public ITraceActivity {
  public:
-  GenericTraceActivity() : activityType(ActivityType::ENUM_COUNT), traceSpan_(nullptr) {}
+  GenericTraceActivity()
+      : activityType(ActivityType::ENUM_COUNT), traceSpan_(nullptr) {}
 
-  GenericTraceActivity(const TraceSpan& trace, ActivityType type, const std::string& name)
+  GenericTraceActivity(
+      const TraceSpan& trace,
+      ActivityType type,
+      const std::string& name)
       : activityType(type), activityName(name), traceSpan_(&trace) {}
 
   int64_t deviceId() const override {
@@ -105,8 +111,16 @@ class GenericTraceActivity : public ITraceActivity {
   // Typed metadata: the value is stored as the field's declared type
   template <typename T, typename V>
   void addMetadata(const MetadataField<T>& field, const V& value) {
-    static_assert(std::is_same_v<T, std::decay_t<V>>, "value type must match field's declared type");
+    static_assert(
+        std::is_same_v<T, std::decay_t<V>>,
+        "value type must match field's declared type");
     metadataMap_.emplace(std::string{field.name}, TypedValue{value});
+  }
+
+  // Adds typed metadata dynamically by key. Catalog registration is not
+  // required.
+  void addTypedMetadata(std::string_view key, TypedValue value) {
+    metadataMap_.emplace(std::string{key}, std::move(value));
   }
 
   // The value is a plain string to be emitted quoted in JSON.
@@ -121,7 +135,8 @@ class GenericTraceActivity : public ITraceActivity {
     counterValues_.emplace_back(name, value);
   }
 
-  const std::vector<std::pair<std::string, double>>& counterValues() const override {
+  const std::vector<std::pair<std::string, double>>& counterValues()
+      const override {
     return counterValues_;
   }
 
@@ -145,8 +160,12 @@ class GenericTraceActivity : public ITraceActivity {
   void visitTypedMetadata(ITypedMetadataVisitor& visitor) const override {
     // Dynamically build a MetadataField during visit
     for (const auto& kv : metadataMap_) {
-      std::visit([&](const auto& v) { visitor.visit(MetadataField<std::decay_t<decltype(v)>>{kv.first}, v); },
-                 kv.second);
+      std::visit(
+          [&](const auto& v) {
+            visitor.visit(
+                MetadataField<std::decay_t<decltype(v)>>{kv.first}, v);
+          },
+          kv.second);
     }
   }
 

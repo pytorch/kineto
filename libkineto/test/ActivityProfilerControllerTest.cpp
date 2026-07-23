@@ -34,16 +34,15 @@ bool traceFileHasContent(const std::string& filename) {
 TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
   auto traceFile = createTempTraceFile("libkineto_test", ".json");
   Config asyncCfg;
-  bool success = asyncCfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = asyncCfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 5
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 2
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path()));
+      traceFile.path()));
   ASSERT_TRUE(success);
 
   // Start an async request via acceptConfig -- populate asyncRequestConfig_
@@ -79,16 +78,15 @@ TEST(ActivityProfilerController, PrepareTraceClearsPendingAsyncRequest) {
 TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
   auto traceFile = createTempTraceFile("libkineto_test", ".json");
   Config asyncCfg;
-  bool success = asyncCfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = asyncCfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 4
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 2
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path()));
+      traceFile.path()));
   ASSERT_TRUE(success);
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
@@ -128,16 +126,15 @@ TEST(ActivityProfilerController, IgnoreAsyncRequestsWhileSyncTraceIsActive) {
 TEST(ActivityProfilerController, PrepareTracePreemptsActiveAsyncRequest) {
   auto traceFile = createTempTraceFile("libkineto_test", ".json");
   Config asyncCfg;
-  bool success = asyncCfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = asyncCfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 3
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 4
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path()));
+      traceFile.path()));
   ASSERT_TRUE(success);
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
@@ -182,28 +179,26 @@ TEST(ActivityProfilerController, SecondAsyncRequestIgnoredWhileAsyncActive) {
   auto secondFile = createTempTraceFile("libkineto_test_second", ".json");
 
   Config firstCfg;
-  ASSERT_TRUE(firstCfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(firstCfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 3
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 4
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          firstFile.path())));
+      firstFile.path())));
 
   Config secondCfg;
-  ASSERT_TRUE(secondCfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(secondCfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 3
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 4
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          secondFile.path())));
+      secondFile.path())));
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
   controller.asyncStep();
@@ -232,16 +227,15 @@ TEST(ActivityProfilerController, CanAcceptConfigReflectsActiveState) {
   auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
-  ASSERT_TRUE(cfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(cfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 3
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 2
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path())));
+      traceFile.path())));
 
   ActivityProfilerController controller(ConfigLoader::instance(), true);
   EXPECT_TRUE(controller.canAcceptConfig());

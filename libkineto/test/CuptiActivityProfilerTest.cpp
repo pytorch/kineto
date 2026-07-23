@@ -22,12 +22,12 @@
 #include <variant>
 
 #include "include/Config.h"
+#include "include/MetadataFieldCatalog.h"
 #include "include/libkineto.h"
 #include "include/output_base.h"
 #include "include/time_since_epoch.h"
 #include "src/ActivityTrace.h"
 #include "src/ApproximateClock.h"
-#include "src/CudaMetadataFields.h"
 #include "src/CuptiActivityApi.h"
 #include "src/CuptiActivityProfiler.h"
 #include "src/output_json.h"

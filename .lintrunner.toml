@@ -1,3 +1,11 @@
+# Lintrunner configuration for Kineto.
+#
+# These linters are kept in sync with PyTorch (github.com/pytorch/pytorch) so
+# that C++ in Kineto is formatted and checked exactly as it is in PyTorch. The
+# adapter scripts under tools/linter/adapters and the pinned clang-format
+# binary described by s3_init_config.json are copied verbatim from there. When
+# updating, re-sync from PyTorch rather than editing these in place.
+
 [[linter]]
 code = 'CLANGFORMAT'
 include_patterns = [
@@ -10,10 +18,20 @@ exclude_patterns = [
     'libkineto/third_party/**',
     'libkineto/build/**',
 ]
+init_command = [
+    'python3',
+    'tools/linter/adapters/s3_init.py',
+    '--config-json=tools/linter/adapters/s3_init_config.json',
+    '--linter=clang-format',
+    '--dry-run={{DRYRUN}}',
+    '--output-dir=.lintbin',
+    '--output-name=clang-format',
+]
 command = [
     'python3',
     'tools/linter/adapters/clangformat_linter.py',
-    '--binary=clang-format',
+    '--binary=.lintbin/clang-format',
+    '--',
     '@{{PATHSFILE}}'
 ]
 is_formatter = true
@@ -30,10 +48,12 @@ include_patterns = [
 ]
 exclude_patterns = [
     'libkineto/third_party/**',
+    'libkineto/build/**',
 ]
 command = [
     'python3',
     'tools/linter/adapters/newlines_linter.py',
+    '--',
     '@{{PATHSFILE}}',
 ]
 is_formatter = true
@@ -48,6 +68,7 @@ include_patterns = [
 ]
 exclude_patterns = [
     'libkineto/third_party/**',
+    'libkineto/build/**',
 ]
 command = [
     'python3',
@@ -55,9 +76,11 @@ command = [
     '--pattern=[[:blank:]]$',
     '--linter-name=SPACES',
     '--error-name=trailing spaces',
+    '--replace-pattern=s/[[:blank:]]+$//',
     """--error-description=\
-        This line has trailing spaces.  Please remove them.\
+        This line has trailing spaces; please remove them.\
     """,
+    '--',
     '@{{PATHSFILE}}'
 ]
 
@@ -71,15 +94,19 @@ include_patterns = [
 ]
 exclude_patterns = [
     'libkineto/third_party/**',
+    'libkineto/build/**',
 ]
 command = [
     'python3',
     'tools/linter/adapters/grep_linter.py',
-    '--pattern=\t',
+    # @lint-ignore TXT2
+    '--pattern=	',
     '--linter-name=TABS',
-    '--error-name=saw a tab',
+    '--error-name=saw some tabs',
+    '--replace-pattern=s/\t/    /',
     """--error-description=\
-        This line has a tab character.  Please convert it to spaces.\
+        This line has tabs; please replace them with spaces.\
     """,
+    '--',
     '@{{PATHSFILE}}'
 ]

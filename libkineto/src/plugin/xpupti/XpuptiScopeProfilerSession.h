@@ -19,13 +19,15 @@ class XpuptiScopeProfilerApi;
 
 class XpuptiScopeProfilerSession : public XpuptiActivityProfilerSession {
  public:
-  XpuptiScopeProfilerSession(XpuptiActivityApi& xpti,
-                             const std::string& name,
-                             const libkineto::Config& config,
-                             const std::set<ActivityType>& activity_types);
+  XpuptiScopeProfilerSession(
+      XpuptiActivityApi& xpti,
+      const std::string& name,
+      const libkineto::Config& config,
+      const std::set<ActivityType>& activity_types);
 
   XpuptiScopeProfilerSession(const XpuptiScopeProfilerSession&) = delete;
-  XpuptiScopeProfilerSession& operator=(const XpuptiScopeProfilerSession&) = delete;
+  XpuptiScopeProfilerSession& operator=(const XpuptiScopeProfilerSession&) =
+      delete;
 
   ~XpuptiScopeProfilerSession();
   void start();
@@ -34,9 +36,10 @@ class XpuptiScopeProfilerSession : public XpuptiActivityProfilerSession {
 
   void processTrace(ActivityLogger& logger) override;
 
-  void handleScopeRecord(const pti_metrics_scope_record_t* record,
-                         const pti_metrics_scope_record_metadata_t& metadata,
-                         ActivityLogger& logger);
+  void handleScopeRecord(
+      const pti_metrics_scope_record_t* record,
+      const pti_metrics_scope_record_metadata_t& metadata,
+      ActivityLogger& logger);
 
  private:
   XpuptiScopeProfilerApi xptiScopeProf_;

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 #
@@ -6,78 +5,175 @@
 # LICENSE file in the root directory of this source tree.
 
 """
-Newlines linter - ensures files end with exactly one newline
+NEWLINE: Checks files to make sure there are no trailing newlines.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
 import sys
-from typing import List
+from enum import Enum
+from typing import NamedTuple
 
 
-def check_newlines(filenames: List[str]) -> List[dict]:
-    lint_messages = []
+NEWLINE = 10  # ASCII "\n"
+CARRIAGE_RETURN = 13  # ASCII "\r"
+LINTER_CODE = "NEWLINE"
+MAX_FILE_SIZE: int = 1024 * 1024 * 1024  # 1GB in bytes
 
-    for filename in filenames:
+
+class LintSeverity(str, Enum):
+    ERROR = "error"
+    WARNING = "warning"
+    ADVICE = "advice"
+    DISABLED = "disabled"
+
+
+class LintMessage(NamedTuple):
+    path: str | None
+    line: int | None
+    char: int | None
+    code: str
+    severity: LintSeverity
+    name: str
+    original: str | None
+    replacement: str | None
+    description: str | None
+
+
+def check_file(filename: str) -> LintMessage | None:
+    logging.debug("Checking file %s", filename)
+
+    # Check if file is too large
+    try:
+        file_size = os.path.getsize(filename)
+        if file_size > MAX_FILE_SIZE:
+            return LintMessage(
+                path=filename,
+                line=None,
+                char=None,
+                code=LINTER_CODE,
+                severity=LintSeverity.WARNING,
+                name="file-too-large",
+                original=None,
+                replacement=None,
+                description=f"File size ({file_size} bytes) exceeds {MAX_FILE_SIZE} bytes limit, skipping",
+            )
+    except OSError as err:
+        return LintMessage(
+            path=filename,
+            line=None,
+            char=None,
+            code=LINTER_CODE,
+            severity=LintSeverity.ERROR,
+            name="file-access-error",
+            original=None,
+            replacement=None,
+            description=f"Failed to get file size: {err}",
+        )
+
+    with open(filename, "rb") as f:
+        lines = f.readlines()
+
+    if len(lines) == 0:
+        # File is empty, just leave it alone.
+        return None
+
+    if len(lines) == 1 and len(lines[0]) == 1:
+        # file is wrong whether or not the only byte is a newline
+        return LintMessage(
+            path=filename,
+            line=None,
+            char=None,
+            code=LINTER_CODE,
+            severity=LintSeverity.ERROR,
+            name="testestTrailing newline",
+            original=None,
+            replacement=None,
+            description="Trailing newline found. Run `lintrunner --take NEWLINE -a` to apply changes.",
+        )
+
+    if len(lines[-1]) == 1 and lines[-1][0] == NEWLINE:
         try:
-            with open(filename, "rb") as f:
-                data = f.read()
-
-            if len(data) == 0:
-                continue
-
-            if not data.endswith(b"\n"):
-                lint_messages.append(
-                    {
-                        "path": filename,
-                        "line": None,
-                        "char": None,
-                        "code": "NEWLINE",
-                        "severity": "warning",
-                        "name": "no-newline",
-                        "original": data.decode("utf-8", errors="replace"),
-                        "replacement": data.decode("utf-8", errors="replace") + "\n",
-                        "description": "File does not end with a newline. Run `lintrunner -a` to fix.",
-                    }
-                )
-            elif data.endswith(b"\n\n"):
-                # File ends with multiple newlines
-                stripped = data.rstrip(b"\n") + b"\n"
-                lint_messages.append(
-                    {
-                        "path": filename,
-                        "line": None,
-                        "char": None,
-                        "code": "NEWLINE",
-                        "severity": "warning",
-                        "name": "multiple-newlines",
-                        "original": data.decode("utf-8", errors="replace"),
-                        "replacement": stripped.decode("utf-8", errors="replace"),
-                        "description": "File ends with multiple newlines. Run `lintrunner -a` to fix.",
-                    }
-                )
+            original = b"".join(lines).decode("utf-8")
         except Exception as err:
-            lint_messages.append(
-                {
-                    "path": filename,
-                    "line": None,
-                    "char": None,
-                    "code": "NEWLINE",
-                    "severity": "error",
-                    "name": "command-failed",
-                    "original": None,
-                    "replacement": None,
-                    "description": f"Failed to check {filename}: {err}",
-                }
+            return LintMessage(
+                path=filename,
+                line=None,
+                char=None,
+                code=LINTER_CODE,
+                severity=LintSeverity.ERROR,
+                name="Decoding failure",
+                original=None,
+                replacement=None,
+                description=f"utf-8 decoding failed due to {err.__class__.__name__}:\n{err}",
             )
 
-    return lint_messages
+        return LintMessage(
+            path=filename,
+            line=None,
+            char=None,
+            code=LINTER_CODE,
+            severity=LintSeverity.ERROR,
+            name="Trailing newline",
+            original=original,
+            replacement=original.rstrip("\n") + "\n",
+            description="Trailing newline found. Run `lintrunner --take NEWLINE -a` to apply changes.",
+        )
+    has_changes = False
+    original_lines: list[bytes] | None = None
+    for idx, line in enumerate(lines):
+        if len(line) >= 2 and line[-1] == NEWLINE and line[-2] == CARRIAGE_RETURN:
+            if not has_changes:
+                original_lines = list(lines)
+                has_changes = True
+            lines[idx] = line[:-2] + b"\n"
+
+    if has_changes:
+        try:
+            if original_lines is None:
+                raise AssertionError("original_lines is None")
+            original = b"".join(original_lines).decode("utf-8")
+            replacement = b"".join(lines).decode("utf-8")
+        except Exception as err:
+            return LintMessage(
+                path=filename,
+                line=None,
+                char=None,
+                code=LINTER_CODE,
+                severity=LintSeverity.ERROR,
+                name="Decoding failure",
+                original=None,
+                replacement=None,
+                description=f"utf-8 decoding failed due to {err.__class__.__name__}:\n{err}",
+            )
+        return LintMessage(
+            path=filename,
+            line=None,
+            char=None,
+            code=LINTER_CODE,
+            severity=LintSeverity.ERROR,
+            name="DOS newline",
+            original=original,
+            replacement=replacement,
+            description="DOS newline found. Run `lintrunner --take NEWLINE -a` to apply changes.",
+        )
+
+    return None
 
 
-def main() -> None:
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="newlines linter",
+        description="native functions linter",
         fromfile_prefix_chars="@",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="location of native_functions.yaml",
     )
     parser.add_argument(
         "filenames",
@@ -87,10 +183,21 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    lint_messages = check_newlines(args.filenames)
+    logging.basicConfig(
+        format="<%(threadName)s:%(levelname)s> %(message)s",
+        level=logging.NOTSET
+        if args.verbose
+        else logging.DEBUG
+        if len(args.filenames) < 1000
+        else logging.INFO,
+        stream=sys.stderr,
+    )
+
+    lint_messages = []
+    for filename in args.filenames:
+        lint_message = check_file(filename)
+        if lint_message is not None:
+            lint_messages.append(lint_message)
+
     for lint_message in lint_messages:
-        print(json.dumps(lint_message), flush=True)
-
-
-if __name__ == "__main__":
-    main()
+        print(json.dumps(lint_message._asdict()), flush=True)

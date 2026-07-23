@@ -80,6 +80,10 @@ void XpuptiActivityProfilerSession::processTrace(ActivityLogger& logger) {
           handlePtiActivity(record, logger);
         });
   }
+  for (auto& kv : userAnnotationsByStream_) {
+    kv.second->log(logger);
+  }
+  userAnnotationsByStream_.clear();
 }
 
 void XpuptiActivityProfilerSession::processTrace(

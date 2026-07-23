@@ -22,9 +22,11 @@ class SyncActivityProfilerHandler {
  public:
   explicit SyncActivityProfilerHandler(GenericActivityProfiler& profiler);
   SyncActivityProfilerHandler(const SyncActivityProfilerHandler&) = delete;
-  SyncActivityProfilerHandler& operator=(const SyncActivityProfilerHandler&) = delete;
+  SyncActivityProfilerHandler& operator=(const SyncActivityProfilerHandler&) =
+      delete;
   SyncActivityProfilerHandler(SyncActivityProfilerHandler&&) = delete;
-  SyncActivityProfilerHandler& operator=(SyncActivityProfilerHandler&&) = delete;
+  SyncActivityProfilerHandler& operator=(SyncActivityProfilerHandler&&) =
+      delete;
   ~SyncActivityProfilerHandler() = default;
 
   void prepareTrace(const Config& config);

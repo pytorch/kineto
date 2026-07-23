@@ -41,18 +41,21 @@ class EventProfilerController : public ConfigLoader::ConfigHandler {
   static void start(CUcontext ctx, ConfigLoader& configLoader);
   static void stopIfEnabled(CUcontext ctx);
 
-  static void addLoggerFactory(std::function<std::unique_ptr<SampleListener>(const Config&)> factory);
+  static void addLoggerFactory(
+      std::function<std::unique_ptr<SampleListener>(const Config&)> factory);
 
-  static void addOnDemandLoggerFactory(std::function<std::unique_ptr<SampleListener>(const Config&)> factory);
+  static void addOnDemandLoggerFactory(
+      std::function<std::unique_ptr<SampleListener>(const Config&)> factory);
 
   bool canAcceptConfig() override;
 
   bool acceptConfig(const Config& config) override;
 
  private:
-  explicit EventProfilerController(CUcontext context,
-                                   ConfigLoader& configLoader,
-                                   detail::HeartbeatMonitor& heartbeatMonitor);
+  explicit EventProfilerController(
+      CUcontext context,
+      ConfigLoader& configLoader,
+      detail::HeartbeatMonitor& heartbeatMonitor);
   bool enableForDevice(Config& cfg);
   void profilerLoop();
   static bool& started();

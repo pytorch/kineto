@@ -152,18 +152,17 @@ TEST(AsyncActivityProfilerHandler, AsyncTrace) {
   auto now = system_clock::now();
   auto startTime = now + seconds(kWarmupSecs + 1);
 
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = {}
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          kWarmupSecs,
-          kDurationSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+      kWarmupSecs,
+      kDurationSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(handler.isAsyncActive());
@@ -229,19 +228,18 @@ TEST(AsyncActivityProfilerHandler, AsyncTraceUsingIter) {
     int iter = 0;
     auto now = system_clock::now();
 
-    bool success = cfg.parse(
-        fmt::format(
-            R"CFG(
+    bool success = cfg.parse(fmt::format(
+        R"CFG(
       PROFILE_START_ITERATION = {}
       ACTIVITIES_WARMUP_ITERATIONS={}
       ACTIVITIES_ITERATIONS={}
       ACTIVITIES_DURATION_SECS = 1
       ACTIVITIES_LOG_FILE = {}
     )CFG",
-            start_iter,
-            warmup_iters,
-            trace_iters,
-            traceFile.path()));
+        start_iter,
+        warmup_iters,
+        trace_iters,
+        traceFile.path()));
 
     EXPECT_TRUE(success);
     EXPECT_FALSE(handler.isAsyncActive());
@@ -309,18 +307,17 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   auto now = system_clock::now();
   auto startTime = now + seconds(kWarmupSecs + 1);
 
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = {}
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          kWarmupSecs,
-          kDurationSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+      kWarmupSecs,
+      kDurationSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
 
   EXPECT_TRUE(success);
   EXPECT_FALSE(handler.isAsyncActive());
@@ -388,17 +385,16 @@ TEST(AsyncActivityProfilerHandler, Cancel) {
   auto now = system_clock::now();
   auto startTime = now + seconds(kWarmupSecs + 1);
 
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          kWarmupSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+      kWarmupSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
   EXPECT_TRUE(success);
 
   // Cancel during Warmup
@@ -430,16 +426,15 @@ TEST(AsyncActivityProfilerHandler, FinalizesPendingTraceOnTeardown) {
 
   Config cfg;
 
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 1
     ACTIVITIES_WARMUP_ITERATIONS = 0
     ACTIVITIES_ITERATIONS = 1
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path()));
+      traceFile.path()));
   EXPECT_TRUE(success);
 
   {
@@ -479,18 +474,17 @@ TEST(AsyncActivityProfilerHandler, BufferSizeLimitDuringWarmup) {
   auto now = system_clock::now();
   auto startTime = now + seconds(kWarmupSecs + 1);
 
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
     ACTIVITIES_MAX_GPU_BUFFER_SIZE_MB = 3
   )CFG",
-          kWarmupSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+      kWarmupSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
   EXPECT_TRUE(success);
 
   handler.configure(cfg, now);
@@ -516,16 +510,15 @@ TEST(AsyncActivityProfilerHandler, IterationRequestWithoutStepIsRejected) {
   auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 5
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 2
     ACTIVITIES_DURATION_SECS = 0
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path()));
+      traceFile.path()));
   ASSERT_TRUE(success);
   ASSERT_TRUE(cfg.hasProfileStartIteration());
 
@@ -548,16 +541,15 @@ TEST(
   auto traceFile = createTempTraceFile("libkineto_test", ".json");
 
   Config cfg;
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     PROFILE_START_ITERATION = 5
     ACTIVITIES_WARMUP_ITERATIONS = 1
     ACTIVITIES_ITERATIONS = 2
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path()));
+      traceFile.path()));
   ASSERT_TRUE(success);
   ASSERT_TRUE(cfg.hasProfileStartIteration());
 
@@ -582,28 +574,26 @@ TEST(AsyncActivityProfilerHandler, SecondRequestWhilePendingIsRejected) {
                      .count();
 
   Config accepted;
-  ASSERT_TRUE(accepted.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(accepted.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = 0
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          acceptedFile.path(),
-          startMs)));
+      acceptedFile.path(),
+      startMs)));
 
   Config rejected;
-  ASSERT_TRUE(rejected.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(rejected.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = 0
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          rejectedFile.path(),
-          startMs)));
+      rejectedFile.path(),
+      startMs)));
 
   // The first request is accepted; a second arriving while it is still pending
   // is rejected.
@@ -624,16 +614,15 @@ TEST(AsyncActivityProfilerHandler, ConfigureRejectsStartTimeInThePast) {
   auto startTime = now - seconds(5);
 
   Config cfg;
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = 5
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
   ASSERT_TRUE(success);
 
   handler.configure(cfg, now);
@@ -655,18 +644,17 @@ TEST(AsyncActivityProfilerHandler, CancelDuringProcessTrace) {
   auto startTime = now + seconds(kWarmupSecs + 1);
 
   Config cfg;
-  bool success = cfg.parse(
-      fmt::format(
-          R"CFG(
+  bool success = cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = {}
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          kWarmupSecs,
-          kDurationSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
+      kWarmupSecs,
+      kDurationSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count()));
   ASSERT_TRUE(success);
 
   handler.configure(cfg, now);
@@ -723,16 +711,15 @@ TEST(
                      .count();
 
   Config cfg;
-  ASSERT_TRUE(cfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = 0
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          traceFile.path(),
-          startMs)));
+      traceFile.path(),
+      startMs)));
   ASSERT_TRUE(cfg.activityProfilerEnabled());
 
   EXPECT_TRUE(handler.acceptConfig(cfg));
@@ -755,18 +742,17 @@ TEST_F(AsyncClientTest, StartsAndStopsClientAroundCollection) {
   auto startTime = now + seconds(kWarmupSecs + 1);
 
   Config cfg;
-  ASSERT_TRUE(cfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = {}
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          kWarmupSecs,
-          kDurationSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count())));
+      kWarmupSecs,
+      kDurationSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count())));
 
   handler.configure(cfg, now);
   EXPECT_EQ(client_.startCount.load(), 0);
@@ -805,17 +791,16 @@ TEST_F(AsyncClientTest, CancelStopsClient) {
   auto startTime = now + seconds(kWarmupSecs + 1);
 
   Config cfg;
-  ASSERT_TRUE(cfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(cfg.parse(fmt::format(
+      R"CFG(
     ACTIVITIES_WARMUP_PERIOD_SECS = {}
     ACTIVITIES_DURATION_SECS = 1
     ACTIVITIES_LOG_FILE = {}
     PROFILE_START_TIME = {}
   )CFG",
-          kWarmupSecs,
-          traceFile.path(),
-          duration_cast<milliseconds>(startTime.time_since_epoch()).count())));
+      kWarmupSecs,
+      traceFile.path(),
+      duration_cast<milliseconds>(startTime.time_since_epoch()).count())));
 
   handler.configure(cfg, now);
   now = startTime;
@@ -838,14 +823,13 @@ TEST_F(AsyncClientTest, MemoryProfileRequestDrivesClientHooks) {
   Config cfg;
   // PROFILE_MEMORY resets the log file to a default, so ACTIVITIES_LOG_FILE
   // must follow it to control the export path.
-  ASSERT_TRUE(cfg.parse(
-      fmt::format(
-          R"CFG(
+  ASSERT_TRUE(cfg.parse(fmt::format(
+      R"CFG(
     PROFILE_MEMORY = true
     PROFILE_MEMORY_DURATION_MSECS = 50
     ACTIVITIES_LOG_FILE = {}
   )CFG",
-          traceFile.path())));
+      traceFile.path())));
   ASSERT_TRUE(cfg.memoryProfilerEnabled());
 
   auto memoryStopped = client_.memoryStopFuture();

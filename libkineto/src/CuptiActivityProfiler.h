@@ -39,14 +39,27 @@ class CuptiActivityProfiler : public GenericActivityProfiler {
  private:
   void buildProcessingState(CuptiActivityBufferMap& buffers);
   // Process generic CUPTI activity
-  void handleCuptiActivity(const CUpti_Activity* record, ActivityLogger* logger);
+  void handleCuptiActivity(
+      const CUpti_Activity* record,
+      ActivityLogger* logger);
   // Process specific GPU activity types
-  void handleCorrelationActivity(const CUpti_ActivityExternalCorrelation* correlation);
-  void handleRuntimeActivity(const CUpti_ActivityAPI* activity, ActivityLogger* logger);
-  void handleDriverActivity(const CUpti_ActivityAPI* activity, ActivityLogger* logger);
-  void handleOverheadActivity(const CUpti_ActivityOverhead* activity, ActivityLogger* logger);
-  void handleCudaEventActivity(const CUpti_ActivityCudaEventType* activity, ActivityLogger* logger);
-  void handleCudaSyncActivity(const CUpti_ActivitySynchronization* activity, ActivityLogger* logger);
+  void handleCorrelationActivity(
+      const CUpti_ActivityExternalCorrelation* correlation);
+  void handleRuntimeActivity(
+      const CUpti_ActivityAPI* activity,
+      ActivityLogger* logger);
+  void handleDriverActivity(
+      const CUpti_ActivityAPI* activity,
+      ActivityLogger* logger);
+  void handleOverheadActivity(
+      const CUpti_ActivityOverhead* activity,
+      ActivityLogger* logger);
+  void handleCudaEventActivity(
+      const CUpti_ActivityCudaEventType* activity,
+      ActivityLogger* logger);
+  void handleCudaSyncActivity(
+      const CUpti_ActivitySynchronization* activity,
+      ActivityLogger* logger);
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
   void logDeferredEvents();

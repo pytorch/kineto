@@ -34,19 +34,24 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
  public:
   explicit ActivityProfilerController(ConfigLoader& configLoader, bool cpuOnly);
   ActivityProfilerController(const ActivityProfilerController&) = delete;
-  ActivityProfilerController& operator=(const ActivityProfilerController&) = delete;
+  ActivityProfilerController& operator=(const ActivityProfilerController&) =
+      delete;
 
   ~ActivityProfilerController() override;
 
 #if !USE_GOOGLE_LOG
-  static void addLoggerCollectorFactory(const std::function<std::shared_ptr<LoggerCollector>()>& factory);
+  static void addLoggerCollectorFactory(
+      const std::function<std::shared_ptr<LoggerCollector>()>& factory);
   static std::vector<std::shared_ptr<LoggerCollector>> getLoggerCollectors();
 #endif // !USE_GOOGLE_LOG
 
-  static void addLoggerFactory(const std::string& protocol, ActivityLoggerFactory::FactoryFunc factory);
+  static void addLoggerFactory(
+      const std::string& protocol,
+      ActivityLoggerFactory::FactoryFunc factory);
 
   static void setInvariantViolationsLoggerFactory(
-      const std::function<std::unique_ptr<InvariantViolationsLogger>()>& factory);
+      const std::function<std::unique_ptr<InvariantViolationsLogger>()>&
+          factory);
 
   // ConfigLoader::ConfigHandler callback API.
   bool canAcceptConfig() override;
@@ -73,10 +78,11 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   void addMetadata(const std::string& key, const std::string& value);
 
-  void logInvariantViolation(const std::string& profile_id,
-                             const std::string& assertion,
-                             const std::string& error,
-                             const std::string& group_profile_id = "");
+  void logInvariantViolation(
+      const std::string& profile_id,
+      const std::string& assertion,
+      const std::string& error,
+      const std::string& group_profile_id = "");
 
   void pushCorrelationId(uint64_t id);
 

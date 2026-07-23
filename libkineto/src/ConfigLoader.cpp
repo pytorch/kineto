@@ -97,6 +97,9 @@ ConfigLoader::ConfigLoader()
 
 void ConfigLoader::startThread() {
   if (!updateThread_) {
+    // Reset the stop flag so a thread started after a prior stopThread() runs
+    // instead of exiting immediately on its first wakeup.
+    stopFlag_ = false;
     // Create default base config here - at this point static initializers
     // of extensions should have run and registered all config feature factories
     std::scoped_lock lock(configLock_);
@@ -120,6 +123,10 @@ void ConfigLoader::stopThread() {
     }
     updateThread_ = nullptr;
   }
+}
+
+void ConfigLoader::stopUpdateThread() {
+  stopThread();
 }
 
 ConfigLoader::~ConfigLoader() {

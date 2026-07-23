@@ -52,10 +52,12 @@ class ActivityLogger {
   virtual void handleTraceSpan(const TraceSpan& span) = 0;
 
   virtual void handleActivity(const libkineto::ITraceActivity& activity) = 0;
-  virtual void handleGenericActivity(const libkineto::GenericTraceActivity& activity) = 0;
+  virtual void handleGenericActivity(
+      const libkineto::GenericTraceActivity& activity) = 0;
 
-  virtual void handleTraceStart(const std::unordered_map<std::string, std::string>& metadata,
-                                const std::string& device_properties) = 0;
+  virtual void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) = 0;
 
   void handleTraceStart() {
     handleTraceStart(std::unordered_map<std::string, std::string>(), "");
@@ -63,7 +65,10 @@ class ActivityLogger {
 
   virtual void finalizeMemoryTrace(const std::string&, const Config&) = 0;
 
-  virtual void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers, int64_t endTime) = 0;
+  virtual void finalizeTrace(
+      const Config& config,
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) = 0;
 
  protected:
   ActivityLogger() = default;

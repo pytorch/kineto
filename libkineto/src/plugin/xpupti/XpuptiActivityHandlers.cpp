@@ -9,6 +9,7 @@
 #include "XpuptiActivityProfilerSession.h"
 #include "output_json.h"
 
+#include <algorithm>
 #include <iterator>
 #include <type_traits>
 
@@ -293,6 +294,48 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     return;
   }
   trace_activity->log(logger);
+
+  // GPU_USER_ANNOTATION activities are synthetic spans that bracket all
+  // GPU work (kernels/memcpies) on a given (device, stream) pair that was
+  // enqueued while a user correlation ID was active.  We only do this for
+  // actual GPU activities (handleRuntimeActivities == false); CPU-side
+  // runtime events are skipped because they carry no device/resource info.
+  // For each (device, stream, user_external_id) key we either expand the
+  // existing annotation to cover the new activity's time range, or create a
+  // fresh GenericTraceActivity linked back to the CPU op.  The annotations
+  // are flushed to the logger at the end of processTrace().
+  if constexpr (!handleRuntimeActivities) {
+    if (activity_types_.count(ActivityType::GPU_USER_ANNOTATION)) {
+      auto userIt = userCorrelationMap_.find(activity->_correlation_id);
+      if (userIt != userCorrelationMap_.end() && cpuActivity_) {
+        const int64_t user_external_id = userIt->second;
+        const int32_t dev = trace_activity->device;
+        const int32_t res = trace_activity->resource;
+        auto key = std::make_tuple(dev, res, user_external_id);
+        auto annIt = userAnnotationsByStream_.find(key);
+        if (annIt != userAnnotationsByStream_.end()) {
+          GenericTraceActivity* ua = annIt->second;
+          ua->startTime = std::min(ua->startTime, trace_activity->startTime);
+          ua->endTime = std::max(ua->endTime, trace_activity->endTime);
+        } else if (
+            const ITraceActivity* cpu_act = cpuActivity_(user_external_id)) {
+          traceBuffer_.emplace_activity(
+              traceBuffer_.span,
+              ActivityType::GPU_USER_ANNOTATION,
+              cpu_act->name());
+          auto& ua = traceBuffer_.activities.back();
+          ua->startTime = trace_activity->startTime;
+          ua->endTime = trace_activity->endTime;
+          ua->device = dev;
+          ua->resource = res;
+          ua->id = user_external_id;
+          ua->threadId = trace_activity->threadId;
+          ua->linked = cpu_act;
+          userAnnotationsByStream_.emplace(key, ua.get());
+        }
+      }
+    }
+  }
 }
 
 void XpuptiActivityProfilerSession::handleCommunicationActivity(

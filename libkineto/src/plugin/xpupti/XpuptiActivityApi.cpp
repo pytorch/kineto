@@ -248,6 +248,10 @@ void XpuptiActivityApi::enableXpuptiActivities(
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
         break;
 
+      case ActivityType::XPU_SYNC:
+        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+        break;
+
       case ActivityType::COLLECTIVE_COMM:
         warnIfIttNotifyLibInvalid();
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COMMUNICATION));
@@ -291,6 +295,10 @@ void XpuptiActivityApi::disablePtiActivities(
 
       case ActivityType::OVERHEAD:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
+        break;
+
+      case ActivityType::XPU_SYNC:
+        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
         break;
 
       case ActivityType::COLLECTIVE_COMM:

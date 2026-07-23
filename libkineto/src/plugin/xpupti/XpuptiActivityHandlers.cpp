@@ -96,14 +96,6 @@ inline void XpuptiActivityProfilerSession::handleCorrelationActivity(
   }
 }
 
-std::string XpuptiActivityProfilerSession::getApiName(
-    const pti_view_record_api_t* activity) {
-  const char* api_name = nullptr;
-  XPUPTI_CALL(
-      ptiViewGetApiIdName(activity->_api_group, activity->_api_id, &api_name));
-  return std::string(api_name);
-}
-
 inline std::string memcpyName(
     pti_view_memcpy_type kind,
     pti_view_memory_type src,
@@ -394,7 +386,91 @@ const char* overheadKindString(pti_view_overhead_kind kind) {
       return "Unknown";
   }
 }
+
+std::string getStringFromSynchronizationType(
+    const pti_view_synchronization_type& synchronization_type) {
+  using pv_st = pti_view_synchronization_type;
+  static const std::unordered_map<pv_st, std::string> name_map{
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_UNKNOWN, "UNKNOWN"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION,
+       "GPU_BARRIER_EXECUTION"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY,
+       "GPU_BARRIER_MEMORY"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_FENCE, "HOST_FENCE"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_EVENT, "HOST_EVENT"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_COMMAND_LIST,
+       "HOST_COMMAND_LIST"},
+      {pv_st::PTI_VIEW_SYNCHRONIZATION_TYPE_HOST_COMMAND_QUEUE,
+       "HOST_COMMAND_QUEUE"},
+  };
+
+  const auto& name_string = name_map.find(synchronization_type);
+  if (name_string == name_map.end()) {
+    const std::string error_message =
+        "404: Not found string literal for this synchronization type: " +
+        std::to_string(synchronization_type);
+    return error_message;
+  }
+  return name_string->second;
+}
 } // namespace
+
+void XpuptiActivityProfilerSession::handleSynchronizationActivity(
+    const pti_view_record_synchronization* activity,
+    ActivityLogger& logger) {
+  const auto& activity_record = *activity;
+  const auto record_name = getApiName(activity);
+
+  const bool isGpuSync = activity_record._synch_type ==
+          PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION ||
+      activity_record._synch_type ==
+          PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY;
+
+  traceBuffer_.span.opCount += 1;
+  if (isGpuSync) {
+    traceBuffer_.gpuOpCount += 1;
+  }
+  traceBuffer_.emplace_activity(
+      traceBuffer_.span, ActivityType::XPU_SYNC, record_name);
+  auto& synchronization_activity = *(traceBuffer_.activities.back());
+
+  synchronization_activity.startTime = activity_record._start_timestamp;
+  synchronization_activity.endTime = activity_record._end_timestamp;
+  synchronization_activity.device = -1;
+  synchronization_activity.resource = activity_record._thread_id;
+  synchronization_activity.threadId = activity_record._thread_id;
+
+  synchronization_activity.id = activity->_correlation_id;
+  synchronization_activity.linked =
+      linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
+  synchronization_activity.addMetadata(
+      "correlation", activity_record._correlation_id);
+
+  synchronization_activity.addMetadataQuoted(
+      "Type", getStringFromSynchronizationType(activity_record._synch_type));
+  synchronization_activity.addMetadataQuoted(
+      "Context_handle", handleToHexString(activity_record._context_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Queue_handle", handleToHexString(activity_record._queue_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Event_handle", handleToHexString(activity_record._event_handle));
+  synchronization_activity.addMetadata(
+      "Number_wait_events", activity_record._number_wait_events);
+  synchronization_activity.addMetadata(
+      "Return_code", activity_record._return_code);
+
+  if (outOfRange(&synchronization_activity)) {
+    traceBuffer_.span.opCount -= 1;
+    if (isGpuSync) {
+      traceBuffer_.gpuOpCount -= 1;
+    }
+    removeCorrelatedPtiActivities(&synchronization_activity);
+    traceBuffer_.activities.pop_back();
+    return;
+  }
+
+  synchronization_activity.log(logger);
+}
 
 void XpuptiActivityProfilerSession::handleOverheadActivity(
     const pti_view_record_overhead* activity,
@@ -471,6 +547,11 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
     case PTI_VIEW_COLLECTION_OVERHEAD:
       handleOverheadActivity(
           reinterpret_cast<const pti_view_record_overhead*>(record), logger);
+      break;
+    case PTI_VIEW_DEVICE_SYNCHRONIZATION:
+      handleSynchronizationActivity(
+          reinterpret_cast<const pti_view_record_synchronization*>(record),
+          logger);
       break;
     case PTI_VIEW_COMMUNICATION:
       handleCommunicationActivity(

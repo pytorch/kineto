@@ -85,7 +85,13 @@ class XpuptiActivityProfilerSession
 
   using pti_view_record_api_t = pti_view_record_api;
 
-  std::string getApiName(const pti_view_record_api_t* activity);
+  template <typename PTI_VIEW>
+  std::string getApiName(const PTI_VIEW* activity) {
+    const char* api_name = nullptr;
+    XPUPTI_CALL(ptiViewGetApiIdName(
+        activity->_api_group, activity->_api_id, &api_name));
+    return std::string(api_name);
+  }
 
   template <class pti_view_memory_record_type>
   void handleRuntimeKernelMemcpyMemsetActivities(
@@ -93,6 +99,9 @@ class XpuptiActivityProfilerSession
       const pti_view_memory_record_type* activity,
       ActivityLogger& logger);
 
+  void handleSynchronizationActivity(
+      const pti_view_record_synchronization* activity,
+      ActivityLogger& logger);
   void handleCommunicationActivity(
       const pti_view_record_comms* activity,
       ActivityLogger& logger);

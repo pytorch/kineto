@@ -183,16 +183,19 @@ target_include_directories(GenericTraceActivityMetadataTest PRIVATE
 gtest_discover_tests(GenericTraceActivityMetadataTest)
 
 # OutputJsonTest
-add_executable(OutputJsonTest
-    OutputJsonTest.cpp
-    TestUtils.cpp)
-target_link_libraries(OutputJsonTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    nlohmann_json::nlohmann_json
-    ${XPU_XPUPTI_LIBRARY})
-target_include_directories(OutputJsonTest PRIVATE
-    "${LIBKINETO_DIR}"
-    "${LIBKINETO_DIR}/include"
-    "${LIBKINETO_DIR}/src")
-gtest_discover_tests(OutputJsonTest)
+# Not supported on Windows, uses unix "unistd.h"
+if(NOT WIN32)
+    add_executable(OutputJsonTest
+        OutputJsonTest.cpp
+        TestUtils.cpp)
+    target_link_libraries(OutputJsonTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        nlohmann_json::nlohmann_json
+        ${XPU_XPUPTI_LIBRARY})
+    target_include_directories(OutputJsonTest PRIVATE
+        "${LIBKINETO_DIR}"
+        "${LIBKINETO_DIR}/include"
+        "${LIBKINETO_DIR}/src")
+    gtest_discover_tests(OutputJsonTest)
+endif()

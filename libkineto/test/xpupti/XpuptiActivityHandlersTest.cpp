@@ -90,6 +90,17 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
   }
 };
 
+TEST_F(XpuptiActivityHandlersTest, SessionMetadataIncludesPtiVersion) {
+  Config config;
+  std::set<ActivityType> activity_types = {ActivityType::COLLECTIVE_COMM};
+  KN::XpuptiActivityProfilerSession session(
+      mockApi_, "__test_profiler__", config, activity_types);
+
+  const auto metadata = session.getMetadata();
+  ASSERT_TRUE(metadata.contains("xpupti_version"));
+  EXPECT_FALSE(metadata.at("xpupti_version").empty());
+}
+
 // --- Communication Activity Tests ---
 
 TEST_F(XpuptiActivityHandlersTest, CommunicationActivityHasXcclPrefix) {

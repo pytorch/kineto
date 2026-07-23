@@ -11,6 +11,7 @@
 
 #include "time_since_epoch.h"
 
+#include <pti/pti_version.h>
 #include <sycl/sycl.hpp>
 
 #include <algorithm>
@@ -114,6 +115,14 @@ std::vector<libkineto::ResourceInfo> XpuptiActivityProfilerSession::
   }
   resourceInfo_.clear();
   return result;
+}
+
+std::unordered_map<std::string, std::string> XpuptiActivityProfilerSession::
+    getMetadata() {
+  const char* version = ptiVersionString();
+  return {
+      {"xpupti_version",
+       fmt::format("\"{}\"", version != nullptr ? version : "unknown")}};
 }
 
 void XpuptiActivityProfilerSession::pushCorrelationId(uint64_t id) {

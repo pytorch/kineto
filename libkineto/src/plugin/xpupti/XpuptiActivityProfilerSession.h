@@ -60,6 +60,7 @@ class XpuptiActivityProfilerSession
   }
   std::vector<libkineto::ResourceInfo> getResourceInfos() override;
   std::unique_ptr<libkineto::CpuTraceBuffer> getTraceBuffer() override;
+  std::unordered_map<std::string, std::string> getMetadata() override;
 
   void pushCorrelationId(uint64_t id) override;
   void popCorrelationId() override;

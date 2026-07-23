@@ -82,7 +82,7 @@ std::unique_ptr<KN::CpuTraceBuffer> runGpuUserAnnotationCase(
 
   bool firstLookup = true;
   auto linkedActivityCallback =
-      [&cpuAct, &firstLookup, mode](int32_t corr) -> const KN::ITraceActivity* {
+      [&firstLookup, mode](int32_t corr) -> const KN::ITraceActivity* {
     if (corr != kUserCorrId) {
       return nullptr;
     }

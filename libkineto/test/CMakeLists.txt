@@ -32,6 +32,14 @@ target_link_libraries(ConfigTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ConfigTest)
 
+# ConfigLoaderTest
+add_executable(ConfigLoaderTest ConfigLoaderTest.cpp)
+target_link_libraries(ConfigLoaderTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(ConfigLoaderTest)
+
 # ActivityProfilerControllerTest
 # Not supported on Windows, uses unix "unistd.h"
 if(NOT WIN32)

@@ -47,8 +47,9 @@ inline std::unordered_map<std::string, std::string> getEnvMetadata() {
   }
 
   // Capture hostname for per-rank host identification in distributed training.
-  // $HOSTNAME is not guaranteed in non-interactive or containerized environments,
-  // so we use gethostname() which reads the kernel hostname directly.
+  // $HOSTNAME is not guaranteed in non-interactive or containerized
+  // environments, so we use gethostname() which reads the kernel hostname
+  // directly.
   std::array<char, 256> hostname{};
   if (gethostname(hostname.data(), hostname.size()) == 0) {
     hostname.back() = '\0';

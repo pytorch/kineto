@@ -52,7 +52,8 @@ class ConfigLoader {
 
   void removeHandler(ConfigKind kind, ConfigHandler* handler) {
     std::scoped_lock lock(updateThreadMutex_);
-    auto it = std::find(handlers_[kind].begin(), handlers_[kind].end(), handler);
+    auto it =
+        std::find(handlers_[kind].begin(), handlers_[kind].end(), handler);
     if (it != handlers_[kind].end()) {
       handlers_[kind].erase(it);
     }
@@ -85,9 +86,16 @@ class ConfigLoader {
   bool hasNewConfig(const Config& oldConfig);
   int contextCountForGpu(uint32_t device);
 
-  static void setDaemonConfigLoaderFactory(std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
+  static void setDaemonConfigLoaderFactory(
+      std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
 
   std::string getConfString();
+
+  // Stops and joins the background config-update thread; a no-op if it was
+  // never started. Exposed so a test that drives the singleton can tear the
+  // thread down deterministically before the test process exits, rather than
+  // leaving the join to run during static destruction.
+  void stopUpdateThread();
 
  private:
   ConfigLoader();
@@ -101,9 +109,12 @@ class ConfigLoader {
   void updateBaseConfig();
 
   // Create configuration when receiving request from a daemon
-  void configureFromDaemon(std::chrono::time_point<std::chrono::system_clock> now, Config& config);
+  void configureFromDaemon(
+      std::chrono::time_point<std::chrono::system_clock> now,
+      Config& config);
 
-  std::string readOnDemandConfigFromDaemon(std::chrono::time_point<std::chrono::system_clock> now);
+  std::string readOnDemandConfigFromDaemon(
+      std::chrono::time_point<std::chrono::system_clock> now);
 
   const char* customConfigFileName();
 

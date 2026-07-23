@@ -26,18 +26,23 @@ inline uint64_t streamIdFromHipStream(hipStream_t stream) {
 
 inline uint64_t runtimeStreamId(const rocprofBase* item) {
   if (item->type == ROCTRACER_ACTIVITY_KERNEL) {
-    return streamIdFromHipStream(reinterpret_cast<const rocprofKernelRow*>(item)->stream);
+    return streamIdFromHipStream(
+        reinterpret_cast<const rocprofKernelRow*>(item)->stream);
   }
   if (item->type == ROCTRACER_ACTIVITY_COPY) {
-    return streamIdFromHipStream(reinterpret_cast<const rocprofCopyRow*>(item)->stream);
+    return streamIdFromHipStream(
+        reinterpret_cast<const rocprofCopyRow*>(item)->stream);
   }
   return 0;
 }
 
-// Assign logical stream ID to async kernel and copy rows. Remap to small index for proper display.
-// Recover logical stream ID from the correlated runtime row. isAsyncOp selects the async rows to process.
+// Assign logical stream ID to async kernel and copy rows. Remap to small index
+// for proper display. Recover logical stream ID from the correlated runtime
+// row. isAsyncOp selects the async rows to process.
 template <class IsAsyncOp>
-void backfillAsyncStreams(std::vector<rocprofBase*>& rows, IsAsyncOp isAsyncOp) {
+void backfillAsyncStreams(
+    std::vector<rocprofBase*>& rows,
+    IsAsyncOp isAsyncOp) {
   // Map correlation id -> HIP stream from the runtime kernel/copy rows.
   std::unordered_map<uint64_t, uint64_t> streamByCorrelation;
   for (const auto* item : rows) {
@@ -66,7 +71,8 @@ void backfillAsyncStreams(std::vector<rocprofBase*>& rows, IsAsyncOp isAsyncOp) 
   }
 
   // Fallback: (e.g. ROCm-internal dispatches like __amd_rocclr_copyBuffer),
-  // infer the stream from the HSA queue, given the queue maps directly to a HIP stream
+  // infer the stream from the HSA queue, given the queue maps directly to a HIP
+  // stream
   std::unordered_map<uint64_t, uint64_t> streamByQueue;
   std::unordered_set<uint64_t> ambiguousQueues;
   for (const auto* item : rows) {
@@ -80,7 +86,8 @@ void backfillAsyncStreams(std::vector<rocprofBase*>& rows, IsAsyncOp isAsyncOp) 
     if (ambiguousQueues.count(async->queue) > 0) {
       continue;
     }
-    const auto [it, inserted] = streamByQueue.emplace(async->queue, async->stream);
+    const auto [it, inserted] =
+        streamByQueue.emplace(async->queue, async->stream);
     if (!inserted && it->second != async->stream) {
       streamByQueue.erase(it);
       ambiguousQueues.insert(async->queue);
@@ -100,10 +107,12 @@ void backfillAsyncStreams(std::vector<rocprofBase*>& rows, IsAsyncOp isAsyncOp) 
     }
   }
 
-  // Remap raw HIP stream pointers to small per-device indices, avoiding misrenders of large 64-bit tid values.
-  // Fallback: if still no stream ID, use HSA queue ID tagged with high bit to avoid collisions with stream IDs
+  // Remap raw HIP stream pointers to small per-device indices, avoiding
+  // misrenders of large 64-bit tid values. Fallback: if still no stream ID, use
+  // HSA queue ID tagged with high bit to avoid collisions with stream IDs
   constexpr uint64_t kQueueKeyTag = uint64_t{1} << 63;
-  std::unordered_map<int, std::unordered_map<uint64_t, uint64_t>> deviceStreamToIndex;
+  std::unordered_map<int, std::unordered_map<uint64_t, uint64_t>>
+      deviceStreamToIndex;
   for (auto* item : rows) {
     if (item->type != ROCTRACER_ACTIVITY_ASYNC) {
       continue;

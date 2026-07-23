@@ -68,12 +68,4 @@ DESELECTED_TESTS=(
   # "Cannot re-initialize XPU in forked subprocess". Independent of runtime XPU
   # availability and already deselected for CUDA and ROCm.
   test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_forked_process_cpu
-
-  # https://github.com/pytorch/kineto/issues/1429
-  # _validate_basic_json indexes traceEvents[-4] expecting the "PyTorch Profiler (0)"
-  # event, but a USE_XPU=1 build appends a second "__xpu_profiler__ (0)" instance to
-  # the trace, shifting that fixed offset. Caused by XPU being built (not by runtime
-  # availability), so it fails on this runner like the CPU-variant does here.
-  # Tracked for an upstream fix that locates the events by name instead of by offset.
-  test/profiler/test_profiler.py::TestProfilerDeviceCPU::test_basic_chrome_trace_cpu
 )

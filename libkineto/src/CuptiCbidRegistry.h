@@ -48,7 +48,9 @@ class CuptiCbidRegistry {
   CuptiCbidRegistry& operator=(CuptiCbidRegistry&&) = delete;
 
   // Check if a callback ID requires flow correlation (CPU->GPU arrows in trace)
-  [[nodiscard]] bool requiresFlowCorrelation(CallbackDomain domain, uint32_t cbid);
+  [[nodiscard]] bool requiresFlowCorrelation(
+      CallbackDomain domain,
+      uint32_t cbid);
 
   // Check if a callback ID is blocklisted (should be filtered from traces)
   [[nodiscard]] bool isBlocklisted(CallbackDomain domain, uint32_t cbid);
@@ -75,14 +77,19 @@ class CuptiCbidRegistry {
   };
 
   // Register a callback ID
-  void registerCbid(CallbackDomain domain, uint32_t cbid, bool requiresFlowCorrelation, bool isBlocklisted);
+  void registerCbid(
+      CallbackDomain domain,
+      uint32_t cbid,
+      bool requiresFlowCorrelation,
+      bool isBlocklisted);
 
   // Register a range of callback IDs
-  void registerCbidRange(CallbackDomain domain,
-                         uint32_t startCbid,
-                         uint32_t endCbid,
-                         bool requiresFlowCorrelation,
-                         bool isBlocklisted);
+  void registerCbidRange(
+      CallbackDomain domain,
+      uint32_t startCbid,
+      uint32_t endCbid,
+      bool requiresFlowCorrelation,
+      bool isBlocklisted);
 
   // Storage per domain
   std::unordered_map<uint32_t, CbidProperties> runtimeCallbacks_;
@@ -92,7 +99,8 @@ class CuptiCbidRegistry {
   std::vector<std::pair<CallbackDomain, CbidRange>> cbidRanges_;
 
   // Helper to get the appropriate map for domain
-  [[nodiscard]] std::unordered_map<uint32_t, CbidProperties>& getMapForDomain(CallbackDomain domain);
+  [[nodiscard]] std::unordered_map<uint32_t, CbidProperties>& getMapForDomain(
+      CallbackDomain domain);
 };
 
 } // namespace KINETO_NAMESPACE

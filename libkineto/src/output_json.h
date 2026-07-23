@@ -72,10 +72,14 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   void handleActivity(const ITraceActivity& activity) override;
   void handleGenericActivity(const GenericTraceActivity& activity) override;
 
-  void handleTraceStart(const std::unordered_map<std::string, std::string>& metadata,
-                        const std::string& device_properties) override;
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) override;
 
-  void finalizeTrace(const Config& config, std::unique_ptr<ActivityBuffers> buffers, int64_t endTime) override;
+  void finalizeTrace(
+      const Config& config,
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) override;
 
   void finalizeMemoryTrace(const std::string&, const Config&) override;
 
@@ -88,7 +92,11 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
  private:
   // Create a flow event (arrow)
-  void handleLink(char type, const ITraceActivity& e, int64_t id, const std::string& name);
+  void handleLink(
+      char type,
+      const ITraceActivity& e,
+      int64_t id,
+      const std::string& name);
 
   void addIterationMarker(const TraceSpan& span);
 
@@ -100,7 +108,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 
   void handleGenericLink(const ITraceActivity& activity);
 
-  void metadataToJSON(const std::unordered_map<std::string, std::string>& metadata);
+  void metadataToJSON(
+      const std::unordered_map<std::string, std::string>& metadata);
 
   std::unordered_map<std::string, std::string> addEnvVarsToMetadata(
       const std::unordered_map<std::string, std::string>& metadata);
@@ -111,95 +120,108 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
   // The string_view pid/tid variants are the canonical implementations.
   // Integer overloads are provided for convenience at call sites with
   // numeric process/thread IDs.
-  void writeMetadataEvent(std::string_view name,
-                          int64_t ts,
-                          std::string_view pid,
-                          std::string_view tid,
-                          std::string_view arg_key,
-                          std::string_view arg_value);
+  void writeMetadataEvent(
+      std::string_view name,
+      int64_t ts,
+      std::string_view pid,
+      std::string_view tid,
+      std::string_view arg_key,
+      std::string_view arg_value);
 
-  void writeMetadataEvent(std::string_view name,
-                          int64_t ts,
-                          int64_t pid,
-                          int64_t tid,
-                          std::string_view arg_key,
-                          std::string_view arg_value);
+  void writeMetadataEvent(
+      std::string_view name,
+      int64_t ts,
+      int64_t pid,
+      int64_t tid,
+      std::string_view arg_key,
+      std::string_view arg_value);
 
-  void writeCompleteEvent(std::string_view cat,
-                          std::string_view name,
-                          std::string_view pid,
-                          std::string_view tid,
-                          int64_t ts,
-                          int64_t dur,
-                          const ArgsBuilder& args);
+  void writeCompleteEvent(
+      std::string_view cat,
+      std::string_view name,
+      std::string_view pid,
+      std::string_view tid,
+      int64_t ts,
+      int64_t dur,
+      const ArgsBuilder& args);
 
-  void writeCompleteEvent(std::string_view cat,
-                          std::string_view name,
-                          int64_t pid,
-                          int64_t tid,
-                          int64_t ts,
-                          int64_t dur,
-                          const ArgsBuilder& args);
+  void writeCompleteEvent(
+      std::string_view cat,
+      std::string_view name,
+      int64_t pid,
+      int64_t tid,
+      int64_t ts,
+      int64_t dur,
+      const ArgsBuilder& args);
 
-  void writeInstantEvent(std::string_view cat,
-                         std::string_view name,
-                         std::string_view scope,
-                         std::string_view pid,
-                         std::string_view tid,
-                         int64_t ts,
-                         const ArgsBuilder& args,
-                         bool finalEvent = false);
+  void writeInstantEvent(
+      std::string_view cat,
+      std::string_view name,
+      std::string_view scope,
+      std::string_view pid,
+      std::string_view tid,
+      int64_t ts,
+      const ArgsBuilder& args,
+      bool finalEvent = false);
 
-  void writeInstantEvent(std::string_view cat,
-                         std::string_view name,
-                         std::string_view scope,
-                         int64_t pid,
-                         int64_t tid,
-                         int64_t ts,
-                         const ArgsBuilder& args,
-                         bool finalEvent = false);
+  void writeInstantEvent(
+      std::string_view cat,
+      std::string_view name,
+      std::string_view scope,
+      int64_t pid,
+      int64_t tid,
+      int64_t ts,
+      const ArgsBuilder& args,
+      bool finalEvent = false);
 
-  void writeCounterEvent(std::string_view cat,
-                         std::string_view name,
-                         std::string_view pid,
-                         std::string_view tid,
-                         int64_t ts,
-                         const ArgsBuilder& args);
+  void writeCounterEvent(
+      std::string_view cat,
+      std::string_view name,
+      std::string_view pid,
+      std::string_view tid,
+      int64_t ts,
+      const ArgsBuilder& args);
 
-  void writeCounterEvent(std::string_view cat,
-                         std::string_view name,
-                         int64_t pid,
-                         int64_t tid,
-                         int64_t ts,
-                         const ArgsBuilder& args);
+  void writeCounterEvent(
+      std::string_view cat,
+      std::string_view name,
+      int64_t pid,
+      int64_t tid,
+      int64_t ts,
+      const ArgsBuilder& args);
 
-  void writeFlowEvent(char type,
-                      int64_t id,
-                      std::string_view pid,
-                      std::string_view tid,
-                      int64_t ts,
-                      std::string_view cat,
-                      std::string_view name);
+  void writeFlowEvent(
+      char type,
+      int64_t id,
+      std::string_view pid,
+      std::string_view tid,
+      int64_t ts,
+      std::string_view cat,
+      std::string_view name);
 
-  void writeFlowEvent(char type,
-                      int64_t id,
-                      int64_t pid,
-                      int64_t tid,
-                      int64_t ts,
-                      std::string_view cat,
-                      std::string_view name);
+  void writeFlowEvent(
+      char type,
+      int64_t id,
+      int64_t pid,
+      int64_t tid,
+      int64_t ts,
+      std::string_view cat,
+      std::string_view name);
 
   // Copy the collective args (name, message sizes, dtype, process group, ranks,
   // seq, ...) recorded on a record_param_comms op into args. Backend-agnostic.
-  void appendCollectiveArgs(ArgsBuilder& args, const ITraceActivity& collectiveRecord);
+  void appendCollectiveArgs(
+      ArgsBuilder& args,
+      const ITraceActivity& collectiveRecord);
 
   // Enrich a device collective row from its linked record_param_comms op: copy
   // the collective args and fold its process group into the trace's
   // distributedInfo under the given backend labels.
-  void appendCollectiveMetadata(ArgsBuilder& args,
-                                const ITraceActivity& collectiveRecord,
-                                const std::string& backend,
-                                const std::string& backendConfig);
+  void appendCollectiveMetadata(
+      ArgsBuilder& args,
+      const ITraceActivity& collectiveRecord,
+      const std::string& backend,
+      const std::string& backendConfig);
 
   std::string fileName_;
   std::string tempFileName_;
@@ -236,7 +258,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
 // 3 months intervals, so we can still collect traces across ranks relative
 // to each other.
 // A month is 2629746, so 3 months is 7889238.
-using _trimonths = std::chrono::duration<_KINETO_GLIBCXX_CHRONO_INT64_T, std::ratio<7889238>>;
+using _trimonths =
+    std::chrono::duration<_KINETO_GLIBCXX_CHRONO_INT64_T, std::ratio<7889238>>;
 #undef _GLIBCXX_CHRONO_INT64_T
 
 class ChromeTraceBaseTime {
@@ -248,8 +271,9 @@ class ChromeTraceBaseTime {
   }
   int64_t get() {
     // Make all timestamps relative to 3 month intervals.
-    static int64_t base_time = libkineto::timeSinceEpoch(std::chrono::time_point<std::chrono::system_clock>(
-        std::chrono::floor<_trimonths>(std::chrono::system_clock::now())));
+    static int64_t base_time = libkineto::timeSinceEpoch(
+        std::chrono::time_point<std::chrono::system_clock>(
+            std::chrono::floor<_trimonths>(std::chrono::system_clock::now())));
     return base_time;
   }
 };

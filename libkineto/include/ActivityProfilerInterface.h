@@ -57,8 +57,9 @@ class ActivityProfilerInterface {
   // Call prepareTrace to enable tracing, then run the region to trace
   // at least once (and ideally run the same code that is to be traced) to
   // allow tracing structures to be initialized.
-  virtual void prepareTrace([[maybe_unused]] const std::set<ActivityType>& activityTypes,
-                            [[maybe_unused]] const std::string& configStr = "") {}
+  virtual void prepareTrace(
+      [[maybe_unused]] const std::set<ActivityType>& activityTypes,
+      [[maybe_unused]] const std::string& configStr = "") {}
 
   // Toggle GPU tracing as a trace is running to omit certain parts of a graph
   virtual void toggleCollectionDynamic([[maybe_unused]] const bool enable) {}
@@ -77,7 +78,8 @@ class ActivityProfilerInterface {
   // FIXME: Pass activityProfiler interface into clientInterface?
   virtual void pushCorrelationId([[maybe_unused]] uint64_t id) {}
   virtual void popCorrelationId() {}
-  virtual void transferCpuTrace([[maybe_unused]] std::unique_ptr<CpuTraceBuffer> traceBuffer) {}
+  virtual void transferCpuTrace(
+      [[maybe_unused]] std::unique_ptr<CpuTraceBuffer> traceBuffer) {}
 
   // Correlation ids for user defined spans
   virtual void pushUserCorrelationId([[maybe_unused]] uint64_t id) {}
@@ -89,18 +91,22 @@ class ActivityProfilerInterface {
 
   // Record trace metadata, currently supporting only string key and values,
   // values with the same key are overwritten
-  virtual void addMetadata(const std::string& key, const std::string& value) = 0;
+  virtual void addMetadata(
+      const std::string& key,
+      const std::string& value) = 0;
 
   // Add a child activity profiler, this enables frameworks in the application
   // to enable custom framework events.
-  virtual void addChildActivityProfiler([[maybe_unused]] std::unique_ptr<IActivityProfiler> profiler) {}
+  virtual void addChildActivityProfiler(
+      [[maybe_unused]] std::unique_ptr<IActivityProfiler> profiler) {}
 
   // Log Invariant Violation to factories enabled. This helps record
   // instances when the profiler behaves unexpectedly.
-  virtual void logInvariantViolation([[maybe_unused]] const std::string& profile_id,
-                                     [[maybe_unused]] const std::string& assertion,
-                                     [[maybe_unused]] const std::string& error,
-                                     [[maybe_unused]] const std::string& group_profile_id = "") {}
+  virtual void logInvariantViolation(
+      [[maybe_unused]] const std::string& profile_id,
+      [[maybe_unused]] const std::string& assertion,
+      [[maybe_unused]] const std::string& error,
+      [[maybe_unused]] const std::string& group_profile_id = "") {}
 };
 
 } // namespace libkineto

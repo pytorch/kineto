@@ -8,7 +8,7 @@
 
 #include "DeviceProperties.h"
 
-#include "TypedMetadata.h"
+#include "MetadataFieldCatalog.h"
 #include "TypedMetadataJson.h"
 
 #include <fmt/format.h>
@@ -29,6 +29,8 @@
 #include "Logger.h"
 
 namespace KINETO_NAMESPACE {
+
+namespace DevicePropertyFields = libkineto::DevicePropertyMetadataFields;
 
 #ifdef HAS_CUPTI
 #define gpuDeviceProp cudaDeviceProp
@@ -74,67 +76,50 @@ static const std::vector<gpuDeviceProp>& deviceProps() {
   return props;
 }
 
-namespace {
-constexpr libkineto::MetadataField<int64_t> kId{"id"};
-constexpr libkineto::MetadataField<std::string> kName{"name"};
-constexpr libkineto::MetadataField<int64_t> kTotalGlobalMem{"totalGlobalMem"};
-constexpr libkineto::MetadataField<int64_t> kComputeMajor{"computeMajor"};
-constexpr libkineto::MetadataField<int64_t> kComputeMinor{"computeMinor"};
-constexpr libkineto::MetadataField<int64_t> kMaxThreadsPerBlock{
-    "maxThreadsPerBlock"};
-constexpr libkineto::MetadataField<int64_t> kMaxThreadsPerMultiprocessor{
-    "maxThreadsPerMultiprocessor"};
-constexpr libkineto::MetadataField<int64_t> kRegsPerBlock{"regsPerBlock"};
-constexpr libkineto::MetadataField<int64_t> kWarpSize{"warpSize"};
-constexpr libkineto::MetadataField<int64_t> kSharedMemPerBlock{
-    "sharedMemPerBlock"};
-constexpr libkineto::MetadataField<int64_t> kNumSms{"numSms"};
-#ifdef HAS_CUPTI
-constexpr libkineto::MetadataField<int64_t> kRegsPerMultiprocessor{
-    "regsPerMultiprocessor"};
-constexpr libkineto::MetadataField<int64_t> kSharedMemPerBlockOptin{
-    "sharedMemPerBlockOptin"};
-constexpr libkineto::MetadataField<int64_t> kSharedMemPerMultiprocessor{
-    "sharedMemPerMultiprocessor"};
-#elif defined(HAS_ROCTRACER)
-constexpr libkineto::MetadataField<int64_t> kMaxSharedMemoryPerMultiProcessor{
-    "maxSharedMemoryPerMultiProcessor"};
-#endif
-} // namespace
-
 // Emit one device's compute properties as typed metadata
 static void visitDeviceMetadata(
     size_t id,
     const gpuDeviceProp& props,
     libkineto::ITypedMetadataVisitor& visitor) {
-  visitor.visit(kId, static_cast<int64_t>(id));
-  visitor.visit(kName, std::string{props.name});
-  visitor.visit(kTotalGlobalMem, static_cast<int64_t>(props.totalGlobalMem));
-  visitor.visit(kComputeMajor, static_cast<int64_t>(props.major));
-  visitor.visit(kComputeMinor, static_cast<int64_t>(props.minor));
+  visitor.visit(DevicePropertyFields::kId, static_cast<int64_t>(id));
+  visitor.visit(DevicePropertyFields::kName, std::string{props.name});
   visitor.visit(
-      kMaxThreadsPerBlock, static_cast<int64_t>(props.maxThreadsPerBlock));
+      DevicePropertyFields::kTotalGlobalMem,
+      static_cast<int64_t>(props.totalGlobalMem));
   visitor.visit(
-      kMaxThreadsPerMultiprocessor,
+      DevicePropertyFields::kComputeMajor, static_cast<int64_t>(props.major));
+  visitor.visit(
+      DevicePropertyFields::kComputeMinor, static_cast<int64_t>(props.minor));
+  visitor.visit(
+      DevicePropertyFields::kMaxThreadsPerBlock,
+      static_cast<int64_t>(props.maxThreadsPerBlock));
+  visitor.visit(
+      DevicePropertyFields::kMaxThreadsPerMultiprocessor,
       static_cast<int64_t>(props.maxThreadsPerMultiProcessor));
-  visitor.visit(kRegsPerBlock, static_cast<int64_t>(props.regsPerBlock));
-  visitor.visit(kWarpSize, static_cast<int64_t>(props.warpSize));
   visitor.visit(
-      kSharedMemPerBlock, static_cast<int64_t>(props.sharedMemPerBlock));
-  visitor.visit(kNumSms, static_cast<int64_t>(props.multiProcessorCount));
+      DevicePropertyFields::kRegsPerBlock,
+      static_cast<int64_t>(props.regsPerBlock));
+  visitor.visit(
+      DevicePropertyFields::kWarpSize, static_cast<int64_t>(props.warpSize));
+  visitor.visit(
+      DevicePropertyFields::kSharedMemPerBlock,
+      static_cast<int64_t>(props.sharedMemPerBlock));
+  visitor.visit(
+      DevicePropertyFields::kNumSms,
+      static_cast<int64_t>(props.multiProcessorCount));
 #ifdef HAS_CUPTI
   visitor.visit(
-      kRegsPerMultiprocessor,
+      DevicePropertyFields::kRegsPerMultiprocessor,
       static_cast<int64_t>(props.regsPerMultiprocessor));
   visitor.visit(
-      kSharedMemPerBlockOptin,
+      DevicePropertyFields::kSharedMemPerBlockOptin,
       static_cast<int64_t>(props.sharedMemPerBlockOptin));
   visitor.visit(
-      kSharedMemPerMultiprocessor,
+      DevicePropertyFields::kSharedMemPerMultiprocessor,
       static_cast<int64_t>(props.sharedMemPerMultiprocessor));
 #elif defined(HAS_ROCTRACER)
   visitor.visit(
-      kMaxSharedMemoryPerMultiProcessor,
+      DevicePropertyFields::kMaxSharedMemoryPerMultiProcessor,
       static_cast<int64_t>(props.maxSharedMemoryPerMultiProcessor));
 #endif
 }

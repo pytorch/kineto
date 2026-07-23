@@ -25,11 +25,16 @@ class KernelRegistry {
   static KernelRegistry* singleton();
 
   // Record a kernel launch for a specific device.
-  void recordKernel(uint32_t deviceId, const std::string& kernelName, uint64_t correlationId);
+  void recordKernel(
+      uint32_t deviceId,
+      const std::string& kernelName,
+      uint64_t correlationId);
 
   /// Return kernel information for the n'th hernel of a specific device with
   /// 'deviceId'.
-  std::optional<KernelRegistry::KernelInfoTy> getKernelInfo(uint32_t deviceId, size_t idx) const;
+  std::optional<KernelRegistry::KernelInfoTy> getKernelInfo(
+      uint32_t deviceId,
+      size_t idx) const;
 
   /// Return the number of kernels recorded for a specific device with
   /// 'deviceId'.

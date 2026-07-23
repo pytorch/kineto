@@ -18,7 +18,8 @@ namespace KINETO_NAMESPACE {
 class EventCSVLogger : public SampleListener {
  public:
   void update(const Config& config) override;
-  void handleSample(int device, const Sample& sample, bool from_new_version) override;
+  void handleSample(int device, const Sample& sample, bool from_new_version)
+      override;
 
  protected:
   EventCSVLogger() : out_(nullptr) {}

@@ -9,6 +9,7 @@
 #include "XpuptiActivityProfilerSession.h"
 #include "output_json.h"
 
+#include <algorithm>
 #include <iterator>
 #include <type_traits>
 
@@ -286,6 +287,48 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     return;
   }
   trace_activity->log(logger);
+
+  // GPU_USER_ANNOTATION activities are synthetic spans that bracket all
+  // GPU work (kernels/memcpies) on a given (device, stream) pair that was
+  // enqueued while a user correlation ID was active.  We only do this for
+  // actual GPU activities (handleRuntimeActivities == false); CPU-side
+  // runtime events are skipped because they carry no device/resource info.
+  // For each (device, stream, user_external_id) key we either expand the
+  // existing annotation to cover the new activity's time range, or create a
+  // fresh GenericTraceActivity linked back to the CPU op.  The annotations
+  // are flushed to the logger at the end of processTrace().
+  if constexpr (!handleRuntimeActivities) {
+    if (activity_types_.count(ActivityType::GPU_USER_ANNOTATION)) {
+      auto userIt = userCorrelationMap_.find(activity->_correlation_id);
+      if (userIt != userCorrelationMap_.end() && cpuActivity_) {
+        const int64_t user_external_id = userIt->second;
+        const int32_t dev = trace_activity->device;
+        const int32_t res = trace_activity->resource;
+        auto key = std::make_tuple(dev, res, user_external_id);
+        auto annIt = userAnnotationsByStream_.find(key);
+        if (annIt != userAnnotationsByStream_.end()) {
+          GenericTraceActivity* ua = annIt->second;
+          ua->startTime = std::min(ua->startTime, trace_activity->startTime);
+          ua->endTime = std::max(ua->endTime, trace_activity->endTime);
+        } else if (
+            const ITraceActivity* cpu_act = cpuActivity_(user_external_id)) {
+          traceBuffer_.emplace_activity(
+              traceBuffer_.span,
+              ActivityType::GPU_USER_ANNOTATION,
+              cpu_act->name());
+          auto& ua = traceBuffer_.activities.back();
+          ua->startTime = trace_activity->startTime;
+          ua->endTime = trace_activity->endTime;
+          ua->device = dev;
+          ua->resource = res;
+          ua->id = user_external_id;
+          ua->threadId = trace_activity->threadId;
+          ua->linked = cpu_act;
+          userAnnotationsByStream_.emplace(key, ua.get());
+        }
+      }
+    }
+  }
 }
 
 void XpuptiActivityProfilerSession::handleCommunicationActivity(
@@ -378,15 +421,17 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   const auto& activity_record = *activity;
   const auto record_name = getApiName(activity);
 
-  const bool isGpuSync =
-      activity_record._synch_type == PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION ||
-      activity_record._synch_type == PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY;
+  const bool isGpuSync = activity_record._synch_type ==
+          PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_EXECUTION ||
+      activity_record._synch_type ==
+          PTI_VIEW_SYNCHRONIZATION_TYPE_GPU_BARRIER_MEMORY;
 
   traceBuffer_.span.opCount += 1;
   if (isGpuSync) {
     traceBuffer_.gpuOpCount += 1;
   }
-  traceBuffer_.emplace_activity(traceBuffer_.span, ActivityType::XPU_SYNC, record_name);
+  traceBuffer_.emplace_activity(
+      traceBuffer_.span, ActivityType::XPU_SYNC, record_name);
   auto& synchronization_activity = *(traceBuffer_.activities.back());
 
   synchronization_activity.startTime = activity_record._start_timestamp;
@@ -403,11 +448,16 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
 
   synchronization_activity.addMetadataQuoted(
       "Type", getStringFromSynchronizationType(activity_record._synch_type));
-  synchronization_activity.addMetadataQuoted("Context_handle", handleToHexString(activity_record._context_handle));
-  synchronization_activity.addMetadataQuoted("Queue_handle", handleToHexString(activity_record._queue_handle));
-  synchronization_activity.addMetadataQuoted("Event_handle", handleToHexString(activity_record._event_handle));
-  synchronization_activity.addMetadata("Number_wait_events", activity_record._number_wait_events);
-  synchronization_activity.addMetadata("Return_code", activity_record._return_code);
+  synchronization_activity.addMetadataQuoted(
+      "Context_handle", handleToHexString(activity_record._context_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Queue_handle", handleToHexString(activity_record._queue_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Event_handle", handleToHexString(activity_record._event_handle));
+  synchronization_activity.addMetadata(
+      "Number_wait_events", activity_record._number_wait_events);
+  synchronization_activity.addMetadata(
+      "Return_code", activity_record._return_code);
 
   if (outOfRange(&synchronization_activity)) {
     traceBuffer_.span.opCount -= 1;

@@ -1,4 +1,3 @@
-# C++ style clang-format configuration
 ---
 AccessModifierOffset: -1
 AlignAfterOpenBracket: AlwaysBreak

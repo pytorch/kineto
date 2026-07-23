@@ -62,7 +62,8 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
   }
 
  private:
-  // Sized to hold the largest common CUDA activity (kernels) in one allocation, with some buffer
+  // Sized to hold the largest common CUDA activity (kernels) in one allocation,
+  // with some buffer
   static constexpr size_t kInitialJsonCapacity = 1024;
 
   // Widest int64_t is "-9223372036854775808" (20 chars)
@@ -73,35 +74,47 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
   }
 
   void visitValue(const MetadataField<double>& field, double value) override {
-    appendField(field, [&](std::string& json) { appendDoubleValue(json, value); });
+    appendField(
+        field, [&](std::string& json) { appendDoubleValue(json, value); });
   }
 
   void visitValue(const MetadataField<bool>& field, bool value) override {
-    appendField(field, [&](std::string& json) { json += value ? "true" : "false"; });
+    appendField(
+        field, [&](std::string& json) { json += value ? "true" : "false"; });
   }
 
-  void visitValue(const MetadataField<std::string>& field, std::string_view value) override {
+  void visitValue(
+      const MetadataField<std::string>& field,
+      std::string_view value) override {
     appendField(field, [&](std::string& json) { appendQuoted(json, value); });
   }
 
-  void visitValue(const MetadataField<std::vector<int64_t>>& field, const std::vector<int64_t>& value) override {
+  void visitValue(
+      const MetadataField<std::vector<int64_t>>& field,
+      const std::vector<int64_t>& value) override {
     appendField(field, [&](std::string& json) { appendArray(json, value); });
   }
 
-  void visitValue(const MetadataField<std::vector<std::string>>& field,
-                  const std::vector<std::string>& value) override {
+  void visitValue(
+      const MetadataField<std::vector<std::string>>& field,
+      const std::vector<std::string>& value) override {
     appendField(field, [&](std::string& json) { appendArray(json, value); });
   }
 
-  void visitValue(const MetadataField<RawJson>& field, const RawJson& value) override {
+  void visitValue(const MetadataField<RawJson>& field, const RawJson& value)
+      override {
     appendField(field, [&](std::string& json) { json += value.value; });
   }
 
-  void visitValue(const MetadataField<uint64_t>& field, uint64_t value) override {
-    appendField(field, [&](std::string& json) { appendUIntValue(json, value); });
+  void visitValue(const MetadataField<uint64_t>& field, uint64_t value)
+      override {
+    appendField(
+        field, [&](std::string& json) { appendUIntValue(json, value); });
   }
 
-  void visitValue(const MetadataField<InputShapes>& field, const InputShapes& value) override {
+  void visitValue(
+      const MetadataField<InputShapes>& field,
+      const InputShapes& value) override {
     appendField(field, [&](std::string& json) { appendArray(json, value); });
   }
 
@@ -172,13 +185,19 @@ class JsonTypedMetadataVisitor final : public ITypedMetadataVisitor {
     appendQuoted(json, value);
   }
 
-  // Nested-array entries so InputShapes serializes through the appendArray recursion
-  static void appendArrayValue(std::string& json, const std::vector<int64_t>& value) {
+  // Nested-array entries so InputShapes serializes through the appendArray
+  // recursion
+  static void appendArrayValue(
+      std::string& json,
+      const std::vector<int64_t>& value) {
     appendArray(json, value);
   }
 
-  static void appendArrayValue(std::string& json, const std::variant<std::vector<int64_t>, TensorListShapes>& value) {
-    std::visit([&json](const auto& shapes) { appendArray(json, shapes); }, value);
+  static void appendArrayValue(
+      std::string& json,
+      const std::variant<std::vector<int64_t>, TensorListShapes>& value) {
+    std::visit(
+        [&json](const auto& shapes) { appendArray(json, shapes); }, value);
   }
 
   std::string json_;

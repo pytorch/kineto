@@ -45,23 +45,30 @@ struct ConfigDerivedState final {
   ConfigDerivedState(const Config&);
 
   // Calculate if starting is valid.
-  bool canStart(const std::chrono::time_point<std::chrono::system_clock>& now) const;
+  bool canStart(
+      const std::chrono::time_point<std::chrono::system_clock>& now) const;
 
   // TODO: consider using union since only 1 arg is used.
-  bool isWarmupDone(const std::chrono::time_point<std::chrono::system_clock>& now, int64_t currentIter) const;
+  bool isWarmupDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
 
-  bool isCollectionDone(const std::chrono::time_point<std::chrono::system_clock>& now, int64_t currentIter) const;
+  bool isCollectionDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const;
 
   // Set and Get Functions below.
   const std::set<ActivityType>& profileActivityTypes() const {
     return profileActivityTypes_;
   }
 
-  const std::chrono::time_point<std::chrono::system_clock> profileStartTime() const {
+  const std::chrono::time_point<std::chrono::system_clock> profileStartTime()
+      const {
     return profileStartTime_;
   }
 
-  const std::chrono::time_point<std::chrono::system_clock> profileEndTime() const {
+  const std::chrono::time_point<std::chrono::system_clock> profileEndTime()
+      const {
     return profileEndTime_;
   }
 
@@ -117,7 +124,9 @@ class GenericActivityProfiler {
   }
 
   // Collect CPU and GPU traces
-  void collectTrace(bool collection_done, const std::chrono::time_point<std::chrono::system_clock>& now);
+  void collectTrace(
+      bool collection_done,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Used for async requests
   void setLogger(ActivityLogger* logger) {
@@ -140,14 +149,19 @@ class GenericActivityProfiler {
     return cpuActivityPresent_ || gpuActivityPresent_;
   }
 
-  void flushWarmupBuffers(int64_t currentIter,
-                          const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime);
+  void flushWarmupBuffers(
+      int64_t currentIter,
+      const std::chrono::time_point<std::chrono::system_clock>& nextWakeupTime);
 
-  bool isWarmupDone(const std::chrono::time_point<std::chrono::system_clock>& now, int64_t currentIter) const {
+  bool isWarmupDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const {
     return derivedConfig_->isWarmupDone(now, currentIter);
   }
 
-  bool isCollectionDone(const std::chrono::time_point<std::chrono::system_clock>& now, int64_t currentIter) const {
+  bool isCollectionDone(
+      const std::chrono::time_point<std::chrono::system_clock>& now,
+      int64_t currentIter) const {
     return derivedConfig_->isCollectionDone(now, currentIter);
   }
 
@@ -171,17 +185,20 @@ class GenericActivityProfiler {
     return config_ ? config_->activitiesMaxGpuBufferSize() / 1024 / 1024 : 0;
   }
 
-  void startTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
+  void startTrace(
+      const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     startTraceInternal(now);
   }
 
-  void stopTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
+  void stopTrace(
+      const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     stopTraceInternal(now);
   }
 
-  void cancelTrace(const std::chrono::time_point<std::chrono::system_clock>& now) {
+  void cancelTrace(
+      const std::chrono::time_point<std::chrono::system_clock>& now) {
     std::lock_guard<std::recursive_mutex> guard(mutex_);
     stopTraceInternal(now);
     resetInternal();
@@ -203,12 +220,16 @@ class GenericActivityProfiler {
     resetInternal();
   }
 
-  bool canStart(const Config& config, const std::chrono::time_point<std::chrono::system_clock>& now) const {
+  bool canStart(
+      const Config& config,
+      const std::chrono::time_point<std::chrono::system_clock>& now) const {
     ConfigDerivedState derived(config);
     return derived.canStart(now);
   }
 
-  void configure(const Config& config, const std::chrono::time_point<std::chrono::system_clock>& now);
+  void configure(
+      const Config& config,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   // Toggle GPU tracing during a profile instance
   void toggleCollectionDynamic(const bool enable);
@@ -234,11 +255,13 @@ class GenericActivityProfiler {
   // profiler_kineto
   void recordThreadInfo(int32_t sysTid, int32_t tid, int32_t pid) {
     if (!resourceInfo_.contains({pid, tid})) {
-      resourceInfo_.emplace(std::make_pair(pid, tid),
-                            ResourceInfo{.id = sysTid,
-                                         .sortIndex = sysTid,
-                                         .deviceId = pid,
-                                         .name = fmt::format("thread {} ({})", sysTid, getThreadName())});
+      resourceInfo_.emplace(
+          std::make_pair(pid, tid),
+          ResourceInfo{
+              .id = sysTid,
+              .sortIndex = sysTid,
+              .deviceId = pid,
+              .name = fmt::format("thread {} ({})", sysTid, getThreadName())});
     }
   }
 
@@ -274,10 +297,15 @@ class GenericActivityProfiler {
   virtual void clearGpuActivities() {}
   virtual void processGpuActivities([[maybe_unused]] ActivityLogger& logger) {}
   virtual void synchronizeGpuDevice() {}
-  virtual void pushCorrelationIdImpl([[maybe_unused]] uint64_t id, [[maybe_unused]] CorrelationFlowType type) {}
-  virtual void popCorrelationIdImpl([[maybe_unused]] CorrelationFlowType type) {}
+  virtual void pushCorrelationIdImpl(
+      [[maybe_unused]] uint64_t id,
+      [[maybe_unused]] CorrelationFlowType type) {}
+  virtual void popCorrelationIdImpl([[maybe_unused]] CorrelationFlowType type) {
+  }
   virtual void onResetTraceData() {}
-  virtual void onFinalizeTrace([[maybe_unused]] const Config& config, [[maybe_unused]] ActivityLogger& logger) {}
+  virtual void onFinalizeTrace(
+      [[maybe_unused]] const Config& config,
+      [[maybe_unused]] ActivityLogger& logger) {}
 
   using CpuGpuSpanPair = std::pair<TraceSpan, TraceSpan>;
   static const CpuGpuSpanPair& defaultTraceSpan();
@@ -297,7 +325,9 @@ class GenericActivityProfiler {
     // Insert a user defined event which maps to the gpu trace activity.
     // If the user defined event mapping already exists this will update the
     // gpu side span to include the span of gpuTraceActivity.
-    void insertOrExtendEvent(const ITraceActivity& cpuTraceActivity, const ITraceActivity& gpuTraceActivity);
+    void insertOrExtendEvent(
+        const ITraceActivity& cpuTraceActivity,
+        const ITraceActivity& gpuTraceActivity);
     // Log out the events to the logger
     void logEvents(ActivityLogger* logger);
 
@@ -310,7 +340,8 @@ class GenericActivityProfiler {
     using StreamKey = std::pair<int64_t, int64_t>;
 
     // map of correlation id to TraceSpan
-    using CorrelationSpanMap = std::unordered_map<int64_t, GenericTraceActivity>;
+    using CorrelationSpanMap =
+        std::unordered_map<int64_t, GenericTraceActivity>;
     std::map<StreamKey, CorrelationSpanMap> streamSpanMap_;
   };
 
@@ -331,9 +362,11 @@ class GenericActivityProfiler {
     int cntr;
   };
 
-  void startTraceInternal(const std::chrono::time_point<std::chrono::system_clock>& now);
+  void startTraceInternal(
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
-  void stopTraceInternal(const std::chrono::time_point<std::chrono::system_clock>& now);
+  void stopTraceInternal(
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   void processTraceInternal(ActivityLogger& logger);
 
@@ -344,7 +377,9 @@ class GenericActivityProfiler {
   void configureChildProfilers();
 
   // Process a single CPU trace
-  void processCpuTrace(libkineto::CpuTraceBuffer& cpuTrace, ActivityLogger& logger);
+  void processCpuTrace(
+      libkineto::CpuTraceBuffer& cpuTrace,
+      ActivityLogger& logger);
 
   inline bool hasDeviceResource(int64_t device, int64_t id) {
     return resourceInfo_.contains({device, id});
@@ -356,7 +391,10 @@ class GenericActivityProfiler {
       resourceInfo_.emplace(
           std::make_pair(device, id),
           ResourceInfo{
-              .id = id, .sortIndex = id, .deviceId = device, .name = fmt::format("stream {} {}", id, postfix)});
+              .id = id,
+              .sortIndex = id,
+              .deviceId = device,
+              .name = fmt::format("stream {} {}", id, postfix)});
     }
   }
 
@@ -366,7 +404,11 @@ class GenericActivityProfiler {
     if (!hasDeviceResource(device, id)) {
       resourceInfo_.emplace(
           std::make_pair(device, id),
-          ResourceInfo{.id = id, .sortIndex = id, .deviceId = device, .name = fmt::format("Device {}", device)});
+          ResourceInfo{
+              .id = id,
+              .sortIndex = id,
+              .deviceId = device,
+              .name = fmt::format("Device {}", device)});
     }
   }
 
@@ -381,8 +423,9 @@ class GenericActivityProfiler {
   // net name to id
   int netId(const std::string& netName);
 
-  const ITraceActivity* linkedActivity(int32_t correlationId,
-                                       const std::unordered_map<int64_t, int64_t>& correlationMap);
+  const ITraceActivity* linkedActivity(
+      int32_t correlationId,
+      const std::unordered_map<int64_t, int64_t>& correlationMap);
 
   const ITraceActivity* cpuActivity(int32_t correlationId);
   void updateGpuNetSpan(const ITraceActivity& gpuOp);
@@ -476,7 +519,8 @@ class GenericActivityProfiler {
 
   struct DevStreamHash {
     std::size_t operator()(const DevStream& c) const {
-      return detail::hash_combine(std::hash<int64_t>()(c.ctx), std::hash<int64_t>()(c.stream));
+      return detail::hash_combine(
+          std::hash<int64_t>()(c.ctx), std::hash<int64_t>()(c.stream));
     }
   };
 

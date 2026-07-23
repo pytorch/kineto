@@ -52,11 +52,13 @@ float warpsPerSm(const CUpti_ActivityKernelType& kernel);
 // Returns cudaOccResult from cuda_occupancy.h plus a computed occupancy metric
 struct OccupancyMetrics {
   float occupancy = -1.0f; // Computed effective occupancy in number of threads
-  cudaOccResult result = {}; // Raw results from cudaOccMaxActiveBlocksPerMultiprocessor
+  cudaOccResult result =
+      {}; // Raw results from cudaOccMaxActiveBlocksPerMultiprocessor
 };
 
 // Return detailed occupancy metrics including limiting factors
-OccupancyMetrics computeOccupancyMetrics(const CUpti_ActivityKernelType& kernel);
+OccupancyMetrics computeOccupancyMetrics(
+    const CUpti_ActivityKernelType& kernel);
 #endif
 
 } // namespace KINETO_NAMESPACE

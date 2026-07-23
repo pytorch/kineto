@@ -195,12 +195,11 @@ TEST(RegisterLoggerFactoryTest, OverwriteProtocolWarning) {
   // Assert the overwrite warning was emitted without pinning the exact count;
   // the observer captures any WARNING logged during the second registration.
   const auto& warnings = observer.warnings();
-  EXPECT_TRUE(
-      std::any_of(
-          warnings.begin(), warnings.end(), [](const std::string& warning) {
-            return warning.find("Overwriting") != std::string::npos &&
-                warning.find("overwrite_warning_proto") != std::string::npos;
-          }));
+  EXPECT_TRUE(std::any_of(
+      warnings.begin(), warnings.end(), [](const std::string& warning) {
+        return warning.find("Overwriting") != std::string::npos &&
+            warning.find("overwrite_warning_proto") != std::string::npos;
+      }));
 
   auto& factory = KINETO_NAMESPACE::ActivityProfilerController::loggerFactory();
   auto logger = factory.makeLogger("overwrite_warning_proto:///path");

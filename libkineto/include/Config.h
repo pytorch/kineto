@@ -46,7 +46,8 @@ class Config : public AbstractConfig {
   }
 
   [[nodiscard]] bool activityProfilerEnabled() const {
-    return activityProfilerEnabled_ || activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
+    return activityProfilerEnabled_ ||
+        activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
   }
 
   // Log activitiy trace to this file
@@ -171,7 +172,8 @@ class Config : public AbstractConfig {
   // Monitor profiling threads and report when a thread is not responding
   // for a given number of seconds.
   // A period of 0 means disable.
-  [[nodiscard]] std::chrono::seconds eventProfilerHeartbeatMonitorPeriod() const {
+  [[nodiscard]] std::chrono::seconds eventProfilerHeartbeatMonitorPeriod()
+      const {
     return eventProfilerHeartbeatMonitorPeriod_;
   }
 
@@ -240,7 +242,8 @@ class Config : public AbstractConfig {
     activitiesCudaSyncWaitEvents_ = enable;
   }
 
-  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> requestTimestamp() const {
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
+  requestTimestamp() const {
     return profileStartTime_;
   }
 
@@ -295,20 +298,25 @@ class Config : public AbstractConfig {
     return onDemandConfigUpdateIntervalSecs_;
   }
 
-  static std::chrono::milliseconds alignUp(std::chrono::milliseconds duration, std::chrono::milliseconds alignment) {
+  static std::chrono::milliseconds alignUp(
+      std::chrono::milliseconds duration,
+      std::chrono::milliseconds alignment) {
     duration += alignment;
     return duration - (duration % alignment);
   }
 
-  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> eventProfilerOnDemandStartTime() const {
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
+  eventProfilerOnDemandStartTime() const {
     return eventProfilerOnDemandTimestamp_;
   }
 
-  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> eventProfilerOnDemandEndTime() const {
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
+  eventProfilerOnDemandEndTime() const {
     return eventProfilerOnDemandTimestamp_ + eventProfilerOnDemandDuration_;
   }
 
-  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock> activityProfilerRequestReceivedTime() const {
+  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
+  activityProfilerRequestReceivedTime() const {
     return activitiesOnDemandTimestamp_;
   }
 
@@ -351,9 +359,12 @@ class Config : public AbstractConfig {
   void printActivityProfilerConfig(std::ostream& s) const override;
   void setActivityDependentConfig() override;
 
-  void validate(const std::chrono::time_point<std::chrono::system_clock>& fallbackProfileStartTime) override;
+  void validate(const std::chrono::time_point<std::chrono::system_clock>&
+                    fallbackProfileStartTime) override;
 
-  static void addConfigFactory(std::string name, std::function<AbstractConfig*(Config&)> factory);
+  static void addConfigFactory(
+      std::string name,
+      std::function<AbstractConfig*(Config&)> factory);
 
   void print(std::ostream& s) const;
 
@@ -382,7 +393,8 @@ class Config : public AbstractConfig {
  private:
   explicit Config(const Config& other) = default;
 
-  AbstractConfig* cloneDerived([[maybe_unused]] AbstractConfig& parent) const override {
+  AbstractConfig* cloneDerived(
+      [[maybe_unused]] AbstractConfig& parent) const override {
     // Clone from AbstractConfig not supported
     assert(false);
     return nullptr;
@@ -416,7 +428,8 @@ class Config : public AbstractConfig {
   // On-demand duration
   std::chrono::seconds eventProfilerOnDemandDuration_;
   // Last on-demand request
-  std::chrono::time_point<std::chrono::system_clock> eventProfilerOnDemandTimestamp_;
+  std::chrono::time_point<std::chrono::system_clock>
+      eventProfilerOnDemandTimestamp_;
 
   int eventProfilerMaxInstancesPerGpu_;
 
@@ -476,7 +489,8 @@ class Config : public AbstractConfig {
   // Only profile nets with at least this many GPU operators
   int activitiesExternalAPIGpuOpCountThreshold_;
   // Last activity profiler request
-  std::chrono::time_point<std::chrono::system_clock> activitiesOnDemandTimestamp_;
+  std::chrono::time_point<std::chrono::system_clock>
+      activitiesOnDemandTimestamp_;
 
   // ActivityProfilers are triggered by either:
   // Synchronized start timestamps

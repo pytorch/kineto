@@ -25,7 +25,8 @@ class CuptiEventApi {
     return device_;
   }
 
-  virtual CUpti_EventGroupSets* createGroupSets(std::vector<CUpti_EventID>& ids);
+  virtual CUpti_EventGroupSets* createGroupSets(
+      std::vector<CUpti_EventID>& ids);
   virtual void destroyGroupSets(CUpti_EventGroupSets* sets);
 
   virtual bool setContinuousMode();
@@ -36,7 +37,10 @@ class CuptiEventApi {
   virtual void enableGroupSet(CUpti_EventGroupSet& set);
   virtual void disableGroupSet(CUpti_EventGroupSet& set);
 
-  virtual void readEvent(CUpti_EventGroup g, CUpti_EventID id, std::vector<int64_t>& vals);
+  virtual void readEvent(
+      CUpti_EventGroup g,
+      CUpti_EventID id,
+      std::vector<int64_t>& vals);
   virtual std::vector<CUpti_EventID> eventsInGroup(CUpti_EventGroup g);
 
   virtual CUpti_EventID eventId(const std::string& name);

@@ -42,7 +42,9 @@ class MemoryTraceLogger : public ActivityLogger {
     resourceInfoList_.emplace_back(info, time);
   }
 
-  void handleOverheadInfo([[maybe_unused]] const OverheadInfo& info, [[maybe_unused]] int64_t time) override {}
+  void handleOverheadInfo(
+      [[maybe_unused]] const OverheadInfo& info,
+      [[maybe_unused]] int64_t time) override {}
 
   void handleTraceSpan([[maybe_unused]] const TraceSpan& span) override {
     // Handled separately
@@ -63,15 +65,17 @@ class MemoryTraceLogger : public ActivityLogger {
     addActivityWrapper(activity);
   }
 
-  void handleTraceStart(const std::unordered_map<std::string, std::string>& metadata,
-                        const std::string& device_properties) override {
+  void handleTraceStart(
+      const std::unordered_map<std::string, std::string>& metadata,
+      const std::string& device_properties) override {
     metadata_ = metadata;
     device_properties_ = device_properties;
   }
 
-  void finalizeTrace([[maybe_unused]] const Config& config,
-                     std::unique_ptr<ActivityBuffers> buffers,
-                     int64_t endTime) override {
+  void finalizeTrace(
+      [[maybe_unused]] const Config& config,
+      std::unique_ptr<ActivityBuffers> buffers,
+      int64_t endTime) override {
     buffers_ = std::move(buffers);
     endTime_ = endTime;
   }

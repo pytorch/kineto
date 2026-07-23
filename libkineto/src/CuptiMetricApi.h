@@ -30,11 +30,12 @@ class CuptiMetricApi {
   virtual CUpti_MetricValueKind valueKind(CUpti_MetricID metric);
   virtual CUpti_MetricEvaluationMode evaluationMode(CUpti_MetricID metric);
 
-  virtual SampleValue calculate(CUpti_MetricID metric,
-                                CUpti_MetricValueKind kind,
-                                std::vector<CUpti_EventID>& events,
-                                std::vector<int64_t>& values,
-                                int64_t duration);
+  virtual SampleValue calculate(
+      CUpti_MetricID metric,
+      CUpti_MetricValueKind kind,
+      std::vector<CUpti_EventID>& events,
+      std::vector<int64_t>& values,
+      int64_t duration);
 
  private:
   CUdevice device_;

@@ -50,6 +50,7 @@ class CuptiActivityBuffer {
   std::vector<std::unique_ptr<const ITraceActivity>> wrappers_;
 };
 
-using CuptiActivityBufferMap = std::map<uint8_t*, std::unique_ptr<CuptiActivityBuffer>>;
+using CuptiActivityBufferMap =
+    std::map<uint8_t*, std::unique_ptr<CuptiActivityBuffer>>;
 
 } // namespace KINETO_NAMESPACE

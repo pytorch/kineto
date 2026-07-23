@@ -38,20 +38,23 @@ struct RawJson {
 // list.
 using TensorListShapes = std::vector<std::vector<int64_t>>;
 
-// "Input Dims" / "Input Strides" payload: one entry per op argument, each either
-// a single tensor's shape or, for a TensorList argument, a list of tensor shapes.
-using InputShapes = std::vector<std::variant<std::vector<int64_t>, TensorListShapes>>;
+// "Input Dims" / "Input Strides" payload: one entry per op argument, each
+// either a single tensor's shape or, for a TensorList argument, a list of
+// tensor shapes.
+using InputShapes =
+    std::vector<std::variant<std::vector<int64_t>, TensorListShapes>>;
 
 // The set of value types the typed-metadata system supports.
-using TypedValue = std::variant<int64_t,
-                                uint64_t,
-                                double,
-                                bool,
-                                std::string,
-                                std::vector<int64_t>,
-                                std::vector<std::string>,
-                                RawJson,
-                                InputShapes>;
+using TypedValue = std::variant<
+    int64_t,
+    uint64_t,
+    double,
+    bool,
+    std::string,
+    std::vector<int64_t>,
+    std::vector<std::string>,
+    RawJson,
+    InputShapes>;
 
 /*
  * ITypedMetadataVisitor is a per-activity visitor for structured metadata with
@@ -83,14 +86,18 @@ class ITypedMetadataVisitor {
   template <typename T, typename V>
   void visit(const MetadataField<T>& field, const V& value) {
     using FieldType = typename MetadataField<T>::FieldType;
-    static_assert(std::is_same_v<FieldType, std::decay_t<V>>, "value type must match field's declared type");
+    static_assert(
+        std::is_same_v<FieldType, std::decay_t<V>>,
+        "value type must match field's declared type");
     visitValue(field, value);
   }
 
   // Visits a nested dict: everything `visitChildren` visits is grouped under
   // dict.name. Example:
   // visitor.visit(kStats, [](auto& d) { d.visit(kCount, int64_t{1}); });
-  void visit(const MetadataDict& dict, std::invocable<ITypedMetadataVisitor&> auto&& visitChildren) {
+  void visit(
+      const MetadataDict& dict,
+      std::invocable<ITypedMetadataVisitor&> auto&& visitChildren) {
     beginDict(dict.name);
     visitChildren(*this);
     endDict();
@@ -110,28 +117,43 @@ class ITypedMetadataVisitor {
     visitUnsupported(field.name);
   }
 
-  void visitValue(const MetadataField<std::string>& field, const std::string& value) {
+  void visitValue(
+      const MetadataField<std::string>& field,
+      const std::string& value) {
     visitValue(field, std::string_view{value});
   }
 
-  virtual void visitValue(const MetadataField<int64_t>& field, int64_t value) = 0;
+  virtual void visitValue(
+      const MetadataField<int64_t>& field,
+      int64_t value) = 0;
 
   virtual void visitValue(const MetadataField<double>& field, double value) = 0;
 
   virtual void visitValue(const MetadataField<bool>& field, bool value) = 0;
 
-  virtual void visitValue(const MetadataField<std::string>& field, std::string_view value) = 0;
+  virtual void visitValue(
+      const MetadataField<std::string>& field,
+      std::string_view value) = 0;
 
-  virtual void visitValue(const MetadataField<std::vector<int64_t>>& field, const std::vector<int64_t>& value) = 0;
+  virtual void visitValue(
+      const MetadataField<std::vector<int64_t>>& field,
+      const std::vector<int64_t>& value) = 0;
 
-  virtual void visitValue(const MetadataField<std::vector<std::string>>& field,
-                          const std::vector<std::string>& value) = 0;
+  virtual void visitValue(
+      const MetadataField<std::vector<std::string>>& field,
+      const std::vector<std::string>& value) = 0;
 
-  virtual void visitValue(const MetadataField<RawJson>& field, const RawJson& value) = 0;
+  virtual void visitValue(
+      const MetadataField<RawJson>& field,
+      const RawJson& value) = 0;
 
-  virtual void visitValue(const MetadataField<uint64_t>& field, uint64_t value) = 0;
+  virtual void visitValue(
+      const MetadataField<uint64_t>& field,
+      uint64_t value) = 0;
 
-  virtual void visitValue(const MetadataField<InputShapes>& field, const InputShapes& value) = 0;
+  virtual void visitValue(
+      const MetadataField<InputShapes>& field,
+      const InputShapes& value) = 0;
 };
 
 } // namespace libkineto

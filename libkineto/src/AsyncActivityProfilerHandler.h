@@ -32,9 +32,11 @@ class AsyncActivityProfilerHandler {
  public:
   explicit AsyncActivityProfilerHandler(GenericActivityProfiler& profiler);
   AsyncActivityProfilerHandler(const AsyncActivityProfilerHandler&) = delete;
-  AsyncActivityProfilerHandler& operator=(const AsyncActivityProfilerHandler&) = delete;
+  AsyncActivityProfilerHandler& operator=(const AsyncActivityProfilerHandler&) =
+      delete;
   AsyncActivityProfilerHandler(AsyncActivityProfilerHandler&&) = delete;
-  AsyncActivityProfilerHandler& operator=(AsyncActivityProfilerHandler&&) = delete;
+  AsyncActivityProfilerHandler& operator=(AsyncActivityProfilerHandler&&) =
+      delete;
   ~AsyncActivityProfilerHandler();
 
   // Returns true if the config enabled the activity profiler and the request
@@ -56,7 +58,9 @@ class AsyncActivityProfilerHandler {
 
   void cancel();
 
-  void configure(const Config& config, std::chrono::time_point<std::chrono::system_clock> now);
+  void configure(
+      const Config& config,
+      std::chrono::time_point<std::chrono::system_clock> now);
 
   // Invoke at a regular interval to perform profiling activities.
   // When not active, an interval of 1-5 seconds is probably fine,
@@ -72,7 +76,8 @@ class AsyncActivityProfilerHandler {
 
  private:
   bool shouldActivateIterationConfig(int64_t currentIter);
-  bool shouldActivateTimestampConfig(const std::chrono::time_point<std::chrono::system_clock>& now);
+  bool shouldActivateTimestampConfig(
+      const std::chrono::time_point<std::chrono::system_clock>& now);
   void profilerLoop();
   void memoryProfilerLoop();
   void completePendingTrace();
@@ -80,7 +85,8 @@ class AsyncActivityProfilerHandler {
 
   std::unique_ptr<Config> asyncRequestConfig_;
   std::mutex asyncConfigLock_;
-  std::array<std::unique_ptr<std::thread>, ThreadType::THREAD_MAX_COUNT> profilerThreads_;
+  std::array<std::unique_ptr<std::thread>, ThreadType::THREAD_MAX_COUNT>
+      profilerThreads_;
   std::atomic_bool stopRunloop_{false};
   std::atomic<std::int64_t> iterationCount_{-1};
 
@@ -96,9 +102,15 @@ class AsyncActivityProfilerHandler {
     Cancelling,
   };
 
-  void performMemoryLoop(const std::string& path, uint32_t profile_time, ActivityLogger* logger, Config& config);
+  void performMemoryLoop(
+      const std::string& path,
+      uint32_t profile_time,
+      ActivityLogger* logger,
+      Config& config);
 
-  void collectTrace(bool collection_done, const std::chrono::time_point<std::chrono::system_clock>& now);
+  void collectTrace(
+      bool collection_done,
+      const std::chrono::time_point<std::chrono::system_clock>& now);
 
   bool getCollectTraceState();
 

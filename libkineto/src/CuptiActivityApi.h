@@ -46,16 +46,20 @@ class CuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableCuptiActivities(const std::set<ActivityType>& selected_activities, bool enablePerThreadBuffers = false);
-  void disableCuptiActivities(const std::set<ActivityType>& selected_activities);
+  void enableCuptiActivities(
+      const std::set<ActivityType>& selected_activities,
+      bool enablePerThreadBuffers = false);
+  void disableCuptiActivities(
+      const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();
   void teardownContext();
 
   virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers();
 
-  virtual const std::pair<int, size_t> processActivities(CuptiActivityBufferMap&,
-                                                         const std::function<void(const CUpti_Activity*)>& handler);
+  virtual const std::pair<int, size_t> processActivities(
+      CuptiActivityBufferMap&,
+      const std::function<void(const CUpti_Activity*)>& handler);
 
   void setMaxBufferSize(int64_t size);
   void setDeviceBufferSize(size_t size);
@@ -78,16 +82,29 @@ class CuptiActivityApi {
   std::atomic<uint32_t> tearingDown_{0};
   std::atomic<bool> externalCorrelationEnabled_{false};
 
-  int processActivitiesForBuffer(uint8_t* buf,
-                                 size_t validSize,
-                                 const std::function<void(const CUpti_Activity*)>& handler);
-  static void CUPTIAPI bufferRequestedTrampoline(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
-  static void CUPTIAPI
-  bufferCompletedTrampoline(CUcontext ctx, uint32_t streamId, uint8_t* buffer, size_t /* unused */, size_t validSize);
+  int processActivitiesForBuffer(
+      uint8_t* buf,
+      size_t validSize,
+      const std::function<void(const CUpti_Activity*)>& handler);
+  static void CUPTIAPI bufferRequestedTrampoline(
+      uint8_t** buffer,
+      size_t* size,
+      size_t* maxNumRecords);
+  static void CUPTIAPI bufferCompletedTrampoline(
+      CUcontext ctx,
+      uint32_t streamId,
+      uint8_t* buffer,
+      size_t /* unused */,
+      size_t validSize);
 
  protected:
   void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
-  void bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t* buffer, size_t /* unused */, size_t validSize);
+  void bufferCompleted(
+      CUcontext ctx,
+      uint32_t streamId,
+      uint8_t* buffer,
+      size_t /* unused */,
+      size_t validSize);
 };
 
 } // namespace KINETO_NAMESPACE

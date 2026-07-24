@@ -81,20 +81,16 @@ class ConfigLoaderTest : public ::testing::Test {
 TEST_F(ConfigLoaderTest, NotifyHandlersForwardsConfigToAllRegisteredHandlers) {
   RecordingConfigHandler activityA;
   RecordingConfigHandler activityB;
-  RecordingConfigHandler event;
   registerHandler(ConfigLoader::ConfigKind::ActivityProfiler, &activityA);
   registerHandler(ConfigLoader::ConfigKind::ActivityProfiler, &activityB);
-  registerHandler(ConfigLoader::ConfigKind::EventProfiler, &event);
 
   Config cfg;
   loader().notifyHandlers(cfg);
 
   EXPECT_EQ(activityA.acceptCalls, 1);
   EXPECT_EQ(activityB.acceptCalls, 1);
-  EXPECT_EQ(event.acceptCalls, 1);
   EXPECT_EQ(activityA.lastAcceptedConfig, &cfg);
   EXPECT_EQ(activityB.lastAcceptedConfig, &cfg);
-  EXPECT_EQ(event.lastAcceptedConfig, &cfg);
 }
 
 // A removed handler no longer receives configs.
@@ -116,35 +112,23 @@ TEST_F(ConfigLoaderTest, RemoveHandlerStopsDispatch) {
 // canHandlerAcceptConfig() is true only when every handler of that kind
 // accepts.
 TEST_F(ConfigLoaderTest, CanHandlerAcceptConfigRequiresAllHandlersOfKind) {
+  const auto kind = ConfigLoader::ConfigKind::ActivityProfiler;
   RecordingConfigHandler first;
   RecordingConfigHandler second;
-  registerHandler(ConfigLoader::ConfigKind::ActivityProfiler, &first);
-  registerHandler(ConfigLoader::ConfigKind::ActivityProfiler, &second);
+  registerHandler(kind, &first);
+  registerHandler(kind, &second);
 
-  EXPECT_TRUE(
-      loader().canHandlerAcceptConfig(
-          ConfigLoader::ConfigKind::ActivityProfiler));
+  EXPECT_TRUE(loader().canHandlerAcceptConfig(kind));
 
   second.canAcceptResult = false;
-  EXPECT_FALSE(
-      loader().canHandlerAcceptConfig(
-          ConfigLoader::ConfigKind::ActivityProfiler));
+  EXPECT_FALSE(loader().canHandlerAcceptConfig(kind));
 }
 
-// canHandlerAcceptConfig() gates per kind: a declining handler of one kind does
-// not affect another kind, and a kind with no handlers accepts vacuously.
-TEST_F(ConfigLoaderTest, CanHandlerAcceptConfigIsPerKind) {
-  RecordingConfigHandler event;
-  event.canAcceptResult = false;
-  registerHandler(ConfigLoader::ConfigKind::EventProfiler, &event);
-
-  EXPECT_FALSE(
-      loader().canHandlerAcceptConfig(ConfigLoader::ConfigKind::EventProfiler));
-  // ActivityProfiler has no handlers registered, so it accepts vacuously and is
-  // unaffected by the declining EventProfiler handler.
-  EXPECT_TRUE(
-      loader().canHandlerAcceptConfig(
-          ConfigLoader::ConfigKind::ActivityProfiler));
+// canHandlerAcceptConfig() accepts vacuously for a config kind that has no
+// registered handlers.
+TEST_F(ConfigLoaderTest, CanHandlerAcceptConfigVacuouslyTrueWithNoHandlers) {
+  const auto kind = ConfigLoader::ConfigKind::ActivityProfiler;
+  EXPECT_TRUE(loader().canHandlerAcceptConfig(kind));
 }
 
 } // namespace

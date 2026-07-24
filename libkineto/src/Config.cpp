@@ -37,35 +37,15 @@ namespace KINETO_NAMESPACE {
 constexpr std::chrono::milliseconds Config::kControllerIntervalMsecs;
 #endif
 
-constexpr milliseconds kDefaultSamplePeriodMsecs(1000);
-constexpr milliseconds kDefaultMultiplexPeriodMsecs(1000);
 constexpr milliseconds kDefaultActivitiesProfileDurationMSecs(500);
 constexpr int64_t kDefaultActivitiesMaxGpuBufferSize(128 * 1024 * 1024);
 constexpr seconds kDefaultActivitiesWarmupDurationSecs(5);
-constexpr seconds kDefaultReportPeriodSecs(1);
-constexpr int kDefaultSamplesPerReport(1);
-constexpr int kDefaultMaxEventProfilersPerGpu(1);
-constexpr int kDefaultEventProfilerHearbeatMonitorPeriod(0);
 constexpr seconds kMaxRequestAge(10);
 constexpr seconds kDefaultOnDemandConfigUpdateIntervalSecs(5);
 // 3200000 is the default value set by CUPTI
 constexpr size_t kDefaultCuptiDeviceBufferSize(3200000);
 // Default value set by CUPTI is 250
 constexpr size_t kDefaultCuptiDeviceBufferPoolLimit(20);
-
-// Event Profiler
-constexpr char kEventsKey[] = "EVENTS";
-constexpr char kMetricsKey[] = "METRICS";
-constexpr char kSamplePeriodKey[] = "SAMPLE_PERIOD_MSECS";
-constexpr char kMultiplexPeriodKey[] = "MULTIPLEX_PERIOD_MSECS";
-constexpr char kReportPeriodKey[] = "REPORT_PERIOD_SECS";
-constexpr char kSamplesPerReportKey[] = "SAMPLES_PER_REPORT";
-constexpr char kEventsLogFileKey[] = "EVENTS_LOG_FILE";
-constexpr char kEventsEnabledDevicesKey[] = "EVENTS_ENABLED_DEVICES";
-constexpr char kOnDemandDurationKey[] = "EVENTS_DURATION_SECS";
-constexpr char kMaxEventProfilersPerGpuKey[] = "MAX_EVENT_PROFILERS_PER_GPU";
-constexpr char kHeartbeatMonitorPeriodKey[] =
-    "EVENTS_HEARTBEAT_MONITOR_PERIOD_SECS";
 
 // Activity Profiler
 constexpr char kActivitiesEnabledKey[] = "ACTIVITIES_ENABLED";
@@ -167,9 +147,6 @@ constexpr char kLogVerboseModulesKey[] = "VERBOSE_LOG_MODULES";
 
 constexpr char kCustomConfigKey[] = "CUSTOM_CONFIG";
 
-// Max devices supported on any system
-constexpr uint8_t kMaxDevices = 8;
-
 namespace {
 
 struct FactoryMap {
@@ -251,14 +228,6 @@ bool isAllowedOnDemandTraceFile(const string& path) {
 
 Config::Config()
     : verboseLogLevel_(-1),
-      samplePeriod_(kDefaultSamplePeriodMsecs),
-      reportPeriod_(duration_cast<milliseconds>(kDefaultReportPeriodSecs)),
-      samplesPerReport_(kDefaultSamplesPerReport),
-      eventProfilerOnDemandDuration_(seconds(0)),
-      eventProfilerMaxInstancesPerGpu_(kDefaultMaxEventProfilersPerGpu),
-      eventProfilerHeartbeatMonitorPeriod_(
-          kDefaultEventProfilerHearbeatMonitorPeriod),
-      multiplexPeriod_(kDefaultMultiplexPeriodMsecs),
       activityProfilerEnabled_(true),
       perThreadBufferEnabled_(false),
       activitiesLogFile_(defaultTraceFileName()),
@@ -303,14 +272,6 @@ bool isDaemonEnvVarSet() {
 
 std::shared_ptr<void> Config::getStaticObjectsLifetimeHandle() {
   return configFactories();
-}
-
-uint8_t Config::createDeviceMask(const string& val) {
-  uint8_t res = 0;
-  for (const auto& d : splitAndTrim(val, ',')) {
-    res |= 1 << toIntRange(d, 0, kMaxDevices - 1);
-  }
-  return res;
 }
 
 seconds Config::maxRequestAge() const {
@@ -360,42 +321,8 @@ void Config::setActivityTypes(
 }
 
 bool Config::handleOption(const std::string& name, std::string& val) {
-  // Event Profiler
-  if (!name.compare(kEventsKey)) {
-    vector<string> event_names = splitAndTrim(val, ',');
-    eventNames_.insert(event_names.begin(), event_names.end());
-  } else if (!name.compare(kMetricsKey)) {
-    vector<string> metric_names = splitAndTrim(val, ',');
-    metricNames_.insert(metric_names.begin(), metric_names.end());
-  } else if (!name.compare(kSamplePeriodKey)) {
-    samplePeriod_ = milliseconds(toInt64(val));
-  } else if (!name.compare(kMultiplexPeriodKey)) {
-    multiplexPeriod_ = milliseconds(toInt64(val));
-  } else if (!name.compare(kReportPeriodKey)) {
-    setReportPeriod(seconds(toInt32(val)));
-  } else if (!name.compare(kSamplesPerReportKey)) {
-    samplesPerReport_ = toInt32(val);
-  } else if (!name.compare(kEventsLogFileKey)) {
-    if (onDemand_ && !isAllowedOnDemandTraceFile(val)) {
-      LOG(WARNING) << "Ignoring on-demand " << kEventsLogFileKey
-                   << " outside allowed directory " << allowedOnDemandTraceDir()
-                   << ": " << val;
-    } else {
-      eventLogFile_ = val;
-    }
-  } else if (!name.compare(kEventsEnabledDevicesKey)) {
-    eventProfilerDeviceMask_ = createDeviceMask(val);
-  } else if (!name.compare(kOnDemandDurationKey)) {
-    eventProfilerOnDemandDuration_ = seconds(toInt32(val));
-    eventProfilerOnDemandTimestamp_ = timestamp();
-  } else if (!name.compare(kMaxEventProfilersPerGpuKey)) {
-    eventProfilerMaxInstancesPerGpu_ = toInt32(val);
-  } else if (!name.compare(kHeartbeatMonitorPeriodKey)) {
-    eventProfilerHeartbeatMonitorPeriod_ = seconds(toInt32(val));
-  }
-
   // Activity Profiler
-  else if (!name.compare(kActivitiesDurationKey)) {
+  if (!name.compare(kActivitiesDurationKey)) {
     activitiesDuration_ = duration_cast<milliseconds>(seconds(toInt32(val)));
     activitiesOnDemandTimestamp_ = timestamp();
   } else if (!name.compare(kActivityTypesKey)) {
@@ -510,53 +437,6 @@ void Config::setClientDefaults() {
 
 void Config::validate(
     const time_point<system_clock>& fallbackProfileStartTime) {
-  if (samplePeriod_.count() == 0) {
-    LOG(WARNING) << "Sample period must be greater than 0, setting to 1ms";
-    samplePeriod_ = milliseconds(1);
-  }
-
-  if (multiplexPeriod_ < samplePeriod_) {
-    LOG(WARNING) << "Multiplex period can not be smaller "
-                 << "than sample period";
-    LOG(WARNING) << "Setting multiplex period to " << samplePeriod_.count()
-                 << "ms";
-    multiplexPeriod_ = samplePeriod_;
-  }
-
-  if ((multiplexPeriod_ % samplePeriod_).count() != 0) {
-    LOG(WARNING) << "Multiplex period must be a "
-                 << "multiple of sample period";
-    multiplexPeriod_ = alignUp(multiplexPeriod_, samplePeriod_);
-    LOG(WARNING) << "Setting multiplex period to " << multiplexPeriod_.count()
-                 << "ms";
-  }
-
-  if ((reportPeriod_ % multiplexPeriod_).count() != 0 ||
-      reportPeriod_.count() == 0) {
-    LOG(WARNING) << "Report period must be a "
-                 << "multiple of multiplex period";
-    reportPeriod_ = alignUp(reportPeriod_, multiplexPeriod_);
-    LOG(WARNING) << "Setting report period to " << reportPeriod_.count()
-                 << "ms";
-  }
-
-  if (samplesPerReport_ < 1) {
-    LOG(WARNING) << "Samples per report must be in the range "
-                 << "[1, report period / sample period]";
-    LOG(WARNING) << "Setting samples per report to 1";
-    samplesPerReport_ = 1;
-  }
-
-  int max_samples_per_report = reportPeriod_ / samplePeriod_;
-  if (samplesPerReport_ > max_samples_per_report) {
-    LOG(WARNING) << "Samples per report must be in the range "
-                 << "[1, report period / sample period] ([1, "
-                 << reportPeriod_.count() << "ms / " << samplePeriod_.count()
-                 << "ms = " << max_samples_per_report << "])";
-    LOG(WARNING) << "Setting samples per report to " << max_samples_per_report;
-    samplesPerReport_ = max_samples_per_report;
-  }
-
   if (!hasProfileStartTime()) {
     VLOG(0)
         << "No explicit timestamp has been set. "
@@ -582,10 +462,6 @@ void Config::validate(
     selectDefaultActivityTypes();
   }
   setActivityDependentConfig();
-}
-
-void Config::setReportPeriod(milliseconds msecs) {
-  reportPeriod_ = msecs;
 }
 
 void Config::printActivityProfilerConfig(std::ostream& s) const {

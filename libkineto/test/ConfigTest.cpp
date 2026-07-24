@@ -36,38 +36,28 @@ TEST(ParseTest, Comment) {
   EXPECT_TRUE(cfg.parse("   # ~!@#$"));
   EXPECT_TRUE(cfg.parse("\t#abc"));
   EXPECT_TRUE(cfg.parse("###\n##"));
-  EXPECT_TRUE(cfg.parse("EVENTS=util ##ok"));
-  EXPECT_TRUE(cfg.parse("EVENTS=util ## EVENTS=instruction"));
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_WARMUP_ITERATIONS=1 ##ok"));
+  EXPECT_TRUE(cfg.parse("ACTIVITIES_WARMUP_ITERATIONS=1 ## FOO=2"));
   // Whatever appears before the comment must be valid format
   EXPECT_FALSE(cfg.parse("util ## not ok"));
   EXPECT_FALSE(cfg.parse("## ok \n blah # not OK"));
   // Check that a comment does not affect config parsing
-  EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS = 1 # Sample every millisecond"));
-  EXPECT_EQ(cfg.samplePeriod(), milliseconds(1));
+  EXPECT_TRUE(cfg.parse(
+      "ACTIVITIES_WARMUP_ITERATIONS = 1 # Warm up for one iteration"));
+  EXPECT_EQ(cfg.activitiesWarmupIterations(), 1);
 }
 
 TEST(ParseTest, Format) {
   Config cfg;
-  // The basic format is just "name = value".
-  // Where both value and name can be almost anything.
-  // Leading and trailing whitespace should be removed
-  // for both 'name' and 'value', but internal whitespace is not.
-  EXPECT_FALSE(cfg.parse("events"));
-  EXPECT_TRUE(cfg.parse("events="));
-  EXPECT_FALSE(cfg.parse("=events="));
-  EXPECT_TRUE(cfg.parse("events=1,2,3"));
+  // The basic format is just "name = value"; unknown names are tolerated.
+  // A line with no '=' is invalid, an empty value is allowed, a leading '='
+  // is invalid, and only one setting is allowed per line.
+  EXPECT_FALSE(cfg.parse("foo"));
+  EXPECT_TRUE(cfg.parse("foo="));
+  EXPECT_FALSE(cfg.parse("=foo="));
+  EXPECT_TRUE(cfg.parse("foo=1,2,3"));
   // Only one setting per line
-  EXPECT_FALSE(cfg.parse("events = 1,2,3 ; metrics = 4,5,6"));
-  // Names are case sensitive
-  EXPECT_TRUE(cfg.parse("EVENTS = 1,2,3 \n metrics = 4,5,6"));
-  EXPECT_EQ(cfg.eventNames(), std::set<std::string>({"1", "2", "3"}));
-  EXPECT_EQ(cfg.metricNames().size(), 0);
-  // Leading and trailing whitespace removed for event and metric names,
-  // but not internal.
-  EXPECT_TRUE(
-      cfg.parse("EVENTS = 1, 2, 3 \n \tMETRICS\t = \t4,\t5\t,\ts i x  "));
-  EXPECT_EQ(cfg.eventNames(), std::set<std::string>({"1", "2", "3"}));
-  EXPECT_EQ(cfg.metricNames(), std::set<std::string>({"4", "5", "s i x"}));
+  EXPECT_FALSE(cfg.parse("foo = 1,2,3 ; bar = 4,5,6"));
 }
 
 TEST(ParseTest, DefaultActivityTypes) {
@@ -149,156 +139,6 @@ TEST(ParseTest, ActivityTypes) {
            ActivityType::PRIVATEUSE1_DRIVER}));
 }
 
-TEST(ParseTest, SamplePeriod) {
-  Config cfg;
-  EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=10"));
-  EXPECT_EQ(cfg.samplePeriod(), milliseconds(10));
-  EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=0"));
-  cfg.validate(std::chrono::system_clock::now());
-  // 0 should be adjustd up to 1
-  EXPECT_EQ(cfg.samplePeriod(), milliseconds(1));
-  // Negative and non-int values should fail
-  EXPECT_FALSE(cfg.parse("SAMPLE_PERIOD_MSECS=-10"));
-  EXPECT_FALSE(cfg.parse("SAMPLE_PERIOD_MSECS=1.5"));
-  EXPECT_FALSE(cfg.parse("SAMPLE_PERIOD_MSECS="));
-  EXPECT_FALSE(cfg.parse("SAMPLE_PERIOD_MSECS=string"));
-  EXPECT_EQ(cfg.samplePeriod(), milliseconds(1));
-}
-
-TEST(ParseTest, MultiplexPeriod) {
-  Config cfg;
-  auto now = std::chrono::system_clock::now();
-
-  EXPECT_TRUE(cfg.parse("SAMPLE_PERIOD_MSECS=100\nMULTIPLEX_PERIOD_MSECS=100"));
-  EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(100));
-  EXPECT_TRUE(cfg.parse("MULTIPLEX_PERIOD_MSECS = 0"));
-  cfg.validate(now);
-  // Adjusted to match sample period
-  EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(100));
-  EXPECT_TRUE(cfg.parse("MULTIPLEX_PERIOD_MSECS \t= \t 750 \n"));
-  cfg.validate(now);
-  // Adjusted to match multiple of sample period
-  EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(800));
-  EXPECT_FALSE(cfg.parse("MULTIPLEX_PERIOD_MSECS=-10"));
-  EXPECT_FALSE(cfg.parse("MULTIPLEX_PERIOD_MSECS=1.5"));
-  EXPECT_FALSE(cfg.parse("MULTIPLEX_PERIOD_MSECS="));
-  EXPECT_FALSE(cfg.parse("MULTIPLEX_PERIOD_MSECS=string"));
-  // Previous value not affected
-  EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(800));
-}
-
-TEST(ParseTest, ReportPeriod) {
-  Config cfg;
-  EXPECT_TRUE(cfg.parse("REPORT_PERIOD_SECS=1"));
-  EXPECT_EQ(cfg.reportPeriod(), seconds(1));
-  // Whitespace
-  EXPECT_TRUE(cfg.parse("REPORT_PERIOD_SECS  =  \t100"));
-  EXPECT_EQ(cfg.reportPeriod(), seconds(100));
-  // Invalid types
-  EXPECT_FALSE(cfg.parse("REPORT_PERIOD_SECS=-1"));
-  EXPECT_EQ(cfg.reportPeriod(), seconds(100));
-}
-
-TEST(ParseTest, SamplesPerReport) {
-  Config cfg;
-  auto now = std::chrono::system_clock::now();
-
-  EXPECT_TRUE(cfg.parse(R"(
-    SAMPLE_PERIOD_MSECS = 1000
-    REPORT_PERIOD_SECS  =    1
-    SAMPLES_PER_REPORT  =   10)"));
-  cfg.validate(now);
-  // Adjusted down to one sample per report
-  EXPECT_EQ(cfg.samplesPerReport(), 1);
-  EXPECT_TRUE(cfg.parse(R"(
-    SAMPLE_PERIOD_MSECS = 1000
-    REPORT_PERIOD_SECS  =   10
-    SAMPLES_PER_REPORT  =   10)"));
-  cfg.validate(now);
-  // No adjustment needed
-  EXPECT_EQ(cfg.samplesPerReport(), 10);
-  EXPECT_TRUE(cfg.parse(R"(
-    SAMPLE_PERIOD_MSECS = 1000
-    REPORT_PERIOD_SECS  =    2
-    SAMPLES_PER_REPORT  =   10)"));
-  cfg.validate(now);
-  // Adjusted to 2 samples per report
-  EXPECT_EQ(cfg.samplesPerReport(), 2);
-  EXPECT_TRUE(cfg.parse(R"(
-    SAMPLE_PERIOD_MSECS = 200
-    REPORT_PERIOD_SECS  =   2
-    SAMPLES_PER_REPORT  =  10)"));
-  cfg.validate(now);
-  // No adjustment needed
-  EXPECT_EQ(cfg.samplesPerReport(), 10);
-  EXPECT_TRUE(cfg.parse("SAMPLES_PER_REPORT=0"));
-  cfg.validate(now);
-  // Adjusted up to 1
-  EXPECT_EQ(cfg.samplesPerReport(), 1);
-  // Invalid value types
-  EXPECT_FALSE(cfg.parse("SAMPLES_PER_REPORT=-10"));
-  EXPECT_FALSE(cfg.parse("SAMPLES_PER_REPORT=1.5"));
-  EXPECT_EQ(cfg.samplesPerReport(), 1);
-
-  EXPECT_TRUE(cfg.parse(R"(
-    SAMPLE_PERIOD_MSECS=1000
-    MULTIPLEX_PERIOD_MSECS=500 # Must be a multiple of sample period
-    REPORT_PERIOD_SECS=0       # Must be non-zero multiple of multiplex period
-    SAMPLES_PER_REPORT=5       # Max report period / multiplex period)"));
-  cfg.validate(now);
-  // Multiple adjustments
-  EXPECT_EQ(cfg.samplePeriod(), milliseconds(1000));
-  EXPECT_EQ(cfg.multiplexPeriod(), milliseconds(1000));
-  EXPECT_EQ(cfg.reportPeriod(), seconds(1));
-  EXPECT_EQ(cfg.samplesPerReport(), 1);
-}
-
-TEST(ParseTest, DeviceMask) {
-  Config cfg;
-  // Single device
-  EXPECT_TRUE(cfg.parse("EVENTS_ENABLED_DEVICES = 0"));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(0));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(1));
-
-  // Two devices, internal whitespace
-  EXPECT_TRUE(cfg.parse("EVENTS_ENABLED_DEVICES = 1, 2"));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(0));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(1));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(2));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(3));
-
-  // Three devices, check that previous devices are ignored
-  EXPECT_TRUE(cfg.parse("EVENTS_ENABLED_DEVICES = 0, 2,4"));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(0));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(1));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(2));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(3));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(4));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(5));
-
-  // Repeated numbers have no effect
-  EXPECT_TRUE(cfg.parse("EVENTS_ENABLED_DEVICES = 0,1,1,1,2,3,2,1,3,7,7,3"));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(0));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(1));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(2));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(3));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(4));
-  EXPECT_FALSE(cfg.eventProfilerEnabledForDevice(6));
-  EXPECT_TRUE(cfg.eventProfilerEnabledForDevice(7));
-
-  // 8 is larger than the max allowed
-  EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 3,8"));
-
-  // 300 cannot be held in an uint8_t
-  EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 300"));
-
-  // Various illegal cases
-  EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 0,1,two,three"));
-  EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 0,1,,2"));
-  EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = -1"));
-  EXPECT_FALSE(cfg.parse("EVENTS_ENABLED_DEVICES = 1.0"));
-}
-
 TEST(ParseTest, ProfileStartTime) {
   Config cfg;
   system_clock::time_point now = system_clock::now();
@@ -330,9 +170,6 @@ TEST(ParseTest, BaseConfigLogFileUnrestricted) {
   Config cfg;
   EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/home/user/custom/trace.json"));
   EXPECT_EQ(cfg.activitiesLogFile(), "/home/user/custom/trace.json");
-
-  EXPECT_TRUE(cfg.parse("EVENTS_LOG_FILE=/home/user/custom/events.log"));
-  EXPECT_EQ(cfg.eventLogFile(), "/home/user/custom/events.log");
 }
 
 // On-demand path under the allowed dir is accepted.
@@ -355,8 +192,4 @@ TEST(ParseTest, OnDemandLogFileRejectedOutsideAllowedDir) {
 
   EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/tmp/../etc/cron.d/payload"));
   EXPECT_EQ(cfg.activitiesLogFile(), original);
-
-  const std::string originalEvents = cfg.eventLogFile();
-  EXPECT_TRUE(cfg.parse("EVENTS_LOG_FILE=/etc/passwd"));
-  EXPECT_EQ(cfg.eventLogFile(), originalEvents);
 }

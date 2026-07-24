@@ -40,11 +40,6 @@ class Config : public AbstractConfig {
 
   void setClientDefaults() override;
 
-  // Log events to this file
-  [[nodiscard]] const std::string& eventLogFile() const {
-    return eventLogFile_;
-  }
-
   [[nodiscard]] bool activityProfilerEnabled() const {
     return activityProfilerEnabled_ ||
         activitiesOnDemandTimestamp_.time_since_epoch().count() > 0;
@@ -71,110 +66,6 @@ class Config : public AbstractConfig {
 
   [[nodiscard]] bool activitiesLogToMemory() const {
     return activitiesLogToMemory_;
-  }
-
-  [[nodiscard]] bool eventProfilerEnabled() const {
-    return !eventNames_.empty() || !metricNames_.empty();
-  }
-
-  // Is profiling enabled for the given device?
-  [[nodiscard]] bool eventProfilerEnabledForDevice(uint32_t dev) const {
-    return 0 != (eventProfilerDeviceMask_ & (1 << dev));
-  }
-
-  // Take a sample (read hardware counters) at this frequency.
-  // This controls how often counters are read - if all counters cannot
-  // be collected simultaneously then multiple samples are needed to
-  // collect all requested counters - see multiplex period.
-  [[nodiscard]] std::chrono::milliseconds samplePeriod() const {
-    return samplePeriod_;
-  }
-
-  void setSamplePeriod(std::chrono::milliseconds period) {
-    samplePeriod_ = period;
-  }
-
-  // When all requested counters cannot be collected simultaneously,
-  // counters will be multiplexed at this frequency.
-  // Multiplexing can have a large performance impact if done frequently.
-  // To avoid a perf impact, keep this at 1s or above.
-  [[nodiscard]] std::chrono::milliseconds multiplexPeriod() const {
-    return multiplexPeriod_;
-  }
-
-  void setMultiplexPeriod(std::chrono::milliseconds period) {
-    multiplexPeriod_ = period;
-  }
-
-  // Report counters at this frequency. Note that several samples can
-  // be reported each time, see samplesPerReport.
-  [[nodiscard]] std::chrono::milliseconds reportPeriod() const {
-    return reportPeriod_;
-  }
-
-  void setReportPeriod(std::chrono::milliseconds msecs);
-
-  // Number of samples dispatched each report period.
-  // Must be in the range [1, report period / sample period].
-  // In other words, aggregation is supported but not interpolation.
-  [[nodiscard]] int samplesPerReport() const {
-    return samplesPerReport_;
-  }
-
-  void setSamplesPerReport(int count) {
-    samplesPerReport_ = count;
-  }
-
-  // The names of events to collect
-  [[nodiscard]] const std::set<std::string>& eventNames() const {
-    return eventNames_;
-  }
-
-  // Add additional events to be profiled
-  void addEvents(const std::set<std::string>& names) {
-    eventNames_.insert(names.begin(), names.end());
-  }
-
-  // The names of metrics to collect
-  [[nodiscard]] const std::set<std::string>& metricNames() const {
-    return metricNames_;
-  }
-
-  // Add additional metrics to be profiled
-  void addMetrics(const std::set<std::string>& names) {
-    metricNames_.insert(names.begin(), names.end());
-  }
-
-  [[nodiscard]] const std::vector<int>& percentiles() const {
-    return eventReportPercentiles_;
-  }
-
-  // Profile for this long, then revert to base config
-  [[nodiscard]] std::chrono::seconds eventProfilerOnDemandDuration() const {
-    return eventProfilerOnDemandDuration_;
-  }
-
-  void setEventProfilerOnDemandDuration(std::chrono::seconds duration) {
-    eventProfilerOnDemandDuration_ = duration;
-  }
-
-  // Too many event profilers on a single system can overload the driver.
-  // At some point, latencies shoot through the roof and collection of samples
-  // becomes impossible. To avoid this situation we have a limit of profilers
-  // per GPU.
-  // NOTE: Communication with a daemon is needed for this feature.
-  // Library must be built with an active DaemonConfigLoader.
-  [[nodiscard]] int maxEventProfilersPerGpu() const {
-    return eventProfilerMaxInstancesPerGpu_;
-  }
-
-  // On Cuda11 we've seen occasional hangs when reprogramming counters
-  // Monitor profiling threads and report when a thread is not responding
-  // for a given number of seconds.
-  // A period of 0 means disable.
-  [[nodiscard]] std::chrono::seconds eventProfilerHeartbeatMonitorPeriod()
-      const {
-    return eventProfilerHeartbeatMonitorPeriod_;
   }
 
   // The types of activities selected in the configuration file
@@ -306,16 +197,6 @@ class Config : public AbstractConfig {
   }
 
   [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
-  eventProfilerOnDemandStartTime() const {
-    return eventProfilerOnDemandTimestamp_;
-  }
-
-  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
-  eventProfilerOnDemandEndTime() const {
-    return eventProfilerOnDemandTimestamp_ + eventProfilerOnDemandDuration_;
-  }
-
-  [[nodiscard]] std::chrono::time_point<std::chrono::system_clock>
   activityProfilerRequestReceivedTime() const {
     return activitiesOnDemandTimestamp_;
   }
@@ -400,8 +281,6 @@ class Config : public AbstractConfig {
     return nullptr;
   }
 
-  uint8_t createDeviceMask(const std::string& val);
-
   // Adds valid activity types from the user defined string list in the
   // configuration file
   void setActivityTypes(const std::vector<std::string>& selected_activities);
@@ -416,32 +295,6 @@ class Config : public AbstractConfig {
 
   int verboseLogLevel_;
   std::vector<std::string> verboseLogModules_;
-
-  // Event profiler
-  // These settings are also supported in on-demand mode
-  std::chrono::milliseconds samplePeriod_;
-  std::chrono::milliseconds reportPeriod_;
-  int samplesPerReport_;
-  std::set<std::string> eventNames_;
-  std::set<std::string> metricNames_;
-
-  // On-demand duration
-  std::chrono::seconds eventProfilerOnDemandDuration_;
-  // Last on-demand request
-  std::chrono::time_point<std::chrono::system_clock>
-      eventProfilerOnDemandTimestamp_;
-
-  int eventProfilerMaxInstancesPerGpu_;
-
-  // Monitor whether event profiler threads are stuck
-  // at this frequency
-  std::chrono::seconds eventProfilerHeartbeatMonitorPeriod_;
-
-  // These settings can not be changed on-demand
-  std::string eventLogFile_;
-  std::vector<int> eventReportPercentiles_ = {5, 25, 50, 75, 95};
-  uint8_t eventProfilerDeviceMask_ = static_cast<uint8_t>(~0);
-  std::chrono::milliseconds multiplexPeriod_;
 
   // Activity profiler
   bool activityProfilerEnabled_;

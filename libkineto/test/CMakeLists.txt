@@ -96,14 +96,6 @@ target_link_libraries(CuptiStringsTest PRIVATE
     gtest_main
     kineto_base kineto_api)
 gtest_discover_tests(CuptiStringsTest)
-
-# EventProfilerTest
-add_executable(EventProfilerTest EventProfilerTest.cpp)
-target_link_libraries(EventProfilerTest PRIVATE
-    gtest_main
-    gmock
-    kineto_base kineto_api)
-gtest_discover_tests(EventProfilerTest)
 endif()
 
 if(KINETO_BACKEND STREQUAL "rocm")

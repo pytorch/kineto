@@ -15,66 +15,85 @@ set(LINK_LIBRARIES
   ${PTI_LIBRARY}
 )
 
+# Pure host-code tests (no SYCL device code): ordinary executables.
 add_executable(XpuptiScopeProfilerConfigTest XpuptiScopeProfilerConfigTest.cpp)
 target_link_libraries(XpuptiScopeProfilerConfigTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiScopeProfilerConfigTest)
 
 add_executable(XpuptiActivityHandlersTest XpuptiActivityHandlersTest.cpp)
 target_link_libraries(XpuptiActivityHandlersTest PRIVATE ${LINK_LIBRARIES})
-gtest_add_tests(TARGET XpuptiActivityHandlersTest)
+gtest_discover_tests(XpuptiActivityHandlersTest)
 
 # Hardware-free test for the CPU->GPU flow-link allowlist.
 add_executable(XpuptiFlowCorrelationTest XpuptiFlowCorrelationTest.cpp)
 target_link_libraries(XpuptiFlowCorrelationTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiFlowCorrelationTest)
 
-# These tests build a .so shared library and rely on --export-dynamic runtime
-# symbol resolution (ELF/GNU linker), so they only build on Linux.
-if(NOT WIN32)
-  include(ExternalProject)
+include(ExternalProject)
 
-  function(make_test test_file)
-    get_filename_component(test_name "${test_file}" NAME_WE)
-    set(lib_name "${test_name}Lib")
-    add_library(${lib_name} SHARED XpuptiTestUtilities.cpp ${test_file})
+# The compute translation unit contains SYCL device code and must be built by
+# the SYCL compiler (icpx -fsycl). CMake allows only one CXX compiler per build
+# tree, so it is built here as an isolated ExternalProject producing a kernel-only
+# shared library (libxpupti_compute.so / xpupti_compute.dll).
+set(XPUPTI_COMPUTE_LIB
+  ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}xpupti_compute${CMAKE_SHARED_LIBRARY_SUFFIX})
 
-    # Do not link gtest into the shared library to avoid duplicate gtest globals
-    # (gtest is statically linked into the executable; the shared library resolves
-    # gtest symbols from the executable at runtime via --export-dynamic).
-    set(LIB_LINK_LIBRARIES
-      kineto_base
-      kineto_api
-      $<BUILD_INTERFACE:fmt::fmt-header-only>
-      ${SYCL_LIBRARY}
-      ${PTI_LIBRARY}
-    )
-    target_link_libraries(${lib_name} PRIVATE ${LIB_LINK_LIBRARIES})
-    target_include_directories(${lib_name} PRIVATE
-      $<TARGET_PROPERTY:gtest,INTERFACE_INCLUDE_DIRECTORIES>)
-
-    set_target_properties(${lib_name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-    set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-    install(TARGETS ${lib_name}
-      LIBRARY DESTINATION lib
-      RUNTIME DESTINATION bin
-    )
-
-    ExternalProject_Add(${test_name}
-      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
-      CMAKE_ARGS -DPROJECT_NAME=${test_name}
-      CMAKE_ARGS -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
-      CMAKE_ARGS -DCMAKE_PARENT_BINARY_DIR=${CMAKE_BINARY_DIR}
-      CMAKE_ARGS -DLINK_LIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib${lib_name}.so
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-      BUILD_ALWAYS TRUE
-    )
-
-    add_dependencies(${test_name} ${lib_name})
-    add_dependencies(${test_name} gtest)
-    add_dependencies(${test_name} gtest_main)
-  endfunction()
-
-  make_test(XpuptiProfilerTest.cpp)
-  make_test(XpuptiScopeProfilerTest.cpp)
+if(WIN32)
+  set(XPUPTI_COMPUTE_IMPLIB
+      ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}xpupti_compute${CMAKE_IMPORT_LIBRARY_SUFFIX})
+else()
+  set(XPUPTI_COMPUTE_IMPLIB "")
 endif()
+
+# On Windows SYCL/ICX requires the Ninja generator for the inner project.
+set(_xpupti_compute_generator ${CMAKE_GENERATOR})
+if(WIN32)
+  set(_xpupti_compute_generator Ninja)
+endif()
+
+set(_xpupti_compute_cmake_args
+    -DCMAKE_CXX_COMPILER=${SYCL_COMPILER}
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR})
+
+if(WIN32)
+  get_filename_component(_sycl_compiler_dir "${SYCL_COMPILER}" DIRECTORY)
+  get_filename_component(_sycl_root "${_sycl_compiler_dir}" DIRECTORY)
+  list(APPEND _xpupti_compute_cmake_args
+    "-DCMAKE_EXE_LINKER_FLAGS=/Qoption,link,/LIBPATH:\"${_sycl_root}/lib\""
+    "-DCMAKE_SHARED_LINKER_FLAGS=/Qoption,link,/LIBPATH:\"${_sycl_root}/lib\"")
+endif()
+
+ExternalProject_Add(xpupti_compute_ep
+  SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/compute
+  CONFIGURE_COMMAND ${CMAKE_COMMAND}
+    -G ${_xpupti_compute_generator}
+    -S <SOURCE_DIR>
+    -B <BINARY_DIR>
+    -DCMAKE_BUILD_TYPE=$<CONFIG>
+    ${_xpupti_compute_cmake_args}
+  BUILD_ALWAYS TRUE
+  BUILD_BYPRODUCTS ${XPUPTI_COMPUTE_LIB} ${XPUPTI_COMPUTE_IMPLIB})
+
+add_library(xpupti_compute SHARED IMPORTED)
+set_target_properties(xpupti_compute PROPERTIES
+  IMPORTED_LOCATION ${XPUPTI_COMPUTE_LIB})
+if(WIN32)
+  set_target_properties(xpupti_compute PROPERTIES
+    IMPORTED_IMPLIB ${XPUPTI_COMPUTE_IMPLIB})
+endif()
+add_dependencies(xpupti_compute xpupti_compute_ep)
+
+# Runtime tests: host code linking the kernel-only compute library.
+function(add_sycl_test test_file)
+  get_filename_component(test_name "${test_file}" NAME_WE)
+  add_executable(${test_name} ${test_file} XpuptiTestUtilities.cpp)
+  target_link_libraries(${test_name} PRIVATE
+    ${LINK_LIBRARIES}
+    xpupti_compute)
+  set_target_properties(${test_name} PROPERTIES
+    BUILD_RPATH ${CMAKE_CURRENT_BINARY_DIR})
+  gtest_discover_tests(${test_name})
+endfunction()
+
+add_sycl_test(XpuptiProfilerTest.cpp)
+add_sycl_test(XpuptiScopeProfilerTest.cpp)

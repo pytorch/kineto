@@ -24,7 +24,6 @@ XpuptiActivityApi& XpuptiActivityApi::singleton() {
 }
 
 void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
-#ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
@@ -37,11 +36,9 @@ void XpuptiActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {
       XPUPTI_CALL(ptiViewPushExternalCorrelationId(
           pti_view_external_kind::PTI_VIEW_EXTERNAL_KIND_CUSTOM_1, id));
   }
-#endif
 }
 
 void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
-#ifdef HAS_XPUPTI
   if (!singleton().externalCorrelationEnabled_) {
     return;
   }
@@ -54,19 +51,16 @@ void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
       XPUPTI_CALL(ptiViewPopExternalCorrelationId(
           pti_view_external_kind::PTI_VIEW_EXTERNAL_KIND_CUSTOM_1, nullptr));
   }
-#endif
 }
 
 static bool nextActivityRecord(
     uint8_t* buffer,
     size_t valid_size,
     pti_view_record_base*& record) {
-#ifdef HAS_XPUPTI
   pti_result status = ptiViewGetNextRecord(buffer, valid_size, &record);
   if (status != pti_result::PTI_SUCCESS) {
     record = nullptr;
   }
-#endif
   return record != nullptr;
 }
 
@@ -94,16 +88,13 @@ std::unique_ptr<XpuptiActivityBufferMap> XpuptiActivityApi::activityBuffers() {
     }
   }
 
-#ifdef HAS_XPUPTI
   std::chrono::time_point<std::chrono::system_clock> t1;
   XPUPTI_CALL(ptiFlushAllViews());
-#endif
 
   std::lock_guard<std::mutex> guard(mutex_);
   return std::move(readyGpuTraceBuffers_);
 }
 
-#ifdef HAS_XPUPTI
 int XpuptiActivityApi::processActivitiesForBuffer(
     uint8_t* buf,
     size_t validSize,
@@ -118,26 +109,21 @@ int XpuptiActivityApi::processActivitiesForBuffer(
   }
   return count;
 }
-#endif
 
 const std::pair<int, int> XpuptiActivityApi::processActivities(
     XpuptiActivityBufferMap& buffers,
     std::function<void(const pti_view_record_base*)> handler) {
   std::pair<int, int> res{0, 0};
-#ifdef HAS_XPUPTI
   for (auto& pair : buffers) {
     auto& buf = pair.second;
     res.first += processActivitiesForBuffer(buf->data(), buf->size(), handler);
     res.second += buf->size();
   }
-#endif
   return res;
 }
 
 void XpuptiActivityApi::flushActivities() {
-#ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiFlushAllViews());
-#endif
 }
 
 void XpuptiActivityApi::clearActivities() {
@@ -147,14 +133,11 @@ void XpuptiActivityApi::clearActivities() {
       return;
     }
   }
-#ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiFlushAllViews());
-#endif
   std::lock_guard<std::mutex> guard(mutex_);
   readyGpuTraceBuffers_ = nullptr;
 }
 
-#ifdef HAS_XPUPTI
 void XpuptiActivityApi::bufferCompletedTrampoline(
     uint8_t* buffer,
     size_t size,
@@ -176,7 +159,6 @@ void XpuptiActivityApi::bufferCompleted(
   (*readyGpuTraceBuffers_)[it->first] = std::move(it->second);
   allocatedGpuTraceBuffers_.erase(it);
 }
-#endif
 
 namespace {
 void warnIfIttNotifyLibInvalid() noexcept {
@@ -205,7 +187,6 @@ void warnIfIttNotifyLibInvalid() noexcept {
 
 void XpuptiActivityApi::enableXpuptiActivities(
     const std::set<ActivityType>& selected_activities) {
-#ifdef HAS_XPUPTI
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
 
@@ -261,12 +242,10 @@ void XpuptiActivityApi::enableXpuptiActivities(
         break;
     }
   }
-#endif
 }
 
 void XpuptiActivityApi::disablePtiActivities(
     const std::set<ActivityType>& selected_activities) {
-#ifdef HAS_XPUPTI
   for (const auto& activity : selected_activities) {
     switch (activity) {
       case ActivityType::GPU_MEMCPY:
@@ -310,7 +289,6 @@ void XpuptiActivityApi::disablePtiActivities(
     }
   }
   externalCorrelationEnabled_ = false;
-#endif
 }
 
 } // namespace KINETO_NAMESPACE

@@ -20,7 +20,6 @@
 #ifdef HAS_CUPTI
 #include "CuptiActivityApi.h"
 #include "CuptiCallbackApi.h"
-#include "EventProfilerController.h"
 #endif
 #ifdef HAS_ROCTRACER
 #include "RocprofLogger.h"
@@ -56,24 +55,12 @@ static void initProfilers() {
 #endif // __linux__ || defined(HAS_CUPTI)
 
 #ifdef HAS_CUPTI
-bool enableEventProfiler() {
-  if (getenv("KINETO_ENABLE_EVENT_PROFILER") != nullptr) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 static void initProfilersCallback(
     [[maybe_unused]] CUpti_CallbackDomain domain,
     [[maybe_unused]] CUpti_CallbackId cbid,
     [[maybe_unused]] const CUpti_CallbackData* cbInfo) {
   VLOG(0) << "CUDA Context created";
   initProfilers();
-
-  if (enableEventProfiler()) {
-    LOG(WARNING) << "Event Profiler is no longer supported in kineto";
-  }
 }
 
 // Some models suffer from excessive instrumentation code gen

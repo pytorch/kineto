@@ -74,10 +74,6 @@ KERNEL_REGISTRY_SRCS = [
     "src/KernelRegistry.cpp",
 ]
 
-OUTPUT_CSV_SRCS = [
-    "src/output_csv.cpp",
-]
-
 OUTPUT_JSON_SRCS = [
     "src/output_json.cpp",
 ]
@@ -104,13 +100,6 @@ CUPTI_API_SRCS = [
 
 CUPTI_ACTIVITY_PROFILER_SRCS = [
     "src/CuptiActivityProfiler.cpp",
-]
-
-EVENT_PROFILER_SRCS = [
-    "src/CuptiEventApi.cpp",
-    "src/CuptiMetricApi.cpp",
-    "src/EventProfiler.cpp",
-    "src/EventProfilerController.cpp",
 ]
 
 WEAK_SYMBOLS_SRCS = [
@@ -161,15 +150,12 @@ def get_libkineto_cpu_only_srcs(with_api = True):
         + APPROXIMATE_CLOCK_SRCS
         + ACTIVITY_PROFILER_CORE_SRCS
         + INIT_SRCS
-        + OUTPUT_CSV_SRCS
         + OUTPUT_JSON_SRCS
         + (get_libkineto_api_srcs() if with_api else [])
     )
 
 def get_libkineto_cupti_srcs(with_api = True):
-    return (
-        CUPTI_API_SRCS + CUPTI_ACTIVITY_PROFILER_SRCS + EVENT_PROFILER_SRCS + KERNEL_REGISTRY_SRCS + WEAK_SYMBOLS_SRCS + get_libkineto_cpu_only_srcs(with_api)
-    )
+    return CUPTI_API_SRCS + CUPTI_ACTIVITY_PROFILER_SRCS + KERNEL_REGISTRY_SRCS + WEAK_SYMBOLS_SRCS + get_libkineto_cpu_only_srcs(with_api)
 
 def get_libkineto_rocprofiler_srcs(with_api = True):
     return ROCM_ACTIVITY_PROFILER_SRCS + ROCM_API_SRCS + get_libkineto_cpu_only_srcs(with_api)

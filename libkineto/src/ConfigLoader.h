@@ -32,7 +32,7 @@ class ConfigLoader {
  public:
   static ConfigLoader& instance();
 
-  enum ConfigKind { ActivityProfiler = 0, EventProfiler, NumConfigKinds };
+  enum ConfigKind { ActivityProfiler = 0, NumConfigKinds };
 
   struct ConfigHandler {
     virtual ~ConfigHandler() = default;
@@ -84,7 +84,6 @@ class ConfigLoader {
   }
 
   bool hasNewConfig(const Config& oldConfig);
-  int contextCountForGpu(uint32_t device);
 
   static void setDaemonConfigLoaderFactory(
       std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);

@@ -34,32 +34,17 @@ std::string DaemonConfigLoader::readBaseConfig() {
   return configClient_2->getLibkinetoBaseConfig();
 }
 
-std::string DaemonConfigLoader::readOnDemandConfig(
-    bool events,
-    bool activities) {
+std::string DaemonConfigLoader::readOnDemandConfig(bool activities) {
   auto configClient = getConfigClient();
   if (!configClient) {
     LOG_EVERY_N(WARNING, 10) << "Failed to read config: No dyno config client";
     return "";
   }
   int config_type = static_cast<int>(LibkinetoConfigType::NONE);
-  if (events) {
-    config_type |= static_cast<int>(LibkinetoConfigType::EVENTS);
-  }
   if (activities) {
     config_type |= static_cast<int>(LibkinetoConfigType::ACTIVITIES);
   }
   return configClient->getLibkinetoOndemandConfig(config_type);
-}
-
-int DaemonConfigLoader::gpuContextCount(uint32_t device) {
-  auto configClient = getConfigClient();
-  if (!configClient) {
-    LOG(WARNING) << "Failed to read config: No dyno config client";
-    // This is probably a temporary problem - return -1 to indicate error.
-    return -1;
-  }
-  return configClient->registerInstance(device);
 }
 
 void DaemonConfigLoader::setCommunicationFabric(bool enabled) {

@@ -75,17 +75,8 @@ std::string ConfigLoader::readOnDemandConfigFromDaemon(
   if (!daemonConfigLoader_) {
     return "";
   }
-  bool events = canHandlerAcceptConfig(ConfigKind::EventProfiler);
   bool activities = canHandlerAcceptConfig(ConfigKind::ActivityProfiler);
-  return daemonConfigLoader_->readOnDemandConfig(events, activities);
-}
-
-int ConfigLoader::contextCountForGpu(uint32_t device) {
-  if (!daemonConfigLoader_) {
-    // FIXME: Throw error?
-    return 0;
-  }
-  return daemonConfigLoader_->gpuContextCount(device);
+  return daemonConfigLoader_->readOnDemandConfig(activities);
 }
 
 ConfigLoader::ConfigLoader()

@@ -231,16 +231,33 @@ void ConfigLoader::updateConfigThread() {
       break;
     }
     auto now = system_clock::now();
+    // This runs on a bare background thread: an escaped exception would
+    // terminate the process, so config-update failures are caught and skipped.
+    // Advance the load timestamps before the guarded work so a persistent
+    // failure backs off to the normal interval instead of hot-looping.
     if (now > prev_config_load_time + configUpdateIntervalSecs_) {
-      updateBaseConfig();
-      onDemandConfigUpdateIntervalSecs_ =
-          config_->onDemandConfigUpdateIntervalSecs();
       prev_config_load_time = now;
+      try {
+        updateBaseConfig();
+        onDemandConfigUpdateIntervalSecs_ =
+            config_->onDemandConfigUpdateIntervalSecs();
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "Skipping base config update after error: " << e.what();
+      } catch (...) {
+        LOG(ERROR) << "Skipping base config update after unknown error";
+      }
     }
     if (now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
-      onDemandConfig = std::make_unique<Config>();
-      configureFromDaemon(now, *onDemandConfig);
       prev_on_demand_load_time = now;
+      onDemandConfig = std::make_unique<Config>();
+      try {
+        configureFromDaemon(now, *onDemandConfig);
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "Skipping on-demand config update after error: "
+                   << e.what();
+      } catch (...) {
+        LOG(ERROR) << "Skipping on-demand config update after unknown error";
+      }
     }
     if (onDemandConfig->verboseLogLevel() >= 0) {
       LOG(INFO) << "Setting verbose level to "

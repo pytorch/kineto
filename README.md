@@ -14,9 +14,6 @@ The central component of Kineto is Libkineto, a profiling library with special f
 
 Libkineto is an in-process profiling library integrated with the PyTorch Profiler. Please refer to the [README](libkineto/README.md) file in the `libkineto` folder as well as documentation on the [new PyTorch Profiler API](https://pytorch.org/docs/master/profiler.html).
 
-## Holistic Trace Analsysis
-In order to compare Kineto traces across ranks, we reccomend using the [Holistic Trace Analysis](https://github.com/facebookresearch/HolisticTraceAnalysis) tool.
-
 ## Releases and Contributing
 We will follow the PyTorch release schedule which roughly happens on a 3 month basis.
 

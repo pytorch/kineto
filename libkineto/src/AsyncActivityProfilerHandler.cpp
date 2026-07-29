@@ -268,6 +268,23 @@ void AsyncActivityProfilerHandler::completePendingTrace() {
   profiler_.completeTrace(*logger_);
   currentRunloopState_ = RunloopState::WaitForRequest;
   VLOG(0) << "ProcessTrace -> WaitForRequest";
+  // Signal any test waiting for a finalized trace. completeTrace above has
+  // fully written the trace file, so a waiter that observes this count knows
+  // the file is on disk.
+  {
+    std::scoped_lock lock(completedTraceMutex_);
+    completedTraceCount_.fetch_add(1, std::memory_order_release);
+  }
+  completedTraceCondVar_.notify_all();
+}
+
+bool AsyncActivityProfilerHandler::waitForCompletedTraceCountForTesting(
+    uint64_t target,
+    std::chrono::milliseconds timeout) {
+  std::unique_lock<std::mutex> lock(completedTraceMutex_);
+  return completedTraceCondVar_.wait_for(lock, timeout, [this, target] {
+    return completedTraceCount_.load(std::memory_order_acquire) >= target;
+  });
 }
 
 void AsyncActivityProfilerHandler::memoryProfilerLoop() {

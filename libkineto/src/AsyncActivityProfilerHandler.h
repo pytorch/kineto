@@ -11,6 +11,8 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -74,6 +76,23 @@ class AsyncActivityProfilerHandler {
 
   void ensureCollectTraceDone();
 
+  // Test-only. Returns how many async traces this handler has finalized. Each
+  // increment means a trace was fully written to its logger and the run loop
+  // returned to idle, so the trace file is on disk. A test that drives the real
+  // background loop can capture a baseline, request a trace, and wait for this
+  // count to advance to observe a completed trace deterministically. Loaded
+  // with acquire ordering so observing an advanced count also makes the
+  // finalized trace's writes visible.
+  [[nodiscard]] uint64_t completedTraceCountForTesting() const {
+    return completedTraceCount_.load(std::memory_order_acquire);
+  }
+
+  // Test-only. Blocks until the finalized-trace count reaches target, or the
+  // timeout elapses; returns true if the count was reached.
+  bool waitForCompletedTraceCountForTesting(
+      uint64_t target,
+      std::chrono::milliseconds timeout);
+
  private:
   bool shouldActivateIterationConfig(int64_t currentIter);
   bool shouldActivateTimestampConfig(
@@ -118,5 +137,14 @@ class AsyncActivityProfilerHandler {
   std::unique_ptr<std::thread> collectTraceThread_{nullptr};
   std::recursive_mutex collectTraceStateMutex_;
   bool isCollectingTrace_{false};
+
+  // Incremented at the end of completePendingTrace(), once an async trace has
+  // been written to its logger and the run loop has returned to idle. Test-only
+  // observation point; see completedTraceCountForTesting().
+  // completedTraceCondVar_ is notified on each increment so a test can block
+  // until a target count without polling.
+  std::atomic<uint64_t> completedTraceCount_{0};
+  std::mutex completedTraceMutex_;
+  std::condition_variable completedTraceCondVar_;
 };
 } // namespace KINETO_NAMESPACE

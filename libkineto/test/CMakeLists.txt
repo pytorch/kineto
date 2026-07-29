@@ -72,6 +72,17 @@ if(NOT WIN32)
         ${XPU_XPUPTI_LIBRARY})
     gtest_discover_tests(AsyncActivityProfilerHandlerTest)
 
+    # AsyncE2ECpuTraceTest
+    add_executable(AsyncE2ECpuTraceTest
+        AsyncE2ECpuTraceTest.cpp
+        TestUtils.cpp)
+    target_link_libraries(AsyncE2ECpuTraceTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        nlohmann_json::nlohmann_json
+        ${XPU_XPUPTI_LIBRARY})
+    gtest_discover_tests(AsyncE2ECpuTraceTest)
+
     # SyncActivityProfilerHandlerTest
     add_executable(SyncActivityProfilerHandlerTest
         SyncActivityProfilerHandlerTest.cpp)

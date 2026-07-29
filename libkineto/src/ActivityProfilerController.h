@@ -45,9 +45,13 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   static std::vector<std::shared_ptr<LoggerCollector>> getLoggerCollectors();
 #endif // !USE_GOOGLE_LOG
 
+  // Pass warnOnOverwrite=false to silently replace an already-registered
+  // factory for the protocol. Intentional overrides (e.g. the fb "file"
+  // protocol override) use this to avoid a benign startup WARNING.
   static void addLoggerFactory(
       const std::string& protocol,
-      ActivityLoggerFactory::FactoryFunc factory);
+      ActivityLoggerFactory::FactoryFunc factory,
+      bool warnOnOverwrite = true);
 
   static void setInvariantViolationsLoggerFactory(
       const std::function<std::unique_ptr<InvariantViolationsLogger>()>&

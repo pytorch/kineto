@@ -120,8 +120,10 @@ ActivityLoggerFactory& ActivityProfilerController::loggerFactory() {
 
 void ActivityProfilerController::addLoggerFactory(
     const std::string& protocol,
-    ActivityLoggerFactory::FactoryFunc factory) {
-  if (loggerFactory().addProtocol(protocol, std::move(factory))) {
+    ActivityLoggerFactory::FactoryFunc factory,
+    bool warnOnOverwrite) {
+  if (loggerFactory().addProtocol(protocol, std::move(factory)) &&
+      warnOnOverwrite) {
     LOG(WARNING) << "Overwriting logger factory for protocol: " << protocol;
   }
 }

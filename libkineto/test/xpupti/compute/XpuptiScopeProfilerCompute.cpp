@@ -10,6 +10,11 @@
 // - removed unnecessary code
 // - changed formatting
 
+// Mark that we are building the library so the header exports (not imports)
+// ComputeOnXpu on Windows.
+#define XPUPTI_COMPUTE_BUILDING
+#include "XpuptiScopeProfilerCompute.h"
+
 #include <sycl/sycl.hpp>
 #include <cmath>
 
@@ -57,7 +62,7 @@ static void Run(
   queue.wait_and_throw();
 }
 
-void ComputeOnXpu(unsigned size, unsigned repeatCount) {
+XPUPTI_COMPUTE_API void ComputeOnXpu(unsigned size, unsigned repeatCount) {
   unsigned sizeSq = size * size;
   sycl::device dev = sycl::device(sycl::gpu_selector_v);
   sycl::property_list propList{sycl::property::queue::in_order()};

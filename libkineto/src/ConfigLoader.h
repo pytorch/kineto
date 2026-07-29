@@ -120,6 +120,15 @@ class ConfigLoader {
   // pointing at destroyed test state.
   void resetDaemonConfigLoaderForTesting();
 
+  // Test-only. Clears the cached base config so the next poll thread sees the
+  // base config as changed and rebuilds the daemon config loader from the
+  // registered factory. The base config is a member of this process-wide
+  // singleton and is reloaded only on change, so without this reset a later
+  // test in the same process reuses an earlier test's base config, never
+  // rebuilds the loader from its factory, and never reads the fake daemon. Call
+  // after stopping the thread.
+  void resetBaseConfigForTesting();
+
   // Test-only. Returns the on-demand poll interval the background thread is
   // currently using, taken from the loaded base config. Lets a test size a
   // timeout to the live cadence instead of assuming the default.

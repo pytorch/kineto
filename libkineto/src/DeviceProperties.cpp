@@ -81,11 +81,11 @@ static void visitDeviceMetadata(
     size_t id,
     const gpuDeviceProp& props,
     libkineto::ITypedMetadataVisitor& visitor) {
-  visitor.visit(DevicePropertyFields::kId, static_cast<int64_t>(id));
+  visitor.visit(DevicePropertyFields::kId, static_cast<uint64_t>(id));
   visitor.visit(DevicePropertyFields::kName, std::string{props.name});
   visitor.visit(
       DevicePropertyFields::kTotalGlobalMem,
-      static_cast<int64_t>(props.totalGlobalMem));
+      static_cast<uint64_t>(props.totalGlobalMem));
   visitor.visit(
       DevicePropertyFields::kComputeMajor, static_cast<int64_t>(props.major));
   visitor.visit(
@@ -103,7 +103,7 @@ static void visitDeviceMetadata(
       DevicePropertyFields::kWarpSize, static_cast<int64_t>(props.warpSize));
   visitor.visit(
       DevicePropertyFields::kSharedMemPerBlock,
-      static_cast<int64_t>(props.sharedMemPerBlock));
+      static_cast<uint64_t>(props.sharedMemPerBlock));
   visitor.visit(
       DevicePropertyFields::kNumSms,
       static_cast<int64_t>(props.multiProcessorCount));
@@ -113,14 +113,14 @@ static void visitDeviceMetadata(
       static_cast<int64_t>(props.regsPerMultiprocessor));
   visitor.visit(
       DevicePropertyFields::kSharedMemPerBlockOptin,
-      static_cast<int64_t>(props.sharedMemPerBlockOptin));
+      static_cast<uint64_t>(props.sharedMemPerBlockOptin));
   visitor.visit(
       DevicePropertyFields::kSharedMemPerMultiprocessor,
-      static_cast<int64_t>(props.sharedMemPerMultiprocessor));
+      static_cast<uint64_t>(props.sharedMemPerMultiprocessor));
 #elif defined(HAS_ROCTRACER)
   visitor.visit(
       DevicePropertyFields::kMaxSharedMemoryPerMultiProcessor,
-      static_cast<int64_t>(props.maxSharedMemoryPerMultiProcessor));
+      static_cast<uint64_t>(props.maxSharedMemoryPerMultiProcessor));
 #endif
 }
 

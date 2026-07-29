@@ -72,7 +72,12 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
   void visitValue(const MetadataField<int64_t>& field, int64_t value) override {
     if (field.name == RocmMetadataFields::kStream.name) {
       stream = value;
-    } else if (field.name == RocmMetadataFields::kHsaQueue.name) {
+    }
+  }
+
+  void visitValue(const MetadataField<uint64_t>& field, uint64_t value)
+      override {
+    if (field.name == RocmMetadataFields::kHsaQueue.name) {
       hsaQueue = value;
     }
   }
@@ -96,9 +101,6 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
       [[maybe_unused]] const MetadataField<RawJson>& field,
       [[maybe_unused]] const RawJson& value) override {}
   void visitValue(
-      [[maybe_unused]] const MetadataField<uint64_t>& field,
-      [[maybe_unused]] uint64_t value) override {}
-  void visitValue(
       [[maybe_unused]] const MetadataField<InputShapes>& field,
       [[maybe_unused]] const InputShapes& value) override {}
 
@@ -108,7 +110,7 @@ struct RocmStreamTypedMetadataVisitor final : public ITypedMetadataVisitor {
   void endDict() override {}
 
   std::optional<int64_t> stream;
-  std::optional<int64_t> hsaQueue;
+  std::optional<uint64_t> hsaQueue;
 };
 } // namespace
 
@@ -435,7 +437,7 @@ TEST_F(RocmActivityProfilerTest, GpuTypedMetadataMatchesLegacyStreamMetadata) {
   const auto jsonMetadata =
       nlohmann::json::parse("{" + memcpyActivity->metadataJson() + "}");
   EXPECT_EQ(typedMetadata.stream, jsonMetadata["stream"].get<int64_t>());
-  EXPECT_EQ(typedMetadata.hsaQueue, jsonMetadata["hsa_queue"].get<int64_t>());
+  EXPECT_EQ(typedMetadata.hsaQueue, jsonMetadata["hsa_queue"].get<uint64_t>());
 }
 
 TEST_F(

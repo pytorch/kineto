@@ -124,6 +124,12 @@ void ConfigLoader::resetDaemonConfigLoaderForTesting() {
   daemonConfigLoader_.reset();
 }
 
+void ConfigLoader::resetBaseConfigForTesting() {
+  std::scoped_lock lock(configLock_);
+  config_ = std::make_unique<Config>();
+  onDemandConfigUpdateIntervalSecs_ = kConfigUpdateIntervalSecs;
+}
+
 bool ConfigLoader::waitForUpdateThreadLoopCountForTesting(
     uint64_t target,
     std::chrono::milliseconds timeout) {

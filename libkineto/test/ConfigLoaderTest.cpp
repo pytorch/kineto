@@ -137,6 +137,14 @@ class ConfigLoaderTest : public ::testing::Test {
     loader().resetDaemonConfigLoaderForTesting();
     ConfigLoader::setDaemonConfigLoaderFactory(nullptr);
 
+    // Clear the cached base config. The singleton reloads the base config only
+    // when it changes, so once an earlier test primes it (to a local config
+    // file, if present) a later test in the same process would see no change,
+    // never rebuild the daemon loader from its factory, and never poll the
+    // fake. gtest_discover_tests masks this by running each test in its own
+    // process.
+    loader().resetBaseConfigForTesting();
+
     // removeHandler is a no-op for a handler already removed by the test, so
     // double removal is safe.
     for (const auto& [kind, handler] : registered_) {
@@ -211,7 +219,9 @@ TEST_F(ConfigLoaderTest, CanHandlerAcceptConfigVacuouslyTrueWithNoHandlers) {
 //
 // These tests run the actual updateConfigThread() against a fake daemon and use
 // the iteration counter to synchronize. They tolerate a pre-existing local
-// config file (/etc/libkineto.conf or $KINETO_CONFIG) on the test system.
+// config file (/etc/libkineto.conf or $KINETO_CONFIG) on the test system: each
+// test starts from a cleared base config (see TearDown), so the poll thread
+// always re-detects a base-config change and rebuilds the fake daemon loader.
 
 // The poll thread reads the on-demand config from the daemon, parses it, and
 // dispatches it to registered handlers, requesting activities while the handler

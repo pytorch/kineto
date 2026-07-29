@@ -120,6 +120,27 @@ void ConfigLoader::stopUpdateThread() {
   stopThread();
 }
 
+void ConfigLoader::resetDaemonConfigLoaderForTesting() {
+  daemonConfigLoader_.reset();
+}
+
+bool ConfigLoader::waitForUpdateThreadLoopCountForTesting(
+    uint64_t target,
+    std::chrono::milliseconds timeout) {
+  std::unique_lock<std::mutex> lock(loopCountMutex_);
+  return loopCountCondVar_.wait_for(lock, timeout, [this, target] {
+    return updateThreadLoopCount_.load(std::memory_order_acquire) >= target;
+  });
+}
+
+std::chrono::seconds ConfigLoader::onDemandConfigUpdateIntervalForTesting() {
+  std::scoped_lock lock(configLock_);
+  // config_ is the authoritative source; updateConfigThread caches its value
+  // into onDemandConfigUpdateIntervalSecs_ on each base-config refresh.
+  return config_ ? config_->onDemandConfigUpdateIntervalSecs()
+                 : onDemandConfigUpdateIntervalSecs_;
+}
+
 ConfigLoader::~ConfigLoader() {
   stopThread();
 #if !USE_GOOGLE_LOG
@@ -267,6 +288,13 @@ void ConfigLoader::updateConfigThread() {
           onDemandConfig->verboseLogLevel(),
           onDemandConfig->verboseLogModules());
     }
+    // Mark one completed iteration and wake any test waiting for deterministic
+    // progression of the real poll thread.
+    {
+      std::scoped_lock lock(loopCountMutex_);
+      updateThreadLoopCount_.fetch_add(1, std::memory_order_release);
+    }
+    loopCountCondVar_.notify_all();
   }
 }
 

@@ -12,6 +12,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -96,6 +97,34 @@ class ConfigLoader {
   // leaving the join to run during static destruction.
   void stopUpdateThread();
 
+  // Test-only. Returns how many iterations the background poll thread has
+  // completed. A test that installs a fake daemon config loader can start the
+  // thread and wait for this count to advance, then deterministically observe
+  // the effects of a known number of real poll iterations. Loaded with acquire
+  // ordering so that observing an advanced count also makes that iteration's
+  // writes visible to the observer.
+  [[nodiscard]] uint64_t updateThreadLoopCountForTesting() const {
+    return updateThreadLoopCount_.load(std::memory_order_acquire);
+  }
+
+  // Test-only. Blocks until the poll thread's iteration count reaches target,
+  // or the timeout elapses; returns true if the count was reached.
+  bool waitForUpdateThreadLoopCountForTesting(
+      uint64_t target,
+      std::chrono::milliseconds timeout);
+
+  // Test-only. Drops the cached daemon config loader so the next poll rebuilds
+  // it from the currently registered factory. The loader is a member of this
+  // process-wide singleton, so a test that injected a fake via the factory must
+  // clear it (after stopping the thread) or a later test would reuse a loader
+  // pointing at destroyed test state.
+  void resetDaemonConfigLoaderForTesting();
+
+  // Test-only. Returns the on-demand poll interval the background thread is
+  // currently using, taken from the loaded base config. Lets a test size a
+  // timeout to the live cadence instead of assuming the default.
+  std::chrono::seconds onDemandConfigUpdateIntervalForTesting();
+
  private:
   ConfigLoader();
   ~ConfigLoader();
@@ -128,6 +157,13 @@ class ConfigLoader {
   std::condition_variable updateThreadCondVar_;
   std::mutex updateThreadMutex_;
   std::atomic_bool stopFlag_{false};
+
+  // Incremented at the end of each updateConfigThread() iteration. Test-only
+  // observation point; see updateThreadLoopCountForTesting(). loopCountCondVar_
+  // is notified on each increment so a test can block until a target count.
+  std::atomic<uint64_t> updateThreadLoopCount_{0};
+  std::mutex loopCountMutex_;
+  std::condition_variable loopCountCondVar_;
 };
 
 } // namespace KINETO_NAMESPACE

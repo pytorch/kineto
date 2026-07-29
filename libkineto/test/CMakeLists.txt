@@ -62,6 +62,24 @@ if(NOT WIN32)
         nlohmann_json::nlohmann_json
         ${XPU_XPUPTI_LIBRARY})
     gtest_discover_tests(AsyncActivityProfilerHandlerTest)
+
+    # SyncActivityProfilerHandlerTest
+    add_executable(SyncActivityProfilerHandlerTest
+        SyncActivityProfilerHandlerTest.cpp)
+    target_link_libraries(SyncActivityProfilerHandlerTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        ${XPU_XPUPTI_LIBRARY})
+    gtest_discover_tests(SyncActivityProfilerHandlerTest)
+
+    # GenericActivityProfilerTeardownTest
+    add_executable(GenericActivityProfilerTeardownTest
+        GenericActivityProfilerTeardownTest.cpp)
+    target_link_libraries(GenericActivityProfilerTeardownTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        ${XPU_XPUPTI_LIBRARY})
+    gtest_discover_tests(GenericActivityProfilerTeardownTest)
 endif()
 
 if(KINETO_BACKEND STREQUAL "cuda")
@@ -96,6 +114,13 @@ target_link_libraries(CuptiStringsTest PRIVATE
     gtest_main
     kineto_base kineto_api)
 gtest_discover_tests(CuptiStringsTest)
+
+# DevicePropertiesTest
+add_executable(DevicePropertiesTest DevicePropertiesTest.cpp)
+target_link_libraries(DevicePropertiesTest PRIVATE
+    gtest_main
+    kineto_base kineto_api)
+gtest_discover_tests(DevicePropertiesTest)
 endif()
 
 if(KINETO_BACKEND STREQUAL "rocm")

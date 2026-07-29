@@ -33,7 +33,7 @@ inline constexpr MetadataField<uint64_t> kTotalReserved{"Total Reserved"};
 inline constexpr MetadataField<int64_t> kDeviceType{"Device Type"};
 inline constexpr MetadataField<int64_t> kDeviceId{"Device Id"};
 inline constexpr MetadataField<uint64_t> kPythonId{"Python id"};
-inline constexpr MetadataField<int64_t> kPythonParentId{"Python parent id"};
+inline constexpr MetadataField<uint64_t> kPythonParentId{"Python parent id"};
 inline constexpr MetadataField<uint64_t> kPythonModuleId{"Python module id"};
 inline constexpr MetadataField<uint64_t> kPythonThread{"Python thread"};
 inline constexpr MetadataField<std::string> kBackend{"Backend"};
@@ -73,9 +73,9 @@ inline constexpr MetadataField<uint64_t> kCommsId{"Comms Id"};
 } // namespace libkineto::CollectiveMetadataFields
 
 namespace libkineto::DevicePropertyMetadataFields {
-inline constexpr MetadataField<int64_t> kId{"id"};
+inline constexpr MetadataField<uint64_t> kId{"id"};
 inline constexpr MetadataField<std::string> kName{"name"};
-inline constexpr MetadataField<int64_t> kTotalGlobalMem{"totalGlobalMem"};
+inline constexpr MetadataField<uint64_t> kTotalGlobalMem{"totalGlobalMem"};
 inline constexpr MetadataField<int64_t> kComputeMajor{"computeMajor"};
 inline constexpr MetadataField<int64_t> kComputeMinor{"computeMinor"};
 inline constexpr MetadataField<int64_t> kMaxThreadsPerBlock{
@@ -84,15 +84,16 @@ inline constexpr MetadataField<int64_t> kMaxThreadsPerMultiprocessor{
     "maxThreadsPerMultiprocessor"};
 inline constexpr MetadataField<int64_t> kRegsPerBlock{"regsPerBlock"};
 inline constexpr MetadataField<int64_t> kWarpSize{"warpSize"};
-inline constexpr MetadataField<int64_t> kSharedMemPerBlock{"sharedMemPerBlock"};
+inline constexpr MetadataField<uint64_t> kSharedMemPerBlock{
+    "sharedMemPerBlock"};
 inline constexpr MetadataField<int64_t> kNumSms{"numSms"};
 inline constexpr MetadataField<int64_t> kRegsPerMultiprocessor{
     "regsPerMultiprocessor"};
-inline constexpr MetadataField<int64_t> kSharedMemPerBlockOptin{
+inline constexpr MetadataField<uint64_t> kSharedMemPerBlockOptin{
     "sharedMemPerBlockOptin"};
-inline constexpr MetadataField<int64_t> kSharedMemPerMultiprocessor{
+inline constexpr MetadataField<uint64_t> kSharedMemPerMultiprocessor{
     "sharedMemPerMultiprocessor"};
-inline constexpr MetadataField<int64_t> kMaxSharedMemoryPerMultiProcessor{
+inline constexpr MetadataField<uint64_t> kMaxSharedMemoryPerMultiProcessor{
     "maxSharedMemoryPerMultiProcessor"};
 } // namespace libkineto::DevicePropertyMetadataFields
 
@@ -102,7 +103,7 @@ inline constexpr MetadataField<int64_t> kActiveBlocksPerMultiprocessor{
     "activeBlocksPerMultiprocessor"};
 inline constexpr MetadataField<int64_t> kAllocatedRegistersPerBlock{
     "allocatedRegistersPerBlock"};
-inline constexpr MetadataField<int64_t> kAllocatedSharedMemPerBlock{
+inline constexpr MetadataField<uint64_t> kAllocatedSharedMemPerBlock{
     "allocatedSharedMemPerBlock"};
 inline constexpr MetadataField<std::vector<int64_t>> kBlock{"block"};
 inline constexpr MetadataField<int64_t> kBlockLimitBarriers{
@@ -113,36 +114,36 @@ inline constexpr MetadataField<int64_t> kBlockLimitSharedMem{
     "blockLimitSharedMem"};
 inline constexpr MetadataField<int64_t> kBlockLimitWarps{"blockLimitWarps"};
 inline constexpr MetadataField<double> kBlocksPerSm{"blocks per SM"};
-inline constexpr MetadataField<int64_t> kBytes{"bytes"};
-inline constexpr MetadataField<int64_t> kCbid{"cbid"};
-inline constexpr MetadataField<int64_t> kChannel{"channel"};
+inline constexpr MetadataField<uint64_t> kBytes{"bytes"};
+inline constexpr MetadataField<uint64_t> kCbid{"cbid"};
+inline constexpr MetadataField<uint64_t> kChannel{"channel"};
 inline constexpr MetadataField<int64_t> kChannelType{"channel_type"};
-inline constexpr MetadataField<int64_t> kContext{"context"};
-inline constexpr MetadataField<int64_t> kCorrelation{"correlation"};
+inline constexpr MetadataField<uint64_t> kContext{"context"};
+inline constexpr MetadataField<uint64_t> kCorrelation{"correlation"};
 inline constexpr MetadataField<std::string> kCudaSyncKind{"cuda_sync_kind"};
 inline constexpr MetadataField<int64_t> kDevice{"device"};
 inline constexpr MetadataField<int64_t> kEstAchievedOccupancyPercent{
     "est. achieved occupancy %"};
-inline constexpr MetadataField<int64_t> kEventId{"event_id"};
-inline constexpr MetadataField<int64_t> kFromContext{"fromContext"};
-inline constexpr MetadataField<int64_t> kFromDevice{"fromDevice"};
-inline constexpr MetadataField<int64_t> kGraphId{"graph id"};
-inline constexpr MetadataField<int64_t> kGraphNodeId{"graph node id"};
+inline constexpr MetadataField<uint64_t> kEventId{"event_id"};
+inline constexpr MetadataField<uint64_t> kFromContext{"fromContext"};
+inline constexpr MetadataField<uint64_t> kFromDevice{"fromDevice"};
+inline constexpr MetadataField<uint64_t> kGraphId{"graph id"};
+inline constexpr MetadataField<uint64_t> kGraphNodeId{"graph node id"};
 inline constexpr MetadataField<std::vector<int64_t>> kGrid{"grid"};
-inline constexpr MetadataField<int64_t> kInContext{"inContext"};
-inline constexpr MetadataField<int64_t> kInDevice{"inDevice"};
+inline constexpr MetadataField<uint64_t> kInContext{"inContext"};
+inline constexpr MetadataField<uint64_t> kInDevice{"inDevice"};
 inline constexpr MetadataField<std::string> kLimitingFactors{"limitingFactors"};
 inline constexpr MetadataField<double> kMemoryBandwidthGbps{
     "memory bandwidth (GB/s)"};
 inline constexpr MetadataField<int64_t> kPriority{"priority"};
-inline constexpr MetadataField<int64_t> kQueued{"queued"};
-inline constexpr MetadataField<int64_t> kRegistersPerThread{
+inline constexpr MetadataField<uint64_t> kQueued{"queued"};
+inline constexpr MetadataField<uint64_t> kRegistersPerThread{
     "registers per thread"};
 inline constexpr MetadataField<int64_t> kSharedMemory{"shared memory"};
 inline constexpr MetadataField<int64_t> kStream{"stream"};
-inline constexpr MetadataField<int64_t> kToContext{"toContext"};
-inline constexpr MetadataField<int64_t> kToDevice{"toDevice"};
-inline constexpr MetadataField<int64_t> kWaitOnCudaEventId{
+inline constexpr MetadataField<uint64_t> kToContext{"toContext"};
+inline constexpr MetadataField<uint64_t> kToDevice{"toDevice"};
+inline constexpr MetadataField<uint64_t> kWaitOnCudaEventId{
     "wait_on_cuda_event_id"};
 inline constexpr MetadataField<int64_t> kWaitOnCudaEventRecordCorrId{
     "wait_on_cuda_event_record_corr_id"};
@@ -152,19 +153,19 @@ inline constexpr MetadataField<double> kWarpsPerSm{"warps per SM"};
 
 namespace libkineto::RocmMetadataFields {
 inline constexpr MetadataField<std::vector<int64_t>> kBlock{"block"};
-inline constexpr MetadataField<int64_t> kBytes{"bytes"};
-inline constexpr MetadataField<int64_t> kCid{"cid"};
-inline constexpr MetadataField<int64_t> kCorrelation{"correlation"};
+inline constexpr MetadataField<uint64_t> kBytes{"bytes"};
+inline constexpr MetadataField<uint64_t> kCid{"cid"};
+inline constexpr MetadataField<uint64_t> kCorrelation{"correlation"};
 inline constexpr MetadataField<int64_t> kDevice{"device"};
 inline constexpr MetadataField<std::string> kDst{"dst"};
 inline constexpr MetadataField<std::vector<int64_t>> kGrid{"grid"};
-inline constexpr MetadataField<int64_t> kHsaQueue{"hsa_queue"};
+inline constexpr MetadataField<uint64_t> kHsaQueue{"hsa_queue"};
 inline constexpr MetadataField<std::string> kKernel{"kernel"};
 inline constexpr MetadataField<std::string> kKind{"kind"};
 inline constexpr MetadataField<double> kMemoryBandwidthGbps{
     "memory bandwidth (GB/s)"};
 inline constexpr MetadataField<std::string> kPtr{"ptr"};
-inline constexpr MetadataField<int64_t> kSharedMemory{"shared memory"};
+inline constexpr MetadataField<uint64_t> kSharedMemory{"shared memory"};
 inline constexpr MetadataField<std::string> kSrc{"src"};
 inline constexpr MetadataField<int64_t> kStream{"stream"};
 } // namespace libkineto::RocmMetadataFields

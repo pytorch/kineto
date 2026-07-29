@@ -151,9 +151,9 @@ inline void GpuActivity::visitTypedMetadata(
       RocmMetadataFields::kDevice, static_cast<int64_t>(gpuActivity.device));
   visitor.visit(RocmMetadataFields::kStream, resourceId());
   visitor.visit(
-      RocmMetadataFields::kHsaQueue, static_cast<int64_t>(gpuActivity.queue));
+      RocmMetadataFields::kHsaQueue, static_cast<uint64_t>(gpuActivity.queue));
   visitor.visit(
-      RocmMetadataFields::kCorrelation, static_cast<int64_t>(gpuActivity.id));
+      RocmMetadataFields::kCorrelation, static_cast<uint64_t>(gpuActivity.id));
   visitor.visit(
       RocmMetadataFields::kKind,
       std::string{
@@ -163,7 +163,7 @@ inline void GpuActivity::visitTypedMetadata(
   auto sizeIt = correlationToSize.find(gpuActivity.id);
   if (sizeIt != correlationToSize.end()) {
     visitor.visit(
-        RocmMetadataFields::kBytes, static_cast<int64_t>(sizeIt->second));
+        RocmMetadataFields::kBytes, static_cast<uint64_t>(sizeIt->second));
     addBandwidthTypedMetadata(
         visitor, sizeIt->second, gpuActivity.end - gpuActivity.begin);
     return;
@@ -221,14 +221,14 @@ inline void RuntimeActivity<rocprofKernelRow>::visitTypedMetadata(
   correlationToGrid[raw().id] = rocprofKernelGrid(raw());
   correlationToBlock[raw().id] = rocprofKernelBlock(raw());
 
-  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCid, static_cast<uint64_t>(raw().cid));
   visitor.visit(
-      RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+      RocmMetadataFields::kCorrelation, static_cast<uint64_t>(raw().id));
   visitor.visit(RocmMetadataFields::kGrid, correlationToGrid[raw().id]);
   visitor.visit(RocmMetadataFields::kBlock, correlationToBlock[raw().id]);
   visitor.visit(
       RocmMetadataFields::kSharedMemory,
-      static_cast<int64_t>(raw().groupSegmentSize));
+      static_cast<uint64_t>(raw().groupSegmentSize));
 }
 
 template <>
@@ -243,12 +243,12 @@ template <>
 inline void RuntimeActivity<rocprofCopyRow>::visitTypedMetadata(
     ITypedMetadataVisitor& visitor) const {
   correlationToSize[raw().id] = raw().size;
-  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCid, static_cast<uint64_t>(raw().cid));
   visitor.visit(
-      RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+      RocmMetadataFields::kCorrelation, static_cast<uint64_t>(raw().id));
   visitor.visit(RocmMetadataFields::kSrc, fmt::format("{}", raw().src));
   visitor.visit(RocmMetadataFields::kDst, fmt::format("{}", raw().dst));
-  visitor.visit(RocmMetadataFields::kBytes, static_cast<int64_t>(raw().size));
+  visitor.visit(RocmMetadataFields::kBytes, static_cast<uint64_t>(raw().size));
   visitor.visit(
       RocmMetadataFields::kKind,
       fmt::format("{}", fmt::underlying(raw().kind)));
@@ -266,11 +266,12 @@ inline void RuntimeActivity<rocprofMallocRow>::visitTypedMetadata(
     ITypedMetadataVisitor& visitor) const {
   correlationToSize[raw().id] = raw().size;
   if (raw().cid == ROCPROFILER_HIP_RUNTIME_API_ID_hipMalloc) {
-    visitor.visit(RocmMetadataFields::kBytes, static_cast<int64_t>(raw().size));
+    visitor.visit(
+        RocmMetadataFields::kBytes, static_cast<uint64_t>(raw().size));
   }
-  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCid, static_cast<uint64_t>(raw().cid));
   visitor.visit(
-      RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+      RocmMetadataFields::kCorrelation, static_cast<uint64_t>(raw().id));
   visitor.visit(RocmMetadataFields::kPtr, fmt::format("{}", raw().ptr));
 }
 
@@ -292,9 +293,9 @@ inline const std::string RuntimeActivity<T>::metadataJson() const {
 template <class T>
 inline void RuntimeActivity<T>::visitTypedMetadata(
     ITypedMetadataVisitor& visitor) const {
-  visitor.visit(RocmMetadataFields::kCid, static_cast<int64_t>(raw().cid));
+  visitor.visit(RocmMetadataFields::kCid, static_cast<uint64_t>(raw().cid));
   visitor.visit(
-      RocmMetadataFields::kCorrelation, static_cast<int64_t>(raw().id));
+      RocmMetadataFields::kCorrelation, static_cast<uint64_t>(raw().id));
 }
 
 } // namespace KINETO_NAMESPACE

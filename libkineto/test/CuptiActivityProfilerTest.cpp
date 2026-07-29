@@ -59,6 +59,7 @@ using namespace libkineto::test;
 namespace {
 using RecordedMetadataValue = std::variant<
     int64_t,
+    uint64_t,
     double,
     bool,
     std::string,
@@ -114,9 +115,10 @@ class RecordingTypedMetadataVisitor final : public ITypedMetadataVisitor {
     values_[std::string{field.name}] = std::string{value.value};
   }
 
-  void visitValue(
-      [[maybe_unused]] const MetadataField<uint64_t>& field,
-      [[maybe_unused]] uint64_t value) override {}
+  void visitValue(const MetadataField<uint64_t>& field, uint64_t value)
+      override {
+    values_[std::string{field.name}] = value;
+  }
 
   void visitValue(
       [[maybe_unused]] const MetadataField<InputShapes>& field,
@@ -602,7 +604,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
       activity->visitTypedMetadata(typedMetadata);
       EXPECT_EQ(
           typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventId),
-          static_cast<int64_t>(kEventId));
+          static_cast<uint64_t>(kEventId));
       EXPECT_EQ(
           typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventRecordCorrId),
           static_cast<int64_t>(kRecordCorrId));
@@ -623,7 +625,7 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
       activity->visitTypedMetadata(typedMetadata);
       EXPECT_EQ(
           typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventId),
-          static_cast<int64_t>(kEventId));
+          static_cast<uint64_t>(kEventId));
       EXPECT_EQ(
           typedMetadata.get(CudaMetadataFields::kWaitOnCudaEventRecordCorrId),
           static_cast<int64_t>(kRecordCorrId));

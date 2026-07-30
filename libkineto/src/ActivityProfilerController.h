@@ -101,8 +101,7 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
   static ActivityLoggerFactory& loggerFactory();
 
   // Test-only. Exposes the async handler so a test driving the full on-demand
-  // chain can wait on its completion seam (see
-  // AsyncActivityProfilerHandler::waitForCompletedTraceCountForTesting).
+  // chain can wait on its completion seam.
   AsyncActivityProfilerHandler& asyncHandlerForTesting() {
     return *asyncHandler_;
   }

@@ -383,11 +383,6 @@ constexpr char kUseDaemonEnvVar[] = "KINETO_USE_DAEMON";
 
 bool isDaemonEnvVarSet();
 
-// Returns a reference to the protobuf trace enabled flag.
-// This allows the flag to be set externally by downstream consumers
-// and read in trace output components.
-bool& get_protobuf_trace_enabled();
-
 // Returns a reference to the Perfetto trace enabled flag.
 // When true, a consumer writes a Perfetto-native trace via the
 // Perfetto SDK alongside other output formats.

@@ -23,6 +23,7 @@
 #include "src/ActivityProfilerController.h"
 #include "src/ConfigLoader.h"
 #include "src/DaemonConfigLoader.h"
+#include "src/GenericActivityProfiler.h"
 #include "test/TestUtils.h"
 
 using namespace KINETO_NAMESPACE;
@@ -64,6 +65,13 @@ class AsyncE2ECpuTraceTest : public ::testing::Test {
     return ConfigLoader::instance();
   }
 
+  void SetUp() override {
+    // Let the profiler start immediately: the real background loop's wall-clock
+    // ticks can't be aligned to canStart()'s start/warmup window, so without
+    // this the activation would race that window. Cleared in TearDown.
+    GenericActivityProfiler::setSkipStartTimeCheckForTesting(true);
+  }
+
   void TearDown() override {
     // Join the poll thread before destroying the controller it dispatches to,
     // so nothing calls into a freed handler. Idempotent with the test body.
@@ -78,6 +86,7 @@ class AsyncE2ECpuTraceTest : public ::testing::Test {
     loader().resetDaemonConfigLoaderForTesting();
     ConfigLoader::setDaemonConfigLoaderFactory(nullptr);
     loader().resetBaseConfigForTesting();
+    GenericActivityProfiler::setSkipStartTimeCheckForTesting(false);
   }
 
   std::unique_ptr<ActivityProfilerController> controller_;
@@ -87,23 +96,17 @@ class AsyncE2ECpuTraceTest : public ::testing::Test {
 // asserts the resulting trace file. The real ConfigLoader poll thread reads and
 // parses the daemon config, the controller accepts it, and
 // AsyncActivityProfilerHandler runs warmup -> collect -> process on its
-// background loop and writes a Chrome-trace JSON file. Everything is CPU-only,
-// so it runs in OSS CI.
+// background loop and writes a Chrome-trace JSON file. Everything is CPU-only.
 TEST_F(AsyncE2ECpuTraceTest, DaemonConfigDrivesTraceFileThroughFullChain) {
-  // Reserve a unique name under /tmp. On-demand configs are sandboxed to /tmp,
-  // and the log URL gets the pid inserted before .json, so the produced file is
-  // not this exact name -- resolve the real path by parsing the same config
-  // below.
   const TempTraceFile traceFile =
       createTempTraceFile("kineto_async_e2e_", ".json");
   const std::string traceId = "async-e2e-cpu-trace";
 
-  // A start a few seconds out keeps the request inside the max-age window while
-  // leaving the background loop ample time to warm up before it; short warmup
-  // and duration keep the test to a few seconds of wall-clock.
+  // Start "now": setSkipStartTimeCheckForTesting makes the profiler start on
+  // the first background-loop tick regardless of wall-clock alignment, so there
+  // is no start/warmup window to miss.
   const int64_t startMs =
-      duration_cast<milliseconds>(
-          (system_clock::now() + seconds(5)).time_since_epoch())
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
           .count();
   const std::string onDemandConfig = fmt::format(
       "REQUEST_TRACE_ID={}\n"

@@ -37,6 +37,9 @@ using std::string;
 
 namespace KINETO_NAMESPACE {
 
+// Test-only flag; see setSkipStartTimeCheckForTesting(). Off in production.
+std::atomic<bool> GenericActivityProfiler::skipStartTimeCheckForTesting_{false};
+
 // TODO: Move config elsehwere. Sync with @sraikund16 on details.
 ConfigDerivedState::ConfigDerivedState(const Config& config) {
   profileActivityTypes_ = config.selectedActivityTypes();

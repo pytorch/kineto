@@ -223,8 +223,22 @@ class GenericActivityProfiler {
   bool canStart(
       const Config& config,
       const std::chrono::time_point<std::chrono::system_clock>& now) const {
+    // A test that drives the real background loop cannot align wall-clock time
+    // to the narrow start/warmup window this check enforces. Let such a test
+    // opt out and force an immediate start; production never sets this.
+    if (skipStartTimeCheckForTesting_.load(std::memory_order_acquire)) {
+      return true;
+    }
     ConfigDerivedState derived(config);
     return derived.canStart(now);
+  }
+
+  // Test-only. When set, canStart() skips its start-time and warmup-lead
+  // validation and forces an immediate start, so a test can drive the trace
+  // through the real background loop without racing the wall-clock activation
+  // window. Set it before the profiler thread starts; clear it at teardown.
+  static void setSkipStartTimeCheckForTesting(bool skip) {
+    skipStartTimeCheckForTesting_.store(skip, std::memory_order_release);
   }
 
   void configure(
@@ -489,6 +503,10 @@ class GenericActivityProfiler {
   // and resetInternal() — spans arriving outside this window are discarded.
   bool acceptCpuTraces_{false};
   std::atomic<bool> toggleState_{true};
+
+  // Test-only; see setSkipStartTimeCheckForTesting(). Static because a test
+  // reaches the profiler only indirectly, through the controller and handler.
+  static std::atomic<bool> skipStartTimeCheckForTesting_;
 
   // ***************************************************************************
   // Below state is shared with external threads.

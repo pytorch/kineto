@@ -11,13 +11,10 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <memory>
 #include <string>
-
-#include <unistd.h>
 
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
@@ -67,33 +64,22 @@ class AsyncE2ECpuTraceTest : public ::testing::Test {
     return ConfigLoader::instance();
   }
 
-  void SetUp() override {
-    // Point the config loader at a deterministic, empty base config instead of
-    // the host's /etc/libkineto.conf: the trace should depend only on the
-    // injected on-demand config, not on host state. An empty base config also
-    // keeps the test hermetic across repeated runs in one process -- the poll
-    // thread then rebuilds the daemon config loader on every poll, whereas a
-    // cached non-empty base config would suppress that rebuild after the first
-    // trace and starve later runs of the on-demand config. KINETO_CONFIG is
-    // read once and cached, so this must be set before the first poll.
-    baseConfigPath_ =
-        fmt::format("/tmp/kineto_async_e2e_empty_base_{}.conf", getpid());
-    std::ofstream(baseConfigPath_).close();
-    setenv("KINETO_CONFIG", baseConfigPath_.c_str(), /*overwrite=*/1);
-  }
-
   void TearDown() override {
     // Join the poll thread before destroying the controller it dispatches to,
     // so nothing calls into a freed handler. Idempotent with the test body.
     loader().stopUpdateThread();
     controller_.reset();
-    // Drop the injected fake and factory; both capture test-local state.
+    // The ConfigLoader singleton persists across tests, so undo what this test
+    // injected: drop the fake loader and its factory, and clear the cached base
+    // config. Clearing the base config makes the next test's first poll detect
+    // a base-config change and rebuild the daemon loader from its own factory;
+    // otherwise a cached base config suppresses the rebuild and the next test
+    // never dispatches.
     loader().resetDaemonConfigLoaderForTesting();
     ConfigLoader::setDaemonConfigLoaderFactory(nullptr);
-    std::remove(baseConfigPath_.c_str());
+    loader().resetBaseConfigForTesting();
   }
 
-  std::string baseConfigPath_;
   std::unique_ptr<ActivityProfilerController> controller_;
 };
 

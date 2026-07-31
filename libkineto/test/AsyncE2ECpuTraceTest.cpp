@@ -69,7 +69,7 @@ class AsyncE2ECpuTraceTest : public ::testing::Test {
     // Let the profiler start immediately: the real background loop's wall-clock
     // ticks can't be aligned to canStart()'s start/warmup window, so without
     // this the activation would race that window. Cleared in TearDown.
-    GenericActivityProfiler::setSkipStartTimeCheckForTesting(true);
+    GenericActivityProfiler::setSkipStartTimeForTesting(true);
   }
 
   void TearDown() override {
@@ -86,7 +86,7 @@ class AsyncE2ECpuTraceTest : public ::testing::Test {
     loader().resetDaemonConfigLoaderForTesting();
     ConfigLoader::setDaemonConfigLoaderFactory(nullptr);
     loader().resetBaseConfigForTesting();
-    GenericActivityProfiler::setSkipStartTimeCheckForTesting(false);
+    GenericActivityProfiler::setSkipStartTimeForTesting(false);
   }
 
   std::unique_ptr<ActivityProfilerController> controller_;
@@ -102,7 +102,7 @@ TEST_F(AsyncE2ECpuTraceTest, DaemonConfigDrivesTraceFileThroughFullChain) {
       createTempTraceFile("kineto_async_e2e_", ".json");
   const std::string traceId = "async-e2e-cpu-trace";
 
-  // Start "now": setSkipStartTimeCheckForTesting makes the profiler start on
+  // Start "now": setSkipStartTimeForTesting makes the profiler start on
   // the first background-loop tick regardless of wall-clock alignment, so there
   // is no start/warmup window to miss.
   const int64_t startMs =

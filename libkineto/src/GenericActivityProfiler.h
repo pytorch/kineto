@@ -226,7 +226,7 @@ class GenericActivityProfiler {
     // A test that drives the real background loop cannot align wall-clock time
     // to the narrow start/warmup window this check enforces. Let such a test
     // opt out and force an immediate start; production never sets this.
-    if (skipStartTimeCheckForTesting_.load(std::memory_order_acquire)) {
+    if (skipStartTimeForTesting_.load(std::memory_order_acquire)) {
       return true;
     }
     ConfigDerivedState derived(config);
@@ -237,8 +237,8 @@ class GenericActivityProfiler {
   // validation and forces an immediate start, so a test can drive the trace
   // through the real background loop without racing the wall-clock activation
   // window. Set it before the profiler thread starts; clear it at teardown.
-  static void setSkipStartTimeCheckForTesting(bool skip) {
-    skipStartTimeCheckForTesting_.store(skip, std::memory_order_release);
+  static void setSkipStartTimeForTesting(bool skip) {
+    skipStartTimeForTesting_.store(skip, std::memory_order_release);
   }
 
   void configure(
@@ -504,9 +504,9 @@ class GenericActivityProfiler {
   bool acceptCpuTraces_{false};
   std::atomic<bool> toggleState_{true};
 
-  // Test-only; see setSkipStartTimeCheckForTesting(). Static because a test
+  // Test-only; see setSkipStartTimeForTesting(). Static because a test
   // reaches the profiler only indirectly, through the controller and handler.
-  static std::atomic<bool> skipStartTimeCheckForTesting_;
+  static std::atomic<bool> skipStartTimeForTesting_;
 
   // ***************************************************************************
   // Below state is shared with external threads.

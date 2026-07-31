@@ -151,9 +151,7 @@ TEST_F(AsyncE2ECpuTraceTest, DaemonConfigDrivesTraceFileThroughFullChain) {
   auto& asyncHandler = controller_->asyncHandlerForTesting();
   const uint64_t base = asyncHandler.completedTraceCountForTesting();
 
-  // Wait for the background loop to finalize exactly one trace. Deterministic
-  // (no sleeps) via the handler's completion condvar; the timeout is well above
-  // start + warmup + duration + loop ticks so a slow CI host does not time out.
+  // Wait for the background loop to finalize exactly one trace.
   ASSERT_TRUE(
       asyncHandler.waitForCompletedTraceCountForTesting(base + 1, seconds(30)));
 

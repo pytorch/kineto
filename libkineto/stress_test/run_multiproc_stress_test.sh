@@ -5,7 +5,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-build_cmd="buck build --show-output @mode/opt -c fbcode.nvcc_arch=b200a -c fbcode.platform010_cuda_version=12.8 :kineto_stress_test"
+build_cmd="buck build --show-output @mode/opt -c fbcode.nvcc_arch=b200a -m ovr_config//third-party/cuda/constraints:12.8 :kineto_stress_test"
 build_out=$($build_cmd)
 
 mpi_path=/usr/local/fbcode/platform010-aarch64/bin//mpirun

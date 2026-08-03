@@ -508,6 +508,14 @@ void ChromeTraceLogger::handleDeviceInfo(const DeviceInfo& info, int64_t time) {
     return;
   }
 
+  std::string name = info.name;
+  sanitizeStrForJSON(name);
+  escapeQuotesForJSON(name);
+
+  std::string label = info.label;
+  sanitizeStrForJSON(label);
+  escapeQuotesForJSON(label);
+
   time = transToRelativeTime(time);
   writeMetadataEvent(
       /*name=*/"process_name",
@@ -515,14 +523,14 @@ void ChromeTraceLogger::handleDeviceInfo(const DeviceInfo& info, int64_t time) {
       /*pid=*/info.id,
       /*tid=*/0,
       /*arg_key=*/"name",
-      /*arg_value=*/fmt::format("\"{}\"", info.name));
+      /*arg_value=*/fmt::format("\"{}\"", name));
   writeMetadataEvent(
       /*name=*/"process_labels",
       /*ts=*/time,
       /*pid=*/info.id,
       /*tid=*/0,
       /*arg_key=*/"labels",
-      /*arg_value=*/fmt::format("\"{}\"", info.label));
+      /*arg_value=*/fmt::format("\"{}\"", label));
   writeMetadataEvent(
       /*name=*/"process_sort_index",
       /*ts=*/time,
@@ -539,6 +547,10 @@ void ChromeTraceLogger::handleResourceInfo(
     return;
   }
 
+  std::string name = info.name;
+  sanitizeStrForJSON(name);
+  escapeQuotesForJSON(name);
+
   time = transToRelativeTime(time);
   int64_t tid = sanitizeTid(info.id);
   writeMetadataEvent(
@@ -547,7 +559,7 @@ void ChromeTraceLogger::handleResourceInfo(
       /*pid=*/info.deviceId,
       /*tid=*/tid,
       /*arg_key=*/"name",
-      /*arg_value=*/fmt::format("\"{}\"", info.name));
+      /*arg_value=*/fmt::format("\"{}\"", name));
   writeMetadataEvent(
       /*name=*/"thread_sort_index",
       /*ts=*/time,
@@ -564,6 +576,10 @@ void ChromeTraceLogger::handleOverheadInfo(
     return;
   }
 
+  std::string name = info.name;
+  sanitizeStrForJSON(name);
+  escapeQuotesForJSON(name);
+
   // TOOD: reserve pid = -1 for overhead but we need to rethink how to scale
   // this for other metadata
   time = transToRelativeTime(time);
@@ -573,7 +589,7 @@ void ChromeTraceLogger::handleOverheadInfo(
       /*pid=*/-1,
       /*tid=*/0,
       /*arg_key=*/"name",
-      /*arg_value=*/fmt::format("\"{}\"", info.name));
+      /*arg_value=*/fmt::format("\"{}\"", name));
   writeMetadataEvent(
       /*name=*/"process_sort_index",
       /*ts=*/time,

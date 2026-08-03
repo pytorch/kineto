@@ -195,3 +195,33 @@ TEST(OutputJsonTest, CollectiveMetadataToleratesQuotedAndUnquotedForms) {
   EXPECT_EQ(quoted["distributedInfo"], expectedDistInfo);
   EXPECT_EQ(unquoted["distributedInfo"], expectedDistInfo);
 }
+
+TEST(OutputJsonTest, ResourceInfoWithQuotesProducesValidJson) {
+  const auto traceFile =
+      libkineto::test::createTempTraceFile("kineto_resource_info.", ".json");
+  ResourceInfo info(0, 0, 0, R"(thread "with" quotes)");
+
+  TestableChromeTraceLogger logger(traceFile.path());
+  logger.handleTraceStart({}, "");
+  logger.handleResourceInfo(info, 100);
+  logger.finalizeTrace(/*endTime=*/300);
+
+  std::ifstream f(traceFile.path());
+  std::string jsonStr(
+      (std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+
+  nlohmann::json data;
+  ASSERT_NO_THROW(data = nlohmann::json::parse(jsonStr));
+
+  bool found = false;
+  for (const auto& event : data["traceEvents"]) {
+    if (event.contains("ph") && event["ph"] == "M" && event.contains("name") &&
+        event["name"] == "thread_name" && event.contains("args") &&
+        event["args"].contains("name") &&
+        event["args"]["name"].get<std::string>() == R"(thread "with" quotes)") {
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
+}

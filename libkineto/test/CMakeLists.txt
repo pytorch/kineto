@@ -40,18 +40,18 @@ target_link_libraries(ConfigLoaderTest PRIVATE
     ${XPU_XPUPTI_LIBRARY})
 gtest_discover_tests(ConfigLoaderTest)
 
-# ConfigLoaderPollThreadExceptionTest
-add_executable(ConfigLoaderPollThreadExceptionTest
-    ConfigLoaderPollThreadExceptionTest.cpp)
-target_link_libraries(ConfigLoaderPollThreadExceptionTest PRIVATE
-    gtest_main
-    kineto_base kineto_api
-    ${XPU_XPUPTI_LIBRARY})
-gtest_discover_tests(ConfigLoaderPollThreadExceptionTest)
-
 # ActivityProfilerControllerTest
 # Not supported on Windows, uses unix "unistd.h"
 if(NOT WIN32)
+    # ConfigLoaderPollThreadExceptionTest
+    add_executable(ConfigLoaderPollThreadExceptionTest
+        ConfigLoaderPollThreadExceptionTest.cpp)
+    target_link_libraries(ConfigLoaderPollThreadExceptionTest PRIVATE
+        gtest_main
+        kineto_base kineto_api
+        ${XPU_XPUPTI_LIBRARY})
+    gtest_discover_tests(ConfigLoaderPollThreadExceptionTest)
+
     add_executable(ActivityProfilerControllerTest
         ActivityProfilerControllerTest.cpp
         TestUtils.cpp)

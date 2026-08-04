@@ -38,7 +38,7 @@ using namespace std::chrono;
 using namespace RocLogger;
 
 #define ROCPROFSDK_CHECK_AND_LOG(LEVEL, RESULT)                                \
-  {                                                                            \
+  do {                                                                         \
     rocprofiler_status_t CHECKSTATUS = RESULT;                                 \
     if (CHECKSTATUS != ROCPROFILER_STATUS_SUCCESS) {                           \
       LOG(LEVEL) << fmt::format(                                               \
@@ -47,7 +47,7 @@ using namespace RocLogger;
               CHECKSTATUS),                                                    \
           rocprofiler_get_status_string(CHECKSTATUS));                         \
     }                                                                          \
-  }
+  } while (0)
 
 #define ROCPROFSDK_CHECK(RESULT) ROCPROFSDK_CHECK_AND_LOG(ERROR, RESULT)
 
@@ -272,9 +272,10 @@ class RocprofApiIdList : public ApiIdList {
 };
 
 constexpr auto null_context_id = rocprofiler_context_id_t{0};
+constexpr auto null_buffer_id = rocprofiler_buffer_id_t{0};
 
 struct GlobalContext {
-  rocprofiler_client_id_t* clientId{nullptr};
+  rocprofiler_client_id_t *clientId{nullptr};
   rocprofiler_client_finalize_t finalizer = nullptr;
 
   rocprofiler_tool_configure_result_t cfg = rocprofiler_tool_configure_result_t{
@@ -288,7 +289,7 @@ struct GlobalContext {
   rocprofiler_context_id_t context = null_context_id;
 
   // Buffers
-  rocprofiler_buffer_id_t buffer = {};
+  rocprofiler_buffer_id_t buffer = null_buffer_id;
 
   // Manage kernel names - #betterThanRoctracer
   kernel_symbol_map_t kernel_info = {};
@@ -304,7 +305,8 @@ struct GlobalContext {
   agent_info_map_t agents = {};
 };
 
-auto global_context_buffer = std::array<std::byte, sizeof(GlobalContext)>{};
+alignas(GlobalContext) auto global_context_buffer =
+    std::array<std::byte, sizeof(GlobalContext)>{};
 
 GlobalContext& getGlobalContext() {
   // placement new into .bss section to prevent destruction issues on shutdown.
@@ -364,13 +366,12 @@ extern "C" rocprofiler_tool_configure_result_t* rocprofiler_configure(
 }
 
 int RocprofLogger::toolInit(
-    [[maybe_unused]] rocprofiler_client_finalize_t finialize_func,
+    [[maybe_unused]] rocprofiler_client_finalize_t finalize_func,
     [[maybe_unused]] void* tool_data) {
   // Gather api names
   auto& globalContext = getGlobalContext();
   globalContext.name_info = rocprofiler::sdk::get_callback_tracing_names();
   globalContext.buff_name_info = rocprofiler::sdk::get_buffer_tracing_names();
-  globalContext.finalizer = finialize_func;
 
   // Gather agent info
   auto agent_info = get_gpu_device_agents();
@@ -475,17 +476,32 @@ int RocprofLogger::toolInit(
       return -1;
     }
   }
-  ROCPROFSDK_CHECK(rocprofiler_stop_context(globalContext.context));
+
+  // set the finalize functor once we are certain that we have fully initialized.
+  globalContext.finalizer = finalize_func;
 
   return 0;
 }
 
 void RocprofLogger::toolFinalize([[maybe_unused]] void* tool_data) {
   auto& globalContext = getGlobalContext();
+  // stopping the contexts aren't really necessary here... rocprofiler-sdk stops
+  // all contexts associated with a client before invoking the fini functor.
+  // (NOTE: "fini functor" == this function).
   ROCPROFSDK_CHECK(rocprofiler_stop_context(globalContext.utilityContext));
   globalContext.utilityContext = null_context_id;
   ROCPROFSDK_CHECK(rocprofiler_stop_context(globalContext.context));
   globalContext.context = null_context_id;
+  // flushing the buffer isn't really necessary here... rocprofiler-sdk stops
+  // all contexts associated with a client before invoking the fini functor and
+  // then flushes all buffers associated with the client (also before invoking
+  // the fini functor) but it may be possible, in some very rare scenarios, that
+  // something captures the context(s) as active before the internal stop of the
+  // context and the associated data records get placed in the buffer after the
+  // internal flush (but it is very unlikely).
+  // (NOTE: "fini functor" == this function).
+  ROCPROFSDK_CHECK(rocprofiler_flush_buffer(globalContext.buffer));
+  globalContext.buffer = null_buffer_id;
 
   globalContext.finalizer = nullptr;
   globalContext.clientId = nullptr;
@@ -578,15 +594,14 @@ void RocprofLogger::code_object_callback(
     auto* data = static_cast<kernel_symbol_data_t*>(record.payload);
     if (record.phase == ROCPROFILER_CALLBACK_PHASE_LOAD) {
       auto& globalContext = getGlobalContext();
-      std::lock_guard<std::mutex> lock(globalContext.kernel_lock);
+      std::lock_guard<std::mutex> lock{globalContext.kernel_lock};
       globalContext.kernel_info.emplace(data->kernel_id, *data);
       globalContext.kernel_names.emplace(
           data->kernel_id, demangle(data->kernel_name));
     } else if (record.phase == ROCPROFILER_CALLBACK_PHASE_UNLOAD) {
-      // FIXME: clear these?  At minimum need kernel names at shutdown, async
-      // completion
-      // globalContext.kernel_info.erase(data->kernel_id);
-      // globalContext.kernel_names.erase(data->kernel_id);
+      // no need to remove the kernel info/names from the map(s), as the
+      // kernel_id is unique and will not be reused. The kernel info will be
+      // cleared when the process exits.
     }
   }
 }
@@ -735,7 +750,10 @@ void RocprofLogger::buffer_callback(
             ? agent_it->second.logical_node_type_id
             : -1;
 
-        // Safe access to kernel_names map with default value
+        // buffer callback for a given buffer always happens on same thread so
+        // the only contention here is with code object callback on another
+        // thread.
+        std::lock_guard<std::mutex> lock{globalContext.kernel_lock};
         auto kernel_it = globalContext.kernel_names.find(dispatch.kernel_id);
         std::string kernel_name =
             (kernel_it != globalContext.kernel_names.end())
@@ -789,7 +807,8 @@ std::string RocprofLogger::opString(
   if (op >= 0 && static_cast<size_t>(op) < ops.size()) {
     return std::string(ops[op]);
   }
-  return "<unknown operation:" + std::to_string(op) + ">";
+  return fmt::format("<unknown {} operation:{}>",
+                     globalContext.name_info[kind].name, op);
 }
 
 std::string RocprofLogger::opString(
@@ -800,7 +819,8 @@ std::string RocprofLogger::opString(
   if (op >= 0 && static_cast<size_t>(op) < ops.size()) {
     return std::string(ops[op]);
   }
-  return "<unknown operation:" + std::to_string(op) + ">";
+  return fmt::format("<unknown {} operation:{}>",
+                     globalContext.buff_name_info[kind].name, op);
 }
 
 void RocprofLogger::setMaxEvents(uint32_t maxBufferSize) {
@@ -822,7 +842,6 @@ void RocprofLogger::ensureRegistered() {
       LOG(WARNING) << "rocprofiler_force_configure failed with status "
                    << result << ": " << rocprofiler_get_status_string(result);
     }
-  } else if (status == 1) {
   }
 }
 

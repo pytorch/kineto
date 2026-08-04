@@ -100,12 +100,6 @@ class ActivityProfilerController : public ConfigLoader::ConfigHandler {
 
   static ActivityLoggerFactory& loggerFactory();
 
-  // Test-only. Exposes the async handler so a test driving the full on-demand
-  // chain can wait on its completion seam.
-  AsyncActivityProfilerHandler& asyncHandlerForTesting() {
-    return *asyncHandler_;
-  }
-
  private:
   std::unique_ptr<GenericActivityProfiler> profiler_;
   std::vector<std::shared_ptr<LoggerCollector>> loggerCollectors_;

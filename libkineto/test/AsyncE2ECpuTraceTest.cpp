@@ -20,115 +20,68 @@
 #include <nlohmann/json.hpp>
 
 #include "include/Config.h"
-#include "src/ActivityProfilerController.h"
-#include "src/ConfigLoader.h"
-#include "src/DaemonConfigLoader.h"
+#include "src/AsyncActivityProfilerHandler.h"
 #include "src/GenericActivityProfiler.h"
+#include "test/MockCpuActivityBuffer.h"
 #include "test/TestUtils.h"
 
 using namespace KINETO_NAMESPACE;
 using namespace std::chrono;
 using libkineto::test::createTempTraceFile;
 using libkineto::test::logUrlToPath;
+using libkineto::test::MockCpuActivityBuffer;
 using libkineto::test::TempTraceFile;
 
 namespace {
 
-// Stands in for the dynolog daemon: hands the real ConfigLoader poll thread one
-// canned on-demand config over the same IDaemonConfigLoader seam dynolog uses.
-// An empty base config lets the base config come from the host, matching a real
-// on-demand deployment.
-class FakeDaemonConfigLoader : public IDaemonConfigLoader {
- public:
-  explicit FakeDaemonConfigLoader(std::string onDemandConfig)
-      : onDemandConfig_(std::move(onDemandConfig)) {}
+// Drives the on-demand async path end to end and asserts a real collected op
+// reaches the trace file. A daemon-style on-demand config is parsed and run
+// through AsyncActivityProfilerHandler's configure()/performRunLoopStep() --
+// the same steps the background profilerLoop() issues in production, but with a
+// clock the test controls -- and a CPU op is injected mid-collection.
+//
+// Everything runs on the test thread with a controlled clock, so there are no
+// data races and no wall-clock dependence. The background loop, which would
+// feed system_clock::now() and race this, is never started: we call the handler
+// directly rather than through ActivityProfilerController::acceptConfig(). Note
+// this is a timestamp config (performRunLoopStep's currentIter defaults to -1),
+// so collection and finalize both run inline -- there is no
+// collectTraceThread_. CPU-only, so it runs in OSS CI.
+TEST(AsyncE2ECpuTraceTest, OnDemandConfigCollectsCpuOpIntoTraceFile) {
+  GenericActivityProfiler profiler(/*cpuOnly=*/true);
+  AsyncActivityProfilerHandler handler(profiler);
 
-  std::string readBaseConfig() override {
-    return "";
-  }
-
-  // Hand back the trace request only while the handler can accept one, so it is
-  // delivered once and not re-scheduled while the trace is running.
-  std::string readOnDemandConfig(bool activities) override {
-    return activities ? onDemandConfig_ : "";
-  }
-
-  void setCommunicationFabric(bool /*enabled*/) override {}
-
- private:
-  std::string onDemandConfig_;
-};
-
-class AsyncE2ECpuTraceTest : public ::testing::Test {
- protected:
-  static ConfigLoader& loader() {
-    return ConfigLoader::instance();
-  }
-
-  void SetUp() override {
-    // Let the profiler start immediately: the real background loop's wall-clock
-    // ticks can't be aligned to canStart()'s start/warmup window, so without
-    // this the activation would race that window. Cleared in TearDown.
-    GenericActivityProfiler::setSkipStartTimeForTesting(true);
-  }
-
-  void TearDown() override {
-    // Join the poll thread before destroying the controller it dispatches to,
-    // so nothing calls into a freed handler. Idempotent with the test body.
-    loader().stopUpdateThread();
-    controller_.reset();
-    // The ConfigLoader singleton persists across tests, so undo what this test
-    // injected: drop the fake loader and its factory, and clear the cached base
-    // config. Clearing the base config makes the next test's first poll detect
-    // a base-config change and rebuild the daemon loader from its own factory;
-    // otherwise a cached base config suppresses the rebuild and the next test
-    // never dispatches.
-    loader().resetDaemonConfigLoaderForTesting();
-    ConfigLoader::setDaemonConfigLoaderFactory(nullptr);
-    loader().resetBaseConfigForTesting();
-    GenericActivityProfiler::setSkipStartTimeForTesting(false);
-  }
-
-  std::unique_ptr<ActivityProfilerController> controller_;
-};
-
-// Drives a fake dyno on-demand config through the entire asynchronous chain and
-// asserts the resulting trace file. The real ConfigLoader poll thread reads and
-// parses the daemon config, the controller accepts it, and
-// AsyncActivityProfilerHandler runs warmup -> collect -> process on its
-// background loop and writes a Chrome-trace JSON file. Everything is CPU-only.
-TEST_F(AsyncE2ECpuTraceTest, DaemonConfigDrivesTraceFileThroughFullChain) {
   const TempTraceFile traceFile =
       createTempTraceFile("kineto_async_e2e_", ".json");
   const std::string traceId = "async-e2e-cpu-trace";
+  const std::string opName = "async-e2e-cpu-op";
 
-  // Start "now": setSkipStartTimeForTesting makes the profiler start on
-  // the first background-loop tick regardless of wall-clock alignment, so there
-  // is no start/warmup window to miss.
-  const int64_t startMs =
-      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
-          .count();
-  const std::string onDemandConfig = fmt::format(
-      "REQUEST_TRACE_ID={}\n"
-      "PROFILE_START_TIME={}\n"
-      "ACTIVITIES_WARMUP_PERIOD_SECS=1\n"
-      "ACTIVITIES_DURATION_SECS=1\n"
-      "ACTIVITIES_LOG_FILE={}\n",
-      traceId,
-      startMs,
-      traceFile.path());
+  // A controlled clock. start is warmup+1s ahead of base, so canStart() passes
+  // for real (no bypass) and [start, end] is a live collection window.
+  constexpr auto kWarmup = seconds(1);
+  constexpr auto kDuration = seconds(1);
+  const auto base = system_clock::now();
+  const auto start = base + kWarmup + seconds(1);
+  const auto end = start + kDuration;
 
-  // Resolve the actual output path exactly as the poll thread will: parse the
-  // identical string as an on-demand config so the /tmp sandbox and pid rewrite
-  // apply, then read the log URL back.
-  Config resolved;
-  resolved.setOnDemand(true);
-  ASSERT_TRUE(resolved.parse(onDemandConfig));
-  ASSERT_TRUE(resolved.activityProfilerEnabled());
-  const std::string tracePath = logUrlToPath(resolved.activitiesLogUrl());
+  Config cfg;
+  cfg.setOnDemand(true);
+  ASSERT_TRUE(cfg.parse(
+      fmt::format(
+          "REQUEST_TRACE_ID={}\n"
+          "PROFILE_START_TIME={}\n"
+          "ACTIVITIES_WARMUP_PERIOD_SECS={}\n"
+          "ACTIVITIES_DURATION_SECS={}\n"
+          "ACTIVITIES_LOG_FILE={}\n",
+          traceId,
+          duration_cast<milliseconds>(start.time_since_epoch()).count(),
+          kWarmup.count(),
+          kDuration.count(),
+          traceFile.path())));
+  const std::string tracePath = logUrlToPath(cfg.activitiesLogUrl());
   ASSERT_FALSE(tracePath.empty());
-  // The produced file uses the pid-rewritten name, which TempTraceFile does not
-  // own, so remove it ourselves when the test ends.
+  // The produced file has the pid inserted before .json, a name TempTraceFile
+  // does not own, so remove it ourselves when the test ends.
   struct FileRemover {
     std::string path;
     ~FileRemover() {
@@ -138,41 +91,50 @@ TEST_F(AsyncE2ECpuTraceTest, DaemonConfigDrivesTraceFileThroughFullChain) {
     }
   } fileRemover{tracePath};
 
-  // Install the fake daemon BEFORE constructing the controller: the controller
-  // registers as a ConfigLoader handler in its constructor, which starts the
-  // poll thread that reads from the fake on its first iteration.
-  ConfigLoader::setDaemonConfigLoaderFactory([onDemandConfig]() {
-    return std::make_unique<FakeDaemonConfigLoader>(onDemandConfig);
-  });
+  // WaitForRequest -> Warmup. canStart() runs unmodified against our clock.
+  handler.configure(cfg, base);
+  ASSERT_TRUE(handler.isAsyncActive());
 
-  controller_ =
-      std::make_unique<ActivityProfilerController>(loader(), /*cpuOnly=*/true);
+  // Warmup -> CollectTrace: startTrace() fires once now reaches the start
+  // timestamp, which opens the CPU-trace acceptance window.
+  handler.performRunLoopStep(start, start);
 
-  auto& asyncHandler = controller_->asyncHandlerForTesting();
-  const uint64_t base = asyncHandler.completedTraceCountForTesting();
+  // Inject a CPU op while collecting -- transferCpuTrace() only accepts spans
+  // between startTrace() and finalize, which is exactly the current state.
+  const int64_t startNs =
+      duration_cast<nanoseconds>(start.time_since_epoch()).count();
+  const int64_t endNs =
+      duration_cast<nanoseconds>(end.time_since_epoch()).count();
+  auto ops = std::make_unique<MockCpuActivityBuffer>(startNs, endNs);
+  ops->addOp(opName, startNs, startNs + 1000, /*correlation=*/1);
+  profiler.transferCpuTrace(std::move(ops));
 
-  // Wait for the background loop to finalize exactly one trace.
-  ASSERT_TRUE(
-      asyncHandler.waitForCompletedTraceCountForTesting(base + 1, seconds(30)));
+  // CollectTrace -> ProcessTrace, then ProcessTrace -> WaitForRequest. The
+  // second step finalizes and writes the file, both inline on this thread.
+  handler.performRunLoopStep(end, end);
+  handler.performRunLoopStep(end, end);
+  ASSERT_FALSE(handler.isAsyncActive());
 
-  // Stop the poll thread now so it cannot re-deliver the request after the
-  // controller returns to idle, which would race the assertions below.
-  loader().stopUpdateThread();
-
-  // The file is on disk once the completion count advanced. Assert it is a
-  // valid Chrome trace produced for THIS request: the daemon config's
-  // REQUEST_TRACE_ID surfaces as the top-level trace_id.
+  // The trace file carries our request id and the op we collected.
   std::ifstream file(tracePath);
   ASSERT_TRUE(file.good()) << "trace file not found: " << tracePath;
   const std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  ASSERT_FALSE(jsonStr.empty());
-
   const nlohmann::json data = nlohmann::json::parse(jsonStr);
-  ASSERT_TRUE(data.contains("traceEvents"));
-  EXPECT_TRUE(data["traceEvents"].is_array());
+
   ASSERT_TRUE(data.contains("trace_id"));
   EXPECT_EQ(data["trace_id"].get<std::string>(), traceId);
+
+  ASSERT_TRUE(data.contains("traceEvents"));
+  bool foundOp = false;
+  for (const auto& event : data["traceEvents"]) {
+    if (event.value("name", std::string{}) == opName) {
+      foundOp = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(foundOp) << "collected CPU op '" << opName << "' not found in "
+                       << tracePath;
 }
 
 } // namespace

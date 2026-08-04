@@ -75,6 +75,7 @@ if(NOT WIN32)
     # AsyncE2ECpuTraceTest
     add_executable(AsyncE2ECpuTraceTest
         AsyncE2ECpuTraceTest.cpp
+        MockCpuActivityBuffer.cpp
         TestUtils.cpp)
     target_link_libraries(AsyncE2ECpuTraceTest PRIVATE
         gtest_main

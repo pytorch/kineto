@@ -88,6 +88,7 @@ class ConfigLoader {
 
   static void setDaemonConfigLoaderFactory(
       std::function<std::unique_ptr<IDaemonConfigLoader>()> factory);
+  static bool hasDaemonConfigLoaderFactory();
 
   std::string getConfString();
 

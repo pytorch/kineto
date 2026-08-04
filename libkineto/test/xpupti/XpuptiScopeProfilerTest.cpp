@@ -103,16 +103,10 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
 
   if (expectThrow) {
     EXPECT_THROW(
-        try {
+        {
           if (eptr) {
             std::rethrow_exception(eptr);
           }
-        } catch (const std::runtime_error& e) {
-          static bool isVerbose = IsEnvVerbose();
-          if (isVerbose) {
-            std::cout << "std::runtime_error = " << e.what() << std::endl;
-          }
-          throw;
         },
         std::runtime_error);
   } else {

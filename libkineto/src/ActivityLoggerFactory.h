@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "ThrowUtil.h"
+
 #include <fmt/format.h>
 #include <algorithm>
 #include <cctype>
@@ -52,8 +54,10 @@ class ActivityLoggerFactory {
     if (factory) {
       return factory(stripProtocol(url));
     }
-    throw std::invalid_argument(fmt::format(
-        "No logger registered for the {} protocol prefix", protocol));
+    KINETO_THROW(
+        std::invalid_argument,
+        fmt::format(
+            "No logger registered for the {} protocol prefix", protocol));
   }
 
  private:

@@ -7,6 +7,7 @@
  */
 
 #include "test/TestUtils.h"
+#include "src/ThrowUtil.h"
 
 #include <gtest/gtest.h>
 
@@ -34,7 +35,7 @@ TempTraceFile::TempTraceFile(std::string_view prefix, std::string_view suffix) {
 
   const int fd = mkstemps(nameTemplate.data(), static_cast<int>(suffix.size()));
   if (fd < 0) {
-    throw std::runtime_error("mkstemps failed for " + nameTemplate);
+    KINETO_THROW(std::runtime_error, "mkstemps failed for " + nameTemplate);
   }
   close(fd);
   path_ = std::move(nameTemplate);

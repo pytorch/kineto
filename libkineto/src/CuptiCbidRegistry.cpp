@@ -7,6 +7,7 @@
  */
 
 #include "CuptiCbidRegistry.h"
+#include "ThrowUtil.h"
 
 #include <stdexcept>
 
@@ -25,7 +26,7 @@ CuptiCbidRegistry::getMapForDomain(CallbackDomain domain) {
     case CallbackDomain::DRIVER:
       return driverCallbacks_;
     default:
-      throw std::invalid_argument("Unknown CallbackDomain");
+      KINETO_THROW(std::invalid_argument, "Unknown CallbackDomain");
   }
 }
 

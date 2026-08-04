@@ -7,6 +7,7 @@
  */
 
 #include "ActivityType.h"
+#include "ThrowUtil.h"
 
 #include <fmt/format.h>
 
@@ -25,7 +26,8 @@ ActivityType toActivityType(const std::string& str) {
       return _activityTypeNames[i].type;
     }
   }
-  throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
+  KINETO_THROW(
+      std::invalid_argument, fmt::format("Invalid activity type: {}", str));
 }
 
 std::array<ActivityType, activityTypeCount> activityTypes() {

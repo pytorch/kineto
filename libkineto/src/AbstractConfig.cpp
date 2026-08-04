@@ -7,6 +7,7 @@
  */
 
 #include "AbstractConfig.h"
+#include "ThrowUtil.h"
 
 #include <fmt/format.h>
 #include <array>
@@ -97,10 +98,13 @@ int64_t AbstractConfig::toIntRange(const string& val, int64_t min, int64_t max)
   char* invalid = nullptr;
   int64_t res = strtoll(val.c_str(), &invalid, 10);
   if (val.empty() || *invalid) {
-    throw std::invalid_argument(fmt::format("Invalid integer: {}", val));
+    KINETO_THROW(
+        std::invalid_argument, fmt::format("Invalid integer: {}", val));
   } else if (res < min || res > max) {
-    throw std::invalid_argument(fmt::format(
-        "Invalid argument: {} - expected range [{}, {}]", res, min, max));
+    KINETO_THROW(
+        std::invalid_argument,
+        fmt::format(
+            "Invalid argument: {} - expected range [{}, {}]", res, min, max));
   }
   return res;
 }
@@ -123,7 +127,8 @@ bool AbstractConfig::toBool(string& val) const {
       return i % 2;
     }
   }
-  throw std::invalid_argument(fmt::format("Invalid bool argument: {}", val));
+  KINETO_THROW(
+      std::invalid_argument, fmt::format("Invalid bool argument: {}", val));
 }
 
 bool AbstractConfig::parse(const string& conf) {

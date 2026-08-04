@@ -15,6 +15,8 @@
 #include <fmt/format.h>
 #include <array>
 
+#include "ThrowUtil.h"
+
 namespace libkineto {
 
 struct LoggerTypeName {
@@ -52,7 +54,8 @@ LoggerOutputType toLoggerOutputType(const std::string& str) {
       return LoggerMap[i].type;
     }
   }
-  throw std::invalid_argument(fmt::format("Invalid activity type: {}", str));
+  KINETO_THROW(
+      std::invalid_argument, fmt::format("Invalid activity type: {}", str));
 }
 
 } // namespace libkineto

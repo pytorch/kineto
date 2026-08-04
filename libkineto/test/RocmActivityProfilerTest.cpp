@@ -44,6 +44,7 @@
 #include "src/output_membuf.h"
 
 #include "src/Logger.h"
+#include "src/ThrowUtil.h"
 #include "test/MockActivitySubProfiler.h"
 #include "test/MockCpuActivityBuffer.h"
 #include "test/TestUtils.h"
@@ -733,7 +734,7 @@ TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
   // Check that the saved JSON file can be loaded and deserialized
   std::ifstream file(tmpTrace.path());
   if (!file.is_open()) {
-    throw std::runtime_error("Failed to open the trace JSON file.");
+    KINETO_THROW(std::runtime_error, "Failed to open the trace JSON file.");
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -940,7 +941,7 @@ TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {
   // Check that the saved JSON file can be loaded and deserialized
   std::ifstream file(tmpTrace.path());
   if (!file.is_open()) {
-    throw std::runtime_error("Failed to open the trace JSON file.");
+    KINETO_THROW(std::runtime_error, "Failed to open the trace JSON file.");
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());

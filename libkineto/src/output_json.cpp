@@ -142,7 +142,7 @@ ChromeTraceBaseTime& ChromeTraceBaseTime::singleton() {
 // Use the program loading time as the baseline time.
 int64_t transToRelativeTime(int64_t time) {
   // Sometimes after converting to relative time, it can be a few nanoseconds
-  // negative. Since Chrome trace and json processing will throw a parser error,
+  // negative. Since Chrome trace and json processing will raise a parser error,
   // guard this.
   int64_t res = time - ChromeTraceBaseTime::singleton().get();
   if (res < 0) {

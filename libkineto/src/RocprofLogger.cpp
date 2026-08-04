@@ -25,6 +25,7 @@
 #include "Demangle.h"
 #include "Logger.h"
 #include "ThreadUtil.h"
+#include "ThrowUtil.h"
 
 using namespace libkineto;
 using namespace std::chrono;
@@ -295,7 +296,8 @@ std::vector<rocprofiler_agent_v0_t> get_gpu_device_agents() {
          size_t num_agents,
          void* udata) {
         if (agents_ver != ROCPROFILER_AGENT_INFO_VERSION_0)
-          throw std::runtime_error{"unexpected rocprofiler agent version"};
+          KINETO_THROW(
+              std::runtime_error, "unexpected rocprofiler agent version");
         auto* agents_v =
             static_cast<std::vector<rocprofiler_agent_v0_t>*>(udata);
         for (size_t i = 0; i < num_agents; ++i) {

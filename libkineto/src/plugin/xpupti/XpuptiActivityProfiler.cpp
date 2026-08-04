@@ -7,6 +7,7 @@
  */
 
 #include "XpuptiActivityProfiler.h"
+#include "ThrowUtil.h"
 #include "XpuptiScopeProfilerApi.h"
 #include "XpuptiScopeProfilerSession.h"
 
@@ -57,7 +58,8 @@ std::string getXpuDeviceProperties() {
 
 [[noreturn]] const std::set<ActivityType>& XPUActivityProfiler::
     availableActivities() const {
-  throw std::runtime_error(
+  KINETO_THROW(
+      std::runtime_error,
       "The availableActivities is legacy method and should not be called by kineto");
 }
 

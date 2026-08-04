@@ -112,7 +112,7 @@ TEST(ParseTest, ActivityTypes) {
       cfg2.selectedActivityTypes(),
       std::set<ActivityType>({ActivityType::CUDA_RUNTIME}));
 
-  // Should throw an exception because incorrect activity name
+  // parse() returns false for an unknown activity name
   EXPECT_FALSE(cfg2.parse("ACTIVITY_TYPES = memcopy,cuda_runtime"));
 
   EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = cpu_op"));

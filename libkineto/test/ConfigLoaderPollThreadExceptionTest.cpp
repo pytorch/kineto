@@ -10,6 +10,7 @@
 
 #include "src/ConfigLoader.h"
 #include "src/DaemonConfigLoader.h"
+#include "src/ThrowUtil.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -63,12 +64,12 @@ struct ThrowingDaemonConfigLoader final : IDaemonConfigLoader {
       : onDemandReached_(std::move(onDemandReached)) {}
 
   [[noreturn]] std::string readBaseConfig() override {
-    throw std::runtime_error("injected base-config failure");
+    KINETO_THROW(std::runtime_error, "injected base-config failure");
   }
 
   [[noreturn]] std::string readOnDemandConfig(bool /*activities*/) override {
     onDemandReached_->post();
-    throw std::runtime_error("injected on-demand failure");
+    KINETO_THROW(std::runtime_error, "injected on-demand failure");
   }
 
   void setCommunicationFabric(bool /*enabled*/) override {}
@@ -85,7 +86,7 @@ struct ThrowingDaemonConfigLoader final : IDaemonConfigLoader {
 // std::thread, where an escaped exception calls std::terminate() and aborts the
 // whole process -- the fleet SIGABRT this guard fixed. Assert generically that
 // an exception from the config work is swallowed and the loop keeps running,
-// without reproducing any specific throw site.
+// without reproducing any specific failure site.
 TEST(ConfigLoaderPollThreadExceptionTest, ConfigUpdateExceptionDoesNotCrash) {
   // Non-existent path so updateBaseConfig() falls through to the daemon loader.
   ::setenv("KINETO_CONFIG", "/tmp/nonexistent_libkineto_test.conf", 1);

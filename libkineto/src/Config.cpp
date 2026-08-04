@@ -7,6 +7,7 @@
  */
 
 #include "Config.h"
+#include "ThrowUtil.h"
 
 #include <cstdlib>
 
@@ -298,11 +299,13 @@ static time_point<system_clock> handleProfileStartTime(int64_t start_time_ms) {
   // But we can still check that the start time is not in the past.
   auto now = system_clock::now();
   if ((now - t) > kMaxRequestAge) {
-    throw std::invalid_argument(fmt::format(
-        "Invalid {}: {} - start time is more than {}s in the past",
-        kProfileStartTimeKey,
-        getTimeStr(t),
-        kMaxRequestAge.count()));
+    KINETO_THROW(
+        std::invalid_argument,
+        fmt::format(
+            "Invalid {}: {} - start time is more than {}s in the past",
+            kProfileStartTimeKey,
+            getTimeStr(t),
+            kMaxRequestAge.count()));
   }
   return t;
 }

@@ -23,6 +23,7 @@
 #include "src/GenericActivityProfiler.h"
 
 #include "src/Logger.h"
+#include "src/ThrowUtil.h"
 #include "test/TestUtils.h"
 
 using namespace std::chrono;
@@ -348,7 +349,7 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   auto logFile = logUrlToPath(cfg.activitiesLogUrl());
   std::ifstream file(logFile);
   if (!file.is_open()) {
-    throw std::runtime_error("Failed to open the trace JSON file.");
+    KINETO_THROW(std::runtime_error, "Failed to open the trace JSON file.");
   }
   std::string jsonStr(
       (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());

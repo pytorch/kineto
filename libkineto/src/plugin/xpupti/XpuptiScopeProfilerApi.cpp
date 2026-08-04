@@ -13,6 +13,8 @@
 #include "XpuptiScopeProfilerApi.h"
 #include "XpuptiScopeProfilerConfig.h"
 
+#include "ThrowUtil.h"
+
 namespace KINETO_NAMESPACE {
 
 XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
@@ -35,7 +37,7 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
   XPUPTI_CALL(ptiMetricsGetDevices(nullptr, &deviceCount));
 
   if (deviceCount == 0) {
-    throw std::runtime_error("No XPU devices available");
+    KINETO_THROW(std::runtime_error, "No XPU devices available");
   }
 
   auto devices = std::make_unique<pti_device_properties_t[]>(deviceCount);
@@ -62,7 +64,8 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
       : PTI_METRICS_SCOPE_USER;
 
   if (collectionMode == PTI_METRICS_SCOPE_USER) {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         "XPUPTI_PROFILER_ENABLE_PER_KERNEL has to be set to 1. Other variants are currently not supported.");
   }
 

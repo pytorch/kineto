@@ -7,6 +7,7 @@
  */
 
 #include "XpuptiProfilerMacros.h"
+#include "ThrowUtil.h"
 
 #include <stdexcept>
 #include <string_view>
@@ -35,11 +36,11 @@ namespace {
       error_code);
 
   if (message.empty())
-    throw std::runtime_error(error);
+    KINETO_THROW(std::runtime_error, error);
   else {
     const std::string error_with_message =
         fmt::format("{}. Message: {}", error, message);
-    throw std::runtime_error(error_with_message);
+    KINETO_THROW(std::runtime_error, error_with_message);
   }
 }
 } // namespace

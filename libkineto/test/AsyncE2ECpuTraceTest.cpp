@@ -35,18 +35,15 @@ using libkineto::test::TempTraceFile;
 namespace {
 
 // Drives the on-demand async path end to end and asserts a real collected op
-// reaches the trace file. A daemon-style on-demand config is parsed and run
-// through AsyncActivityProfilerHandler's configure()/performRunLoopStep() --
-// the same steps the background profilerLoop() issues in production, but with a
-// clock the test controls -- and a CPU op is injected mid-collection.
+// reaches the trace file. We provide a timestamp based config and run it
+// through AsyncActivityProfilerHandler's configure()/performRunLoopStep(), but
+// with a clock the test controls. We inject a CPU op mid-collection.
 //
-// Everything runs on the test thread with a controlled clock, so there are no
-// data races and no wall-clock dependence. The background loop, which would
-// feed system_clock::now() and race this, is never started: we call the handler
-// directly rather than through ActivityProfilerController::acceptConfig(). Note
-// this is a timestamp config (performRunLoopStep's currentIter defaults to -1),
-// so collection and finalize both run inline -- there is no
-// collectTraceThread_. CPU-only, so it runs in OSS CI.
+// Everything runs on the test thread with a controlled clock; we never start
+// AsyncActivityProfilerHandler's profiling thread. We do this to make a
+// deterministic test with no race conditions.
+//
+// Note that this test is CPU-only.
 TEST(AsyncE2ECpuTraceTest, OnDemandConfigCollectsCpuOpIntoTraceFile) {
   GenericActivityProfiler profiler(/*cpuOnly=*/true);
   AsyncActivityProfilerHandler handler(profiler);
@@ -57,7 +54,7 @@ TEST(AsyncE2ECpuTraceTest, OnDemandConfigCollectsCpuOpIntoTraceFile) {
   const std::string opName = "async-e2e-cpu-op";
 
   // A controlled clock. start is warmup+1s ahead of base, so canStart() passes
-  // for real (no bypass) and [start, end] is a live collection window.
+  // for real and [start, end] is a live collection window.
   constexpr auto kWarmup = seconds(1);
   constexpr auto kDuration = seconds(1);
   const auto base = system_clock::now();
@@ -66,20 +63,20 @@ TEST(AsyncE2ECpuTraceTest, OnDemandConfigCollectsCpuOpIntoTraceFile) {
 
   Config cfg;
   cfg.setOnDemand(true);
-  ASSERT_TRUE(cfg.parse(
-      fmt::format(
-          "REQUEST_TRACE_ID={}\n"
-          "PROFILE_START_TIME={}\n"
-          "ACTIVITIES_WARMUP_PERIOD_SECS={}\n"
-          "ACTIVITIES_DURATION_SECS={}\n"
-          "ACTIVITIES_LOG_FILE={}\n",
-          traceId,
-          duration_cast<milliseconds>(start.time_since_epoch()).count(),
-          kWarmup.count(),
-          kDuration.count(),
-          traceFile.path())));
+  ASSERT_TRUE(cfg.parse(fmt::format(
+      "REQUEST_TRACE_ID={}\n"
+      "PROFILE_START_TIME={}\n"
+      "ACTIVITIES_WARMUP_PERIOD_SECS={}\n"
+      "ACTIVITIES_DURATION_SECS={}\n"
+      "ACTIVITIES_LOG_FILE={}\n",
+      traceId,
+      duration_cast<milliseconds>(start.time_since_epoch()).count(),
+      kWarmup.count(),
+      kDuration.count(),
+      traceFile.path())));
   const std::string tracePath = logUrlToPath(cfg.activitiesLogUrl());
   ASSERT_FALSE(tracePath.empty());
+
   // The produced file has the pid inserted before .json, a name TempTraceFile
   // does not own, so remove it ourselves when the test ends.
   struct FileRemover {
@@ -91,16 +88,14 @@ TEST(AsyncE2ECpuTraceTest, OnDemandConfigCollectsCpuOpIntoTraceFile) {
     }
   } fileRemover{tracePath};
 
-  // WaitForRequest -> Warmup. canStart() runs unmodified against our clock.
+  // WaitForRequest -> Warmup
   handler.configure(cfg, base);
   ASSERT_TRUE(handler.isAsyncActive());
 
-  // Warmup -> CollectTrace: startTrace() fires once now reaches the start
-  // timestamp, which opens the CPU-trace acceptance window.
+  // Warmup -> CollectTrace
   handler.performRunLoopStep(start, start);
 
-  // Inject a CPU op while collecting -- transferCpuTrace() only accepts spans
-  // between startTrace() and finalize, which is exactly the current state.
+  // Inject a CPU op while collecting.
   const int64_t startNs =
       duration_cast<nanoseconds>(start.time_since_epoch()).count();
   const int64_t endNs =
@@ -109,9 +104,10 @@ TEST(AsyncE2ECpuTraceTest, OnDemandConfigCollectsCpuOpIntoTraceFile) {
   ops->addOp(opName, startNs, startNs + 1000, /*correlation=*/1);
   profiler.transferCpuTrace(std::move(ops));
 
-  // CollectTrace -> ProcessTrace, then ProcessTrace -> WaitForRequest. The
-  // second step finalizes and writes the file, both inline on this thread.
+  // CollectTrace -> ProcessTrace
   handler.performRunLoopStep(end, end);
+
+  // ProcessTrace -> WaitForRequest. Finalizes and writes the file.
   handler.performRunLoopStep(end, end);
   ASSERT_FALSE(handler.isAsyncActive());
 

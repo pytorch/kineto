@@ -92,8 +92,8 @@ function(add_sycl_test test_file)
     xpupti_compute)
   set_target_properties(${test_name} PROPERTIES
     BUILD_RPATH ${CMAKE_CURRENT_BINARY_DIR})
-  gtest_discover_tests(${test_name})
+  gtest_discover_tests(${test_name} ${ARGN})
 endfunction()
 
 add_sycl_test(XpuptiProfilerTest.cpp)
-add_sycl_test(XpuptiScopeProfilerTest.cpp)
+add_sycl_test(XpuptiScopeProfilerTest.cpp PROPERTIES ENVIRONMENT "ZET_ENABLE_METRICS=1")

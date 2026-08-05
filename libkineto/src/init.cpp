@@ -157,15 +157,17 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
 
 #ifdef HAS_XPUPTI
-  // register xpu pti profiler
-  libkineto::api().registerProfilerFactory(
-      []() -> std::unique_ptr<IActivityProfiler> {
-        XPUPTI_CALL(
-            ptiViewGPULocalAvailable(),
-            /*error_message=*/"Failed to enable Kineto Profiler on XPU.");
-        XpuptiScopeProfilerConfig::registerFactory();
-        return std::make_unique<XPUActivityProfiler>();
-      });
+  if (!cpuOnly) {
+    // register xpu pti profiler
+    libkineto::api().registerProfilerFactory(
+        []() -> std::unique_ptr<IActivityProfiler> {
+          XPUPTI_CALL(
+              ptiViewGPULocalAvailable(),
+              /*error_message=*/"Failed to enable Kineto Profiler on XPU.");
+          XpuptiScopeProfilerConfig::registerFactory();
+          return std::make_unique<XPUActivityProfiler>();
+        });
+  }
 #endif // HAS_XPUPTI
 
 #if __linux__

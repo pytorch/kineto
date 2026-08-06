@@ -119,9 +119,9 @@ void CuptiPMSamplingApi::configureCupti() {
         std::runtime_error, "cuptiDeviceGetChipName returned no chip name");
   }
 
-  // Currently, only CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL is
-  // used in this code. According to CUPTI docs this trigger mode is only
-  // supported in "Turing and GA100. Supported from GA10x onwards."
+  // Currently, only CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL is used
+  // in this code. According to CUPTI docs, this trigger mode is not supported
+  // on Turing or GA100 and is supported from GA10x onwards.
   cudaDeviceProp deviceProperties{};
   const auto cudaStatus =
       cudaGetDeviceProperties(&deviceProperties, config_.deviceId);

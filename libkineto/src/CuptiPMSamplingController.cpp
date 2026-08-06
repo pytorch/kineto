@@ -100,21 +100,38 @@ bool CuptiPMSamplingController::start() {
     decodeThread_ = std::thread(&CuptiPMSamplingController::decodeLoop, this);
   } catch (...) {
     logCurrentException("Failed to start CUPTI PM sampling");
-    teardown();
+    stop();
   }
   return active_;
 }
 
 void CuptiPMSamplingController::stop() {
-  if (!prepared_) {
-    return;
-  }
-  if (active_) {
+  // Notify the decode thread and join it if possible
+  if (decodeThread_.joinable()) {
     stopRequested_.store(true, std::memory_order_relaxed);
     waitCondition_.notify_one();
     decodeThread_.join();
   }
-  teardown();
+  if (!prepared_) {
+    return;
+  }
+
+  // active_ indicates that the PM Sampling API was primed and collected samples
+  // so we need to stop() and drain all remaining items in the hardware buffer.
+  if (active_) {
+    std::vector<CuptiPMSample> decodedSamples;
+    try {
+      api_.stop();
+      if (!decodeFailed_.load(std::memory_order_relaxed)) {
+        drain(decodedSamples);
+      }
+    } catch (...) {
+      logCurrentException("Failed to stop or drain CUPTI PM sampling");
+    }
+    active_ = false;
+  }
+  api_.disable();
+  prepared_ = false;
 }
 
 const std::vector<std::string>& CuptiPMSamplingController::metricNames() const {
@@ -175,23 +192,6 @@ void CuptiPMSamplingController::drain(
   do {
     isBufferDrained = decodeBatch(decodedSamples);
   } while (!isBufferDrained);
-}
-
-void CuptiPMSamplingController::teardown() {
-  if (active_) {
-    std::vector<CuptiPMSample> decodedSamples;
-    try {
-      api_.stop();
-      if (!decodeFailed_.load(std::memory_order_relaxed)) {
-        drain(decodedSamples);
-      }
-    } catch (...) {
-      logCurrentException("Failed to stop or drain CUPTI PM sampling");
-    }
-    active_ = false;
-  }
-  api_.disable();
-  prepared_ = false;
 }
 
 bool CuptiPMSamplingController::validateConfig() const {

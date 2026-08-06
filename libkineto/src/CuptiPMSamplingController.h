@@ -41,7 +41,6 @@ class CuptiPMSamplingController {
   void decodeLoop();
   bool decodeBatch(std::vector<CuptiPMSample>& decodedSamples);
   void drain(std::vector<CuptiPMSample>& decodedSamples);
-  void teardown();
   bool validateConfig() const;
   bool validateSample(const CuptiPMSample& sample) const;
   void logCurrentException(const char* fallback);
@@ -57,6 +56,7 @@ class CuptiPMSamplingController {
   std::vector<CuptiPMSample> samples_;
   bool discardFirstSample_{true};
   bool prepared_{false};
+  // True while a collection started by api_.start() is active.
   bool active_{false};
 };
 

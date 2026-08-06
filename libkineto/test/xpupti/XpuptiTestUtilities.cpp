@@ -23,6 +23,8 @@ namespace KN = KINETO_NAMESPACE;
 
 namespace {
 
+// metadataJson() renders typed values and RawJson identically, so inspect the
+// stored variants directly to ensure XPU producers never use JSON fallback.
 class RawJsonFieldVisitor final : public KN::ITypedMetadataVisitor {
  public:
   std::vector<std::string> fields;

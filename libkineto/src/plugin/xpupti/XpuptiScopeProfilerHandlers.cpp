@@ -20,7 +20,7 @@ enum class MetadataOrCounterValue {
 };
 
 static void AddPtiValueToMetadataOrCounterValue(
-    GenericTraceActivity& scopeActivity,
+    GenericTraceActivity* scopeActivity,
     MetadataOrCounterValue metadataOrCounterValue,
     const std::string& metricName,
     pti_metric_value_type valueType,
@@ -29,11 +29,10 @@ static void AddPtiValueToMetadataOrCounterValue(
 #define CASE(T, FIELD, TYPE)                                          \
   case PTI_METRIC_VALUE_TYPE_##T:                                     \
     if (metadataOrCounterValue == MetadataOrCounterValue::Metadata) { \
-      scopeActivity.addTypedMetadata(                                 \
+      scopeActivity->addTypedMetadata(                                \
           metricName, TypedValue{static_cast<TYPE>(value.FIELD)});    \
     } else {                                                          \
-      scopeActivity.addCounterValue(                                  \
-          metricName, static_cast<double>(value.FIELD));              \
+      scopeActivity->addCounterValue(metricName, value.FIELD);        \
     }                                                                 \
     return;
 
@@ -46,10 +45,9 @@ static void AddPtiValueToMetadataOrCounterValue(
 
     case PTI_METRIC_VALUE_TYPE_BOOL8:
       if (metadataOrCounterValue == MetadataOrCounterValue::Metadata) {
-        scopeActivity.addTypedMetadata(metricName, TypedValue{value.b8 != 0});
+        scopeActivity->addTypedMetadata(metricName, TypedValue{value.b8 != 0});
       } else {
-        scopeActivity.addCounterValue(
-            metricName, static_cast<double>(value.b8));
+        scopeActivity->addCounterValue(metricName, value.b8);
       }
       return;
 
@@ -110,8 +108,8 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
 
   scopeActivities[0]->addMetadata(
       XpuFields::kKernelId, static_cast<uint64_t>(record->_kernel_id));
-  scopeActivities[0]->addMetadata(
-      XpuFields::kQueue, fmt::format("{}", record->_queue));
+  scopeActivities[0]->addMetadataQuoted(
+      "queue", fmt::format("{}", record->_queue));
 
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
     const auto& unit = metadata._metric_units[m];
@@ -120,14 +118,14 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
         fmt::format("{}{}", metadata._metric_names[m], unitSuffix);
 
     AddPtiValueToMetadataOrCounterValue(
-        *scopeActivities[0],
+        scopeActivities[0],
         MetadataOrCounterValue::Metadata,
         metricNameWithUnit,
         metadata._value_types[m],
         record->_metrics_values[m]);
 
     AddPtiValueToMetadataOrCounterValue(
-        *scopeActivities[1],
+        scopeActivities[1],
         MetadataOrCounterValue::CounterValue,
         metadata._metric_names[m],
         metadata._value_types[m],

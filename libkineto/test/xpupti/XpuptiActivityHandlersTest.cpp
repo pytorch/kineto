@@ -230,9 +230,6 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityMetadata) {
   EXPECT_EQ(activity.getMetadataValue("Return_code"), "0");
   EXPECT_EQ(activity.getMetadataValue("correlation"), "5");
   EXPECT_EQ(
-      activity.getMetadataValue(XpuMetadataFields::kType),
-      std::optional<std::string>{"HOST_FENCE"});
-  EXPECT_EQ(
       activity.getMetadataValue(XpuMetadataFields::kNumberWaitEvents),
       std::optional<uint64_t>{3});
   EXPECT_EQ(

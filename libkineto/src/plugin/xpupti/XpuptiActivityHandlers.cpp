@@ -115,16 +115,10 @@ inline std::string memsetName(pti_view_memory_type type, uint64_t val) {
 }
 
 template <class pti_view_memory_record_type>
-inline void addBandwidthMetadata(
-    GenericTraceActivity& traceActivity,
-    const pti_view_memory_record_type& activity) {
-  const auto duration = activity._end_timestamp - activity._start_timestamp;
-  if (duration == 0) {
-    return;
-  }
-  traceActivity.addMetadata(
-      XpuFields::kMemoryBandwidthGbps,
-      static_cast<double>(activity._bytes) / static_cast<double>(duration));
+inline double bandwidth(pti_view_memory_record_type* activity) {
+  auto duration = activity->_end_timestamp - activity->_start_timestamp;
+  auto bytes = activity->_bytes;
+  return bytes * 1.0 / duration;
 }
 
 void XpuptiActivityProfilerSession::addResouceInfo(
@@ -154,16 +148,15 @@ inline int64_t signedFromUnsignedDiff(uint64_t time, uint64_t time_ref) {
 }
 
 static void addTimestampMetadata(
-    GenericTraceActivity& traceActivity,
-    const MetadataField<std::string>& timestampField,
-    const MetadataField<std::string>& relativeTimestampField,
+    GenericTraceActivity* trace_activity,
+    std::string&& label,
     uint64_t time,
     uint64_t time_ref) {
-  traceActivity.addMetadata(
-      timestampField, formatTimeLikeOutputJson(transToRelativeTime(time)));
-  traceActivity.addMetadata(
-      relativeTimestampField,
-      formatTimeLikeOutputJson(signedFromUnsignedDiff(time, time_ref)));
+  trace_activity->addMetadataQuoted(
+      label, formatTimeLikeOutputJson(transToRelativeTime(time)));
+  label += "_rel_to_start";
+  trace_activity->addMetadataQuoted(
+      label, formatTimeLikeOutputJson(signedFromUnsignedDiff(time, time_ref)));
 }
 
 template <class pti_view_memory_record_type>
@@ -238,50 +231,45 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   }
 
   if constexpr (handleMemcpyActivities || handleMemsetActivities) {
-    trace_activity->addMetadata(
-        XpuFields::kL0Call, std::string(activity->_name));
+    trace_activity->addMetadataQuoted("l0 call", std::string(activity->_name));
   }
 
   if constexpr (!handleRuntimeActivities) {
     addTimestampMetadata(
-        *trace_activity,
-        XpuFields::kAppended,
-        XpuFields::kAppendedRelToStart,
+        trace_activity.get(),
+        "appended",
         activity->_append_timestamp,
         activity->_start_timestamp);
     addTimestampMetadata(
-        *trace_activity,
-        XpuFields::kSubmitted,
-        XpuFields::kSubmittedRelToStart,
+        trace_activity.get(),
+        "submitted",
         activity->_submit_timestamp,
         activity->_start_timestamp);
     if constexpr (handleKernelActivities) {
       addTimestampMetadata(
-          *trace_activity,
-          XpuFields::kSyclTaskBegin,
-          XpuFields::kSyclTaskBeginRelToStart,
+          trace_activity.get(),
+          "sycl_task_begin",
           activity->_sycl_task_begin_timestamp,
           activity->_start_timestamp);
       addTimestampMetadata(
-          *trace_activity,
-          XpuFields::kSyclEnqkBegin,
-          XpuFields::kSyclEnqkBeginRelToStart,
+          trace_activity.get(),
+          "sycl_enqk_begin",
           activity->_sycl_enqk_begin_timestamp,
           activity->_start_timestamp);
     }
     trace_activity->addMetadata(XpuFields::kDevice, trace_activity->deviceId());
-    trace_activity->addMetadata(
-        XpuFields::kContext, handleToHexString(activity->_context_handle));
+    trace_activity->addMetadataQuoted(
+        "context", handleToHexString(activity->_context_handle));
     trace_activity->addMetadata(
         XpuFields::kSyclQueue, static_cast<uint64_t>(activity->_sycl_queue_id));
-    trace_activity->addMetadata(
-        XpuFields::kL0Queue, handleToHexString(activity->_queue_handle));
+    trace_activity->addMetadataQuoted(
+        "l0 queue", handleToHexString(activity->_queue_handle));
   }
 
   if constexpr (handleKernelActivities) {
     if (activity->_source_file_name) {
-      trace_activity->addMetadata(
-          XpuFields::kSourceFileName, std::string{activity->_source_file_name});
+      trace_activity->addMetadataQuoted(
+          "source_file_name", activity->_source_file_name);
       trace_activity->addMetadata(
           XpuFields::kSourceLineNumber,
           static_cast<uint64_t>(activity->_source_line_number));
@@ -299,7 +287,11 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
         static_cast<uint64_t>(activity->_mem_op_id));
     trace_activity->addMetadata(
         XpuFields::kBytes, static_cast<uint64_t>(activity->_bytes));
-    addBandwidthMetadata(*trace_activity, *activity);
+    const auto duration = activity->_end_timestamp - activity->_start_timestamp;
+    if (duration != 0) {
+      trace_activity->addMetadata(
+          XpuFields::kMemoryBandwidthGbps, bandwidth(activity));
+    }
   }
 
   checkTimestampOrder(trace_activity.get());
@@ -472,18 +464,14 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
       XpuFields::kCorrelation,
       static_cast<uint64_t>(activity_record._correlation_id));
 
-  synchronization_activity.addMetadata(
-      XpuFields::kType,
-      getStringFromSynchronizationType(activity_record._synch_type));
-  synchronization_activity.addMetadata(
-      XpuFields::kContextHandle,
-      handleToHexString(activity_record._context_handle));
-  synchronization_activity.addMetadata(
-      XpuFields::kQueueHandle,
-      handleToHexString(activity_record._queue_handle));
-  synchronization_activity.addMetadata(
-      XpuFields::kEventHandle,
-      handleToHexString(activity_record._event_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Type", getStringFromSynchronizationType(activity_record._synch_type));
+  synchronization_activity.addMetadataQuoted(
+      "Context_handle", handleToHexString(activity_record._context_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Queue_handle", handleToHexString(activity_record._queue_handle));
+  synchronization_activity.addMetadataQuoted(
+      "Event_handle", handleToHexString(activity_record._event_handle));
   synchronization_activity.addMetadata(
       XpuFields::kNumberWaitEvents,
       static_cast<uint64_t>(activity_record._number_wait_events));
@@ -529,8 +517,8 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
   const auto occupancy = overhead_activity->duration() > 0
       ? activity->_overhead_duration_ns * 100 / overhead_activity->duration()
       : 0;
-  overhead_activity->addMetadata(
-      XpuFields::kOverheadOccupancy, fmt::format("{}%", occupancy));
+  overhead_activity->addMetadataQuoted(
+      "overhead occupancy", fmt::format("{}%", occupancy));
   overhead_activity->addMetadata(
       XpuFields::kOverheadCount,
       static_cast<uint64_t>(activity->_overhead_count));

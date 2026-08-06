@@ -6,6 +6,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <cuda.h>
+
+#if defined(HAS_CUPTI_PM_SAMPLING) && defined(CUDA_VERSION) && \
+    CUDA_VERSION >= 12080
+
 #include "CuptiPMSamplingController.h"
 
 #include <algorithm>
@@ -229,3 +234,5 @@ void CuptiPMSamplingController::logCurrentException(const char* fallback) {
 }
 
 } // namespace KINETO_NAMESPACE
+
+#endif // HAS_CUPTI_PM_SAMPLING && CUDA_VERSION >= 12080

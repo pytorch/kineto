@@ -102,6 +102,14 @@ CUPTI_ACTIVITY_PROFILER_SRCS = [
     "src/CuptiActivityProfiler.cpp",
 ]
 
+CUPTI_PM_SAMPLING_API_SRCS = [
+    "src/CuptiPMSamplingApi.cpp",
+]
+
+CUPTI_PM_SAMPLING_PROFILER_SRCS = [
+    "src/CuptiPMSamplingController.cpp",
+]
+
 WEAK_SYMBOLS_SRCS = [
     "src/WeakSymbols.cpp",
 ]
@@ -156,6 +164,9 @@ def get_libkineto_cpu_only_srcs(with_api = True):
 
 def get_libkineto_cupti_srcs(with_api = True):
     return CUPTI_API_SRCS + CUPTI_ACTIVITY_PROFILER_SRCS + KERNEL_REGISTRY_SRCS + WEAK_SYMBOLS_SRCS + get_libkineto_cpu_only_srcs(with_api)
+
+def get_libkineto_cupti_pm_sampling_srcs():
+    return CUPTI_PM_SAMPLING_API_SRCS + CUPTI_PM_SAMPLING_PROFILER_SRCS
 
 def get_libkineto_rocprofiler_srcs(with_api = True):
     return ROCM_ACTIVITY_PROFILER_SRCS + ROCM_API_SRCS + get_libkineto_cpu_only_srcs(with_api)

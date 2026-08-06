@@ -6,10 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "MetadataFieldCatalog.h"
 #include "XpuptiProfilerMacros.h"
 #include "XpuptiScopeProfilerSession.h"
 
 namespace KINETO_NAMESPACE {
+
+namespace XpuFields = libkineto::XpuMetadataFields;
 
 enum class MetadataOrCounterValue {
   Metadata = 0,
@@ -17,33 +20,36 @@ enum class MetadataOrCounterValue {
 };
 
 static void AddPtiValueToMetadataOrCounterValue(
-    GenericTraceActivity* scopeActivity,
+    GenericTraceActivity& scopeActivity,
     MetadataOrCounterValue metadataOrCounterValue,
     const std::string& metricName,
     pti_metric_value_type valueType,
     const pti_value_t& value) {
   switch (valueType) {
-#define CASE(T, FIELD)                                                \
+#define CASE(T, FIELD, TYPE)                                          \
   case PTI_METRIC_VALUE_TYPE_##T:                                     \
     if (metadataOrCounterValue == MetadataOrCounterValue::Metadata) { \
-      scopeActivity->addMetadata(metricName, value.FIELD);            \
+      scopeActivity.addTypedMetadata(                                 \
+          metricName, TypedValue{static_cast<TYPE>(value.FIELD)});    \
     } else {                                                          \
-      scopeActivity->addCounterValue(metricName, value.FIELD);        \
+      scopeActivity.addCounterValue(                                  \
+          metricName, static_cast<double>(value.FIELD));              \
     }                                                                 \
     return;
 
-    CASE(UINT32, ui32);
-    CASE(UINT64, ui64);
-    CASE(FLOAT32, fp32);
-    CASE(FLOAT64, fp64);
+    CASE(UINT32, ui32, uint64_t);
+    CASE(UINT64, ui64, uint64_t);
+    CASE(FLOAT32, fp32, double);
+    CASE(FLOAT64, fp64, double);
 
 #undef CASE
 
     case PTI_METRIC_VALUE_TYPE_BOOL8:
       if (metadataOrCounterValue == MetadataOrCounterValue::Metadata) {
-        scopeActivity->addMetadata(metricName, value.b8 ? "true" : "false ");
+        scopeActivity.addTypedMetadata(metricName, TypedValue{value.b8 != 0});
       } else {
-        scopeActivity->addCounterValue(metricName, value.b8);
+        scopeActivity.addCounterValue(
+            metricName, static_cast<double>(value.b8));
       }
       return;
 
@@ -102,9 +108,10 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
   }
   lastKernelActivityEndTime_ = scopeActivities[0]->endTime;
 
-  scopeActivities[0]->addMetadata("kernel_id", record->_kernel_id);
-  scopeActivities[0]->addMetadataQuoted(
-      "queue", fmt::format("{}", record->_queue));
+  scopeActivities[0]->addMetadata(
+      XpuFields::kKernelId, static_cast<uint64_t>(record->_kernel_id));
+  scopeActivities[0]->addMetadata(
+      XpuFields::kQueue, fmt::format("{}", record->_queue));
 
   for (uint32_t m = 0; m < metadata._metrics_count; ++m) {
     const auto& unit = metadata._metric_units[m];
@@ -113,14 +120,14 @@ void XpuptiScopeProfilerSession::handleScopeRecord(
         fmt::format("{}{}", metadata._metric_names[m], unitSuffix);
 
     AddPtiValueToMetadataOrCounterValue(
-        scopeActivities[0],
+        *scopeActivities[0],
         MetadataOrCounterValue::Metadata,
         metricNameWithUnit,
         metadata._value_types[m],
         record->_metrics_values[m]);
 
     AddPtiValueToMetadataOrCounterValue(
-        scopeActivities[1],
+        *scopeActivities[1],
         MetadataOrCounterValue::CounterValue,
         metadata._metric_names[m],
         metadata._value_types[m],

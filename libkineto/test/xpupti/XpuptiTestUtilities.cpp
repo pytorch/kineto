@@ -21,6 +21,49 @@
 
 namespace KN = KINETO_NAMESPACE;
 
+namespace {
+
+class RawJsonFieldVisitor final : public KN::ITypedMetadataVisitor {
+ public:
+  std::vector<std::string> fields;
+
+ private:
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<int64_t>& field,
+      [[maybe_unused]] int64_t value) override {}
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<uint64_t>& field,
+      [[maybe_unused]] uint64_t value) override {}
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<double>& field,
+      [[maybe_unused]] double value) override {}
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<bool>& field,
+      [[maybe_unused]] bool value) override {}
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<std::string>& field,
+      [[maybe_unused]] std::string_view value) override {}
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<std::vector<int64_t>>& field,
+      [[maybe_unused]] const std::vector<int64_t>& value) override {}
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<std::vector<std::string>>& field,
+      [[maybe_unused]] const std::vector<std::string>& value) override {}
+  void visitValue(
+      const KN::MetadataField<KN::RawJson>& field,
+      [[maybe_unused]] const KN::RawJson& value) override {
+    fields.emplace_back(field.name);
+  }
+  void visitValue(
+      [[maybe_unused]] const KN::MetadataField<KN::InputShapes>& field,
+      [[maybe_unused]] const KN::InputShapes& value) override {}
+  void visitUnsupported(std::string_view /*name*/) override {}
+  void beginDict(std::string_view /*name*/) override {}
+  void endDict() override {}
+};
+
+} // namespace
+
 bool IsEnvVerbose() {
   auto verboseEnv = getenv("VERBOSE");
   return verboseEnv && (strcmp(verboseEnv, "1") == 0);
@@ -286,6 +329,12 @@ RunProfilerTest(
   unsigned scopeProfilerActCount = 0;
 
   for (auto&& pActivity : pBuffer->activities) {
+    RawJsonFieldVisitor rawJsonVisitor;
+    pActivity->visitTypedMetadata(rawJsonVisitor);
+    EXPECT_TRUE(rawJsonVisitor.fields.empty())
+        << "RawJson metadata fields: "
+        << fmt::format("{}", fmt::join(rawJsonVisitor.fields, ", "));
+
     auto insertResult = stringStorage.insert(pActivity->name());
     activitiesCount[*insertResult.first]++;
     typesCount[pActivity->type()]++;

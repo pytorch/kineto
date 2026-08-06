@@ -76,6 +76,15 @@ namespace libkineto::DevicePropertyMetadataFields {
 inline constexpr MetadataField<uint64_t> kId{"id"};
 inline constexpr MetadataField<std::string> kName{"name"};
 inline constexpr MetadataField<uint64_t> kTotalGlobalMem{"totalGlobalMem"};
+inline constexpr MetadataField<uint64_t> kMaxComputeUnits{"maxComputeUnits"};
+inline constexpr MetadataField<uint64_t> kMaxWorkGroupSize{
+    "maxWorkGroupSize"};
+inline constexpr MetadataField<uint64_t> kMaxClockFrequency{
+    "maxClockFrequency"};
+inline constexpr MetadataField<uint64_t> kMaxMemAllocSize{"maxMemAllocSize"};
+inline constexpr MetadataField<uint64_t> kLocalMemSize{"localMemSize"};
+inline constexpr MetadataField<std::string> kVendor{"vendor"};
+inline constexpr MetadataField<std::string> kDriverVersion{"driverVersion"};
 inline constexpr MetadataField<int64_t> kComputeMajor{"computeMajor"};
 inline constexpr MetadataField<int64_t> kComputeMinor{"computeMinor"};
 inline constexpr MetadataField<int64_t> kMaxThreadsPerBlock{
@@ -169,3 +178,47 @@ inline constexpr MetadataField<uint64_t> kSharedMemory{"shared memory"};
 inline constexpr MetadataField<std::string> kSrc{"src"};
 inline constexpr MetadataField<int64_t> kStream{"stream"};
 } // namespace libkineto::RocmMetadataFields
+
+namespace libkineto::XpuMetadataFields {
+inline constexpr MetadataField<std::string> kAppended{"appended"};
+inline constexpr MetadataField<std::string> kAppendedRelToStart{
+    "appended_rel_to_start"};
+inline constexpr MetadataField<uint64_t> kBytes{"bytes"};
+inline constexpr MetadataField<uint64_t> kCommunicatorId{"Communicator_id"};
+inline constexpr MetadataField<std::string> kContext{"context"};
+inline constexpr MetadataField<std::string> kContextHandle{"Context_handle"};
+inline constexpr MetadataField<uint64_t> kCorrelation{"correlation"};
+inline constexpr MetadataField<int64_t> kDevice{"device"};
+inline constexpr MetadataField<std::string> kEventHandle{"Event_handle"};
+inline constexpr MetadataField<uint64_t> kKernelId{"kernel_id"};
+inline constexpr MetadataField<std::string> kL0Call{"l0 call"};
+inline constexpr MetadataField<std::string> kL0Queue{"l0 queue"};
+inline constexpr MetadataField<double> kMemoryBandwidthGbps{
+    "memory bandwidth (GB/s)"};
+inline constexpr MetadataField<uint64_t> kMemoryOperationId{
+    "memory opration id"};
+inline constexpr MetadataField<uint64_t> kNumberWaitEvents{
+    "Number_wait_events"};
+inline constexpr MetadataField<uint64_t> kOverheadCost{"overhead cost"};
+inline constexpr MetadataField<uint64_t> kOverheadCount{"overhead count"};
+inline constexpr MetadataField<std::string> kOverheadOccupancy{
+    "overhead occupancy"};
+inline constexpr MetadataField<std::string> kQueue{"queue"};
+inline constexpr MetadataField<std::string> kQueueHandle{"Queue_handle"};
+inline constexpr MetadataField<int64_t> kReturnCode{"Return_code"};
+inline constexpr MetadataField<std::string> kSourceFileName{"source_file_name"};
+inline constexpr MetadataField<uint64_t> kSourceLineNumber{"source_line_number"};
+inline constexpr MetadataField<std::string> kSubmitted{"submitted"};
+inline constexpr MetadataField<std::string> kSubmittedRelToStart{
+    "submitted_rel_to_start"};
+inline constexpr MetadataField<std::string> kSyclEnqkBegin{"sycl_enqk_begin"};
+inline constexpr MetadataField<std::string> kSyclEnqkBeginRelToStart{
+    "sycl_enqk_begin_rel_to_start"};
+inline constexpr MetadataField<uint64_t> kSyclInvocationId{"sycl_invocation_id"};
+inline constexpr MetadataField<uint64_t> kSyclNodeId{"sycl_node_id"};
+inline constexpr MetadataField<uint64_t> kSyclQueue{"sycl queue"};
+inline constexpr MetadataField<std::string> kSyclTaskBegin{"sycl_task_begin"};
+inline constexpr MetadataField<std::string> kSyclTaskBeginRelToStart{
+    "sycl_task_begin_rel_to_start"};
+inline constexpr MetadataField<std::string> kType{"Type"};
+} // namespace libkineto::XpuMetadataFields

@@ -96,4 +96,5 @@ function(add_sycl_test test_file)
 endfunction()
 
 add_sycl_test(XpuptiProfilerTest.cpp)
+target_link_libraries(XpuptiProfilerTest PRIVATE nlohmann_json::nlohmann_json)
 add_sycl_test(XpuptiScopeProfilerTest.cpp PROPERTIES ENVIRONMENT "ZET_ENABLE_METRICS=1")

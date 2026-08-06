@@ -54,6 +54,8 @@ class CuptiPMSamplingApi {
   CuptiPMSample decodeSample(size_t sampleIndex);
 
   CuptiPMSamplingConfig config_;
+  // Points into config_.metricNames and must be rebuilt whenever config_ is
+  // replaced. config_ remains unchanged while these pointers are in use.
   std::vector<const char*> metricNamePtrs_;
   CUpti_Profiler_Host_Object* hostObject_{nullptr};
   CUpti_PmSampling_Object* samplingObject_{nullptr};

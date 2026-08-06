@@ -6,10 +6,16 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <cuda.h>
+
+#if defined(HAS_CUPTI_PM_SAMPLING) && defined(CUDA_VERSION) && \
+    CUDA_VERSION >= 12080
+
 #include "CuptiPMSamplingApi.h"
 
 #include <stdexcept>
 
+#include <cuda_runtime_api.h>
 #include <cupti_pmsampling.h>
 #include <cupti_profiler_host.h>
 #include <cupti_target.h>
@@ -109,6 +115,24 @@ void CuptiPMSamplingApi::configureCupti() {
     throw std::runtime_error("cuptiDeviceGetChipName returned no chip name");
   }
 
+  // Currently, only CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL is
+  // used in this code. According to CUPTI docs this trigger mode is only
+  // supported in "Turing and GA100. Supported from GA10x onwards."
+  cudaDeviceProp deviceProperties{};
+  const auto cudaStatus =
+      cudaGetDeviceProperties(&deviceProperties, config_.deviceId);
+  if (cudaStatus != cudaSuccess) {
+    throw std::runtime_error(
+        std::string{"cudaGetDeviceProperties failed: "} +
+        cudaGetErrorString(cudaStatus));
+  }
+  if (deviceProperties.major < 8 ||
+      (deviceProperties.major == 8 && deviceProperties.minor < 6)) {
+    throw std::runtime_error(
+        "CUPTI PM sampling requires a GPU that supports "
+        "GPU_TIME_INTERVAL (compute capability 8.6 or newer)");
+  }
+
   // Building the availability image. This is a CUPTI byte buffer describing
   // which raw hardware counters are available on this machine. The first call
   // to cuptiPmSamplingGetCounterAvailability is to obtain
@@ -193,6 +217,8 @@ void CuptiPMSamplingApi::configureCupti() {
   setConfig.samplingInterval =
       static_cast<uint64_t>(config_.samplingInterval.count());
   setConfig.triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL;
+  setConfig.hwBufferAppendMode =
+      CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST;
   CUPTI_PM_CALL(cuptiPmSamplingSetConfig(&setConfig));
 
   // Asking CUPTI how large the (counter) data image should be.
@@ -263,10 +289,6 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
   decode.pCounterDataImage = counterDataImage_.data();
   decode.counterDataImageSize = counterDataImage_.size();
   CUPTI_PM_CALL(cuptiPmSamplingDecodeData(&decode));
-  if (decode.overflow != 0) {
-    LOG_FIRST_N(WARNING, 1)
-        << "CUPTI PM sampling hardware buffer overflowed; samples were lost";
-  }
 
   const auto reason = decode.decodeStopReason;
   bool isBufferDrained;
@@ -334,3 +356,5 @@ void CuptiPMSamplingApi::disable() {
 #undef CUPTI_PM_CALL
 
 } // namespace KINETO_NAMESPACE
+
+#endif // HAS_CUPTI_PM_SAMPLING && CUDA_VERSION >= 12080

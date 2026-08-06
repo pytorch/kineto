@@ -42,6 +42,7 @@ class CuptiPMSamplingApi {
 
   virtual ~CuptiPMSamplingApi();
 
+  virtual uint64_t timestamp() const;
   virtual void configure(const CuptiPMSamplingConfig& config);
   virtual void start();
   // Appends one batch and returns true if all current records were decoded.

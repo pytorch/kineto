@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include <cuda_runtime_api.h>
+#include <cupti.h>
 #include <cupti_pmsampling.h>
 #include <cupti_profiler_host.h>
 #include <cupti_target.h>
@@ -89,6 +90,12 @@ void checkCupti(CUptiResult status, const char* call) {
 
 CuptiPMSamplingApi::~CuptiPMSamplingApi() {
   disable();
+}
+
+uint64_t CuptiPMSamplingApi::timestamp() const {
+  uint64_t value;
+  CUPTI_PM_CALL(cuptiGetTimestamp(&value));
+  return value;
 }
 
 void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {

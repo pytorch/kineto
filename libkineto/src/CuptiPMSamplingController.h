@@ -34,6 +34,7 @@ class CuptiPMSamplingController {
   [[nodiscard]] bool start();
   void stop();
 
+  [[nodiscard]] uint64_t timestamp() const;
   [[nodiscard]] const std::vector<std::string>& metricNames() const;
   [[nodiscard]] std::vector<CuptiPMSample> samples() const;
 

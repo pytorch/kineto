@@ -76,18 +76,6 @@ namespace libkineto::DevicePropertyMetadataFields {
 inline constexpr MetadataField<uint64_t> kId{"id"};
 inline constexpr MetadataField<std::string> kName{"name"};
 inline constexpr MetadataField<uint64_t> kTotalGlobalMem{"totalGlobalMem"};
-
-// XPU-only device properties.
-inline constexpr MetadataField<uint64_t> kMaxComputeUnits{"maxComputeUnits"};
-inline constexpr MetadataField<uint64_t> kMaxWorkGroupSize{
-    "maxWorkGroupSize"};
-inline constexpr MetadataField<uint64_t> kMaxClockFrequency{
-    "maxClockFrequency"};
-inline constexpr MetadataField<uint64_t> kMaxMemAllocSize{"maxMemAllocSize"};
-inline constexpr MetadataField<uint64_t> kLocalMemSize{"localMemSize"};
-inline constexpr MetadataField<std::string> kVendor{"vendor"};
-inline constexpr MetadataField<std::string> kDriverVersion{"driverVersion"};
-
 inline constexpr MetadataField<int64_t> kComputeMajor{"computeMajor"};
 inline constexpr MetadataField<int64_t> kComputeMinor{"computeMinor"};
 inline constexpr MetadataField<int64_t> kMaxThreadsPerBlock{
@@ -107,6 +95,17 @@ inline constexpr MetadataField<uint64_t> kSharedMemPerMultiprocessor{
     "sharedMemPerMultiprocessor"};
 inline constexpr MetadataField<uint64_t> kMaxSharedMemoryPerMultiProcessor{
     "maxSharedMemoryPerMultiProcessor"};
+
+// XPU-only device properties.
+inline constexpr MetadataField<uint64_t> kMaxComputeUnits{"maxComputeUnits"};
+inline constexpr MetadataField<uint64_t> kMaxWorkGroupSize{
+    "maxWorkGroupSize"};
+inline constexpr MetadataField<uint64_t> kMaxClockFrequency{
+    "maxClockFrequency"};
+inline constexpr MetadataField<uint64_t> kMaxMemAllocSize{"maxMemAllocSize"};
+inline constexpr MetadataField<uint64_t> kLocalMemSize{"localMemSize"};
+inline constexpr MetadataField<std::string> kVendor{"vendor"};
+inline constexpr MetadataField<std::string> kDriverVersion{"driverVersion"};
 } // namespace libkineto::DevicePropertyMetadataFields
 
 namespace libkineto::CudaMetadataFields {

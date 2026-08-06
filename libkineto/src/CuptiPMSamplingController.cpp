@@ -16,11 +16,12 @@
 #include "Logger.h"
 
 /*
- * ======================== CUPTI PM SAMPLING CONTROLLER ========================
+ * ======================== CUPTI PM SAMPLING CONTROLLER
+ * ========================
  *
- * Controller for PM Sampling, which manages Kineto-side lifecycle. Hooks onto the
- * CuptiPMSamplingApi.
- * A sampling session follows prepare() -> start() -> stop().
+ * Controller for PM Sampling, which manages Kineto-side lifecycle. Hooks onto
+ * the CuptiPMSamplingApi. A sampling session follows prepare() -> start() ->
+ * stop().
  *
  * TODO LIST (in no particular order):
  *   1. Bound sample counts for large traces.
@@ -29,7 +30,7 @@
  *   4. Add tests.
  *
  * ==============================================================================
-*/
+ */
 
 namespace KINETO_NAMESPACE {
 namespace {
@@ -55,7 +56,8 @@ bool CuptiPMSamplingController::prepare() {
 
   try {
     {
-      // Prevent the decode thread from appending to samples while this is being cleared
+      // Prevent the decode thread from appending to samples while this is being
+      // cleared
       std::lock_guard<std::mutex> lock(samplesMutex_);
       samples_.clear();
     }
@@ -86,7 +88,8 @@ bool CuptiPMSamplingController::start() {
   try {
     api_.start();
     active_ = true;
-    // Decode needs to happen on an async thread as it needs to synchronously fetch new samples from the api
+    // Decode needs to happen on an async thread as it needs to synchronously
+    // fetch new samples from the api
     decodeThread_ = std::thread(&CuptiPMSamplingController::decodeLoop, this);
   } catch (...) {
     logCurrentException("Failed to start CUPTI PM sampling");
@@ -107,8 +110,7 @@ void CuptiPMSamplingController::stop() {
   teardown();
 }
 
-const std::vector<std::string>& CuptiPMSamplingController::metricNames()
-    const {
+const std::vector<std::string>& CuptiPMSamplingController::metricNames() const {
   return config_.metricNames;
 }
 
@@ -202,10 +204,9 @@ bool CuptiPMSamplingController::validateSample(
     LOG(WARNING) << "CUPTI PM sample has an invalid timestamp interval";
     return false;
   }
-  if (std::any_of(
-          sample.values.begin(), sample.values.end(), [](double value) {
-            return !std::isfinite(value);
-          })) {
+  if (std::any_of(sample.values.begin(), sample.values.end(), [](double value) {
+        return !std::isfinite(value);
+      })) {
     LOG(WARNING) << "CUPTI PM sample contains a non-finite metric value";
     return false;
   }

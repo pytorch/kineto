@@ -44,7 +44,8 @@ constexpr uint32_t kMaxSamplesPerDecode = 1024;
  *    Transfers records from the CUPTI's hardware buffer into the data image.
  *    Each completed sample in the data image is translated from CUPTI's format
  *    into a CuptiPMSample and pushed to the output vector. If records remain in
- *    the hardware buffer (COUNTER_DATA_FULL), we reset the image and return false.
+ *    the hardware buffer (COUNTER_DATA_FULL), we reset the image and return
+ * false.
  *
  * 4. [Stop]
  *    Instruct CUPTI to stop producing records.
@@ -66,13 +67,13 @@ void checkCupti(CUptiResult status, const char* call) {
   const char* error = nullptr;
   cuptiGetResultString(status, &error);
   throw std::runtime_error(
-      std::string{call} + " failed: " +
-      (error != nullptr ? error : "unknown CUPTI error"));
+      std::string{call} +
+      " failed: " + (error != nullptr ? error : "unknown CUPTI error"));
 }
 
-#define CUPTI_PM_CALL(call)       \
-  do {                            \
-    checkCupti((call), #call);    \
+#define CUPTI_PM_CALL(call)    \
+  do {                         \
+    checkCupti((call), #call); \
   } while (false)
 
 } // namespace
@@ -98,7 +99,8 @@ void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
 }
 
 void CuptiPMSamplingApi::configureCupti() {
-  // CUpti_Device_GetChipName_Params stores device info used in other CUPTI calls.
+  // CUpti_Device_GetChipName_Params stores device info used in other CUPTI
+  // calls.
   CUpti_Device_GetChipName_Params chip{
       CUpti_Device_GetChipName_Params_STRUCT_SIZE};
   chip.deviceIndex = static_cast<size_t>(config_.deviceId);
@@ -107,11 +109,12 @@ void CuptiPMSamplingApi::configureCupti() {
     throw std::runtime_error("cuptiDeviceGetChipName returned no chip name");
   }
 
-  // Building the availability image. This is a CUPTI byte buffer describing which raw
-  // hardware counters are available on this machine. The first call to
-  // cuptiPmSamplingGetCounterAvailability is to obtain counterAvailabilityImageSize, the
-  // number of bytes we need to allocate for counterAvailabilityImage. Then the second call
-  // populates counterAvailabilityImage.
+  // Building the availability image. This is a CUPTI byte buffer describing
+  // which raw hardware counters are available on this machine. The first call
+  // to cuptiPmSamplingGetCounterAvailability is to obtain
+  // counterAvailabilityImageSize, the number of bytes we need to allocate for
+  // counterAvailabilityImage. Then the second call populates
+  // counterAvailabilityImage.
   CUpti_PmSampling_GetCounterAvailability_Params availability{
       CUpti_PmSampling_GetCounterAvailability_Params_STRUCT_SIZE};
   availability.deviceIndex = static_cast<size_t>(config_.deviceId);
@@ -122,10 +125,11 @@ void CuptiPMSamplingApi::configureCupti() {
   availability.pCounterAvailabilityImage = counterAvailabilityImage.data();
   CUPTI_PM_CALL(cuptiPmSamplingGetCounterAvailability(&availability));
 
-  // CUpti_Profiler_Host_Initialize_Params is the evaluator which translates from
-  // requested metric names into the raw counters the GPU should collect. Later on,
-  // cuptiProfilerHostEvaluateToGpuValues() uses the initialized hostObject_ to convert
-  // raw hardware counters into the requested metric values using chip-specific formulas.
+  // CUpti_Profiler_Host_Initialize_Params is the evaluator which translates
+  // from requested metric names into the raw counters the GPU should collect.
+  // Later on, cuptiProfilerHostEvaluateToGpuValues() uses the initialized
+  // hostObject_ to convert raw hardware counters into the requested metric
+  // values using chip-specific formulas.
   CUpti_Profiler_Host_Initialize_Params host{
       CUpti_Profiler_Host_Initialize_Params_STRUCT_SIZE};
   host.profilerType = CUPTI_PROFILER_TYPE_PM_SAMPLING;
@@ -160,7 +164,8 @@ void CuptiPMSamplingApi::configureCupti() {
   CUPTI_PM_CALL(cuptiProfilerHostGetConfigImage(&image));
 
   // Asking CUPTI how many passes it will take to fetch the requested metrics.
-  // We do not want to make multiple passes, so reject the config if this is the case.
+  // We do not want to make multiple passes, so reject the config if this is the
+  // case.
   CUpti_Profiler_Host_GetNumOfPasses_Params passes{
       CUpti_Profiler_Host_GetNumOfPasses_Params_STRUCT_SIZE};
   passes.configImageSize = configImage.size();
@@ -267,8 +272,7 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
   bool isBufferDrained;
   if (reason == CUPTI_PM_SAMPLING_DECODE_STOP_REASON_END_OF_RECORDS) {
     isBufferDrained = true;
-  } else if (
-      reason == CUPTI_PM_SAMPLING_DECODE_STOP_REASON_COUNTER_DATA_FULL) {
+  } else if (reason == CUPTI_PM_SAMPLING_DECODE_STOP_REASON_COUNTER_DATA_FULL) {
     isBufferDrained = false;
   } else {
     throw std::runtime_error(
@@ -283,8 +287,7 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
   CUPTI_PM_CALL(cuptiPmSamplingGetCounterDataInfo(&info));
 
   samples.reserve(samples.size() + info.numCompletedSamples);
-  for (size_t sampleIndex = 0;
-       sampleIndex < info.numCompletedSamples;
+  for (size_t sampleIndex = 0; sampleIndex < info.numCompletedSamples;
        ++sampleIndex) {
     samples.push_back(decodeSample(sampleIndex));
   }
@@ -294,8 +297,7 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
 }
 
 void CuptiPMSamplingApi::stop() {
-  CUpti_PmSampling_Stop_Params params{
-      CUpti_PmSampling_Stop_Params_STRUCT_SIZE};
+  CUpti_PmSampling_Stop_Params params{CUpti_PmSampling_Stop_Params_STRUCT_SIZE};
   params.pPmSamplingObject = samplingObject_;
   CUPTI_PM_CALL(cuptiPmSamplingStop(&params));
 }

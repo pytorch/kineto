@@ -45,9 +45,8 @@ constexpr std::chrono::milliseconds kDecodePollInterval{10};
 } // namespace
 
 CuptiPMSamplingController::CuptiPMSamplingController(
-    CuptiPMSamplingConfig config,
-    CuptiPMSamplingApi& api)
-    : config_(std::move(config)), api_(api) {}
+    CuptiPMSamplingConfig config)
+    : config_(std::move(config)) {}
 
 CuptiPMSamplingController::~CuptiPMSamplingController() {
   stop();
@@ -58,6 +57,7 @@ bool CuptiPMSamplingController::prepare() {
     LOG(WARNING) << "CUPTI PM sampling is busy";
     return false;
   }
+  workerFailed_.store(false, std::memory_order_relaxed);
 
   try {
     {
@@ -65,6 +65,7 @@ bool CuptiPMSamplingController::prepare() {
       // cleared
       std::lock_guard<std::mutex> lock(samplesMutex_);
       samples_.clear();
+      discardFirstSample_ = true;
     }
     if (!validateConfig()) {
       return false;
@@ -138,6 +139,7 @@ void CuptiPMSamplingController::decodeLoop() {
       }
     }
   } catch (...) {
+    workerFailed_.store(true, std::memory_order_relaxed);
     logCurrentException("CUPTI PM sampling worker failed");
   }
 }
@@ -148,6 +150,14 @@ bool CuptiPMSamplingController::decodeBatch(
   const bool isBufferDrained = api_.decode(decodedSamples);
   std::lock_guard<std::mutex> lock(samplesMutex_);
   for (auto& sample : decodedSamples) {
+    // CUPTI recommends discarding the first sample because it may contain
+    // outlier values.
+    if (discardFirstSample_) {
+      LOG(INFO) << "Discarding first CUPTI PM sample because it may contain "
+                   "outlier values";
+      discardFirstSample_ = false;
+      continue;
+    }
     if (validateSample(sample)) {
       samples_.push_back(std::move(sample));
     }
@@ -169,7 +179,9 @@ void CuptiPMSamplingController::teardown() {
     std::vector<CuptiPMSample> decodedSamples;
     try {
       api_.stop();
-      drain(decodedSamples);
+      if (!workerFailed_.load(std::memory_order_relaxed)) {
+        drain(decodedSamples);
+      }
     } catch (...) {
       logCurrentException("Failed to stop or drain CUPTI PM sampling");
     }

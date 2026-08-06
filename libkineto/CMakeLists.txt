@@ -76,6 +76,12 @@ endif()
 unset(_KINETO_BACKEND_VALID)
 message(STATUS "KINETO_BACKEND = ${KINETO_BACKEND}")
 
+if(KINETO_ENABLE_CUPTI_PM_SAMPLING AND
+   NOT KINETO_BACKEND STREQUAL "cuda")
+  message(FATAL_ERROR
+    "KINETO_ENABLE_CUPTI_PM_SAMPLING requires KINETO_BACKEND=cuda.")
+endif()
+
 if(NOT _kineto_backend_explicit)
   message(WARNING
     "KINETO_BACKEND was not set; defaulting to 'cpu'. "
@@ -87,6 +93,13 @@ unset(_kineto_backend_explicit)
 if(KINETO_BACKEND STREQUAL "cuda")
   # CUDA / CUPTI detection
   find_package(CUDAToolkit REQUIRED)
+  # hwBufferAppendMode and KEEP_LATEST were added in CUDA 12.8
+  if(KINETO_ENABLE_CUPTI_PM_SAMPLING AND
+     CUDAToolkit_VERSION VERSION_LESS "12.8")
+    message(FATAL_ERROR
+      "KINETO_ENABLE_CUPTI_PM_SAMPLING requires CUDA >= 12.8; detected "
+      "CUDA ${CUDAToolkit_VERSION}.")
+  endif()
   if(NOT TARGET CUDA::cupti)
     message(FATAL_ERROR
       "KINETO_BACKEND=cuda but CUPTI was not found. "
@@ -188,9 +201,6 @@ if(MSVC)
 endif()
 if(KINETO_BACKEND STREQUAL "cuda")
   list(APPEND KINETO_DEFINITIONS "HAS_CUPTI")
-  if(KINETO_ENABLE_CUPTI_PM_SAMPLING)
-    list(APPEND KINETO_DEFINITIONS "HAS_CUPTI_PM_SAMPLING")
-  endif()
 elseif(KINETO_BACKEND STREQUAL "rocm")
   list(APPEND KINETO_DEFINITIONS "HAS_ROCTRACER")
   target_compile_definitions(kineto_base PRIVATE "__HIP_PLATFORM_HCC__")

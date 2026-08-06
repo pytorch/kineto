@@ -6,12 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <cuda.h>
-
-// hwBufferAppendMode and KEEP_LATEST were added in CUDA 12.8
-#if defined(HAS_CUPTI_PM_SAMPLING) && defined(CUDA_VERSION) && \
-    CUDA_VERSION >= 12080
-
 #include "CuptiPMSamplingController.h"
 
 #include <algorithm>
@@ -217,17 +211,20 @@ bool CuptiPMSamplingController::validateConfig() const {
 bool CuptiPMSamplingController::validateSample(
     const CuptiPMSample& sample) const {
   if (sample.values.size() != config_.metricNames.size()) {
-    LOG(WARNING) << "CUPTI PM sample has the wrong number of metric values";
+    LOG_FIRST_N(WARNING, 3)
+        << "CUPTI PM sample has the wrong number of metric values";
     return false;
   }
   if (sample.rawEndTimestamp < sample.rawStartTimestamp) {
-    LOG(WARNING) << "CUPTI PM sample has an invalid timestamp interval";
+    LOG_FIRST_N(WARNING, 3)
+        << "CUPTI PM sample has an invalid timestamp interval";
     return false;
   }
   if (std::any_of(sample.values.begin(), sample.values.end(), [](double value) {
         return !std::isfinite(value);
       })) {
-    LOG(WARNING) << "CUPTI PM sample contains a non-finite metric value";
+    LOG_FIRST_N(WARNING, 3)
+        << "CUPTI PM sample contains a non-finite metric value";
     return false;
   }
   return true;
@@ -249,5 +246,3 @@ void CuptiPMSamplingController::logCurrentException(const char* fallback) {
 }
 
 } // namespace KINETO_NAMESPACE
-
-#endif // HAS_CUPTI_PM_SAMPLING && CUDA_VERSION >= 12080

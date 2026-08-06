@@ -50,6 +50,7 @@ class CuptiPMSamplingApi {
   virtual void disable();
 
  private:
+  void ensureConfigured() const;
   void configureCupti();
   void resetImage();
   CuptiPMSample decodeSample(size_t sampleIndex);

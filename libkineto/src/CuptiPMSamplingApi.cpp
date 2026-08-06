@@ -6,12 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <cuda.h>
-
-// hwBufferAppendMode and KEEP_LATEST were added in CUDA 12.8
-#if defined(HAS_CUPTI_PM_SAMPLING) && defined(CUDA_VERSION) && \
-    CUDA_VERSION >= 12080
-
 #include "CuptiPMSamplingApi.h"
 
 #include <stdexcept>
@@ -106,6 +100,20 @@ void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
     metricNamePtrs_.push_back(metricName.c_str());
   }
   configureCupti();
+}
+
+void CuptiPMSamplingApi::ensureConfigured() const {
+  if (samplingObject_ == nullptr) {
+    KINETO_THROW(
+        std::runtime_error, "CUPTI PM sampling: samplingObject_ is null");
+  }
+  if (hostObject_ == nullptr) {
+    KINETO_THROW(std::runtime_error, "CUPTI PM sampling: hostObject_ is null");
+  }
+  if (counterDataImage_.empty()) {
+    KINETO_THROW(
+        std::runtime_error, "CUPTI PM sampling: counterDataImage_ is empty");
+  }
 }
 
 void CuptiPMSamplingApi::configureCupti() {
@@ -254,6 +262,7 @@ void CuptiPMSamplingApi::resetImage() {
 }
 
 void CuptiPMSamplingApi::start() {
+  ensureConfigured();
   CUpti_PmSampling_Start_Params params{
       CUpti_PmSampling_Start_Params_STRUCT_SIZE};
   params.pPmSamplingObject = samplingObject_;
@@ -289,6 +298,7 @@ CuptiPMSample CuptiPMSamplingApi::decodeSample(size_t sampleIndex) {
 }
 
 bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
+  ensureConfigured();
   // Fetch the next result from CUPTI. Decodes the collected counters
   // inline into the counterDataImage_.
   CUpti_PmSampling_DecodeData_Params decode{
@@ -297,6 +307,11 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
   decode.pCounterDataImage = counterDataImage_.data();
   decode.counterDataImageSize = counterDataImage_.size();
   CUPTI_PM_CALL(cuptiPmSamplingDecodeData(&decode));
+  if (decode.overflow != 0) {
+    LOG_FIRST_N(WARNING, 3)
+        << "CUPTI PM sampling hardware buffer overflowed; older samples were "
+           "dropped.";
+  }
 
   const auto reason = decode.decodeStopReason;
   bool isBufferDrained;
@@ -328,6 +343,7 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
 }
 
 void CuptiPMSamplingApi::stop() {
+  ensureConfigured();
   CUpti_PmSampling_Stop_Params params{CUpti_PmSampling_Stop_Params_STRUCT_SIZE};
   params.pPmSamplingObject = samplingObject_;
   CUPTI_PM_CALL(cuptiPmSamplingStop(&params));
@@ -365,5 +381,3 @@ void CuptiPMSamplingApi::disable() {
 #undef CUPTI_PM_CALL
 
 } // namespace KINETO_NAMESPACE
-
-#endif // HAS_CUPTI_PM_SAMPLING && CUDA_VERSION >= 12080

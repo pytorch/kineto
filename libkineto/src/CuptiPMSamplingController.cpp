@@ -117,6 +117,10 @@ void CuptiPMSamplingController::stop() {
   teardown();
 }
 
+uint64_t CuptiPMSamplingController::timestamp() const {
+  return api_.timestamp();
+}
+
 const std::vector<std::string>& CuptiPMSamplingController::metricNames() const {
   return config_.metricNames;
 }

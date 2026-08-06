@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#pragma once
+
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "CuptiPMSamplingApi.h"
+
+namespace KINETO_NAMESPACE {
+
+class CuptiPMSamplingController {
+ public:
+  CuptiPMSamplingController(
+      CuptiPMSamplingConfig config,
+      CuptiPMSamplingApi& api);
+  CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
+  CuptiPMSamplingController& operator=(const CuptiPMSamplingController&) =
+      delete;
+  CuptiPMSamplingController(CuptiPMSamplingController&&) = delete;
+  CuptiPMSamplingController& operator=(CuptiPMSamplingController&&) = delete;
+
+  ~CuptiPMSamplingController();
+
+  [[nodiscard]] bool prepare();
+  [[nodiscard]] bool start();
+  void stop();
+
+  [[nodiscard]] const std::vector<std::string>& metricNames() const;
+  [[nodiscard]] std::vector<CuptiPMSample> samples() const;
+
+ private:
+  void decodeLoop();
+  bool decodeBatch(std::vector<CuptiPMSample>& decodedSamples);
+  void drain(std::vector<CuptiPMSample>& decodedSamples);
+  void teardown();
+  bool validateConfig() const;
+  bool validateSample(const CuptiPMSample& sample) const;
+  void logCurrentException(const char* fallback);
+
+  CuptiPMSamplingConfig config_;
+  CuptiPMSamplingApi& api_;
+  std::thread decodeThread_;
+  std::atomic_bool stopRequested_{false};
+  mutable std::mutex samplesMutex_;
+  std::mutex waitMutex_;
+  std::condition_variable waitCondition_;
+  std::vector<CuptiPMSample> samples_;
+  bool prepared_{false};
+  bool active_{false};
+};
+
+} // namespace KINETO_NAMESPACE

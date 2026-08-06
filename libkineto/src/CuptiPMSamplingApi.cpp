@@ -8,6 +8,7 @@
 
 #include <cuda.h>
 
+// hwBufferAppendMode and KEEP_LATEST were added in CUDA 12.8
 #if defined(HAS_CUPTI_PM_SAMPLING) && defined(CUDA_VERSION) && \
     CUDA_VERSION >= 12080
 

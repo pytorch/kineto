@@ -50,7 +50,7 @@ class CuptiPMSamplingController {
   CuptiPMSamplingApi api_;
   std::thread decodeThread_;
   std::atomic_bool stopRequested_{false};
-  std::atomic_bool workerFailed_{false};
+  std::atomic_bool decodeFailed_{false};
   mutable std::mutex samplesMutex_;
   std::mutex waitMutex_;
   std::condition_variable waitCondition_;

@@ -21,9 +21,7 @@ namespace KINETO_NAMESPACE {
 
 class CuptiPMSamplingController {
  public:
-  CuptiPMSamplingController(
-      CuptiPMSamplingConfig config,
-      CuptiPMSamplingApi& api);
+  explicit CuptiPMSamplingController(CuptiPMSamplingConfig config);
   CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
   CuptiPMSamplingController& operator=(const CuptiPMSamplingController&) =
       delete;
@@ -49,13 +47,15 @@ class CuptiPMSamplingController {
   void logCurrentException(const char* fallback);
 
   CuptiPMSamplingConfig config_;
-  CuptiPMSamplingApi& api_;
+  CuptiPMSamplingApi api_;
   std::thread decodeThread_;
   std::atomic_bool stopRequested_{false};
+  std::atomic_bool workerFailed_{false};
   mutable std::mutex samplesMutex_;
   std::mutex waitMutex_;
   std::condition_variable waitCondition_;
   std::vector<CuptiPMSample> samples_;
+  bool discardFirstSample_{true};
   bool prepared_{false};
   bool active_{false};
 };

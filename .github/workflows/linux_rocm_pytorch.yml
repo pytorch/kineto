@@ -20,7 +20,7 @@ jobs:
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
       job-name: linux-rocm-pytorch-build-and-test
-      runner: linux.rocm.gpu.gfx942.1
+      runner: linux.rocm.gpu.ecosystem.mi350.1
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules
       repository: ${{ github.repository }}

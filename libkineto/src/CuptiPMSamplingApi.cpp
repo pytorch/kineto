@@ -22,6 +22,7 @@
 
 #include "DeviceUtil.h"
 #include "Logger.h"
+#include "ThrowUtil.h"
 
 namespace KINETO_NAMESPACE {
 namespace {
@@ -72,9 +73,10 @@ void checkCupti(CUptiResult status, const char* call) {
 
   const char* error = nullptr;
   cuptiGetResultString(status, &error);
-  throw std::runtime_error(
+  KINETO_THROW(
+      std::runtime_error,
       std::string{call} +
-      " failed: " + (error != nullptr ? error : "unknown CUPTI error"));
+          " failed: " + (error != nullptr ? error : "unknown CUPTI error"));
 }
 
 #define CUPTI_PM_CALL(call)    \
@@ -90,7 +92,8 @@ CuptiPMSamplingApi::~CuptiPMSamplingApi() {
 
 void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
   if (samplingObject_ != nullptr || hostObject_ != nullptr) {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         "Cannot configure CUPTI PM sampling after cleanup failed");
   }
   config_ = config;
@@ -112,7 +115,8 @@ void CuptiPMSamplingApi::configureCupti() {
   chip.deviceIndex = static_cast<size_t>(config_.deviceId);
   CUPTI_PM_CALL(cuptiDeviceGetChipName(&chip));
   if (chip.pChipName == nullptr) {
-    throw std::runtime_error("cuptiDeviceGetChipName returned no chip name");
+    KINETO_THROW(
+        std::runtime_error, "cuptiDeviceGetChipName returned no chip name");
   }
 
   // Currently, only CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL is
@@ -122,13 +126,15 @@ void CuptiPMSamplingApi::configureCupti() {
   const auto cudaStatus =
       cudaGetDeviceProperties(&deviceProperties, config_.deviceId);
   if (cudaStatus != cudaSuccess) {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         std::string{"cudaGetDeviceProperties failed: "} +
-        cudaGetErrorString(cudaStatus));
+            cudaGetErrorString(cudaStatus));
   }
   if (deviceProperties.major < 8 ||
       (deviceProperties.major == 8 && deviceProperties.minor < 6)) {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         "CUPTI PM sampling requires a GPU that supports "
         "GPU_TIME_INTERVAL (compute capability 8.6 or newer)");
   }
@@ -196,9 +202,10 @@ void CuptiPMSamplingApi::configureCupti() {
   passes.pConfigImage = configImage.data();
   CUPTI_PM_CALL(cuptiProfilerHostGetNumOfPasses(&passes));
   if (passes.numOfPasses != 1) {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         "CUPTI PM sampling requires one pass; configuration requires " +
-        std::to_string(passes.numOfPasses));
+            std::to_string(passes.numOfPasses));
   }
 
   // Enabling PM sampling and setting the config
@@ -297,9 +304,10 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
   } else if (reason == CUPTI_PM_SAMPLING_DECODE_STOP_REASON_COUNTER_DATA_FULL) {
     isBufferDrained = false;
   } else {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         "cuptiPmSamplingDecodeData returned unexpected stop reason " +
-        std::to_string(static_cast<int>(reason)));
+            std::to_string(static_cast<int>(reason)));
   }
 
   CUpti_PmSampling_GetCounterDataInfo_Params info{

@@ -20,6 +20,7 @@ struct CUpti_Profiler_Host_Object;
 namespace KINETO_NAMESPACE {
 
 struct CuptiPMSample {
+  // CUPTI reports these timestamps in the CPU timestamp domain, in nanoseconds.
   uint64_t rawStartTimestamp;
   uint64_t rawEndTimestamp;
   std::vector<double> values; // One value per metric

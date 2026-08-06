@@ -8,6 +8,7 @@
 
 #include <cuda.h>
 
+// hwBufferAppendMode and KEEP_LATEST were added in CUDA 12.8
 #if defined(HAS_CUPTI_PM_SAMPLING) && defined(CUDA_VERSION) && \
     CUDA_VERSION >= 12080
 
@@ -57,7 +58,7 @@ bool CuptiPMSamplingController::prepare() {
     LOG(WARNING) << "CUPTI PM sampling is busy";
     return false;
   }
-  workerFailed_.store(false, std::memory_order_relaxed);
+  decodeFailed_.store(false, std::memory_order_relaxed);
 
   try {
     {
@@ -139,7 +140,9 @@ void CuptiPMSamplingController::decodeLoop() {
       }
     }
   } catch (...) {
-    workerFailed_.store(true, std::memory_order_relaxed);
+    // If decodeFailed_ is true, we will skip drain() on the disable path as
+    // this is the operation that failed.
+    decodeFailed_.store(true, std::memory_order_relaxed);
     logCurrentException("CUPTI PM sampling worker failed");
   }
 }
@@ -179,7 +182,7 @@ void CuptiPMSamplingController::teardown() {
     std::vector<CuptiPMSample> decodedSamples;
     try {
       api_.stop();
-      if (!workerFailed_.load(std::memory_order_relaxed)) {
+      if (!decodeFailed_.load(std::memory_order_relaxed)) {
         drain(decodedSamples);
       }
     } catch (...) {

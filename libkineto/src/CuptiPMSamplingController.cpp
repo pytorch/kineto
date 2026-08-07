@@ -76,14 +76,14 @@ bool CuptiPMSamplingController::prepare() {
   return true;
 }
 
-bool CuptiPMSamplingController::start() {
+void CuptiPMSamplingController::start() {
   if (!prepared_) {
     LOG(WARNING) << "CUPTI PM sampling is not prepared";
-    return false;
+    return;
   }
   if (active_) {
     LOG(WARNING) << "CUPTI PM sampling is already running";
-    return false;
+    return;
   }
 
   stopRequested_.store(false, std::memory_order_relaxed);
@@ -97,7 +97,6 @@ bool CuptiPMSamplingController::start() {
     logCurrentException("Failed to start CUPTI PM sampling");
     stop();
   }
-  return active_;
 }
 
 void CuptiPMSamplingController::stop() {

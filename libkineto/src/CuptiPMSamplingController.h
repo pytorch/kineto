@@ -31,7 +31,7 @@ class CuptiPMSamplingController {
   ~CuptiPMSamplingController();
 
   [[nodiscard]] bool prepare();
-  [[nodiscard]] bool start();
+  void start();
   void stop();
 
   [[nodiscard]] const std::vector<std::string>& metricNames() const;

@@ -27,6 +27,7 @@ set(KINETO_LIBRARY_TYPE "default" CACHE STRING
 set_property(CACHE KINETO_LIBRARY_TYPE PROPERTY STRINGS default shared static)
 option(KINETO_BUILD_TESTS "Build kineto unit tests" ON)
 option(KINETO_BUILD_BENCHMARKS "Build kineto benchmarks" OFF)
+option(KINETO_ENABLE_CUPTI_PM_SAMPLING "Build CUPTI PM sampling support" OFF)
 
 set(LIBKINETO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LIBKINETO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -75,6 +76,12 @@ endif()
 unset(_KINETO_BACKEND_VALID)
 message(STATUS "KINETO_BACKEND = ${KINETO_BACKEND}")
 
+if(KINETO_ENABLE_CUPTI_PM_SAMPLING AND
+   NOT KINETO_BACKEND STREQUAL "cuda")
+  message(FATAL_ERROR
+    "KINETO_ENABLE_CUPTI_PM_SAMPLING requires KINETO_BACKEND=cuda.")
+endif()
+
 if(NOT _kineto_backend_explicit)
   message(WARNING
     "KINETO_BACKEND was not set; defaulting to 'cpu'. "
@@ -86,6 +93,13 @@ unset(_kineto_backend_explicit)
 if(KINETO_BACKEND STREQUAL "cuda")
   # CUDA / CUPTI detection
   find_package(CUDAToolkit REQUIRED)
+  # hwBufferAppendMode and KEEP_LATEST were added in CUDA 12.8
+  if(KINETO_ENABLE_CUPTI_PM_SAMPLING AND
+     CUDAToolkit_VERSION VERSION_LESS "12.8")
+    message(FATAL_ERROR
+      "KINETO_ENABLE_CUPTI_PM_SAMPLING requires CUDA >= 12.8; detected "
+      "CUDA ${CUDAToolkit_VERSION}.")
+  endif()
   if(NOT TARGET CUDA::cupti)
     message(FATAL_ERROR
       "KINETO_BACKEND=cuda but CUPTI was not found. "
@@ -157,6 +171,10 @@ if(KINETO_BACKEND STREQUAL "cpu")
   message(STATUS " Building CPU-only profilers")
 elseif(KINETO_BACKEND STREQUAL "cuda")
   get_filelist("get_libkineto_cupti_srcs(with_api=False)" LIBKINETO_SRCS)
+  if(KINETO_ENABLE_CUPTI_PM_SAMPLING)
+    get_filelist("get_libkineto_cupti_pm_sampling_srcs()" CUPTI_PM_SAMPLING_SRCS)
+    list(APPEND LIBKINETO_SRCS ${CUPTI_PM_SAMPLING_SRCS})
+  endif()
   message(STATUS " Building with cupti")
 elseif(KINETO_BACKEND STREQUAL "rocm")
   get_filelist("get_libkineto_rocprofiler_srcs(with_api=False)" LIBKINETO_SRCS)

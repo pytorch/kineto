@@ -36,18 +36,22 @@ TEST(CuptiStringsTest, RuntimeStripsFiveDigitVersionSuffix) {
       "cudaStreamSetAttribute_ptsz");
 }
 
-// Non-greedy strip: only the trailing CUDA-version suffix `_v12030` is removed.
-// The `_v3` API-generation suffix (single digit) must survive. This case also
-// exercises a cbid >= 446 — the range that returned "INVALID" before this
-// refactor (motivation for D104900166).
-#if defined(CUPTI_API_VERSION) && CUPTI_API_VERSION >= 21
+// CUPTI includes the `_v3` API-generation suffix in CUDA 12.3-12.9 and drops it
+// in CUDA 13.x. Verify that only the trailing `_v12030` version suffix is
+// removed. This also exercises a cbid >= 446 — the range that returned
+// "INVALID" before the refactor that motivated D104900166.
 TEST(CuptiStringsTest, RuntimeStripsOnlyTrailingVersionSuffix) {
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000
+  EXPECT_EQ(
+      runtimeCbidName(CUPTI_RUNTIME_TRACE_CBID_cudaStreamGetCaptureInfo_v12030),
+      "cudaStreamGetCaptureInfo");
+#elif defined(CUDA_VERSION) && CUDA_VERSION >= 12030 && CUDA_VERSION < 13000
   EXPECT_EQ(
       runtimeCbidName(
           CUPTI_RUNTIME_TRACE_CBID_cudaStreamGetCaptureInfo_v3_v12030),
       "cudaStreamGetCaptureInfo_v3");
-}
 #endif
+}
 
 TEST(CuptiStringsTest, RuntimePreservesNamesWithoutVersionSuffix) {
   EXPECT_EQ(runtimeCbidName(CUPTI_RUNTIME_TRACE_CBID_INVALID), "INVALID");

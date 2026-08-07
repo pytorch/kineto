@@ -19,6 +19,7 @@
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
   -DKINETO_BACKEND=cuda
+  "-DKINETO_ENABLE_CUPTI_PM_SAMPLING=${KINETO_ENABLE_CUPTI_PM_SAMPLING:-OFF}"
 )
 
 # --- PyTorch build environment variables ---

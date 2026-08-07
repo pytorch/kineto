@@ -55,7 +55,8 @@ enum class ActivityType {
 
   XPU_SCOPE_PROFILER = 26, // XPUPTI Profiler scope for performance metrics
   XPU_SYNC = 27, // XPU synchronization events
-  HARDWARE_COUNTERS = 28, // hardware performance counter samples. Only used by CUDA right now.
+  HARDWARE_COUNTERS =
+      28, // hardware performance counter samples. Only used by CUDA right now.
 
   ENUM_COUNT =
       29, // This is to add buffer and not used for any profiling logic. Add

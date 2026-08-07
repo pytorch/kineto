@@ -23,6 +23,7 @@ struct CpuTraceBuffer;
 
 namespace KINETO_NAMESPACE {
 
+// TODO: Support dynamic collection toggling
 class CuptiPMSamplingSession final
     : public libkineto::IActivityProfilerSession {
  public:

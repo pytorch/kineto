@@ -46,7 +46,7 @@ bool CuptiPMSamplingSession::prepare() {
 }
 
 void CuptiPMSamplingSession::start() {
-  static_cast<void>(controller_.start());
+  controller_.start();
 }
 
 void CuptiPMSamplingSession::stop() {

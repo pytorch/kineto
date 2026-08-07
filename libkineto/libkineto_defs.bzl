@@ -100,6 +100,7 @@ CUPTI_API_SRCS = [
 
 CUPTI_ACTIVITY_PROFILER_SRCS = [
     "src/CuptiActivityProfiler.cpp",
+    "src/CuptiTimestamp.cpp",
 ]
 
 CUPTI_PM_SAMPLING_API_SRCS = [

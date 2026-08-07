@@ -20,12 +20,12 @@
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
 #include "CuptiCbidRegistry.h"
+#include "CuptiTimestamp.h"
 #include "Demangle.h"
 #include "DeviceUtil.h"
 #include "KernelRegistry.h"
 #include "Logger.h"
 
-using namespace std::chrono;
 using std::string;
 
 namespace {
@@ -72,11 +72,6 @@ std::unordered_map<uint32_t, uint32_t>& ctxToDeviceId() {
 
 namespace KINETO_NAMESPACE {
 
-bool& use_cupti_tsc() {
-  static bool use_cupti_tsc = true;
-  return use_cupti_tsc;
-}
-
 CuptiActivityProfiler::CuptiActivityProfiler(
     CuptiActivityApi& cupti,
     bool cpuOnly)
@@ -114,21 +109,7 @@ void CuptiActivityProfiler::setMaxGpuBufferSize(int64_t size) {
 }
 
 void CuptiActivityProfiler::enableGpuTracing() {
-#ifdef _WIN32
-  CUPTI_CALL(cuptiActivityRegisterTimestampCallback([]() -> uint64_t {
-    auto system = std::chrono::time_point_cast<std::chrono::nanoseconds>(
-        std::chrono::system_clock::now());
-    return system.time_since_epoch().count();
-  }));
-#else
-#if CUDA_VERSION >= 11060
-  use_cupti_tsc() = config().getTSCTimestampFlag();
-  if (use_cupti_tsc()) {
-    CUPTI_CALL(cuptiActivityRegisterTimestampCallback(
-        []() -> uint64_t { return getApproximateTime(); }));
-  }
-#endif // CUDA_VERSION >= 11060
-#endif // _WIN32
+  configureCuptiTimestampSource(config().getTSCTimestampFlag());
   cupti_.enableCuptiActivities(
       derivedConfig_->profileActivityTypes(),
       derivedConfig_->isPerThreadBufferEnabled());

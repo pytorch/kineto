@@ -14,8 +14,8 @@
 
 // TODO(T90238193)
 // @lint-ignore-every CLANGTIDY facebook-hte-RelativeInclude
-#include "ApproximateClock.h"
 #include "CuptiCbidRegistry.h"
+#include "CuptiTimestamp.h"
 #include "Demangle.h"
 #include "DeviceProperties.h"
 #include "GenericTraceActivity.h"
@@ -36,10 +36,6 @@ namespace KINETO_NAMESPACE {
 using namespace libkineto;
 struct TraceSpan;
 
-// This function allows us to activate/deactivate TSC CUPTI callbacks
-// via a killswitch
-bool& use_cupti_tsc();
-
 // These classes wrap the various CUPTI activity types
 // into subclasses of ITraceActivity so that they can all be accessed
 // using the ITraceActivity interface and logged via ActivityLogger.
@@ -49,32 +45,12 @@ template <class T>
 struct CuptiActivity : public ITraceActivity {
   explicit CuptiActivity(const T* activity, const ITraceActivity* linked)
       : activity_(*activity), linked_(linked) {}
-  // If we are running on Windows or are on a CUDA version < 11.6,
-  // we use the default system clock so no conversion needed same for all
-  // ifdefs below
   int64_t timestamp() const override {
-#if defined(_WIN32) || CUDA_VERSION < 11060
-    return activity_.start;
-#else
-    if (use_cupti_tsc()) {
-      return get_time_converter()(activity_.start);
-    } else {
-      return activity_.start;
-    }
-#endif
+    return convertCuptiTimestamp(activity_.start);
   }
 
   int64_t duration() const override {
-#if defined(_WIN32) || CUDA_VERSION < 11060
-    return activity_.end - activity_.start;
-#else
-    if (use_cupti_tsc()) {
-      return get_time_converter()(activity_.end) -
-          get_time_converter()(activity_.start);
-    } else {
-      return activity_.end - activity_.start;
-    }
-#endif
+    return convertCuptiDuration(activity_.start, activity_.end);
   }
   // TODO(T107507796): Deprecate ITraceActivity
   int64_t correlationId() const override {
@@ -173,28 +149,11 @@ struct OverheadActivity : public CuptiActivity<CUpti_ActivityOverhead> {
       : CuptiActivity(activity, linked), threadId_(threadId) {}
 
   int64_t timestamp() const override {
-#if defined(_WIN32) || CUDA_VERSION < 11060
-    return activity_.start;
-#else
-    if (use_cupti_tsc()) {
-      return get_time_converter()(activity_.start);
-    } else {
-      return activity_.start;
-    }
-#endif
+    return convertCuptiTimestamp(activity_.start);
   }
 
   int64_t duration() const override {
-#if defined(_WIN32) || CUDA_VERSION < 11060
-    return activity_.end - activity_.start;
-#else
-    if (use_cupti_tsc()) {
-      return get_time_converter()(activity_.end) -
-          get_time_converter()(activity_.start);
-    } else {
-      return activity_.end - activity_.start;
-    }
-#endif
+    return convertCuptiDuration(activity_.start, activity_.end);
   }
 
   // TODO: Update this with PID ordering
@@ -264,15 +223,7 @@ using CUpti_ActivityCudaEventType = CUpti_ActivityCudaEvent;
 template <>
 inline int64_t CuptiActivity<CUpti_ActivityCudaEventType>::timestamp() const {
 #if CUDA_VERSION >= 12080
-#if defined(_WIN32)
-  return activity_.deviceTimestamp;
-#else
-  if (use_cupti_tsc()) {
-    return get_time_converter()(activity_.deviceTimestamp);
-  } else {
-    return activity_.deviceTimestamp;
-  }
-#endif
+  return convertCuptiTimestamp(activity_.deviceTimestamp);
 #else
   // For CUDA < 12.8, deviceTimestamp doesn't exist, set to 0
   return 0;

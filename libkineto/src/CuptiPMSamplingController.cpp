@@ -28,6 +28,7 @@
  *   2. Handle on-demand/async profiling, plus interaction with auto-trace/sync.
  *   3. Push hard-coded constants into user-provided vars.
  *   4. Add tests.
+ *   5. Bound drain retries so shutdown cannot block indefinitely.
  *
  * ==============================================================================
  */
@@ -102,7 +103,12 @@ bool CuptiPMSamplingController::start() {
 void CuptiPMSamplingController::stop() {
   // Notify the decode thread and join it if possible
   if (decodeThread_.joinable()) {
-    stopRequested_.store(true, std::memory_order_relaxed);
+    {
+      // Set the flag under waitMutex_ so the decode thread cannot miss the
+      // notification between evaluating wait_for's predicate and blocking.
+      std::lock_guard<std::mutex> lock(waitMutex_);
+      stopRequested_.store(true, std::memory_order_relaxed);
+    }
     waitCondition_.notify_one();
     decodeThread_.join();
   }
@@ -181,7 +187,9 @@ bool CuptiPMSamplingController::decodeBatch(
 
 void CuptiPMSamplingController::drain(
     std::vector<CuptiPMSample>& decodedSamples) {
-  // Called at the end to fully drain the hardware buffer
+  // This relies on CUPTI eventually reporting that the hardware buffer is
+  // drained. If CUPTI enters a bad state, this loop can block indefinitely,
+  // including when called during destruction.
   bool isBufferDrained;
   do {
     isBufferDrained = decodeBatch(decodedSamples);

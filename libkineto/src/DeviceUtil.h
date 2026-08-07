@@ -11,9 +11,13 @@
 #include <fmt/format.h>
 
 #ifdef HAS_CUPTI
+#include <stdexcept>
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cupti.h>
+
+#include "ThrowUtil.h"
 
 // ok to use fmt::format as error will not occur often. Can't use fmt::print
 // easily since LOG(...) can return void, causes compiler error
@@ -45,6 +49,25 @@
     }                                              \
     return _status_;                               \
   }()
+
+// clang-format off
+#define CUPTI_CALL_THROW(call)                    \
+  do {                                            \
+    CUptiResult _status_ = (call);                \
+    if (_status_ != CUPTI_SUCCESS) {              \
+      const char* _errstr_ = nullptr;             \
+      cuptiGetResultString(_status_, &_errstr_);  \
+      KINETO_THROW(                               \
+          std::runtime_error,                     \
+          fmt::format(                            \
+              "{} failed: {}",                   \
+              #call,                              \
+              _errstr_ != nullptr                 \
+                  ? _errstr_                      \
+                  : "unknown CUPTI error"));      \
+    }                                             \
+  } while (false)
+// clang-format on
 
 #elif defined(HAS_ROCTRACER)
 #include <hip/hip_runtime.h>

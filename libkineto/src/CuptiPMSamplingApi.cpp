@@ -19,6 +19,29 @@
 #include "Logger.h"
 #include "ThrowUtil.h"
 
+// The CUPTI APIs used in this file follow a versioned struct pattern: each
+// function takes a params struct whose first two fields are structSize (so
+// CUPTI knows which version of the struct the caller compiled against) and
+// pPriv (an internal pointer, always nullptr from the caller's side). The
+// remaining fields are the actual parameters.
+//
+// NVIDIA's recommended initialization pattern explicitly initializes only
+// structSize and relies on C++ aggregate zero-initialization for pPriv and the
+// remaining fields, then sets specific fields afterward:
+//
+//   CUpti_PmSampling_Start_Params params{
+//       CUpti_PmSampling_Start_Params_STRUCT_SIZE};
+//   params.pPmSamplingObject = samplingObject;
+//
+// -Wmissing-field-initializers (enabled by -Wextra) warns when an aggregate
+// initializer does not provide values for every field, which fires at all of
+// the CUPTI params call sites in this file. We suppress it rather than
+// enumerating every field, since the struct definitions change between CUPTI
+// SDK versions and explicit listing would break whenever NVIDIA adds or
+// removes fields.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 namespace KINETO_NAMESPACE {
 namespace {
 
@@ -61,28 +84,14 @@ constexpr uint32_t kMaxSamplesPerDecode = 1024;
  * ===========================================================================
  */
 
-void checkCupti(CUptiResult status, const char* call) {
-  if (status == CUPTI_SUCCESS) {
-    return;
-  }
-
-  const char* error = nullptr;
-  cuptiGetResultString(status, &error);
-  KINETO_THROW(
-      std::runtime_error,
-      std::string{call} +
-          " failed: " + (error != nullptr ? error : "unknown CUPTI error"));
-}
-
-#define CUPTI_PM_CALL(call)    \
-  do {                         \
-    checkCupti((call), #call); \
-  } while (false)
-
 } // namespace
 
 CuptiPMSamplingApi::~CuptiPMSamplingApi() {
   disable();
+  if (samplingObject_ != nullptr || hostObject_ != nullptr) {
+    LOG(WARNING) << "CUPTI PM sampling cleanup failed during destruction; "
+                    "CUPTI resources may leak";
+  }
 }
 
 void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
@@ -122,7 +131,7 @@ void CuptiPMSamplingApi::configureCupti() {
   CUpti_Device_GetChipName_Params chip{
       CUpti_Device_GetChipName_Params_STRUCT_SIZE};
   chip.deviceIndex = static_cast<size_t>(config_.deviceId);
-  CUPTI_PM_CALL(cuptiDeviceGetChipName(&chip));
+  CUPTI_CALL_THROW(cuptiDeviceGetChipName(&chip));
   if (chip.pChipName == nullptr) {
     KINETO_THROW(
         std::runtime_error, "cuptiDeviceGetChipName returned no chip name");
@@ -157,12 +166,12 @@ void CuptiPMSamplingApi::configureCupti() {
   CUpti_PmSampling_GetCounterAvailability_Params availability{
       CUpti_PmSampling_GetCounterAvailability_Params_STRUCT_SIZE};
   availability.deviceIndex = static_cast<size_t>(config_.deviceId);
-  CUPTI_PM_CALL(cuptiPmSamplingGetCounterAvailability(&availability));
+  CUPTI_CALL_THROW(cuptiPmSamplingGetCounterAvailability(&availability));
 
   std::vector<uint8_t> counterAvailabilityImage(
       availability.counterAvailabilityImageSize);
   availability.pCounterAvailabilityImage = counterAvailabilityImage.data();
-  CUPTI_PM_CALL(cuptiPmSamplingGetCounterAvailability(&availability));
+  CUPTI_CALL_THROW(cuptiPmSamplingGetCounterAvailability(&availability));
 
   // CUpti_Profiler_Host_Initialize_Params is the evaluator which translates
   // from requested metric names into the raw counters the GPU should collect.
@@ -174,7 +183,7 @@ void CuptiPMSamplingApi::configureCupti() {
   host.profilerType = CUPTI_PROFILER_TYPE_PM_SAMPLING;
   host.pChipName = chip.pChipName;
   host.pCounterAvailabilityImage = counterAvailabilityImage.data();
-  CUPTI_PM_CALL(cuptiProfilerHostInitialize(&host));
+  CUPTI_CALL_THROW(cuptiProfilerHostInitialize(&host));
   hostObject_ = host.pHostObject;
 
   // Translating the requested metric strings and passing them to CUPTI.
@@ -184,7 +193,7 @@ void CuptiPMSamplingApi::configureCupti() {
   addMetrics.pHostObject = hostObject_;
   addMetrics.ppMetricNames = metricNamePtrs_.data();
   addMetrics.numMetrics = metricNamePtrs_.size();
-  CUPTI_PM_CALL(cuptiProfilerHostConfigAddMetrics(&addMetrics));
+  CUPTI_CALL_THROW(cuptiProfilerHostConfigAddMetrics(&addMetrics));
 
   // Allocation/configuration for configImage. This describes
   // the raw (low-level) counters the sampler needs to collect for the requested
@@ -192,7 +201,7 @@ void CuptiPMSamplingApi::configureCupti() {
   CUpti_Profiler_Host_GetConfigImageSize_Params size{
       CUpti_Profiler_Host_GetConfigImageSize_Params_STRUCT_SIZE};
   size.pHostObject = hostObject_;
-  CUPTI_PM_CALL(cuptiProfilerHostGetConfigImageSize(&size));
+  CUPTI_CALL_THROW(cuptiProfilerHostGetConfigImageSize(&size));
 
   std::vector<uint8_t> configImage(size.configImageSize);
   CUpti_Profiler_Host_GetConfigImage_Params image{
@@ -200,7 +209,7 @@ void CuptiPMSamplingApi::configureCupti() {
   image.pHostObject = hostObject_;
   image.configImageSize = configImage.size();
   image.pConfigImage = configImage.data();
-  CUPTI_PM_CALL(cuptiProfilerHostGetConfigImage(&image));
+  CUPTI_CALL_THROW(cuptiProfilerHostGetConfigImage(&image));
 
   // Asking CUPTI how many passes it will take to fetch the requested metrics.
   // We do not want to make multiple passes, so reject the config if this is the
@@ -209,7 +218,7 @@ void CuptiPMSamplingApi::configureCupti() {
       CUpti_Profiler_Host_GetNumOfPasses_Params_STRUCT_SIZE};
   passes.configImageSize = configImage.size();
   passes.pConfigImage = configImage.data();
-  CUPTI_PM_CALL(cuptiProfilerHostGetNumOfPasses(&passes));
+  CUPTI_CALL_THROW(cuptiProfilerHostGetNumOfPasses(&passes));
   if (passes.numOfPasses != 1) {
     KINETO_THROW(
         std::runtime_error,
@@ -221,7 +230,7 @@ void CuptiPMSamplingApi::configureCupti() {
   CUpti_PmSampling_Enable_Params enable{
       CUpti_PmSampling_Enable_Params_STRUCT_SIZE};
   enable.deviceIndex = static_cast<size_t>(config_.deviceId);
-  CUPTI_PM_CALL(cuptiPmSamplingEnable(&enable));
+  CUPTI_CALL_THROW(cuptiPmSamplingEnable(&enable));
   samplingObject_ = enable.pPmSamplingObject;
 
   CUpti_PmSampling_SetConfig_Params setConfig{
@@ -235,7 +244,7 @@ void CuptiPMSamplingApi::configureCupti() {
   setConfig.triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL;
   setConfig.hwBufferAppendMode =
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST;
-  CUPTI_PM_CALL(cuptiPmSamplingSetConfig(&setConfig));
+  CUPTI_CALL_THROW(cuptiPmSamplingSetConfig(&setConfig));
 
   // Asking CUPTI how large the (counter) data image should be.
   // Since the data image has an opage CUPTI-defined layout, the size
@@ -246,7 +255,7 @@ void CuptiPMSamplingApi::configureCupti() {
   counterDataSize.pMetricNames = metricNamePtrs_.data();
   counterDataSize.numMetrics = metricNamePtrs_.size();
   counterDataSize.maxSamples = kMaxSamplesPerDecode;
-  CUPTI_PM_CALL(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
+  CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
 
   counterDataImage_.resize(counterDataSize.counterDataSize);
   resetImage();
@@ -258,7 +267,7 @@ void CuptiPMSamplingApi::resetImage() {
   params.pPmSamplingObject = samplingObject_;
   params.counterDataSize = counterDataImage_.size();
   params.pCounterData = counterDataImage_.data();
-  CUPTI_PM_CALL(cuptiPmSamplingCounterDataImageInitialize(&params));
+  CUPTI_CALL_THROW(cuptiPmSamplingCounterDataImageInitialize(&params));
 }
 
 void CuptiPMSamplingApi::start() {
@@ -266,7 +275,7 @@ void CuptiPMSamplingApi::start() {
   CUpti_PmSampling_Start_Params params{
       CUpti_PmSampling_Start_Params_STRUCT_SIZE};
   params.pPmSamplingObject = samplingObject_;
-  CUPTI_PM_CALL(cuptiPmSamplingStart(&params));
+  CUPTI_CALL_THROW(cuptiPmSamplingStart(&params));
 }
 
 CuptiPMSample CuptiPMSamplingApi::decodeSample(size_t sampleIndex) {
@@ -278,7 +287,7 @@ CuptiPMSample CuptiPMSamplingApi::decodeSample(size_t sampleIndex) {
   info.pCounterDataImage = counterDataImage_.data();
   info.counterDataImageSize = counterDataImage_.size();
   info.sampleIndex = sampleIndex;
-  CUPTI_PM_CALL(cuptiPmSamplingCounterDataGetSampleInfo(&info));
+  CUPTI_CALL_THROW(cuptiPmSamplingCounterDataGetSampleInfo(&info));
 
   CuptiPMSample sample{
       info.startTimestamp,
@@ -293,7 +302,7 @@ CuptiPMSample CuptiPMSamplingApi::decodeSample(size_t sampleIndex) {
   evaluate.ppMetricNames = metricNamePtrs_.data();
   evaluate.numMetrics = metricNamePtrs_.size();
   evaluate.pMetricValues = sample.values.data();
-  CUPTI_PM_CALL(cuptiProfilerHostEvaluateToGpuValues(&evaluate));
+  CUPTI_CALL_THROW(cuptiProfilerHostEvaluateToGpuValues(&evaluate));
   return sample;
 }
 
@@ -306,7 +315,7 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
   decode.pPmSamplingObject = samplingObject_;
   decode.pCounterDataImage = counterDataImage_.data();
   decode.counterDataImageSize = counterDataImage_.size();
-  CUPTI_PM_CALL(cuptiPmSamplingDecodeData(&decode));
+  CUPTI_CALL_THROW(cuptiPmSamplingDecodeData(&decode));
   if (decode.overflow != 0) {
     LOG_FIRST_N(WARNING, 3)
         << "CUPTI PM sampling hardware buffer overflowed; older samples were "
@@ -330,7 +339,7 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
       CUpti_PmSampling_GetCounterDataInfo_Params_STRUCT_SIZE};
   info.pCounterDataImage = counterDataImage_.data();
   info.counterDataImageSize = counterDataImage_.size();
-  CUPTI_PM_CALL(cuptiPmSamplingGetCounterDataInfo(&info));
+  CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataInfo(&info));
 
   samples.reserve(samples.size() + info.numCompletedSamples);
   for (size_t sampleIndex = 0; sampleIndex < info.numCompletedSamples;
@@ -346,7 +355,7 @@ void CuptiPMSamplingApi::stop() {
   ensureConfigured();
   CUpti_PmSampling_Stop_Params params{CUpti_PmSampling_Stop_Params_STRUCT_SIZE};
   params.pPmSamplingObject = samplingObject_;
-  CUPTI_PM_CALL(cuptiPmSamplingStop(&params));
+  CUPTI_CALL_THROW(cuptiPmSamplingStop(&params));
 }
 
 void CuptiPMSamplingApi::disable() {
@@ -378,6 +387,6 @@ void CuptiPMSamplingApi::disable() {
   config_.samplingInterval = std::chrono::nanoseconds::zero();
 }
 
-#undef CUPTI_PM_CALL
-
 } // namespace KINETO_NAMESPACE
+
+#pragma GCC diagnostic pop

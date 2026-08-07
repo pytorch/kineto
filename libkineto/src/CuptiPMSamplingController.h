@@ -35,7 +35,7 @@ class CuptiPMSamplingController {
   void stop();
 
   [[nodiscard]] const std::vector<std::string>& metricNames() const;
-  [[nodiscard]] std::vector<CuptiPMSample> samples() const;
+  [[nodiscard]] std::vector<CuptiPMSample> takeSamples();
 
  private:
   void decodeLoop();
@@ -50,7 +50,7 @@ class CuptiPMSamplingController {
   std::thread decodeThread_;
   std::atomic_bool stopRequested_{false};
   std::atomic_bool decodeFailed_{false};
-  mutable std::mutex samplesMutex_;
+  std::mutex samplesMutex_;
   std::mutex waitMutex_;
   std::condition_variable waitCondition_;
   std::vector<CuptiPMSample> samples_;

@@ -21,7 +21,9 @@ jobs:
         include:
           - cuda_version: "12.6"
             pm_sampling: "OFF"
-          - cuda_version: "13.2"
+          # TODO: Update to CUDA 13.2 once we can install a driver
+          # that satisfies the CUDA 13.2 container requirement.
+          - cuda_version: "13.0"
             pm_sampling: "ON"
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:

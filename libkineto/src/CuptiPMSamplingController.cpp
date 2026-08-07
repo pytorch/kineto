@@ -138,9 +138,9 @@ const std::vector<std::string>& CuptiPMSamplingController::metricNames() const {
   return config_.metricNames;
 }
 
-std::vector<CuptiPMSample> CuptiPMSamplingController::samples() const {
+std::vector<CuptiPMSample> CuptiPMSamplingController::takeSamples() {
   std::lock_guard<std::mutex> lock(samplesMutex_);
-  return samples_;
+  return std::exchange(samples_, {});
 }
 
 void CuptiPMSamplingController::decodeLoop() {

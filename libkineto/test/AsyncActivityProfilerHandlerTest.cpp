@@ -287,6 +287,11 @@ TEST(AsyncActivityProfilerHandler, AsyncTraceUsingIter) {
   runIterTest(0, 5, 5);
 }
 
+// Not run on Windows: the job metadata under test is read from the
+// environment, and this sets it with unix setenv. MSVC offers _putenv_s
+// instead, so enabling this case means giving the tests a portable way to set
+// an environment variable.
+#ifndef _WIN32
 TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   std::vector<std::string> log_modules(
       {"CuptiActivityProfiler.cpp", "output_json.cpp"});
@@ -369,6 +374,7 @@ TEST(AsyncActivityProfilerHandler, MetadataJsonFormatingTest) {
   unsetenv("PT_PROFILER_JOB_VERSION");
   unsetenv("PT_PROFILER_JOB_ATTEMPT_INDEX");
 }
+#endif // !_WIN32
 
 TEST(AsyncActivityProfilerHandler, Cancel) {
   GenericActivityProfiler profiler(/*cpu only*/ true);

@@ -19,13 +19,16 @@
 #include <system_error>
 #include <utility>
 
+// Both platforms take the open flags from fcntl.h and the permission bits from
+// sys/stat.h. What differs is where the call itself lives: _sopen_s and its
+// share mode come from io.h and share.h, POSIX open and close from unistd.h.
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #ifdef _WIN32
 #include <io.h>
 #include <share.h>
-#include <sys/stat.h>
 #else
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #endif
 

@@ -109,6 +109,7 @@ CUPTI_PM_SAMPLING_API_SRCS = [
 
 CUPTI_PM_SAMPLING_PROFILER_SRCS = [
     "src/CuptiPMSamplingController.cpp",
+    "src/CuptiPMSamplingProfiler.cpp",
 ]
 
 WEAK_SYMBOLS_SRCS = [

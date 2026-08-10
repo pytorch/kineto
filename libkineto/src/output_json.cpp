@@ -675,12 +675,30 @@ void ChromeTraceLogger::handleCounterEvent(
     return;
   }
 
+  int64_t ts = transToRelativeTime(op.timestamp());
+  // Add a special track in Perfetto for displaying hardware counters
+  if (op.type() == ActivityType::HARDWARE_COUNTERS) {
+    const auto pid = fmt::format(R"("GPU {} Counters")", op.deviceId());
+    const auto tid = std::to_string(sanitizeTid(op.resourceId()));
+    for (const auto& [name, value] : op.counterValues()) {
+      ArgsBuilder args;
+      args.addRaw("", fmt::format("{}", value));
+      writeCounterEvent(
+          /*cat=*/toString(op.type()),
+          /*name=*/name,
+          /*pid=*/pid,
+          /*tid=*/tid,
+          /*ts=*/ts,
+          /*args=*/args);
+    }
+    return;
+  }
+
   ArgsBuilder args;
   for (const auto& [name, value] : op.counterValues()) {
     args.addRaw(name, fmt::format("{}", value));
   }
 
-  int64_t ts = transToRelativeTime(op.timestamp());
   writeCounterEvent(
       /*cat=*/toString(op.type()),
       /*name=*/op.name(),

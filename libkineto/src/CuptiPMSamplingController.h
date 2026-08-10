@@ -31,9 +31,11 @@ class CuptiPMSamplingController {
   ~CuptiPMSamplingController();
 
   [[nodiscard]] bool prepare();
-  [[nodiscard]] bool start();
-  void stop();
+  void start();
+  // Returns whether collection was active when stop() was called.
+  [[nodiscard]] bool stop();
 
+  [[nodiscard]] int32_t deviceId() const;
   [[nodiscard]] const std::vector<std::string>& metricNames() const;
   [[nodiscard]] std::vector<CuptiPMSample> takeSamples();
 

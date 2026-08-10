@@ -45,7 +45,7 @@ CuptiPMSamplingController::CuptiPMSamplingController(
     : config_(std::move(config)) {}
 
 CuptiPMSamplingController::~CuptiPMSamplingController() {
-  stop();
+  static_cast<void>(stop());
 }
 
 bool CuptiPMSamplingController::prepare() {
@@ -76,14 +76,14 @@ bool CuptiPMSamplingController::prepare() {
   return true;
 }
 
-bool CuptiPMSamplingController::start() {
+void CuptiPMSamplingController::start() {
   if (!prepared_) {
     LOG(WARNING) << "CUPTI PM sampling is not prepared";
-    return false;
+    return;
   }
   if (active_) {
     LOG(WARNING) << "CUPTI PM sampling is already running";
-    return false;
+    return;
   }
 
   stopRequested_.store(false, std::memory_order_relaxed);
@@ -95,12 +95,11 @@ bool CuptiPMSamplingController::start() {
     decodeThread_ = std::thread(&CuptiPMSamplingController::decodeLoop, this);
   } catch (...) {
     logCurrentException("Failed to start CUPTI PM sampling");
-    stop();
+    static_cast<void>(stop());
   }
-  return active_;
 }
 
-void CuptiPMSamplingController::stop() {
+bool CuptiPMSamplingController::stop() {
   // Notify the decode thread and join it if possible
   if (decodeThread_.joinable()) {
     {
@@ -113,9 +112,10 @@ void CuptiPMSamplingController::stop() {
     decodeThread_.join();
   }
   if (!prepared_) {
-    return;
+    return false;
   }
 
+  const bool wasActive = active_;
   // active_ indicates that the PM Sampling API was primed and collected samples
   // so we need to stop() and drain all remaining items in the hardware buffer.
   if (active_) {
@@ -132,6 +132,11 @@ void CuptiPMSamplingController::stop() {
   }
   api_.disable();
   prepared_ = false;
+  return wasActive;
+}
+
+int32_t CuptiPMSamplingController::deviceId() const {
+  return config_.deviceId;
 }
 
 const std::vector<std::string>& CuptiPMSamplingController::metricNames() const {

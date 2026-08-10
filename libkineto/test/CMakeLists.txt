@@ -241,3 +241,12 @@ target_include_directories(OutputJsonTest PRIVATE
     "${LIBKINETO_DIR}/include"
     "${LIBKINETO_DIR}/src")
 gtest_discover_tests(OutputJsonTest)
+
+# Every target defined in this directory is a test executable, so the
+# directory's own target list is the set to install. Reading it here, at the
+# end of the file, is what makes a newly added test install itself.
+if(KINETO_INSTALL_TESTS)
+    get_property(KINETO_TEST_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    install(TARGETS ${KINETO_TEST_TARGETS}
+        DESTINATION "${KINETO_TEST_INSTALL_DIR}")
+endif()

@@ -9,8 +9,10 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,12 +52,42 @@ struct RecordingConfigHandler : ConfigLoader::ConfigHandler {
 };
 
 // Canned daemon responses and recorded queries. Owned by the test; the fake
-// below holds a reference to it. The poll thread writes the recorded fields, so
-// a test reads them only after stopping (joining) the thread.
+// below holds a reference to it.
+//
+// The poll thread writes the recorded fields under mutex_, which also lets a
+// test block until a given number of reads have happened. Waiting on reads is
+// the only sound way to observe poll cadence: the thread's iteration counter
+// advances once per loop whether or not that loop read the on-demand config, so
+// a test that waits for two iterations may still have seen one read. Fields
+// read after the thread is stopped (joined) need no lock.
 struct DaemonPollProbe {
   std::string onDemandConfig;
   int readOnDemandCalls{0};
   bool lastActivitiesRequested{false};
+
+  // Called by the fake on the poll thread for every on-demand read.
+  void recordRead(bool activities) {
+    {
+      std::scoped_lock lock(mutex_);
+      ++readOnDemandCalls;
+      lastActivitiesRequested = activities;
+    }
+    readCondVar_.notify_all();
+  }
+
+  // Blocks until the daemon has been read at least target times or the timeout
+  // elapses. Returns false on timeout.
+  [[nodiscard]] bool waitForReads(
+      int target,
+      std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return readCondVar_.wait_for(
+        lock, timeout, [this, target] { return readOnDemandCalls >= target; });
+  }
+
+ private:
+  std::mutex mutex_;
+  std::condition_variable readCondVar_;
 };
 
 // Stands in for the dynolog IPC config source, so the real background poll
@@ -69,8 +101,7 @@ class FakeDaemonConfigLoader : public IDaemonConfigLoader {
   }
 
   std::string readOnDemandConfig(bool activities) override {
-    ++probe_.readOnDemandCalls;
-    probe_.lastActivitiesRequested = activities;
+    probe_.recordRead(activities);
     return probe_.onDemandConfig;
   }
 
@@ -86,7 +117,9 @@ class FakeDaemonConfigLoader : public IDaemonConfigLoader {
 //     (started by addHandler) reads nothing and never calls the handlers.
 //   * Daemon-poll tests install a FakeDaemonConfigLoader factory, start the
 //     real poll thread, and wait on the thread's iteration counter to observe
-//     real poll iterations deterministically.
+//     real poll iterations deterministically. A test that asserts on poll
+//     cadence waits on DaemonPollProbe::waitForReads instead; see the comment
+//     on startPollingAndWait for where the iteration counter is sound.
 // The singleton persists across tests, so TearDown stops the thread, drops the
 // injected loader, clears the factory, and unregisters handlers.
 class ConfigLoaderTest : public ::testing::Test {
@@ -120,6 +153,13 @@ class ConfigLoaderTest : public ::testing::Test {
   // Registers handler as an ActivityProfiler handler (which starts the poll
   // thread) and blocks until the thread has completed loops iterations.
   // Returns false if that count is not reached before the timeout.
+  //
+  // Callers pass loops=1 and may then assume the daemon was read once: a fresh
+  // thread backdates both load deadlines well into the past, so its first
+  // iteration always reloads the base config and reads the on-demand config
+  // with no wait. That reasoning does not extend to later iterations, which
+  // read only if their deadline has genuinely passed. A test that needs a
+  // second read waits on DaemonPollProbe::waitForReads.
   [[nodiscard]] bool startPollingAndWait(
       RecordingConfigHandler& handler,
       uint64_t loops) {
@@ -244,6 +284,14 @@ TEST_F(ConfigLoaderTest, ThreadPollsDaemonAndDispatchesOnDemandConfig) {
 // The thread re-polls the on-demand config on its update cadence, so over a
 // couple of intervals it reads the daemon more than once.
 //
+// This waits on the probe's read count rather than the thread's iteration
+// counter. An iteration can complete without reading: the thread wakes from a
+// wait_for measured against the steady clock, then gates the read on a
+// system_clock deadline, so a spurious wakeup or a small divergence between the
+// two clocks leaves it a hair short of the deadline. It skips the read, bumps
+// the iteration counter, and reads on the following iteration instead. Waiting
+// for two iterations therefore does not mean two reads have happened.
+//
 // This runs at the real cadence, so it takes a few seconds. It cannot be sped
 // up by injecting a smaller ON_DEMAND_CONFIG_UPDATE_INTERVAL_SECS via the fake
 // daemon's base config: updateBaseConfig reads the local config file first and
@@ -257,21 +305,19 @@ TEST_F(ConfigLoaderTest, ThreadRepeatedlyPollsOnDemandConfig) {
   installFakeDaemon(probe);
 
   RecordingConfigHandler handler;
-  const uint64_t base = loader().updateThreadLoopCountForTesting();
   registerHandler(ConfigLoader::ConfigKind::ActivityProfiler, &handler);
 
-  // The first poll is immediate; after it, the thread's on-demand interval
-  // reflects the loaded base config. Size the wait for the second poll to that
-  // live interval (with slack) so a host that configured a larger interval does
-  // not cause a spurious timeout.
-  ASSERT_TRUE(waitForLoopCount(base + 1));
+  // The first read is immediate; the iteration that performs it loads the base
+  // config first, so once it lands the thread's on-demand interval reflects
+  // that config. Size the wait for the second read to that live interval (with
+  // slack) so a host that configured a larger interval does not cause a
+  // spurious timeout.
+  ASSERT_TRUE(probe.waitForReads(1));
   const auto timeout = std::chrono::duration_cast<std::chrono::milliseconds>(
       loader().onDemandConfigUpdateIntervalForTesting() * 3 +
       std::chrono::seconds(5));
-  ASSERT_TRUE(waitForLoopCount(base + 2, timeout));
+  EXPECT_TRUE(probe.waitForReads(2, timeout));
   loader().stopUpdateThread();
-
-  EXPECT_GE(probe.readOnDemandCalls, 2);
 }
 
 // An empty on-demand response (no config posted) dispatches nothing.

@@ -11,39 +11,111 @@
 
 #include <gtest/gtest.h>
 
-#include <unistd.h>
-#include <cstdlib>
+#include <filesystem>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
-#ifdef __linux__
+#ifdef _WIN32
+#include <io.h>
+#include <share.h>
+#include <sys/stat.h>
+#else
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 namespace libkineto::test {
 
-TempTraceFile::TempTraceFile(std::string_view prefix, std::string_view suffix) {
-  std::string nameTemplate;
-  nameTemplate.reserve(5 + prefix.size() + 6 + suffix.size());
-  nameTemplate += "/tmp/";
-  nameTemplate += prefix;
-  nameTemplate += "XXXXXX";
-  nameTemplate += suffix;
+namespace {
 
-  const int fd = mkstemps(nameTemplate.data(), static_cast<int>(suffix.size()));
-  if (fd < 0) {
-    KINETO_THROW(std::runtime_error, "mkstemps failed for " + nameTemplate);
+// Creates path only if nothing is there yet, which is the property mkstemps
+// provides for the name it settles on. Returns false when the name is already
+// taken so the caller can pick another, and swallows every other failure the
+// same way: the caller reports after exhausting its attempts.
+bool createExclusive(const std::string& path) {
+#ifdef _WIN32
+  int fd = -1;
+  const errno_t err = _sopen_s(
+      &fd,
+      path.c_str(),
+      _O_CREAT | _O_EXCL | _O_RDWR,
+      _SH_DENYNO,
+      _S_IREAD | _S_IWRITE);
+  if (err != 0) {
+    return false;
   }
-  close(fd);
-  path_ = std::move(nameTemplate);
+  _close(fd);
+#else
+  const int fd =
+      ::open(path.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  if (fd < 0) {
+    return false;
+  }
+  ::close(fd);
+#endif
+  return true;
+}
+
+// Stands in for the six X characters mkstemps replaces. Uniqueness does not
+// rest on this being unpredictable: exclusive creation is what guarantees the
+// caller owns the file, and this only has to keep collisions rare.
+std::string randomNameComponent() {
+  static constexpr std::string_view kChars =
+      "abcdefghijklmnopqrstuvwxyz0123456789";
+  static thread_local std::mt19937 engine{std::random_device{}()};
+  std::uniform_int_distribution<size_t> pick(0, kChars.size() - 1);
+
+  std::string component(6, '\0');
+  for (char& c : component) {
+    c = kChars[pick(engine)];
+  }
+  return component;
+}
+
+void removeQuietly(const std::string& path) {
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+}
+
+} // namespace
+
+TempTraceFile::TempTraceFile(std::string_view prefix, std::string_view suffix) {
+  const std::filesystem::path dir = std::filesystem::temp_directory_path();
+
+  // Bounded so that a temp directory we cannot write to reports that instead
+  // of spinning. Reaching the limit on collisions alone is not realistic.
+  constexpr int kMaxAttempts = 100;
+  for (int attempt = 0; attempt < kMaxAttempts; ++attempt) {
+    std::string name;
+    name.reserve(prefix.size() + 6 + suffix.size());
+    name += prefix;
+    name += randomNameComponent();
+    name += suffix;
+
+    // generic_string keeps forward slashes on Windows, which its file APIs
+    // accept. Callers hand this path to Kineto as a log file and read it back
+    // out of trace JSON, and a separator that needs no escaping travels
+    // through both unchanged.
+    const std::string candidate = (dir / name).generic_string();
+    if (createExclusive(candidate)) {
+      path_ = candidate;
+      return;
+    }
+  }
+
+  KINETO_THROW(
+      std::runtime_error,
+      "could not create a temporary trace file under " + dir.generic_string());
 }
 
 TempTraceFile::~TempTraceFile() {
   if (!path_.empty()) {
-    unlink(path_.c_str());
+    removeQuietly(path_);
   }
 }
 
@@ -55,7 +127,7 @@ TempTraceFile::TempTraceFile(TempTraceFile&& other) noexcept
 TempTraceFile& TempTraceFile::operator=(TempTraceFile&& other) noexcept {
   if (this != &other) {
     if (!path_.empty()) {
-      unlink(path_.c_str());
+      removeQuietly(path_);
     }
     path_ = std::move(other.path_);
     other.path_.clear();

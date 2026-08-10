@@ -80,8 +80,10 @@ std::string ConfigLoader::readOnDemandConfigFromDaemon() {
 
 ConfigLoader::ConfigLoader()
     : configUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
-      // on-demand config will be overwritten by the value read from the regular
-      // config so the initial value is not important
+      // Placeholder only. The poll loop replaces this on its first pass, which
+      // always runs the base-config branch, so the value here never governs a
+      // real poll - but keep it a sane duration rather than zero, since it is
+      // what a loop that somehow skipped that branch would fall back to.
       onDemandConfigUpdateIntervalSecs_(kConfigUpdateIntervalSecs),
       stopFlag_(false) {}
 
@@ -139,11 +141,10 @@ bool ConfigLoader::waitForUpdateThreadLoopCountForTesting(
 }
 
 std::chrono::seconds ConfigLoader::onDemandConfigUpdateIntervalForTesting() {
-  std::scoped_lock lock(configLock_);
-  // config_ is the authoritative source; updateConfigThread caches its value
-  // into onDemandConfigUpdateIntervalSecs_ on each base-config refresh.
-  return config_ ? config_->onDemandConfigUpdateIntervalSecs()
-                 : onDemandConfigUpdateIntervalSecs_;
+  // Reports the cached cadence rather than config_'s, because that is the one
+  // the poll loop schedules against. The two agree once the loop has made a
+  // base-config pass.
+  return onDemandConfigUpdateIntervalSecs_.load();
 }
 
 ConfigLoader::~ConfigLoader() {
@@ -247,10 +248,10 @@ void ConfigLoader::updateConfigThread() {
   // This can potentially sleep for long periods of time, so allow
   // the destructor to wake it to avoid a 5-minute long destruct period.
   for (;;) {
-    auto interval =
-        std::min(
-            configUpdateIntervalSecs_ + prev_config_load_time,
-            onDemandConfigUpdateIntervalSecs_ + prev_on_demand_load_time) -
+    auto interval = std::min(
+                        configUpdateIntervalSecs_ + prev_config_load_time,
+                        onDemandConfigUpdateIntervalSecs_.load() +
+                            prev_on_demand_load_time) -
         steady_clock::now();
     if (interval.count() > 0) {
       std::unique_lock<std::mutex> lock(updateThreadMutex_);
@@ -274,15 +275,21 @@ void ConfigLoader::updateConfigThread() {
       prev_config_load_time = now;
       try {
         updateBaseConfig();
-        onDemandConfigUpdateIntervalSecs_ =
-            config_->onDemandConfigUpdateIntervalSecs();
       } catch (const std::exception& e) {
         LOG(ERROR) << "Skipping base config update after error: " << e.what();
       } catch (...) {
         LOG(ERROR) << "Skipping base config update after unknown error";
       }
+      // Outside the guard on purpose. A failed reload leaves the previous
+      // config in force, and its cadence is the one to keep polling at; taking
+      // this refresh with the reload would instead strand the interval at the
+      // placeholder the constructor starts it on, which is the base-config
+      // period and far slower than any on-demand config asks for.
+      onDemandConfigUpdateIntervalSecs_ =
+          config_->onDemandConfigUpdateIntervalSecs();
     }
-    if (now > prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_) {
+    if (now >
+        prev_on_demand_load_time + onDemandConfigUpdateIntervalSecs_.load()) {
       prev_on_demand_load_time = now;
       onDemandConfig = std::make_unique<Config>();
       try {

@@ -123,6 +123,16 @@ TEST(ConfigLoaderPollThreadExceptionTest, ConfigUpdateExceptionDoesNotCrash) {
   // (no std::terminate) also shows the on-demand branch caught it.
   ASSERT_TRUE(onDemandReached->waitFor(std::chrono::seconds(30)))
       << "poll thread did not survive the base-config exception";
+
+  // The failed reload leaves the default base config in force, so the loop must
+  // poll at that config's cadence. Refreshing the cadence only on a successful
+  // reload would stand it at the constructor's placeholder -- the base-config
+  // period, minutes rather than seconds -- and quietly throttle on-demand
+  // polling on any host whose base-config reads keep failing.
+  // Compared as counts so a failure reports seconds instead of a byte dump.
+  EXPECT_EQ(
+      ConfigLoader::instance().onDemandConfigUpdateIntervalForTesting().count(),
+      Config().onDemandConfigUpdateIntervalSecs().count());
 }
 
 } // namespace

@@ -820,6 +820,7 @@ void ChromeTraceLogger::handleActivity(const libkineto::ITraceActivity& op) {
   }
 
   switch (op.type()) {
+    case ActivityType::HARDWARE_COUNTERS:
     case ActivityType::MTIA_COUNTERS:
     case ActivityType::XPU_SCOPE_PROFILER:
       handleCounterEvent(op);

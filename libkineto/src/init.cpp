@@ -21,6 +21,9 @@
 #include "CuptiActivityApi.h"
 #include "CuptiCallbackApi.h"
 #endif
+#ifdef HAS_CUPTI_PM_SAMPLING
+#include "CuptiPMSamplingProfiler.h"
+#endif
 #ifdef HAS_ROCTRACER
 #include "RocprofLogger.h"
 #endif
@@ -155,6 +158,15 @@ void libkineto_init(bool cpuOnly, [[maybe_unused]] bool logOnError) {
   ConfigLoader& config_loader = libkineto::api().configLoader();
   libkineto::api().registerProfiler(
       std::make_unique<ActivityProfilerProxy>(cpuOnly, config_loader));
+
+#ifdef HAS_CUPTI_PM_SAMPLING
+  if (!cpuOnly) {
+    libkineto::api().registerProfilerFactory(
+        []() -> std::unique_ptr<IActivityProfiler> {
+          return std::make_unique<CuptiPMSamplingProfiler>();
+        });
+  }
+#endif
 
 #ifdef HAS_XPUPTI
   if (!cpuOnly) {

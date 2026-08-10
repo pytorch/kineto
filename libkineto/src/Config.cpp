@@ -52,6 +52,8 @@ constexpr size_t kDefaultCuptiDeviceBufferPoolLimit(20);
 constexpr char kActivitiesEnabledKey[] = "ACTIVITIES_ENABLED";
 constexpr char kCuptiPerThreadBufferEnabledKey[] =
     "CUPTI_PER_THREAD_BUFFER_ENABLED";
+constexpr char kCuptiPMSamplingMetricsKey[] = "CUPTI_PM_SAMPLING_METRICS";
+constexpr char kCuptiPMSamplingDeviceIdKey[] = "CUPTI_PM_SAMPLING_DEVICE_ID";
 constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
 constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
 constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
@@ -345,6 +347,10 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     activityProfilerEnabled_ = toBool(val);
   } else if (!name.compare(kCuptiPerThreadBufferEnabledKey)) {
     perThreadBufferEnabled_ = toBool(val);
+  } else if (!name.compare(kCuptiPMSamplingMetricsKey)) {
+    cuptiPMSamplingMetricNames_ = splitAndTrim(val, ',');
+  } else if (!name.compare(kCuptiPMSamplingDeviceIdKey)) {
+    cuptiPMSamplingDeviceId_ = toInt32(val);
   } else if (!name.compare(kProfileMemory)) {
     memoryProfilerEnabled_ = toBool(val);
     if (memoryProfilerEnabled_) {

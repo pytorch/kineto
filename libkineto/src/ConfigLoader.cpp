@@ -252,7 +252,13 @@ void ConfigLoader::updateConfigThread() {
         system_clock::now();
     if (interval.count() > 0) {
       std::unique_lock<std::mutex> lock(updateThreadMutex_);
-      updateThreadCondVar_.wait_for(lock, interval);
+      // Waiting on the stop flag rather than the bare timeout closes a lost
+      // wakeup: stopThread() raises the flag before it notifies, so a notify
+      // that lands while this thread is still on its way into the wait would
+      // otherwise go unheard and hold the join for a full interval - the very
+      // stall the comment above says the notify exists to avoid.
+      updateThreadCondVar_.wait_for(
+          lock, interval, [this] { return stopFlag_.load(); });
     }
     if (stopFlag_) {
       break;

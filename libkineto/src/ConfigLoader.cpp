@@ -70,8 +70,7 @@ ConfigLoader& ConfigLoader::instance() {
 }
 
 // return an empty string if polling gets any errors. Otherwise a config string.
-std::string ConfigLoader::readOnDemandConfigFromDaemon(
-    [[maybe_unused]] time_point<system_clock> now) {
+std::string ConfigLoader::readOnDemandConfigFromDaemon() {
   if (!daemonConfigLoader_) {
     return "";
   }
@@ -208,10 +207,8 @@ void ConfigLoader::updateBaseConfig() {
   }
 }
 
-void ConfigLoader::configureFromDaemon(
-    time_point<system_clock> now,
-    Config& config) {
-  const std::string config_str = readOnDemandConfigFromDaemon(now);
+void ConfigLoader::configureFromDaemon(Config& config) {
+  const std::string config_str = readOnDemandConfigFromDaemon();
   if (config_str.empty()) {
     return;
   }
@@ -236,9 +233,14 @@ void ConfigLoader::updateConfigThread() {
   // They have different update intervals (on demand is more frequent).
   // Besides, on-demand update frequency can be configured via base config.
 
+  // Poll cadence is measured on the steady clock. These deadlines are pure
+  // elapsed-time arithmetic, and the wall clock can jump - an NTP correction
+  // that moves it backwards would otherwise hold off the next reload for the
+  // size of the jump.
+  //
   // initialze with some time buffer in the past
   auto prev_config_load_time =
-      system_clock::now() - configUpdateIntervalSecs_ * 2;
+      steady_clock::now() - configUpdateIntervalSecs_ * 2;
   auto prev_on_demand_load_time = prev_config_load_time;
   auto onDemandConfig = std::make_unique<Config>();
 
@@ -249,7 +251,7 @@ void ConfigLoader::updateConfigThread() {
         std::min(
             configUpdateIntervalSecs_ + prev_config_load_time,
             onDemandConfigUpdateIntervalSecs_ + prev_on_demand_load_time) -
-        system_clock::now();
+        steady_clock::now();
     if (interval.count() > 0) {
       std::unique_lock<std::mutex> lock(updateThreadMutex_);
       // Waiting on the stop flag rather than the bare timeout closes a lost
@@ -263,7 +265,7 @@ void ConfigLoader::updateConfigThread() {
     if (stopFlag_) {
       break;
     }
-    auto now = system_clock::now();
+    auto now = steady_clock::now();
     // This runs on a bare background thread: an escaped exception would
     // terminate the process, so config-update failures are caught and skipped.
     // Advance the load timestamps before the guarded work so a persistent
@@ -284,7 +286,7 @@ void ConfigLoader::updateConfigThread() {
       prev_on_demand_load_time = now;
       onDemandConfig = std::make_unique<Config>();
       try {
-        configureFromDaemon(now, *onDemandConfig);
+        configureFromDaemon(*onDemandConfig);
       } catch (const std::exception& e) {
         LOG(ERROR) << "Skipping on-demand config update after error: "
                    << e.what();

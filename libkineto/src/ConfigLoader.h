@@ -146,12 +146,9 @@ class ConfigLoader {
   void updateBaseConfig();
 
   // Create configuration when receiving request from a daemon
-  void configureFromDaemon(
-      std::chrono::time_point<std::chrono::system_clock> now,
-      Config& config);
+  void configureFromDaemon(Config& config);
 
-  std::string readOnDemandConfigFromDaemon(
-      std::chrono::time_point<std::chrono::system_clock> now);
+  std::string readOnDemandConfigFromDaemon();
 
   const char* customConfigFileName();
 

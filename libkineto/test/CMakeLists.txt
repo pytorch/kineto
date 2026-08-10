@@ -51,6 +51,10 @@ target_link_libraries(ActivityProfilerControllerTest PRIVATE
 gtest_discover_tests(ActivityProfilerControllerTest)
 
 # AsyncActivityProfilerHandlerTest
+# Builds on Windows, but one of its cases does not: MetadataJsonFormatingTest
+# sets the environment with unix setenv, so the source compiles that case out
+# under _WIN32. The exclusion is per test rather than per target here because
+# the other fifteen cases run there fine.
 add_executable(AsyncActivityProfilerHandlerTest
     AsyncActivityProfilerHandlerTest.cpp
     TestUtils.cpp)

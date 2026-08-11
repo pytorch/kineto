@@ -101,7 +101,8 @@ void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
       profilerInitialized_) {
     KINETO_THROW(
         std::runtime_error,
-        "Cannot configure CUPTI PM sampling after cleanup failed");
+        "Cannot configure CUPTI PM sampling before the previous "
+        "configuration is fully disabled");
   }
   config_ = config;
 
@@ -371,6 +372,9 @@ void CuptiPMSamplingApi::stop() {
 }
 
 void CuptiPMSamplingApi::disable() {
+  // When releasing resources, stop at the first failure to avoid
+  // a partially torn-down configuration and preserve the remaining
+  // state for a later disable() retry.
   if (samplingObject_ != nullptr) {
     CUpti_PmSampling_Disable_Params params{
         CUpti_PmSampling_Disable_Params_STRUCT_SIZE};

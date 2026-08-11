@@ -9,6 +9,7 @@
 #include "CuptiPMSamplingProfiler.h"
 
 #include <algorithm>
+#include <chrono>
 #include <set>
 #include <string>
 #include <utility>
@@ -25,6 +26,9 @@ namespace {
 const std::string kProfilerName{"CUPTI PM Sampling"};
 const std::set<libkineto::ActivityType> kSupportedActivities{
     libkineto::ActivityType::HARDWARE_COUNTERS};
+// TODO: This is a temporary constant -- we need to tune the interval by
+// hardware type to prevent hardware buffer overflow and sample loss.
+constexpr std::chrono::milliseconds kSamplingInterval{1};
 
 } // namespace
 
@@ -130,9 +134,6 @@ std::unique_ptr<libkineto::CpuTraceBuffer> CuptiPMSamplingSession::
   return buffer;
 }
 
-CuptiPMSamplingProfiler::CuptiPMSamplingProfiler(CuptiPMSamplingConfig config)
-    : config_(std::move(config)) {}
-
 const std::string& CuptiPMSamplingProfiler::name() const {
   return kProfilerName;
 }
@@ -145,13 +146,28 @@ const std::set<libkineto::ActivityType>& CuptiPMSamplingProfiler::
 std::unique_ptr<libkineto::IActivityProfilerSession> CuptiPMSamplingProfiler::
     configure(
         const std::set<libkineto::ActivityType>& activityTypes,
-        const libkineto::Config& /*config*/) {
+        const libkineto::Config& config) {
   if (activityTypes.find(libkineto::ActivityType::HARDWARE_COUNTERS) ==
       activityTypes.end()) {
     return nullptr;
   }
 
-  auto session = std::make_unique<CuptiPMSamplingSession>(config_);
+  // Translate from the Kineto config into the sampling-specific config
+  const auto& metricNames = config.cuptiPMSamplingMetricNames();
+  if (metricNames.empty()) {
+    return nullptr;
+  }
+
+  const auto deviceId = config.cuptiPMSamplingDeviceId();
+  if (deviceId < 0) {
+    LOG(WARNING) << "CUPTI PM sampling requires a nonnegative "
+                    "CUPTI_PM_SAMPLING_DEVICE_ID";
+    return nullptr;
+  }
+
+  const CuptiPMSamplingConfig pmConfig{
+      deviceId, metricNames, kSamplingInterval};
+  auto session = std::make_unique<CuptiPMSamplingSession>(pmConfig);
   if (!session->prepare()) {
     return nullptr;
   }

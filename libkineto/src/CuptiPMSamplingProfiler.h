@@ -53,8 +53,6 @@ class CuptiPMSamplingSession final
 // IActivityProfiler, so this is the simplest way to introduce a new profiler.
 class CuptiPMSamplingProfiler final : public libkineto::IActivityProfiler {
  public:
-  explicit CuptiPMSamplingProfiler(CuptiPMSamplingConfig config);
-
   [[nodiscard]] const std::string& name() const override;
   [[nodiscard]] const std::set<libkineto::ActivityType>& availableActivities()
       const override;
@@ -66,9 +64,6 @@ class CuptiPMSamplingProfiler final : public libkineto::IActivityProfiler {
       int64_t durationMs,
       const std::set<libkineto::ActivityType>& activityTypes,
       const libkineto::Config& config) override;
-
- private:
-  CuptiPMSamplingConfig config_;
 };
 
 } // namespace KINETO_NAMESPACE

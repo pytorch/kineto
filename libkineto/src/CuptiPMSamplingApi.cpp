@@ -13,6 +13,7 @@
 #include <cuda_runtime_api.h>
 #include <cupti_pmsampling.h>
 #include <cupti_profiler_host.h>
+#include <cupti_profiler_target.h>
 #include <cupti_target.h>
 
 #include "DeviceUtil.h"
@@ -88,17 +89,20 @@ constexpr uint32_t kMaxSamplesPerDecode = 1024;
 
 CuptiPMSamplingApi::~CuptiPMSamplingApi() {
   disable();
-  if (samplingObject_ != nullptr || hostObject_ != nullptr) {
+  if (samplingObject_ != nullptr || hostObject_ != nullptr ||
+      profilerInitialized_) {
     LOG(WARNING) << "CUPTI PM sampling cleanup failed during destruction; "
                     "CUPTI resources may leak";
   }
 }
 
 void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
-  if (samplingObject_ != nullptr || hostObject_ != nullptr) {
+  if (samplingObject_ != nullptr || hostObject_ != nullptr ||
+      profilerInitialized_) {
     KINETO_THROW(
         std::runtime_error,
-        "Cannot configure CUPTI PM sampling after cleanup failed");
+        "Cannot configure CUPTI PM sampling before the previous "
+        "configuration is fully disabled");
   }
   config_ = config;
 
@@ -126,6 +130,11 @@ void CuptiPMSamplingApi::ensureConfigured() const {
 }
 
 void CuptiPMSamplingApi::configureCupti() {
+  CUpti_Profiler_Initialize_Params params{
+      CUpti_Profiler_Initialize_Params_STRUCT_SIZE};
+  CUPTI_CALL_THROW(cuptiProfilerInitialize(&params));
+  profilerInitialized_ = true;
+
   // CUpti_Device_GetChipName_Params stores device info used in other CUPTI
   // calls.
   CUpti_Device_GetChipName_Params chip{
@@ -203,12 +212,12 @@ void CuptiPMSamplingApi::configureCupti() {
   size.pHostObject = hostObject_;
   CUPTI_CALL_THROW(cuptiProfilerHostGetConfigImageSize(&size));
 
-  std::vector<uint8_t> configImage(size.configImageSize);
+  configImage_.resize(size.configImageSize);
   CUpti_Profiler_Host_GetConfigImage_Params image{
       CUpti_Profiler_Host_GetConfigImage_Params_STRUCT_SIZE};
   image.pHostObject = hostObject_;
-  image.configImageSize = configImage.size();
-  image.pConfigImage = configImage.data();
+  image.configImageSize = configImage_.size();
+  image.pConfigImage = configImage_.data();
   CUPTI_CALL_THROW(cuptiProfilerHostGetConfigImage(&image));
 
   // Asking CUPTI how many passes it will take to fetch the requested metrics.
@@ -216,8 +225,8 @@ void CuptiPMSamplingApi::configureCupti() {
   // case.
   CUpti_Profiler_Host_GetNumOfPasses_Params passes{
       CUpti_Profiler_Host_GetNumOfPasses_Params_STRUCT_SIZE};
-  passes.configImageSize = configImage.size();
-  passes.pConfigImage = configImage.data();
+  passes.configImageSize = configImage_.size();
+  passes.pConfigImage = configImage_.data();
   CUPTI_CALL_THROW(cuptiProfilerHostGetNumOfPasses(&passes));
   if (passes.numOfPasses != 1) {
     KINETO_THROW(
@@ -236,8 +245,8 @@ void CuptiPMSamplingApi::configureCupti() {
   CUpti_PmSampling_SetConfig_Params setConfig{
       CUpti_PmSampling_SetConfig_Params_STRUCT_SIZE};
   setConfig.pPmSamplingObject = samplingObject_;
-  setConfig.configSize = configImage.size();
-  setConfig.pConfig = configImage.data();
+  setConfig.configSize = configImage_.size();
+  setConfig.pConfig = configImage_.data();
   setConfig.hardwareBufferSize = kHardwareBufferSizeBytes;
   setConfig.samplingInterval =
       static_cast<uint64_t>(config_.samplingInterval.count());
@@ -324,15 +333,19 @@ bool CuptiPMSamplingApi::decode(std::vector<CuptiPMSample>& samples) {
 
   const auto reason = decode.decodeStopReason;
   bool isBufferDrained;
-  if (reason == CUPTI_PM_SAMPLING_DECODE_STOP_REASON_END_OF_RECORDS) {
-    isBufferDrained = true;
-  } else if (reason == CUPTI_PM_SAMPLING_DECODE_STOP_REASON_COUNTER_DATA_FULL) {
-    isBufferDrained = false;
-  } else {
-    KINETO_THROW(
-        std::runtime_error,
-        "cuptiPmSamplingDecodeData returned unexpected stop reason " +
-            std::to_string(static_cast<int>(reason)));
+  switch (reason) {
+    case CUPTI_PM_SAMPLING_DECODE_STOP_REASON_OTHER:
+    case CUPTI_PM_SAMPLING_DECODE_STOP_REASON_COUNTER_DATA_FULL:
+      isBufferDrained = false;
+      break;
+    case CUPTI_PM_SAMPLING_DECODE_STOP_REASON_END_OF_RECORDS:
+      isBufferDrained = true;
+      break;
+    default:
+      KINETO_THROW(
+          std::runtime_error,
+          "cuptiPmSamplingDecodeData returned unexpected stop reason " +
+              std::to_string(static_cast<int>(reason)));
   }
 
   CUpti_PmSampling_GetCounterDataInfo_Params info{
@@ -359,27 +372,37 @@ void CuptiPMSamplingApi::stop() {
 }
 
 void CuptiPMSamplingApi::disable() {
+  // When releasing resources, stop at the first failure to avoid
+  // a partially torn-down configuration and preserve the remaining
+  // state for a later disable() retry.
   if (samplingObject_ != nullptr) {
     CUpti_PmSampling_Disable_Params params{
         CUpti_PmSampling_Disable_Params_STRUCT_SIZE};
     params.pPmSamplingObject = samplingObject_;
-    if (CUPTI_CALL(cuptiPmSamplingDisable(&params)) == CUPTI_SUCCESS) {
-      samplingObject_ = nullptr;
+    if (CUPTI_CALL(cuptiPmSamplingDisable(&params)) != CUPTI_SUCCESS) {
+      return;
     }
+    samplingObject_ = nullptr;
   }
   if (hostObject_ != nullptr) {
     CUpti_Profiler_Host_Deinitialize_Params params{
         CUpti_Profiler_Host_Deinitialize_Params_STRUCT_SIZE};
     params.pHostObject = hostObject_;
-    if (CUPTI_CALL(cuptiProfilerHostDeinitialize(&params)) == CUPTI_SUCCESS) {
-      hostObject_ = nullptr;
+    if (CUPTI_CALL(cuptiProfilerHostDeinitialize(&params)) != CUPTI_SUCCESS) {
+      return;
     }
+    hostObject_ = nullptr;
+  }
+  if (profilerInitialized_) {
+    CUpti_Profiler_DeInitialize_Params params{
+        CUpti_Profiler_DeInitialize_Params_STRUCT_SIZE};
+    if (CUPTI_CALL(cuptiProfilerDeInitialize(&params)) != CUPTI_SUCCESS) {
+      return;
+    }
+    profilerInitialized_ = false;
   }
 
-  // Retain handles on failure so cleanup can be retried
-  if (samplingObject_ != nullptr || hostObject_ != nullptr) {
-    return;
-  }
+  configImage_.clear();
   counterDataImage_.clear();
   config_.deviceId = -1;
   metricNamePtrs_.clear();

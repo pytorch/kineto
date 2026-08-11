@@ -64,6 +64,9 @@ class CuptiPMSamplingApi {
   // lifetimes.
   CUpti_Profiler_Host_Object* hostObject_{nullptr};
   CUpti_PmSampling_Object* samplingObject_{nullptr};
+  bool profilerInitialized_{false};
+  // CUPTI retains this buffer until PM sampling is disabled.
+  std::vector<uint8_t> configImage_;
   std::vector<uint8_t> counterDataImage_;
 };
 

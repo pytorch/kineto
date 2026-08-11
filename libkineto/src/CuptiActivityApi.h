@@ -35,7 +35,7 @@ class CuptiActivityApi {
   std::mutex finalizeMutex_;
   std::condition_variable finalizeCond_;
 
-  CuptiActivityApi() = default;
+  CuptiActivityApi();
   CuptiActivityApi(const CuptiActivityApi&) = delete;
   CuptiActivityApi& operator=(const CuptiActivityApi&) = delete;
 
@@ -74,6 +74,7 @@ class CuptiActivityApi {
   static void preConfigureCUPTI();
 
  private:
+  uint32_t cuptiVersion_{0};
   int64_t maxGpuBufferCount_{0};
   CuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
@@ -98,6 +99,7 @@ class CuptiActivityApi {
       size_t validSize);
 
  protected:
+  explicit CuptiActivityApi(uint32_t cuptiVersion);
   void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
   void bufferCompleted(
       CUcontext ctx,

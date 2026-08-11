@@ -288,6 +288,10 @@ struct MockCuptiActivityBuffer {
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
+  MockCuptiActivities() : CuptiActivityApi(0) {}
+  explicit MockCuptiActivities(uint32_t cuptiVersion)
+      : CuptiActivityApi(cuptiVersion) {}
+
   const std::pair<int, size_t> processActivities(
       [[maybe_unused]] CuptiActivityBufferMap& bufferMap,
       const std::function<void(const CUpti_Activity*)>& handler) override {
@@ -314,6 +318,53 @@ class MockCuptiActivities : public CuptiActivityApi {
 
   std::unique_ptr<MockCuptiActivityBuffer> activityBuffer;
 };
+
+TEST(CuptiActivityApiTest, KeepsReturningValidBuffersBeforeVersion27) {
+  MockCuptiActivities cupti(26);
+  cupti.setMaxBufferSize(0);
+
+  uint8_t* firstBuffer = nullptr;
+  size_t firstSize = 0;
+  size_t firstMaxRecords = 1;
+  cupti.bufferRequestedOverride(&firstBuffer, &firstSize, &firstMaxRecords);
+  ASSERT_NE(firstBuffer, nullptr);
+  ASSERT_GT(firstSize, 0);
+  EXPECT_EQ(firstMaxRecords, 0);
+  EXPECT_FALSE(cupti.stopCollection);
+
+  uint8_t* secondBuffer = nullptr;
+  size_t secondSize = 0;
+  size_t secondMaxRecords = 1;
+  cupti.bufferRequestedOverride(&secondBuffer, &secondSize, &secondMaxRecords);
+  EXPECT_NE(secondBuffer, nullptr);
+  EXPECT_NE(secondBuffer, firstBuffer);
+  EXPECT_GT(secondSize, 0);
+  EXPECT_EQ(secondMaxRecords, 0);
+  EXPECT_TRUE(cupti.stopCollection);
+}
+
+TEST(CuptiActivityApiTest, RejectsBuffersStartingWithVersion27) {
+  MockCuptiActivities cupti(27);
+  cupti.setMaxBufferSize(0);
+
+  uint8_t* firstBuffer = nullptr;
+  size_t firstSize = 0;
+  size_t firstMaxRecords = 1;
+  cupti.bufferRequestedOverride(&firstBuffer, &firstSize, &firstMaxRecords);
+  ASSERT_NE(firstBuffer, nullptr);
+  ASSERT_GT(firstSize, 0);
+  EXPECT_EQ(firstMaxRecords, 0);
+  EXPECT_FALSE(cupti.stopCollection);
+
+  uint8_t* secondBuffer = firstBuffer;
+  size_t secondSize = firstSize;
+  size_t secondMaxRecords = 1;
+  cupti.bufferRequestedOverride(&secondBuffer, &secondSize, &secondMaxRecords);
+  EXPECT_EQ(secondBuffer, nullptr);
+  EXPECT_EQ(secondSize, 0);
+  EXPECT_EQ(secondMaxRecords, 0);
+  EXPECT_TRUE(cupti.stopCollection);
+}
 
 // Common setup / teardown and helper functions
 class CuptiActivityProfilerTest : public ::testing::Test {

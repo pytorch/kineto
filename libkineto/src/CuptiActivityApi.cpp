@@ -25,6 +25,7 @@ namespace KINETO_NAMESPACE {
 // Given the kDefaultActivitiesMaxGpuBufferSize is around 128MB, in the worst
 // case, there will be 32 buffers contending for the mutex.
 constexpr size_t kBufSize(4 * 1024 * 1024);
+constexpr uint32_t kCuptiBufferRejectionMinVersion = 27;
 
 inline bool cuptiTearDown_() {
   auto teardown_env = getenv("TEARDOWN_CUPTI");
@@ -54,6 +55,13 @@ inline void reenableCuptiCallbacks_(CuptiCallbackApi& cbapi) {
         << "Re-enable previous CUPTI callbacks - Failed to initCallbackApi";
   }
 }
+
+CuptiActivityApi::CuptiActivityApi() {
+  CUPTI_CALL(cuptiGetVersion(&cuptiVersion_));
+}
+
+CuptiActivityApi::CuptiActivityApi(uint32_t cuptiVersion)
+    : cuptiVersion_(cuptiVersion) {}
 
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static auto* instance = new CuptiActivityApi();
@@ -153,14 +161,15 @@ void CuptiActivityApi::bufferRequested(
     LOG(WARNING) << "Exceeded max GPU buffer count ("
                  << allocatedGpuTraceBuffers_.size()
                  << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
-    // Return null buffer to CUPTI. Per the CUPTI documentation for
-    // CUpti_BuffersCallbackRequestFunc: "If set to NULL then no buffer is
-    // returned." CUPTI will drop activity records, which are counted by
-    // cuptiActivityGetNumDroppedRecords.
-    *buffer = nullptr;
-    *size = 0;
-    *maxNumRecords = 0;
-    return;
+    // CUPTI fixed a crash when clients reject a buffer request in API v27
+    // (CUDA 12.9). Older or unknown versions must receive a valid buffer while
+    // the controller observes stopCollection and terminates tracing.
+    if (cuptiVersion_ >= kCuptiBufferRejectionMinVersion) {
+      *buffer = nullptr;
+      *size = 0;
+      *maxNumRecords = 0;
+      return;
+    }
   }
 
   auto buf = std::make_unique<CuptiActivityBuffer>(kBufSize);

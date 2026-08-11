@@ -152,7 +152,7 @@ std::unique_ptr<libkineto::IActivityProfilerSession> CuptiPMSamplingProfiler::
     return nullptr;
   }
 
-  // Translate from the generic Kineto config into the sampling-specific config
+  // Translate from the Kineto config into the sampling-specific config
   const auto& metricNames = config.cuptiPMSamplingMetricNames();
   if (metricNames.empty()) {
     return nullptr;

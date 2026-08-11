@@ -284,13 +284,14 @@ TEST_F(ConfigLoaderTest, ThreadPollsDaemonAndDispatchesOnDemandConfig) {
 // The thread re-polls the on-demand config on its update cadence, so over a
 // couple of intervals it reads the daemon more than once.
 //
-// This waits on the probe's read count rather than the thread's iteration
-// counter. An iteration can complete without reading: the thread wakes from a
-// wait_for measured against the steady clock, then gates the read on a
-// system_clock deadline, so a spurious wakeup or a small divergence between the
-// two clocks leaves it a hair short of the deadline. It skips the read, bumps
-// the iteration counter, and reads on the following iteration instead. Waiting
-// for two iterations therefore does not mean two reads have happened.
+// This waits on the probe's read count, not the thread's iteration counter:
+// the counter tracks loop passes, and a pass need not read. The loop serves a
+// base-config deadline and an on-demand deadline, sleeping until whichever
+// falls first, so a pass woken for the base config finds the on-demand
+// deadline still ahead and reads nothing. A pass woken for the on-demand
+// deadline can skip it too, since the wait only promises to reach that
+// deadline while the read is gated on having passed it. The counter advances
+// either way, so waiting for two passes would not mean two reads happened.
 //
 // This runs at the real cadence, so it takes a few seconds. It cannot be sped
 // up by injecting a smaller ON_DEMAND_CONFIG_UPDATE_INTERVAL_SECS via the fake

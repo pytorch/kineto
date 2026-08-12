@@ -119,6 +119,9 @@ void RunTest(std::string_view perKernel, unsigned maxScopes) {
 /////////////////////////////////////////////////////////////////////
 
 TEST_F(XpuptiScopeProfilerTest, PerKernelScope) {
+  GTEST_SKIP() << "PTI reports success but returns no scope metric records, "
+                  "so the expected metric activities are absent: "
+                  "https://github.com/pytorch/kineto/issues/1533";
   RunTest("true", 314);
 }
 

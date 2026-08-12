@@ -130,8 +130,9 @@ class ConfigLoader {
   void resetBaseConfigForTesting();
 
   // Test-only. Returns the on-demand poll interval the background thread is
-  // currently using, taken from the loaded base config. Lets a test size a
-  // timeout to the live cadence instead of assuming the default.
+  // currently scheduling against. Lets a test size a timeout to the live
+  // cadence instead of assuming the default, and lets one check that a failed
+  // base-config reload still leaves a sane cadence behind.
   std::chrono::seconds onDemandConfigUpdateIntervalForTesting();
 
  private:
@@ -146,12 +147,9 @@ class ConfigLoader {
   void updateBaseConfig();
 
   // Create configuration when receiving request from a daemon
-  void configureFromDaemon(
-      std::chrono::time_point<std::chrono::system_clock> now,
-      Config& config);
+  void configureFromDaemon(Config& config);
 
-  std::string readOnDemandConfigFromDaemon(
-      std::chrono::time_point<std::chrono::system_clock> now);
+  std::string readOnDemandConfigFromDaemon();
 
   const char* customConfigFileName();
 
@@ -161,7 +159,11 @@ class ConfigLoader {
   std::map<ConfigKind, std::vector<ConfigHandler*>> handlers_;
 
   std::chrono::seconds configUpdateIntervalSecs_;
-  std::chrono::seconds onDemandConfigUpdateIntervalSecs_;
+
+  // Cadence the poll loop reads the on-demand config at, refreshed from the
+  // base config on every base-config pass. Atomic so a test can read the live
+  // cadence while the poll thread runs.
+  std::atomic<std::chrono::seconds> onDemandConfigUpdateIntervalSecs_;
   std::unique_ptr<std::thread> updateThread_;
   std::condition_variable updateThreadCondVar_;
   std::mutex updateThreadMutex_;

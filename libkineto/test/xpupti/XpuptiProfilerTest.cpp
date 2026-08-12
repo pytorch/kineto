@@ -10,8 +10,10 @@
 
 #include "include/GenericTraceActivity.h"
 #include "include/libkineto.h"
+#include "src/plugin/xpupti/XpuptiActivityProfiler.h"
 
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 #include <set>
 #include <unordered_set>
@@ -127,6 +129,25 @@ void expectTwoUserAnnotations(const KN::CpuTraceBuffer& buffer) {
 }
 
 } // namespace
+
+TEST(XpuptiProfilerTest, DevicePropertiesJsonPreservesLegacyFields) {
+  const auto devices =
+      nlohmann::json::parse("[" + KN::getXpuDeviceProperties() + "]");
+  ASSERT_FALSE(devices.empty());
+
+  for (const auto& device : devices) {
+    EXPECT_TRUE(device.at("id").is_number());
+    EXPECT_TRUE(device.at("name").is_string());
+    EXPECT_TRUE(device.at("totalGlobalMem").is_number());
+    EXPECT_TRUE(device.at("maxComputeUnits").is_number());
+    EXPECT_TRUE(device.at("maxWorkGroupSize").is_number());
+    EXPECT_TRUE(device.at("maxClockFrequency").is_number());
+    EXPECT_TRUE(device.at("maxMemAllocSize").is_number());
+    EXPECT_TRUE(device.at("localMemSize").is_number());
+    EXPECT_TRUE(device.at("vendor").is_string());
+    EXPECT_TRUE(device.at("driverVersion").is_string());
+  }
+}
 
 TEST(XpuptiProfilerTest, XpuDriverEvents) {
   KN::Config cfg;

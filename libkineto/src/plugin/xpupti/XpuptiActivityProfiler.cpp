@@ -7,14 +7,62 @@
  */
 
 #include "XpuptiActivityProfiler.h"
+#include "MetadataFieldCatalog.h"
 #include "ThrowUtil.h"
+#include "TypedMetadataJson.h"
 #include "XpuptiScopeProfilerApi.h"
 #include "XpuptiScopeProfilerSession.h"
 
 #include <fmt/ranges.h>
 #include <sycl/sycl.hpp>
+#include <utility>
 
 namespace KINETO_NAMESPACE {
+
+namespace DevicePropertyFields = libkineto::DevicePropertyMetadataFields;
+
+namespace {
+
+void visitXpuDeviceMetadata(
+    size_t id,
+    const sycl::device& device,
+    libkineto::ITypedMetadataVisitor& visitor) {
+  visitor.visit(DevicePropertyFields::kId, static_cast<uint64_t>(id));
+  visitor.visit(
+      DevicePropertyFields::kName, device.get_info<sycl::info::device::name>());
+  visitor.visit(
+      DevicePropertyFields::kTotalGlobalMem,
+      static_cast<uint64_t>(
+          device.get_info<sycl::info::device::global_mem_size>()));
+  visitor.visit(
+      DevicePropertyFields::kMaxComputeUnits,
+      static_cast<uint64_t>(
+          device.get_info<sycl::info::device::max_compute_units>()));
+  visitor.visit(
+      DevicePropertyFields::kMaxWorkGroupSize,
+      static_cast<uint64_t>(
+          device.get_info<sycl::info::device::max_work_group_size>()));
+  visitor.visit(
+      DevicePropertyFields::kMaxClockFrequency,
+      static_cast<uint64_t>(
+          device.get_info<sycl::info::device::max_clock_frequency>()));
+  visitor.visit(
+      DevicePropertyFields::kMaxMemAllocSize,
+      static_cast<uint64_t>(
+          device.get_info<sycl::info::device::max_mem_alloc_size>()));
+  visitor.visit(
+      DevicePropertyFields::kLocalMemSize,
+      static_cast<uint64_t>(
+          device.get_info<sycl::info::device::local_mem_size>()));
+  visitor.visit(
+      DevicePropertyFields::kVendor,
+      device.get_info<sycl::info::device::vendor>());
+  visitor.visit(
+      DevicePropertyFields::kDriverVersion,
+      device.get_info<sycl::info::device::driver_version>());
+}
+
+} // namespace
 
 std::string getXpuDeviceProperties() {
   std::vector<std::string> jsonProps;
@@ -26,30 +74,9 @@ std::string getXpuDeviceProperties() {
     const auto& device_list = platform.get_devices();
     for (size_t i = 0; i < device_list.size(); i++) {
       const auto& device = device_list[i];
-      jsonProps.push_back(fmt::format(
-          R"JSON(
-    {{
-      "id": {},
-      "name": "{}",
-      "totalGlobalMem": {},
-      "maxComputeUnits": {},
-      "maxWorkGroupSize": {},
-      "maxClockFrequency": {},
-      "maxMemAllocSize": {},
-      "localMemSize": {},
-      "vendor": "{}",
-      "driverVersion": "{}"
-    }})JSON",
-          i,
-          device.get_info<sycl::info::device::name>(),
-          device.get_info<sycl::info::device::global_mem_size>(),
-          device.get_info<sycl::info::device::max_compute_units>(),
-          device.get_info<sycl::info::device::max_work_group_size>(),
-          device.get_info<sycl::info::device::max_clock_frequency>(),
-          device.get_info<sycl::info::device::max_mem_alloc_size>(),
-          device.get_info<sycl::info::device::local_mem_size>(),
-          device.get_info<sycl::info::device::vendor>(),
-          device.get_info<sycl::info::device::driver_version>()));
+      libkineto::internal::JsonTypedMetadataVisitor visitor;
+      visitXpuDeviceMetadata(i, device, visitor);
+      jsonProps.push_back("{" + std::move(visitor).json() + "}");
     }
   }
 

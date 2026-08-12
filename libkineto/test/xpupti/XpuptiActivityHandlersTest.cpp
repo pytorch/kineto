@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "include/MetadataFieldCatalog.h"
 #include "include/output_base.h"
 #include "src/ActivityBuffers.h"
 #include "src/plugin/xpupti/XpuptiActivityApi.h"
@@ -14,6 +15,8 @@
 #include "src/plugin/xpupti/XpuptiProfilerMacros.h"
 
 #include <gtest/gtest.h>
+
+#include <optional>
 
 namespace KN = KINETO_NAMESPACE;
 using namespace libkineto;
@@ -148,6 +151,9 @@ TEST_F(XpuptiActivityHandlersTest, CommunicationActivityFields) {
   EXPECT_EQ(activity.resourceId(), 77);
   EXPECT_EQ(activity.getThreadId(), 77);
   EXPECT_EQ(activity.getMetadataValue("Communicator_id"), "99");
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kCommunicatorId),
+      std::optional<uint64_t>{99});
 }
 
 TEST_F(XpuptiActivityHandlersTest, CommunicationActivityOutOfRange) {
@@ -223,6 +229,46 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityMetadata) {
   EXPECT_EQ(activity.getMetadataValue("Number_wait_events"), "3");
   EXPECT_EQ(activity.getMetadataValue("Return_code"), "0");
   EXPECT_EQ(activity.getMetadataValue("correlation"), "5");
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kNumberWaitEvents),
+      std::optional<uint64_t>{3});
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kReturnCode),
+      std::optional<int64_t>{0});
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kCorrelation),
+      std::optional<uint64_t>{5});
+}
+
+TEST_F(XpuptiActivityHandlersTest, ZeroDurationMemoryCopyOmitsBandwidth) {
+  pti_view_record_memory_copy memory_record{};
+  memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
+  memory_record._name = "zeCommandListAppendMemoryCopy";
+  memory_record._start_timestamp = 100;
+  memory_record._end_timestamp = 100;
+  memory_record._thread_id = 7;
+  memory_record._correlation_id = 11;
+  memory_record._sycl_queue_id = 3;
+  memory_record._mem_op_id = 4;
+  memory_record._bytes = 1024;
+
+  mockApi_.records.push_back(
+      reinterpret_cast<const pti_view_record_base*>(&memory_record));
+
+  auto traceBuffer = processAndGetTrace();
+  ASSERT_EQ(traceBuffer->activities.size(), 1);
+
+  auto& activity = *traceBuffer->activities[0];
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kBytes),
+      std::optional<uint64_t>{1024});
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kMemoryBandwidthGbps),
+      std::nullopt);
+  EXPECT_EQ(
+      activity.metadataJson().find(
+          XpuMetadataFields::kMemoryBandwidthGbps.name),
+      std::string::npos);
 }
 
 TEST_F(XpuptiActivityHandlersTest, SynchronizationAllTypes) {

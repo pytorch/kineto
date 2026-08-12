@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "MetadataFieldCatalog.h"
 #include "XpuptiActivityProfilerSession.h"
 #include "output_json.h"
 
@@ -17,6 +18,8 @@
 #include <fmt/ranges.h>
 
 namespace KINETO_NAMESPACE {
+
+namespace XpuFields = libkineto::XpuMetadataFields;
 
 // =========== Session Private Methods ============= //
 void XpuptiActivityProfilerSession::removeCorrelatedPtiActivities(
@@ -112,10 +115,10 @@ inline std::string memsetName(pti_view_memory_type type, uint64_t val) {
 }
 
 template <class pti_view_memory_record_type>
-inline std::string bandwidth(pti_view_memory_record_type* activity) {
+inline double bandwidth(pti_view_memory_record_type* activity) {
   auto duration = activity->_end_timestamp - activity->_start_timestamp;
   auto bytes = activity->_bytes;
-  return duration == 0 ? "\"N/A\"" : fmt::format("{}", bytes * 1.0 / duration);
+  return bytes * 1.0 / duration;
 }
 
 void XpuptiActivityProfilerSession::addResouceInfo(
@@ -203,7 +206,9 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->id = activity->_correlation_id;
   trace_activity->linked =
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
-  trace_activity->addMetadata("correlation", activity->_correlation_id);
+  trace_activity->addMetadata(
+      XpuFields::kCorrelation,
+      static_cast<uint64_t>(activity->_correlation_id));
 
   if constexpr (handleRuntimeActivities) {
     trace_activity->device = activity->_process_id;
@@ -252,10 +257,11 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
           activity->_sycl_enqk_begin_timestamp,
           activity->_start_timestamp);
     }
-    trace_activity->addMetadata("device", trace_activity->deviceId());
+    trace_activity->addMetadata(XpuFields::kDevice, trace_activity->deviceId());
     trace_activity->addMetadataQuoted(
         "context", handleToHexString(activity->_context_handle));
-    trace_activity->addMetadata("sycl queue", activity->_sycl_queue_id);
+    trace_activity->addMetadata(
+        XpuFields::kSyclQueue, static_cast<uint64_t>(activity->_sycl_queue_id));
     trace_activity->addMetadataQuoted(
         "l0 queue", handleToHexString(activity->_queue_handle));
   }
@@ -265,16 +271,27 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
       trace_activity->addMetadataQuoted(
           "source_file_name", activity->_source_file_name);
       trace_activity->addMetadata(
-          "source_line_number", activity->_source_line_number);
+          XpuFields::kSourceLineNumber,
+          static_cast<uint64_t>(activity->_source_line_number));
     }
-    trace_activity->addMetadata("kernel_id", activity->_kernel_id);
-    trace_activity->addMetadata("sycl_node_id", activity->_sycl_node_id);
     trace_activity->addMetadata(
-        "sycl_invocation_id", activity->_sycl_invocation_id);
+        XpuFields::kKernelId, static_cast<uint64_t>(activity->_kernel_id));
+    trace_activity->addMetadata(
+        XpuFields::kSyclNodeId, static_cast<uint64_t>(activity->_sycl_node_id));
+    trace_activity->addMetadata(
+        XpuFields::kSyclInvocationId,
+        static_cast<uint64_t>(activity->_sycl_invocation_id));
   } else if constexpr (handleMemcpyActivities || handleMemsetActivities) {
-    trace_activity->addMetadata("memory opration id", activity->_mem_op_id);
-    trace_activity->addMetadata("bytes", activity->_bytes);
-    trace_activity->addMetadata("memory bandwidth (GB/s)", bandwidth(activity));
+    trace_activity->addMetadata(
+        XpuFields::kMemoryOperationId,
+        static_cast<uint64_t>(activity->_mem_op_id));
+    trace_activity->addMetadata(
+        XpuFields::kBytes, static_cast<uint64_t>(activity->_bytes));
+    const auto duration = activity->_end_timestamp - activity->_start_timestamp;
+    if (duration != 0) {
+      trace_activity->addMetadata(
+          XpuFields::kMemoryBandwidthGbps, bandwidth(activity));
+    }
   }
 
   checkTimestampOrder(trace_activity.get());
@@ -350,7 +367,8 @@ void XpuptiActivityProfilerSession::handleCommunicationActivity(
   comms_activity.threadId = activity_record._thread_id;
 
   comms_activity.addMetadata(
-      "Communicator_id", activity_record._communicator_id);
+      XpuFields::kCommunicatorId,
+      static_cast<uint64_t>(activity_record._communicator_id));
 
   if (outOfRange(&comms_activity)) {
     traceBuffer_.span.opCount -= 1;
@@ -443,7 +461,8 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   synchronization_activity.linked =
       linkedActivity(activity->_correlation_id, cpuCorrelationMap_);
   synchronization_activity.addMetadata(
-      "correlation", activity_record._correlation_id);
+      XpuFields::kCorrelation,
+      static_cast<uint64_t>(activity_record._correlation_id));
 
   synchronization_activity.addMetadataQuoted(
       "Type", getStringFromSynchronizationType(activity_record._synch_type));
@@ -454,9 +473,11 @@ void XpuptiActivityProfilerSession::handleSynchronizationActivity(
   synchronization_activity.addMetadataQuoted(
       "Event_handle", handleToHexString(activity_record._event_handle));
   synchronization_activity.addMetadata(
-      "Number_wait_events", activity_record._number_wait_events);
+      XpuFields::kNumberWaitEvents,
+      static_cast<uint64_t>(activity_record._number_wait_events));
   synchronization_activity.addMetadata(
-      "Return_code", activity_record._return_code);
+      XpuFields::kReturnCode,
+      static_cast<int64_t>(activity_record._return_code));
 
   if (outOfRange(&synchronization_activity)) {
     traceBuffer_.span.opCount -= 1;
@@ -485,7 +506,8 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
   overhead_activity->resource = activity->_overhead_thread_id;
   overhead_activity->threadId = activity->_overhead_thread_id;
   overhead_activity->addMetadata(
-      "overhead cost", activity->_overhead_duration_ns);
+      XpuFields::kOverheadCost,
+      static_cast<uint64_t>(activity->_overhead_duration_ns));
   // Occupancy is the share of the observation window [start, end] that was
   // actually spent in overhead: _overhead_duration_ns is cumulative and may be
   // smaller than the window. Guard on the divisor (duration()) directly so the
@@ -497,7 +519,9 @@ void XpuptiActivityProfilerSession::handleOverheadActivity(
       : 0;
   overhead_activity->addMetadataQuoted(
       "overhead occupancy", fmt::format("{}%", occupancy));
-  overhead_activity->addMetadata("overhead count", activity->_overhead_count);
+  overhead_activity->addMetadata(
+      XpuFields::kOverheadCount,
+      static_cast<uint64_t>(activity->_overhead_count));
 
   if (!outOfRange(overhead_activity.get())) {
     overhead_activity->log(logger);

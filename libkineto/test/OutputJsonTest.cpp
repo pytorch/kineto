@@ -16,6 +16,7 @@
 #include <string_view>
 
 #include "include/GenericTraceActivity.h"
+#include "include/ThreadUtil.h"
 #include "include/TraceSpan.h"
 #include "src/output_json.h"
 #include "test/TestUtils.h"
@@ -148,6 +149,33 @@ TEST(OutputJsonTest, EventNameWithQuotesProducesValidJson) {
 
 TEST(OutputJsonTest, PlainEventNameIsUnchanged) {
   expectEventNameRoundTrips("aten::addmm");
+}
+
+TEST(OutputJsonTest, DisplayContainsThreadNameAndTID) {
+  const auto traceFile =
+      libkineto::test::createTempTraceFile("OutputJsonTest.", ".json");
+  TestableChromeTraceLogger logger(traceFile.path());
+  logger.handleTraceStart({}, "");
+  logger.handleResourceInfo(
+      ResourceInfo{
+          /*id=*/12345,
+          /*sortIndex=*/0,
+          /*deviceId=*/processId(),
+          /*name=*/"worker",
+          /*resourceType=*/ResourceType::HOST_THREAD},
+      /*time=*/100);
+  logger.finalizeTrace(/*endTime=*/300);
+
+  const auto trace = nlohmann::json::parse(readFile(traceFile.path()));
+  bool found = false;
+  for (const auto& event : trace["traceEvents"]) {
+    if (event.value("name", "") == "thread_name" &&
+        event["args"].value("name", "") == "thread 12345 (worker)") {
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
 }
 
 // Collective strings arrive quoted from the legacy RawJson path and unquoted

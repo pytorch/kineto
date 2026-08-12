@@ -17,6 +17,7 @@
 #include <string_view>
 #include "Config.h"
 #include "EnvMetadata.h"
+#include "ThreadUtil.h"
 #include "TraceSpan.h"
 
 #include "Logger.h"
@@ -547,7 +548,13 @@ void ChromeTraceLogger::handleResourceInfo(
     return;
   }
 
+  // GenericActivityProfiler stores the native pthread name in ResourceInfo.
+  // Preserve Chrome JSON's legacy display format for host CPU threads while
+  // leaving GPU streams and other synthetic resources unchanged.
   std::string name = info.name;
+  if (info.resourceType == ResourceType::HOST_THREAD) {
+    name = fmt::format("thread {} ({})", info.id, info.name);
+  }
   sanitizeStrForJSON(name);
   escapeQuotesForJSON(name);
 

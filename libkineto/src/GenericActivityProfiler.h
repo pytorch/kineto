@@ -261,7 +261,8 @@ class GenericActivityProfiler {
               .id = sysTid,
               .sortIndex = sysTid,
               .deviceId = pid,
-              .name = fmt::format("thread {} ({})", sysTid, getThreadName())});
+              .name = getThreadName(),
+              .resourceType = ResourceType::HOST_THREAD});
     }
   }
 

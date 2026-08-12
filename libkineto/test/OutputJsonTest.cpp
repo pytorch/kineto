@@ -259,8 +259,7 @@ TEST(OutputJsonTest, HardwareCountersUseDedicatedGpuCounterTrack) {
   const auto traceFile =
       libkineto::test::createTempTraceFile("OutputJsonTest.", ".json");
 
-  const int64_t timestamp =
-      ChromeTraceBaseTime::singleton().get() + 123456;
+  const int64_t timestamp = ChromeTraceBaseTime::singleton().get() + 123456;
   TraceSpan span(timestamp, 0, "test_span");
   GenericTraceActivity activity(
       span, ActivityType::HARDWARE_COUNTERS, "CUPTI PM Sampling");
@@ -290,8 +289,7 @@ TEST(OutputJsonTest, HardwareCountersUseDedicatedGpuCounterTrack) {
     ASSERT_TRUE(event.contains("args"));
     ASSERT_TRUE(event["args"].contains(""));
     counters.emplace(
-        event["name"].get<std::string>(),
-        event["args"][""].get<double>());
+        event["name"].get<std::string>(), event["args"][""].get<double>());
   }
 
   ASSERT_EQ(counters.size(), 2);

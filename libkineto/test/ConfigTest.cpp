@@ -149,10 +149,10 @@ TEST(ParseTest, CuptiPMSamplingOptions) {
   EXPECT_TRUE(cfg.cuptiPMSamplingMetricNames().empty());
   EXPECT_EQ(cfg.cuptiPMSamplingDeviceId(), -1);
 
-  EXPECT_TRUE(cfg.parse(
-      "CUPTI_PM_SAMPLING_METRICS = sm__cycles_elapsed.avg, "
-      "dram__bytes_read.sum\n"
-      "CUPTI_PM_SAMPLING_DEVICE_ID = 2"));
+  EXPECT_TRUE(
+      cfg.parse("CUPTI_PM_SAMPLING_METRICS = sm__cycles_elapsed.avg, "
+                "dram__bytes_read.sum\n"
+                "CUPTI_PM_SAMPLING_DEVICE_ID = 2"));
 
   EXPECT_EQ(
       cfg.cuptiPMSamplingMetricNames(),

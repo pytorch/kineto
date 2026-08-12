@@ -100,6 +100,27 @@ TEST_F(XpuptiScopeProfilerConfigTest, DevicesSingle) {
   EXPECT_EQ(xpupti_cfg.xpuptiProfilerDevices(), expected);
 }
 
+TEST_F(XpuptiScopeProfilerConfigTest, DevicesEmptyTokensSkipped) {
+  KN::Config cfg;
+  // Doubled and trailing commas produce empty tokens: they must be skipped,
+  // not parsed as index 0 nor rejected as invalid integers.
+  EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_DEVICES = 0, ,2,"));
+  const KN::XpuptiScopeProfilerConfig& xpupti_cfg =
+      KN::XpuptiScopeProfilerConfig::get(cfg);
+  const std::vector<int> expected{0, 2};
+  EXPECT_EQ(xpupti_cfg.xpuptiProfilerDevices(), expected);
+}
+
+TEST_F(XpuptiScopeProfilerConfigTest, DevicesDuplicatesDropped) {
+  KN::Config cfg;
+  // Duplicate indices are collapsed, preserving first-seen order.
+  EXPECT_TRUE(cfg.parse("XPUPTI_PROFILER_DEVICES = 0,0,2,2,0"));
+  const KN::XpuptiScopeProfilerConfig& xpupti_cfg =
+      KN::XpuptiScopeProfilerConfig::get(cfg);
+  const std::vector<int> expected{0, 2};
+  EXPECT_EQ(xpupti_cfg.xpuptiProfilerDevices(), expected);
+}
+
 TEST_F(XpuptiScopeProfilerConfigTest, SelectDeviceHandlesSubset) {
   // Fabricate 4 distinct opaque handles; the helper never dereferences them.
   std::array<pti_device_handle_t, 4> handles{

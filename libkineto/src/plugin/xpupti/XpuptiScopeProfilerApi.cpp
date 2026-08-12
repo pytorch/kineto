@@ -29,10 +29,12 @@ std::vector<pti_device_handle_t> selectDeviceHandles(
   };
   if (const auto bad = std::ranges::find_if(indices, outOfRange);
       bad != indices.end()) {
-    throw std::runtime_error(fmt::format(
-        "XPUPTI_PROFILER_DEVICES index {} is out of range; {} XPU device(s) available",
-        *bad,
-        handles.size()));
+    KINETO_THROW(
+        std::runtime_error,
+        fmt::format(
+            "XPUPTI_PROFILER_DEVICES index {} is out of range; {} XPU device(s) available",
+            *bad,
+            handles.size()));
   }
   // Gather: map each requested index to its device handle, preserving order.
   std::vector<pti_device_handle_t> selected(indices.size());
@@ -100,7 +102,7 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
 
 #if PTI_VERSION_AT_LEAST(0, 18)
   if (requestedDevices.empty()) {
-    // Default: profile every available device (PTI auto-detect mode).
+    // Auto-detect: PTI profiles whichever devices the workload actually uses.
     XPUPTI_CALL(ptiMetricsScopeConfigure(
         *scopeHandleOpt_,
         collectionMode,
@@ -124,7 +126,8 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
   // PTI < 0.18 (pre PTI-363): multi-device metrics scope is not available;
   // ptiMetricsScopeConfigure accepts only a single device.
   if (requestedDevices.size() > 1) {
-    throw std::runtime_error(
+    KINETO_THROW(
+        std::runtime_error,
         "XPUPTI_PROFILER_DEVICES lists more than one device, but this build "
         "links PTI < 0.18 which supports only single-device metrics scope. "
         "Rebuild against PTI >= 0.18 for multi-device support.");

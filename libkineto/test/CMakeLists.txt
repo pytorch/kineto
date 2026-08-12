@@ -41,9 +41,33 @@ target_link_libraries(ConfigLoaderTest PRIVATE
 gtest_discover_tests(ConfigLoaderTest)
 
 # ActivityProfilerControllerTest
-# Not supported on Windows, uses unix "unistd.h"
+add_executable(ActivityProfilerControllerTest
+    ActivityProfilerControllerTest.cpp
+    TestUtils.cpp)
+target_link_libraries(ActivityProfilerControllerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(ActivityProfilerControllerTest)
+
+# AsyncActivityProfilerHandlerTest
+# Builds on Windows, but one of its cases does not: MetadataJsonFormatingTest
+# sets the environment with unix setenv, so the source compiles that case out
+# under _WIN32. The exclusion is per test rather than per target here because
+# the other fifteen cases run there fine.
+add_executable(AsyncActivityProfilerHandlerTest
+    AsyncActivityProfilerHandlerTest.cpp
+    TestUtils.cpp)
+target_link_libraries(AsyncActivityProfilerHandlerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json
+    ${XPU_XPUPTI_LIBRARY})
+gtest_discover_tests(AsyncActivityProfilerHandlerTest)
+
+# ConfigLoaderPollThreadExceptionTest
+# Not supported on Windows: sets the environment with unix setenv.
 if(NOT WIN32)
-    # ConfigLoaderPollThreadExceptionTest
     add_executable(ConfigLoaderPollThreadExceptionTest
         ConfigLoaderPollThreadExceptionTest.cpp)
     target_link_libraries(ConfigLoaderPollThreadExceptionTest PRIVATE
@@ -51,28 +75,12 @@ if(NOT WIN32)
         kineto_base kineto_api
         ${XPU_XPUPTI_LIBRARY})
     gtest_discover_tests(ConfigLoaderPollThreadExceptionTest)
+endif()
 
-    add_executable(ActivityProfilerControllerTest
-        ActivityProfilerControllerTest.cpp
-        TestUtils.cpp)
-    target_link_libraries(ActivityProfilerControllerTest PRIVATE
-        gtest_main
-        kineto_base kineto_api
-        ${XPU_XPUPTI_LIBRARY})
-    gtest_discover_tests(ActivityProfilerControllerTest)
-
-    # AsyncActivityProfilerHandlerTest
-    add_executable(AsyncActivityProfilerHandlerTest
-        AsyncActivityProfilerHandlerTest.cpp
-        TestUtils.cpp)
-    target_link_libraries(AsyncActivityProfilerHandlerTest PRIVATE
-        gtest_main
-        kineto_base kineto_api
-        nlohmann_json::nlohmann_json
-        ${XPU_XPUPTI_LIBRARY})
-    gtest_discover_tests(AsyncActivityProfilerHandlerTest)
-
-    # AsyncE2ECpuTraceTest
+# AsyncE2ECpuTraceTest
+# Not supported on Windows: it drives an on-demand config, and Config only
+# accepts on-demand trace files under a directory that defaults to /tmp.
+if(NOT WIN32)
     add_executable(AsyncE2ECpuTraceTest
         AsyncE2ECpuTraceTest.cpp
         MockCpuActivityBuffer.cpp
@@ -83,8 +91,12 @@ if(NOT WIN32)
         nlohmann_json::nlohmann_json
         ${XPU_XPUPTI_LIBRARY})
     gtest_discover_tests(AsyncE2ECpuTraceTest)
+endif()
 
-    # SyncActivityProfilerHandlerTest
+# SyncActivityProfilerHandlerTest and GenericActivityProfilerTeardownTest
+# use nothing unix-specific, but have never been built on Windows. Enabling
+# them is a separate change that needs its own Windows run to confirm.
+if(NOT WIN32)
     add_executable(SyncActivityProfilerHandlerTest
         SyncActivityProfilerHandlerTest.cpp)
     target_link_libraries(SyncActivityProfilerHandlerTest PRIVATE
@@ -93,7 +105,6 @@ if(NOT WIN32)
         ${XPU_XPUPTI_LIBRARY})
     gtest_discover_tests(SyncActivityProfilerHandlerTest)
 
-    # GenericActivityProfilerTeardownTest
     add_executable(GenericActivityProfilerTeardownTest
         GenericActivityProfilerTeardownTest.cpp)
     target_link_libraries(GenericActivityProfilerTeardownTest PRIVATE
@@ -221,22 +232,19 @@ target_include_directories(GenericTraceActivityMetadataTest PRIVATE
 gtest_discover_tests(GenericTraceActivityMetadataTest)
 
 # OutputJsonTest
-# Not supported on Windows, uses unix "unistd.h"
-if(NOT WIN32)
-    add_executable(OutputJsonTest
-        OutputJsonTest.cpp
-        TestUtils.cpp)
-    target_link_libraries(OutputJsonTest PRIVATE
-        gtest_main
-        kineto_base kineto_api
-        nlohmann_json::nlohmann_json
-        ${XPU_XPUPTI_LIBRARY})
-    target_include_directories(OutputJsonTest PRIVATE
-        "${LIBKINETO_DIR}"
-        "${LIBKINETO_DIR}/include"
-        "${LIBKINETO_DIR}/src")
-    gtest_discover_tests(OutputJsonTest)
-endif()
+add_executable(OutputJsonTest
+    OutputJsonTest.cpp
+    TestUtils.cpp)
+target_link_libraries(OutputJsonTest PRIVATE
+    gtest_main
+    kineto_base kineto_api
+    nlohmann_json::nlohmann_json
+    ${XPU_XPUPTI_LIBRARY})
+target_include_directories(OutputJsonTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(OutputJsonTest)
 
 # Every target defined in this directory is a test executable, so the
 # directory's own target list is the set to install. Reading it here, at the

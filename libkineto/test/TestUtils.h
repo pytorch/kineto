@@ -17,13 +17,14 @@ namespace libkineto::test {
 // Owns a uniquely-named temporary file for a test to write a trace into. The
 // file is created and its descriptor immediately closed on construction, and
 // the file is removed when the owner goes out of scope, so tests never leak
-// files under /tmp.
+// files into the temporary directory.
 class TempTraceFile {
  public:
-  // Creates a file named /tmp/<prefix>XXXXXX<suffix>, where mkstemps replaces
-  // the six X characters with a unique component. suffix is preserved after
-  // that component so callers can keep a .json extension; pass an empty suffix
-  // for a name that ends in the random component.
+  // Creates a file named <prefix><random><suffix> in the system temporary
+  // directory, where random is six characters chosen so the name is free.
+  // suffix is preserved after that component so callers can keep a .json
+  // extension; pass an empty suffix for a name that ends in the random
+  // component. The path uses forward slashes on every platform.
   explicit TempTraceFile(std::string_view prefix, std::string_view suffix);
   ~TempTraceFile();
 

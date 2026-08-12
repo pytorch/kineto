@@ -64,6 +64,10 @@ void ConfigLoader::setDaemonConfigLoaderFactory(
   daemonConfigLoaderFactory() = std::move(factory);
 }
 
+bool ConfigLoader::hasDaemonConfigLoaderFactory() {
+  return daemonConfigLoaderFactory() != nullptr;
+}
+
 ConfigLoader& ConfigLoader::instance() {
   static ConfigLoader config_loader;
   return config_loader;

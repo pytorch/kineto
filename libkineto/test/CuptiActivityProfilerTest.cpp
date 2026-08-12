@@ -288,6 +288,11 @@ struct MockCuptiActivityBuffer {
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
+  bool isAvailable(uint32_t& version) const override {
+    version = 0;
+    return available;
+  }
+
   const std::pair<int, size_t> processActivities(
       [[maybe_unused]] CuptiActivityBufferMap& bufferMap,
       const std::function<void(const CUpti_Activity*)>& handler) override {
@@ -313,6 +318,7 @@ class MockCuptiActivities : public CuptiActivityApi {
   }
 
   std::unique_ptr<MockCuptiActivityBuffer> activityBuffer;
+  bool available{true};
 };
 
 // Common setup / teardown and helper functions
@@ -333,6 +339,29 @@ class CuptiActivityProfilerTest : public ::testing::Test {
   std::unique_ptr<CuptiActivityProfiler> profiler_;
   ActivityLoggerFactory loggerFactory;
 };
+
+TEST_F(CuptiActivityProfilerTest, UnavailableCuptiFallsBackToCpuOnly) {
+  cuptiActivities_.available = false;
+  const auto startTime = std::chrono::system_clock::now();
+  constexpr auto duration = std::chrono::nanoseconds(300);
+
+  profiler_->configure(*cfg_, startTime);
+  profiler_->startTrace(startTime);
+
+  const auto startTimeNs = libkineto::timeSinceEpoch(startTime);
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      startTimeNs, startTimeNs + duration.count());
+  cpuOps->addOp("cpu_op", startTimeNs + 20, startTimeNs + 50, 1);
+  profiler_->transferCpuTrace(std::move(cpuOps));
+  profiler_->stopTrace(startTime + duration);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler_->processTrace(*logger);
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  ASSERT_EQ(trace.activities()->size(), 1);
+  EXPECT_EQ(trace.activities()->front()->name(), "cpu_op");
+}
 
 TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging

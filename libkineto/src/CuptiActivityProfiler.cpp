@@ -75,17 +75,11 @@ namespace KINETO_NAMESPACE {
 CuptiActivityProfiler::CuptiActivityProfiler(
     CuptiActivityApi& cupti,
     bool cpuOnly)
-    : GenericActivityProfiler(cpuOnly), cupti_(cupti) {
-  if (isGpuAvailable()) {
-    logGpuVersions();
-  }
-}
+    : GenericActivityProfiler(cpuOnly), cupti_(cupti) {}
 
-void CuptiActivityProfiler::logGpuVersions() {
-  uint32_t cuptiVersion = 0;
+void CuptiActivityProfiler::recordGpuVersions(uint32_t cuptiVersion) {
   int cudaRuntimeVersion = 0;
   int cudaDriverVersion = 0;
-  CUPTI_CALL(cuptiGetVersion(&cuptiVersion));
   CUDA_CALL(cudaRuntimeGetVersion(&cudaRuntimeVersion));
   CUDA_CALL(cudaDriverGetVersion(&cudaDriverVersion));
   LOG(INFO) << "CUDA versions. CUPTI: " << cuptiVersion
@@ -109,6 +103,22 @@ void CuptiActivityProfiler::setMaxGpuBufferSize(int64_t size) {
 }
 
 void CuptiActivityProfiler::enableGpuTracing() {
+  // @lint-ignore CLANGTIDY facebook-hte-std::call_once
+  std::call_once(cuptiInitializationOnce_, [this] {
+    uint32_t cuptiVersion = 0;
+    cuptiAvailable_ = cupti_.isAvailable(cuptiVersion);
+    if (cuptiAvailable_) {
+      recordGpuVersions(cuptiVersion);
+    } else {
+      cpuOnly_ = true;
+      VLOG(0) << "CUPTI unavailable; continuing with CPU-only profiling";
+    }
+  });
+  if (!cuptiAvailable_) {
+    toggleState_.store(false);
+    return;
+  }
+
   configureCuptiTimestampSource(config().getTSCTimestampFlag());
   cupti_.enableCuptiActivities(
       derivedConfig_->profileActivityTypes(),
@@ -116,10 +126,16 @@ void CuptiActivityProfiler::enableGpuTracing() {
 }
 
 void CuptiActivityProfiler::disableGpuTracing() {
+  if (!cuptiAvailable_) {
+    return;
+  }
   cupti_.disableCuptiActivities(derivedConfig_->profileActivityTypes());
 }
 
 void CuptiActivityProfiler::clearGpuActivities() {
+  if (!cuptiAvailable_) {
+    return;
+  }
   cupti_.clearActivities();
 }
 
@@ -128,6 +144,9 @@ bool CuptiActivityProfiler::isGpuCollectionStopped() const {
 }
 
 void CuptiActivityProfiler::synchronizeGpuDevice() {
+  if (!cuptiAvailable_) {
+    return;
+  }
   CUDA_CALL(cudaDeviceSynchronize());
   cupti_.flushActivities();
 }

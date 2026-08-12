@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -22,6 +23,9 @@ namespace KINETO_NAMESPACE {
 class CuptiPMSamplingController {
  public:
   explicit CuptiPMSamplingController(CuptiPMSamplingConfig config);
+  CuptiPMSamplingController(
+      CuptiPMSamplingConfig config,
+      std::unique_ptr<CuptiPMSamplingApi> api);
   CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
   CuptiPMSamplingController& operator=(const CuptiPMSamplingController&) =
       delete;
@@ -48,7 +52,7 @@ class CuptiPMSamplingController {
   void logCurrentException(const char* fallback);
 
   CuptiPMSamplingConfig config_;
-  CuptiPMSamplingApi api_;
+  std::unique_ptr<CuptiPMSamplingApi> api_;
   std::thread decodeThread_;
   std::atomic_bool stopRequested_{false};
   std::atomic_bool decodeFailed_{false};
@@ -58,7 +62,7 @@ class CuptiPMSamplingController {
   std::vector<CuptiPMSample> samples_;
   bool discardFirstSample_{true};
   bool prepared_{false};
-  // True while a collection started by api_.start() is active.
+  // True while a collection started by api_->start() is active.
   bool active_{false};
 };
 

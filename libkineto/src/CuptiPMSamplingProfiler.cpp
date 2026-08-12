@@ -36,6 +36,11 @@ CuptiPMSamplingSession::CuptiPMSamplingSession(
     const CuptiPMSamplingConfig& config)
     : controller_(config) {}
 
+CuptiPMSamplingSession::CuptiPMSamplingSession(
+    const CuptiPMSamplingConfig& config,
+    std::unique_ptr<CuptiPMSamplingApi> api)
+    : controller_(config, std::move(api)) {}
+
 CuptiPMSamplingSession::~CuptiPMSamplingSession() = default;
 
 bool CuptiPMSamplingSession::prepare() {
@@ -134,6 +139,14 @@ std::unique_ptr<libkineto::CpuTraceBuffer> CuptiPMSamplingSession::
   return buffer;
 }
 
+CuptiPMSamplingProfiler::CuptiPMSamplingProfiler()
+    : CuptiPMSamplingProfiler(
+          []() { return std::make_unique<CuptiPMSamplingApi>(); }) {}
+
+CuptiPMSamplingProfiler::CuptiPMSamplingProfiler(
+    CuptiPMSamplingApiFactory apiFactory)
+    : apiFactory_(std::move(apiFactory)) {}
+
 const std::string& CuptiPMSamplingProfiler::name() const {
   return kProfilerName;
 }
@@ -167,7 +180,8 @@ std::unique_ptr<libkineto::IActivityProfilerSession> CuptiPMSamplingProfiler::
 
   const CuptiPMSamplingConfig pmConfig{
       deviceId, metricNames, kSamplingInterval};
-  auto session = std::make_unique<CuptiPMSamplingSession>(pmConfig);
+  auto session =
+      std::make_unique<CuptiPMSamplingSession>(pmConfig, apiFactory_());
   if (!session->prepare()) {
     return nullptr;
   }

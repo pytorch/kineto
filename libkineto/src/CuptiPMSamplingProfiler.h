@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -23,11 +24,17 @@ struct CpuTraceBuffer;
 
 namespace KINETO_NAMESPACE {
 
+using CuptiPMSamplingApiFactory =
+    std::function<std::unique_ptr<CuptiPMSamplingApi>()>;
+
 // TODO: Support dynamic collection toggling
 class CuptiPMSamplingSession final
     : public libkineto::IActivityProfilerSession {
  public:
   explicit CuptiPMSamplingSession(const CuptiPMSamplingConfig& config);
+  CuptiPMSamplingSession(
+      const CuptiPMSamplingConfig& config,
+      std::unique_ptr<CuptiPMSamplingApi> api);
   ~CuptiPMSamplingSession() override;
 
   [[nodiscard]] bool prepare();
@@ -53,6 +60,9 @@ class CuptiPMSamplingSession final
 // IActivityProfiler, so this is the simplest way to introduce a new profiler.
 class CuptiPMSamplingProfiler final : public libkineto::IActivityProfiler {
  public:
+  CuptiPMSamplingProfiler();
+  explicit CuptiPMSamplingProfiler(CuptiPMSamplingApiFactory apiFactory);
+
   [[nodiscard]] const std::string& name() const override;
   [[nodiscard]] const std::set<libkineto::ActivityType>& availableActivities()
       const override;
@@ -64,6 +74,9 @@ class CuptiPMSamplingProfiler final : public libkineto::IActivityProfiler {
       int64_t durationMs,
       const std::set<libkineto::ActivityType>& activityTypes,
       const libkineto::Config& config) override;
+
+ private:
+  CuptiPMSamplingApiFactory apiFactory_;
 };
 
 } // namespace KINETO_NAMESPACE

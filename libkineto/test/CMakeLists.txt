@@ -133,6 +133,21 @@ target_include_directories(CuptiActivityProfilerTest PRIVATE
     "${CUDA_SOURCE_DIR}/include"
     "${CUPTI_INCLUDE_DIR}")
 gtest_discover_tests(CuptiActivityProfilerTest)
+
+if(KINETO_ENABLE_CUPTI_PM_SAMPLING)
+# CuptiPMSamplingProfilerTest
+add_executable(CuptiPMSamplingProfilerTest
+    CuptiPMSamplingProfilerTest.cpp)
+target_link_libraries(CuptiPMSamplingProfilerTest PRIVATE
+    gtest_main
+    kineto_base kineto_api)
+target_include_directories(CuptiPMSamplingProfilerTest PRIVATE
+    "${LIBKINETO_DIR}"
+    "${LIBKINETO_DIR}/include"
+    "${LIBKINETO_DIR}/src")
+gtest_discover_tests(CuptiPMSamplingProfilerTest)
+endif()
+
 # CuptiCallbackApiTest
 add_executable(CuptiCallbackApiTest CuptiCallbackApiTest.cpp)
 target_link_libraries(CuptiCallbackApiTest PRIVATE

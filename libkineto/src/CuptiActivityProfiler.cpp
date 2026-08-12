@@ -76,7 +76,7 @@ CuptiActivityProfiler::CuptiActivityProfiler(
     CuptiActivityApi& cupti,
     bool cpuOnly)
     : GenericActivityProfiler(cpuOnly), cupti_(cupti) {
-  if (isGpuAvailable()) {
+  if (!cpuOnly && isGpuAvailable()) {
     logGpuVersions();
   }
 }

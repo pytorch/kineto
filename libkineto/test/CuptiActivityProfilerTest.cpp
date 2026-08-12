@@ -285,13 +285,28 @@ struct MockCuptiActivityBuffer {
   std::vector<CUpti_Activity*> activities;
 };
 
+class CallbackCuptiActivityApi : public CuptiActivityApi {
+ public:
+  explicit CallbackCuptiActivityApi(uint32_t cuptiVersion)
+      : CuptiActivityApi(cuptiVersion) {}
+
+  std::pair<uint8_t*, size_t> requestBuffer(
+      uint8_t* buffer = nullptr,
+      size_t size = 0) {
+    size_t maxNumRecords = 1;
+    bufferRequested(&buffer, &size, &maxNumRecords);
+    EXPECT_EQ(maxNumRecords, 0);
+    return {buffer, size};
+  }
+
+  void completeBuffer(uint8_t* buffer, size_t size) {
+    bufferCompleted(nullptr, 0, buffer, 0, size);
+  }
+};
+
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
-  MockCuptiActivities() : CuptiActivityApi(0) {}
-  explicit MockCuptiActivities(uint32_t cuptiVersion)
-      : CuptiActivityApi(cuptiVersion) {}
-
   const std::pair<int, size_t> processActivities(
       [[maybe_unused]] CuptiActivityBufferMap& bufferMap,
       const std::function<void(const CUpti_Activity*)>& handler) override {
@@ -309,61 +324,74 @@ class MockCuptiActivities : public CuptiActivityApi {
     return map;
   }
 
-  void bufferRequestedOverride(
-      uint8_t** buffer,
-      size_t* size,
-      size_t* maxNumRecords) {
-    this->bufferRequested(buffer, size, maxNumRecords);
-  }
-
   std::unique_ptr<MockCuptiActivityBuffer> activityBuffer;
 };
 
 TEST(CuptiActivityApiTest, KeepsReturningValidBuffersBeforeVersion27) {
-  MockCuptiActivities cupti(26);
+  CallbackCuptiActivityApi cupti(26);
   cupti.setMaxBufferSize(0);
 
-  uint8_t* firstBuffer = nullptr;
-  size_t firstSize = 0;
-  size_t firstMaxRecords = 1;
-  cupti.bufferRequestedOverride(&firstBuffer, &firstSize, &firstMaxRecords);
+  auto [firstBuffer, firstSize] = cupti.requestBuffer();
   ASSERT_NE(firstBuffer, nullptr);
   ASSERT_GT(firstSize, 0);
-  EXPECT_EQ(firstMaxRecords, 0);
   EXPECT_FALSE(cupti.stopCollection);
+  cupti.completeBuffer(firstBuffer, firstSize);
 
-  uint8_t* secondBuffer = nullptr;
-  size_t secondSize = 0;
-  size_t secondMaxRecords = 1;
-  cupti.bufferRequestedOverride(&secondBuffer, &secondSize, &secondMaxRecords);
-  EXPECT_NE(secondBuffer, nullptr);
-  EXPECT_NE(secondBuffer, firstBuffer);
-  EXPECT_GT(secondSize, 0);
-  EXPECT_EQ(secondMaxRecords, 0);
+  auto [fallbackBuffer, fallbackSize] = cupti.requestBuffer();
+  ASSERT_NE(fallbackBuffer, nullptr);
+  ASSERT_GT(fallbackSize, 0);
   EXPECT_TRUE(cupti.stopCollection);
+
+  auto [nextFallbackBuffer, nextFallbackSize] = cupti.requestBuffer();
+  ASSERT_NE(nextFallbackBuffer, nullptr);
+  EXPECT_NE(nextFallbackBuffer, fallbackBuffer);
+  cupti.completeBuffer(fallbackBuffer, fallbackSize);
+  cupti.completeBuffer(nextFallbackBuffer, nextFallbackSize);
+
+  for (int i = 0; i < 2; ++i) {
+    auto [buffer, size] = cupti.requestBuffer();
+    ASSERT_NE(buffer, nullptr);
+    cupti.completeBuffer(buffer, size);
+  }
+  auto readyBuffers = cupti.activityBuffers();
+  ASSERT_NE(readyBuffers, nullptr);
+  ASSERT_EQ(readyBuffers->size(), 1);
+  EXPECT_EQ(readyBuffers->count(firstBuffer), 1);
 }
 
 TEST(CuptiActivityApiTest, RejectsBuffersStartingWithVersion27) {
-  MockCuptiActivities cupti(27);
+  CallbackCuptiActivityApi cupti(27);
   cupti.setMaxBufferSize(0);
 
-  uint8_t* firstBuffer = nullptr;
-  size_t firstSize = 0;
-  size_t firstMaxRecords = 1;
-  cupti.bufferRequestedOverride(&firstBuffer, &firstSize, &firstMaxRecords);
+  auto [firstBuffer, firstSize] = cupti.requestBuffer();
   ASSERT_NE(firstBuffer, nullptr);
   ASSERT_GT(firstSize, 0);
-  EXPECT_EQ(firstMaxRecords, 0);
   EXPECT_FALSE(cupti.stopCollection);
 
-  uint8_t* secondBuffer = firstBuffer;
-  size_t secondSize = firstSize;
-  size_t secondMaxRecords = 1;
-  cupti.bufferRequestedOverride(&secondBuffer, &secondSize, &secondMaxRecords);
+  auto [secondBuffer, secondSize] = cupti.requestBuffer(firstBuffer, firstSize);
   EXPECT_EQ(secondBuffer, nullptr);
   EXPECT_EQ(secondSize, 0);
-  EXPECT_EQ(secondMaxRecords, 0);
   EXPECT_TRUE(cupti.stopCollection);
+
+  cupti.completeBuffer(firstBuffer, firstSize);
+  auto [thirdBuffer, thirdSize] = cupti.requestBuffer(firstBuffer, firstSize);
+  EXPECT_EQ(thirdBuffer, nullptr);
+  EXPECT_EQ(thirdSize, 0);
+  EXPECT_EQ(cupti.activityBuffers(), nullptr);
+}
+
+TEST(CuptiActivityApiTest, ClearsCompletedBuffers) {
+  CallbackCuptiActivityApi cupti(27);
+  cupti.setMaxBufferSize(0);
+
+  auto [buffer, size] = cupti.requestBuffer();
+  cupti.completeBuffer(buffer, size);
+  cupti.clearActivities();
+
+  auto [nextBuffer, nextSize] = cupti.requestBuffer();
+  EXPECT_NE(nextBuffer, nullptr);
+  EXPECT_GT(nextSize, 0);
+  EXPECT_FALSE(cupti.stopCollection);
 }
 
 // Common setup / teardown and helper functions

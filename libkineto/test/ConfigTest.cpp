@@ -130,6 +130,11 @@ TEST(ParseTest, ActivityTypes) {
       cfg2.selectedActivityTypes(),
       std::set<ActivityType>({ActivityType::XPU_SCOPE_PROFILER}));
 
+  EXPECT_TRUE(cfg2.parse("ACTIVITY_TYPES = hardware_counters"));
+  EXPECT_EQ(
+      cfg2.selectedActivityTypes(),
+      std::set<ActivityType>({ActivityType::HARDWARE_COUNTERS}));
+
   EXPECT_TRUE(
       cfg2.parse("ACTIVITY_TYPES=privateuse1_Runtime,privateuse1_driver"));
   EXPECT_EQ(
@@ -137,6 +142,23 @@ TEST(ParseTest, ActivityTypes) {
       std::set<ActivityType>(
           {ActivityType::PRIVATEUSE1_RUNTIME,
            ActivityType::PRIVATEUSE1_DRIVER}));
+}
+
+TEST(ParseTest, CuptiPMSamplingOptions) {
+  Config cfg;
+  EXPECT_TRUE(cfg.cuptiPMSamplingMetricNames().empty());
+  EXPECT_EQ(cfg.cuptiPMSamplingDeviceId(), -1);
+
+  EXPECT_TRUE(cfg.parse(
+      "CUPTI_PM_SAMPLING_METRICS = sm__cycles_elapsed.avg, "
+      "dram__bytes_read.sum\n"
+      "CUPTI_PM_SAMPLING_DEVICE_ID = 2"));
+
+  EXPECT_EQ(
+      cfg.cuptiPMSamplingMetricNames(),
+      std::vector<std::string>(
+          {"sm__cycles_elapsed.avg", "dram__bytes_read.sum"}));
+  EXPECT_EQ(cfg.cuptiPMSamplingDeviceId(), 2);
 }
 
 TEST(ParseTest, ProfileStartTime) {

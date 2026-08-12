@@ -52,6 +52,11 @@ struct DeviceInfo {
   const std::string label; // device label
 };
 
+enum class ResourceType {
+  UNKNOWN = 0,
+  HOST_THREAD = 1,
+};
+
 /* ResourceInfo:
  *   Can be used to specify resource inside device
  */
@@ -61,6 +66,7 @@ struct ResourceInfo {
   int64_t deviceId; // id of device which owns this resource (specified in
                     // DeviceInfo.id)
   const std::string name; // resource name
+  ResourceType resourceType{ResourceType::UNKNOWN};
 };
 
 using getLinkedActivityCallback = std::function<const ITraceActivity*(int32_t)>;

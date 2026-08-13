@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cupti.h>
+#include <mutex>
 #include "CuptiActivity.h"
 #include "CuptiActivityApi.h"
 #include "GenericActivityProfiler.h"
@@ -23,7 +24,6 @@ class CuptiActivityProfiler : public GenericActivityProfiler {
   ~CuptiActivityProfiler() override = default;
 
  protected:
-  void logGpuVersions() override;
   void setMaxGpuBufferSize(int64_t size) override;
   void enableGpuTracing() override;
   void disableGpuTracing() override;
@@ -63,6 +63,12 @@ class CuptiActivityProfiler : public GenericActivityProfiler {
   template <class T>
   void handleGpuActivity(const T* act, ActivityLogger* logger);
   void logDeferredEvents();
+  void recordGpuVersions(uint32_t cuptiVersion);
+
+  // Defer the CUDA/CUPTI probe until tracing starts, after any worker fork.
+  // Cache the result because an unavailable backend stays CPU-only.
+  std::once_flag cuptiInitializationOnce_;
+  bool cuptiAvailable_{false};
 
   // Calls to CUPTI is encapsulated behind this interface
   CuptiActivityApi& cupti_;

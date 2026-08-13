@@ -19,7 +19,23 @@
 
 namespace KINETO_NAMESPACE {
 
-class CuptiPMSamplingController {
+// Separates session orchestration from the resource-owning controller
+// implementation. This keeps CUPTI and decode-thread state behind the boundary
+// and lets callers substitute the contract without inheriting that state.
+class ICuptiPMSamplingController {
+ public:
+  virtual ~ICuptiPMSamplingController() = default;
+
+  [[nodiscard]] virtual bool prepare() = 0;
+  virtual void start() = 0;
+  [[nodiscard]] virtual bool stop() = 0;
+
+  [[nodiscard]] virtual int32_t deviceId() const = 0;
+  [[nodiscard]] virtual const std::vector<std::string>& metricNames() const = 0;
+  [[nodiscard]] virtual std::vector<CuptiPMSample> takeSamples() = 0;
+};
+
+class CuptiPMSamplingController final : public ICuptiPMSamplingController {
  public:
   explicit CuptiPMSamplingController(CuptiPMSamplingConfig config);
   CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
@@ -28,16 +44,16 @@ class CuptiPMSamplingController {
   CuptiPMSamplingController(CuptiPMSamplingController&&) = delete;
   CuptiPMSamplingController& operator=(CuptiPMSamplingController&&) = delete;
 
-  virtual ~CuptiPMSamplingController();
+  ~CuptiPMSamplingController() override;
 
-  [[nodiscard]] virtual bool prepare();
-  virtual void start();
+  [[nodiscard]] bool prepare() override;
+  void start() override;
   // Returns whether collection was active when stop() was called.
-  [[nodiscard]] virtual bool stop();
+  [[nodiscard]] bool stop() override;
 
-  [[nodiscard]] virtual int32_t deviceId() const;
-  [[nodiscard]] virtual const std::vector<std::string>& metricNames() const;
-  [[nodiscard]] virtual std::vector<CuptiPMSample> takeSamples();
+  [[nodiscard]] int32_t deviceId() const override;
+  [[nodiscard]] const std::vector<std::string>& metricNames() const override;
+  [[nodiscard]] std::vector<CuptiPMSample> takeSamples() override;
 
  private:
   void decodeLoop();

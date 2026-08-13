@@ -38,7 +38,7 @@ CuptiPMSamplingSession::CuptiPMSamplingSession(
           std::make_unique<CuptiPMSamplingController>(config)) {}
 
 CuptiPMSamplingSession::CuptiPMSamplingSession(
-    std::unique_ptr<CuptiPMSamplingController> controller)
+    std::unique_ptr<ICuptiPMSamplingController> controller)
     : controller_(std::move(controller)) {}
 
 CuptiPMSamplingSession::~CuptiPMSamplingSession() = default;

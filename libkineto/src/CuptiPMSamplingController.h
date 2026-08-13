@@ -19,20 +19,7 @@
 
 namespace KINETO_NAMESPACE {
 
-class ICuptiPMSamplingController {
- public:
-  virtual ~ICuptiPMSamplingController() = default;
-
-  [[nodiscard]] virtual bool prepare() = 0;
-  virtual void start() = 0;
-  [[nodiscard]] virtual bool stop() = 0;
-
-  [[nodiscard]] virtual int32_t deviceId() const = 0;
-  [[nodiscard]] virtual const std::vector<std::string>& metricNames() const = 0;
-  [[nodiscard]] virtual std::vector<CuptiPMSample> takeSamples() = 0;
-};
-
-class CuptiPMSamplingController final : public ICuptiPMSamplingController {
+class CuptiPMSamplingController {
  public:
   explicit CuptiPMSamplingController(CuptiPMSamplingConfig config);
   CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
@@ -41,16 +28,16 @@ class CuptiPMSamplingController final : public ICuptiPMSamplingController {
   CuptiPMSamplingController(CuptiPMSamplingController&&) = delete;
   CuptiPMSamplingController& operator=(CuptiPMSamplingController&&) = delete;
 
-  ~CuptiPMSamplingController() override;
+  virtual ~CuptiPMSamplingController();
 
-  [[nodiscard]] bool prepare() override;
-  void start() override;
+  [[nodiscard]] virtual bool prepare();
+  virtual void start();
   // Returns whether collection was active when stop() was called.
-  [[nodiscard]] bool stop() override;
+  [[nodiscard]] virtual bool stop();
 
-  [[nodiscard]] int32_t deviceId() const override;
-  [[nodiscard]] const std::vector<std::string>& metricNames() const override;
-  [[nodiscard]] std::vector<CuptiPMSample> takeSamples() override;
+  [[nodiscard]] virtual int32_t deviceId() const;
+  [[nodiscard]] virtual const std::vector<std::string>& metricNames() const;
+  [[nodiscard]] virtual std::vector<CuptiPMSample> takeSamples();
 
  private:
   void decodeLoop();

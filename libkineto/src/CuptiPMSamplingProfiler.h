@@ -29,7 +29,7 @@ class CuptiPMSamplingSession final
  public:
   explicit CuptiPMSamplingSession(const CuptiPMSamplingConfig& config);
   explicit CuptiPMSamplingSession(
-      std::unique_ptr<ICuptiPMSamplingController> controller);
+      std::unique_ptr<CuptiPMSamplingController> controller);
   ~CuptiPMSamplingSession() override;
 
   [[nodiscard]] bool prepare();
@@ -46,7 +46,7 @@ class CuptiPMSamplingSession final
  private:
   [[nodiscard]] std::unique_ptr<libkineto::CpuTraceBuffer> buildTraceBuffer();
 
-  std::unique_ptr<ICuptiPMSamplingController> controller_;
+  std::unique_ptr<CuptiPMSamplingController> controller_;
   std::unique_ptr<libkineto::CpuTraceBuffer> traceBuffer_;
 };
 

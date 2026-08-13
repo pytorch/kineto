@@ -24,13 +24,14 @@ using namespace KINETO_NAMESPACE;
 
 namespace {
 
-class FakeCuptiPMSamplingController final : public ICuptiPMSamplingController {
+class FakeCuptiPMSamplingController final : public CuptiPMSamplingController {
  public:
   FakeCuptiPMSamplingController(
       int32_t deviceId,
       std::vector<std::string> metricNames,
       std::vector<CuptiPMSample> samples = {})
-      : deviceId_(deviceId),
+      : CuptiPMSamplingController(CuptiPMSamplingConfig{}),
+        deviceId_(deviceId),
         metricNames_(std::move(metricNames)),
         samples_(std::move(samples)) {}
 

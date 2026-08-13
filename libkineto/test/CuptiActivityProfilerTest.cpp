@@ -344,10 +344,10 @@ TEST_F(CuptiActivityProfilerTest, SyncTrace) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   profiler.recordThreadInfo();
@@ -524,10 +524,10 @@ TEST_F(CuptiActivityProfilerTest, SyncEventCorrIdOutOfOrder) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   profiler.recordThreadInfo();
@@ -657,10 +657,10 @@ TEST_F(CuptiActivityProfilerTest, GpuNCCLCollectiveTest) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   int64_t kernelLaunchTime = start_time_ns + 20;
@@ -830,10 +830,10 @@ TEST_F(CuptiActivityProfilerTest, GpuUserAnnotationTest) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
 
   int64_t kernelLaunchTime = start_time_ns + 20;
@@ -900,7 +900,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 1000;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
 
   std::deque<GenericTraceActivity> test_activities{3, ev};
   test_activities[0].startTime = start_time_ns;
@@ -922,7 +922,7 @@ TEST_F(CuptiActivityProfilerTest, SubActivityProfilers) {
 
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
   LOG(INFO) << "Logging to tmp file " << tmpTrace.path();
@@ -956,10 +956,10 @@ TEST_F(CuptiActivityProfilerTest, JsonGPUIDSortTest) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
   profiler.recordThreadInfo();
 
@@ -1040,10 +1040,10 @@ TEST_F(CuptiActivityProfilerTest, StreamWaitEventFutureCorrelation) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   libkineto::get_time_converter() = [](approx_time_t t) { return t; };
   profiler.recordThreadInfo();
 
@@ -1101,14 +1101,14 @@ TEST_F(CuptiActivityProfilerTest, WaitEventMapClearedOnReset) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
 
   // Session 1: record eventId=42 with corrId=100, then reset.
   {
     CuptiActivityProfiler profiler(cuptiActivities_, /*cpu only*/ false);
     profiler.configure(*cfg_, start_time);
     profiler.startTrace(start_time);
-    profiler.stopTrace(start_time + nanoseconds(duration_ns));
+    profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
     libkineto::get_time_converter() = [](approx_time_t t) { return t; };
     profiler.recordThreadInfo();
 
@@ -1133,14 +1133,14 @@ TEST_F(CuptiActivityProfilerTest, WaitEventMapClearedOnReset) {
   {
     CuptiActivityProfiler profiler2(cuptiActivities_, /*cpu only*/ false);
     int64_t start_time_ns2 = start_time_ns + 10000;
-    auto start_time2 = time_point<system_clock>(nanoseconds(start_time_ns2));
+    auto start_time2 = timePointFromNs(start_time_ns2);
 
     auto cfg2 = std::make_unique<Config>();
     cfg2->validate(std::chrono::system_clock::now());
 
     profiler2.configure(*cfg2, start_time2);
     profiler2.startTrace(start_time2);
-    profiler2.stopTrace(start_time2 + nanoseconds(duration_ns));
+    profiler2.stopTrace(timePointFromNs(start_time_ns2 + duration_ns));
     libkineto::get_time_converter() = [](approx_time_t t) { return t; };
     profiler2.recordThreadInfo();
 

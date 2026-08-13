@@ -322,10 +322,10 @@ TEST_F(RocmActivityProfilerTest, SyncTrace) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   profiler.recordThreadInfo();
 
@@ -408,10 +408,10 @@ TEST_F(RocmActivityProfilerTest, GpuTypedMetadataMatchesLegacyStreamMetadata) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   auto gpuOps = std::make_unique<MockRocLogger>();
   gpuOps->addMemcpyH2DActivity(start_time_ns + 10, start_time_ns + 20, 1, 42);
@@ -448,10 +448,10 @@ TEST_F(
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   auto gpuOps = std::make_unique<MockRocLogger>();
   gpuOps->addRuntimeKernelActivity(
@@ -511,10 +511,10 @@ TEST_F(RocmActivityProfilerTest, HtoDMemcpyPrefersRuntimeStreamOverAsyncQueue) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   auto gpuOps = std::make_unique<MockRocLogger>();
   gpuOps->addRuntimeKernelActivity(
@@ -561,10 +561,10 @@ TEST_F(
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   auto gpuOps = std::make_unique<MockRocLogger>();
   gpuOps->addRuntimeKernelActivity(
@@ -614,10 +614,10 @@ TEST_F(RocmActivityProfilerTest, GpuNCCLCollectiveTest) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   int64_t kernelLaunchTime = start_time_ns + 20;
   profiler.recordThreadInfo();
@@ -774,10 +774,10 @@ TEST_F(RocmActivityProfilerTest, GpuUserAnnotationTest) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 300;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   int64_t kernelLaunchTime = start_time_ns + 20;
   profiler.recordThreadInfo();
@@ -844,7 +844,7 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 1000;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
 
   std::deque<GenericTraceActivity> test_activities{3, ev};
   test_activities[0].startTime = start_time_ns;
@@ -867,7 +867,7 @@ TEST_F(RocmActivityProfilerTest, SubActivityProfilers) {
 
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
 
   auto tmpTrace = createTempTraceFile("libkineto_test", ".json");
   LOG(INFO) << "Logging to tmp file " << tmpTrace.path();
@@ -901,10 +901,10 @@ TEST_F(RocmActivityProfilerTest, JsonGPUIDSortTest) {
   int64_t start_time_ns =
       libkineto::timeSinceEpoch(std::chrono::system_clock::now());
   int64_t duration_ns = 500;
-  auto start_time = time_point<system_clock>(nanoseconds(start_time_ns));
+  auto start_time = timePointFromNs(start_time_ns);
   profiler.configure(*cfg_, start_time);
   profiler.startTrace(start_time);
-  profiler.stopTrace(start_time + nanoseconds(duration_ns));
+  profiler.stopTrace(timePointFromNs(start_time_ns + duration_ns));
   profiler.recordThreadInfo();
 
   // Set up CPU events

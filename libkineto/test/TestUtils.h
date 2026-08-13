@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -62,5 +64,15 @@ size_t countSubstrings(const std::string& source, const std::string& substring);
 // Asserts (via gtest) that the file at path exists and holds more than 100
 // bytes. No-op on non-Linux platforms.
 void checkTracefile(const char* path);
+
+// Builds a system_clock time point from a count of nanoseconds since the
+// epoch, the inverse of timeSinceEpoch().
+//
+// system_clock measures in nanoseconds under libstdc++ but in 100-nanosecond
+// ticks under MSVC, so a nanosecond count is not implicitly convertible to the
+// clock's own duration everywhere: MSVC rejects it as narrowing. Converting
+// explicitly works on both. Nothing is lost in practice, because MSVC's
+// system_clock has no finer resolution than those ticks to begin with.
+[[nodiscard]] std::chrono::system_clock::time_point timePointFromNs(int64_t ns);
 
 } // namespace libkineto::test

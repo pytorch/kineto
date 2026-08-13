@@ -74,7 +74,6 @@ class CuptiActivityApi {
   static void preConfigureCUPTI();
 
  private:
-  bool canRejectBuffer_{false};
   int64_t maxGpuBufferCount_{0};
   CuptiActivityBufferMap allocatedGpuTraceBuffers_;
   std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
@@ -99,7 +98,7 @@ class CuptiActivityApi {
       size_t validSize);
 
  protected:
-  explicit CuptiActivityApi(uint32_t cuptiVersion);
+  bool canRejectBuffer_{false};
   void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
   void bufferCompleted(
       CUcontext ctx,

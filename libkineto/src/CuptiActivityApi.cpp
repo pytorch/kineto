@@ -56,9 +56,6 @@ inline void reenableCuptiCallbacks_(CuptiCallbackApi& cbapi) {
   }
 }
 
-CuptiActivityApi::CuptiActivityApi(uint32_t cuptiVersion)
-    : canRejectBuffer_(cuptiVersion >= kCuptiBufferRejectionMinVersion) {}
-
 CuptiActivityApi& CuptiActivityApi::singleton() {
   static auto* instance = new CuptiActivityApi();
   return *instance;
@@ -152,22 +149,21 @@ void CuptiActivityApi::bufferRequested(
   std::lock_guard<std::mutex> guard(mutex_);
   LOG(VERBOSE) << "CUPTI buffer requested";
 
-  *buffer = nullptr;
-  *size = 0;
-  *maxNumRecords = 0;
-
-  const auto retainedBufferCount = allocatedGpuTraceBuffers_.size() +
-      (readyGpuTraceBuffers_ ? readyGpuTraceBuffers_->size() : 0);
   if (!stopCollection &&
-      static_cast<int64_t>(retainedBufferCount) >= maxGpuBufferCount_) {
+      static_cast<int64_t>(allocatedGpuTraceBuffers_.size()) >=
+          maxGpuBufferCount_) {
     stopCollection = true;
-    LOG(WARNING) << "Exceeded max GPU buffer count (" << retainedBufferCount
+    LOG(WARNING) << "Exceeded max GPU buffer count ("
+                 << allocatedGpuTraceBuffers_.size()
                  << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
   }
   // CUPTI fixed a crash when clients reject a buffer request in API v27
   // (CUDA 12.9). Older or unknown versions must receive a valid buffer while
   // the controller observes stopCollection and terminates tracing.
   if (stopCollection && canRejectBuffer_) {
+    *buffer = nullptr;
+    *size = 0;
+    *maxNumRecords = 0;
     return;
   }
 
@@ -176,6 +172,8 @@ void CuptiActivityApi::bufferRequested(
   *size = kBufSize;
 
   allocatedGpuTraceBuffers_[*buffer] = std::move(buf);
+
+  *maxNumRecords = 0;
 }
 
 std::unique_ptr<CuptiActivityBufferMap> CuptiActivityApi::activityBuffers() {
@@ -251,7 +249,6 @@ void CuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
-      readyGpuTraceBuffers_ = nullptr;
       return;
     }
   }

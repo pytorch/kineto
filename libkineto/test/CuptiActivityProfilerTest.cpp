@@ -11,12 +11,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
-#include <stdlib.h> // NOLINT(modernize-deprecated-headers) required for setenv unsetenv
+#include <stdlib.h> // NOLINT(modernize-deprecated-headers) required for malloc free
 
-#include <strings.h>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <optional>
 #include <variant>
@@ -261,7 +261,7 @@ struct MockCuptiActivityBuffer {
   template <class T>
   T& createActivity(int64_t start_ns, int64_t end_ns, int64_t correlation) {
     T& act = *static_cast<T*>(malloc(sizeof(T)));
-    bzero(&act, sizeof(act));
+    std::memset(&act, 0, sizeof(act));
     act.start = start_ns;
     act.end = end_ns;
     act.correlationId = correlation;
@@ -271,7 +271,7 @@ struct MockCuptiActivityBuffer {
   template <class T>
   T& createActivity(int64_t correlation) {
     T& act = *static_cast<T*>(malloc(sizeof(T)));
-    bzero(&act, sizeof(act));
+    std::memset(&act, 0, sizeof(act));
     act.correlationId = correlation;
     return act;
   }

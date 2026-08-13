@@ -19,9 +19,8 @@
 
 namespace KINETO_NAMESPACE {
 
-// Separates session orchestration from the resource-owning controller
-// implementation. This keeps CUPTI and decode-thread state behind the boundary
-// and lets callers substitute the contract without inheriting that state.
+// CuptiPMSamplingSession depends on this interface so unit tests can provide a
+// mock controller instead of constructing the real CUPTI controller.
 class ICuptiPMSamplingController {
  public:
   virtual ~ICuptiPMSamplingController() = default;

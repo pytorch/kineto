@@ -93,7 +93,13 @@ TEST(CuptiPMSamplingProfilerTest, RequiresActivityMetricsAndDevice) {
   ASSERT_TRUE(
       validConfig.parse("CUPTI_PM_SAMPLING_METRICS = sm__cycles_active.avg\n"
                         "CUPTI_PM_SAMPLING_DEVICE_ID = 0"));
-  EXPECT_EQ(profiler.configure({}, validConfig), nullptr);
+  EXPECT_EQ(
+      profiler.configure(
+          /*startTimeMs=*/123,
+          /*durationMs=*/456,
+          /*activityTypes=*/{},
+          validConfig),
+      nullptr);
 
   Config missingMetrics;
   ASSERT_TRUE(missingMetrics.parse("CUPTI_PM_SAMPLING_DEVICE_ID = 0"));
@@ -117,6 +123,27 @@ TEST(CuptiPMSamplingSessionTest, ReportsPreparationFailure) {
 
   EXPECT_FALSE(session.prepare());
   EXPECT_EQ(controllerPtr->prepareCalls, 1);
+}
+
+TEST(CuptiPMSamplingSessionTest, InactiveStopDoesNotBuildTrace) {
+  auto controller = std::make_unique<FakeCuptiPMSamplingController>(
+      0,
+      std::vector<std::string>{"sm__cycles_active.avg"},
+      std::vector<CuptiPMSample>{CuptiPMSample{100, 120, {1.25}}});
+  controller->stopResult = false;
+  auto* controllerPtr = controller.get();
+  CuptiPMSamplingSession session(std::move(controller));
+
+  session.stop();
+
+  EXPECT_EQ(controllerPtr->stopCalls, 1);
+  EXPECT_EQ(controllerPtr->takeSamplesCalls, 0);
+  EXPECT_EQ(session.getTraceBuffer(), nullptr);
+
+  Config config;
+  MemoryTraceLogger logger(config);
+  session.processTrace(logger);
+  EXPECT_TRUE(logger.traceActivities()->empty());
 }
 
 TEST(CuptiPMSamplingSessionTest, BuildsHardwareCounterActivities) {

@@ -10,7 +10,6 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -20,28 +19,38 @@
 
 namespace KINETO_NAMESPACE {
 
-class CuptiPMSamplingController {
+class ICuptiPMSamplingController {
+ public:
+  virtual ~ICuptiPMSamplingController() = default;
+
+  [[nodiscard]] virtual bool prepare() = 0;
+  virtual void start() = 0;
+  [[nodiscard]] virtual bool stop() = 0;
+
+  [[nodiscard]] virtual int32_t deviceId() const = 0;
+  [[nodiscard]] virtual const std::vector<std::string>& metricNames() const = 0;
+  [[nodiscard]] virtual std::vector<CuptiPMSample> takeSamples() = 0;
+};
+
+class CuptiPMSamplingController final : public ICuptiPMSamplingController {
  public:
   explicit CuptiPMSamplingController(CuptiPMSamplingConfig config);
-  CuptiPMSamplingController(
-      CuptiPMSamplingConfig config,
-      std::unique_ptr<CuptiPMSamplingApi> api);
   CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
   CuptiPMSamplingController& operator=(const CuptiPMSamplingController&) =
       delete;
   CuptiPMSamplingController(CuptiPMSamplingController&&) = delete;
   CuptiPMSamplingController& operator=(CuptiPMSamplingController&&) = delete;
 
-  ~CuptiPMSamplingController();
+  ~CuptiPMSamplingController() override;
 
-  [[nodiscard]] bool prepare();
-  void start();
+  [[nodiscard]] bool prepare() override;
+  void start() override;
   // Returns whether collection was active when stop() was called.
-  [[nodiscard]] bool stop();
+  [[nodiscard]] bool stop() override;
 
-  [[nodiscard]] int32_t deviceId() const;
-  [[nodiscard]] const std::vector<std::string>& metricNames() const;
-  [[nodiscard]] std::vector<CuptiPMSample> takeSamples();
+  [[nodiscard]] int32_t deviceId() const override;
+  [[nodiscard]] const std::vector<std::string>& metricNames() const override;
+  [[nodiscard]] std::vector<CuptiPMSample> takeSamples() override;
 
  private:
   void decodeLoop();
@@ -52,7 +61,7 @@ class CuptiPMSamplingController {
   void logCurrentException(const char* fallback);
 
   CuptiPMSamplingConfig config_;
-  std::unique_ptr<CuptiPMSamplingApi> api_;
+  CuptiPMSamplingApi api_;
   std::thread decodeThread_;
   std::atomic_bool stopRequested_{false};
   std::atomic_bool decodeFailed_{false};
@@ -62,7 +71,7 @@ class CuptiPMSamplingController {
   std::vector<CuptiPMSample> samples_;
   bool discardFirstSample_{true};
   bool prepared_{false};
-  // True while a collection started by api_->start() is active.
+  // True while a collection started by api_.start() is active.
   bool active_{false};
 };
 

@@ -34,7 +34,12 @@ constexpr std::chrono::milliseconds kSamplingInterval{1};
 
 CuptiPMSamplingSession::CuptiPMSamplingSession(
     const CuptiPMSamplingConfig& config)
-    : controller_(config) {}
+    : CuptiPMSamplingSession(
+          std::make_unique<CuptiPMSamplingController>(config)) {}
+
+CuptiPMSamplingSession::CuptiPMSamplingSession(
+    std::unique_ptr<ICuptiPMSamplingController> controller)
+    : controller_(std::move(controller)) {}
 
 CuptiPMSamplingSession::~CuptiPMSamplingSession() = default;
 
@@ -50,20 +55,20 @@ bool CuptiPMSamplingSession::prepare() {
 
   // prepare() enables CUPTI PM sampling and acquires exclusive access during
   // the parent profiler's warmup phase. Collection itself begins in start().
-  if (!controller_.prepare()) {
+  if (!controller_->prepare()) {
     LOG(WARNING) << "CUPTI PM sampling failed to prepare CUDA device "
-                 << controller_.deviceId();
+                 << controller_->deviceId();
     return false;
   }
   return true;
 }
 
 void CuptiPMSamplingSession::start() {
-  controller_.start();
+  controller_->start();
 }
 
 void CuptiPMSamplingSession::stop() {
-  if (controller_.stop()) {
+  if (controller_->stop()) {
     traceBuffer_ = buildTraceBuffer();
   }
 }
@@ -104,8 +109,8 @@ std::unique_ptr<libkineto::CpuTraceBuffer> CuptiPMSamplingSession::
   auto buffer = std::make_unique<libkineto::CpuTraceBuffer>();
   buffer->span = libkineto::TraceSpan{0, 0, kProfilerName};
 
-  const auto samples = controller_.takeSamples();
-  const auto& metricNames = controller_.metricNames();
+  const auto samples = controller_->takeSamples();
+  const auto& metricNames = controller_->metricNames();
   for (const auto& sample : samples) {
     const auto start = convertCuptiTimestamp(sample.rawStartTimestamp);
     const auto end = convertCuptiTimestamp(sample.rawEndTimestamp);
@@ -125,7 +130,7 @@ std::unique_ptr<libkineto::CpuTraceBuffer> CuptiPMSamplingSession::
     auto& activity = *buffer->activities.back();
     activity.startTime = start;
     activity.endTime = end;
-    activity.device = controller_.deviceId();
+    activity.device = controller_->deviceId();
     for (size_t i = 0; i < metricNames.size(); ++i) {
       activity.addCounterValue(metricNames[i], sample.values[i]);
     }

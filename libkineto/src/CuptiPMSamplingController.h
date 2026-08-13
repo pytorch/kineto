@@ -19,7 +19,22 @@
 
 namespace KINETO_NAMESPACE {
 
-class CuptiPMSamplingController {
+// CuptiPMSamplingSession depends on this interface so unit tests can provide a
+// mock controller instead of constructing the real CUPTI controller.
+class ICuptiPMSamplingController {
+ public:
+  virtual ~ICuptiPMSamplingController() = default;
+
+  [[nodiscard]] virtual bool prepare() = 0;
+  virtual void start() = 0;
+  [[nodiscard]] virtual bool stop() = 0;
+
+  [[nodiscard]] virtual int32_t deviceId() const = 0;
+  [[nodiscard]] virtual const std::vector<std::string>& metricNames() const = 0;
+  [[nodiscard]] virtual std::vector<CuptiPMSample> takeSamples() = 0;
+};
+
+class CuptiPMSamplingController final : public ICuptiPMSamplingController {
  public:
   explicit CuptiPMSamplingController(CuptiPMSamplingConfig config);
   CuptiPMSamplingController(const CuptiPMSamplingController&) = delete;
@@ -28,16 +43,16 @@ class CuptiPMSamplingController {
   CuptiPMSamplingController(CuptiPMSamplingController&&) = delete;
   CuptiPMSamplingController& operator=(CuptiPMSamplingController&&) = delete;
 
-  ~CuptiPMSamplingController();
+  ~CuptiPMSamplingController() override;
 
-  [[nodiscard]] bool prepare();
-  void start();
+  [[nodiscard]] bool prepare() override;
+  void start() override;
   // Returns whether collection was active when stop() was called.
-  [[nodiscard]] bool stop();
+  [[nodiscard]] bool stop() override;
 
-  [[nodiscard]] int32_t deviceId() const;
-  [[nodiscard]] const std::vector<std::string>& metricNames() const;
-  [[nodiscard]] std::vector<CuptiPMSample> takeSamples();
+  [[nodiscard]] int32_t deviceId() const override;
+  [[nodiscard]] const std::vector<std::string>& metricNames() const override;
+  [[nodiscard]] std::vector<CuptiPMSample> takeSamples() override;
 
  private:
   void decodeLoop();

@@ -179,4 +179,10 @@ void checkTracefile(const char* path) {
 #endif
 }
 
+std::chrono::system_clock::time_point timePointFromNs(int64_t ns) {
+  return std::chrono::system_clock::time_point(
+      std::chrono::duration_cast<std::chrono::system_clock::duration>(
+          std::chrono::nanoseconds(ns)));
+}
+
 } // namespace libkineto::test

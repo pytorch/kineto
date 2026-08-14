@@ -366,15 +366,11 @@ TEST(CuptiActivityApiTest, RejectsBuffersWhenSupported) {
   EXPECT_EQ(secondBuffer, nullptr);
   EXPECT_EQ(secondSize, 0);
 
+  cupti.completeBuffer(firstBuffer, firstSize);
   auto [thirdBuffer, thirdSize] = cupti.requestBuffer(firstBuffer, firstSize);
   EXPECT_EQ(thirdBuffer, nullptr);
   EXPECT_EQ(thirdSize, 0);
-
-  cupti.completeBuffer(firstBuffer, firstSize);
-  auto [fourthBuffer, fourthSize] = cupti.requestBuffer(firstBuffer, firstSize);
-  EXPECT_EQ(fourthBuffer, nullptr);
-  EXPECT_EQ(fourthSize, 0);
-  EXPECT_EQ(cupti.activityBuffers(), nullptr);
+  EXPECT_NE(cupti.activityBuffers(), nullptr);
 }
 
 // Common setup / teardown and helper functions

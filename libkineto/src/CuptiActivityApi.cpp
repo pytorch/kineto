@@ -157,9 +157,8 @@ void CuptiActivityApi::bufferRequested(
                  << allocatedGpuTraceBuffers_.size()
                  << " >= " << maxGpuBufferCount_ << ") - terminating tracing";
   }
-  // CUPTI fixed a crash when clients reject a buffer request in API v27
-  // (CUDA 12.9). Older or unknown versions must receive a valid buffer while
-  // the controller observes stopCollection and terminates tracing.
+  // Rejecting buffers can crash CUPTI before API v27 (CUDA 12.9), so older or
+  // unknown versions must receive valid buffers until tracing terminates.
   if (stopCollection && canRejectBuffer_) {
     *buffer = nullptr;
     *size = 0;
@@ -288,8 +287,8 @@ void CuptiActivityApi::bufferCompleted(
       return;
     }
 
-    if (stopCollection) {
-      // Discard returned buffers once tracing is terminating.
+    if (stopCollection && !canRejectBuffer_) {
+      // Prevent buffers from accumulating when CUPTI cannot reject them.
       allocatedGpuTraceBuffers_.erase(it);
       return;
     }

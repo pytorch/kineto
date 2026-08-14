@@ -29,6 +29,7 @@ KINETO_CMAKE_FLAGS=(
 export USE_ROCM=1
 export BUILD_TEST=1
 export PYTORCH_TEST_WITH_ROCM=1
+export PYTORCH_ROCM_ARCH="gfx950"
 
 # Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
 # core, and ROCm never reaches the sccache bucket (see below), so every build

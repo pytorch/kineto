@@ -27,7 +27,7 @@ jobs:
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: rocm
-      gpu-arch-version: "7.2"
+      gpu-arch-version: "7.14"
       script: |
         set -eux
         .github/scripts/setup.sh

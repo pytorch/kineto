@@ -99,6 +99,7 @@ class CuptiActivityApi {
       size_t validSize);
 
  protected:
+  bool canRejectBuffer_{false};
   void bufferRequested(uint8_t** buffer, size_t* size, size_t* maxNumRecords);
   void bufferCompleted(
       CUcontext ctx,

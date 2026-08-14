@@ -285,6 +285,24 @@ struct MockCuptiActivityBuffer {
   std::vector<CUpti_Activity*> activities;
 };
 
+class CallbackCuptiActivityApi : public CuptiActivityApi {
+ public:
+  using CuptiActivityApi::canRejectBuffer_;
+
+  std::pair<uint8_t*, size_t> requestBuffer(
+      uint8_t* buffer = nullptr,
+      size_t size = 0) {
+    size_t maxNumRecords = 1;
+    bufferRequested(&buffer, &size, &maxNumRecords);
+    EXPECT_EQ(maxNumRecords, 0);
+    return {buffer, size};
+  }
+
+  void completeBuffer(uint8_t* buffer, size_t size) {
+    bufferCompleted(nullptr, 0, buffer, 0, size);
+  }
+};
+
 // Mock parts of the CuptiActivityApi
 class MockCuptiActivities : public CuptiActivityApi {
  public:
@@ -310,16 +328,56 @@ class MockCuptiActivities : public CuptiActivityApi {
     return map;
   }
 
-  void bufferRequestedOverride(
-      uint8_t** buffer,
-      size_t* size,
-      size_t* maxNumRecords) {
-    this->bufferRequested(buffer, size, maxNumRecords);
-  }
-
   std::unique_ptr<MockCuptiActivityBuffer> activityBuffer;
   bool available{true};
 };
+
+TEST(CuptiActivityApiTest, KeepsReturningValidBuffersWhenRejectionUnsupported) {
+  CallbackCuptiActivityApi cupti;
+  cupti.canRejectBuffer_ = false;
+  cupti.setMaxBufferSize(0);
+
+  auto [firstBuffer, firstSize] = cupti.requestBuffer();
+  ASSERT_NE(firstBuffer, nullptr);
+  ASSERT_GT(firstSize, 0);
+  EXPECT_FALSE(cupti.stopCollection);
+  auto [secondBuffer, secondSize] = cupti.requestBuffer(firstBuffer, firstSize);
+  EXPECT_TRUE(cupti.stopCollection);
+
+  ASSERT_NE(secondBuffer, nullptr);
+  ASSERT_GT(secondSize, 0);
+
+  auto [thirdBuffer, thirdSize] = cupti.requestBuffer();
+  ASSERT_NE(thirdBuffer, nullptr);
+  EXPECT_NE(thirdBuffer, secondBuffer);
+
+  cupti.completeBuffer(firstBuffer, firstSize);
+  cupti.completeBuffer(secondBuffer, secondSize);
+  cupti.completeBuffer(thirdBuffer, thirdSize);
+  EXPECT_EQ(cupti.activityBuffers(), nullptr);
+}
+
+TEST(CuptiActivityApiTest, RejectsBuffersWhenSupported) {
+  CallbackCuptiActivityApi cupti;
+  cupti.canRejectBuffer_ = true;
+  cupti.setMaxBufferSize(0);
+
+  auto [firstBuffer, firstSize] = cupti.requestBuffer();
+  ASSERT_NE(firstBuffer, nullptr);
+  ASSERT_GT(firstSize, 0);
+  EXPECT_FALSE(cupti.stopCollection);
+
+  auto [secondBuffer, secondSize] = cupti.requestBuffer(firstBuffer, firstSize);
+  EXPECT_TRUE(cupti.stopCollection);
+  EXPECT_EQ(secondBuffer, nullptr);
+  EXPECT_EQ(secondSize, 0);
+
+  cupti.completeBuffer(firstBuffer, firstSize);
+  auto [thirdBuffer, thirdSize] = cupti.requestBuffer(firstBuffer, firstSize);
+  EXPECT_EQ(thirdBuffer, nullptr);
+  EXPECT_EQ(thirdSize, 0);
+  EXPECT_NE(cupti.activityBuffers(), nullptr);
+}
 
 // Common setup / teardown and helper functions
 class CuptiActivityProfilerTest : public ::testing::Test {

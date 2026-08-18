@@ -26,23 +26,32 @@
 // Include the IPC Fabric
 #include "FabricManager.h"
 
+namespace KINETO_NAMESPACE {
+using FabricManagerT = ::dynolog::ipcfabric::FabricManager;
+} // namespace KINETO_NAMESPACE
+
 #else
 
 // Adds an empty implementation so compilation works.
-namespace dynolog::ipcfabric {
+namespace KINETO_NAMESPACE {
 
-class FabricManager {
+// Deliberately not named dynolog::ipcfabric::FabricManager: the real class can
+// be linked into the same binary, and two definitions of one name is an ODR
+// violation.
+class DisabledFabricManager {
  public:
-  FabricManager(const FabricManager&) = delete;
-  FabricManager& operator=(const FabricManager&) = delete;
+  DisabledFabricManager(const DisabledFabricManager&) = delete;
+  DisabledFabricManager& operator=(const DisabledFabricManager&) = delete;
 
-  static std::unique_ptr<FabricManager> factory(
+  static std::unique_ptr<DisabledFabricManager> factory(
       std::string endpoint_name = "") {
     return nullptr;
   }
 };
 
-} // namespace dynolog::ipcfabric
+using FabricManagerT = DisabledFabricManager;
+
+} // namespace KINETO_NAMESPACE
 
 #endif // ENABLE_IPC_FABRIC
 
@@ -83,7 +92,7 @@ class IpcFabricConfigClient {
   std::vector<int32_t> pids_;
   bool ipcFabricEnabled_;
 
-  std::unique_ptr<dynolog::ipcfabric::FabricManager> fabricManager_;
+  std::unique_ptr<FabricManagerT> fabricManager_;
 };
 
 #endif // __linux__

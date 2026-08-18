@@ -83,7 +83,7 @@ IpcFabricConfigClient::IpcFabricConfigClient()
   // setup IPC Fabric
   std::string ep_name = "dynoconfigclient" + uuid::generate_uuid_v4();
 
-  fabricManager_ = ::dynolog::ipcfabric::FabricManager::factory(ep_name);
+  fabricManager_ = FabricManagerT::factory(ep_name);
 #ifdef ENABLE_IPC_FABRIC
   LOG(INFO) << "Setting up IPC Fabric at endpoint: " << ep_name << " status = "
             << (fabricManager_ ? "initialized" : "failed (null)");

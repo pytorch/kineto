@@ -231,11 +231,24 @@ void XpuptiActivityApi::enableXpuptiActivities(
       case ActivityType::XPU_RUNTIME:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
         XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
-            1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
+            /*enable=*/1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
         break;
 
       case ActivityType::XPU_DRIVER:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DRIVER_API));
+        // ptiViewEnable() enables every L0 api id and clears the granularity
+        // flag, so the class filter has to come after it: the first granular
+        // call resets the group to all-disabled, then enables its class.
+        XPUPTI_CALL(ptiViewEnableDriverApiClass(
+            /*enable=*/1,
+            PTI_API_CLASS_GPU_OPERATION_CORE,
+            PTI_API_GROUP_LEVELZERO));
+        // Queue submission submits work to the GPU but is absent from PTI's
+        // GPU_OPERATION_CORE class.
+        XPUPTI_CALL(ptiViewEnableDriverApi(
+            /*enable=*/1,
+            PTI_API_GROUP_LEVELZERO,
+            pti_api_id_driver_levelzero::zeCommandQueueExecuteCommandLists_id));
         break;
 
       case ActivityType::XPU_SCOPE_PROFILER:

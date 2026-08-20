@@ -37,6 +37,11 @@ class CuptiPMSamplingSession final
   void stop() override;
   [[nodiscard]] std::vector<std::string> errors() override;
   void processTrace(libkineto::ActivityLogger& logger) override;
+  void processTrace(
+      libkineto::ActivityLogger& logger,
+      libkineto::getLinkedActivityCallback getLinkedActivity,
+      int64_t startTime,
+      int64_t endTime) override;
   [[nodiscard]] std::unique_ptr<libkineto::DeviceInfo> getDeviceInfo() override;
   [[nodiscard]] std::vector<libkineto::ResourceInfo> getResourceInfos()
       override;

@@ -14,6 +14,11 @@
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
 
+#include <algorithm>
+#include <iterator>
+#include <ranges>
+#include <unordered_set>
+
 namespace KINETO_NAMESPACE {
 
 // number of scopes affect the size of counter data binary used by
@@ -33,6 +38,23 @@ bool XpuptiScopeProfilerConfig::handleOption(
     xpuptiProfilerPerKernel_ = toBool(val);
   } else if (name == "XPUPTI_PROFILER_MAX_SCOPES"sv) {
     xpuptiProfilerMaxScopes_ = toInt64(val);
+  } else if (name == "XPUPTI_PROFILER_DEVICES"sv) {
+    // Parse a comma-separated device-index list: skip empty tokens (so a
+    // trailing/doubled comma like "0, ,2," is tolerated) and drop duplicate
+    // indices, preserving first-seen order (configuring the same device twice
+    // is a user mistake PTI would otherwise reject).
+    const auto tokens = splitAndTrim(val, ',');
+    const auto nonEmpty = [](const std::string& tok) { return !tok.empty(); };
+    const auto toIndex = [this](const std::string& tok) { return toInt32(tok); };
+    // Dedup in copy_if (which invokes the predicate exactly once per element),
+    // not in a views::filter (whose predicate must be pure / may re-evaluate).
+    std::unordered_set<int> seen;
+    const auto firstSeen = [&seen](int idx) { return seen.insert(idx).second; };
+    xpuptiProfilerDevices_.clear();
+    std::ranges::copy_if(
+        tokens | std::views::filter(nonEmpty) | std::views::transform(toIndex),
+        std::back_inserter(xpuptiProfilerDevices_),
+        firstSeen);
   } else {
     return false;
   }
@@ -53,10 +75,14 @@ void XpuptiScopeProfilerConfig::printActivityProfilerConfig(
         s,
         "Xpupti Profiler metrics : {}\n"
         "Xpupti Profiler measure per kernel : {}\n"
-        "Xpupti Profiler max scopes : {}\n",
+        "Xpupti Profiler max scopes : {}\n"
+        "Xpupti Profiler devices : {}\n",
         fmt::join(activitiesXpuptiMetrics_, ", "),
         xpuptiProfilerPerKernel_,
-        xpuptiProfilerMaxScopes_);
+        xpuptiProfilerMaxScopes_,
+        xpuptiProfilerDevices_.empty()
+            ? std::string("auto")
+            : fmt::format("{}", fmt::join(xpuptiProfilerDevices_, ", ")));
   }
 }
 

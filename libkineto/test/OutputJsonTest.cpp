@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <string>
 #include <string_view>
 
@@ -252,4 +253,46 @@ TEST(OutputJsonTest, ResourceInfoWithQuotesProducesValidJson) {
     }
   }
   EXPECT_TRUE(found);
+}
+
+TEST(OutputJsonTest, HardwareCountersUseDedicatedGpuCounterTrack) {
+  const auto traceFile =
+      libkineto::test::createTempTraceFile("OutputJsonTest.", ".json");
+
+  const int64_t timestamp = ChromeTraceBaseTime::singleton().get() + 123456;
+  TraceSpan span(timestamp, 0, "test_span");
+  GenericTraceActivity activity(
+      span, ActivityType::HARDWARE_COUNTERS, "CUPTI PM Sampling");
+  activity.startTime = timestamp;
+  activity.endTime = timestamp + 1000;
+  activity.device = 2;
+  activity.resource = 7;
+  activity.addCounterValue("sm__cycles_active.avg", 1.25);
+  activity.addCounterValue("dram__bytes_read.sum", 2048.0);
+
+  TestableChromeTraceLogger logger(traceFile.path());
+  logger.handleTraceStart({}, "");
+  logger.handleActivity(activity);
+  logger.finalizeTrace(timestamp + 2000);
+
+  const auto trace = nlohmann::json::parse(readFile(traceFile.path()));
+  std::map<std::string, double> counters;
+  for (const auto& event : trace["traceEvents"]) {
+    if (event.value("ph", "") != "C" ||
+        event.value("cat", "") != "hardware_counters") {
+      continue;
+    }
+
+    EXPECT_EQ(event["pid"], "GPU 2 Counters");
+    EXPECT_EQ(event["tid"], 7);
+    EXPECT_DOUBLE_EQ(event["ts"].get<double>(), 123.456);
+    ASSERT_TRUE(event.contains("args"));
+    ASSERT_TRUE(event["args"].contains(""));
+    counters.emplace(
+        event["name"].get<std::string>(), event["args"][""].get<double>());
+  }
+
+  ASSERT_EQ(counters.size(), 2);
+  EXPECT_DOUBLE_EQ(counters.at("sm__cycles_active.avg"), 1.25);
+  EXPECT_DOUBLE_EQ(counters.at("dram__bytes_read.sum"), 2048.0);
 }

@@ -253,6 +253,10 @@ void CuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
+      // Nothing is in flight, so there is nothing to flush - but CUPTI may have
+      // already handed back completed buffers, and callers ask us to clear so
+      // that those records do not reach the trace.
+      readyGpuTraceBuffers_.reset();
       return;
     }
   }
@@ -265,7 +269,7 @@ void CuptiActivityApi::clearActivities() {
   // for active tracing during warmup.
   std::lock_guard<std::mutex> guard(mutex_);
   // Throw away ready buffers as a result of above flush
-  readyGpuTraceBuffers_ = nullptr;
+  readyGpuTraceBuffers_.reset();
 }
 
 void CUPTIAPI CuptiActivityApi::bufferCompletedTrampoline(

@@ -285,6 +285,19 @@ struct MockCuptiActivityBuffer {
   std::vector<CUpti_Activity*> activities;
 };
 
+// Drives the real buffer callbacks so tests can check the bookkeeping without a
+// CUDA context. Two preconditions keep that from reaching into live CUPTI, and
+// both are easy to break.
+//
+// First, the completed buffer carries a null context. At verbosity 1 and above
+// bufferCompleted asks CUPTI for its dropped-record count, so a run at that
+// verbosity makes a real CUPTI call with that null context. Only the paths that
+// discard a buffer outright return before reaching it.
+//
+// Second, every test drains the allocated buffers before calling
+// activityBuffers or clearActivities, both of which short-circuit when nothing
+// is in flight. A test that leaves a buffer allocated will instead ask CUPTI to
+// flush for real.
 class CallbackCuptiActivityApi : public CuptiActivityApi {
  public:
   using CuptiActivityApi::canRejectBuffer_;
@@ -377,6 +390,23 @@ TEST(CuptiActivityApiTest, RejectsBuffersWhenSupported) {
   EXPECT_EQ(thirdBuffer, nullptr);
   EXPECT_EQ(thirdSize, 0);
   EXPECT_NE(cupti.activityBuffers(), nullptr);
+}
+
+TEST(CuptiActivityApiTest, ClearsCompletedBuffers) {
+  CallbackCuptiActivityApi cupti;
+  cupti.canRejectBuffer_ = true;
+  cupti.setMaxBufferSize(0);
+
+  auto [buffer, size] = cupti.requestBuffer();
+  ASSERT_NE(buffer, nullptr);
+  ASSERT_GT(size, 0);
+  cupti.completeBuffer(buffer, size);
+  ASSERT_FALSE(cupti.stopCollection);
+
+  // The completion left nothing in flight, so this takes the path that has no
+  // buffers to flush. It still has to drop the completed one.
+  cupti.clearActivities();
+  EXPECT_EQ(cupti.activityBuffers(), nullptr);
 }
 
 // Common setup / teardown and helper functions

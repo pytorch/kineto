@@ -79,8 +79,6 @@ std::vector<std::string> CuptiPMSamplingSession::errors() {
   return {};
 }
 
-// TODO: Override the capture-window processTrace overload and exclude samples
-// collected during shutdown that fall outside the requested trace interval.
 void CuptiPMSamplingSession::processTrace(libkineto::ActivityLogger& logger) {
   if (!traceBuffer_) {
     return;
@@ -88,6 +86,44 @@ void CuptiPMSamplingSession::processTrace(libkineto::ActivityLogger& logger) {
   for (const auto& activity : traceBuffer_->activities) {
     logger.handleActivity(libkineto::CpuTraceBuffer::toRef(activity));
   }
+}
+
+void CuptiPMSamplingSession::processTrace(
+    libkineto::ActivityLogger& logger,
+    libkineto::getLinkedActivityCallback /*getLinkedActivity*/,
+    int64_t startTime,
+    int64_t endTime) {
+  if (!traceBuffer_) {
+    return;
+  }
+
+  // Drop PM samples that are not fully contained in [startTime, endTime].
+  auto& activities = traceBuffer_->activities;
+  activities.erase(
+      std::remove_if(
+          activities.begin(),
+          activities.end(),
+          [startTime, endTime](const auto& activity) {
+            return activity->startTime < startTime ||
+                activity->endTime > endTime;
+          }),
+      activities.end());
+
+  if (activities.empty()) {
+    traceBuffer_->span.startTime = startTime;
+    traceBuffer_->span.endTime = endTime;
+  } else {
+    traceBuffer_->span.startTime = activities.front()->startTime;
+    traceBuffer_->span.endTime = activities.front()->endTime;
+    for (size_t i = 1; i < activities.size(); ++i) {
+      traceBuffer_->span.startTime =
+          std::min(traceBuffer_->span.startTime, activities[i]->startTime);
+      traceBuffer_->span.endTime =
+          std::max(traceBuffer_->span.endTime, activities[i]->endTime);
+    }
+  }
+
+  processTrace(logger);
 }
 
 std::unique_ptr<libkineto::DeviceInfo> CuptiPMSamplingSession::getDeviceInfo() {

@@ -214,10 +214,6 @@ bool CuptiPMSamplingController::validateConfig() const {
     LOG(WARNING) << "CUPTI PM sampling metrics must not be empty";
     return false;
   }
-  if (config_.samplingInterval.count() <= 0) {
-    LOG(WARNING) << "CUPTI PM sampling interval must be positive";
-    return false;
-  }
   return true;
 }
 

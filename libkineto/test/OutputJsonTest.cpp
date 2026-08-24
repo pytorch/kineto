@@ -14,6 +14,7 @@
 #include <iterator>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "include/GenericTraceActivity.h"
 #include "include/ThreadUtil.h"
@@ -149,6 +150,54 @@ TEST(OutputJsonTest, EventNameWithQuotesProducesValidJson) {
 
 TEST(OutputJsonTest, PlainEventNameIsUnchanged) {
   expectEventNameRoundTrips("aten::addmm");
+}
+
+TEST(OutputJsonTest, InstructionFlowIsAttachedToDurationSlices) {
+  const auto traceFile =
+      libkineto::test::createTempTraceFile("OutputJsonTest.", ".json");
+  TraceSpan span(0, 0, "test_span");
+
+  GenericTraceActivity receive(span, ActivityType::MTIA_INSIGHT, "sdin r1, r2");
+  receive.startTime = 100;
+  receive.endTime = 200;
+  receive.device = 10;
+  receive.resource = 20;
+  receive.flow.id = 123;
+  receive.flow.type = kLinkAsyncCpuGpu;
+  receive.flow.start = true;
+  receive.addMetadataQuoted("event_type", "instruction_trace");
+
+  GenericTraceActivity dispatch = receive;
+  dispatch.startTime = 300;
+  dispatch.endTime = 400;
+  dispatch.resource = 21;
+  dispatch.flow.start = false;
+
+  TestableChromeTraceLogger logger(traceFile.path());
+  logger.handleTraceStart({}, "");
+  logger.handleGenericActivity(receive);
+  logger.handleGenericActivity(dispatch);
+  logger.finalizeTrace(/*endTime=*/500);
+
+  const auto trace = nlohmann::json::parse(readFile(traceFile.path()));
+  std::vector<nlohmann::json> slices;
+  size_t standaloneFlows = 0;
+  for (const auto& event : trace["traceEvents"]) {
+    if (event.value("ph", "") == "s" || event.value("ph", "") == "f") {
+      ++standaloneFlows;
+    }
+    if (event.value("name", "") == "sdin r1, r2") {
+      slices.push_back(event);
+    }
+  }
+  ASSERT_EQ(slices.size(), 2);
+  EXPECT_EQ(slices[0]["bind_id"], 123);
+  EXPECT_TRUE(slices[0]["flow_out"]);
+  EXPECT_FALSE(slices[0].contains("flow_in"));
+  EXPECT_EQ(slices[1]["bind_id"], 123);
+  EXPECT_TRUE(slices[1]["flow_in"]);
+  EXPECT_FALSE(slices[1].contains("flow_out"));
+  EXPECT_EQ(standaloneFlows, 0);
 }
 
 TEST(OutputJsonTest, DisplayContainsThreadNameAndTID) {

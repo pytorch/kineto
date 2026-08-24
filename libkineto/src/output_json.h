@@ -143,7 +143,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       std::string_view tid,
       int64_t ts,
       int64_t dur,
-      const ArgsBuilder& args);
+      const ArgsBuilder& args,
+      std::string_view extraFields = {});
 
   void writeCompleteEvent(
       std::string_view cat,
@@ -152,7 +153,8 @@ class ChromeTraceLogger : public libkineto::ActivityLogger {
       int64_t tid,
       int64_t ts,
       int64_t dur,
-      const ArgsBuilder& args);
+      const ArgsBuilder& args,
+      std::string_view extraFields = {});
 
   void writeInstantEvent(
       std::string_view cat,

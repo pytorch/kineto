@@ -20,6 +20,7 @@ _Pragma("GCC diagnostic pop");
 #endif
 #endif // _MSC_VER
 
+#include <cstdlib>
 #include <cstring>
 #include <string>
 

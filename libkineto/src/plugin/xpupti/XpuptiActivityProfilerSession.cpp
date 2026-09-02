@@ -32,6 +32,7 @@ XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
     : xpti_(xpti),
       config_(config.clone()),
       activity_types_(activity_types),
+      tracedTypes_(activity_types),
       name_(name) {
   enumDeviceUUIDs();
   xpti_.enableXpuptiActivities(activity_types_);

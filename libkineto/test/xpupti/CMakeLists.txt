@@ -24,6 +24,10 @@ add_executable(XpuptiActivityHandlersTest XpuptiActivityHandlersTest.cpp)
 target_link_libraries(XpuptiActivityHandlersTest PRIVATE ${LINK_LIBRARIES})
 gtest_discover_tests(XpuptiActivityHandlersTest)
 
+add_executable(XpuptiActivityTypeMaskTest XpuptiActivityTypeMaskTest.cpp)
+target_link_libraries(XpuptiActivityTypeMaskTest PRIVATE ${LINK_LIBRARIES})
+gtest_discover_tests(XpuptiActivityTypeMaskTest)
+
 include(ExternalProject)
 
 # The compute translation unit contains SYCL device code and must be built by

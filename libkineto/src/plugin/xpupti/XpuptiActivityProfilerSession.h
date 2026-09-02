@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "XpuptiActivityTypeMask.h"
 #include "XpuptiProfilerMacros.h"
 
 #include "IActivityProfiler.h"
@@ -140,6 +141,8 @@ class XpuptiActivityProfilerSession
   std::vector<std::pair<int32_t, int32_t>> resourceInfo_;
   std::unique_ptr<const libkineto::Config> config_{nullptr};
   const std::set<ActivityType>& activity_types_;
+  // The same selection as activity_types_, for the per-record queries.
+  ActivityTypeMask tracedTypes_;
   std::string name_;
 
   struct KernelActivity {

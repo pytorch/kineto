@@ -165,13 +165,18 @@ namespace {
 // to the device operation it enqueued.
 enum class Ac2gFlowRole : uint8_t { None, Source, Destination };
 
-// XPU_DRIVER (ze*) subspans share the runtime record's correlation id but play
-// no part: they are nested under the submit on the same host track, so an arrow
-// to them would run host->host.
-Ac2gFlowRole ac2gFlowRole(ActivityType activityType) {
+// The host end is normally the XPU_RUNTIME (ur*) submit. An XPU_DRIVER (ze*)
+// subspan shares its correlation id, so while both are collected the driver
+// record plays no part -- it is nested under the submit on the same host track,
+// and an arrow to it would run host->host. When XPU_RUNTIME is filtered out the
+// driver record is the only host record left for that correlation id, so it
+// takes over as the source instead of the trace losing every arrow.
+Ac2gFlowRole ac2gFlowRole(ActivityType activityType, bool runtimeTraced) {
   switch (activityType) {
     case ActivityType::XPU_RUNTIME:
       return Ac2gFlowRole::Source;
+    case ActivityType::XPU_DRIVER:
+      return runtimeTraced ? Ac2gFlowRole::None : Ac2gFlowRole::Source;
     case ActivityType::CONCURRENT_KERNEL:
     case ActivityType::GPU_MEMCPY:
     case ActivityType::GPU_MEMSET:
@@ -226,7 +231,8 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->threadId = activity->_thread_id;
   // Records with no role keep flow id 0, which output_json's `flowId() > 0`
   // guard skips -- that is what suppresses the arrow.
-  if (const auto role = ac2gFlowRole(activityType);
+  if (const auto role = ac2gFlowRole(
+          activityType, tracedTypes_.contains(ActivityType::XPU_RUNTIME));
       role != Ac2gFlowRole::None) {
     trace_activity->flow.id = activity->_correlation_id;
     trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
@@ -342,7 +348,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   // fresh GenericTraceActivity linked back to the CPU op.  The annotations
   // are flushed to the logger at the end of processTrace().
   if constexpr (!handleRuntimeActivities) {
-    if (activity_types_.count(ActivityType::GPU_USER_ANNOTATION)) {
+    if (tracedTypes_.contains(ActivityType::GPU_USER_ANNOTATION)) {
       auto userIt = userCorrelationMap_.find(activity->_correlation_id);
       if (userIt != userCorrelationMap_.end() && cpuActivity_) {
         const int64_t user_external_id = userIt->second;

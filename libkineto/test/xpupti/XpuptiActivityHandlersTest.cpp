@@ -92,14 +92,26 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
   MockXpuptiActivityApi mockApi_;
   MockActivityLogger logger_;
 
+  // The activity types a full XPU session collects: both host views plus
+  // device work. Tests that filter a view out pass their own set.
+  static std::set<ActivityType> allActivityTypes() {
+    return {
+        ActivityType::COLLECTIVE_COMM,
+        ActivityType::XPU_SYNC,
+        ActivityType::XPU_RUNTIME,
+        ActivityType::XPU_DRIVER,
+        ActivityType::CONCURRENT_KERNEL,
+        ActivityType::GPU_MEMCPY,
+        ActivityType::GPU_MEMSET};
+  }
+
   // Processes all records in mockApi_ through the handler pipeline
   // and returns the resulting trace buffer.
   std::unique_ptr<CpuTraceBuffer> processAndGetTrace(
       int64_t windowStart = 0,
-      int64_t windowEnd = 1000) {
+      int64_t windowEnd = 1000,
+      const std::set<ActivityType>& activity_types = allActivityTypes()) {
     Config config;
-    std::set<ActivityType> activity_types = {
-        ActivityType::COLLECTIVE_COMM, ActivityType::XPU_SYNC};
     auto session = std::make_unique<KN::XpuptiActivityProfilerSession>(
         mockApi_, "__test_profiler__", config, activity_types);
     session->processTrace(
@@ -353,9 +365,10 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityOutOfRange) {
 // --- ac2g flow role tests ---
 
 // A SYCL "submit" (XPU_RUNTIME), its nested Level Zero append (XPU_DRIVER) and
-// the resulting device kernel all share one correlation id. Only the runtime
-// record (source) and the kernel record (destination) may be ac2g flow
-// endpoints. The driver record must carry no flow, otherwise Perfetto draws a
+// the resulting device kernel all share one correlation id. While both host
+// views are collected, only the runtime record (source) and the kernel record
+// (destination) may be ac2g flow endpoints. The driver record must then carry
+// no flow, otherwise Perfetto draws a
 // redundant host->host arrow from the runtime "submit" slice to its nested ze*
 // child. Uses _api_id/_api_group 84/LEVELZERO for the api records so
 // ptiViewGetApiIdName() resolves a name (same as the synchronization tests).
@@ -418,6 +431,55 @@ TEST_F(
   EXPECT_EQ(driver_activity.flowType(), 0);
 
   auto& kernel_activity = *traceBuffer->activities[2];
+  EXPECT_EQ(kernel_activity.type(), ActivityType::CONCURRENT_KERNEL);
+  EXPECT_EQ(kernel_activity.flowId(), kCorrelationId);
+  EXPECT_EQ(kernel_activity.flowType(), kLinkAsyncCpuGpu);
+  EXPECT_FALSE(kernel_activity.flowStart());
+}
+
+// With the runtime view filtered out, the ze* record is the only host record
+// left for that correlation id, so it takes over as the flow source -- the
+// device work keeps its CPU->GPU arrow instead of losing it to the filter.
+TEST_F(
+    XpuptiActivityHandlersTest,
+    DriverRecordIsFlowSourceWhenRuntimeNotTraced) {
+  constexpr uint32_t kCorrelationId = 43;
+
+  pti_view_record_api driver_record{};
+  driver_record._view_kind._view_kind = PTI_VIEW_DRIVER_API;
+  driver_record._start_timestamp = 110;
+  driver_record._end_timestamp = 140;
+  driver_record._process_id = 1;
+  driver_record._thread_id = 7;
+  driver_record._correlation_id = kCorrelationId;
+  driver_record._api_id = 84;
+  driver_record._api_group = static_cast<pti_api_group_id>(1);
+
+  pti_view_record_kernel kernel_record{};
+  kernel_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_KERNEL;
+  kernel_record._name = "gemm_kernel";
+  kernel_record._start_timestamp = 200;
+  kernel_record._end_timestamp = 260;
+  kernel_record._thread_id = 7;
+  kernel_record._correlation_id = kCorrelationId;
+  kernel_record._sycl_queue_id = 3;
+  kernel_record._kernel_id = 9;
+
+  mockApi_.records.push_back(&driver_record._view_kind);
+  mockApi_.records.push_back(&kernel_record._view_kind);
+
+  auto activity_types = allActivityTypes();
+  activity_types.erase(ActivityType::XPU_RUNTIME);
+  auto traceBuffer = processAndGetTrace(0, 1000, activity_types);
+  ASSERT_EQ(traceBuffer->activities.size(), 2);
+
+  auto& driver_activity = *traceBuffer->activities[0];
+  EXPECT_EQ(driver_activity.type(), ActivityType::XPU_DRIVER);
+  EXPECT_EQ(driver_activity.flowId(), kCorrelationId);
+  EXPECT_EQ(driver_activity.flowType(), kLinkAsyncCpuGpu);
+  EXPECT_TRUE(driver_activity.flowStart());
+
+  auto& kernel_activity = *traceBuffer->activities[1];
   EXPECT_EQ(kernel_activity.type(), ActivityType::CONCURRENT_KERNEL);
   EXPECT_EQ(kernel_activity.flowId(), kCorrelationId);
   EXPECT_EQ(kernel_activity.flowType(), kLinkAsyncCpuGpu);

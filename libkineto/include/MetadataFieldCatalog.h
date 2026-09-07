@@ -185,6 +185,8 @@ inline constexpr MetadataField<uint64_t> kBytes{"bytes"};
 inline constexpr MetadataField<uint64_t> kCommunicatorId{"Communicator_id"};
 inline constexpr MetadataField<uint64_t> kCorrelation{"correlation"};
 inline constexpr MetadataField<int64_t> kDevice{"device"};
+inline constexpr MetadataField<uint64_t> kEngineIndex{"engine_index"};
+inline constexpr MetadataField<uint64_t> kEngineOrdinal{"engine_ordinal"};
 inline constexpr MetadataField<uint64_t> kKernelId{"kernel_id"};
 inline constexpr MetadataField<double> kMemoryBandwidthGbps{
     "memory bandwidth (GB/s)"};

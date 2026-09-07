@@ -8,10 +8,12 @@
 
 #pragma once
 
+#include <cstdint>
 #include <source_location>
 #include <string_view>
 
 #include <pti/pti.h>
+#include <pti/pti_version.h>
 
 namespace KINETO_NAMESPACE {
 

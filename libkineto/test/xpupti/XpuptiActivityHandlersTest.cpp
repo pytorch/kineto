@@ -49,13 +49,14 @@ class MockXpuptiActivityApi : public KN::XpuptiActivityApi {
     return std::make_unique<KN::XpuptiActivityBufferMap>();
   }
 
-  const std::pair<int, int> processActivities(
+  KN::ActivitiesStats processActivities(
       KN::XpuptiActivityBufferMap&,
-      std::function<void(const pti_view_record_base*)> handler) override {
+      const std::function<void(const pti_view_record_base*)>& handler)
+      override {
     for (auto* record : records) {
       handler(record);
     }
-    return {static_cast<int>(records.size()), 0};
+    return {.activitiesCount = records.size(), .buffersSize = 0};
   }
 };
 
@@ -91,35 +92,39 @@ class XpuptiActivityHandlersTest : public ::testing::Test {
  protected:
   MockXpuptiActivityApi mockApi_;
   MockActivityLogger logger_;
+  Config config_;
+  // What a full XPU session collects: both host views plus device work. A test
+  // that needs a view filtered out erases it before building the session.
+  // The session keeps a reference to this set, so it must outlive the session.
+  std::set<ActivityType> activityTypes_ = {
+      ActivityType::COLLECTIVE_COMM,
+      ActivityType::XPU_SYNC,
+      ActivityType::XPU_RUNTIME,
+      ActivityType::XPU_DRIVER,
+      ActivityType::CONCURRENT_KERNEL,
+      ActivityType::GPU_MEMCPY,
+      ActivityType::GPU_MEMSET};
 
-  // The activity types a full XPU session collects: both host views plus
-  // device work. Tests that filter a view out pass their own set.
-  static std::set<ActivityType> allActivityTypes() {
-    return {
-        ActivityType::COLLECTIVE_COMM,
-        ActivityType::XPU_SYNC,
-        ActivityType::XPU_RUNTIME,
-        ActivityType::XPU_DRIVER,
-        ActivityType::CONCURRENT_KERNEL,
-        ActivityType::GPU_MEMCPY,
-        ActivityType::GPU_MEMSET};
-  }
-
-  // Processes all records in mockApi_ through the handler pipeline
-  // and returns the resulting trace buffer.
-  std::unique_ptr<CpuTraceBuffer> processAndGetTrace(
+  // Processes all records in mockApi_ through the handler pipeline and returns
+  // the session, so both the trace buffer and the lane (ResourceInfo) state it
+  // built can be inspected.
+  std::unique_ptr<KN::XpuptiActivityProfilerSession> processAndGetSession(
       int64_t windowStart = 0,
-      int64_t windowEnd = 1000,
-      const std::set<ActivityType>& activity_types = allActivityTypes()) {
-    Config config;
+      int64_t windowEnd = 1000) {
     auto session = std::make_unique<KN::XpuptiActivityProfilerSession>(
-        mockApi_, "__test_profiler__", config, activity_types);
+        mockApi_, "__test_profiler__", config_, activityTypes_);
     session->processTrace(
         logger_,
         [](int64_t) -> const ITraceActivity* { return nullptr; },
         windowStart,
         windowEnd);
-    return session->getTraceBuffer();
+    return session;
+  }
+
+  std::unique_ptr<CpuTraceBuffer> processAndGetTrace(
+      int64_t windowStart = 0,
+      int64_t windowEnd = 1000) {
+    return processAndGetSession(windowStart, windowEnd)->getTraceBuffer();
   }
 };
 
@@ -270,9 +275,9 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityMetadata) {
 }
 
 TEST_F(XpuptiActivityHandlersTest, ZeroDurationMemoryCopyOmitsBandwidth) {
-  pti_view_record_memory_copy memory_record{};
+  pti_view_record_memory_copy_v2 memory_record{};
   memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
-  memory_record._name = "zeCommandListAppendMemoryCopy";
+  memory_record._name = "zeCommandListAppendMemoryCopy(M2D)";
   memory_record._start_timestamp = 100;
   memory_record._end_timestamp = 100;
   memory_record._thread_id = 7;
@@ -281,8 +286,7 @@ TEST_F(XpuptiActivityHandlersTest, ZeroDurationMemoryCopyOmitsBandwidth) {
   memory_record._mem_op_id = 4;
   memory_record._bytes = 1024;
 
-  mockApi_.records.push_back(
-      reinterpret_cast<const pti_view_record_base*>(&memory_record));
+  mockApi_.records.push_back(&memory_record._view_kind);
 
   auto traceBuffer = processAndGetTrace();
   ASSERT_EQ(traceBuffer->activities.size(), 1);
@@ -298,6 +302,109 @@ TEST_F(XpuptiActivityHandlersTest, ZeroDurationMemoryCopyOmitsBandwidth) {
       activity.metadataJson().find(
           XpuMetadataFields::kMemoryBandwidthGbps.name),
       std::string::npos);
+}
+
+// --- Hardware engine metadata tests ---
+
+TEST_F(XpuptiActivityHandlersTest, KernelActivityExposesEngineIds) {
+  pti_view_record_kernel_v2 kernel_record{};
+  kernel_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_KERNEL;
+  kernel_record._name = "test_kernel";
+  kernel_record._start_timestamp = 100;
+  kernel_record._end_timestamp = 200;
+  kernel_record._thread_id = 7;
+  kernel_record._correlation_id = 21;
+  kernel_record._sycl_queue_id = 64;
+  kernel_record._kernel_id = 1;
+  kernel_record._engine_ordinal = 0;
+  kernel_record._engine_index = 2;
+
+  mockApi_.records.push_back(&kernel_record._view_kind);
+
+  auto traceBuffer = processAndGetTrace();
+  ASSERT_EQ(traceBuffer->activities.size(), 1);
+
+  auto& activity = *traceBuffer->activities[0];
+  EXPECT_EQ(activity.type(), ActivityType::CONCURRENT_KERNEL);
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kEngineOrdinal),
+      std::optional<uint64_t>{0});
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kEngineIndex),
+      std::optional<uint64_t>{2});
+}
+
+TEST_F(XpuptiActivityHandlersTest, MemoryCopyActivityExposesEngineIds) {
+  pti_view_record_memory_copy_v2 memory_record{};
+  memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
+  memory_record._name = "zeCommandListAppendMemoryCopy(M2D)";
+  memory_record._start_timestamp = 100;
+  memory_record._end_timestamp = 200;
+  memory_record._thread_id = 7;
+  memory_record._correlation_id = 22;
+  memory_record._sycl_queue_id = 64;
+  memory_record._mem_op_id = 4;
+  memory_record._bytes = 1024;
+  memory_record._engine_ordinal = 1;
+  memory_record._engine_index = 3;
+
+  mockApi_.records.push_back(&memory_record._view_kind);
+
+  auto traceBuffer = processAndGetTrace();
+  ASSERT_EQ(traceBuffer->activities.size(), 1);
+
+  auto& activity = *traceBuffer->activities[0];
+  EXPECT_EQ(activity.type(), ActivityType::GPU_MEMCPY);
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kEngineOrdinal),
+      std::optional<uint64_t>{1});
+  EXPECT_EQ(
+      activity.getMetadataValue(XpuMetadataFields::kEngineIndex),
+      std::optional<uint64_t>{3});
+}
+
+TEST_F(XpuptiActivityHandlersTest, SwimLanesStayPerSyclQueueNotPerEngine) {
+  // A kernel on a compute engine and a copy on a copy engine, both submitted to
+  // the SAME SYCL queue, must share one swim lane named after that queue.
+  // Engine identity belongs in metadata; CUDA groups lanes by stream likewise.
+  pti_view_record_kernel_v2 kernel_record{};
+  kernel_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_KERNEL;
+  kernel_record._name = "test_kernel";
+  kernel_record._start_timestamp = 100;
+  kernel_record._end_timestamp = 200;
+  kernel_record._thread_id = 7;
+  kernel_record._correlation_id = 31;
+  kernel_record._sycl_queue_id = 64;
+  kernel_record._kernel_id = 1;
+  kernel_record._engine_ordinal = 0;
+  kernel_record._engine_index = 0;
+
+  pti_view_record_memory_copy_v2 memory_record{};
+  memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
+  memory_record._name = "zeCommandListAppendMemoryCopy(M2D)";
+  memory_record._start_timestamp = 300;
+  memory_record._end_timestamp = 400;
+  memory_record._thread_id = 7;
+  memory_record._correlation_id = 32;
+  memory_record._sycl_queue_id = 64;
+  memory_record._mem_op_id = 2;
+  memory_record._bytes = 1024;
+  memory_record._engine_ordinal = 1;
+  memory_record._engine_index = 0;
+
+  mockApi_.records.push_back(&kernel_record._view_kind);
+  mockApi_.records.push_back(&memory_record._view_kind);
+
+  auto session = processAndGetSession();
+  auto traceBuffer = session->getTraceBuffer();
+  ASSERT_EQ(traceBuffer->activities.size(), 2);
+  EXPECT_EQ(traceBuffer->activities[0]->resourceId(), 64);
+  EXPECT_EQ(traceBuffer->activities[1]->resourceId(), 64);
+
+  const auto resourceInfos = session->getResourceInfos();
+  ASSERT_EQ(resourceInfos.size(), 1);
+  EXPECT_EQ(resourceInfos[0].id, 64);
+  EXPECT_EQ(resourceInfos[0].name, "Stream 64");
 }
 
 TEST_F(XpuptiActivityHandlersTest, SynchronizationAllTypes) {
@@ -468,9 +575,8 @@ TEST_F(
   mockApi_.records.push_back(&driver_record._view_kind);
   mockApi_.records.push_back(&kernel_record._view_kind);
 
-  auto activity_types = allActivityTypes();
-  activity_types.erase(ActivityType::XPU_RUNTIME);
-  auto traceBuffer = processAndGetTrace(0, 1000, activity_types);
+  activityTypes_.erase(ActivityType::XPU_RUNTIME);
+  auto traceBuffer = processAndGetTrace();
   ASSERT_EQ(traceBuffer->activities.size(), 2);
 
   auto& driver_activity = *traceBuffer->activities[0];

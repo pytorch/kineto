@@ -7,6 +7,15 @@
  */
 
 #include "XpuptiScopeProfilerSession.h"
+#include "ActivityType.h"
+#include "Config.h"
+#include "ITraceActivity.h"
+#include "XpuptiActivityApi.h"
+#include "XpuptiActivityProfilerSession.h"
+#include "XpuptiScopeProfilerApi.h"
+
+#include <functional>
+#include <memory>
 
 namespace KINETO_NAMESPACE {
 

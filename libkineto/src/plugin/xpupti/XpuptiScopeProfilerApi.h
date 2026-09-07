@@ -8,11 +8,14 @@
 
 #pragma once
 
+#include <exception>
+#include <functional>
 #include <optional>
+#include <span>
+#include <vector>
 
+#include <pti/pti.h>
 #include <pti/pti_metrics_scope.h>
-
-#include "XpuptiActivityApi.h"
 
 namespace KINETO_NAMESPACE {
 
@@ -32,9 +35,9 @@ class XpuptiScopeProfilerApi {
   void stopScopeActivity();
 
   void processScopeTrace(
-      std::function<void(
+      const std::function<void(
           const pti_metrics_scope_record_t*,
-          const pti_metrics_scope_record_metadata_t& metadata)> handler);
+          const pti_metrics_scope_record_metadata_t& metadata)>& handler);
 
  private:
   struct safe_pti_scope_collection_handle_t {
@@ -53,5 +56,11 @@ class XpuptiScopeProfilerApi {
   std::optional<safe_pti_scope_collection_handle_t> scopeHandleOpt_;
   std::exception_ptr exceptFromScopeHandleDestructor_;
 };
+
+// Map requested device indices to PTI device handles, preserving order.
+// Throws std::runtime_error if any index is out of [0, deviceCount).
+std::vector<pti_device_handle_t> selectDeviceHandles(
+    std::span<const pti_device_handle_t> handles,
+    std::span<const int> indices);
 
 } // namespace KINETO_NAMESPACE

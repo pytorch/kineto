@@ -8,9 +8,13 @@
 
 #pragma once
 
+#include "AbstractConfig.h"
 #include "Config.h"
 
 #include <chrono>
+#include <cstdint>
+#include <iosfwd>
+#include <string>
 #include <vector>
 
 namespace KINETO_NAMESPACE {
@@ -44,6 +48,10 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
 
   int64_t xpuptiProfilerMaxScopes() const {
     return xpuptiProfilerMaxScopes_;
+  }
+
+  const std::vector<int>& xpuptiProfilerDevices() const {
+    return xpuptiProfilerDevices_;
   }
 
   void setClientDefaults() override {
@@ -82,6 +90,12 @@ class XpuptiScopeProfilerConfig : public AbstractConfig {
   // max number of scopes to configure the profiler for.
   // this has to be set before hand to reserve space for the output
   int64_t xpuptiProfilerMaxScopes_ = 0;
+
+  // Explicit XPU device indices to profile with the scope profiler.
+  // Empty means auto-detect: PTI profiles whichever devices the workload
+  // actually uses. All profiled devices must be the same model; a mixed-model
+  // selection is rejected inside ptiMetricsScopeConfigure at runtime.
+  std::vector<int> xpuptiProfilerDevices_;
 };
 
 } // namespace KINETO_NAMESPACE

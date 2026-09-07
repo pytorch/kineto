@@ -8,7 +8,14 @@
 
 #pragma once
 
+#include "ActivityType.h"
+#include "Config.h"
 #include "IActivityProfiler.h"
+
+#include <cstdint>
+#include <memory>
+#include <set>
+#include <string>
 
 namespace KINETO_NAMESPACE {
 

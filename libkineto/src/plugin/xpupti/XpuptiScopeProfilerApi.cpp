@@ -6,16 +6,51 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <algorithm>
-#include <iterator>
-#include <stdexcept>
-
 #include "XpuptiScopeProfilerApi.h"
+#include "Config.h"
+#include "ThrowUtil.h"
+#include "XpuptiProfilerMacros.h"
 #include "XpuptiScopeProfilerConfig.h"
 
-#include "ThrowUtil.h"
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <fmt/format.h>
+#include <pti/pti.h>
+#include <pti/pti_metrics.h>
 
 namespace KINETO_NAMESPACE {
+
+std::vector<pti_device_handle_t> selectDeviceHandles(
+    std::span<const pti_device_handle_t> handles,
+    std::span<const int> indices) {
+  const auto outOfRange = [handles](int idx) {
+    return idx < 0 || std::cmp_greater_equal(idx, handles.size());
+  };
+  if (const auto bad = std::ranges::find_if(indices, outOfRange);
+      bad != indices.end()) {
+    KINETO_THROW(
+        std::runtime_error,
+        fmt::format(
+            "XPUPTI_PROFILER_DEVICES index {} is out of range; {} XPU device(s) available",
+            *bad,
+            handles.size()));
+  }
+  // Gather: map each requested index to its device handle, preserving order.
+  std::vector<pti_device_handle_t> selected(indices.size());
+  std::ranges::transform(indices, selected.begin(), [handles](int idx) {
+    return handles[static_cast<std::size_t>(idx)];
+  });
+  return selected;
+}
 
 XpuptiScopeProfilerApi::safe_pti_scope_collection_handle_t::
     safe_pti_scope_collection_handle_t(std::exception_ptr& exceptFromDestructor)
@@ -70,13 +105,55 @@ void XpuptiScopeProfilerApi::enableScopeProfiler(const Config& cfg) {
   }
 
   scopeHandleOpt_.emplace(exceptFromScopeHandleDestructor_);
+
+  const auto& requestedDevices = spcfg.xpuptiProfilerDevices();
+
+#if PTI_VERSION_AT_LEAST(0, 18)
+  if (requestedDevices.empty()) {
+    // Auto-detect: PTI profiles whichever devices the workload actually uses.
+    XPUPTI_CALL(ptiMetricsScopeConfigure(
+        *scopeHandleOpt_,
+        collectionMode,
+        /*devices_to_profile=*/nullptr,
+        /*device_count=*/0,
+        metricNames.data(),
+        metricNames.size()));
+  } else {
+    // Explicit subset: map requested indices to device handles.
+    auto selectedHandles = selectDeviceHandles(
+        {devicesHandles.get(), deviceCount}, requestedDevices);
+    XPUPTI_CALL(ptiMetricsScopeConfigure(
+        *scopeHandleOpt_,
+        collectionMode,
+        selectedHandles.data(),
+        static_cast<uint32_t>(selectedHandles.size()),
+        metricNames.data(),
+        metricNames.size()));
+  }
+#else
+  // PTI < 0.18 (pre PTI-363): multi-device metrics scope is not available;
+  // ptiMetricsScopeConfigure accepts only a single device.
+  if (requestedDevices.size() > 1) {
+    KINETO_THROW(
+        std::runtime_error,
+        "XPUPTI_PROFILER_DEVICES lists more than one device, but this build "
+        "links PTI < 0.18 which supports only single-device metrics scope. "
+        "Rebuild against PTI >= 0.18 for multi-device support.");
+  }
+  // Point at the single requested device (default: first device).
+  pti_device_handle_t singleHandle = requestedDevices.empty()
+      ? devicesHandles[0]
+      : selectDeviceHandles(
+            {devicesHandles.get(), deviceCount}, requestedDevices)
+            .front();
   XPUPTI_CALL(ptiMetricsScopeConfigure(
       *scopeHandleOpt_,
       collectionMode,
-      devicesHandles.get(),
-      ((void)deviceCount, 1), // Only 1 device is currently supported
+      &singleHandle,
+      1,
       metricNames.data(),
       metricNames.size()));
+#endif
 
   uint64_t expectedKernels = spcfg.xpuptiProfilerMaxScopes();
   size_t estimatedCollectionBufferSize = 0;
@@ -111,9 +188,9 @@ static size_t IntDivRoundUp(size_t a, size_t b) {
 }
 
 void XpuptiScopeProfilerApi::processScopeTrace(
-    std::function<void(
+    const std::function<void(
         const pti_metrics_scope_record_t*,
-        const pti_metrics_scope_record_metadata_t& metadata)> handler) {
+        const pti_metrics_scope_record_metadata_t& metadata)>& handler) {
   if (scopeHandleOpt_) {
     pti_metrics_scope_record_metadata_t metadata;
     metadata._struct_size = sizeof(pti_metrics_scope_record_metadata_t);

@@ -6,16 +6,33 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "ActivityType.h"
+#include "GenericTraceActivity.h"
+#include "ITraceActivity.h"
 #include "MetadataFieldCatalog.h"
+#include "TraceSpan.h"
 #include "XpuptiActivityProfilerSession.h"
+#include "libkineto.h"
+#include "output_base.h"
 #include "output_json.h"
 
 #include <algorithm>
-#include <iterator>
+#include <cstdint>
+#include <cstdlib>
+#include <deque>
+#include <functional>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <tuple>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <fmt/format.h>
-#include <fmt/ranges.h>
+#include <pti/pti_view.h>
 
 namespace KINETO_NAMESPACE {
 
@@ -136,7 +153,7 @@ void XpuptiActivityProfilerSession::addResouceInfo(
 
 template <class T>
 inline std::string formatTimeLikeOutputJson(T time) {
-  return fmt::format("{}.{:03}", time / 1000, abs(time) % 1000);
+  return fmt::format("{}.{:03}", time / 1000, std::abs(time) % 1000);
 }
 
 inline int64_t signedFromUnsignedDiff(uint64_t time, uint64_t time_ref) {
@@ -196,11 +213,11 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   constexpr bool handleRuntimeActivities =
       std::is_same_v<pti_view_memory_record_type, pti_view_record_api_t>;
   constexpr bool handleKernelActivities =
-      std::is_same_v<pti_view_memory_record_type, pti_view_record_kernel>;
+      std::is_same_v<pti_view_memory_record_type, pti_view_record_kernel_t>;
   constexpr bool handleMemcpyActivities =
-      std::is_same_v<pti_view_memory_record_type, pti_view_record_memory_copy>;
+      std::is_same_v<pti_view_memory_record_type, pti_view_record_memcpy_t>;
   constexpr bool handleMemsetActivities =
-      std::is_same_v<pti_view_memory_record_type, pti_view_record_memory_fill>;
+      std::is_same_v<pti_view_memory_record_type, pti_view_record_memfill_t>;
 
   traceBuffer_.span.opCount += 1;
   traceBuffer_.gpuOpCount += 1;
@@ -298,6 +315,14 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
         XpuFields::kSyclQueue, static_cast<uint64_t>(activity->_sycl_queue_id));
     trace_activity->addMetadataQuoted(
         "l0 queue", handleToHexString(activity->_queue_handle));
+    // Hardware engine the operation ran on: the ordinal identifies the engine
+    // group (compute, copy, ...), the index the engine within that group.
+    trace_activity->addMetadata(
+        XpuFields::kEngineOrdinal,
+        static_cast<uint64_t>(activity->_engine_ordinal));
+    trace_activity->addMetadata(
+        XpuFields::kEngineIndex,
+        static_cast<uint64_t>(activity->_engine_index));
   }
 
   if constexpr (handleKernelActivities) {
@@ -586,19 +611,19 @@ void XpuptiActivityProfilerSession::handlePtiActivity(
     case PTI_VIEW_DEVICE_GPU_KERNEL:
       handleRuntimeKernelMemcpyMemsetActivities(
           ActivityType::CONCURRENT_KERNEL,
-          reinterpret_cast<const pti_view_record_kernel*>(record),
+          reinterpret_cast<const pti_view_record_kernel_t*>(record),
           logger);
       break;
     case PTI_VIEW_DEVICE_GPU_MEM_COPY:
       handleRuntimeKernelMemcpyMemsetActivities(
           ActivityType::GPU_MEMCPY,
-          reinterpret_cast<const pti_view_record_memory_copy*>(record),
+          reinterpret_cast<const pti_view_record_memcpy_t*>(record),
           logger);
       break;
     case PTI_VIEW_DEVICE_GPU_MEM_FILL:
       handleRuntimeKernelMemcpyMemsetActivities(
           ActivityType::GPU_MEMSET,
-          reinterpret_cast<const pti_view_record_memory_fill*>(record),
+          reinterpret_cast<const pti_view_record_memfill_t*>(record),
           logger);
       break;
     case PTI_VIEW_COLLECTION_OVERHEAD:

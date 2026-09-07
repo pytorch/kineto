@@ -6,9 +6,26 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "ActivityType.h"
+#include "GenericTraceActivity.h"
+#include "ITraceActivity.h"
 #include "MetadataFieldCatalog.h"
-#include "XpuptiProfilerMacros.h"
+#include "TypedMetadata.h"
 #include "XpuptiScopeProfilerSession.h"
+#include "libkineto.h"
+
+#include <array>
+#include <cstdint>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+
+#include <fmt/format.h>
+#include <pti/pti_metrics.h>
+#include <pti/pti_metrics_scope.h>
 
 namespace KINETO_NAMESPACE {
 

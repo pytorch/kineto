@@ -441,7 +441,7 @@ TEST_F(CuptiActivityProfilerTest, UnavailableCuptiFallsBackToCpuOnly) {
       startTimeNs, startTimeNs + duration.count());
   cpuOps->addOp("cpu_op", startTimeNs + 20, startTimeNs + 50, 1);
   profiler_->transferCpuTrace(std::move(cpuOps));
-  profiler_->stopTrace(startTime + duration);
+  profiler_->stopTrace(timePointFromNs(startTimeNs + duration.count()));
 
   auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
   profiler_->processTrace(*logger);

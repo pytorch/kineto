@@ -9,13 +9,20 @@
 #include "XpuptiActivityProfiler.h"
 #include "MetadataFieldCatalog.h"
 #include "ThrowUtil.h"
+#include "TypedMetadata.h"
 #include "TypedMetadataJson.h"
-#include "XpuptiScopeProfilerApi.h"
+#include "XpuptiActivityApi.h"
 #include "XpuptiScopeProfilerSession.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
+#include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <sycl/sycl.hpp>
-#include <utility>
 
 namespace KINETO_NAMESPACE {
 

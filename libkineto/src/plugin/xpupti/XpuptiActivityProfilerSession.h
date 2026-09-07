@@ -8,20 +8,27 @@
 
 #pragma once
 
+#include "ActivityType.h"
+#include "Config.h"
+#include "GenericTraceActivity.h"
+#include "IActivityProfiler.h"
+#include "ITraceActivity.h"
 #include "XpuptiActivityTypeMask.h"
 #include "XpuptiProfilerMacros.h"
-
-#include "IActivityProfiler.h"
 #include "libkineto.h"
 
-#include <pti/pti_view.h>
-
+#include <array>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include <pti/pti_view.h>
 
 namespace KINETO_NAMESPACE {
 
@@ -81,6 +88,12 @@ class XpuptiActivityProfilerSession
 
   using pti_view_record_api_t = pti_view_record_api;
 
+  // Device activity record versions this plugin consumes. The v2 records (PTI
+  // 1.0+) extend v1 with the hardware engine an operation ran on.
+  using pti_view_record_kernel_t = pti_view_record_kernel_v2;
+  using pti_view_record_memcpy_t = pti_view_record_memory_copy_v2;
+  using pti_view_record_memfill_t = pti_view_record_memory_fill_v2;
+
   template <typename PTI_VIEW>
   std::string getApiName(const PTI_VIEW* activity) {
     const char* api_name = nullptr;
@@ -139,7 +152,7 @@ class XpuptiActivityProfilerSession
   XpuptiActivityApi& xpti_;
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<int32_t, int32_t>> resourceInfo_;
-  std::unique_ptr<const libkineto::Config> config_{nullptr};
+  std::unique_ptr<const libkineto::Config> config_;
   const std::set<ActivityType>& activity_types_;
   // The same selection as activity_types_, for the per-record queries.
   ActivityTypeMask tracedTypes_;

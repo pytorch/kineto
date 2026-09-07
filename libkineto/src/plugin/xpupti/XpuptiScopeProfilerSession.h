@@ -8,14 +8,19 @@
 
 #pragma once
 
+#include "ActivityType.h"
+#include "Config.h"
+#include "ITraceActivity.h"
+#include "XpuptiActivityApi.h"
 #include "XpuptiActivityProfilerSession.h"
 #include "XpuptiScopeProfilerApi.h"
+
+#include <set>
+#include <string>
 
 #include <pti/pti_metrics_scope.h>
 
 namespace KINETO_NAMESPACE {
-
-class XpuptiScopeProfilerApi;
 
 class XpuptiScopeProfilerSession : public XpuptiActivityProfilerSession {
  public:

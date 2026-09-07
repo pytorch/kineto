@@ -45,6 +45,7 @@ class XpuptiActivityBuffer {
   size_t size_;
 };
 
+// Maps the buffer handle PTI reports back to the buffer that owns it.
 using XpuptiActivityBufferMap =
     std::map<uint8_t*, std::unique_ptr<XpuptiActivityBuffer>>;
 

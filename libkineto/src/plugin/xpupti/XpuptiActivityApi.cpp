@@ -7,16 +7,22 @@
  */
 
 #include "XpuptiActivityApi.h"
-
-#include <chrono>
-#include <filesystem>
-#include <stdexcept>
-
+#include "ILoggerObserver.h"
 #include "Logger.h"
+#include "XpuptiActivityBuffer.h"
+#include "XpuptiProfilerMacros.h"
+
+#include <cstdlib>
+#include <filesystem>
+#include <map>
+#include <ostream>
+#include <system_error>
+
+#include <pti/pti.h>
 
 namespace KINETO_NAMESPACE {
 
-constexpr size_t kBufSize(4 * 1024 * 1024);
+constexpr std::size_t kBufSize(4 * 1024 * 1024);
 
 XpuptiActivityApi& XpuptiActivityApi::singleton() {
   static XpuptiActivityApi instance;
@@ -54,8 +60,8 @@ void XpuptiActivityApi::popCorrelationID(CorrelationFlowType type) {
 }
 
 static bool nextActivityRecord(
-    uint8_t* buffer,
-    size_t valid_size,
+    std::uint8_t* buffer,
+    std::size_t valid_size,
     pti_view_record_base*& record) {
   pti_result status = ptiViewGetNextRecord(buffer, valid_size, &record);
   if (status != pti_result::PTI_SUCCESS) {
@@ -65,12 +71,14 @@ static bool nextActivityRecord(
 }
 
 void XpuptiActivityApi::bufferRequestedTrampoline(
-    uint8_t** buffer,
-    size_t* size) {
+    std::uint8_t** buffer,
+    std::size_t* size) {
   singleton().bufferRequested(buffer, size);
 }
 
-void XpuptiActivityApi::bufferRequested(uint8_t** buffer, size_t* size) {
+void XpuptiActivityApi::bufferRequested(
+    std::uint8_t** buffer,
+    std::size_t* size) {
   std::lock_guard<std::mutex> guard(mutex_);
 
   auto buf = std::make_unique<XpuptiActivityBuffer>(kBufSize);
@@ -84,22 +92,24 @@ std::unique_ptr<XpuptiActivityBufferMap> XpuptiActivityApi::activityBuffers() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
+      if (readyGpuTraceBuffers_) {
+        return std::move(readyGpuTraceBuffers_);
+      }
       return nullptr;
     }
   }
 
-  std::chrono::time_point<std::chrono::system_clock> t1;
-  XPUPTI_CALL(ptiFlushAllViews());
+  flushActivities();
 
   std::lock_guard<std::mutex> guard(mutex_);
   return std::move(readyGpuTraceBuffers_);
 }
 
-int XpuptiActivityApi::processActivitiesForBuffer(
-    uint8_t* buf,
-    size_t validSize,
-    std::function<void(const pti_view_record_base*)> handler) {
-  int count = 0;
+std::size_t XpuptiActivityApi::processActivitiesForBuffer(
+    std::uint8_t* buf,
+    std::size_t validSize,
+    const std::function<void(const pti_view_record_base*)>& handler) {
+  std::size_t count = 0;
   if (buf && validSize) {
     pti_view_record_base* record{nullptr};
     while (nextActivityRecord(buf, validSize, record)) {
@@ -110,14 +120,14 @@ int XpuptiActivityApi::processActivitiesForBuffer(
   return count;
 }
 
-const std::pair<int, int> XpuptiActivityApi::processActivities(
+ActivitiesStats XpuptiActivityApi::processActivities(
     XpuptiActivityBufferMap& buffers,
-    std::function<void(const pti_view_record_base*)> handler) {
-  std::pair<int, int> res{0, 0};
-  for (auto& pair : buffers) {
-    auto& buf = pair.second;
-    res.first += processActivitiesForBuffer(buf->data(), buf->size(), handler);
-    res.second += buf->size();
+    const std::function<void(const pti_view_record_base*)>& handler) {
+  ActivitiesStats res{};
+  for (const auto& [_, buf] : buffers) {
+    res.activitiesCount +=
+        processActivitiesForBuffer(buf->data(), buf->size(), handler);
+    res.buffersSize += buf->size();
   }
   return res;
 }
@@ -130,31 +140,39 @@ void XpuptiActivityApi::clearActivities() {
   {
     std::lock_guard<std::mutex> guard(mutex_);
     if (allocatedGpuTraceBuffers_.empty()) {
+      readyGpuTraceBuffers_.reset();
       return;
     }
   }
-  XPUPTI_CALL(ptiFlushAllViews());
+  flushActivities();
   std::lock_guard<std::mutex> guard(mutex_);
-  readyGpuTraceBuffers_ = nullptr;
+  readyGpuTraceBuffers_.reset();
 }
 
 void XpuptiActivityApi::bufferCompletedTrampoline(
-    uint8_t* buffer,
-    size_t size,
-    size_t validSize) {
+    std::uint8_t* buffer,
+    std::size_t size,
+    std::size_t validSize) {
   singleton().bufferCompleted(buffer, size, validSize);
 }
 
 void XpuptiActivityApi::bufferCompleted(
-    uint8_t* buffer,
-    [[maybe_unused]] size_t size,
-    size_t validSize) {
+    std::uint8_t* buffer,
+    [[maybe_unused]] std::size_t size,
+    std::size_t validSize) {
   std::lock_guard<std::mutex> guard(mutex_);
+
   auto it = allocatedGpuTraceBuffers_.find(buffer);
+  if (it == std::end(allocatedGpuTraceBuffers_)) {
+    LOG(ERROR) << "bufferCompleted called with unknown buffer: "
+               << static_cast<void*>(buffer);
+    return;
+  }
 
   if (!readyGpuTraceBuffers_) {
     readyGpuTraceBuffers_ = std::make_unique<XpuptiActivityBufferMap>();
   }
+
   it->second->setSize(validSize);
   (*readyGpuTraceBuffers_)[it->first] = std::move(it->second);
   allocatedGpuTraceBuffers_.erase(it);

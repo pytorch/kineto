@@ -153,8 +153,10 @@ class XpuptiActivityProfilerSession
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<int32_t, int32_t>> resourceInfo_;
   std::unique_ptr<const libkineto::Config> config_;
-  const std::set<ActivityType>& activity_types_;
-  // The same selection as activity_types_, for the per-record queries.
+  // Owned, not borrowed: the caller's set lives in a ConfigDerivedState that is
+  // rebuilt on every configure(), and tracedTypes_ is derived from this copy
+  // once, so a single owner keeps the two representations from drifting apart.
+  const std::set<ActivityType> activity_types_;
   ActivityTypeMask tracedTypes_;
   std::string name_;
 

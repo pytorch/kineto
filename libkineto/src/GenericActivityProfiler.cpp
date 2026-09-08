@@ -254,7 +254,7 @@ void GenericActivityProfiler::processCpuTrace(
           "only lifetime but also address stability.");
       if (act->duration() < 0) {
         act->endTime = captureWindowEndTime_;
-        act->addMetadata("finished", "false");
+        act->addTypedMetadata("finished", TypedValue{false});
       }
       logger.handleActivity(*act);
     }

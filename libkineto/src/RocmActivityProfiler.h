@@ -13,8 +13,7 @@
 #ifdef HAS_ROCTRACER
 
 #include <cstdint>
-
-#include <rocprofiler-sdk/version.h>
+#include <mutex>
 
 #include "GenericActivityProfiler.h"
 #include "RocLogger.h"
@@ -30,7 +29,6 @@ class RocmActivityProfiler : public GenericActivityProfiler {
   ~RocmActivityProfiler() override = default;
 
  protected:
-  void logGpuVersions() override;
   void setMaxGpuBufferSize(int64_t size) override;
   void enableGpuTracing() override;
   void disableGpuTracing() override;
@@ -44,6 +42,13 @@ class RocmActivityProfiler : public GenericActivityProfiler {
   void onFinalizeTrace(const Config& config, ActivityLogger& logger) override;
 
  private:
+  void recordGpuVersions();
+
+  // Defer HIP runtime probes from construction until trace configuration.
+  // Cache the result because an unavailable backend stays CPU-only.
+  std::once_flag rocmInitializationOnce_;
+  bool rocmAvailable_{false};
+
   // Process generic RocProf activity
   void handleRocprofActivity(const rocprofBase* record, ActivityLogger* logger);
   void handleCorrelationActivity(

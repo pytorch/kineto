@@ -281,14 +281,16 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
         XpuFields::kSyclQueue, static_cast<uint64_t>(activity->_sycl_queue_id));
     trace_activity->addMetadataQuoted(
         "l0 queue", handleToHexString(activity->_queue_handle));
-    // Hardware engine the operation ran on: the ordinal identifies the engine
-    // group (compute, copy, ...), the index the engine within that group.
-    trace_activity->addMetadata(
-        XpuFields::kEngineOrdinal,
-        static_cast<uint64_t>(activity->_engine_ordinal));
-    trace_activity->addMetadata(
-        XpuFields::kEngineIndex,
-        static_cast<uint64_t>(activity->_engine_index));
+    if constexpr (kReportsEngineIds) {
+      // Hardware engine the operation ran on: the ordinal identifies the engine
+      // group (compute, copy, ...), the index the engine within that group.
+      trace_activity->addMetadata(
+          XpuFields::kEngineOrdinal,
+          static_cast<uint64_t>(activity->_engine_ordinal));
+      trace_activity->addMetadata(
+          XpuFields::kEngineIndex,
+          static_cast<uint64_t>(activity->_engine_index));
+    }
   }
 
   if constexpr (handleKernelActivities) {

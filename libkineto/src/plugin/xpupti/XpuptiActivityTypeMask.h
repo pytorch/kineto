@@ -30,6 +30,16 @@ class ActivityTypeMask {
     return bits_.test(index(type));
   }
 
+  // Calls visit() for each activity type in the set.
+  template <typename Visitor>
+  void forEach(Visitor&& visit) const {
+    for (size_t type = 0; type < bits_.size(); ++type) {
+      if (bits_.test(type)) {
+        visit(static_cast<ActivityType>(type));
+      }
+    }
+  }
+
  private:
   static constexpr size_t index(ActivityType type) {
     return static_cast<size_t>(type);

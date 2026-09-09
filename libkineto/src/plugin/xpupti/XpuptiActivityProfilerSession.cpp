@@ -39,11 +39,10 @@ XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
     const std::set<ActivityType>& activity_types)
     : xpti_(xpti),
       config_(config.clone()),
-      activity_types_(activity_types),
       tracedTypes_(activity_types),
       name_(name) {
   enumDeviceUUIDs();
-  xpti_.enableXpuptiActivities(activity_types_);
+  xpti_.enableXpuptiActivities(tracedTypes_);
 }
 
 XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
@@ -57,15 +56,15 @@ void XpuptiActivityProfilerSession::start() {
 }
 
 void XpuptiActivityProfilerSession::stop() {
-  xpti_.disablePtiActivities(activity_types_);
+  xpti_.disablePtiActivities(tracedTypes_);
   profilerEndTs_ = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
 }
 
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   if (enable) {
-    xpti_.enableXpuptiActivities(activity_types_);
+    xpti_.enableXpuptiActivities(tracedTypes_);
   } else {
-    xpti_.disablePtiActivities(activity_types_);
+    xpti_.disablePtiActivities(tracedTypes_);
   }
 }
 

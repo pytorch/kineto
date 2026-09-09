@@ -10,6 +10,7 @@
 #include "ActivityType.h"
 
 #include <bitset>
+#include <concepts>
 #include <cstddef>
 #include <set>
 
@@ -30,9 +31,8 @@ class ActivityTypeMask {
     return bits_.test(index(type));
   }
 
-  // Calls visit() for each activity type in the set.
-  template <typename Visitor>
-  void forEach(Visitor&& visit) const {
+  // Calls visit() for each activity type in the set, in ascending order.
+  void forEach(std::invocable<ActivityType> auto&& visit) const {
     for (size_t type = 0; type < bits_.size(); ++type) {
       if (bits_.test(type)) {
         visit(static_cast<ActivityType>(type));

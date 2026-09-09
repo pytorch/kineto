@@ -11,6 +11,7 @@
 
 #include <set>
 #include <stdexcept>
+#include <vector>
 
 namespace KN = KINETO_NAMESPACE;
 using libkineto::ActivityType;
@@ -51,6 +52,31 @@ TEST(ActivityTypeMaskTest, HoldsEveryActivityTypeAtOnce) {
     EXPECT_TRUE(mask.contains(activityType))
         << "type " << static_cast<int>(activityType);
   }
+}
+
+TEST(ActivityTypeMaskTest, ForEachVisitsTheSelectedTypesInOrder) {
+  const std::set<ActivityType> selected = {
+      ActivityType::GPU_MEMCPY,
+      ActivityType::XPU_RUNTIME,
+      ActivityType::CONCURRENT_KERNEL};
+  const KN::ActivityTypeMask mask(selected);
+
+  std::vector<ActivityType> visited;
+  mask.forEach([&visited](ActivityType type) { visited.push_back(type); });
+
+  // std::set already iterates in ascending order, so it doubles as the
+  // expected sequence.
+  const std::vector<ActivityType> expected(selected.begin(), selected.end());
+  EXPECT_EQ(visited, expected);
+}
+
+TEST(ActivityTypeMaskTest, ForEachVisitsNothingWhenTheSelectionIsEmpty) {
+  const KN::ActivityTypeMask mask(std::set<ActivityType>{});
+
+  int visits = 0;
+  mask.forEach([&visits](ActivityType) { ++visits; });
+
+  EXPECT_EQ(visits, 0);
 }
 
 TEST(ActivityTypeMaskTest, EmptySelectionContainsNothing) {

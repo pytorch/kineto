@@ -168,16 +168,17 @@ TEST(ParseTest, PerformanceMetrics) {
   EXPECT_EQ(clone->performanceMetricsLookbackWindow(), seconds(2));
 }
 
-TEST(ParseTest, PerformanceMetricsDurationsRequirePositiveFiniteValues) {
-  for (const auto* key :
-       {"PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS",
-        "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS"}) {
-    for (const auto* value :
-         {"", "0", "-1", "nan", "inf", "1ms", "0.0000001", "1e10000"}) {
-      Config cfg;
-      EXPECT_FALSE(cfg.parse(fmt::format("{}={}", key, value)))
-          << key << "=" << value;
-    }
+TEST(ParseTest, PerformanceMetricsInvalidDurationsUseDefaults) {
+  for (const auto* value :
+       {"", "0", "-1", "nan", "inf", "1ms", "0.0000001", "1e10000"}) {
+    Config cfg;
+    EXPECT_TRUE(cfg.parse(fmt::format(
+        "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS={}\n"
+        "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS={}",
+        value,
+        value)));
+    EXPECT_EQ(cfg.performanceMetricsSamplingInterval(), milliseconds(1));
+    EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(10));
   }
 }
 

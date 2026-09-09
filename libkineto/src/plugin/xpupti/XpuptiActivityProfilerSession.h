@@ -36,6 +36,22 @@ class XpuptiActivityApi;
 
 using DeviceUUIDsT = std::array<unsigned char, 16>;
 
+// Device activity record versions this plugin consumes. The v2 records (PTI
+// 0.18+) extend v1 with the hardware engine an operation ran on; against older
+// PTI only v1 exists and the engine is not reported. Declared here rather than
+// inside the session so the plugin tests build the same records it consumes.
+#if PTI_VERSION_AT_LEAST(0, 18)
+inline constexpr bool kReportsEngineIds = true;
+using pti_view_record_kernel_t = pti_view_record_kernel_v2;
+using pti_view_record_memcpy_t = pti_view_record_memory_copy_v2;
+using pti_view_record_memfill_t = pti_view_record_memory_fill_v2;
+#else
+inline constexpr bool kReportsEngineIds = false;
+using pti_view_record_kernel_t = pti_view_record_kernel;
+using pti_view_record_memcpy_t = pti_view_record_memory_copy;
+using pti_view_record_memfill_t = pti_view_record_memory_fill;
+#endif
+
 class XpuptiActivityProfilerSession
     : public libkineto::IActivityProfilerSession {
  public:
@@ -87,12 +103,6 @@ class XpuptiActivityProfilerSession
       const pti_view_record_external_correlation* correlation);
 
   using pti_view_record_api_t = pti_view_record_api;
-
-  // Device activity record versions this plugin consumes. The v2 records (PTI
-  // 1.0+) extend v1 with the hardware engine an operation ran on.
-  using pti_view_record_kernel_t = pti_view_record_kernel_v2;
-  using pti_view_record_memcpy_t = pti_view_record_memory_copy_v2;
-  using pti_view_record_memfill_t = pti_view_record_memory_fill_v2;
 
   template <typename PTI_VIEW>
   std::string getApiName(const PTI_VIEW* activity) {

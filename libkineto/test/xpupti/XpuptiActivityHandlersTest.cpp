@@ -275,7 +275,7 @@ TEST_F(XpuptiActivityHandlersTest, SynchronizationActivityMetadata) {
 }
 
 TEST_F(XpuptiActivityHandlersTest, ZeroDurationMemoryCopyOmitsBandwidth) {
-  pti_view_record_memory_copy_v2 memory_record{};
+  KN::pti_view_record_memcpy_t memory_record{};
   memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
   memory_record._name = "zeCommandListAppendMemoryCopy(M2D)";
   memory_record._start_timestamp = 100;
@@ -306,8 +306,12 @@ TEST_F(XpuptiActivityHandlersTest, ZeroDurationMemoryCopyOmitsBandwidth) {
 
 // --- Hardware engine metadata tests ---
 
+// Records carry the engine only from PTI 0.18 on, so the tests asserting the
+// engine metadata are built against the newer records only.
+#if PTI_VERSION_AT_LEAST(0, 18)
+
 TEST_F(XpuptiActivityHandlersTest, KernelActivityExposesEngineIds) {
-  pti_view_record_kernel_v2 kernel_record{};
+  KN::pti_view_record_kernel_t kernel_record{};
   kernel_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_KERNEL;
   kernel_record._name = "test_kernel";
   kernel_record._start_timestamp = 100;
@@ -335,7 +339,7 @@ TEST_F(XpuptiActivityHandlersTest, KernelActivityExposesEngineIds) {
 }
 
 TEST_F(XpuptiActivityHandlersTest, MemoryCopyActivityExposesEngineIds) {
-  pti_view_record_memory_copy_v2 memory_record{};
+  KN::pti_view_record_memcpy_t memory_record{};
   memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
   memory_record._name = "zeCommandListAppendMemoryCopy(M2D)";
   memory_record._start_timestamp = 100;
@@ -363,11 +367,13 @@ TEST_F(XpuptiActivityHandlersTest, MemoryCopyActivityExposesEngineIds) {
       std::optional<uint64_t>{3});
 }
 
+#endif // PTI_VERSION_AT_LEAST(0, 18)
+
 TEST_F(XpuptiActivityHandlersTest, SwimLanesStayPerSyclQueueNotPerEngine) {
   // A kernel on a compute engine and a copy on a copy engine, both submitted to
   // the SAME SYCL queue, must share one swim lane named after that queue.
   // Engine identity belongs in metadata; CUDA groups lanes by stream likewise.
-  pti_view_record_kernel_v2 kernel_record{};
+  KN::pti_view_record_kernel_t kernel_record{};
   kernel_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_KERNEL;
   kernel_record._name = "test_kernel";
   kernel_record._start_timestamp = 100;
@@ -376,10 +382,12 @@ TEST_F(XpuptiActivityHandlersTest, SwimLanesStayPerSyclQueueNotPerEngine) {
   kernel_record._correlation_id = 31;
   kernel_record._sycl_queue_id = 64;
   kernel_record._kernel_id = 1;
+#if PTI_VERSION_AT_LEAST(0, 18)
   kernel_record._engine_ordinal = 0;
   kernel_record._engine_index = 0;
+#endif
 
-  pti_view_record_memory_copy_v2 memory_record{};
+  KN::pti_view_record_memcpy_t memory_record{};
   memory_record._view_kind._view_kind = PTI_VIEW_DEVICE_GPU_MEM_COPY;
   memory_record._name = "zeCommandListAppendMemoryCopy(M2D)";
   memory_record._start_timestamp = 300;
@@ -389,8 +397,10 @@ TEST_F(XpuptiActivityHandlersTest, SwimLanesStayPerSyclQueueNotPerEngine) {
   memory_record._sycl_queue_id = 64;
   memory_record._mem_op_id = 2;
   memory_record._bytes = 1024;
+#if PTI_VERSION_AT_LEAST(0, 18)
   memory_record._engine_ordinal = 1;
   memory_record._engine_index = 0;
+#endif
 
   mockApi_.records.push_back(&kernel_record._view_kind);
   mockApi_.records.push_back(&memory_record._view_kind);

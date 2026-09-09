@@ -13,6 +13,7 @@
 #include "GenericTraceActivity.h"
 #include "IActivityProfiler.h"
 #include "ITraceActivity.h"
+#include "XpuptiActivityTypeMask.h"
 #include "XpuptiProfilerMacros.h"
 #include "libkineto.h"
 
@@ -90,12 +91,6 @@ class XpuptiActivityProfilerSession
   void pushUserCorrelationId(uint64_t id) override;
   void popUserCorrelationId() override;
 
-  // Whether a runtime/driver record starts a CPU->GPU flow arrow. Only host
-  // runtime (XPU_RUNTIME) records do; driver (XPU_DRIVER) records share the
-  // same correlation id and would otherwise create a duplicate flow start.
-  // Static so it can be unit-tested without real hardware.
-  static bool startsFlow(ActivityType activityType);
-
  private:
   void checkTimestampOrder(const ITraceActivity* act1);
   void removeCorrelatedPtiActivities(const ITraceActivity* act1);
@@ -168,7 +163,10 @@ class XpuptiActivityProfilerSession
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<int32_t, int32_t>> resourceInfo_;
   std::unique_ptr<const libkineto::Config> config_;
-  const std::set<ActivityType>& activity_types_;
+  // The session's activity selection, kept only in this form so there is no
+  // second representation to drift from. Fixed for the session's lifetime:
+  // kineto builds a fresh session per configure().
+  ActivityTypeMask tracedTypes_;
   std::string name_;
 
   struct KernelActivity {

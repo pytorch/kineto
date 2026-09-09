@@ -204,12 +204,12 @@ void warnIfIttNotifyLibInvalid() noexcept {
 } // namespace
 
 void XpuptiActivityApi::enableXpuptiActivities(
-    const std::set<ActivityType>& selected_activities) {
+    const ActivityTypeMask& selected_activities) {
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
 
   externalCorrelationEnabled_ = false;
-  for (const auto& activity : selected_activities) {
+  selected_activities.forEach([this](ActivityType activity) {
     switch (activity) {
       case ActivityType::GPU_MEMCPY:
         XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
@@ -259,12 +259,12 @@ void XpuptiActivityApi::enableXpuptiActivities(
       default:
         break;
     }
-  }
+  });
 }
 
 void XpuptiActivityApi::disablePtiActivities(
-    const std::set<ActivityType>& selected_activities) {
-  for (const auto& activity : selected_activities) {
+    const ActivityTypeMask& selected_activities) {
+  selected_activities.forEach([](ActivityType activity) {
     switch (activity) {
       case ActivityType::GPU_MEMCPY:
         XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
@@ -305,7 +305,7 @@ void XpuptiActivityApi::disablePtiActivities(
       default:
         break;
     }
-  }
+  });
   externalCorrelationEnabled_ = false;
 }
 

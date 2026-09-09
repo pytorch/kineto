@@ -176,6 +176,31 @@ static void addTimestampMetadata(
       label, formatTimeLikeOutputJson(signedFromUnsignedDiff(time, time_ref)));
 }
 
+namespace {
+
+enum class Ac2gFlowRole { None, Source, Destination };
+
+// Denotes the role an activity plays for Async CPU to GPU flow arrows. Both
+// XPU_RUNTIME and XPU_DRIVER events have the same correlation IDs and thus can
+// be sources, but exactly one must be chosen to avoid superfluous host->host
+// arrows. Prefer XPU_RUNTIME unless it is not being traced.
+Ac2gFlowRole ac2gFlowRole(ActivityType activityType, bool runtimeTraced) {
+  switch (activityType) {
+    case ActivityType::XPU_RUNTIME:
+      return Ac2gFlowRole::Source;
+    case ActivityType::XPU_DRIVER:
+      return runtimeTraced ? Ac2gFlowRole::None : Ac2gFlowRole::Source;
+    case ActivityType::CONCURRENT_KERNEL:
+    case ActivityType::GPU_MEMCPY:
+    case ActivityType::GPU_MEMSET:
+      return Ac2gFlowRole::Destination;
+    default:
+      return Ac2gFlowRole::None;
+  }
+}
+
+} // namespace
+
 template <class pti_view_memory_record_type>
 void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
     ActivityType activityType,
@@ -217,8 +242,15 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->startTime = activity->_start_timestamp;
   trace_activity->endTime = activity->_end_timestamp;
   trace_activity->threadId = activity->_thread_id;
-  trace_activity->flow.id = activity->_correlation_id;
-  trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
+  // Records with no role keep flow id 0, which output_json's `flowId() > 0`
+  // guard skips -- that is what suppresses the arrow.
+  const auto role = ac2gFlowRole(
+      activityType, tracedTypes_.contains(ActivityType::XPU_RUNTIME));
+  if (role != Ac2gFlowRole::None) {
+    trace_activity->flow.id = activity->_correlation_id;
+    trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;
+    trace_activity->flow.start = (role == Ac2gFlowRole::Source);
+  }
 
   trace_activity->id = activity->_correlation_id;
   trace_activity->linked =
@@ -230,11 +262,9 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   if constexpr (handleRuntimeActivities) {
     trace_activity->device = activity->_process_id;
     trace_activity->resource = activity->_thread_id;
-    trace_activity->flow.start = startsFlow(activityType);
   } else {
     trace_activity->device = getDeviceIdxFromUUID(activity->_device_uuid);
     trace_activity->resource = activity->_sycl_queue_id;
-    trace_activity->flow.start = 0;
 
     if constexpr (handleKernelActivities) {
       kernelActivities_[activity->_kernel_id].emplace(
@@ -341,7 +371,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   // fresh GenericTraceActivity linked back to the CPU op.  The annotations
   // are flushed to the logger at the end of processTrace().
   if constexpr (!handleRuntimeActivities) {
-    if (activity_types_.count(ActivityType::GPU_USER_ANNOTATION)) {
+    if (tracedTypes_.contains(ActivityType::GPU_USER_ANNOTATION)) {
       auto userIt = userCorrelationMap_.find(activity->_correlation_id);
       if (userIt != userCorrelationMap_.end() && cpuActivity_) {
         const int64_t user_external_id = userIt->second;

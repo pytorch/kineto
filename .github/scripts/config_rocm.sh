@@ -14,15 +14,59 @@
 #   - Deselected pytest tests
 #
 
+# --- Detect ROCM_SOURCE_DIR and ROCM_INCLUDE_DIRS ---
+# ROCm ships across two pip wheels (_rocm_sdk_core, _rocm_sdk_devel) but the
+# split of headers vs libraries varies by wheel version. Probe each package
+# for what it actually contains rather than assuming.
+if [ -z "${ROCM_SOURCE_DIR:-}" ]; then
+  _rocm_lib_path=$(python -c "
+import importlib.util, pathlib
+for pkg in ('_rocm_sdk_core', '_rocm_sdk_devel'):
+    spec = importlib.util.find_spec(pkg)
+    if spec:
+        p = pathlib.Path(spec.submodule_search_locations[0])
+        if (p / 'lib' / 'librocprofiler-sdk.so').exists():
+            print(str(p))
+            break
+" 2>/dev/null || true)
+  _rocm_inc_path=$(python -c "
+import importlib.util, pathlib
+for pkg in ('_rocm_sdk_devel', '_rocm_sdk_core'):
+    spec = importlib.util.find_spec(pkg)
+    if spec:
+        p = pathlib.Path(spec.submodule_search_locations[0])
+        if (p / 'include' / 'rocm-core' / 'rocm_version.h').exists():
+            print(str(p))
+            break
+" 2>/dev/null || true)
+  if [ -z "${_rocm_lib_path}" ]; then
+    echo "ERROR: librocprofiler-sdk.so not found in any ROCm pip wheel."
+    exit 1
+  fi
+  if [ -z "${_rocm_inc_path}" ]; then
+    echo "ERROR: rocm-core/rocm_version.h not found in any ROCm pip wheel."
+    exit 1
+  fi
+  export ROCM_SOURCE_DIR="${_rocm_lib_path}"
+  echo "====: ROCM_SOURCE_DIR (runtime libs): ${ROCM_SOURCE_DIR}"
+  if [ "${_rocm_inc_path}" != "${_rocm_lib_path}" ]; then
+    export ROCM_INCLUDE_DIRS="${_rocm_inc_path}/include"
+    echo "====: ROCM_INCLUDE_DIRS (headers): ${ROCM_INCLUDE_DIRS}"
+  fi
+fi
+
 # --- Kineto cmake flags ---
-# Enable ROCm (roctracer) and disable CUPTI. ROCM_SOURCE_DIR is required by
-# CMakeLists.txt to locate roctracer headers and libraries.
+# Enable ROCm (rocprofiler-sdk). ROCM_SOURCE_DIR is required by CMakeLists.txt
+# to locate headers and libraries.
 
 # shellcheck disable=SC2034
 KINETO_CMAKE_FLAGS=(
   -DKINETO_BACKEND=rocm
-  -DROCM_SOURCE_DIR=/opt/rocm
+  -DROCM_SOURCE_DIR="${ROCM_SOURCE_DIR}"
 )
+if [ -n "${ROCM_INCLUDE_DIRS:-}" ]; then
+  KINETO_CMAKE_FLAGS+=(-DROCM_INCLUDE_DIRS="${ROCM_INCLUDE_DIRS}")
+fi
 
 # --- PyTorch build environment variables ---
 

@@ -17,6 +17,7 @@
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
 
+#include <charconv>
 #include <chrono>
 #include <ctime>
 #include <functional>
@@ -234,10 +235,11 @@ bool isAllowedOnDemandTraceFile(const string& path) {
   return path.starts_with(dir) && path.find("..") == string::npos;
 }
 
-std::optional<nanoseconds> parseMilliseconds(const string& text) noexcept {
-  char* parseEnd = nullptr;
-  const double count = std::strtod(text.c_str(), &parseEnd);
-  if (parseEnd != text.c_str() + text.size()) {
+std::optional<nanoseconds> parseMilliseconds(std::string_view text) noexcept {
+  double count = 0;
+  const auto [parseEnd, error] =
+      std::from_chars(text.begin(), text.end(), count);
+  if (error != std::errc{} || parseEnd != text.end()) {
     return std::nullopt;
   }
 

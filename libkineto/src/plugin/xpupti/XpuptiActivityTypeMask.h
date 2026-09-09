@@ -20,8 +20,6 @@ namespace KINETO_NAMESPACE {
 // and a value outside the enum throws instead of shifting out of range.
 class ActivityTypeMask {
  public:
-  ActivityTypeMask() = default;
-
   explicit ActivityTypeMask(const std::set<ActivityType>& types) {
     for (const auto type : types) {
       bits_.set(index(type));

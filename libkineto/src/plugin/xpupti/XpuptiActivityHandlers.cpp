@@ -178,16 +178,12 @@ static void addTimestampMetadata(
 
 namespace {
 
-// Part a record plays in the async CPU->GPU ("ac2g") flow linking a host submit
-// to the device operation it enqueued.
-enum class Ac2gFlowRole : uint8_t { None, Source, Destination };
+enum class Ac2gFlowRole { None, Source, Destination };
 
-// The host end is normally the XPU_RUNTIME (ur*) submit. An XPU_DRIVER (ze*)
-// subspan shares its correlation id, so while both are collected the driver
-// record plays no part -- it is nested under the submit on the same host track,
-// and an arrow to it would run host->host. When XPU_RUNTIME is filtered out the
-// driver record is the only host record left for that correlation id, so it
-// takes over as the source instead of the trace losing every arrow.
+// Denotes the role an activity plays for Async CPU to GPU flow arrows. Both
+// XPU_RUNTIME and XPU_DRIVER events have the same correlation IDs and thus can
+// be sources, but exactly one must be chosen to avoid superfluous host->host
+// arrows. Prefer XPU_RUNTIME unless it is not being traced.
 Ac2gFlowRole ac2gFlowRole(ActivityType activityType, bool runtimeTraced) {
   switch (activityType) {
     case ActivityType::XPU_RUNTIME:

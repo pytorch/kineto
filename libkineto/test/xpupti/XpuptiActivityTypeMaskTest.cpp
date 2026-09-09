@@ -15,15 +15,6 @@
 namespace KN = KINETO_NAMESPACE;
 using libkineto::ActivityType;
 
-TEST(ActivityTypeMaskTest, DefaultConstructedContainsNothing) {
-  const KN::ActivityTypeMask mask;
-
-  for (int type = 0; type < libkineto::activityTypeCount; ++type) {
-    EXPECT_FALSE(mask.contains(static_cast<ActivityType>(type)))
-        << "type " << type;
-  }
-}
-
 TEST(ActivityTypeMaskTest, ContainsExactlyTheSelectedTypes) {
   const std::set<ActivityType> selected = {
       ActivityType::XPU_DRIVER,

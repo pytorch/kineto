@@ -21,6 +21,7 @@
 #include <ctime>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <ostream>
 #include <string_view>
 #include <utility>
@@ -233,18 +234,20 @@ bool isAllowedOnDemandTraceFile(const string& path) {
   return path.starts_with(dir) && path.find("..") == string::npos;
 }
 
-nanoseconds parseMilliseconds(
-    const string& value,
-    nanoseconds fallback) noexcept {
-  char* end = nullptr;
-  const duration<double, std::milli> milliseconds{
-      std::strtod(value.c_str(), &end)};
-  if (end != value.c_str() + value.size() ||
-      !std::isfinite(milliseconds.count()) || milliseconds < nanoseconds{1} ||
-      milliseconds > nanoseconds::max()) {
-    return fallback;
+std::optional<nanoseconds> parseMilliseconds(const string& text) noexcept {
+  char* parseEnd = nullptr;
+  const double count = std::strtod(text.c_str(), &parseEnd);
+  if (parseEnd != text.c_str() + text.size()) {
+    return std::nullopt;
   }
-  return duration_cast<nanoseconds>(milliseconds);
+
+  const duration<double, std::milli> value{count};
+  if (!std::isfinite(count) || value < nanoseconds{1} ||
+      value > nanoseconds::max()) {
+    return std::nullopt;
+  }
+
+  return duration_cast<nanoseconds>(value);
 }
 
 } // namespace
@@ -371,11 +374,13 @@ bool Config::handleOption(const std::string& name, std::string& val) {
   } else if (!name.compare(kPerformanceMetricsDeviceIdKey)) {
     performanceMetricsDeviceId_ = toInt32(val);
   } else if (!name.compare(kPerformanceMetricsSamplingIntervalMsecsKey)) {
-    performanceMetricsSamplingInterval_ =
-        parseMilliseconds(val, performanceMetricsSamplingInterval_);
+    if (const auto value = parseMilliseconds(val)) {
+      performanceMetricsSamplingInterval_ = *value;
+    }
   } else if (!name.compare(kPerformanceMetricsLookbackWindowMsecsKey)) {
-    performanceMetricsLookbackWindow_ =
-        parseMilliseconds(val, performanceMetricsLookbackWindow_);
+    if (const auto value = parseMilliseconds(val)) {
+      performanceMetricsLookbackWindow_ = *value;
+    }
   } else if (!name.compare(kProfileMemory)) {
     memoryProfilerEnabled_ = toBool(val);
     if (memoryProfilerEnabled_) {

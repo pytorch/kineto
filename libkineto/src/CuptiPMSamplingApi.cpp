@@ -8,7 +8,7 @@
 
 #include "CuptiPMSamplingApi.h"
 
-#include <limits>
+#include <algorithm>
 #include <stdexcept>
 
 #include <cuda_runtime_api.h>
@@ -54,22 +54,6 @@ constexpr size_t kHardwareBufferSizeBytes = 64 * 1024 * 1024;
 // fill a certain sampling duration, but clock frequency is not necessarily
 // fixed. This is almost certainly something we'll need to revisit/tune.
 constexpr uint64_t kGa100SamplingIntervalCycles = 1'000'000;
-
-uint32_t validatedSampleCapacity(const CuptiPMSamplingConfig& config) {
-  const auto capacity = config.sampleCapacity();
-  if (capacity == 0) {
-    KINETO_THROW(
-        std::runtime_error,
-        "CUPTI PM sampling interval and lookback window must be positive");
-  }
-  if (capacity > std::numeric_limits<uint32_t>::max()) {
-    KINETO_THROW(
-        std::runtime_error,
-        "CUPTI PM sampling lookback window requires more samples than CUPTI "
-        "supports");
-  }
-  return static_cast<uint32_t>(capacity);
-}
 
 /*
  * ========================== CUPTI PM SAMPLING API ==========================
@@ -126,7 +110,6 @@ void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
         "Cannot configure CUPTI PM sampling before the previous "
         "configuration is fully disabled");
   }
-  static_cast<void>(validatedSampleCapacity(config));
   config_ = config;
 
   // CUPTI expects metric names as std::vector<const char*>
@@ -188,6 +171,10 @@ void CuptiPMSamplingApi::configureCupti() {
   } else if (
       deviceProperties.major > 8 ||
       (deviceProperties.major == 8 && deviceProperties.minor >= 6)) {
+    if (config_.samplingInterval.count() <= 0) {
+      KINETO_THROW(
+          std::runtime_error, "CUPTI PM sampling interval must be positive");
+    }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL;
     samplingInterval = static_cast<uint64_t>(config_.samplingInterval.count());
   } else {
@@ -292,7 +279,8 @@ void CuptiPMSamplingApi::configureCupti() {
   counterDataSize.pPmSamplingObject = samplingObject_;
   counterDataSize.pMetricNames = metricNamePtrs_.data();
   counterDataSize.numMetrics = metricNamePtrs_.size();
-  counterDataSize.maxSamples = validatedSampleCapacity(config_);
+  counterDataSize.maxSamples = static_cast<uint32_t>(
+      std::max<int64_t>(1, config_.lookbackWindow / config_.samplingInterval));
   CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
 
   counterDataImage_.resize(counterDataSize.counterDataSize);

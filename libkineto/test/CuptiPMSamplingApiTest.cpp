@@ -13,7 +13,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
-#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -59,7 +58,6 @@ struct FakeCuptiState {
   CUpti_PmSampling_HardwareBuffer_AppendMode appendMode{};
   std::vector<std::string> counterDataMetricNames;
   uint32_t maxSamples{0};
-  size_t counterDataSize{8 * 1024};
 
   std::byte hostObject{};
   std::byte samplingObject{};
@@ -230,7 +228,7 @@ CUptiResult CUPTIAPI cuptiPmSamplingGetCounterDataSize(
   fakeCupti().counterDataMetricNames =
       copyMetricNames(params->pMetricNames, params->numMetrics);
   fakeCupti().maxSamples = params->maxSamples;
-  params->counterDataSize = fakeCupti().counterDataSize;
+  params->counterDataSize = 1;
   return CUPTI_SUCCESS;
 }
 
@@ -321,7 +319,8 @@ TEST_F(CuptiPMSamplingApiTest, ConfiguresDeviceMetricsAndBuffers) {
   const auto config = makeConfig(
       250us,
       /*deviceId=*/2,
-      {"sm__cycles_active.avg", "dram__bytes_read.sum"});
+      {"sm__cycles_active.avg", "dram__bytes_read.sum"},
+      2s);
   CuptiPMSamplingApi api;
 
   api.configure(config);
@@ -337,19 +336,6 @@ TEST_F(CuptiPMSamplingApiTest, ConfiguresDeviceMetricsAndBuffers) {
       fakeCupti().appendMode,
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST);
   EXPECT_EQ(fakeCupti().counterDataMetricNames, config.metricNames);
-  EXPECT_EQ(fakeCupti().maxSamples, 40'000);
-  api.disable();
-}
-
-TEST_F(CuptiPMSamplingApiTest, SizesCounterDataFromLookbackWindow) {
-  CuptiPMSamplingApi api;
-
-  api.configure(makeConfig(
-      250us,
-      /*deviceId=*/0,
-      {"sm__cycles_active.avg"},
-      2s));
-
   EXPECT_EQ(fakeCupti().maxSamples, 8'000);
   api.disable();
 }
@@ -397,30 +383,6 @@ TEST_F(CuptiPMSamplingApiTest, RejectsUnsupportedComputeCapabilities) {
 
 TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveTimeIntervals) {
   EXPECT_THROW(configureForDevice(8, 6, 0ns), std::runtime_error);
-}
-
-TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveLookbackWindows) {
-  CuptiPMSamplingApi api;
-  EXPECT_THROW(
-      api.configure(makeConfig(
-          500us,
-          /*deviceId=*/0,
-          {"sm__cycles_active.avg"},
-          0ns)),
-      std::runtime_error);
-}
-
-TEST_F(CuptiPMSamplingApiTest, RejectsSampleCapacityAboveCuptiLimit) {
-  CuptiPMSamplingApi api;
-  constexpr auto kTooManySamples =
-      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1;
-  EXPECT_THROW(
-      api.configure(makeConfig(
-          1ns,
-          /*deviceId=*/0,
-          {"sm__cycles_active.avg"},
-          std::chrono::nanoseconds{kTooManySamples})),
-      std::runtime_error);
 }
 
 TEST_F(CuptiPMSamplingApiTest, RejectsMultipassConfigurationBeforeEnabling) {

@@ -236,6 +236,16 @@ class Config : public AbstractConfig {
     return performanceMetricsDeviceId_;
   }
 
+  [[nodiscard]] std::chrono::nanoseconds performanceMetricsSamplingInterval()
+      const {
+    return performanceMetricsSamplingInterval_;
+  }
+
+  [[nodiscard]] std::chrono::nanoseconds performanceMetricsLookbackWindow()
+      const {
+    return performanceMetricsLookbackWindow_;
+  }
+
   [[nodiscard]] bool memoryProfilerEnabled() const {
     return memoryProfilerEnabled_;
   }
@@ -375,6 +385,10 @@ class Config : public AbstractConfig {
   // Performance metrics
   std::vector<std::string> performanceMetricNames_;
   int32_t performanceMetricsDeviceId_{-1};
+  std::chrono::nanoseconds performanceMetricsSamplingInterval_{
+      std::chrono::milliseconds{1}};
+  std::chrono::nanoseconds performanceMetricsLookbackWindow_{
+      std::chrono::seconds{10}};
 
   // CUPTI Timestamp Format
   bool useTSCTimestamp_{true};

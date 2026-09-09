@@ -30,7 +30,16 @@ struct CuptiPMSample {
 struct CuptiPMSamplingConfig {
   int32_t deviceId{-1};
   std::vector<std::string> metricNames;
-  std::chrono::nanoseconds samplingInterval{0};
+  std::chrono::nanoseconds samplingInterval{std::chrono::milliseconds{1}};
+  std::chrono::nanoseconds lookbackWindow{std::chrono::seconds{10}};
+
+  [[nodiscard]] uint64_t sampleCapacity() const {
+    if (samplingInterval.count() <= 0 || lookbackWindow.count() <= 0) {
+      return 0;
+    }
+    const auto samples = lookbackWindow.count() / samplingInterval.count();
+    return static_cast<uint64_t>(samples > 0 ? samples : 1);
+  }
 };
 
 class CuptiPMSamplingApi {

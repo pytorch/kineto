@@ -8,6 +8,7 @@
 
 #include "CuptiPMSamplingApi.h"
 
+#include <limits>
 #include <stdexcept>
 
 #include <cuda_runtime_api.h>
@@ -47,13 +48,28 @@ namespace KINETO_NAMESPACE {
 namespace {
 
 constexpr size_t kHardwareBufferSizeBytes = 64 * 1024 * 1024;
-constexpr uint32_t kMaxSamplesPerDecode = 1024;
 
 // GA100 only supports variable-frequency SYSCLK sampling. One option is to
 // measure hardware clock frequency and estimate the number of cycles needed to
 // fill a certain sampling duration, but clock frequency is not necessarily
 // fixed. This is almost certainly something we'll need to revisit/tune.
 constexpr uint64_t kGa100SamplingIntervalCycles = 1'000'000;
+
+uint32_t validatedSampleCapacity(const CuptiPMSamplingConfig& config) {
+  const auto capacity = config.sampleCapacity();
+  if (capacity == 0) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling interval and lookback window must be positive");
+  }
+  if (capacity > std::numeric_limits<uint32_t>::max()) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling lookback window requires more samples than CUPTI "
+        "supports");
+  }
+  return static_cast<uint32_t>(capacity);
+}
 
 /*
  * ========================== CUPTI PM SAMPLING API ==========================
@@ -110,6 +126,7 @@ void CuptiPMSamplingApi::configure(const CuptiPMSamplingConfig& config) {
         "Cannot configure CUPTI PM sampling before the previous "
         "configuration is fully disabled");
   }
+  static_cast<void>(validatedSampleCapacity(config));
   config_ = config;
 
   // CUPTI expects metric names as std::vector<const char*>
@@ -171,10 +188,6 @@ void CuptiPMSamplingApi::configureCupti() {
   } else if (
       deviceProperties.major > 8 ||
       (deviceProperties.major == 8 && deviceProperties.minor >= 6)) {
-    if (config_.samplingInterval.count() <= 0) {
-      KINETO_THROW(
-          std::runtime_error, "CUPTI PM sampling interval must be positive");
-    }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL;
     samplingInterval = static_cast<uint64_t>(config_.samplingInterval.count());
   } else {
@@ -272,15 +285,14 @@ void CuptiPMSamplingApi::configureCupti() {
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST;
   CUPTI_CALL_THROW(cuptiPmSamplingSetConfig(&setConfig));
 
-  // Asking CUPTI how large the (counter) data image should be.
-  // Since the data image has an opage CUPTI-defined layout, the size
-  // depends on sampling config, metrics, etc.
+  // Size the counter data image to hold the requested lookback window. CUPTI
+  // 12.x requires SetConfig to run before GetCounterDataSize.
   CUpti_PmSampling_GetCounterDataSize_Params counterDataSize{
       CUpti_PmSampling_GetCounterDataSize_Params_STRUCT_SIZE};
   counterDataSize.pPmSamplingObject = samplingObject_;
   counterDataSize.pMetricNames = metricNamePtrs_.data();
   counterDataSize.numMetrics = metricNamePtrs_.size();
-  counterDataSize.maxSamples = kMaxSamplesPerDecode;
+  counterDataSize.maxSamples = validatedSampleCapacity(config_);
   CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
 
   counterDataImage_.resize(counterDataSize.counterDataSize);
@@ -425,6 +437,7 @@ void CuptiPMSamplingApi::disable() {
   metricNamePtrs_.clear();
   config_.metricNames.clear();
   config_.samplingInterval = std::chrono::nanoseconds::zero();
+  config_.lookbackWindow = std::chrono::nanoseconds::zero();
 }
 
 } // namespace KINETO_NAMESPACE

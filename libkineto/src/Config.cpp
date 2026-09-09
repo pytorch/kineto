@@ -9,7 +9,10 @@
 #include "Config.h"
 #include "ThrowUtil.h"
 
+#include <cerrno>
+#include <cmath>
 #include <cstdlib>
+#include <limits>
 
 #include <fmt/chrono.h>
 #include <fmt/format.h>
@@ -55,6 +58,10 @@ constexpr char kCuptiPerThreadBufferEnabledKey[] =
 constexpr char kPerformanceMetricsKey[] = "PERFORMANCE_METRICS";
 constexpr char kPerformanceMetricsDeviceIdKey[] =
     "PERFORMANCE_METRICS_DEVICE_ID";
+constexpr char kPerformanceMetricsSamplingIntervalMsecsKey[] =
+    "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS";
+constexpr char kPerformanceMetricsLookbackWindowMsecsKey[] =
+    "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS";
 constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
 constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
 constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
@@ -228,6 +235,31 @@ bool isAllowedOnDemandTraceFile(const string& path) {
   return path.starts_with(dir) && path.find("..") == string::npos;
 }
 
+nanoseconds parsePositiveMilliseconds(
+    const string& value,
+    const char* optionName) {
+  errno = 0;
+  char* end = nullptr;
+  const long double milliseconds = std::strtold(value.c_str(), &end);
+  constexpr long double kNanosecondsPerMillisecond = 1'000'000.0L;
+  const long double nanosecondCount = milliseconds * kNanosecondsPerMillisecond;
+  if (value.empty() || end != value.c_str() + value.size() || errno == ERANGE ||
+      !std::isfinite(milliseconds) || nanosecondCount < 1.0L ||
+      nanosecondCount >
+          static_cast<long double>(
+              std::numeric_limits<std::chrono::nanoseconds::rep>::max())) {
+    KINETO_THROW(
+        std::invalid_argument,
+        fmt::format(
+            "Invalid {}: {} - expected positive milliseconds representable "
+            "as nanoseconds",
+            optionName,
+            value));
+  }
+  return std::chrono::nanoseconds{
+      static_cast<std::chrono::nanoseconds::rep>(nanosecondCount)};
+}
+
 } // namespace
 
 Config::Config()
@@ -351,6 +383,12 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     performanceMetricNames_ = splitAndTrim(val, ',');
   } else if (!name.compare(kPerformanceMetricsDeviceIdKey)) {
     performanceMetricsDeviceId_ = toInt32(val);
+  } else if (!name.compare(kPerformanceMetricsSamplingIntervalMsecsKey)) {
+    performanceMetricsSamplingInterval_ = parsePositiveMilliseconds(
+        val, kPerformanceMetricsSamplingIntervalMsecsKey);
+  } else if (!name.compare(kPerformanceMetricsLookbackWindowMsecsKey)) {
+    performanceMetricsLookbackWindow_ = parsePositiveMilliseconds(
+        val, kPerformanceMetricsLookbackWindowMsecsKey);
   } else if (!name.compare(kProfileMemory)) {
     memoryProfilerEnabled_ = toBool(val);
     if (memoryProfilerEnabled_) {

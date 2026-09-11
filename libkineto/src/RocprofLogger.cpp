@@ -510,7 +510,11 @@ void RocprofLogger::clearLogs() {
   // CuptiActivityProfiler clears this before the output Loggers use the data
   // for (auto &row : rows_)
   //  delete row;
-  rows_.clear();
+  {
+    std::lock_guard<std::mutex> lock(rowsMutex_);
+    rows_.clear();
+  }
+  std::lock_guard<std::mutex> lock(externalCorrelationsMutex_);
   for (int i = 0; i < CorrelationDomain::size; ++i) {
     externalCorrelations_[i].clear();
   }

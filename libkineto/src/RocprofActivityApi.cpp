@@ -17,6 +17,7 @@
 #include <vector>
 #include "ApproximateClock.h"
 #include "Demangle.h"
+#include "DeviceUtil.h"
 #include "Logger.h"
 #include "RocmStreamQueue.h"
 #include "ThreadUtil.h"
@@ -45,6 +46,10 @@ RocprofActivityApi::RocprofActivityApi() : d(&RocprofLogger::singleton()) {}
 
 RocprofActivityApi::~RocprofActivityApi() {
   disableActivities(std::set<ActivityType>());
+}
+
+bool RocprofActivityApi::isAvailable() const {
+  return isAMDGpuAvailable();
 }
 
 void RocprofActivityApi::pushCorrelationID(int id, CorrelationFlowType type) {

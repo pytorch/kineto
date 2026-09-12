@@ -103,9 +103,10 @@ std::vector<std::string> copyMetricNames(
 CuptiPMSamplingConfig makeConfig(
     std::chrono::nanoseconds samplingInterval = 500us,
     int32_t deviceId = 0,
-    std::vector<std::string> metricNames = {"sm__cycles_active.avg"}) {
+    std::vector<std::string> metricNames = {"sm__cycles_active.avg"},
+    std::chrono::nanoseconds lookbackWindow = 10s) {
   return CuptiPMSamplingConfig{
-      deviceId, std::move(metricNames), samplingInterval};
+      deviceId, std::move(metricNames), samplingInterval, lookbackWindow};
 }
 
 void configureForDevice(
@@ -318,7 +319,8 @@ TEST_F(CuptiPMSamplingApiTest, ConfiguresDeviceMetricsAndBuffers) {
   const auto config = makeConfig(
       250us,
       /*deviceId=*/2,
-      {"sm__cycles_active.avg", "dram__bytes_read.sum"});
+      {"sm__cycles_active.avg", "dram__bytes_read.sum"},
+      2s);
   CuptiPMSamplingApi api;
 
   api.configure(config);
@@ -334,12 +336,25 @@ TEST_F(CuptiPMSamplingApiTest, ConfiguresDeviceMetricsAndBuffers) {
       fakeCupti().appendMode,
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST);
   EXPECT_EQ(fakeCupti().counterDataMetricNames, config.metricNames);
-  EXPECT_EQ(fakeCupti().maxSamples, 1024);
+  EXPECT_EQ(fakeCupti().maxSamples, 8'000);
+  api.disable();
+}
+
+TEST_F(CuptiPMSamplingApiTest, KeepsAtLeastOneSample) {
+  CuptiPMSamplingApi api;
+
+  api.configure(makeConfig(
+      2ms,
+      /*deviceId=*/0,
+      {"sm__cycles_active.avg"},
+      1ms));
+
+  EXPECT_EQ(fakeCupti().maxSamples, 1);
   api.disable();
 }
 
 TEST_F(CuptiPMSamplingApiTest, UsesFixedSysclkIntervalOnGa100) {
-  configureForDevice(8, 0, 0ns);
+  configureForDevice(8, 0, 500us);
 
   EXPECT_EQ(
       fakeCupti().triggerMode,

@@ -8,6 +8,7 @@
 
 #include "CuptiPMSamplingApi.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 #include <cuda_runtime_api.h>
@@ -47,7 +48,6 @@ namespace KINETO_NAMESPACE {
 namespace {
 
 constexpr size_t kHardwareBufferSizeBytes = 64 * 1024 * 1024;
-constexpr uint32_t kMaxSamplesPerDecode = 1024;
 
 // GA100 only supports variable-frequency SYSCLK sampling. One option is to
 // measure hardware clock frequency and estimate the number of cycles needed to
@@ -272,15 +272,15 @@ void CuptiPMSamplingApi::configureCupti() {
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST;
   CUPTI_CALL_THROW(cuptiPmSamplingSetConfig(&setConfig));
 
-  // Asking CUPTI how large the (counter) data image should be.
-  // Since the data image has an opage CUPTI-defined layout, the size
-  // depends on sampling config, metrics, etc.
+  // Size the counter data image to hold the requested lookback window. CUPTI
+  // 12.x requires SetConfig to run before GetCounterDataSize.
   CUpti_PmSampling_GetCounterDataSize_Params counterDataSize{
       CUpti_PmSampling_GetCounterDataSize_Params_STRUCT_SIZE};
   counterDataSize.pPmSamplingObject = samplingObject_;
   counterDataSize.pMetricNames = metricNamePtrs_.data();
   counterDataSize.numMetrics = metricNamePtrs_.size();
-  counterDataSize.maxSamples = kMaxSamplesPerDecode;
+  counterDataSize.maxSamples = static_cast<uint32_t>(
+      std::max<int64_t>(1, config_.lookbackWindow / config_.samplingInterval));
   CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
 
   counterDataImage_.resize(counterDataSize.counterDataSize);
@@ -425,6 +425,7 @@ void CuptiPMSamplingApi::disable() {
   metricNamePtrs_.clear();
   config_.metricNames.clear();
   config_.samplingInterval = std::chrono::nanoseconds::zero();
+  config_.lookbackWindow = std::chrono::nanoseconds::zero();
 }
 
 } // namespace KINETO_NAMESPACE

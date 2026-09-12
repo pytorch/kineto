@@ -77,35 +77,18 @@ maybe_enable_sccache() {
 }
 
 run_profiler_tests() {
-  local pytest_extra=()
-  local test_path="test/profiler/"
-
-  # A wheel install must not import the unbuilt in-tree torch/. pytest's default
-  # import mode prepends the clone (pytest.ini rootdir) to sys.path, so use
-  # importlib mode and an absolute test path from outside the clone.
-  if [[ "${MODE}" == "test" ]]; then
-    python -c "
-import pathlib, torch
-p = pathlib.Path(torch.__file__).resolve()
-print(f'====: torch.__file__={p}')
-clone = pathlib.Path(r'${PYTORCH_DIR}').resolve()
-assert clone not in p.parents and p != clone, p
-"
-    pytest_extra+=(--import-mode=importlib)
-    test_path="${PYTORCH_DIR}/test/profiler/"
-    pushd "${KINETO_DIR}"
-  fi
+  # Run from the PyTorch clone. Its test/conftest.py imports sibling helpers
+  # such as pytest_shard_custom, which only resolve because pytest's default
+  # import mode prepends the conftest's directory to sys.path.
+  pushd "${PYTORCH_DIR}"
 
   # Download PyTorch's dynamic disabled tests list from S3. This is generated every
   # 15 minutes from DISABLED GitHub Issues in pytorch/pytorch, enabling automatic
   # skipping of known-broken/flaky tests without hardcoded deselections.
   # The function downloads, processes (converts format and filters re-enabled issues),
   # and caches the result to .pytorch-disabled-tests.json.
-  (
-    cd "${PYTORCH_DIR}"
-    python -c "from tools.stats.import_test_stats import get_disabled_tests; get_disabled_tests('.')"
-  )
-  export DISABLED_TESTS_FILE="${PYTORCH_DIR}/.pytorch-disabled-tests.json"
+  python -c "from tools.stats.import_test_stats import get_disabled_tests; get_disabled_tests('.')"
+  export DISABLED_TESTS_FILE=.pytorch-disabled-tests.json
   echo "====: Downloaded disabled tests list"
 
   # The deselected tests array is sourced from the architecture config above.
@@ -115,19 +98,25 @@ assert clone not in p.parents and p != clone, p
     deselect_args+=(--deselect="$t")
   done
 
+  # Invoke pytest through its console script rather than `python -m pytest`,
+  # which prepends the clone to sys.path. After a wheel install the clone's
+  # torch/ holds Python sources with no compiled extensions, so that entry
+  # shadows the installed torch and `import torch` fails.
+  local pytest_cmd=(python -m pytest)
+  if [[ "${MODE}" == "test" ]]; then
+    pytest_cmd=(pytest)
+  fi
+
   # Run PyTorch profiler tests under a per-test timeout so a hang fails that one
   # test instead of consuming the whole job's timeout. Use the signal method, not
   # thread: the thread method's watchdog thread is captured by the profiler and
   # inflates the thread counts that some profiler tests assert on. The tradeoff is
   # that signal cannot interrupt a hang holding the GIL in native code.
   pip install pytest pytest-timeout
-  python -m pytest "${test_path}" -v --timeout=300 --timeout-method=signal \
-    "${pytest_extra[@]}" "${deselect_args[@]}"
+  "${pytest_cmd[@]}" test/profiler/ -v --timeout=300 --timeout-method=signal \
+    "${deselect_args[@]}"
   echo "====: Ran PyTorch profiler tests"
-
-  if [[ "${MODE}" == "test" ]]; then
-    popd
-  fi
+  popd
 }
 
 git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git "${PYTORCH_DIR}"
@@ -185,5 +174,25 @@ if [[ "${#wheels[@]}" -eq 0 ]]; then
 fi
 python -m pip install --no-build-isolation -v "${wheels[0]}"
 echo "====: Installed $(basename "${wheels[0]}")"
+
+# The wheel brings torch but not its test-time imports (numpy, expecttest,
+# sympy, ...) that torch.testing._internal pulls in. The build job gets these
+# from the same file.
+(
+  cd "${PYTORCH_DIR}"
+  pip install -r requirements.txt
+)
+echo "====: Installed PyTorch test requirements"
+
+# Confirm the tests will exercise the wheel built from this PR, not the clone's
+# uncompiled torch/ sources. Checked from outside the clone, where `python -c`
+# would otherwise put the clone on sys.path.
+python -c "
+import pathlib, torch
+p = pathlib.Path(torch.__file__).resolve()
+print(f'====: torch.__file__={p}')
+clone = pathlib.Path(r'${PYTORCH_DIR}').resolve()
+assert clone not in p.parents and p != clone, p
+"
 
 run_profiler_tests

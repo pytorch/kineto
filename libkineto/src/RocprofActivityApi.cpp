@@ -13,7 +13,9 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <mutex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "ApproximateClock.h"
 #include "Demangle.h"
@@ -109,19 +111,23 @@ int RocprofActivityApi::processActivities(
 
   int count = 0;
 
-  // Process all external correlations pairs
+  // Process all external correlations pairs. The rocprofiler buffer callback
+  // keeps appending from its own thread while this runs, so take ownership of
+  // the container under its mutex rather than iterating it in place.
   for (int it = RocLogger::CorrelationDomain::begin;
        it < RocLogger::CorrelationDomain::end;
        ++it) {
-    auto& externalCorrelations = d->externalCorrelations_[it];
+    std::vector<std::pair<uint64_t, uint64_t>> externalCorrelations;
+    {
+      std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
+      externalCorrelations.swap(d->externalCorrelations_[it]);
+    }
     for (auto& item : externalCorrelations) {
       correlationHandler(
           item.first,
           item.second,
           static_cast<RocLogger::CorrelationDomain>(it));
     }
-    std::lock_guard<std::mutex> lock(d->externalCorrelationsMutex_);
-    externalCorrelations.clear();
   }
 
   // Async ops are in CLOCK_MONOTONIC rather than junk clock.
@@ -131,18 +137,27 @@ int RocprofActivityApi::processActivities(
   // much better job.
   auto toffset = getTimeOffset();
 
+  // Same reasoning as the external correlations above: a concurrent push_back
+  // reallocates the vector and invalidates both the backfill pass and the
+  // iteration below.
+  std::vector<rocprofBase*> rows;
+  {
+    std::lock_guard<std::mutex> lock(d->rowsMutex_);
+    rows.swap(d->rows_);
+  }
+
   const bool logCopies = isLogged(ActivityType::GPU_MEMCPY);
   const bool logKernels = isLogged(ActivityType::CONCURRENT_KERNEL);
   if (logCopies || logKernels) {
     detail::backfillAsyncStreams(
-        d->rows_, [logCopies, logKernels](const rocprofAsyncRow& async) {
+        rows, [logCopies, logKernels](const rocprofAsyncRow& async) {
           return (logCopies && isAsyncCopy(async)) ||
               (logKernels && isAsyncKernel(async));
         });
   }
 
   // All Runtime API Calls
-  for (auto& item : d->rows_) {
+  for (auto& item : rows) {
     bool filtered = false;
     if (item->type != ROCTRACER_ACTIVITY_ASYNC &&
         !isLogged(ActivityType::CUDA_RUNTIME)) {

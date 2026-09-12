@@ -159,6 +159,12 @@ inline void GpuActivity::visitTypedMetadata(
       std::string{
           getGpuActivityKindString(gpuActivity.domain, gpuActivity.op)});
 
+  // Only present when the operation was produced by a HIP graph launch.
+  if (gpuActivity.graphExecId != 0) {
+    visitor.visit(RocmMetadataFields::kGraphId, gpuActivity.graphExecId);
+    visitor.visit(RocmMetadataFields::kGraphNodeId, gpuActivity.graphNodeId);
+  }
+
   // if memcpy or memset, add size
   auto sizeIt = correlationToSize.find(gpuActivity.id);
   if (sizeIt != correlationToSize.end()) {

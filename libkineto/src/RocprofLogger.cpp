@@ -17,6 +17,7 @@
 
 #include <time.h>
 #include <unistd.h>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <mutex>
@@ -42,6 +43,13 @@ using kernel_name_map_t =
 using rocprofiler::sdk::buffer_name_info;
 using rocprofiler::sdk::callback_name_info;
 using agent_info_map_t = std::unordered_map<uint64_t, rocprofiler_agent_v0_t>;
+
+// Checked from the callbacks, so read the environment once.
+bool graphAttributionEnabled() {
+  static const bool enabled =
+      getenv("KINETO_ROCM_DISABLE_GRAPH_ATTRIBUTION") == nullptr;
+  return enabled;
+}
 
 // extract copy args
 struct copy_args {
@@ -411,6 +419,31 @@ int RocprofLogger::toolInit(
       api_callback,
       nullptr);
 
+  // Track graph launches and stamp the resulting device operations with the
+  // graph node that produced them. The two extra subscriptions only fire while
+  // a trace is active, but keep a kill switch for workloads that would rather
+  // not pay for them at all.
+  if (graphAttributionEnabled()) {
+    rocprofiler_configure_callback_tracing_service(
+        globalContext.context,
+        ROCPROFILER_CALLBACK_TRACING_HIP_GRAPH,
+        nullptr,
+        0,
+        graph_callback,
+        nullptr);
+
+    constexpr rocprofiler_external_correlation_id_request_kind_t
+        graphAttributionKinds[] = {
+            ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_KERNEL_DISPATCH,
+            ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_MEMORY_COPY};
+    rocprofiler_configure_external_correlation_id_request_service(
+        globalContext.context,
+        graphAttributionKinds,
+        sizeof(graphAttributionKinds) / sizeof(graphAttributionKinds[0]),
+        external_correlation_callback,
+        nullptr);
+  }
+
   // Collect async ops via buffers
   constexpr auto buffer_size_bytes = 0x40000;
   constexpr auto buffer_watermark_bytes = buffer_size_bytes / 2;
@@ -485,7 +518,82 @@ RocprofLogger::~RocprofLogger() {
 namespace {
 thread_local std::deque<uint64_t>
     t_externalIds[RocLogger::CorrelationDomain::size];
+
+// HIP graph attribution.
+//
+// rocprofiler-sdk does not put graph identity on the dispatch record. Instead a
+// tool maintains a per-thread stack of in-flight graph launches and hands the
+// current (graph_exec_id, node ordinal) back through the external correlation
+// id when the SDK asks for one. kineto does not otherwise use that slot -- its
+// own pushCorrelationID stack is unrelated -- so the full 64 bits are packed
+// with the exec id in the high half and the node ordinal in the low half.
+struct GraphLaunchState {
+  uint64_t execId;
+  uint64_t nodeCounter;
+};
+thread_local std::vector<GraphLaunchState> t_graphLaunchStack;
+
+constexpr uint64_t kGraphNodeIdBits = 32;
+constexpr uint64_t kGraphIdMask = (uint64_t{1} << kGraphNodeIdBits) - 1;
+
+inline uint64_t packGraphAttribution(uint64_t execId, uint64_t nodeId) {
+  return (execId << kGraphNodeIdBits) | (nodeId & kGraphIdMask);
 }
+
+// CUPTI reports the exec id in the upper 32 bits of graphNodeId, and torch's
+// CUDA graph tooling reads it back out with "graph node id" >> 32, so the node
+// field keeps the packed value rather than the bare ordinal. The exec id is
+// surfaced separately to mirror the CUDA field pair.
+inline void applyGraphAttribution(uint64_t packed, rocprofAsyncRow* row) {
+  row->graphExecId = packed >> kGraphNodeIdBits;
+  row->graphNodeId = packed;
+}
+
+// hipGraphExecUpdate replaces the nodes behind an existing hipGraphExec_t
+// without changing its id, so an ordinal recorded before the update names a
+// different node after it. Give the exec a fresh attribution id instead, so the
+// two generations of the graph cannot be confused for one another. Ids are
+// handed out from the top of the packed field, away from the SDK's
+// process-monotonic ones, and are keyed on the raw hipGraphExec_t because that
+// is what the update call reports.
+std::atomic<bool> g_anyGraphExecUpdated{false};
+std::mutex g_graphExecIdMutex;
+std::unordered_map<uint64_t, uint64_t> g_updatedGraphExecIds;
+uint64_t g_nextUpdatedGraphExecId{kGraphIdMask};
+
+uint64_t attributionGraphExecId(uint64_t execId, uint64_t execValue) {
+  // Nothing has been updated in the common case, so stay off the mutex. A
+  // launch racing the update of its own exec is already the caller's bug.
+  if (!g_anyGraphExecUpdated.load(std::memory_order_acquire)) {
+    return execId;
+  }
+  std::lock_guard<std::mutex> lock(g_graphExecIdMutex);
+  auto it = g_updatedGraphExecIds.find(execValue);
+  return (it == g_updatedGraphExecIds.end()) ? execId : it->second;
+}
+
+void noteGraphExecUpdated(uint64_t execValue) {
+  std::lock_guard<std::mutex> lock(g_graphExecIdMutex);
+  if (g_nextUpdatedGraphExecId == 0) {
+    // Nothing safe left to hand out; keep the previous id rather than risk
+    // colliding with one the SDK assigned.
+    return;
+  }
+  g_updatedGraphExecIds[execValue] = g_nextUpdatedGraphExecId--;
+  g_anyGraphExecUpdated.store(true, std::memory_order_release);
+}
+
+// A destroyed exec's address can be handed back out by a later instantiate,
+// which would otherwise inherit the id assigned to the graph that used to live
+// there.
+void forgetGraphExec(uint64_t execValue) {
+  if (!g_anyGraphExecUpdated.load(std::memory_order_acquire)) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(g_graphExecIdMutex);
+  g_updatedGraphExecIds.erase(execValue);
+}
+} // namespace
 
 void RocprofLogger::pushCorrelationID(uint64_t id, CorrelationDomain type) {
   if (!singleton().externalCorrelationEnabled_) {
@@ -558,6 +666,72 @@ void RocprofLogger::code_object_callback(
   }
 }
 
+void RocprofLogger::graph_callback(
+    rocprofiler_callback_tracing_record_t record,
+    [[maybe_unused]] rocprofiler_user_data_t* user_data,
+    [[maybe_unused]] void* callback_data) {
+  if (record.kind != ROCPROFILER_CALLBACK_TRACING_HIP_GRAPH) {
+    return;
+  }
+
+  auto* data = static_cast<rocprofiler_callback_tracing_hip_graph_data_t*>(
+      record.payload);
+
+  if (record.operation == ROCPROFILER_HIP_GRAPH_OPERATION_EXEC_CREATE ||
+      record.operation == ROCPROFILER_HIP_GRAPH_OPERATION_EXEC_DESTROY) {
+    if (data != nullptr) {
+      forgetGraphExec(data->graph_exec_value.value);
+    }
+    return;
+  }
+
+  if (record.operation != ROCPROFILER_HIP_GRAPH_OPERATION_EXEC_LAUNCH) {
+    return;
+  }
+
+  if (record.phase == ROCPROFILER_CALLBACK_PHASE_ENTER) {
+    uint64_t execId = (data != nullptr)
+        ? attributionGraphExecId(
+              data->graph_exec_id.handle, data->graph_exec_value.value)
+        : 0;
+    // Exec ids are process-monotonic and never realistically exceed the packed
+    // field. Drop attribution rather than emit an aliased id if one does.
+    if (execId > kGraphIdMask) {
+      LOG_FIRST_N(WARNING, 1)
+          << "HIP graph exec id " << execId
+          << " exceeds the packed attribution field, dropping graph metadata";
+      execId = 0;
+    }
+    t_graphLaunchStack.push_back(GraphLaunchState{execId, 0});
+  } else if (record.phase == ROCPROFILER_CALLBACK_PHASE_EXIT) {
+    if (!t_graphLaunchStack.empty()) {
+      t_graphLaunchStack.pop_back();
+    }
+  }
+}
+
+int RocprofLogger::external_correlation_callback(
+    [[maybe_unused]] rocprofiler_thread_id_t thread_id,
+    [[maybe_unused]] rocprofiler_context_id_t context_id,
+    [[maybe_unused]] rocprofiler_external_correlation_id_request_kind_t kind,
+    [[maybe_unused]] rocprofiler_tracing_operation_t operation,
+    [[maybe_unused]] uint64_t internal_corr_id_value,
+    rocprofiler_user_data_t* external_corr_id_value,
+    [[maybe_unused]] void* data) {
+  // A non-zero return tells rocprofiler-sdk to fall back to the thread-local
+  // pushed value, leaving the slot at zero for non-graph operations.
+  if (external_corr_id_value == nullptr || t_graphLaunchStack.empty()) {
+    return 1;
+  }
+  auto& launch = t_graphLaunchStack.back();
+  if (launch.execId == 0) {
+    return 1;
+  }
+  external_corr_id_value->value =
+      packGraphAttribution(launch.execId, launch.nodeCounter++);
+  return 0;
+}
+
 void RocprofLogger::api_callback(
     rocprofiler_callback_tracing_record_t record,
     [[maybe_unused]] rocprofiler_user_data_t* user_data,
@@ -572,6 +746,19 @@ void RocprofLogger::api_callback(
       uint64_t startTime = timestamps[record.correlation_id.internal];
       timestamps.erase(record.correlation_id.internal);
       uint64_t endTime = getApproximateTime();
+
+      // Retire the graph node ordinals this exec handed out before it was
+      // updated, while the update call still holds off the next launch.
+      if (record.operation ==
+              ROCPROFILER_HIP_RUNTIME_API_ID_hipGraphExecUpdate &&
+          graphAttributionEnabled()) {
+        auto* data = static_cast<rocprofiler_callback_tracing_hip_api_data_t*>(
+            record.payload);
+        if (data != nullptr && data->retval.hipError_t_retval == hipSuccess) {
+          noteGraphExecUpdated(reinterpret_cast<uint64_t>(
+              data->args.hipGraphExecUpdate.hGraphExec));
+        }
+      }
 
       // Kernel Launch Records
       if (isKernelApi(record.operation)) {
@@ -719,6 +906,7 @@ void RocprofLogger::buffer_callback(
             record.start_timestamp,
             record.end_timestamp,
             kernel_name);
+        applyGraphAttribution(record.correlation_id.external.value, row);
         insert_row_to_buffer(row);
       } else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) {
         auto& record =
@@ -742,6 +930,7 @@ void RocprofLogger::buffer_callback(
             record.start_timestamp,
             record.end_timestamp,
             "");
+        applyGraphAttribution(record.correlation_id.external.value, row);
         insert_row_to_buffer(row);
       }
     }

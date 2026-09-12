@@ -76,19 +76,18 @@ export PYTORCH_TEST_WITH_ROCM=1
 export PYTORCH_ROCM_ARCH="gfx950"
 
 # Cap parallel compile jobs. PyTorch's build otherwise spawns one compile per
-# core, and ROCm never reaches the sccache bucket (see below), so every build
-# recompiles the heavy ATen kernels from scratch. Without a cap they compile
-# all at once and can exhaust runner memory, tripping the OOM killer.
+# core. Without a cap they compile all at once and can exhaust runner memory,
+# tripping the OOM killer.
 #
 # Note that this is naively set the same as on the CUDA side. We can tweak this
 # if needed.
 export MAX_JOBS=8
 
 # --- PyTorch build caching ---
-# This arch's CI runner is not on AWS and cannot reach PyTorch's S3 sccache
-# bucket.
+# The ROCm wheel is built on linux.12xlarge (AWS), which can reach PyTorch's
+# shared S3 sccache bucket. The MI350 test job never compiles.
 # shellcheck disable=SC2034
-KINETO_USE_SCCACHE=0
+KINETO_USE_SCCACHE=1
 
 # --- Deselected PyTorch profiler tests ---
 # Each entry is a pytest node ID passed as a --deselect argument.

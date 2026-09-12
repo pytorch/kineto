@@ -69,6 +69,27 @@ void trace_collection_thread(
   trace->save(kTraceFile);
 }
 
+// CUDA 13 replaced cudaMemAdvise's device ordinal with a cudaMemLocation and
+// dropped the cudaMemAdvise_v2 spelling that carried it in CUDA 12.
+static cudaError_t memAdvise(
+    const void* devPtr,
+    size_t count,
+    cudaMemoryAdvise advice,
+    int device) {
+#if CUDART_VERSION >= 13000
+  cudaMemLocation location{};
+  if (device == cudaCpuDeviceId) {
+    location.type = cudaMemLocationTypeHost;
+  } else {
+    location.type = cudaMemLocationTypeDevice;
+    location.id = device;
+  }
+  return cudaMemAdvise(devPtr, count, advice, location);
+#else
+  return cudaMemAdvise(devPtr, count, advice, device);
+#endif
+}
+
 void uvm_allocation_thread(stress_test_args* test_args) {
   uint64_t alloc_size = test_args->uvm_len * sizeof(float);
 
@@ -85,28 +106,28 @@ void uvm_allocation_thread(stress_test_args* test_args) {
           (void**)&test_args->uvm_b, alloc_size, cudaMemAttachGlobal),
       __LINE__);
   checkCudaStatus(
-      cudaMemAdvise(
+      memAdvise(
           (void*)test_args->uvm_a,
           alloc_size,
           cudaMemAdviseSetPreferredLocation,
           cudaCpuDeviceId),
       __LINE__);
   checkCudaStatus(
-      cudaMemAdvise(
+      memAdvise(
           (void*)test_args->uvm_b,
           alloc_size,
           cudaMemAdviseSetPreferredLocation,
           cudaCpuDeviceId),
       __LINE__);
   checkCudaStatus(
-      cudaMemAdvise(
+      memAdvise(
           (void*)test_args->uvm_a,
           alloc_size,
           cudaMemAdviseSetAccessedBy,
           currentDevice),
       __LINE__);
   checkCudaStatus(
-      cudaMemAdvise(
+      memAdvise(
           (void*)test_args->uvm_b,
           alloc_size,
           cudaMemAdviseSetAccessedBy,

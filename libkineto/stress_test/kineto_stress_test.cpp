@@ -105,33 +105,46 @@ void uvm_allocation_thread(stress_test_args* test_args) {
       cudaMallocManaged(
           (void**)&test_args->uvm_b, alloc_size, cudaMemAttachGlobal),
       __LINE__);
+#if CUDART_VERSION >= 13000
+  // CUDA 13 changed cudaMemAdvise to take a cudaMemLocation struct. The CPU is
+  // named via cudaMemLocationTypeHost; a device location with
+  // id == cudaCpuDeviceId is rejected with cudaErrorInvalidValue.
+  cudaMemLocation preferredLocation{};
+  preferredLocation.type = cudaMemLocationTypeHost;
+  cudaMemLocation accessedByLocation{};
+  accessedByLocation.type = cudaMemLocationTypeDevice;
+  accessedByLocation.id = currentDevice;
+#else
+  const int preferredLocation = cudaCpuDeviceId;
+  const int accessedByLocation = currentDevice;
+#endif
   checkCudaStatus(
       memAdvise(
           (void*)test_args->uvm_a,
           alloc_size,
           cudaMemAdviseSetPreferredLocation,
-          cudaCpuDeviceId),
+          preferredLocation),
       __LINE__);
   checkCudaStatus(
       memAdvise(
           (void*)test_args->uvm_b,
           alloc_size,
           cudaMemAdviseSetPreferredLocation,
-          cudaCpuDeviceId),
+          preferredLocation),
       __LINE__);
   checkCudaStatus(
       memAdvise(
           (void*)test_args->uvm_a,
           alloc_size,
           cudaMemAdviseSetAccessedBy,
-          currentDevice),
+          accessedByLocation),
       __LINE__);
   checkCudaStatus(
       memAdvise(
           (void*)test_args->uvm_b,
           alloc_size,
           cudaMemAdviseSetAccessedBy,
-          currentDevice),
+          accessedByLocation),
       __LINE__);
   std::cout << "UVM buffers allocated. Initializing them with values."
             << std::endl;

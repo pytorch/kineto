@@ -98,13 +98,14 @@ run_profiler_tests() {
     deselect_args+=(--deselect="$t")
   done
 
-  # Invoke pytest through its console script rather than `python -m pytest`,
-  # which prepends the clone to sys.path. After a wheel install the clone's
-  # torch/ holds Python sources with no compiled extensions, so that entry
-  # shadows the installed torch and `import torch` fails.
+  # After a wheel install the clone's torch/ is Python sources with no compiled
+  # extensions, so anything that puts the clone on sys.path shadows the real
+  # torch. Two paths would: `python -m pytest` prepends the current directory,
+  # hence the console script; and the tests that spawn `python -c` inherit that
+  # same behaviour, hence PYTHONSAFEPATH (honoured by the children too).
   local pytest_cmd=(python -m pytest)
   if [[ "${MODE}" == "test" ]]; then
-    pytest_cmd=(pytest)
+    pytest_cmd=(env PYTHONSAFEPATH=1 pytest)
   fi
 
   # Run PyTorch profiler tests under a per-test timeout so a hang fails that one

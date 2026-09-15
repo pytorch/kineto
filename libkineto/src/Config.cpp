@@ -238,8 +238,8 @@ bool isAllowedOnDemandTraceFile(const string& path) {
 std::optional<nanoseconds> parseMilliseconds(std::string_view text) noexcept {
   double count = 0;
   const auto [parseEnd, error] =
-      std::from_chars(text.begin(), text.end(), count);
-  if (error != std::errc{} || parseEnd != text.end()) {
+      std::from_chars(text.data(), text.data() + text.size(), count);
+  if (error != std::errc{} || parseEnd != text.data() + text.size()) {
     return std::nullopt;
   }
 

@@ -9,6 +9,7 @@
 #include "CuptiPMSamplingApi.h"
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 #include <cuda_runtime_api.h>
@@ -54,6 +55,23 @@ constexpr size_t kHardwareBufferSizeBytes = 64 * 1024 * 1024;
 // fill a certain sampling duration, but clock frequency is not necessarily
 // fixed. This is almost certainly something we'll need to revisit/tune.
 constexpr uint64_t kGa100SamplingIntervalCycles = 1'000'000;
+
+uint32_t maxSamplesForDecode(
+    std::chrono::nanoseconds lookbackWindow,
+    std::chrono::nanoseconds samplingInterval) {
+  if (lookbackWindow.count() <= 0 || samplingInterval.count() <= 0) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling interval and lookback window must be positive");
+  }
+  const auto samples = std::max<int64_t>(1, lookbackWindow / samplingInterval);
+  if (samples > std::numeric_limits<uint32_t>::max()) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling lookback window exceeds CUPTI sample capacity");
+  }
+  return static_cast<uint32_t>(samples);
+}
 
 /*
  * ========================== CUPTI PM SAMPLING API ==========================
@@ -163,11 +181,22 @@ void CuptiPMSamplingApi::configureCupti() {
   }
   CUpti_PmSampling_TriggerMode triggerMode;
   uint64_t samplingInterval;
+  auto capacityInterval = config_.samplingInterval;
   // GPU_TIME_INTERVAL is unavailable on GA100. The wall-time duration of this
   // fixed SYSCLK interval varies with the GPU's clock frequency.
   if (deviceProperties.major == 8 && deviceProperties.minor == 0) {
+    if (deviceProperties.clockRate <= 0) {
+      KINETO_THROW(
+          std::runtime_error, "GA100 reported an invalid GPU clock rate");
+    }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL;
     samplingInterval = kGa100SamplingIntervalCycles;
+    // clockRate is the maximum clock in kHz. It gives the shortest possible
+    // period and therefore enough capacity at GA100's fastest sampling rate.
+    capacityInterval = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>{
+            static_cast<double>(kGa100SamplingIntervalCycles) /
+            (static_cast<double>(deviceProperties.clockRate) * 1000.0)});
   } else if (
       deviceProperties.major > 8 ||
       (deviceProperties.major == 8 && deviceProperties.minor >= 6)) {
@@ -183,6 +212,8 @@ void CuptiPMSamplingApi::configureCupti() {
         "Minimum supported GPU for CUPTI PM sampling is GA100 (compute "
         "capability 8.0); other GPUs require compute capability 8.6 or newer");
   }
+  const auto maxSamples =
+      maxSamplesForDecode(config_.lookbackWindow, capacityInterval);
 
   // Building the availability image. This is a CUPTI byte buffer describing
   // which raw hardware counters are available on this machine. The first call
@@ -279,8 +310,7 @@ void CuptiPMSamplingApi::configureCupti() {
   counterDataSize.pPmSamplingObject = samplingObject_;
   counterDataSize.pMetricNames = metricNamePtrs_.data();
   counterDataSize.numMetrics = metricNamePtrs_.size();
-  counterDataSize.maxSamples = static_cast<uint32_t>(
-      std::max<int64_t>(1, config_.lookbackWindow / config_.samplingInterval));
+  counterDataSize.maxSamples = maxSamples;
   CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
 
   counterDataImage_.resize(counterDataSize.counterDataSize);

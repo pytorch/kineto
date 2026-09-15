@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -42,6 +43,7 @@ struct FakeSample {
 struct FakeCuptiState {
   int major{9};
   int minor{0};
+  int clockRate{1'500'000};
   size_t numPasses{1};
   CUpti_PmSampling_DecodeStopReason decodeStopReason{
       CUPTI_PM_SAMPLING_DECODE_STOP_REASON_END_OF_RECORDS};
@@ -157,6 +159,7 @@ cudaGetDeviceProperties(cudaDeviceProp* properties, int device) {
   *properties = cudaDeviceProp{};
   properties->major = fakeCupti().major;
   properties->minor = fakeCupti().minor;
+  properties->clockRate = fakeCupti().clockRate;
   return cudaSuccess;
 }
 
@@ -353,13 +356,15 @@ TEST_F(CuptiPMSamplingApiTest, KeepsAtLeastOneSample) {
   api.disable();
 }
 
-TEST_F(CuptiPMSamplingApiTest, UsesFixedSysclkIntervalOnGa100) {
-  configureForDevice(8, 0, 500us);
+TEST_F(CuptiPMSamplingApiTest, UsesEffectiveSysclkCadenceOnGa100) {
+  configureForDevice(8, 0, 0ns);
 
   EXPECT_EQ(
       fakeCupti().triggerMode,
       CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL);
   EXPECT_EQ(fakeCupti().samplingInterval, 1'000'000);
+  // At the fake 1.5 GHz maximum clock, 1M cycles yields 15K samples in 10s.
+  EXPECT_EQ(fakeCupti().maxSamples, 15'000);
 }
 
 TEST_F(CuptiPMSamplingApiTest, UsesRequestedTimeIntervalOnGa10xAndNewer) {
@@ -383,6 +388,30 @@ TEST_F(CuptiPMSamplingApiTest, RejectsUnsupportedComputeCapabilities) {
 
 TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveTimeIntervals) {
   EXPECT_THROW(configureForDevice(8, 6, 0ns), std::runtime_error);
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveLookbackWindows) {
+  CuptiPMSamplingApi api;
+  EXPECT_THROW(
+      api.configure(makeConfig(
+          500us,
+          /*deviceId=*/0,
+          {"sm__cycles_active.avg"},
+          0ns)),
+      std::runtime_error);
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsSampleCapacityAboveCuptiLimit) {
+  CuptiPMSamplingApi api;
+  constexpr auto kTooManySamples =
+      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+  EXPECT_THROW(
+      api.configure(makeConfig(
+          1ns,
+          /*deviceId=*/0,
+          {"sm__cycles_active.avg"},
+          std::chrono::nanoseconds{kTooManySamples})),
+      std::runtime_error);
 }
 
 TEST_F(CuptiPMSamplingApiTest, RejectsMultipassConfigurationBeforeEnabling) {

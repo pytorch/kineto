@@ -144,7 +144,7 @@ TEST(ParseTest, PerformanceMetrics) {
   EXPECT_TRUE(cfg.performanceMetricNames().empty());
   EXPECT_EQ(cfg.performanceMetricsDeviceId(), -1);
   EXPECT_EQ(cfg.performanceMetricsSamplingInterval(), milliseconds(1));
-  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(10));
+  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(1));
 
   EXPECT_TRUE(
       cfg.parse("PERFORMANCE_METRICS_DEVICE_ID=2\n"
@@ -174,7 +174,7 @@ TEST(ParseTest, PerformanceMetricsInvalidDurationsUseDefaults) {
       cfg.parse("PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS=invalid\n"
                 "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS=0"));
   EXPECT_EQ(cfg.performanceMetricsSamplingInterval(), milliseconds(1));
-  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(10));
+  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(1));
 }
 
 TEST(ParseTest, ProfileStartTime) {

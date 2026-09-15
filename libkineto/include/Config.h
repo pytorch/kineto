@@ -388,7 +388,7 @@ class Config : public AbstractConfig {
   std::chrono::nanoseconds performanceMetricsSamplingInterval_{
       std::chrono::milliseconds{1}};
   std::chrono::nanoseconds performanceMetricsLookbackWindow_{
-      std::chrono::seconds{10}};
+      std::chrono::seconds{1}};
 
   // CUPTI Timestamp Format
   bool useTSCTimestamp_{true};

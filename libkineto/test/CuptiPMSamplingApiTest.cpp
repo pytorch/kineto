@@ -106,7 +106,7 @@ CuptiPMSamplingConfig makeConfig(
     std::chrono::nanoseconds samplingInterval = 500us,
     int32_t deviceId = 0,
     std::vector<std::string> metricNames = {"sm__cycles_active.avg"},
-    std::chrono::nanoseconds lookbackWindow = 10s) {
+    std::chrono::nanoseconds lookbackWindow = 1s) {
   return CuptiPMSamplingConfig{
       deviceId, std::move(metricNames), samplingInterval, lookbackWindow};
 }
@@ -363,8 +363,8 @@ TEST_F(CuptiPMSamplingApiTest, UsesEffectiveSysclkCadenceOnGa100) {
       fakeCupti().triggerMode,
       CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL);
   EXPECT_EQ(fakeCupti().samplingInterval, 1'000'000);
-  // At the fake 1.5 GHz maximum clock, 1M cycles yields 15K samples in 10s.
-  EXPECT_EQ(fakeCupti().maxSamples, 15'000);
+  // At the fake 1.5 GHz maximum clock, 1M cycles yields 1.5K samples in 1s.
+  EXPECT_EQ(fakeCupti().maxSamples, 1'500);
 }
 
 TEST_F(CuptiPMSamplingApiTest, UsesRequestedTimeIntervalOnGa10xAndNewer) {

@@ -31,7 +31,7 @@ struct CuptiPMSamplingConfig {
   int32_t deviceId{-1};
   std::vector<std::string> metricNames;
   std::chrono::nanoseconds samplingInterval{std::chrono::milliseconds{1}};
-  std::chrono::nanoseconds lookbackWindow{std::chrono::seconds{10}};
+  std::chrono::nanoseconds lookbackWindow{std::chrono::seconds{1}};
 };
 
 class CuptiPMSamplingApi {

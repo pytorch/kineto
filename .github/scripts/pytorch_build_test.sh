@@ -120,8 +120,33 @@ run_profiler_tests() {
   popd
 }
 
-git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git "${PYTORCH_DIR}"
-echo "====: Cloned PyTorch"
+# Both ROCm jobs clone independently. Pin the test job to the SHA the wheel
+# was built from so a viable/strict move in between cannot mix new tests with
+# an older torch (or the reverse).
+if [[ "${MODE}" == "test" ]]; then
+  sha_file="${RUNNER_ARTIFACT_DIR:-/artifacts}/pytorch-sha.txt"
+  if [[ ! -f "${sha_file}" ]]; then
+    echo "ERROR: ${sha_file} missing; the wheel job must record the PyTorch SHA it built" >&2
+    ls -la "${RUNNER_ARTIFACT_DIR:-/artifacts}" >&2 || true
+    exit 1
+  fi
+  pytorch_ref="$(tr -d '[:space:]' < "${sha_file}")"
+  if [[ ! "${pytorch_ref}" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "ERROR: invalid PyTorch SHA in ${sha_file}: '${pytorch_ref}'" >&2
+    exit 1
+  fi
+  # Fetch the recorded commit by hash. Cloning --branch viable/strict would
+  # miss it if that ref was force-moved after the wheel job.
+  mkdir -p "${PYTORCH_DIR}"
+  git -C "${PYTORCH_DIR}" init
+  git -C "${PYTORCH_DIR}" remote add origin https://github.com/pytorch/pytorch.git
+  git -C "${PYTORCH_DIR}" fetch --recurse-submodules origin "${pytorch_ref}"
+  git -C "${PYTORCH_DIR}" checkout --detach FETCH_HEAD
+  git -C "${PYTORCH_DIR}" submodule update --init --recursive
+else
+  git clone --recursive --branch viable/strict https://github.com/pytorch/pytorch.git "${PYTORCH_DIR}"
+fi
+echo "====: Cloned PyTorch $(git -C "${PYTORCH_DIR}" rev-parse HEAD)"
 
 # Load architecture-specific build env vars and deselected tests
 # shellcheck source=/dev/null
@@ -149,7 +174,8 @@ if [[ "${MODE}" != "test" ]]; then
     sccache --show-stats || true
     mkdir -p "${KINETO_DIR}/artifacts-to-be-uploaded"
     cp -v dist/*.whl "${KINETO_DIR}/artifacts-to-be-uploaded/"
-    echo "====: Copied wheel to artifacts-to-be-uploaded"
+    git rev-parse HEAD > "${KINETO_DIR}/artifacts-to-be-uploaded/pytorch-sha.txt"
+    echo "====: Copied wheel and PyTorch SHA $(cat "${KINETO_DIR}/artifacts-to-be-uploaded/pytorch-sha.txt") to artifacts-to-be-uploaded"
     popd
     exit 0
   fi

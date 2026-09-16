@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,7 +31,8 @@ struct CuptiPMSample {
 struct CuptiPMSamplingConfig {
   int32_t deviceId{-1};
   std::vector<std::string> metricNames;
-  std::chrono::nanoseconds samplingInterval{std::chrono::milliseconds{1}};
+  // Unset selects 1 ms on GA10x and newer, or 1M SYSCLK cycles on GA100.
+  std::optional<std::chrono::nanoseconds> samplingInterval;
   std::chrono::nanoseconds lookbackWindow{std::chrono::seconds{1}};
 };
 

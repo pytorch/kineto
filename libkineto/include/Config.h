@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -236,8 +237,8 @@ class Config : public AbstractConfig {
     return performanceMetricsDeviceId_;
   }
 
-  [[nodiscard]] std::chrono::nanoseconds performanceMetricsSamplingInterval()
-      const {
+  [[nodiscard]] std::optional<std::chrono::nanoseconds>
+  performanceMetricsSamplingInterval() const {
     return performanceMetricsSamplingInterval_;
   }
 
@@ -385,8 +386,7 @@ class Config : public AbstractConfig {
   // Performance metrics
   std::vector<std::string> performanceMetricNames_;
   int32_t performanceMetricsDeviceId_{-1};
-  std::chrono::nanoseconds performanceMetricsSamplingInterval_{
-      std::chrono::milliseconds{1}};
+  std::optional<std::chrono::nanoseconds> performanceMetricsSamplingInterval_;
   std::chrono::nanoseconds performanceMetricsLookbackWindow_{
       std::chrono::seconds{1}};
 

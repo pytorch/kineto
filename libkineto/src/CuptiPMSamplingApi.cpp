@@ -181,31 +181,47 @@ void CuptiPMSamplingApi::configureCupti() {
   }
   CUpti_PmSampling_TriggerMode triggerMode;
   uint64_t samplingInterval;
-  auto capacityInterval = config_.samplingInterval;
+  std::chrono::nanoseconds capacityInterval =
+      config_.samplingInterval.value_or(std::chrono::milliseconds{1});
   // GPU_TIME_INTERVAL is unavailable on GA100. The wall-time duration of this
   // fixed SYSCLK interval varies with the GPU's clock frequency.
   if (deviceProperties.major == 8 && deviceProperties.minor == 0) {
-    if (deviceProperties.clockRate <= 0) {
+    if (config_.samplingInterval.has_value()) {
+      LOG(WARNING)
+          << "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS is ignored on GA100; "
+             "continuing with the fixed 1,000,000-cycle SYSCLK sampling "
+             "interval. The time between samples varies with the GPU clock.";
+    }
+    int peakClockRateKHz = 0;
+    const cudaError_t clockRateStatus = cudaDeviceGetAttribute(
+        &peakClockRateKHz, cudaDevAttrClockRate, config_.deviceId);
+    if (clockRateStatus != cudaSuccess) {
+      KINETO_THROW(
+          std::runtime_error,
+          std::string{"cudaDeviceGetAttribute(cudaDevAttrClockRate) failed: "} +
+              cudaGetErrorString(clockRateStatus));
+    }
+    if (peakClockRateKHz <= 0) {
       KINETO_THROW(
           std::runtime_error, "GA100 reported an invalid GPU clock rate");
     }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL;
     samplingInterval = kGa100SamplingIntervalCycles;
-    // clockRate is the maximum clock in kHz. It gives the shortest possible
-    // period and therefore enough capacity at GA100's fastest sampling rate.
+    // Use the peak clock only for conservative decode capacity sizing;
+    // GA100's actual SYSCLK sampling period varies with the GPU clock.
     capacityInterval = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>{
             static_cast<double>(kGa100SamplingIntervalCycles) /
-            (static_cast<double>(deviceProperties.clockRate) * 1000.0)});
+            (static_cast<double>(peakClockRateKHz) * 1000.0)});
   } else if (
       deviceProperties.major > 8 ||
       (deviceProperties.major == 8 && deviceProperties.minor >= 6)) {
-    if (config_.samplingInterval.count() <= 0) {
+    if (capacityInterval.count() <= 0) {
       KINETO_THROW(
           std::runtime_error, "CUPTI PM sampling interval must be positive");
     }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL;
-    samplingInterval = static_cast<uint64_t>(config_.samplingInterval.count());
+    samplingInterval = static_cast<uint64_t>(capacityInterval.count());
   } else {
     KINETO_THROW(
         std::runtime_error,
@@ -454,7 +470,7 @@ void CuptiPMSamplingApi::disable() {
   config_.deviceId = -1;
   metricNamePtrs_.clear();
   config_.metricNames.clear();
-  config_.samplingInterval = std::chrono::nanoseconds::zero();
+  config_.samplingInterval.reset();
   config_.lookbackWindow = std::chrono::nanoseconds::zero();
 }
 

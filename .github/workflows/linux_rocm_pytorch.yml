@@ -30,7 +30,7 @@ jobs:
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: cpu
-      docker-image: pytorch/almalinux-builder:rocm7.14
+      docker-image: pytorch/almalinux-builder:rocm10.0
       upload-artifact: linux-rocm-pytorch-wheel
       script: |
         set -eux
@@ -48,8 +48,8 @@ jobs:
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: rocm
-      gpu-arch-version: "7.14"
-      docker-image: pytorch/almalinux-builder:rocm7.14
+      gpu-arch-version: "10.0"
+      docker-image: pytorch/almalinux-builder:rocm10.0
       download-artifact: linux-rocm-pytorch-wheel
       script: |
         set -eux

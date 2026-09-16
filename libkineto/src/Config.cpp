@@ -244,8 +244,6 @@ std::optional<nanoseconds> parseMilliseconds(std::string_view text) noexcept {
   }
 
   const duration<double, std::milli> value{count};
-  // nanoseconds::max() rounds up to 2^63 in double precision, so exclude
-  // equality before converting back to an integer.
   if (!std::isfinite(count) || value < nanoseconds{1} ||
       value >= nanoseconds::max()) {
     return std::nullopt;

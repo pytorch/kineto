@@ -71,9 +71,12 @@ jobs:
 
   test:
     needs: build
+    strategy:
+      matrix:
+        rocm: ["10.0"]
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
-      job-name: linux-rocm-kineto-test
+      job-name: linux-rocm-${{ matrix.rocm }}-kineto-test
       runner: linux.rocm.gpu.ecosystem.mi350.1
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules. The build tree
@@ -83,8 +86,8 @@ jobs:
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: rocm
-      gpu-arch-version: "10.0"
-      docker-image: pytorch/almalinux-builder:rocm10.0
+      gpu-arch-version: ${{ matrix.rocm }}
+      docker-image: pytorch/almalinux-builder:rocm${{ matrix.rocm }}
       download-artifact: linux-rocm-kineto-build
       script: |
         set -eux

@@ -39,16 +39,19 @@ jobs:
 
   test:
     needs: build
+    strategy:
+      matrix:
+        rocm: ["10.0"]
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
-      job-name: linux-rocm-pytorch-test
+      job-name: linux-rocm-${{ matrix.rocm }}-pytorch-test
       runner: linux.rocm.gpu.ecosystem.mi350.1
       timeout: 180
       repository: ${{ github.repository }}
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: rocm
-      gpu-arch-version: "10.0"
+      gpu-arch-version: ${{ matrix.rocm }}
       download-artifact: linux-rocm-pytorch-wheel
       script: |
         set -eux

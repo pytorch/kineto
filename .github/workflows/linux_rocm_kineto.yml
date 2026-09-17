@@ -87,7 +87,6 @@ jobs:
       submodules: recursive
       gpu-arch-type: rocm
       gpu-arch-version: ${{ matrix.rocm }}
-      docker-image: pytorch/almalinux-builder:rocm${{ matrix.rocm }}
       download-artifact: linux-rocm-kineto-build
       script: |
         set -eux

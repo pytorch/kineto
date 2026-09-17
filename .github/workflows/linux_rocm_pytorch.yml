@@ -21,16 +21,22 @@ jobs:
   # finds no GPU. The wheel is uploaded as a GitHub Actions artifact, same
   # mechanism as linux_rocm_kineto.yml but a different artifact name.
   build:
+    strategy:
+      matrix:
+        rocm: ["10.0"]
     uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
     with:
-      job-name: linux-rocm-pytorch-build
+      job-name: linux-rocm-${{ matrix.rocm }}-pytorch-build
       runner: linux.12xlarge
       timeout: 180
       repository: ${{ github.repository }}
       ref: ${{ github.ref }}
       submodules: recursive
       gpu-arch-type: cpu
-      docker-image: pytorch/almalinux-builder:rocm10.0
+      # gpu-arch-type stays cpu so the ROCm setup action is not run (it fails
+      # with no GPU). docker-image still has to be explicit for that reason.
+      gpu-arch-version: ${{ matrix.rocm }}
+      docker-image: pytorch/almalinux-builder:rocm${{ matrix.rocm }}
       upload-artifact: linux-rocm-pytorch-wheel
       script: |
         set -eux

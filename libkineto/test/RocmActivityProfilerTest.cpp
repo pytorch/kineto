@@ -262,10 +262,16 @@ struct MockRocLogger {
 // Mock parts of the ActivityApi
 class MockRocActivities : public RocprofActivityApi {
  public:
+  bool isAvailable() const override {
+    ++availabilityChecks;
+    return available;
+  }
+
   virtual int processActivities(
       std::function<void(const rocprofBase*)> handler,
       std::function<void(uint64_t, uint64_t, RocLogger::CorrelationDomain)>
           correlationHandler) override {
+    ++processActivitiesCalls;
     int count = 0;
     for (int it = RocLogger::CorrelationDomain::begin;
          it < RocLogger::CorrelationDomain::end;
@@ -291,6 +297,9 @@ class MockRocActivities : public RocprofActivityApi {
   }
 
   std::unique_ptr<MockRocLogger> activityLogger;
+  bool available{true};
+  mutable int availabilityChecks{0};
+  int processActivitiesCalls{0};
 };
 
 // Common setup / teardown and helper functions
@@ -311,6 +320,45 @@ class RocmActivityProfilerTest : public ::testing::Test {
   std::unique_ptr<RocmActivityProfiler> profiler_;
   ActivityLoggerFactory loggerFactory;
 };
+
+TEST_F(RocmActivityProfilerTest, DefersAndCachesGpuAvailabilityProbe) {
+  rocActivities_.available = false;
+  EXPECT_EQ(rocActivities_.availabilityChecks, 0);
+
+  const auto startTime = std::chrono::system_clock::now();
+  profiler_->configure(*cfg_, startTime);
+  EXPECT_EQ(rocActivities_.availabilityChecks, 1);
+
+  profiler_->toggleCollectionDynamic(true);
+  EXPECT_EQ(rocActivities_.availabilityChecks, 1);
+}
+
+TEST_F(RocmActivityProfilerTest, UnavailableRocmFallsBackToCpuOnly) {
+  rocActivities_.available = false;
+  rocActivities_.activityLogger = std::make_unique<MockRocLogger>();
+  const auto startTime = std::chrono::system_clock::now();
+  constexpr auto duration = std::chrono::nanoseconds(300);
+
+  profiler_->configure(*cfg_, startTime);
+  profiler_->startTrace(startTime);
+
+  const auto startTimeNs = libkineto::timeSinceEpoch(startTime);
+  auto cpuOps = std::make_unique<MockCpuActivityBuffer>(
+      startTimeNs, startTimeNs + duration.count());
+  cpuOps->addOp("cpu_op", startTimeNs + 20, startTimeNs + 50, 1);
+  profiler_->transferCpuTrace(std::move(cpuOps));
+  profiler_->stopTrace(startTime + duration);
+
+  auto logger = std::make_unique<MemoryTraceLogger>(*cfg_);
+  profiler_->processTrace(*logger);
+
+  ActivityTrace trace(std::move(logger), loggerFactory);
+  EXPECT_EQ(rocActivities_.availabilityChecks, 1);
+  EXPECT_EQ(rocActivities_.processActivitiesCalls, 0);
+  ASSERT_EQ(trace.activities()->size(), 1);
+  EXPECT_EQ(trace.activities()->front()->name(), "cpu_op");
+  EXPECT_EQ(trace.activities()->front()->type(), ActivityType::CPU_OP);
+}
 
 TEST_F(RocmActivityProfilerTest, SyncTrace) {
   // Verbose logging is useful for debugging

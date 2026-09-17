@@ -24,24 +24,17 @@
 #include "ThreadUtil.h"
 
 using namespace std::chrono;
-using std::string;
 
 namespace KINETO_NAMESPACE {
 
 RocmActivityProfiler::RocmActivityProfiler(
     RocprofActivityApi& rocprof,
     bool cpuOnly)
-    : GenericActivityProfiler(cpuOnly), roc_(rocprof) {
-  if (isGpuAvailable()) {
-    logGpuVersions();
-  }
-}
+    : GenericActivityProfiler(cpuOnly), roc_(rocprof) {}
 
-void RocmActivityProfiler::logGpuVersions() {
-  uint32_t majorVersion = ROCPROFILER_VERSION_MAJOR;
-  uint32_t minorVersion = ROCPROFILER_VERSION_MINOR;
-  std::string rocprofVersion =
-      std::to_string(majorVersion) + "." + std::to_string(minorVersion);
+void RocmActivityProfiler::recordGpuVersions() {
+  const auto rocprofVersion = fmt::format(
+      "{}.{}", ROCPROFILER_VERSION_MAJOR, ROCPROFILER_VERSION_MINOR);
   int hipRuntimeVersion = 0, hipDriverVersion = 0;
   CUDA_CALL(hipRuntimeGetVersion(&hipRuntimeVersion));
   CUDA_CALL(hipDriverGetVersion(&hipDriverVersion));
@@ -65,15 +58,36 @@ void RocmActivityProfiler::setMaxGpuBufferSize(int64_t size) {
 }
 
 void RocmActivityProfiler::enableGpuTracing() {
+  // @lint-ignore CLANGTIDY facebook-hte-std::call_once
+  std::call_once(rocmInitializationOnce_, [this] {
+    rocmAvailable_ = roc_.isAvailable();
+    if (rocmAvailable_) {
+      recordGpuVersions();
+    } else {
+      cpuOnly_ = true;
+      VLOG(0) << "ROCm unavailable; continuing with CPU-only profiling";
+    }
+  });
+  if (!rocmAvailable_) {
+    toggleState_.store(false);
+    return;
+  }
+
   roc_.setMaxEvents(config().maxEvents());
   roc_.enableActivities(derivedConfig_->profileActivityTypes());
 }
 
 void RocmActivityProfiler::disableGpuTracing() {
+  if (!rocmAvailable_) {
+    return;
+  }
   roc_.disableActivities(derivedConfig_->profileActivityTypes());
 }
 
 void RocmActivityProfiler::clearGpuActivities() {
+  if (!rocmAvailable_) {
+    return;
+  }
   roc_.clearActivities();
 }
 
@@ -82,6 +96,9 @@ bool RocmActivityProfiler::isGpuCollectionStopped() const {
 }
 
 void RocmActivityProfiler::synchronizeGpuDevice() {
+  if (!rocmAvailable_) {
+    return;
+  }
   CUDA_CALL(hipDeviceSynchronize());
   roc_.flushActivities();
 }

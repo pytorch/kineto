@@ -39,6 +39,7 @@ class RocprofActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
+  virtual bool isAvailable() const;
   void enableActivities(const std::set<ActivityType>& selected_activities);
   void disableActivities(const std::set<ActivityType>& selected_activities);
   void flushActivities();

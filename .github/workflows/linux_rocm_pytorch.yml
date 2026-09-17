@@ -49,7 +49,6 @@ jobs:
       submodules: recursive
       gpu-arch-type: rocm
       gpu-arch-version: "10.0"
-      docker-image: pytorch/almalinux-builder:rocm10.0
       download-artifact: linux-rocm-pytorch-wheel
       script: |
         set -eux

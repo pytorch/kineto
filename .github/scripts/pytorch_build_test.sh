@@ -47,32 +47,31 @@ maybe_enable_sccache() {
 
   if [[ -z "${SCCACHE_ARCH}" ]]; then
     echo "====: Unsupported arch for sccache: $(uname -m); building uncached" >&2
-    return 0
-  fi
-
-  SCCACHE_VERSION="v0.8.2"
-  SCCACHE_PKG="sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl"
-  curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/${SCCACHE_PKG}.tar.gz" | tar -xz -C /tmp
-  install -m755 "/tmp/${SCCACHE_PKG}/sccache" /usr/local/bin/sccache
-
-  export SCCACHE_BUCKET=ossci-compiler-cache-circleci-v2
-  export SCCACHE_REGION=us-east-1
-  export SCCACHE_S3_KEY_PREFIX=kineto
-  export SCCACHE_IDLE_TIMEOUT=0
-  export SCCACHE_ERROR_LOG=/tmp/sccache_error.log
-
-  # Route compilers through sccache only if the cache backend actually
-  # starts. A configured-but-unreachable bucket otherwise makes every
-  # compile fail, so this keeps a cache problem from breaking the build.
-  if sccache --start-server; then
-    sccache --zero-stats || true
-    export CMAKE_C_COMPILER_LAUNCHER=sccache
-    export CMAKE_CXX_COMPILER_LAUNCHER=sccache
-    export CMAKE_CUDA_COMPILER_LAUNCHER=sccache
-    export CMAKE_HIP_COMPILER_LAUNCHER=sccache
-    echo "====: Enabled sccache (${SCCACHE_VERSION}, ${SCCACHE_ARCH})"
   else
-    echo "====: sccache cache unreachable; building without it" >&2
+    SCCACHE_VERSION="v0.8.2"
+    SCCACHE_PKG="sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl"
+    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/${SCCACHE_PKG}.tar.gz" | tar -xz -C /tmp
+    install -m755 "/tmp/${SCCACHE_PKG}/sccache" /usr/local/bin/sccache
+
+    export SCCACHE_BUCKET=ossci-compiler-cache-circleci-v2
+    export SCCACHE_REGION=us-east-1
+    export SCCACHE_S3_KEY_PREFIX=kineto
+    export SCCACHE_IDLE_TIMEOUT=0
+    export SCCACHE_ERROR_LOG=/tmp/sccache_error.log
+
+    # Route compilers through sccache only if the cache backend actually
+    # starts. A configured-but-unreachable bucket otherwise makes every
+    # compile fail, so this keeps a cache problem from breaking the build.
+    if sccache --start-server; then
+      sccache --zero-stats || true
+      export CMAKE_C_COMPILER_LAUNCHER=sccache
+      export CMAKE_CXX_COMPILER_LAUNCHER=sccache
+      export CMAKE_CUDA_COMPILER_LAUNCHER=sccache
+      export CMAKE_HIP_COMPILER_LAUNCHER=sccache
+      echo "====: Enabled sccache (${SCCACHE_VERSION}, ${SCCACHE_ARCH})"
+    else
+      echo "====: sccache cache unreachable; building without it" >&2
+    fi
   fi
 }
 

@@ -43,31 +43,7 @@ jobs:
       script: |
         set -eux
         .github/scripts/setup.sh
-
-        # This is the build half of kineto_build_test.sh, inlined because that
-        # script also runs the tests, which need a GPU.
-        # shellcheck source=/dev/null
-        source .github/scripts/config_rocm.sh
-
-        mkdir -p build_static build_shared
-
-        pushd build_static
-        cmake "${KINETO_CMAKE_FLAGS[@]}" -DKINETO_LIBRARY_TYPE=static ../libkineto/
-        make -j
-        popd
-        echo "====: Compiled static libkineto"
-
-        pushd build_shared
-        cmake "${KINETO_CMAKE_FLAGS[@]}" -DKINETO_LIBRARY_TYPE=shared ../libkineto/
-        make -j
-        popd
-        echo "====: Compiled shared libkineto"
-
-        # Only the static build carries the test binaries; the shared build is
-        # here purely as a compile check, so it does not need to be shipped.
-        mkdir -p artifacts-to-be-uploaded
-        tar czf artifacts-to-be-uploaded/kineto-build.tar.gz build_static
-        echo "====: Packed build_static for the test job"
+        .github/scripts/kineto_build_test.sh rocm build
 
   test:
     needs: build
@@ -93,11 +69,4 @@ jobs:
         # Reinstall the same cmake the build job used: CMake bakes the absolute
         # path of its own ctest into the generated makefiles.
         .github/scripts/setup.sh
-
-        tar xzf "${RUNNER_ARTIFACT_DIR}/kineto-build.tar.gz"
-        echo "====: Restored build_static from the build job"
-
-        pushd build_static
-        CTEST_OUTPUT_ON_FAILURE=1 make test
-        popd
-        echo "====: Ran static libkineto tests"
+        .github/scripts/kineto_build_test.sh rocm test

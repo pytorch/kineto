@@ -7,8 +7,32 @@
 
 set -eux
 
-GPU_ARCH="${1:?Usage: kineto_build_test.sh <cpu|cuda|rocm>}"
+GPU_ARCH="${1:?Usage: kineto_build_test.sh <cpu|cuda|rocm> [all|build|test]}"
+MODE="${2:-all}"
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [[ "${MODE}" != "all" && "${MODE}" != "build" && "${MODE}" != "test" ]]; then
+  echo "ERROR: unknown mode '${MODE}' (expected all|build|test)" >&2
+  exit 1
+fi
+
+run_static_tests() {
+  pushd build_static
+  CTEST_OUTPUT_ON_FAILURE=1 make test
+  popd
+  echo "====: Ran static libkineto tests"
+}
+
+# The split ROCm test job unpacks the static build artifact and only runs
+# ctest. setup.sh must already have reinstalled cmake: the generated
+# makefiles bake in the absolute ctest path from the build job.
+if [[ "${MODE}" == "test" ]]; then
+  ARTIFACT_ROOT="${RUNNER_ARTIFACT_DIR:-/artifacts}"
+  tar xzf "${ARTIFACT_ROOT}/kineto-build.tar.gz"
+  echo "====: Restored build_static from the build job"
+  run_static_tests
+  exit 0
+fi
 
 # Load architecture-specific cmake flags
 # shellcheck source=/dev/null
@@ -28,7 +52,13 @@ make -j
 popd
 echo "====: Compiled shared libkineto"
 
-pushd build_static
-CTEST_OUTPUT_ON_FAILURE=1 make test
-popd
-echo "====: Ran static libkineto tests"
+if [[ "${MODE}" == "build" ]]; then
+  # Only the static build carries the test binaries; the shared build is
+  # here purely as a compile check, so it does not need to be shipped.
+  mkdir -p artifacts-to-be-uploaded
+  tar czf artifacts-to-be-uploaded/kineto-build.tar.gz build_static
+  echo "====: Packed build_static for the test job"
+  exit 0
+fi
+
+run_static_tests

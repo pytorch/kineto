@@ -21,5 +21,11 @@
 // expression -- a string literal, a std::string, a concatenation, or a
 // fmt::format(...) call -- carries over unchanged and the thrown type is
 // preserved. Callers keep whatever headers those arguments require.
-#define KINETO_THROW(ExceptionType, ...) \
-  throw ExceptionType(__VA_ARGS__) // @allow-raw-throw
+//
+// The allow annotation has to sit alone on the line directly above the throw it
+// licenses, so it is a single-line block comment: a // comment on a line ending
+// in a backslash would continue onto the next line and swallow the throw, and a
+// block comment spread over two lines would no longer be directly above it.
+#define KINETO_THROW(ExceptionType, ...)             \
+  /* @allow-raw-throw: no c10, so no TORCH_CHECK. */ \
+  throw ExceptionType(__VA_ARGS__)

@@ -120,26 +120,13 @@ include_patterns = [
     'libkineto/**/*.hpp',
 ]
 exclude_patterns = [
+    # Vendored: raw throws are upstream's call, not ours.
     'libkineto/third_party/**',
     'libkineto/build/**',
-    # stress_test is a standalone CUDA/NCCL benchmark harness that CMake never
-    # builds and that is not vendored into PyTorch, so its raw throw is left in
-    # place rather than routed through KINETO_THROW.
-    'libkineto/stress_test/**',
 ]
 command = [
     'python3',
-    'tools/linter/adapters/grep_linter.py',
-    '--pattern=\bthrow\b',
-    '--allowlist-pattern=@allow-raw-throw',
-    '--linter-name=RAWTHROW',
-    '--error-name=raw throw statement',
-    """--error-description=\
-        Do not use a raw throw in C++. Kineto cannot depend on c10, so raise \
-        exceptions through the KINETO_THROW macro in src/ThrowUtil.h, which \
-        preserves the exception type. For a re-throw (throw;), restructure the \
-        code to avoid try/catch/throw.\
-    """,
+    'tools/linter/adapters/raw_throw_linter.py',
     '--',
     '@{{PATHSFILE}}'
 ]

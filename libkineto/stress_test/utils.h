@@ -30,24 +30,20 @@ inline void checkCudaStatus(cudaError_t status, int lineNumber = -1) {
   }
 }
 
-// CUDA_CHECK raises std::runtime_error directly rather than going through
-// libkineto's KINETO_THROW: stress_test is a standalone CUDA/NCCL benchmark
-// harness that the CMake build never compiles and that is not part of the
-// library, so it reaches neither c10's TORCH_CHECK nor src/ThrowUtil.h.
-#define CUDA_CHECK(EXPR)                            \
-  do {                                              \
-    const cudaError_t err = EXPR;                   \
-    if (err == cudaSuccess) {                       \
-      break;                                        \
-    }                                               \
-    std::string error_message;                      \
-    error_message.append(__FILE__);                 \
-    error_message.append(":");                      \
-    error_message.append(std::to_string(__LINE__)); \
-    error_message.append(" CUDA error: ");          \
-    error_message.append(cudaGetErrorString(err));  \
-    /* @allow-raw-throw: see above. */              \
-    throw std::runtime_error(error_message);        \
+#define CUDA_CHECK(EXPR)                                         \
+  do {                                                           \
+    const cudaError_t err = EXPR;                                \
+    if (err == cudaSuccess) {                                    \
+      break;                                                     \
+    }                                                            \
+    std::string error_message;                                   \
+    error_message.append(__FILE__);                              \
+    error_message.append(":");                                   \
+    error_message.append(std::to_string(__LINE__));              \
+    error_message.append(" CUDA error: ");                       \
+    error_message.append(cudaGetErrorString(err));               \
+    /* @allow-raw-throw: benchmark harness, not library code. */ \
+    throw std::runtime_error(error_message);                     \
   } while (0)
 
 #define CUDA_KERNEL_LAUNCH_CHECK() CUDA_CHECK(cudaGetLastError())

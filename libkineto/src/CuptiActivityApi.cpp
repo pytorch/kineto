@@ -29,7 +29,7 @@ constexpr uint32_t kCuptiBufferRejectionMinVersion = 27;
 
 inline bool cuptiTearDown_() {
   auto teardown_env = getenv("TEARDOWN_CUPTI");
-  return teardown_env != nullptr && strcmp(teardown_env, "1") == 0;
+  return teardown_env == nullptr || strcmp(teardown_env, "1") == 0;
 }
 
 inline bool cuptiLazyInit_() {

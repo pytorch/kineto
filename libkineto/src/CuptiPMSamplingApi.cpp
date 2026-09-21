@@ -49,6 +49,9 @@ namespace KINETO_NAMESPACE {
 namespace {
 
 constexpr size_t kHardwareBufferSizeBytes = 64 * 1024 * 1024;
+// Counter-data images are fully allocated in host memory. Bound their size
+// independently of CUPTI's uint32_t sample-count limit.
+constexpr size_t kMaxCounterDataImageSizeBytes = 256 * 1024 * 1024;
 
 // GA100 only supports variable-frequency SYSCLK sampling. One option is to
 // measure hardware clock frequency and estimate the number of cycles needed to
@@ -328,6 +331,11 @@ void CuptiPMSamplingApi::configureCupti() {
   counterDataSize.numMetrics = metricNamePtrs_.size();
   counterDataSize.maxSamples = maxSamples;
   CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
+  if (counterDataSize.counterDataSize > kMaxCounterDataImageSizeBytes) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling counter data image exceeds the 256 MiB limit");
+  }
 
   counterDataImage_.resize(counterDataSize.counterDataSize);
   resetImage();

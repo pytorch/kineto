@@ -68,6 +68,7 @@ struct FakeCuptiState {
   CUpti_PmSampling_HardwareBuffer_AppendMode appendMode{};
   std::vector<std::string> counterDataMetricNames;
   uint32_t maxSamples{0};
+  size_t counterDataSize{1};
 
   std::byte hostObject{};
   std::byte samplingObject{};
@@ -246,7 +247,7 @@ CUptiResult CUPTIAPI cuptiPmSamplingGetCounterDataSize(
   fakeCupti().counterDataMetricNames =
       copyMetricNames(params->pMetricNames, params->numMetrics);
   fakeCupti().maxSamples = params->maxSamples;
-  params->counterDataSize = 1;
+  params->counterDataSize = fakeCupti().counterDataSize;
   return CUPTI_SUCCESS;
 }
 
@@ -519,6 +520,17 @@ TEST_F(CuptiPMSamplingApiTest, RejectsSampleCapacityAboveCuptiLimit) {
           {"sm__cycles_active.avg"},
           std::chrono::nanoseconds{kTooManySamples})),
       std::runtime_error);
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsCounterDataImageAboveMemoryLimit) {
+  fakeCupti().counterDataSize = 256 * 1024 * 1024 + 1;
+  CuptiPMSamplingApi api;
+
+  EXPECT_THROW(api.configure(makeConfig()), std::runtime_error);
+
+  clearCalls();
+  api.disable();
+  expectCalls({"samplingDisable", "hostDeinitialize", "profilerDeInitialize"});
 }
 
 TEST_F(CuptiPMSamplingApiTest, RejectsMultipassConfigurationBeforeEnabling) {

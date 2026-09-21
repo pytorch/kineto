@@ -9,6 +9,7 @@
 #include "Config.h"
 #include "ThrowUtil.h"
 
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 
@@ -17,7 +18,6 @@
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
 
-#include <charconv>
 #include <chrono>
 #include <ctime>
 #include <functional>
@@ -235,11 +235,12 @@ bool isAllowedOnDemandTraceFile(const string& path) {
   return path.starts_with(dir) && path.find("..") == string::npos;
 }
 
-std::optional<nanoseconds> parseMilliseconds(std::string_view text) noexcept {
-  double count = 0;
-  const auto [parseEnd, error] =
-      std::from_chars(text.data(), text.data() + text.size(), count);
-  if (error != std::errc{} || parseEnd != text.data() + text.size()) {
+std::optional<nanoseconds> parseMilliseconds(const string& text) noexcept {
+  const char* const begin = text.c_str();
+  char* parseEnd = nullptr;
+  errno = 0;
+  const double count = std::strtod(begin, &parseEnd);
+  if (errno == ERANGE || parseEnd == begin || parseEnd != begin + text.size()) {
     return std::nullopt;
   }
 

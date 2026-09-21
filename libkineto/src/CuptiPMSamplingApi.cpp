@@ -334,7 +334,12 @@ void CuptiPMSamplingApi::configureCupti() {
   if (counterDataSize.counterDataSize > kMaxCounterDataImageSizeBytes) {
     KINETO_THROW(
         std::runtime_error,
-        "CUPTI PM sampling counter data image exceeds the 256 MiB limit");
+        "CUPTI PM sampling counter data image requires " +
+            std::to_string(counterDataSize.counterDataSize) +
+            " bytes, exceeding the 256 MiB limit. Reduce "
+            "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS, increase "
+            "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS on non-GA100 GPUs, or "
+            "request fewer PERFORMANCE_METRICS.");
   }
 
   counterDataImage_.resize(counterDataSize.counterDataSize);

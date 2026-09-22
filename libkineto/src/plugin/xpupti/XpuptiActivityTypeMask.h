@@ -23,12 +23,12 @@ class ActivityTypeMask {
  public:
   explicit ActivityTypeMask(const std::set<ActivityType>& types) {
     for (const auto type : types) {
-      bits_.set(index(type));
+      bits_.set(asIndex(type));
     }
   }
 
   bool contains(ActivityType type) const {
-    return bits_.test(index(type));
+    return bits_.test(asIndex(type));
   }
 
   // Calls visit() for each activity type in the set, in ascending order.
@@ -41,7 +41,7 @@ class ActivityTypeMask {
   }
 
  private:
-  static constexpr size_t index(ActivityType type) {
+  static constexpr size_t asIndex(ActivityType type) {
     return static_cast<size_t>(type);
   }
 

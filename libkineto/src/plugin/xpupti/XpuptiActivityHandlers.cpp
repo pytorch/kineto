@@ -176,20 +176,19 @@ static void addTimestampMetadata(
       label, formatTimeLikeOutputJson(signedFromUnsignedDiff(time, time_ref)));
 }
 
-namespace {
-
-enum class Ac2gFlowRole { None, Source, Destination };
-
-// Denotes the role an activity plays for Async CPU to GPU flow arrows. Both
-// XPU_RUNTIME and XPU_DRIVER events have the same correlation IDs and thus can
-// be sources, but exactly one must be chosen to avoid superfluous host->host
-// arrows. Prefer XPU_RUNTIME unless it is not being traced.
-Ac2gFlowRole ac2gFlowRole(ActivityType activityType, bool runtimeTraced) {
+auto XpuptiActivityProfilerSession::ac2gFlowRole(
+    ActivityType activityType) const -> Ac2gFlowRole {
   switch (activityType) {
     case ActivityType::XPU_RUNTIME:
       return Ac2gFlowRole::Source;
     case ActivityType::XPU_DRIVER:
-      return runtimeTraced ? Ac2gFlowRole::None : Ac2gFlowRole::Source;
+      // Runtime and driver records carry the same correlation id, so only one
+      // of them may source the flow or the trace gains a host->host arrow.
+      // The runtime record wins; the driver record takes over when the runtime
+      // view is not traced.
+      return tracedTypes_.contains(ActivityType::XPU_RUNTIME)
+          ? Ac2gFlowRole::None
+          : Ac2gFlowRole::Source;
     case ActivityType::CONCURRENT_KERNEL:
     case ActivityType::GPU_MEMCPY:
     case ActivityType::GPU_MEMSET:
@@ -198,8 +197,6 @@ Ac2gFlowRole ac2gFlowRole(ActivityType activityType, bool runtimeTraced) {
       return Ac2gFlowRole::None;
   }
 }
-
-} // namespace
 
 template <class pti_view_memory_record_type>
 void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
@@ -242,10 +239,7 @@ void XpuptiActivityProfilerSession::handleRuntimeKernelMemcpyMemsetActivities(
   trace_activity->startTime = activity->_start_timestamp;
   trace_activity->endTime = activity->_end_timestamp;
   trace_activity->threadId = activity->_thread_id;
-  // Records with no role keep flow id 0, which output_json's `flowId() > 0`
-  // guard skips -- that is what suppresses the arrow.
-  const auto role = ac2gFlowRole(
-      activityType, tracedTypes_.contains(ActivityType::XPU_RUNTIME));
+  const auto role = ac2gFlowRole(activityType);
   if (role != Ac2gFlowRole::None) {
     trace_activity->flow.id = activity->_correlation_id;
     trace_activity->flow.type = libkineto::kLinkAsyncCpuGpu;

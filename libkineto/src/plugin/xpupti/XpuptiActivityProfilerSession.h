@@ -112,6 +112,14 @@ class XpuptiActivityProfilerSession
     return std::string(api_name);
   }
 
+  // Which end of an Async CPU->GPU (ac2g) flow arrow a record is, if any.
+  enum class Ac2gFlowRole { None, Source, Destination };
+
+  // The role this session gives a record of the given activity type. Records
+  // with no role keep flow id 0, which output_json's `flowId() > 0` guard
+  // skips, so they get no arrow.
+  Ac2gFlowRole ac2gFlowRole(ActivityType activityType) const;
+
   template <class pti_view_memory_record_type>
   void handleRuntimeKernelMemcpyMemsetActivities(
       ActivityType activityType,

@@ -30,10 +30,23 @@ using namespace libkineto;
 class CuptiActivityApi {
  public:
   enum CorrelationFlowType { Default, User };
-  // Control Variables shared with CuptiCallbackApi for teardown
-  std::atomic<uint32_t> teardownCupti_{0};
-  std::mutex finalizeMutex_;
-  std::condition_variable finalizeCond_;
+
+  enum class TeardownState {
+    Idle,
+    // The teardown thread is enabling callback domains and flushing activities.
+    Preparing,
+    // The next exiting runtime callback may finalize; a new trace may cancel.
+    Pending,
+    // An exiting callback is running cuptiFinalize().
+    Finalizing,
+    // The teardown thread is removing temporary callback domains and restoring
+    // callbacks when needed.
+    Restoring,
+  };
+
+  std::atomic<TeardownState> teardownState_{TeardownState::Idle};
+  std::mutex teardownMutex_;
+  std::condition_variable teardownCond_;
 
   CuptiActivityApi() = default;
   CuptiActivityApi(const CuptiActivityApi&) = delete;
@@ -54,6 +67,8 @@ class CuptiActivityApi {
       const std::set<ActivityType>& selected_activities);
   void clearActivities();
   void flushActivities();
+  // Waits for an earlier teardown and returns false if it times out.
+  bool ensureReadyForTrace();
   void teardownContext();
 
   virtual std::unique_ptr<CuptiActivityBufferMap> activityBuffers();
@@ -80,7 +95,6 @@ class CuptiActivityApi {
   std::unique_ptr<CuptiActivityBufferMap> readyGpuTraceBuffers_;
   std::mutex mutex_;
   std::atomic<uint32_t> tracingEnabled_{0};
-  std::atomic<uint32_t> tearingDown_{0};
   std::atomic<bool> externalCorrelationEnabled_{false};
 
   int processActivitiesForBuffer(

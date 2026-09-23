@@ -10,6 +10,7 @@
 
 #include "ActivityType.h"
 #include "XpuptiActivityBuffer.h"
+#include "XpuptiActivityTypeMask.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -43,9 +44,8 @@ class XpuptiActivityApi {
   static void pushCorrelationID(int id, CorrelationFlowType type);
   static void popCorrelationID(CorrelationFlowType type);
 
-  void enableXpuptiActivities(
-      const std::set<ActivityType>& selected_activities);
-  void disablePtiActivities(const std::set<ActivityType>& selected_activities);
+  void enableXpuptiActivities(const ActivityTypeMask& selected_activities);
+  void disablePtiActivities(const ActivityTypeMask& selected_activities);
   void clearActivities();
   void flushActivities();
 

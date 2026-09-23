@@ -13,6 +13,7 @@
 #include "GenericTraceActivity.h"
 #include "IActivityProfiler.h"
 #include "ITraceActivity.h"
+#include "XpuptiActivityTypeMask.h"
 #include "XpuptiProfilerMacros.h"
 #include "libkineto.h"
 
@@ -90,12 +91,6 @@ class XpuptiActivityProfilerSession
   void pushUserCorrelationId(uint64_t id) override;
   void popUserCorrelationId() override;
 
-  // Whether a runtime/driver record starts a CPU->GPU flow arrow. Only host
-  // runtime (XPU_RUNTIME) records do; driver (XPU_DRIVER) records share the
-  // same correlation id and would otherwise create a duplicate flow start.
-  // Static so it can be unit-tested without real hardware.
-  static bool startsFlow(ActivityType activityType);
-
  private:
   void checkTimestampOrder(const ITraceActivity* act1);
   void removeCorrelatedPtiActivities(const ITraceActivity* act1);
@@ -116,6 +111,14 @@ class XpuptiActivityProfilerSession
         activity->_api_group, activity->_api_id, &api_name));
     return std::string(api_name);
   }
+
+  // Which end of an Async CPU->GPU (ac2g) flow arrow a record is, if any.
+  enum class Ac2gFlowRole { None, Source, Destination };
+
+  // The role this session gives a record of the given activity type. Records
+  // with no role keep flow id 0, which output_json's `flowId() > 0` guard
+  // skips, so they get no arrow.
+  Ac2gFlowRole ac2gFlowRole(ActivityType activityType) const;
 
   template <class pti_view_memory_record_type>
   void handleRuntimeKernelMemcpyMemsetActivities(
@@ -168,7 +171,10 @@ class XpuptiActivityProfilerSession
   libkineto::CpuTraceBuffer traceBuffer_;
   std::vector<std::pair<int32_t, int32_t>> resourceInfo_;
   std::unique_ptr<const libkineto::Config> config_;
-  const std::set<ActivityType>& activity_types_;
+  // The session's activity selection, kept only in this form so there is no
+  // second representation to drift from. Fixed for the session's lifetime:
+  // kineto builds a fresh session per configure().
+  ActivityTypeMask tracedTypes_;
   std::string name_;
 
   struct KernelActivity {

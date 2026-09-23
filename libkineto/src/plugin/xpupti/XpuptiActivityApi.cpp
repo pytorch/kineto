@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <ostream>
 #include <system_error>
 
@@ -201,111 +202,78 @@ void warnIfIttNotifyLibInvalid() noexcept {
         << "XCCL host calls will not be collected.";
   }
 }
+
+// The PTI view an activity type is collected through, if it has one of its own.
+// Shared by enable and disable so the two cannot drift apart.
+constexpr std::optional<pti_view_kind> findPtiViewKind(ActivityType activity) {
+  switch (activity) {
+    case ActivityType::GPU_MEMCPY:
+      return PTI_VIEW_DEVICE_GPU_MEM_COPY;
+    case ActivityType::GPU_MEMSET:
+      return PTI_VIEW_DEVICE_GPU_MEM_FILL;
+    case ActivityType::CONCURRENT_KERNEL:
+      return PTI_VIEW_DEVICE_GPU_KERNEL;
+    case ActivityType::EXTERNAL_CORRELATION:
+      return PTI_VIEW_EXTERNAL_CORRELATION;
+    case ActivityType::XPU_RUNTIME:
+      return PTI_VIEW_RUNTIME_API;
+    case ActivityType::XPU_DRIVER:
+      return PTI_VIEW_DRIVER_API;
+    case ActivityType::OVERHEAD:
+      return PTI_VIEW_COLLECTION_OVERHEAD;
+    case ActivityType::XPU_SYNC:
+      return PTI_VIEW_DEVICE_SYNCHRONIZATION;
+    case ActivityType::COLLECTIVE_COMM:
+      return PTI_VIEW_COMMUNICATION;
+    default:
+      // XPU_SCOPE_PROFILER among others: enabled by
+      // XpuptiScopeProfilerSession's constructor, not by a view.
+      return std::nullopt;
+  }
+}
 } // namespace
 
 void XpuptiActivityApi::enableXpuptiActivities(
-    const std::set<ActivityType>& selected_activities) {
+    const ActivityTypeMask& selected_activities) {
   XPUPTI_CALL(ptiViewSetCallbacks(
       bufferRequestedTrampoline, bufferCompletedTrampoline));
 
   externalCorrelationEnabled_ = false;
-  for (const auto& activity : selected_activities) {
+  selected_activities.forEach([this](ActivityType activity) {
+    const auto view = findPtiViewKind(activity);
+    if (not view) {
+      return;
+    }
+    XPUPTI_CALL(ptiViewEnable(*view));
+
+    // What enabling a view takes on top of the view itself.
     switch (activity) {
-      case ActivityType::GPU_MEMCPY:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
-        break;
-
-      case ActivityType::GPU_MEMSET:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_MEM_FILL));
-        break;
-
-      case ActivityType::CONCURRENT_KERNEL:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_GPU_KERNEL));
-        break;
-
-      case ActivityType::EXTERNAL_CORRELATION:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_EXTERNAL_CORRELATION));
-        externalCorrelationEnabled_ = true;
-        break;
-
       case ActivityType::XPU_RUNTIME:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_RUNTIME_API));
         XPUPTI_CALL(ptiViewEnableRuntimeApiClass(
             1, PTI_API_CLASS_GPU_OPERATION_CORE, PTI_API_GROUP_ALL));
         break;
 
-      case ActivityType::XPU_DRIVER:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DRIVER_API));
-        break;
-
-      case ActivityType::XPU_SCOPE_PROFILER:
-        // This case is handled in constructor of
-        // XpuptiScopeProfilerSession
-        break;
-
-      case ActivityType::OVERHEAD:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COLLECTION_OVERHEAD));
-        break;
-
-      case ActivityType::XPU_SYNC:
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
+      case ActivityType::EXTERNAL_CORRELATION:
+        externalCorrelationEnabled_ = true;
         break;
 
       case ActivityType::COLLECTIVE_COMM:
         warnIfIttNotifyLibInvalid();
-        XPUPTI_CALL(ptiViewEnable(PTI_VIEW_COMMUNICATION));
         break;
 
       default:
         break;
     }
-  }
+  });
 }
 
 void XpuptiActivityApi::disablePtiActivities(
-    const std::set<ActivityType>& selected_activities) {
-  for (const auto& activity : selected_activities) {
-    switch (activity) {
-      case ActivityType::GPU_MEMCPY:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_COPY));
-        break;
-
-      case ActivityType::GPU_MEMSET:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_MEM_FILL));
-        break;
-
-      case ActivityType::CONCURRENT_KERNEL:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_GPU_KERNEL));
-        break;
-
-      case ActivityType::EXTERNAL_CORRELATION:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_EXTERNAL_CORRELATION));
-        break;
-
-      case ActivityType::XPU_RUNTIME:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_RUNTIME_API));
-        break;
-
-      case ActivityType::XPU_DRIVER:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DRIVER_API));
-        break;
-
-      case ActivityType::OVERHEAD:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COLLECTION_OVERHEAD));
-        break;
-
-      case ActivityType::XPU_SYNC:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_DEVICE_SYNCHRONIZATION));
-        break;
-
-      case ActivityType::COLLECTIVE_COMM:
-        XPUPTI_CALL(ptiViewDisable(PTI_VIEW_COMMUNICATION));
-        break;
-
-      default:
-        break;
+    const ActivityTypeMask& selected_activities) {
+  selected_activities.forEach([](ActivityType activity) {
+    if (const auto view = findPtiViewKind(activity)) {
+      XPUPTI_CALL(ptiViewDisable(*view));
     }
-  }
+  });
   externalCorrelationEnabled_ = false;
 }
 

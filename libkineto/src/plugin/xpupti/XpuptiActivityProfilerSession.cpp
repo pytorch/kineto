@@ -31,15 +31,6 @@ namespace KINETO_NAMESPACE {
 uint32_t XpuptiActivityProfilerSession::iterationCount_ = 0;
 std::vector<DeviceUUIDsT> XpuptiActivityProfilerSession::deviceUUIDs_ = {};
 
-bool XpuptiActivityProfilerSession::startsFlow(ActivityType activityType) {
-  // Only host runtime records start the CPU->GPU flow. The runtime view is
-  // already filtered to work-submitting APIs via
-  // ptiViewEnableRuntimeApiClass(PTI_API_CLASS_GPU_OPERATION_CORE). Driver
-  // (XPU_DRIVER) records share the same correlation id as the runtime record
-  // and must not also start a flow, or the trace gets a duplicate flow start.
-  return activityType == ActivityType::XPU_RUNTIME;
-}
-
 // =========== Session Constructor ============= //
 XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
     XpuptiActivityApi& xpti,
@@ -48,10 +39,10 @@ XpuptiActivityProfilerSession::XpuptiActivityProfilerSession(
     const std::set<ActivityType>& activity_types)
     : xpti_(xpti),
       config_(config.clone()),
-      activity_types_(activity_types),
+      tracedTypes_(activity_types),
       name_(name) {
   enumDeviceUUIDs();
-  xpti_.enableXpuptiActivities(activity_types_);
+  xpti_.enableXpuptiActivities(tracedTypes_);
 }
 
 XpuptiActivityProfilerSession::~XpuptiActivityProfilerSession() {
@@ -65,15 +56,15 @@ void XpuptiActivityProfilerSession::start() {
 }
 
 void XpuptiActivityProfilerSession::stop() {
-  xpti_.disablePtiActivities(activity_types_);
+  xpti_.disablePtiActivities(tracedTypes_);
   profilerEndTs_ = libkineto::timeSinceEpoch(std::chrono::system_clock::now());
 }
 
 void XpuptiActivityProfilerSession::toggleCollectionDynamic(const bool enable) {
   if (enable) {
-    xpti_.enableXpuptiActivities(activity_types_);
+    xpti_.enableXpuptiActivities(tracedTypes_);
   } else {
-    xpti_.disablePtiActivities(activity_types_);
+    xpti_.disablePtiActivities(tracedTypes_);
   }
 }
 

@@ -9,6 +9,8 @@
 #include "Config.h"
 #include "ThrowUtil.h"
 
+#include <cerrno>
+#include <cmath>
 #include <cstdlib>
 
 #include <fmt/chrono.h>
@@ -20,6 +22,7 @@
 #include <ctime>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <ostream>
 #include <string_view>
 #include <utility>
@@ -55,6 +58,10 @@ constexpr char kCuptiPerThreadBufferEnabledKey[] =
 constexpr char kPerformanceMetricsKey[] = "PERFORMANCE_METRICS";
 constexpr char kPerformanceMetricsDeviceIdKey[] =
     "PERFORMANCE_METRICS_DEVICE_ID";
+constexpr char kPerformanceMetricsSamplingIntervalMsecsKey[] =
+    "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS";
+constexpr char kPerformanceMetricsLookbackWindowMsecsKey[] =
+    "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS";
 constexpr char kActivityTypesKey[] = "ACTIVITY_TYPES";
 constexpr char kActivitiesLogFileKey[] = "ACTIVITIES_LOG_FILE";
 constexpr char kActivitiesDurationKey[] = "ACTIVITIES_DURATION_SECS";
@@ -228,6 +235,24 @@ bool isAllowedOnDemandTraceFile(const string& path) {
   return path.starts_with(dir) && path.find("..") == string::npos;
 }
 
+std::optional<nanoseconds> parseMilliseconds(const string& text) noexcept {
+  const char* const begin = text.c_str();
+  char* parseEnd = nullptr;
+  errno = 0;
+  const double count = std::strtod(begin, &parseEnd);
+  if (errno == ERANGE || parseEnd == begin || parseEnd != begin + text.size()) {
+    return std::nullopt;
+  }
+
+  const duration<double, std::milli> value{count};
+  if (!std::isfinite(count) || value < nanoseconds{1} ||
+      value >= nanoseconds::max()) {
+    return std::nullopt;
+  }
+
+  return duration_cast<nanoseconds>(value);
+}
+
 } // namespace
 
 Config::Config()
@@ -351,6 +376,14 @@ bool Config::handleOption(const std::string& name, std::string& val) {
     performanceMetricNames_ = splitAndTrim(val, ',');
   } else if (!name.compare(kPerformanceMetricsDeviceIdKey)) {
     performanceMetricsDeviceId_ = toInt32(val);
+  } else if (!name.compare(kPerformanceMetricsSamplingIntervalMsecsKey)) {
+    if (const auto value = parseMilliseconds(val)) {
+      performanceMetricsSamplingInterval_ = *value;
+    }
+  } else if (!name.compare(kPerformanceMetricsLookbackWindowMsecsKey)) {
+    if (const auto value = parseMilliseconds(val)) {
+      performanceMetricsLookbackWindow_ = *value;
+    }
   } else if (!name.compare(kProfileMemory)) {
     memoryProfilerEnabled_ = toBool(val);
     if (memoryProfilerEnabled_) {

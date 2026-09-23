@@ -143,21 +143,56 @@ TEST(ParseTest, PerformanceMetrics) {
   Config cfg;
   EXPECT_TRUE(cfg.performanceMetricNames().empty());
   EXPECT_EQ(cfg.performanceMetricsDeviceId(), -1);
+  EXPECT_FALSE(cfg.performanceMetricsSamplingInterval().has_value());
+  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(1));
 
   EXPECT_TRUE(
       cfg.parse("PERFORMANCE_METRICS_DEVICE_ID=2\n"
                 "PERFORMANCE_METRICS="
-                "sm__cycles_active.avg,dram__bytes_read.sum"));
+                "sm__cycles_active.avg,dram__bytes_read.sum\n"
+                "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS=0.5\n"
+                "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS=2000"));
 
   EXPECT_EQ(
       cfg.performanceMetricNames(),
       std::vector<std::string>(
           {"sm__cycles_active.avg", "dram__bytes_read.sum"}));
   EXPECT_EQ(cfg.performanceMetricsDeviceId(), 2);
+  EXPECT_EQ(cfg.performanceMetricsSamplingInterval(), microseconds(500));
+  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(2));
 
   auto clone = cfg.clone();
   EXPECT_EQ(clone->performanceMetricNames(), cfg.performanceMetricNames());
   EXPECT_EQ(clone->performanceMetricsDeviceId(), 2);
+  EXPECT_EQ(clone->performanceMetricsSamplingInterval(), microseconds(500));
+  EXPECT_EQ(clone->performanceMetricsLookbackWindow(), seconds(2));
+}
+
+TEST(ParseTest, PerformanceMetricsPreservesExplicitDefaultInterval) {
+  Config cfg;
+  EXPECT_FALSE(cfg.clone()->performanceMetricsSamplingInterval().has_value());
+
+  ASSERT_TRUE(cfg.parse("PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS=1"));
+  EXPECT_EQ(cfg.performanceMetricsSamplingInterval(), milliseconds(1));
+  EXPECT_EQ(cfg.clone()->performanceMetricsSamplingInterval(), milliseconds(1));
+}
+
+TEST(ParseTest, PerformanceMetricsInvalidDurationsUseDefaults) {
+  Config cfg;
+  EXPECT_TRUE(
+      cfg.parse("PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS=invalid\n"
+                "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS=0"));
+  EXPECT_FALSE(cfg.performanceMetricsSamplingInterval().has_value());
+  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(1));
+}
+
+TEST(ParseTest, PerformanceMetricsRejectDurationsAtNanosecondLimit) {
+  Config cfg;
+  EXPECT_TRUE(
+      cfg.parse("PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS=9223372036854.776\n"
+                "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS=9223372036854.776"));
+  EXPECT_FALSE(cfg.performanceMetricsSamplingInterval().has_value());
+  EXPECT_EQ(cfg.performanceMetricsLookbackWindow(), seconds(1));
 }
 
 TEST(ParseTest, ProfileStartTime) {

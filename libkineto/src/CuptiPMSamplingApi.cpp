@@ -8,6 +8,8 @@
 
 #include "CuptiPMSamplingApi.h"
 
+#include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 #include <cuda_runtime_api.h>
@@ -47,13 +49,32 @@ namespace KINETO_NAMESPACE {
 namespace {
 
 constexpr size_t kHardwareBufferSizeBytes = 64 * 1024 * 1024;
-constexpr uint32_t kMaxSamplesPerDecode = 1024;
+// Counter-data images are fully allocated in host memory. Bound their size
+// independently of CUPTI's uint32_t sample-count limit.
+constexpr size_t kMaxCounterDataImageSizeBytes = 256 * 1024 * 1024;
 
 // GA100 only supports variable-frequency SYSCLK sampling. One option is to
 // measure hardware clock frequency and estimate the number of cycles needed to
 // fill a certain sampling duration, but clock frequency is not necessarily
 // fixed. This is almost certainly something we'll need to revisit/tune.
 constexpr uint64_t kGa100SamplingIntervalCycles = 1'000'000;
+
+uint32_t maxSamplesForDecode(
+    std::chrono::nanoseconds lookbackWindow,
+    std::chrono::nanoseconds samplingInterval) {
+  if (lookbackWindow.count() <= 0 || samplingInterval.count() <= 0) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling interval and lookback window must be positive");
+  }
+  const auto samples = std::max<int64_t>(1, lookbackWindow / samplingInterval);
+  if (samples > std::numeric_limits<uint32_t>::max()) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling lookback window exceeds CUPTI sample capacity");
+  }
+  return static_cast<uint32_t>(samples);
+}
 
 /*
  * ========================== CUPTI PM SAMPLING API ==========================
@@ -163,26 +184,55 @@ void CuptiPMSamplingApi::configureCupti() {
   }
   CUpti_PmSampling_TriggerMode triggerMode;
   uint64_t samplingInterval;
+  std::chrono::nanoseconds capacityInterval =
+      config_.samplingInterval.value_or(std::chrono::milliseconds{1});
   // GPU_TIME_INTERVAL is unavailable on GA100. The wall-time duration of this
   // fixed SYSCLK interval varies with the GPU's clock frequency.
   if (deviceProperties.major == 8 && deviceProperties.minor == 0) {
+    if (config_.samplingInterval.has_value()) {
+      LOG(WARNING)
+          << "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS is ignored on GA100; "
+             "continuing with the fixed 1,000,000-cycle SYSCLK sampling "
+             "interval. The time between samples varies with the GPU clock.";
+    }
+    int peakClockRateKHz = 0;
+    const cudaError_t clockRateStatus = cudaDeviceGetAttribute(
+        &peakClockRateKHz, cudaDevAttrClockRate, config_.deviceId);
+    if (clockRateStatus != cudaSuccess) {
+      KINETO_THROW(
+          std::runtime_error,
+          std::string{"cudaDeviceGetAttribute(cudaDevAttrClockRate) failed: "} +
+              cudaGetErrorString(clockRateStatus));
+    }
+    if (peakClockRateKHz <= 0) {
+      KINETO_THROW(
+          std::runtime_error, "GA100 reported an invalid GPU clock rate");
+    }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL;
     samplingInterval = kGa100SamplingIntervalCycles;
+    // Use the peak clock only for conservative decode capacity sizing;
+    // GA100's actual SYSCLK sampling period varies with the GPU clock.
+    capacityInterval = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>{
+            static_cast<double>(kGa100SamplingIntervalCycles) /
+            (static_cast<double>(peakClockRateKHz) * 1000.0)});
   } else if (
       deviceProperties.major > 8 ||
       (deviceProperties.major == 8 && deviceProperties.minor >= 6)) {
-    if (config_.samplingInterval.count() <= 0) {
+    if (capacityInterval.count() <= 0) {
       KINETO_THROW(
           std::runtime_error, "CUPTI PM sampling interval must be positive");
     }
     triggerMode = CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL;
-    samplingInterval = static_cast<uint64_t>(config_.samplingInterval.count());
+    samplingInterval = static_cast<uint64_t>(capacityInterval.count());
   } else {
     KINETO_THROW(
         std::runtime_error,
         "Minimum supported GPU for CUPTI PM sampling is GA100 (compute "
         "capability 8.0); other GPUs require compute capability 8.6 or newer");
   }
+  const auto maxSamples =
+      maxSamplesForDecode(config_.lookbackWindow, capacityInterval);
 
   // Building the availability image. This is a CUPTI byte buffer describing
   // which raw hardware counters are available on this machine. The first call
@@ -272,16 +322,25 @@ void CuptiPMSamplingApi::configureCupti() {
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST;
   CUPTI_CALL_THROW(cuptiPmSamplingSetConfig(&setConfig));
 
-  // Asking CUPTI how large the (counter) data image should be.
-  // Since the data image has an opage CUPTI-defined layout, the size
-  // depends on sampling config, metrics, etc.
+  // Size the counter data image to hold the requested lookback window. CUPTI
+  // 12.x requires SetConfig to run before GetCounterDataSize.
   CUpti_PmSampling_GetCounterDataSize_Params counterDataSize{
       CUpti_PmSampling_GetCounterDataSize_Params_STRUCT_SIZE};
   counterDataSize.pPmSamplingObject = samplingObject_;
   counterDataSize.pMetricNames = metricNamePtrs_.data();
   counterDataSize.numMetrics = metricNamePtrs_.size();
-  counterDataSize.maxSamples = kMaxSamplesPerDecode;
+  counterDataSize.maxSamples = maxSamples;
   CUPTI_CALL_THROW(cuptiPmSamplingGetCounterDataSize(&counterDataSize));
+  if (counterDataSize.counterDataSize > kMaxCounterDataImageSizeBytes) {
+    KINETO_THROW(
+        std::runtime_error,
+        "CUPTI PM sampling counter data image requires " +
+            std::to_string(counterDataSize.counterDataSize) +
+            " bytes, exceeding the 256 MiB limit. Reduce "
+            "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS, increase "
+            "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS on non-GA100 GPUs, or "
+            "request fewer PERFORMANCE_METRICS.");
+  }
 
   counterDataImage_.resize(counterDataSize.counterDataSize);
   resetImage();
@@ -424,7 +483,8 @@ void CuptiPMSamplingApi::disable() {
   config_.deviceId = -1;
   metricNamePtrs_.clear();
   config_.metricNames.clear();
-  config_.samplingInterval = std::chrono::nanoseconds::zero();
+  config_.samplingInterval.reset();
+  config_.lookbackWindow = std::chrono::nanoseconds::zero();
 }
 
 } // namespace KINETO_NAMESPACE

@@ -13,6 +13,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -24,7 +26,12 @@
 #include <cupti_profiler_target.h>
 #include <cupti_target.h>
 
+#include "include/Config.h"
 #include "src/CuptiPMSamplingApi.h"
+#include "src/CuptiPMSamplingProfiler.h"
+#include "src/CuptiTimestamp.h"
+#include "src/Logger.h"
+#include "src/LoggerCollector.h"
 
 using namespace KINETO_NAMESPACE;
 using namespace std::chrono_literals;
@@ -42,6 +49,9 @@ struct FakeSample {
 struct FakeCuptiState {
   int major{9};
   int minor{0};
+  int clockRate{1'500'000};
+  int clockRateDevice{-1};
+  cudaError_t clockRateResult{cudaSuccess};
   size_t numPasses{1};
   CUpti_PmSampling_DecodeStopReason decodeStopReason{
       CUPTI_PM_SAMPLING_DECODE_STOP_REASON_END_OF_RECORDS};
@@ -58,6 +68,7 @@ struct FakeCuptiState {
   CUpti_PmSampling_HardwareBuffer_AppendMode appendMode{};
   std::vector<std::string> counterDataMetricNames;
   uint32_t maxSamples{0};
+  size_t counterDataSize{1};
 
   std::byte hostObject{};
   std::byte samplingObject{};
@@ -101,17 +112,18 @@ std::vector<std::string> copyMetricNames(
 }
 
 CuptiPMSamplingConfig makeConfig(
-    std::chrono::nanoseconds samplingInterval = 500us,
+    std::optional<std::chrono::nanoseconds> samplingInterval = 500us,
     int32_t deviceId = 0,
-    std::vector<std::string> metricNames = {"sm__cycles_active.avg"}) {
+    std::vector<std::string> metricNames = {"sm__cycles_active.avg"},
+    std::chrono::nanoseconds lookbackWindow = 1s) {
   return CuptiPMSamplingConfig{
-      deviceId, std::move(metricNames), samplingInterval};
+      deviceId, std::move(metricNames), samplingInterval, lookbackWindow};
 }
 
 void configureForDevice(
     int major,
     int minor,
-    std::chrono::nanoseconds samplingInterval) {
+    std::optional<std::chrono::nanoseconds> samplingInterval) {
   fakeCupti().major = major;
   fakeCupti().minor = minor;
   CuptiPMSamplingApi api;
@@ -157,6 +169,14 @@ cudaGetDeviceProperties(cudaDeviceProp* properties, int device) {
   properties->major = fakeCupti().major;
   properties->minor = fakeCupti().minor;
   return cudaSuccess;
+}
+
+cudaError_t CUDARTAPI
+cudaDeviceGetAttribute(int* value, cudaDeviceAttr attribute, int device) {
+  EXPECT_EQ(attribute, cudaDevAttrClockRate);
+  fakeCupti().clockRateDevice = device;
+  *value = fakeCupti().clockRate;
+  return fakeCupti().clockRateResult;
 }
 
 const char* CUDARTAPI cudaGetErrorString(cudaError_t error) {
@@ -227,7 +247,7 @@ CUptiResult CUPTIAPI cuptiPmSamplingGetCounterDataSize(
   fakeCupti().counterDataMetricNames =
       copyMetricNames(params->pMetricNames, params->numMetrics);
   fakeCupti().maxSamples = params->maxSamples;
-  params->counterDataSize = 1;
+  params->counterDataSize = fakeCupti().counterDataSize;
   return CUPTI_SUCCESS;
 }
 
@@ -318,7 +338,8 @@ TEST_F(CuptiPMSamplingApiTest, ConfiguresDeviceMetricsAndBuffers) {
   const auto config = makeConfig(
       250us,
       /*deviceId=*/2,
-      {"sm__cycles_active.avg", "dram__bytes_read.sum"});
+      {"sm__cycles_active.avg", "dram__bytes_read.sum"},
+      2s);
   CuptiPMSamplingApi api;
 
   api.configure(config);
@@ -334,17 +355,123 @@ TEST_F(CuptiPMSamplingApiTest, ConfiguresDeviceMetricsAndBuffers) {
       fakeCupti().appendMode,
       CUPTI_PM_SAMPLING_HARDWARE_BUFFER_APPEND_MODE_KEEP_LATEST);
   EXPECT_EQ(fakeCupti().counterDataMetricNames, config.metricNames);
-  EXPECT_EQ(fakeCupti().maxSamples, 1024);
+  EXPECT_EQ(fakeCupti().maxSamples, 8'000);
   api.disable();
 }
 
-TEST_F(CuptiPMSamplingApiTest, UsesFixedSysclkIntervalOnGa100) {
-  configureForDevice(8, 0, 0ns);
+TEST_F(CuptiPMSamplingApiTest, KeepsAtLeastOneSample) {
+  CuptiPMSamplingApi api;
 
+  api.configure(makeConfig(
+      2ms,
+      /*deviceId=*/0,
+      {"sm__cycles_active.avg"},
+      1ms));
+
+  EXPECT_EQ(fakeCupti().maxSamples, 1);
+  api.disable();
+}
+
+TEST_F(CuptiPMSamplingApiTest, SizesGa100CapacityFromPeakClock) {
+  fakeCupti().major = 8;
+  fakeCupti().minor = 0;
+  Config config;
+  ASSERT_TRUE(
+      config.parse("PERFORMANCE_METRICS_DEVICE_ID=2\n"
+                   "PERFORMANCE_METRICS=sm__cycles_active.avg\n"
+                   "PERFORMANCE_METRICS_LOOKBACK_WINDOW_MS=2000"));
+  configureCuptiTimestampSource(false);
+  CuptiPMSamplingProfiler profiler;
+  auto session = profiler.configure({ActivityType::HARDWARE_COUNTERS}, config);
+  ASSERT_NE(session, nullptr);
+
+  EXPECT_EQ(fakeCupti().clockRateDevice, 2);
   EXPECT_EQ(
       fakeCupti().triggerMode,
       CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL);
   EXPECT_EQ(fakeCupti().samplingInterval, 1'000'000);
+  // At the fake 1.5 GHz maximum clock, 1M cycles yields 3K samples in 2s.
+  EXPECT_EQ(fakeCupti().maxSamples, 3'000);
+}
+
+TEST_F(CuptiPMSamplingApiTest, IgnoresExplicitTimeIntervalsOnGa100) {
+  for (const std::chrono::nanoseconds interval :
+       {0ns, 1ns, 500'000ns, 1'000'000ns}) {
+    SCOPED_TRACE(interval.count());
+    EXPECT_NO_THROW(configureForDevice(8, 0, interval));
+    EXPECT_EQ(
+        fakeCupti().triggerMode,
+        CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_SYSCLK_INTERVAL);
+    EXPECT_EQ(fakeCupti().samplingInterval, 1'000'000);
+    EXPECT_EQ(fakeCupti().maxSamples, 1'500);
+  }
+}
+
+#if !USE_GOOGLE_LOG
+TEST_F(CuptiPMSamplingApiTest, WarnsAndContinuesWithExplicitGa100Interval) {
+  fakeCupti().major = 8;
+  fakeCupti().minor = 0;
+  Config config;
+  ASSERT_TRUE(
+      config.parse("PERFORMANCE_METRICS_DEVICE_ID=0\n"
+                   "PERFORMANCE_METRICS=sm__cycles_active.avg\n"
+                   "PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS=1"));
+  configureCuptiTimestampSource(false);
+  CuptiPMSamplingProfiler profiler;
+  LoggerCollector collector;
+  const int previousSeverity = Logger::severityLevel();
+  Logger::setSeverityLevel(LoggerOutputType::WARNING);
+  Logger::addLoggerObserver(&collector);
+
+  auto session = profiler.configure({ActivityType::HARDWARE_COUNTERS}, config);
+
+  Logger::removeLoggerObserver(&collector);
+  Logger::setSeverityLevel(previousSeverity);
+  EXPECT_NE(session, nullptr);
+  auto messages = collector.extractCollectorMetadata();
+  EXPECT_TRUE(messages[LoggerOutputType::ERROR].empty());
+  const auto& warnings = messages[LoggerOutputType::WARNING];
+  ASSERT_EQ(warnings.size(), 1);
+  EXPECT_NE(
+      warnings.front().find("PERFORMANCE_METRICS_SAMPLING_INTERVAL_MS"),
+      std::string::npos);
+  EXPECT_NE(warnings.front().find("ignored"), std::string::npos);
+  EXPECT_NE(warnings.front().find("1,000,000-cycle"), std::string::npos);
+  EXPECT_EQ(fakeCupti().clockRateDevice, 0);
+  EXPECT_EQ(fakeCupti().samplingInterval, 1'000'000);
+  EXPECT_EQ(fakeCupti().maxSamples, 1'500);
+}
+#endif
+
+TEST_F(CuptiPMSamplingApiTest, CleansUpAfterGa100ClockQueryFailure) {
+  fakeCupti().major = 8;
+  fakeCupti().minor = 0;
+  fakeCupti().clockRateResult = cudaErrorInvalidValue;
+  CuptiPMSamplingApi api;
+
+  EXPECT_THROW(api.configure(makeConfig(std::nullopt)), std::runtime_error);
+
+  clearCalls();
+  api.disable();
+  expectCalls({"profilerDeInitialize"});
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveGa100ClockRates) {
+  for (const int clockRate : {0, -1}) {
+    SCOPED_TRACE(clockRate);
+    fakeCupti().clockRate = clockRate;
+    EXPECT_THROW(configureForDevice(8, 0, std::nullopt), std::runtime_error);
+  }
+}
+
+TEST_F(CuptiPMSamplingApiTest, UsesDefaultTimeIntervalOnGa10xAndNewer) {
+  for (const auto& [major, minor] : {std::pair{8, 6}, std::pair{9, 0}}) {
+    SCOPED_TRACE(testing::Message() << major << "." << minor);
+    configureForDevice(major, minor, std::nullopt);
+
+    EXPECT_EQ(fakeCupti().samplingInterval, 1'000'000);
+    EXPECT_EQ(fakeCupti().maxSamples, 1'000);
+  }
 }
 
 TEST_F(CuptiPMSamplingApiTest, UsesRequestedTimeIntervalOnGa10xAndNewer) {
@@ -356,6 +483,7 @@ TEST_F(CuptiPMSamplingApiTest, UsesRequestedTimeIntervalOnGa10xAndNewer) {
         fakeCupti().triggerMode,
         CUPTI_PM_SAMPLING_TRIGGER_MODE_GPU_TIME_INTERVAL);
     EXPECT_EQ(fakeCupti().samplingInterval, 500'000);
+    EXPECT_EQ(fakeCupti().clockRateDevice, -1);
   }
 }
 
@@ -368,6 +496,41 @@ TEST_F(CuptiPMSamplingApiTest, RejectsUnsupportedComputeCapabilities) {
 
 TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveTimeIntervals) {
   EXPECT_THROW(configureForDevice(8, 6, 0ns), std::runtime_error);
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsNonpositiveLookbackWindows) {
+  CuptiPMSamplingApi api;
+  EXPECT_THROW(
+      api.configure(makeConfig(
+          500us,
+          /*deviceId=*/0,
+          {"sm__cycles_active.avg"},
+          0ns)),
+      std::runtime_error);
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsSampleCapacityAboveCuptiLimit) {
+  CuptiPMSamplingApi api;
+  constexpr auto kTooManySamples =
+      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+  EXPECT_THROW(
+      api.configure(makeConfig(
+          1ns,
+          /*deviceId=*/0,
+          {"sm__cycles_active.avg"},
+          std::chrono::nanoseconds{kTooManySamples})),
+      std::runtime_error);
+}
+
+TEST_F(CuptiPMSamplingApiTest, RejectsCounterDataImageAboveMemoryLimit) {
+  fakeCupti().counterDataSize = 256 * 1024 * 1024 + 1;
+  CuptiPMSamplingApi api;
+
+  EXPECT_THROW(api.configure(makeConfig()), std::runtime_error);
+
+  clearCalls();
+  api.disable();
+  expectCalls({"samplingDisable", "hostDeinitialize", "profilerDeInitialize"});
 }
 
 TEST_F(CuptiPMSamplingApiTest, RejectsMultipassConfigurationBeforeEnabling) {

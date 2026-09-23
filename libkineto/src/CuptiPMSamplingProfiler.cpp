@@ -26,9 +26,6 @@ namespace {
 const std::string kProfilerName{"CUPTI PM Sampling"};
 const std::set<libkineto::ActivityType> kSupportedActivities{
     libkineto::ActivityType::HARDWARE_COUNTERS};
-// TODO: This is a temporary constant -- we need to tune the interval by
-// hardware type to prevent hardware buffer overflow and sample loss.
-constexpr std::chrono::milliseconds kSamplingInterval{1};
 
 } // namespace
 
@@ -201,7 +198,10 @@ std::unique_ptr<libkineto::IActivityProfilerSession> CuptiPMSamplingProfiler::
   }
 
   const CuptiPMSamplingConfig pmConfig{
-      deviceId, metricNames, kSamplingInterval};
+      deviceId,
+      metricNames,
+      config.performanceMetricsSamplingInterval(),
+      config.performanceMetricsLookbackWindow()};
   auto session = std::make_unique<CuptiPMSamplingSession>(pmConfig);
   if (!session->prepare()) {
     return nullptr;

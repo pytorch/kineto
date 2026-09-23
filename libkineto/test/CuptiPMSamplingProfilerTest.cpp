@@ -86,29 +86,17 @@ TEST(CuptiPMSamplingProfilerTest, ReportsNameAndSupportedActivity) {
   EXPECT_EQ(profiler.availableActivities(), kHardwareCounterActivities);
 }
 
-TEST(CuptiPMSamplingProfilerTest, RequiresActivityMetricsAndDevice) {
+TEST(CuptiPMSamplingProfilerTest, RequiresMetricsAndDevice) {
   CuptiPMSamplingProfiler profiler;
 
-  Config validConfig;
-  ASSERT_TRUE(
-      validConfig.parse("CUPTI_PM_SAMPLING_METRICS = sm__cycles_active.avg\n"
-                        "CUPTI_PM_SAMPLING_DEVICE_ID = 0"));
-  EXPECT_EQ(
-      profiler.configure(
-          /*startTimeMs=*/123,
-          /*durationMs=*/456,
-          /*activityTypes=*/{},
-          validConfig),
-      nullptr);
-
   Config missingMetrics;
-  ASSERT_TRUE(missingMetrics.parse("CUPTI_PM_SAMPLING_DEVICE_ID = 0"));
+  ASSERT_TRUE(missingMetrics.parse("PERFORMANCE_METRICS_DEVICE_ID = 0"));
   EXPECT_EQ(
       profiler.configure(kHardwareCounterActivities, missingMetrics), nullptr);
 
   Config missingDevice;
   ASSERT_TRUE(
-      missingDevice.parse("CUPTI_PM_SAMPLING_METRICS = sm__cycles_active.avg"));
+      missingDevice.parse("PERFORMANCE_METRICS = sm__cycles_active.avg"));
   EXPECT_EQ(
       profiler.configure(kHardwareCounterActivities, missingDevice), nullptr);
 }

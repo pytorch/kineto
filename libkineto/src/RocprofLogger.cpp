@@ -19,7 +19,9 @@
 #include <unistd.h>
 #include <chrono>
 #include <cstring>
+#include <limits>
 #include <mutex>
+#include <thread>
 
 #include "ApproximateClock.h"
 #include "Demangle.h"
@@ -811,10 +813,36 @@ void RocprofLogger::stopLogging() {
     return;
   logging_ = false;
 
-  // Flush buffers
   auto& globalContext = getGlobalContext();
   rocprofiler_flush_buffer(globalContext.buffer);
   rocprofiler_stop_context(globalContext.context);
+
+  // rocprofiler-sdk emplaces dispatch records from its own completion-signal
+  // thread, so records keep arriving after the context stops and a single
+  // flush does not deliver them. Keep flushing until the row count has been
+  // stable for several polls, bounded by a total timeout.
+  constexpr auto kPollInterval = std::chrono::milliseconds(10);
+  constexpr auto kTimeout = std::chrono::seconds(5);
+  constexpr int kStablePolls = 3;
+  const auto deadline = std::chrono::steady_clock::now() + kTimeout;
+  size_t previous = std::numeric_limits<size_t>::max();
+  int stable = 0;
+  while (stable < kStablePolls) {
+    if (std::chrono::steady_clock::now() >= deadline) {
+      LOG(WARNING) << "rocprofiler-sdk records still arriving after "
+                   << kTimeout.count() << "s; trace may be incomplete";
+      break;
+    }
+    rocprofiler_flush_buffer(globalContext.buffer);
+    std::this_thread::sleep_for(kPollInterval);
+    size_t current = 0;
+    {
+      std::lock_guard<std::mutex> lock(rowsMutex_);
+      current = rows_.size();
+    }
+    stable = (current == previous) ? stable + 1 : 0;
+    previous = current;
+  }
 }
 
 void RocprofLogger::endTracing() {

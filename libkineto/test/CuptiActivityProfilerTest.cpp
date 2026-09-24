@@ -345,6 +345,17 @@ class MockCuptiActivities : public CuptiActivityApi {
   bool available{true};
 };
 
+TEST(CuptiActivityApiTest, ParsesBooleanEnvironmentValues) {
+  constexpr auto* kTestEnvVar = "KINETO_TEST_BOOLEAN_ENV_VAR";
+  EXPECT_EQ(unsetenv(kTestEnvVar), 0);
+  EXPECT_FALSE(isEnvVarSetToOne(kTestEnvVar));
+  EXPECT_EQ(setenv(kTestEnvVar, "0", 1), 0);
+  EXPECT_FALSE(isEnvVarSetToOne(kTestEnvVar));
+  EXPECT_EQ(setenv(kTestEnvVar, "1", 1), 0);
+  EXPECT_TRUE(isEnvVarSetToOne(kTestEnvVar));
+  EXPECT_EQ(unsetenv(kTestEnvVar), 0);
+}
+
 TEST(CuptiActivityApiTest, KeepsReturningValidBuffersWhenRejectionUnsupported) {
   CallbackCuptiActivityApi cupti;
   cupti.canRejectBuffer_ = false;

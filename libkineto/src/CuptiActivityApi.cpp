@@ -28,12 +28,11 @@ constexpr size_t kBufSize(4 * 1024 * 1024);
 constexpr uint32_t kCuptiBufferRejectionMinVersion = 27;
 
 inline bool cuptiTearDown_() {
-  auto teardown_env = getenv("TEARDOWN_CUPTI");
-  return teardown_env != nullptr && strcmp(teardown_env, "1") == 0;
+  return isEnvVarSetToOne("TEARDOWN_CUPTI");
 }
 
 inline bool cuptiLazyInit_() {
-  return cuptiTearDown_() && getenv("DISABLE_CUPTI_LAZY_REINIT") == nullptr;
+  return cuptiTearDown_() && !isEnvVarSetToOne("DISABLE_CUPTI_LAZY_REINIT");
 }
 
 inline void reenableCuptiCallbacks_(CuptiCallbackApi& cbapi) {

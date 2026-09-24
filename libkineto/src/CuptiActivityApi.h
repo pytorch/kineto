@@ -10,10 +10,12 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
+#include <string_view>
 
 #include <cupti.h>
 
@@ -26,6 +28,11 @@
 namespace KINETO_NAMESPACE {
 
 using namespace libkineto;
+
+inline bool isEnvVarSetToOne(const char* name) {
+  const auto* value = std::getenv(name);
+  return value != nullptr && std::string_view{value} == "1";
+}
 
 class CuptiActivityApi {
  public:

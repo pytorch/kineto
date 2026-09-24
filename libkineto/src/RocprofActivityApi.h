@@ -46,6 +46,7 @@ class RocprofActivityApi {
   void teardownContext() {}
   void setTimeOffset(timestamp_t toffset);
   void setMaxEvents(uint32_t maxEvents);
+  void setPerThreadBuffers(bool enabled);
 
   virtual int processActivities(
       std::function<void(const rocprofBase*)> handler,

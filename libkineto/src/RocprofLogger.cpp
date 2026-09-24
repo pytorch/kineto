@@ -507,25 +507,118 @@ void RocprofLogger::popCorrelationID(CorrelationDomain type) {
 }
 
 void RocprofLogger::clearLogs() {
-  // CuptiActivityProfiler clears this before the output Loggers use the data
-  // for (auto &row : rows_)
-  //  delete row;
-  rows_.clear();
-  for (int i = 0; i < CorrelationDomain::size; ++i) {
-    externalCorrelations_[i].clear();
+  {
+    std::lock_guard<std::mutex> lock(threadBuffersMutex_);
+    generation_.fetch_add(1, std::memory_order_release);
+    for (auto& buffer : threadBuffers_) {
+      std::lock_guard<std::mutex> bufferLock(buffer->mutex);
+      buffer->rows.clear();
+      for (auto& correlations : buffer->externalCorrelations) {
+        correlations.clear();
+      }
+    }
+    threadBuffers_.clear();
+    totalRows_.store(0, std::memory_order_relaxed);
   }
+
+  {
+    std::lock_guard<std::mutex> lock(rowsMutex_);
+    rows_.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lock(externalCorrelationsMutex_);
+    for (auto& correlations : externalCorrelations_) {
+      correlations.clear();
+    }
+  }
+}
+
+ThreadTraceBuffer* RocprofLogger::getThreadBuffer() {
+  static RocprofLogger* dis = &singleton();
+  // This owner keeps the returned pointer alive while clearLogs() invalidates
+  // and releases the registry's copy from another thread.
+  thread_local std::shared_ptr<ThreadTraceBuffer> buffer;
+
+  if (buffer == nullptr ||
+      buffer->generation != dis->generation_.load(std::memory_order_acquire)) {
+    std::lock_guard<std::mutex> lock(dis->threadBuffersMutex_);
+    const auto generation = dis->generation_.load(std::memory_order_relaxed);
+    if (buffer == nullptr || buffer->generation != generation) {
+      buffer = std::make_shared<ThreadTraceBuffer>(generation);
+      dis->threadBuffers_.push_back(buffer);
+    }
+  }
+  return buffer.get();
+}
+
+void RocprofLogger::mergeThreadBuffers() {
+  std::lock_guard<std::mutex> threadBuffersLock(threadBuffersMutex_);
+  if (threadBuffers_.empty()) {
+    return;
+  }
+  generation_.fetch_add(1, std::memory_order_release);
+  std::lock_guard<std::mutex> rowsLock(rowsMutex_);
+  std::lock_guard<std::mutex> correlationsLock(externalCorrelationsMutex_);
+  uint64_t mergedRows = 0;
+  for (auto& buffer : threadBuffers_) {
+    std::lock_guard<std::mutex> bufferLock(buffer->mutex);
+    mergedRows += buffer->rows.size();
+    rows_.insert(rows_.end(), buffer->rows.begin(), buffer->rows.end());
+    buffer->rows.clear();
+    for (int i = 0; i < CorrelationDomain::size; ++i) {
+      auto& correlations = buffer->externalCorrelations[i];
+      externalCorrelations_[i].insert(
+          externalCorrelations_[i].end(),
+          correlations.begin(),
+          correlations.end());
+      correlations.clear();
+    }
+  }
+  totalRows_.fetch_sub(mergedRows, std::memory_order_relaxed);
+  threadBuffers_.clear();
 }
 
 void RocprofLogger::insert_row_to_buffer(rocprofBase* row) {
   RocprofLogger* dis = &singleton();
-  std::lock_guard<std::mutex> lock(dis->rowsMutex_);
-  if (dis->rows_.size() >= dis->maxBufferSize_) {
-    LOG_FIRST_N(WARNING, 10)
-        << "Exceeded max GPU buffer count (" << dis->rows_.size() << " > "
-        << dis->maxBufferSize_ << ") - terminating tracing";
+
+  // perThreadBuffers disabled
+  if (!dis->perThreadBuffers_.load(std::memory_order_relaxed)) {
+    std::lock_guard<std::mutex> lock(dis->rowsMutex_);
+    if (dis->rows_.size() >= dis->maxBufferSize_) {
+      LOG_FIRST_N(WARNING, 10)
+          << "Exceeded max GPU buffer count (" << dis->rows_.size() << " > "
+          << dis->maxBufferSize_ << ") - terminating tracing";
+      return;
+    }
+    dis->rows_.push_back(row);
     return;
   }
-  dis->rows_.push_back(row);
+
+  // perThreadBuffers enabled
+  while (true) {
+    auto* buffer = getThreadBuffer();
+    std::lock_guard<std::mutex> lock(buffer->mutex);
+    if (buffer->generation !=
+        dis->generation_.load(std::memory_order_acquire)) {
+      continue;
+    }
+
+    uint64_t rowCount = dis->totalRows_.load(std::memory_order_relaxed);
+    while (true) {
+      if (rowCount >= dis->maxBufferSize_) {
+        LOG_FIRST_N(WARNING, 10)
+            << "Exceeded max GPU buffer count (" << rowCount
+            << " >= " << dis->maxBufferSize_ << ") - terminating tracing";
+        return;
+      }
+      if (dis->totalRows_.compare_exchange_weak(
+              rowCount, rowCount + 1, std::memory_order_relaxed)) {
+        break;
+      }
+    }
+    buffer->rows.push_back(row);
+    return;
+  }
 }
 
 void RocprofLogger::code_object_callback(
@@ -663,15 +756,38 @@ void RocprofLogger::api_callback(
             endTime);
         insert_row_to_buffer(row);
       }
-      // External correlation
+      // Store external correlations
       static RocprofLogger* dis = &singleton();
-      for (int it = RocLogger::CorrelationDomain::begin;
-           it < RocLogger::CorrelationDomain::end;
-           ++it) {
-        if (t_externalIds[it].size() > 0) {
-          std::lock_guard<std::mutex> lock(dis->externalCorrelationsMutex_);
-          dis->externalCorrelations_[it].emplace_back(
-              record.correlation_id.internal, t_externalIds[it].back());
+
+      // perThreadBuffers enabled
+      if (dis->perThreadBuffers_.load(std::memory_order_relaxed)) {
+        while (true) {
+          auto* buffer = getThreadBuffer();
+          std::lock_guard<std::mutex> lock(buffer->mutex);
+          if (buffer->generation !=
+              dis->generation_.load(std::memory_order_acquire)) {
+            continue;
+          }
+          for (int it = RocLogger::CorrelationDomain::begin;
+               it < RocLogger::CorrelationDomain::end;
+               ++it) {
+            if (t_externalIds[it].size() > 0) {
+              buffer->externalCorrelations[it].emplace_back(
+                  record.correlation_id.internal, t_externalIds[it].back());
+            }
+          }
+          break;
+        }
+      } else {
+        // perThreadBuffers disabled
+        for (int it = RocLogger::CorrelationDomain::begin;
+             it < RocLogger::CorrelationDomain::end;
+             ++it) {
+          if (t_externalIds[it].size() > 0) {
+            std::lock_guard<std::mutex> lock(dis->externalCorrelationsMutex_);
+            dis->externalCorrelations_[it].emplace_back(
+                record.correlation_id.internal, t_externalIds[it].back());
+          }
         }
       }
     } // ROCPROFILER_CALLBACK_PHASE_EXIT
@@ -774,6 +890,10 @@ void RocprofLogger::setMaxEvents(uint32_t maxBufferSize) {
   RocprofLogger* dis = &singleton();
   std::lock_guard<std::mutex> lock(dis->rowsMutex_);
   maxBufferSize_ = maxBufferSize;
+}
+
+void RocprofLogger::setPerThreadBuffers(bool enabled) {
+  perThreadBuffers_.store(enabled, std::memory_order_relaxed);
 }
 
 void RocprofLogger::ensureRegistered() {

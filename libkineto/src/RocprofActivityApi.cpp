@@ -76,6 +76,10 @@ void RocprofActivityApi::setMaxEvents(uint32_t maxEvents) {
   d->setMaxEvents(maxEvents);
 }
 
+void RocprofActivityApi::setPerThreadBuffers(bool enabled) {
+  d->setPerThreadBuffers(enabled);
+}
+
 void RocprofActivityApi::setMaxBufferSize([[maybe_unused]] int64_t size) {
   // FIXME: implement?
   // maxGpuBufferCount_ = 1 + size / kBufSize;
@@ -113,6 +117,8 @@ int RocprofActivityApi::processActivities(
   // This will break time-ordering of events but is status quo.
 
   int count = 0;
+
+  d->mergeThreadBuffers();
 
   // Process all external correlations pairs
   for (int it = RocLogger::CorrelationDomain::begin;

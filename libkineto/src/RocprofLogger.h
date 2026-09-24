@@ -24,6 +24,17 @@
 
 #include "RocLogger.h"
 
+struct ThreadTraceBuffer {
+  explicit ThreadTraceBuffer(uint64_t bufferGeneration)
+      : generation(bufferGeneration) {}
+
+  const uint64_t generation;
+  std::mutex mutex;
+  std::vector<rocprofBase*> rows;
+  std::vector<std::pair<uint64_t, uint64_t>>
+      externalCorrelations[RocLogger::CorrelationDomain::size];
+};
+
 class RocprofLogger {
  public:
   RocprofLogger();
@@ -42,6 +53,7 @@ class RocprofLogger {
   void stopLogging();
   void clearLogs();
   void setMaxEvents(uint32_t maxBufferSize);
+  void setPerThreadBuffers(bool enabled);
 
   static int toolInit(
       rocprofiler_client_finalize_t finalize_func,
@@ -61,6 +73,9 @@ class RocprofLogger {
   void endTracing();
 
   static void insert_row_to_buffer(rocprofBase* row);
+
+  static ThreadTraceBuffer* getThreadBuffer();
+  void mergeThreadBuffers();
 
   //
   static void api_callback(
@@ -90,6 +105,12 @@ class RocprofLogger {
   std::vector<std::pair<uint64_t, uint64_t>>
       externalCorrelations_[RocLogger::CorrelationDomain::size];
   std::mutex externalCorrelationsMutex_;
+
+  std::atomic<bool> perThreadBuffers_{false};
+  std::vector<std::shared_ptr<ThreadTraceBuffer>> threadBuffers_;
+  std::mutex threadBuffersMutex_;
+  std::atomic<uint64_t> generation_{0};
+  std::atomic<uint64_t> totalRows_{0};
 
   bool externalCorrelationEnabled_{true};
   bool logging_{false};

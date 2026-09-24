@@ -79,6 +79,10 @@ class Config : public AbstractConfig {
     return perThreadBufferEnabled_;
   }
 
+  [[nodiscard]] bool rocprofPerThreadBufferEnabled() const {
+    return rocprofPerThreadBufferEnabled_;
+  }
+
   void setSelectedActivityTypes(const std::set<ActivityType>& types) {
     selectedActivityTypes_ = types;
   }
@@ -318,8 +322,12 @@ class Config : public AbstractConfig {
   // Activity profiler
   bool activityProfilerEnabled_;
 
-  // Enable per-thread buffer
-  bool perThreadBufferEnabled_;
+  // Enable per-thread buffer for CUDA
+  bool perThreadBufferEnabled_{false};
+
+  // Kept separate from perThreadBufferEnabled_ because existing configs already
+  // set that key true, and reusing it would flip every ROCm run onto the path.
+  bool rocprofPerThreadBufferEnabled_{false};
   std::set<ActivityType> selectedActivityTypes_;
 
   // The activity profiler settings are all on-demand

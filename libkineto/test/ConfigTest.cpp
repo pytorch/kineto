@@ -249,3 +249,19 @@ TEST(ParseTest, OnDemandLogFileRejectedOutsideAllowedDir) {
   EXPECT_TRUE(cfg.parse("ACTIVITIES_LOG_FILE=/tmp/../etc/cron.d/payload"));
   EXPECT_EQ(cfg.activitiesLogFile(), original);
 }
+
+TEST(ParseTest, RocprofPerThreadBuffer) {
+  Config cfg;
+  EXPECT_FALSE(cfg.rocprofPerThreadBufferEnabled());
+  EXPECT_TRUE(cfg.parse("ROCPROF_PER_THREAD_BUFFER_ENABLED=true"));
+  EXPECT_TRUE(cfg.rocprofPerThreadBufferEnabled());
+}
+
+// The two keys stay independent. Configs in the wild already set the CUPTI one,
+// so letting it reach the rocprof path would enable it on every ROCm run.
+TEST(ParseTest, CuptiPerThreadBufferDoesNotEnableRocprof) {
+  Config cfg;
+  EXPECT_TRUE(cfg.parse("CUPTI_PER_THREAD_BUFFER_ENABLED=true"));
+  EXPECT_TRUE(cfg.perThreadBufferEnabled());
+  EXPECT_FALSE(cfg.rocprofPerThreadBufferEnabled());
+}

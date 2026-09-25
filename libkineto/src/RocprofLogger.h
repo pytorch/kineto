@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <rocprofiler-sdk/external_correlation.h>
 #include <rocprofiler-sdk/registration.h>
 
 #include "RocLogger.h"
@@ -93,6 +94,18 @@ class RocprofLogger {
       rocprofiler_callback_tracing_record_t record,
       rocprofiler_user_data_t* user_data,
       void* callback_data);
+  static void graph_callback(
+      rocprofiler_callback_tracing_record_t record,
+      rocprofiler_user_data_t* user_data,
+      void* callback_data);
+  static int external_correlation_callback(
+      rocprofiler_thread_id_t thread_id,
+      rocprofiler_context_id_t context_id,
+      rocprofiler_external_correlation_id_request_kind_t kind,
+      rocprofiler_tracing_operation_t operation,
+      uint64_t internal_corr_id_value,
+      rocprofiler_user_data_t* external_corr_id_value,
+      void* data);
 
   // Api callback data
   uint32_t maxBufferSize_{5000000}; // 5M GPU runtime/kernel events.

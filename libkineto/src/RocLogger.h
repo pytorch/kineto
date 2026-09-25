@@ -231,5 +231,11 @@ struct rocprofAsyncRow : public rocprofBase {
   int device;
   uint64_t queue;
   uint64_t stream{0};
+  // HIP graph attribution, zero when the operation did not originate from a
+  // graph launch. Set after construction from the external correlation id.
+  // graphNodeId carries the exec id in its upper 32 bits, the same layout
+  // CUPTI uses for graphNodeId.
+  uint64_t graphExecId{0};
+  uint64_t graphNodeId{0};
   std::string kernelName;
 };

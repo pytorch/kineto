@@ -168,6 +168,10 @@ inline constexpr MetadataField<uint64_t> kCid{"cid"};
 inline constexpr MetadataField<uint64_t> kCorrelation{"correlation"};
 inline constexpr MetadataField<int64_t> kDevice{"device"};
 inline constexpr MetadataField<std::string> kDst{"dst"};
+// Key strings match CudaMetadataFields so trace consumers see identical
+// graph attribution fields on both backends.
+inline constexpr MetadataField<uint64_t> kGraphId{"graph id"};
+inline constexpr MetadataField<uint64_t> kGraphNodeId{"graph node id"};
 inline constexpr MetadataField<std::vector<int64_t>> kGrid{"grid"};
 inline constexpr MetadataField<uint64_t> kHsaQueue{"hsa_queue"};
 inline constexpr MetadataField<std::string> kKernel{"kernel"};

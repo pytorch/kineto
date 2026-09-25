@@ -24,10 +24,10 @@ jobs:
     strategy:
       matrix:
         rocm: ["10.0"]
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v3.yml@main
     with:
       job-name: linux-rocm-${{ matrix.rocm }}-kineto-build
-      runner: linux.4xlarge
+      runner: mt-l-x86iavx512-16-128
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules
       repository: ${{ github.repository }}

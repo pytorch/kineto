@@ -24,10 +24,10 @@ jobs:
     strategy:
       matrix:
         rocm: ["10.0"]
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v3.yml@main
     with:
       job-name: linux-rocm-${{ matrix.rocm }}-pytorch-build
-      runner: linux.12xlarge
+      runner: mt-l-x86iavx512-48-384
       timeout: 180
       repository: ${{ github.repository }}
       ref: ${{ github.ref }}

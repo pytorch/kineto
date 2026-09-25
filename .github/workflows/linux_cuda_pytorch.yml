@@ -15,11 +15,11 @@ permissions:
 
 jobs:
   pr-test:
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v3.yml@main
     with:
       job-name: linux-cuda-pytorch-build-and-test
       # AWS A10G GPU instance
-      runner: linux.g5.4xlarge.nvidia.gpu
+      runner: mt-l-x86aavx2-11-41-a10g
       timeout: 180
       # Checkout the Kineto repo at the PR ref with submodules
       repository: ${{ github.repository }}

@@ -1,7 +1,7 @@
 # Kineto
 
 > [!IMPORTANT]
-> Development in this repository is frozen as of September 24, 2026 while Kineto is upstreamed into PyTorch. Please do not open new pull requests here. See [#1571](https://github.com/pytorch/kineto/issues/1571) for the migration timeline and where to submit future changes.
+> Kineto has been upstreamed into PyTorch, and this repository is archived. It is read-only and no longer accepts issues or pull requests. Please submit future changes to [PyTorch](https://github.com/pytorch/pytorch). See [#1571](https://github.com/pytorch/kineto/issues/1571) for details on the migration.
 
 Kineto is a library used in the PyTorch Profiler.
 
